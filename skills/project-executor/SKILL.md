@@ -1,6 +1,6 @@
 ---
 name: project-executor
-description: Resume and execute a long-running project based on docs/tasks/projects/PROJECT/tasks.md. Use when continuing work, implementing tasks, or updating progress across sessions. Read the tasks file, act on the next items, and keep tasks, progress log, and next actions current.
+description: Resume and execute a long-running project based on docs/projects/PROJECT/tasks.md. Use when continuing work, implementing tasks, or updating progress across sessions. Read the tasks file, act on the next items, and keep tasks, progress log, and next actions current.
 ---
 
 # Project Executor
@@ -10,7 +10,7 @@ Continue a project by reading its `tasks.md`, executing the next actions, and ke
 
 ## Default location
 1. Check repo guidance (AGENTS.md, docs) for a prescribed location or format.
-2. If none exists, use: `docs/tasks/projects/<project>/tasks.md`.
+2. If none exists, use: `docs/projects/<project>/tasks.md`.
 
 ## Workflow
 1. **Locate and read the tasks file**
@@ -40,7 +40,7 @@ Continue a project by reading its `tasks.md`, executing the next actions, and ke
 - When the project is complete, offer to commit and push the changes.
 - Once the user confirms commit/push, run pre-commit checks and fix failures without asking again.
 - Continue fixing and retrying commits until pre-commit checks pass, then push.
-- After a successful push, ask whether to archive the project by moving it to `docs/tasks/projects/archive/<project>/` (create `archive/` if missing).
+- After a successful push, ask whether to archive the project by moving it to `docs/projects/archive/<project>/` (create `archive/` if missing).
 
 ## Consistency rules
 - Preserve required local sections if repo guidance mandates them.
