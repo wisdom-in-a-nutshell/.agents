@@ -17,6 +17,7 @@ Create or update a per-project tasks file that serves as the single source of tr
    - Use an existing project folder if referenced; otherwise derive a kebab-case name.
 2. **Check for an existing tasks.md**
    - If present, update it; if not, create it using the template in `references/tasks-template.md`.
+   - Path note: `references/tasks-template.md` is relative to *this skill directory* (i.e. `~/.agents/skills/project-planner/references/tasks-template.md`), not a path inside the target repo.
 3. **Ask only essential questions** (1-3 max)
    - Goal/scope, constraints, success criteria, deadline are the usual minimums.
    - If details are missing but not blocking, make a reasonable assumption and proceed.
@@ -56,5 +57,5 @@ See `references/tasks-template.md` for required sections and inline guidance for
 - Always add an archive task as the final checklist item (after the AGENTS task). Move to `docs/projects/archive/<project>/` when the user agrees.
 
 ## Resources
-- Use `references/tasks-template.md` when creating a new tasks file or normalizing a missing section.
+- Use `references/tasks-template.md` (relative to this skill directory) when creating a new tasks file or normalizing a missing section.
 - The template contains HTML comments with guidance for each section — read them, then strip all comments in the final output.
