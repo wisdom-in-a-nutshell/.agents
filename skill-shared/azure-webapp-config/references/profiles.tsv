@@ -1,0 +1,4 @@
+# profile	resource_group	apps	env_file_hint	notes
+win-backend	aipodcasting	aipodcasting,aipodcasting-worker	~/GitHub/win/.env	WIN backend API + worker settings
+aipodcasting-frontend	aipodcasting	aipodcasting-app	~/GitHub/aipodcasting/.env.local	AIP frontend app settings
+aipodcasting-public-website	aipodcasting	aipodcasting-public-website	~/GitHub/aipodcasting-public-website/.env.local	Public website app settings
