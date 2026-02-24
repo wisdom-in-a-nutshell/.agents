@@ -1,0 +1,4 @@
+interface:
+  display_name: "Agent Repo Playbook"
+  short_description: "Recommend agent-native best practices for a repo."
+  default_prompt: "Review this repository and recommend the highest-leverage agent-native best practices for a solo developer workflow where agents write 100% of code."

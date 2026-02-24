@@ -1,4 +1,0 @@
-interface:
-  display_name: "Agent Repo Audit"
-  short_description: "Audit a repo for agent-native readiness."
-  default_prompt: "Audit this repository for solo, agent-native development readiness and provide prioritized gaps."
