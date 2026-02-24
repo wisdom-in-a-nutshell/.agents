@@ -1,6 +1,6 @@
 # Docs Structure and Maintenance (Solo Agent-Native)
 
-Use one lightweight docs contract across repositories unless there is a strong reason to deviate.
+Use one lightweight minimum docs contract across repositories unless there is a strong reason to deviate.
 
 ## Default docs layout
 
@@ -15,6 +15,8 @@ docs/
     <project>/tasks.md      # Active long-running project execution file
     archive/                # Completed project folders
 ```
+
+Additional `docs/` folders are allowed when useful (for example `docs/decisions`, `docs/setup`, `docs/quality`, `docs/build-logs`).
 
 ## What goes where
 

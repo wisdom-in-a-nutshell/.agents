@@ -35,6 +35,7 @@ Operating model:
    - Immediate
    - Near-term
    - Later
+4. `Evidence`: include concrete file paths for each major gap/recommendation.
 
 ## Rules
 - Prefer recommendations that reduce human coordination load.
@@ -45,7 +46,8 @@ Operating model:
 - Recommend one docs contract across repos unless the user requests exceptions.
 - Use `$project-planner` for creating/updating `docs/projects/<project>/tasks.md`.
 - Use `$project-executor` for execution against those tasks files.
+- If repo-local guidance conflicts with this playbook, prefer repo-local sources of truth (`AGENTS.md`, decision docs, and architecture docs).
 
 ## Resources
-- `references/best-practices.md`: canonical best practices for this workflow.
-- `references/docs-structure-and-maintenance.md`: canonical docs layout and update rules.
+- `references/best-practices.md`: baseline best practices for this workflow.
+- `references/docs-structure-and-maintenance.md`: baseline docs layout and update rules.

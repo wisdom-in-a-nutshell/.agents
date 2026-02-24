@@ -2,6 +2,9 @@
 
 This guide is based on the OpenAI harness-engineering model and adapted for a solo developer where agents write 100% of code.
 
+## Base principle
+- Optimize for solo velocity with agent reliability: minimal process, strong repo legibility, and targeted mechanical guardrails.
+
 ## 1) Human intent, agent execution
 - Keep humans focused on goals, acceptance criteria, and prioritization.
 - Treat repeated agent failure as a system gap (missing docs, tools, guardrails), not a prompting problem.
@@ -52,3 +55,59 @@ This guide is based on the OpenAI harness-engineering model and adapted for a so
 
 ## Docs contract reference
 - Use `references/docs-structure-and-maintenance.md` for the default `docs/architecture`, `docs/references`, and `docs/projects` layout and maintenance policy.
+
+## 11) Merge philosophy (solo rapid-main)
+- Direct-to-main is the default and preferred workflow.
+- Do not introduce branch-heavy flow unless explicitly requested.
+- Keep pre-commit checks and CI checks focused and fast so iteration stays high-velocity.
+- Use the notify automation loop (auto commit, pull --rebase, push) as the standard shipping path.
+
+## 12) Agent self-review loop
+- Before push: run local checks, inspect diff, address obvious issues, re-run checks.
+- For riskier changes, add an explicit second-pass agent review before final push.
+
+## 13) Promote repeated failures into enforcement
+- If a mistake repeats, convert it into a mechanical check (lint/test/script/CI rule).
+- Prefer one durable guardrail over repeated reminder text.
+
+## 14) Golden principles (recommended defaults)
+- Do not rely on guessed data shapes; validate at boundaries.
+- Keep shared invariants centralized (avoid copy-pasted ad-hoc helpers).
+- Keep logs structured and actionable for agents.
+
+## 15) Docs freshness loop
+- Run recurring docs cleanup to catch stale instructions and drift.
+- Update docs at the same time behavior changes; do not defer doc updates indefinitely.
+
+## 16) Quality and debt tracking
+- Keep a lightweight quality/debt tracker for recurring weak spots.
+- Prefer continuous small refactors over periodic large cleanup bursts.
+
+## 17) Escalation policy
+- Escalate to human for judgment-heavy decisions (product tradeoffs, legal/risk, high-cost decisions).
+- Continue autonomously for implementation and low-risk refactors.
+
+## 18) Dependency selection rule
+- Prefer stable, legible dependencies and abstractions agents can reason about.
+- Avoid opaque frameworks when they reduce agent reliability.
+
+## 19) Priority tiers for this workflow
+
+### Must-have
+- Human intent, agent execution as the default operating model.
+- `AGENTS.md` as map and `docs/` as system of record.
+- `docs/projects/<project>/tasks.md` workflow via `$project-planner` and `$project-executor`.
+- Fast mechanical guardrails (pre-commit, lint/test/typecheck where applicable).
+- Direct-to-main automation loop with commit/pull-rebase/push on each agent turn.
+- Docs update discipline: behavior changes and docs changes ship together.
+
+### Good-to-have
+- Repo checks for docs contract compliance.
+- Recurring doc-gardening and drift cleanup automation.
+- Lightweight quality/debt score tracking.
+- Explicit second-pass agent review on risky changes.
+
+### Not-now by default
+- Worktree isolation.
+- Branch-heavy team process.
+- Heavy approval gates that slow solo flow.
