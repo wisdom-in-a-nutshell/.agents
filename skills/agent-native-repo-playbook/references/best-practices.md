@@ -54,7 +54,7 @@ This guide is based on the OpenAI harness-engineering model and adapted for a so
 - Fourth: add recurring maintenance automation.
 
 ## Docs contract reference
-- Use `references/docs-structure-and-maintenance.md` for the default `docs/architecture`, `docs/references`, and `docs/projects` layout and maintenance policy.
+- Use `references/docs-structure-and-maintenance.md` for the minimum `docs/architecture`, `docs/references`, and `docs/projects` layout and maintenance policy.
 
 ## 11) Merge philosophy (solo rapid-main)
 - Direct-to-main is the default and preferred workflow.
