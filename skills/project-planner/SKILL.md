@@ -55,6 +55,8 @@ See `references/tasks-template.md` for required sections and inline guidance for
 - Include handoff details inside tasks: exact file paths to edit/create, integration hook points, storage paths/prefixes, DB fields touched, and external function signatures/return shapes.
 - Include an `AGENTS.md` review/update task for every long-running project; close it by either updating/adding guidance or explicitly noting no change needed.
 - Always add an archive task as the final checklist item (after the AGENTS task). Move to `docs/projects/archive/<project>/` when the user agrees.
+- Write tasks so an executor can run multiple tasks in sequence without waiting for user confirmation between minor steps.
+- Include explicit blocker/escalation notes only for decisions that truly require human judgment (product tradeoff, risk, credentials, external approvals).
 
 ## Resources
 - Use `references/tasks-template.md` (relative to this skill directory) when creating a new tasks file or normalizing a missing section.

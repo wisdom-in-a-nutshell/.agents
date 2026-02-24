@@ -10,7 +10,7 @@ Use this playbook to recommend practical improvements for agent-first software d
 
 Operating model:
 - Solo developer sets intent and priorities.
-- Agents write and maintain all code and docs.
+- Agents always write 100% of code and maintain docs.
 - Repository structure is optimized for agent legibility and repeatability.
 
 ## Workflow

@@ -1,4 +1,4 @@
 interface:
   display_name: "Agent Repo Playbook"
   short_description: "Recommend agent-native best practices for a repo."
-  default_prompt: "Review this repository and recommend the highest-leverage agent-native improvements for a solo developer workflow where agents write 100% of code. Follow repo-local AGENTS/docs as highest precedence over this playbook/references when conflicts exist. Output: (1) What is working, (2) Highest-leverage gaps, (3) Recommended next moves grouped by Immediate/Near-term/Later, and (4) Evidence with concrete file paths for each major gap/recommendation."
+  default_prompt: "Review this repository and recommend the highest-leverage agent-native improvements for a solo developer workflow where agents always write 100% of code. Follow repo-local AGENTS/docs as highest precedence over this playbook/references when conflicts exist. Output: (1) What is working, (2) Highest-leverage gaps, (3) Recommended next moves grouped by Immediate/Near-term/Later, and (4) Evidence with concrete file paths for each major gap/recommendation."
