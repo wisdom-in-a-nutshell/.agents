@@ -49,3 +49,6 @@ This guide is based on the OpenAI harness-engineering model and adapted for a so
 - Second: add or tighten CI/lint/test guardrails.
 - Third: improve autonomous validation loops.
 - Fourth: add recurring maintenance automation.
+
+## Docs contract reference
+- Use `references/docs-structure-and-maintenance.md` for the default `docs/architecture`, `docs/references`, and `docs/projects` layout and maintenance policy.

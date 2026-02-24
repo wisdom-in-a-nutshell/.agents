@@ -19,7 +19,9 @@ Operating model:
    - `docs/` organization
    - `.github/workflows/`
    - local `.agents/skills/`
-2. Compare current state against `references/best-practices.md`.
+2. Compare current state against:
+   - `references/best-practices.md`
+   - `references/docs-structure-and-maintenance.md`
 3. Produce recommendations in three tiers:
    - Immediate (high leverage, low effort)
    - Near-term (high leverage, medium effort)
@@ -40,6 +42,10 @@ Operating model:
 - Keep AGENTS concise; move detailed guidance into docs.
 - Prioritize feedback loops that agents can run autonomously.
 - Avoid heavy process designed for large teams unless explicitly requested.
+- Recommend one docs contract across repos unless the user requests exceptions.
+- Use `$project-planner` for creating/updating `docs/projects/<project>/tasks.md`.
+- Use `$project-executor` for execution against those tasks files.
 
-## Resource
+## Resources
 - `references/best-practices.md`: canonical best practices for this workflow.
+- `references/docs-structure-and-maintenance.md`: canonical docs layout and update rules.
