@@ -1,1 +1,5 @@
-{}
+{
+  "enabledCssSnippets": [
+    "codex-hide-no-markdown"
+  ]
+}
