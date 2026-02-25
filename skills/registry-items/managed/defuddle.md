@@ -5,7 +5,7 @@ origin: "external"
 scope: "global"
 repos_csv: "*"
 source_path: "skills-source/external/defuddle"
-upstream_ref: "openai/skills:skills/.curated/defuddle@main"
+upstream_ref: "kepano/obsidian-skills:skills/defuddle@main"
 notes: "global runtime"
 repos:
   - "*"

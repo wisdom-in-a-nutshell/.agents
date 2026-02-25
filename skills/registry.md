@@ -13,12 +13,12 @@ Policy:
 
 | skill | origin | scope | repos | source_path | upstream_ref | notes |
 | --- | --- | --- | --- | --- | --- | --- |
-| agent-browser | external | global | * | skills-source/external/agent-browser | openai/skills:skills/.curated/agent-browser@main | global runtime |
-| defuddle | external | global | * | skills-source/external/defuddle | openai/skills:skills/.curated/defuddle@main | global runtime |
-| json-canvas | external | global | * | skills-source/external/json-canvas | openai/skills:skills/.curated/json-canvas@main | global runtime |
-| obsidian-bases | external | global | * | skills-source/external/obsidian-bases | openai/skills:skills/.curated/obsidian-bases@main | global runtime |
-| obsidian-cli | external | global | * | skills-source/external/obsidian-cli | openai/skills:skills/.curated/obsidian-cli@main | global runtime |
-| obsidian-markdown | external | global | * | skills-source/external/obsidian-markdown | openai/skills:skills/.curated/obsidian-markdown@main | global runtime |
+| agent-browser | external | global | * | skills-source/external/agent-browser | vercel-labs/agent-browser:skills/agent-browser@main | global runtime |
+| defuddle | external | global | * | skills-source/external/defuddle | kepano/obsidian-skills:skills/defuddle@main | global runtime |
+| json-canvas | external | global | * | skills-source/external/json-canvas | kepano/obsidian-skills:skills/json-canvas@main | global runtime |
+| obsidian-bases | external | global | * | skills-source/external/obsidian-bases | kepano/obsidian-skills:skills/obsidian-bases@main | global runtime |
+| obsidian-cli | external | global | * | skills-source/external/obsidian-cli | kepano/obsidian-skills:skills/obsidian-cli@main | global runtime |
+| obsidian-markdown | external | global | * | skills-source/external/obsidian-markdown | kepano/obsidian-skills:skills/obsidian-markdown@main | global runtime |
 | agent-native-repo-playbook | owned | global | * | skills-source/owned/agent-native-repo-playbook | - | global runtime |
 | project-executor | owned | global | * | skills-source/owned/project-executor | - | global runtime |
 | project-planner | owned | global | * | skills-source/owned/project-planner | - | global runtime |

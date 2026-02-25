@@ -5,7 +5,7 @@ origin: "external"
 scope: "global"
 repos_csv: "*"
 source_path: "skills-source/external/json-canvas"
-upstream_ref: "openai/skills:skills/.curated/json-canvas@main"
+upstream_ref: "kepano/obsidian-skills:skills/json-canvas@main"
 notes: "global runtime"
 repos:
   - "*"

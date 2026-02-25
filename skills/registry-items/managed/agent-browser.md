@@ -5,7 +5,7 @@ origin: "external"
 scope: "global"
 repos_csv: "*"
 source_path: "skills-source/external/agent-browser"
-upstream_ref: "openai/skills:skills/.curated/agent-browser@main"
+upstream_ref: "vercel-labs/agent-browser:skills/agent-browser@main"
 notes: "global runtime"
 repos:
   - "*"

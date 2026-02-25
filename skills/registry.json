@@ -17,7 +17,7 @@
       "scope": "global",
       "repos": [],
       "source_path": "skills-source/external/agent-browser",
-      "upstream_ref": "openai/skills:skills/.curated/agent-browser@main",
+      "upstream_ref": "vercel-labs/agent-browser:skills/agent-browser@main",
       "notes": "global runtime"
     },
     {
@@ -26,7 +26,7 @@
       "scope": "global",
       "repos": [],
       "source_path": "skills-source/external/defuddle",
-      "upstream_ref": "openai/skills:skills/.curated/defuddle@main",
+      "upstream_ref": "kepano/obsidian-skills:skills/defuddle@main",
       "notes": "global runtime"
     },
     {
@@ -35,7 +35,7 @@
       "scope": "global",
       "repos": [],
       "source_path": "skills-source/external/json-canvas",
-      "upstream_ref": "openai/skills:skills/.curated/json-canvas@main",
+      "upstream_ref": "kepano/obsidian-skills:skills/json-canvas@main",
       "notes": "global runtime"
     },
     {
@@ -44,7 +44,7 @@
       "scope": "global",
       "repos": [],
       "source_path": "skills-source/external/obsidian-bases",
-      "upstream_ref": "openai/skills:skills/.curated/obsidian-bases@main",
+      "upstream_ref": "kepano/obsidian-skills:skills/obsidian-bases@main",
       "notes": "global runtime"
     },
     {
@@ -53,7 +53,7 @@
       "scope": "global",
       "repos": [],
       "source_path": "skills-source/external/obsidian-cli",
-      "upstream_ref": "openai/skills:skills/.curated/obsidian-cli@main",
+      "upstream_ref": "kepano/obsidian-skills:skills/obsidian-cli@main",
       "notes": "global runtime"
     },
     {
@@ -62,7 +62,7 @@
       "scope": "global",
       "repos": [],
       "source_path": "skills-source/external/obsidian-markdown",
-      "upstream_ref": "openai/skills:skills/.curated/obsidian-markdown@main",
+      "upstream_ref": "kepano/obsidian-skills:skills/obsidian-markdown@main",
       "notes": "global runtime"
     },
     {
