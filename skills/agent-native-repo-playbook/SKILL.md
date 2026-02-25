@@ -21,6 +21,7 @@ Operating model:
    - local `.agents/skills/`
 2. Compare current state against:
    - `references/best-practices.md`
+   - `references/agents-md-best-practices.md`
    - `references/docs-structure-and-maintenance.md`
 3. Produce recommendations in three tiers:
    - Immediate (high leverage, low effort)
@@ -31,16 +32,19 @@ Operating model:
 ## Output Format
 1. `What is working`: short bullets.
 2. `Highest-leverage gaps`: short bullets.
-3. `Recommended next moves`:
+3. `AGENTS audit`: `Keep / Move / Delete` decisions for major `AGENTS.md` lines or sections.
+4. `Recommended next moves`:
    - Immediate
    - Near-term
    - Later
-4. `Evidence`: include concrete file paths for each major gap/recommendation.
+5. `Evidence`: include concrete file paths for each major gap/recommendation.
 
 ## Rules
 - Prefer recommendations that reduce human coordination load.
 - Prefer mechanical guardrails over prose-only guidance.
+- Preserve the operating principle: humans set intent; agents write 100% of code.
 - Keep AGENTS concise; move detailed guidance into docs.
+- Keep root `AGENTS.md` as a router; use nested `AGENTS.md` only where local boundary rules materially differ.
 - Prioritize feedback loops that agents can run autonomously.
 - Avoid heavy process designed for large teams unless explicitly requested.
 - Recommend one docs contract across repos unless the user requests exceptions.
@@ -50,4 +54,5 @@ Operating model:
 
 ## Resources
 - `references/best-practices.md`: baseline best practices for this workflow.
+- `references/agents-md-best-practices.md`: AGENTS quality gate, nested AGENTS decision rules, and keep/move/delete audit checklist.
 - `references/docs-structure-and-maintenance.md`: baseline docs layout and update rules.
