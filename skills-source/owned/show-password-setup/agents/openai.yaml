@@ -1,0 +1,4 @@
+interface:
+  display_name: "Show Password Setup"
+  short_description: "Set or rotate show-specific access passwords."
+  default_prompt: "Set up or rotate PASSWORD_SHOW_<SHOW> in Azure app settings and local .env.local, then confirm the exact variable name used."

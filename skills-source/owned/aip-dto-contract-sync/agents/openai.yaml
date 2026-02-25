@@ -1,0 +1,4 @@
+interface:
+  display_name: "AIP DTO Contract Sync"
+  short_description: "Sync backend DTO contracts into the frontend."
+  default_prompt: "Update WIN public DTO contracts for this backend change and ensure synced frontend types are available in aipodcasting."

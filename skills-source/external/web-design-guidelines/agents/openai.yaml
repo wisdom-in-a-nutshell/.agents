@@ -1,0 +1,4 @@
+interface:
+  display_name: "Web Design Guidelines"
+  short_description: "Audit UI code against web interface guidelines."
+  default_prompt: "Review the specified UI files against the latest web interface guidelines and report issues in precise file:line format."

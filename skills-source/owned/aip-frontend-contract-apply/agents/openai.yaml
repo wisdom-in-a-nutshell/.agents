@@ -1,0 +1,4 @@
+interface:
+  display_name: "AIP Frontend Contract Apply"
+  short_description: "Apply synced WIN contracts in the AIP frontend."
+  default_prompt: "After contracts are synced from WIN, apply the frontend wiring in aipodcasting and verify the UI integration is complete."

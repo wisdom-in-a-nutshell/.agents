@@ -1,0 +1,4 @@
+interface:
+  display_name: "Obsidian Markdown"
+  short_description: "Write Obsidian-flavored markdown correctly."
+  default_prompt: "Create or edit this Obsidian note using valid wikilinks, callouts, embeds, tags, and frontmatter."

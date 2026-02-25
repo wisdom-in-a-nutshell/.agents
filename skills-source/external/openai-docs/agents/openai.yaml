@@ -1,6 +1,6 @@
 interface:
   display_name: "OpenAI Docs"
-  short_description: "Reference the official OpenAI Developer docs"
+  short_description: "Look up official OpenAI developer documentation."
   icon_small: "./assets/openai-small.svg"
   icon_large: "./assets/openai.png"
   default_prompt: "Look up official OpenAI docs for this task and answer with concise, cited guidance."

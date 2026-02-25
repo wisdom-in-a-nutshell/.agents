@@ -1,0 +1,4 @@
+interface:
+  display_name: "Modal Function Sync"
+  short_description: "Implement Modal functions and sync generated client usage."
+  default_prompt: "Implement or update the requested Modal function in modal_functions and ensure win integration uses the generated client correctly."

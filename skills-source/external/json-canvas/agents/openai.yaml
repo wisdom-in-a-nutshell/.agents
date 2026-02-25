@@ -1,0 +1,4 @@
+interface:
+  display_name: "JSON Canvas"
+  short_description: "Create and edit Obsidian .canvas files."
+  default_prompt: "Create or update this .canvas file with the requested nodes, edges, groups, and clear layout structure."

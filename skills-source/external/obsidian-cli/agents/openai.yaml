@@ -1,0 +1,4 @@
+interface:
+  display_name: "Obsidian CLI"
+  short_description: "Operate on Obsidian vaults from the command line."
+  default_prompt: "Use Obsidian CLI to perform the requested vault operation and report exactly what was changed."

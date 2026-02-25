@@ -1,0 +1,4 @@
+interface:
+  display_name: "Pretty Mermaid"
+  short_description: "Render Mermaid diagrams with clean visual themes."
+  default_prompt: "Render this Mermaid diagram with an appropriate theme and produce SVG output (plus ASCII output if requested)."

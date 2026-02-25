@@ -1,0 +1,4 @@
+interface:
+  display_name: "Defuddle"
+  short_description: "Extract clean markdown from web pages."
+  default_prompt: "Fetch this URL with Defuddle, return clean markdown, and summarize the key points with links to the source page."

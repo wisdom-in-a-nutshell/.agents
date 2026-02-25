@@ -1,0 +1,4 @@
+interface:
+  display_name: "Obsidian Bases"
+  short_description: "Create and edit Obsidian .base views."
+  default_prompt: "Create or update this .base file with the requested views, filters, formulas, sorting, and property labels."

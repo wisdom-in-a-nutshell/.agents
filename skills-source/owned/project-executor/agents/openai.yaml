@@ -1,0 +1,4 @@
+interface:
+  display_name: "Project Executor"
+  short_description: "Resume project work from an existing tasks file."
+  default_prompt: "Continue this project from docs/projects/<project>/tasks.md, execute the next actions, and update progress and next steps."

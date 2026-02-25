@@ -1,0 +1,4 @@
+interface:
+  display_name: "Vercel React Best Practices"
+  short_description: "Review React/Next.js code for performance patterns."
+  default_prompt: "Review this React or Next.js code against Vercel performance best practices and propose concrete, high-impact fixes."
