@@ -139,28 +139,3 @@
 .nav-files-container .tree-item-self[data-path^="skills-source/external/vercel-react-best-practices/agents/"] {
   display: none !important;
 }
-
-.nav-files-container .tree-item-self[data-path="skills-source/owned/pretty-mermaid/node_modules/@dagrejs/dagre/lib"],
-.nav-files-container .tree-item-self[data-path^="skills-source/owned/pretty-mermaid/node_modules/@dagrejs/dagre/lib/"] {
-  display: none !important;
-}
-
-.nav-files-container .tree-item-self[data-path="skills-source/owned/pretty-mermaid/node_modules/@dagrejs/dagre/dist"],
-.nav-files-container .tree-item-self[data-path^="skills-source/owned/pretty-mermaid/node_modules/@dagrejs/dagre/dist/"] {
-  display: none !important;
-}
-
-.nav-files-container .tree-item-self[data-path="skills-source/owned/pretty-mermaid/node_modules/@dagrejs/graphlib/lib"],
-.nav-files-container .tree-item-self[data-path^="skills-source/owned/pretty-mermaid/node_modules/@dagrejs/graphlib/lib/"] {
-  display: none !important;
-}
-
-.nav-files-container .tree-item-self[data-path="skills-source/owned/pretty-mermaid/node_modules/@dagrejs/graphlib/dist"],
-.nav-files-container .tree-item-self[data-path^="skills-source/owned/pretty-mermaid/node_modules/@dagrejs/graphlib/dist/"] {
-  display: none !important;
-}
-
-.nav-files-container .tree-item-self[data-path="skills-source/owned/pretty-mermaid/node_modules/beautiful-mermaid/dist"],
-.nav-files-container .tree-item-self[data-path^="skills-source/owned/pretty-mermaid/node_modules/beautiful-mermaid/dist/"] {
-  display: none !important;
-}
