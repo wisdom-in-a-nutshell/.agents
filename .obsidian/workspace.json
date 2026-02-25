@@ -13,12 +13,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "skills/registry.md",
+                "file": "skills-source/owned/show-password-setup/SKILL.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "registry"
+              "title": "SKILL"
             }
           }
         ]
@@ -94,7 +94,7 @@
             "state": {
               "type": "backlink",
               "state": {
-                "file": "skills/registry.md",
+                "file": "skills-source/owned/show-password-setup/SKILL.md",
                 "collapseAll": false,
                 "extraContext": false,
                 "sortOrder": "alphabetical",
@@ -104,7 +104,7 @@
                 "unlinkedCollapsed": true
               },
               "icon": "links-coming-in",
-              "title": "Backlinks for registry"
+              "title": "Backlinks for SKILL"
             }
           },
           {
@@ -113,12 +113,12 @@
             "state": {
               "type": "outgoing-link",
               "state": {
-                "file": "skills/registry.md",
+                "file": "skills-source/owned/show-password-setup/SKILL.md",
                 "linksCollapsed": false,
                 "unlinkedCollapsed": true
               },
               "icon": "links-going-out",
-              "title": "Outgoing links from registry"
+              "title": "Outgoing links from SKILL"
             }
           },
           {
@@ -156,13 +156,13 @@
             "state": {
               "type": "outline",
               "state": {
-                "file": "skills/registry.md",
+                "file": "skills-source/owned/show-password-setup/SKILL.md",
                 "followCursor": false,
                 "showSearch": false,
                 "searchQuery": ""
               },
               "icon": "lucide-list",
-              "title": "Outline of registry"
+              "title": "Outline of SKILL"
             }
           }
         ]
@@ -183,44 +183,43 @@
       "bases:Create new base": false
     }
   },
-  "active": "0f639f3055b3d43f",
+  "active": "972218cb0d483c94",
   "lastOpenFiles": [
-    "AGENTS.md",
+    "skills/registry.base",
     "skills/registry.md",
+    "skills/registry-items/repo-local/win--scheduled-jobs.md",
+    "skills/registry-items/repo-local/win--log-investigation.md",
+    "skills/registry-items/repo-local/win--descript-api-docs-sync.md",
+    "skills/registry-items/repo-local/win--contact-form-automation.md",
+    "skills/registry-items/repo-local/win--channel-create.md",
+    "skills/registry-items/repo-local/win--add-env-var.md",
+    "skills/registry-items/repo-local/modal_functions--modal-function-intake.md",
+    "skills/registry-items/repo-local/codexclaw--ios-mobile-gateway-workflow.md",
+    "skills/registry-items/repo-local/codexclaw--codex-app-server.md",
+    "skills/registry-items/repo-local/blog-personal--blog-posting.md",
+    "skills/registry-items/repo-local/aipodcasting-public-website--workflow-visual-audit.md",
+    "skills/registry-items/repo-local/aipodcasting-public-website--visual-audit-loop.md",
+    "skills/registry-items/repo-local/aipodcasting-public-website--designer-workflow.md",
+    "skills/registry-items/repo-local/adithyan-ai-videos--remotion.md",
+    "skills/registry-items/repo-local/adithyan-ai-videos--creating-video.md",
+    "skills/registry-items/managed/web-design-guidelines.md",
+    "skills/registry-items/managed/vercel-react-best-practices.md",
+    "skills/registry-items/managed/show-password-setup.md",
+    "skills/registry-items/managed/project-planner.md",
+    "skills/registry-items/managed/project-executor.md",
+    "skills/registry-items/managed/pretty-mermaid.md",
+    "skills/registry-items/managed/openai-docs.md",
+    "skills/registry-items/managed/obsidian-markdown.md",
+    "skills/registry-items/managed/obsidian-cli.md",
+    "skills/registry-items/repo-local",
+    "skills/registry-items/managed",
+    "skills/registry-items",
+    "scripts/sync-skills-registry.py",
+    "skills/registry.json",
     "scripts/sync-skills-registry.sh",
     "scripts",
     "skills-source/external/pretty-mermaid/node_modules/@dagrejs/graphlib/lib/data/priority-queue.js",
     "skills-source/external/pretty-mermaid/node_modules/@dagrejs/graphlib/lib/alg/topsort.js",
-    "skills-source/external/pretty-mermaid/node_modules/@dagrejs/graphlib/lib/alg/tarjan.js",
-    "skills-source/external/pretty-mermaid/node_modules/@dagrejs/graphlib/lib/alg/prim.js",
-    "skills-source/external/pretty-mermaid/node_modules/@dagrejs/graphlib/lib/alg/preorder.js",
-    "skills-source/external/pretty-mermaid/node_modules/@dagrejs/graphlib/lib/alg/postorder.js",
-    "skills-source/external/pretty-mermaid/node_modules/@dagrejs/graphlib/lib/alg/is-acyclic.js",
-    "skills-source/external/pretty-mermaid/node_modules/@dagrejs/graphlib/lib/alg/index.js",
-    "skills-source/external/pretty-mermaid/node_modules/@dagrejs/graphlib/README.md",
-    "skills-source/external/pretty-mermaid/node_modules/@dagrejs/dagre/README.md",
-    "skills-source/external/pretty-mermaid/node_modules/beautiful-mermaid/README.md",
-    "skills-source/external/vercel-react-best-practices/rules/server-serialization.md",
-    "skills-source/external/vercel-react-best-practices/rules/server-parallel-fetching.md",
-    "skills-source/external/vercel-react-best-practices/rules/server-dedup-props.md",
-    "skills-source/external/vercel-react-best-practices/rules/server-cache-react.md",
-    "skills-source/external/vercel-react-best-practices/rules/server-cache-lru.md",
-    "skills-source/external/vercel-react-best-practices/rules/server-auth-actions.md",
-    "skills-source/external/vercel-react-best-practices/rules/server-after-nonblocking.md",
-    "skills-source/external/vercel-react-best-practices/rules/rerender-use-ref-transient-values.md",
-    "skills-source/external/vercel-react-best-practices/rules/rerender-transitions.md",
-    "skills-source/external/vercel-react-best-practices/rules/rerender-simple-expression-in-memo.md",
-    "skills-source/external/vercel-react-best-practices/rules/rerender-move-effect-to-event.md",
-    "skills-source/external/vercel-react-best-practices/rules/rerender-memo.md",
-    "skills-source/external/vercel-react-best-practices/rules/rerender-memo-with-default-value.md",
-    "skills-source/external/vercel-react-best-practices/rules/rerender-lazy-state-init.md",
-    "skills-source/external/vercel-react-best-practices/rules/rerender-functional-setstate.md",
-    "skills-source/external/vercel-react-best-practices/rules/rerender-derived-state.md",
-    "skills-source/external/vercel-react-best-practices/rules/rerender-derived-state-no-effect.md",
-    "skills-source/external/vercel-react-best-practices/rules/rerender-dependencies.md",
-    "skills-source/external/vercel-react-best-practices/rules/rerender-defer-reads.md",
-    "skills-source/external/vercel-react-best-practices/rules/rendering-usetransition-loading.md",
-    "skills-source/external/vercel-react-best-practices/rules/rendering-svg-precision.md",
     "skills-source/external/openai-docs/assets/openai.png",
     "skills-source/external/openai-docs/assets/openai-small.svg"
   ]
