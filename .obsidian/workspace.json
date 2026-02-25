@@ -78,8 +78,7 @@
       }
     ],
     "direction": "horizontal",
-    "width": 200,
-    "collapsed": true
+    "width": 281.5
   },
   "right": {
     "id": "5ba8c577e5e2f522",
@@ -184,7 +183,7 @@
       "bases:Create new base": false
     }
   },
-  "active": "972218cb0d483c94",
+  "active": "0f639f3055b3d43f",
   "lastOpenFiles": [
     "AGENTS.md",
     "skills/registry.md",
