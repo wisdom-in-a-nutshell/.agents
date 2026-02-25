@@ -6,7 +6,6 @@ scope: "repo"
 repos_csv: "aipodcasting,win"
 source_path: "skills-source/owned/show-password-setup"
 upstream_ref: "-"
-notes: "shared repo skill"
 repos:
   - "aipodcasting"
   - "win"

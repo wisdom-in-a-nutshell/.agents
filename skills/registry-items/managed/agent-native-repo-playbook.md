@@ -6,7 +6,6 @@ scope: "global"
 repos_csv: "*"
 source_path: "skills-source/owned/agent-native-repo-playbook"
 upstream_ref: "-"
-notes: "global runtime"
 repos:
   - "*"
 ---

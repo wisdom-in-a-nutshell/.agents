@@ -6,7 +6,6 @@ scope: "repo"
 repos_csv: "aipodcasting,win"
 source_path: "skills-source/owned/aip-dto-contract-sync"
 upstream_ref: "-"
-notes: "shared repo skill"
 repos:
   - "aipodcasting"
   - "win"

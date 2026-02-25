@@ -6,7 +6,6 @@ scope: "repo"
 repos_csv: "codexclaw"
 source_path: "skills-source/external/openai-docs"
 upstream_ref: "openai/skills:skills/.curated/openai-docs@main"
-notes: "shared repo skill"
 repos:
   - "codexclaw"
 ---

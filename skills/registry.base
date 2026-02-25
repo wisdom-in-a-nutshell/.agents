@@ -18,8 +18,6 @@ properties:
     displayName: Repo
   source_path:
     displayName: Source Path
-  notes:
-    displayName: Notes
 views:
   - type: table
     name: Managed Skills
@@ -30,7 +28,6 @@ views:
       - scope
       - repos_csv
       - upstream_ref
-      - notes
     sort:
       - property: scope
         direction: ASC
@@ -44,4 +41,3 @@ views:
     order:
       - repo
       - skill
-      - notes

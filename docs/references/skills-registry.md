@@ -12,7 +12,6 @@ Canonical source of truth is [`skills/registry.json`](/Users/dobby/.agents/skill
 - `repos`: list of repo names for `repo` scope.
 - `source_path`: canonical folder path under `skills-source/...`.
 - `upstream_ref`: where an external skill came from (or `-` for owned).
-- `notes`: short human context.
 
 ## Edit Workflow
 

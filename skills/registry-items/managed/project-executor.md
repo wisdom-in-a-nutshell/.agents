@@ -6,7 +6,6 @@ scope: "global"
 repos_csv: "*"
 source_path: "skills-source/owned/project-executor"
 upstream_ref: "-"
-notes: "global runtime"
 repos:
   - "*"
 ---

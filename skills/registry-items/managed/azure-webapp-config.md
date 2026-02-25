@@ -6,7 +6,6 @@ scope: "repo"
 repos_csv: "aipodcasting,aipodcasting-public-website,win"
 source_path: "skills-source/owned/azure-webapp-config"
 upstream_ref: "-"
-notes: "shared repo skill"
 repos:
   - "aipodcasting"
   - "aipodcasting-public-website"

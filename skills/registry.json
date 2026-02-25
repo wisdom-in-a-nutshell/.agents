@@ -17,8 +17,7 @@
       "scope": "global",
       "repos": [],
       "source_path": "skills-source/external/agent-browser",
-      "upstream_ref": "vercel-labs/agent-browser:skills/agent-browser@main",
-      "notes": "global runtime"
+      "upstream_ref": "vercel-labs/agent-browser:skills/agent-browser@main"
     },
     {
       "skill": "defuddle",
@@ -26,8 +25,7 @@
       "scope": "global",
       "repos": [],
       "source_path": "skills-source/external/defuddle",
-      "upstream_ref": "kepano/obsidian-skills:skills/defuddle@main",
-      "notes": "global runtime"
+      "upstream_ref": "kepano/obsidian-skills:skills/defuddle@main"
     },
     {
       "skill": "json-canvas",
@@ -35,8 +33,7 @@
       "scope": "global",
       "repos": [],
       "source_path": "skills-source/external/json-canvas",
-      "upstream_ref": "kepano/obsidian-skills:skills/json-canvas@main",
-      "notes": "global runtime"
+      "upstream_ref": "kepano/obsidian-skills:skills/json-canvas@main"
     },
     {
       "skill": "obsidian-bases",
@@ -44,8 +41,7 @@
       "scope": "global",
       "repos": [],
       "source_path": "skills-source/external/obsidian-bases",
-      "upstream_ref": "kepano/obsidian-skills:skills/obsidian-bases@main",
-      "notes": "global runtime"
+      "upstream_ref": "kepano/obsidian-skills:skills/obsidian-bases@main"
     },
     {
       "skill": "obsidian-cli",
@@ -53,8 +49,7 @@
       "scope": "global",
       "repos": [],
       "source_path": "skills-source/external/obsidian-cli",
-      "upstream_ref": "kepano/obsidian-skills:skills/obsidian-cli@main",
-      "notes": "global runtime"
+      "upstream_ref": "kepano/obsidian-skills:skills/obsidian-cli@main"
     },
     {
       "skill": "obsidian-markdown",
@@ -62,8 +57,7 @@
       "scope": "global",
       "repos": [],
       "source_path": "skills-source/external/obsidian-markdown",
-      "upstream_ref": "kepano/obsidian-skills:skills/obsidian-markdown@main",
-      "notes": "global runtime"
+      "upstream_ref": "kepano/obsidian-skills:skills/obsidian-markdown@main"
     },
     {
       "skill": "agent-native-repo-playbook",
@@ -71,8 +65,7 @@
       "scope": "global",
       "repos": [],
       "source_path": "skills-source/owned/agent-native-repo-playbook",
-      "upstream_ref": "-",
-      "notes": "global runtime"
+      "upstream_ref": "-"
     },
     {
       "skill": "project-executor",
@@ -80,8 +73,7 @@
       "scope": "global",
       "repos": [],
       "source_path": "skills-source/owned/project-executor",
-      "upstream_ref": "-",
-      "notes": "global runtime"
+      "upstream_ref": "-"
     },
     {
       "skill": "project-planner",
@@ -89,8 +81,7 @@
       "scope": "global",
       "repos": [],
       "source_path": "skills-source/owned/project-planner",
-      "upstream_ref": "-",
-      "notes": "global runtime"
+      "upstream_ref": "-"
     },
     {
       "skill": "vercel-react-best-practices",
@@ -104,8 +95,7 @@
         "blog-personal"
       ],
       "source_path": "skills-source/external/vercel-react-best-practices",
-      "upstream_ref": "vercel-labs/agent-skills:skills/react-best-practices@main",
-      "notes": "shared repo skill"
+      "upstream_ref": "vercel-labs/agent-skills:skills/react-best-practices@main"
     },
     {
       "skill": "web-design-guidelines",
@@ -119,8 +109,7 @@
         "blog-personal"
       ],
       "source_path": "skills-source/external/web-design-guidelines",
-      "upstream_ref": "vercel-labs/agent-skills:skills/web-design-guidelines@main",
-      "notes": "shared repo skill"
+      "upstream_ref": "vercel-labs/agent-skills:skills/web-design-guidelines@main"
     },
     {
       "skill": "openai-docs",
@@ -130,8 +119,7 @@
         "codexclaw"
       ],
       "source_path": "skills-source/external/openai-docs",
-      "upstream_ref": "openai/skills:skills/.curated/openai-docs@main",
-      "notes": "shared repo skill"
+      "upstream_ref": "openai/skills:skills/.curated/openai-docs@main"
     },
     {
       "skill": "pretty-mermaid",
@@ -141,8 +129,7 @@
         "codexclaw"
       ],
       "source_path": "skills-source/owned/pretty-mermaid",
-      "upstream_ref": "-",
-      "notes": "shared repo skill"
+      "upstream_ref": "-"
     },
     {
       "skill": "modal-function-sync",
@@ -154,8 +141,7 @@
         "win"
       ],
       "source_path": "skills-source/owned/modal-function-sync",
-      "upstream_ref": "-",
-      "notes": "shared repo skill"
+      "upstream_ref": "-"
     },
     {
       "skill": "aip-dto-contract-sync",
@@ -166,8 +152,7 @@
         "win"
       ],
       "source_path": "skills-source/owned/aip-dto-contract-sync",
-      "upstream_ref": "-",
-      "notes": "shared repo skill"
+      "upstream_ref": "-"
     },
     {
       "skill": "aip-frontend-contract-apply",
@@ -178,8 +163,7 @@
         "win"
       ],
       "source_path": "skills-source/owned/aip-frontend-contract-apply",
-      "upstream_ref": "-",
-      "notes": "shared repo skill"
+      "upstream_ref": "-"
     },
     {
       "skill": "show-password-setup",
@@ -190,8 +174,7 @@
         "win"
       ],
       "source_path": "skills-source/owned/show-password-setup",
-      "upstream_ref": "-",
-      "notes": "shared repo skill"
+      "upstream_ref": "-"
     },
     {
       "skill": "azure-webapp-config",
@@ -203,85 +186,69 @@
         "win"
       ],
       "source_path": "skills-source/owned/azure-webapp-config",
-      "upstream_ref": "-",
-      "notes": "shared repo skill"
+      "upstream_ref": "-"
     }
   ],
   "unmanaged_repo_local_skills": [
     {
       "repo": "adithyan-ai-videos",
-      "skill": "creating-video",
-      "notes": "repo-local"
+      "skill": "creating-video"
     },
     {
       "repo": "adithyan-ai-videos",
-      "skill": "remotion",
-      "notes": "repo-local"
+      "skill": "remotion"
     },
     {
       "repo": "aipodcasting-public-website",
-      "skill": "designer-workflow",
-      "notes": "repo-local"
+      "skill": "designer-workflow"
     },
     {
       "repo": "aipodcasting-public-website",
-      "skill": "visual-audit-loop",
-      "notes": "repo-local"
+      "skill": "visual-audit-loop"
     },
     {
       "repo": "aipodcasting-public-website",
-      "skill": "workflow-visual-audit",
-      "notes": "repo-local"
+      "skill": "workflow-visual-audit"
     },
     {
       "repo": "blog-personal",
-      "skill": "blog-posting",
-      "notes": "repo-local"
+      "skill": "blog-posting"
     },
     {
       "repo": "codexclaw",
-      "skill": "codex-app-server",
-      "notes": "repo-local"
+      "skill": "codex-app-server"
     },
     {
       "repo": "codexclaw",
-      "skill": "ios-mobile-gateway-workflow",
-      "notes": "repo-local"
+      "skill": "ios-mobile-gateway-workflow"
     },
     {
       "repo": "modal_functions",
-      "skill": "modal-function-intake",
-      "notes": "repo-local"
+      "skill": "modal-function-intake"
     },
     {
       "repo": "win",
-      "skill": "add-env-var",
-      "notes": "repo-local"
+      "skill": "add-env-var"
     },
     {
       "repo": "win",
-      "skill": "channel-create",
-      "notes": "repo-local"
+      "skill": "channel-create"
     },
     {
       "repo": "win",
-      "skill": "contact-form-automation",
-      "notes": "repo-local"
+      "skill": "contact-form-automation"
     },
     {
       "repo": "win",
-      "skill": "descript-api-docs-sync",
-      "notes": "repo-local"
+      "skill": "descript-api-docs-sync"
     },
     {
       "repo": "win",
-      "skill": "log-investigation",
-      "notes": "repo-local"
+      "skill": "log-investigation"
     },
     {
       "repo": "win",
-      "skill": "scheduled-jobs",
-      "notes": "repo-local"
+      "skill": "scheduled-jobs"
     }
   ]
 }

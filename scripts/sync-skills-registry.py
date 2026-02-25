@@ -91,10 +91,8 @@ def generate_registry_md(
     lines.append("")
     lines.append("## Managed Skills")
     lines.append("")
-    lines.append(
-        "| skill | origin | scope | repos | source_path | upstream_ref | notes |"
-    )
-    lines.append("| --- | --- | --- | --- | --- | --- | --- |")
+    lines.append("| skill | origin | scope | repos | source_path | upstream_ref |")
+    lines.append("| --- | --- | --- | --- | --- | --- |")
     for item in managed:
         repos = ",".join(item.get("repos", [])) if item["scope"] == "repo" else "*"
         row = [
@@ -104,20 +102,18 @@ def generate_registry_md(
             _md_escape(repos),
             _md_escape(item["source_path"]),
             _md_escape(item.get("upstream_ref", "-")),
-            _md_escape(item.get("notes", "")),
         ]
         lines.append(f"| {' | '.join(row)} |")
 
     lines.append("")
     lines.append("## Repo-Local Skills (Unmanaged)")
     lines.append("")
-    lines.append("| repo | skill | notes |")
-    lines.append("| --- | --- | --- |")
+    lines.append("| repo | skill |")
+    lines.append("| --- | --- |")
     for item in unmanaged:
         row = [
             _md_escape(item["repo"]),
             _md_escape(item["skill"]),
-            _md_escape(item.get("notes", "")),
         ]
         lines.append(f"| {' | '.join(row)} |")
     lines.append("")
@@ -145,8 +141,6 @@ properties:
     displayName: Repo
   source_path:
     displayName: Source Path
-  notes:
-    displayName: Notes
 views:
   - type: table
     name: Managed Skills
@@ -157,7 +151,6 @@ views:
       - scope
       - repos_csv
       - upstream_ref
-      - notes
     sort:
       - property: scope
         direction: ASC
@@ -171,7 +164,6 @@ views:
     order:
       - repo
       - skill
-      - notes
 """
     _write_if_changed(registry_dir / "registry.base", content)
 
@@ -212,7 +204,6 @@ def generate_registry_items(
             f"repos_csv: {_yaml_str(repos_csv)}",
             f"source_path: {_yaml_str(item['source_path'])}",
             f"upstream_ref: {_yaml_str(item.get('upstream_ref', '-'))}",
-            f"notes: {_yaml_str(item.get('notes', ''))}",
             "repos:",
         ]
         if repos:
@@ -242,7 +233,6 @@ def generate_registry_items(
             "registry_kind: repo_local",
             f"repo: {_yaml_str(item['repo'])}",
             f"skill: {_yaml_str(item['skill'])}",
-            f"notes: {_yaml_str(item.get('notes', ''))}",
             "---",
             "",
             "Generated from `skills/registry.json`. Do not edit manually.",
@@ -272,8 +262,6 @@ def validate_registry(
         scope = ensure_str(item.get("scope"), "scope", idx)
         source_path = ensure_str(item.get("source_path"), "source_path", idx)
         upstream_ref = item.get("upstream_ref", "-")
-        notes = item.get("notes", "")
-
         if origin not in ALLOWED_ORIGINS:
             raise ValueError(f"managed_skills[{idx}] invalid origin: {origin}")
         if scope not in ALLOWED_SCOPES:
@@ -307,7 +295,6 @@ def validate_registry(
                 "source_path": source_path,
                 "source_abs": src,
                 "upstream_ref": str(upstream_ref).strip() or "-",
-                "notes": str(notes).strip(),
             }
         )
 
@@ -317,8 +304,7 @@ def validate_registry(
             raise ValueError(f"unmanaged_repo_local_skills[{idx}] must be an object")
         repo = ensure_str(item.get("repo"), "repo", idx)
         skill = ensure_str(item.get("skill"), "skill", idx)
-        notes = str(item.get("notes", "")).strip()
-        validated_unmanaged.append({"repo": repo, "skill": skill, "notes": notes})
+        validated_unmanaged.append({"repo": repo, "skill": skill})
 
     github_root_raw = data.get("paths", {}).get("github_root", "~/GitHub")
     if not isinstance(github_root_raw, str) or not github_root_raw.strip():
@@ -362,7 +348,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--no-generate",
         action="store_true",
-        help="Skip generating registry.md, registry.base, and registry-items notes.",
+        help="Skip generating registry.md, registry.base, and registry-items files.",
     )
     parser.add_argument(
         "registry_file",

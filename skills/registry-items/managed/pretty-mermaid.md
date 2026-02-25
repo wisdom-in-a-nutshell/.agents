@@ -6,7 +6,6 @@ scope: "repo"
 repos_csv: "codexclaw"
 source_path: "skills-source/owned/pretty-mermaid"
 upstream_ref: "-"
-notes: "shared repo skill"
 repos:
   - "codexclaw"
 ---

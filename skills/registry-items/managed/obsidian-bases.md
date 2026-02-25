@@ -6,7 +6,6 @@ scope: "global"
 repos_csv: "*"
 source_path: "skills-source/external/obsidian-bases"
 upstream_ref: "kepano/obsidian-skills:skills/obsidian-bases@main"
-notes: "global runtime"
 repos:
   - "*"
 ---
