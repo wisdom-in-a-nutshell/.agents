@@ -28,6 +28,14 @@ Personal agent-skill control plane.
 - Dry-run external upstream refresh: `./scripts/refresh-external-skills.sh`
 - Apply external upstream refresh: `./scripts/refresh-external-skills.sh --apply`
 
+## Automation Cadence
+
+- Scheduler entrypoint lives in `~/GitHub/scripts/sync/git-auto-sync.sh` (launchd every 15 minutes).
+- External upstream refresh runs through that job with a once-per-day gate:
+  - `~/.agents/scripts/refresh-external-skills.sh --apply`
+- Managed link regeneration runs every auto-sync cycle:
+  - `~/.agents/scripts/sync-skills-registry.sh --apply`
+
 ## Rules
 
 - Distribution policy is link-only.
