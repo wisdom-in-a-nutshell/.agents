@@ -6,7 +6,7 @@ description: Resume and execute a long-running project based on docs/projects/PR
 # Project Executor
 
 ## Overview
-Continue a project by reading its `tasks.md`, executing the next actions, and keeping the file updated as the authoritative state using an execution/review/fix loop (not one-shot execution).
+Continue a project by reading its `tasks.md`, executing the next actions, and keeping the file updated as the authoritative state.
 
 ## Default location
 1. Check repo guidance (AGENTS.md, docs) for a prescribed location or format.
@@ -22,40 +22,40 @@ Continue a project by reading its `tasks.md`, executing the next actions, and ke
 3. **Sync context**
    - Read relevant code/docs mentioned in Context section.
    - Only scan the repo if Context doesn't give you enough to start.
-4. **Execute a small batch in order**
-   - Work through Next 3 Actions, then continue down the Tasks list.
-   - Make code changes when required by the task.
-   - Prefer small batches (usually 1-3 related tasks), then run the review loop before taking the next batch.
-5. **Run a Ralph-style review loop**
-   - Run validation commands from Validation / Test Plan (or closest package-scoped equivalent).
-   - Self-review your own changes for correctness, regressions, edge cases, and contract drift.
-   - For non-trivial or risky changes, request at least one additional agent review (local/cloud if available in the environment).
-   - Apply feedback, rerun validation, and repeat until:
-     - no unresolved high/medium-severity findings remain, and
-     - validation passes (or known flakes are explicitly logged in Progress Log).
-   - If review reveals more work, add/refine tasks before continuing.
-6. **Checkpoint after each completed task/batch**
+4. **Plan an execution batch**
+   - Work from Next 3 Actions first, then continue down the Tasks list.
+   - Group independent tasks into a batch when they can be parallelized safely.
+   - Keep tasks sequential when they touch the same files/contracts or have dependency order.
+5. **Execute the batch**
+   - Run tasks directly when sequential.
+   - If parallelizing, use one orchestrator + worker model:
+     - Orchestrator assigns bounded sub-tasks.
+     - Workers implement assigned sub-tasks and report outcomes.
+     - Orchestrator integrates results and resolves conflicts.
+   - Continue directly to the next actionable task without waiting for user confirmation between minor steps.
+6. **Validate at logical checkpoints**
+   - Run validation commands from Validation / Test Plan when relevant, or before marking a group of implementation tasks done.
+   - If validation fails, fix forward and continue.
+7. **Checkpoint after each completed task/batch**
    - Check off completed tasks.
    - Add Progress Log entry: `YYYY-MM-DD: [DONE] task — outcome`
    - Refresh "Next 3 Actions" to reflect current state.
    - Add or refine tasks discovered during implementation.
    - If another task can be executed immediately, continue without waiting for user confirmation.
-7. **Handle blockers**
+8. **Handle blockers**
    - Add blockers to Open Questions and ask the user for direction.
    - Log as: `YYYY-MM-DD: [BLOCKED] task — what's blocking`
-8. **Run as a persistence loop**
+9. **Run as a persistence loop**
    - Continue executing tasks until one of these stop conditions:
      - All scoped tasks are complete.
      - A true blocker requires human judgment/input/credentials.
      - Repo safety risk requires explicit user decision.
-     - Additional iterations need product-level judgment instead of more implementation/review cycles.
    - Do not stop after a single completed task when additional actionable tasks remain.
 
 ## Output rules
 - Keep `tasks.md` current alongside code changes.
-- If write access is not allowed, output the precise updates needed for `tasks.md`.
 - Rely on repository automation for commit/push when configured (for example notify hooks).
-- In end-of-run summaries, include concise validation + review-loop evidence (what was checked, what was fixed, what remains).
+- In end-of-run summaries, include concise validation evidence (what was checked, what was fixed, what remains).
 - Before ending a run, ensure `tasks.md` has:
   - updated checkbox state,
   - fresh Progress Log,
@@ -68,5 +68,7 @@ Continue a project by reading its `tasks.md`, executing the next actions, and ke
 - If tasks.md is missing key sections (Goal, Why/Impact, Context, Validation), ask the user to run `$project-planner` to normalize it first.
 - When making code changes, consider if `AGENTS.md` in affected folders needs updating or adding (new patterns, conventions, or guidance for future agents). If a task touches this, close it explicitly.
 - Prefer reasonable assumptions over pausing for minor ambiguities; only escalate when the decision is materially blocking or risky.
-- Keep one primary executor responsible for `tasks.md`. If using extra/background agents, assign bounded sub-tasks and merge their findings back into the main loop.
+- Keep one primary executor (orchestrator) responsible for `tasks.md`.
+- Workers/background agents must not edit `tasks.md` directly; they report outcomes back to the orchestrator.
+- Parallelize only independent tasks; avoid parallel edits to the same files/contracts unless the orchestrator is explicitly merging coordinated changes.
 - Do not run unbounded "background agents forever" loops.

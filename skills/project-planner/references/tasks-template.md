@@ -47,6 +47,7 @@ GRANULARITY: One task = one focused session (10-30 min). Split if:
   - Contains "and" joining distinct actions
   - No single clear starting file
 MUST INCLUDE: validation task, AGENTS.md review task, archive task (last)
+PARALLEL: Mark only truly independent tasks as parallel-capable. Use one orchestrator to merge outputs and update tasks.md.
 
 Be specific — "Add X to Y following Z pattern" beats "Add X"
 -->

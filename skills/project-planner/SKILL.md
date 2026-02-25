@@ -32,8 +32,7 @@ Create or update a per-project tasks file that serves as the single source of tr
    - If repo guidance requires an archive step or specific sections, include them.
 
 ## Output rules
-- Prefer writing/updating `tasks.md` when file edits are allowed.
-- Otherwise, output the full contents so the user can place it.
+- Write or update `tasks.md` directly.
 - After creating or updating `tasks.md`, offer to proceed with execution using `$project-executor`.
 - Suggested handoff line: "Want me to continue this project with `$project-executor` (the companion execution skill)?"
 
@@ -53,6 +52,8 @@ See `references/tasks-template.md` for required sections and inline guidance for
 - Use verb-first checklist items.
 - Include at least one validation/testing task when applicable.
 - Include handoff details inside tasks: exact file paths to edit/create, integration hook points, storage paths/prefixes, DB fields touched, and external function signatures/return shapes.
+- Mark tasks that can run in parallel when they are truly independent (no shared file/contract dependency).
+- For parallel-capable plans, include an orchestrator step that consolidates worker outputs and updates `tasks.md`.
 - Include an `AGENTS.md` review/update task for every long-running project; close it by either updating/adding guidance or explicitly noting no change needed.
 - Always add an archive task as the final checklist item (after the AGENTS task). Move to `docs/projects/archive/<project>/` when the user agrees.
 - Write tasks so an executor can run multiple tasks in sequence without waiting for user confirmation between minor steps.
