@@ -20,6 +20,9 @@ Canonical source of truth is [`skills/registry.json`](/Users/dobby/.agents/skill
    - `./scripts/sync-skills-registry.sh --apply`
 3. Check generated artifacts are in sync:
    - `./scripts/check-skills-registry.sh`
+4. For external upstream updates:
+   - `./scripts/refresh-external-skills.sh --apply`
+   - Local `agents/openai.yaml` is preserved across refresh.
 
 ## Generated Files (Do Not Edit Manually)
 

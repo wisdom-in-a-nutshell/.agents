@@ -27,6 +27,7 @@ Personal agent-skill control plane.
 - Validate generated registry artifacts: `./scripts/check-skills-registry.sh`
 - Dry-run external upstream refresh: `./scripts/refresh-external-skills.sh`
 - Apply external upstream refresh: `./scripts/refresh-external-skills.sh --apply`
+  - Refresh preserves local `agents/openai.yaml` inside external skill folders.
 
 ## Automation Cadence
 

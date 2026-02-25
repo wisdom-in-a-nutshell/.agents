@@ -14,6 +14,7 @@ from typing import Any
 
 
 SKIP_UPSTREAM_REFS = {"", "-", "local-import"}
+PRESERVE_RELATIVE_PATHS = ("agents/openai.yaml",)
 
 
 @dataclass(frozen=True)
@@ -191,6 +192,56 @@ def replace_tree(src: Path, dst: Path) -> None:
     shutil.copytree(src, dst, symlinks=True)
 
 
+def path_lexists(path: Path) -> bool:
+    return os.path.lexists(str(path))
+
+
+def remove_path(path: Path) -> None:
+    if path.is_symlink() or path.is_file():
+        path.unlink()
+    elif path.is_dir():
+        shutil.rmtree(path)
+    elif path.exists():
+        path.unlink()
+
+
+def copy_path(src: Path, dst: Path) -> None:
+    if src.is_symlink():
+        dst.parent.mkdir(parents=True, exist_ok=True)
+        dst.symlink_to(os.readlink(src))
+        return
+    if src.is_dir():
+        shutil.copytree(src, dst, symlinks=True)
+        return
+    if src.is_file():
+        dst.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(src, dst)
+        return
+    raise ValueError(f"unsupported path type for copy: {src}")
+
+
+def backup_preserved_paths(skill: str, dst: Path, backup_root: Path) -> list[str]:
+    preserved: list[str] = []
+    for rel in PRESERVE_RELATIVE_PATHS:
+        src = dst / rel
+        if not path_lexists(src):
+            continue
+        backup_path = backup_root / skill / rel
+        backup_path.parent.mkdir(parents=True, exist_ok=True)
+        copy_path(src, backup_path)
+        preserved.append(rel)
+    return preserved
+
+
+def restore_preserved_paths(skill: str, dst: Path, backup_root: Path, preserved: list[str]) -> None:
+    for rel in preserved:
+        restore_src = backup_root / skill / rel
+        restore_dst = dst / rel
+        if path_lexists(restore_dst):
+            remove_path(restore_dst)
+        copy_path(restore_src, restore_dst)
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="Refresh external skills from upstream_ref entries in skills/registry.json"
@@ -263,7 +314,9 @@ def main() -> int:
     with tempfile.TemporaryDirectory(prefix="agents-external-skills-") as tmp:
         tmp_root = Path(tmp)
         checkout_root = tmp_root / "checkouts"
+        preserve_root = tmp_root / "preserved"
         checkout_root.mkdir(parents=True, exist_ok=True)
+        preserve_root.mkdir(parents=True, exist_ok=True)
 
         for (_, _), payload in grouped.items():
             upstream: UpstreamRef = payload["upstream"]
@@ -297,9 +350,18 @@ def main() -> int:
                     )
                     continue
 
+                preserved = [rel for rel in PRESERVE_RELATIVE_PATHS if path_lexists(dst / rel)]
                 if args.apply:
+                    preserved = backup_preserved_paths(skill.skill, dst, preserve_root)
                     replace_tree(src, dst)
-                print(f"[{mode}] {'SYNC' if args.apply else 'WOULD SYNC'} {skill.skill}: {skill.upstream_ref} -> {rel_dst}")
+                    restore_preserved_paths(skill.skill, dst, preserve_root, preserved)
+                preserve_suffix = (
+                    f" (preserved: {','.join(preserved)})" if preserved else ""
+                )
+                print(
+                    f"[{mode}] {'SYNC' if args.apply else 'WOULD SYNC'} "
+                    f"{skill.skill}: {skill.upstream_ref} -> {rel_dst}{preserve_suffix}"
+                )
                 updated += 1
 
     print(
