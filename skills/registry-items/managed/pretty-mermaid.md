@@ -1,12 +1,12 @@
 ---
 registry_kind: managed
 skill: "pretty-mermaid"
-origin: "external"
+origin: "owned"
 scope: "repo"
 repos_csv: "codexclaw"
-source_path: "skills-source/external/pretty-mermaid"
-upstream_ref: "local-import"
-notes: "promoted from repo-local"
+source_path: "skills-source/owned/pretty-mermaid"
+upstream_ref: "-"
+notes: "shared repo skill"
 repos:
   - "codexclaw"
 ---
