@@ -9,10 +9,9 @@ This guide is based on the OpenAI harness-engineering model and adapted for a so
 - Keep humans focused on goals, acceptance criteria, and prioritization.
 - Treat repeated agent failure as a system gap (missing docs, tools, guardrails), not a prompting problem.
 
-## 2) AGENTS as map, not encyclopedia
-- Keep `AGENTS.md` short and operational.
-- Use it as an index to deeper docs, not as the full knowledge base.
-- Add scoped `AGENTS.md` only where local patterns differ enough to prevent mistakes.
+## 2) AGENTS policy reference
+- Keep AGENTS policy lean in this file.
+- Use `references/agents-md-best-practices.md` as the canonical AGENTS quality gate and `Keep / Move / Delete` audit reference.
 
 ## 3) Repository is the system of record
 - Put durable knowledge in versioned files inside the repo.

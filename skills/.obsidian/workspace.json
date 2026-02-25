@@ -13,12 +13,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "project-executor/SKILL.md",
+                "file": "agent-native-repo-playbook/references/agents-md-best-practices.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "SKILL"
+              "title": "agents-md-best-practices"
             }
           }
         ]
@@ -183,10 +183,12 @@
       "bases:Create new base": false
     }
   },
-  "active": "0936ef9d5c9ddb98",
+  "active": "dca14b0464000f8e",
   "lastOpenFiles": [
-    "agent-native-repo-playbook/SKILL.md",
     "agent-native-repo-playbook/references/docs-structure-and-maintenance.md",
+    "agent-native-repo-playbook/references/agents-md-best-practices.md",
+    "project-executor/SKILL.md",
+    "agent-native-repo-playbook/SKILL.md",
     "agent-native-repo-playbook/references/best-practices.md",
     "agent-native-repo-playbook/references/checklist.md",
     "2026-02-24.md",
