@@ -69,6 +69,7 @@ Continue a project by reading its `tasks.md`, executing the next actions, and ke
 - When making code changes, consider if `AGENTS.md` in affected folders needs updating or adding (new patterns, conventions, or guidance for future agents). If a task touches this, close it explicitly.
 - Prefer reasonable assumptions over pausing for minor ambiguities; only escalate when the decision is materially blocking or risky.
 - Keep one primary executor (orchestrator) responsible for `tasks.md`.
+- The current top-level Codex run (you, in the active session) is the orchestrator.
 - Workers/background agents must not edit `tasks.md` directly; they report outcomes back to the orchestrator.
 - Parallelize only independent tasks; avoid parallel edits to the same files/contracts unless the orchestrator is explicitly merging coordinated changes.
 - Do not run unbounded "background agents forever" loops.
