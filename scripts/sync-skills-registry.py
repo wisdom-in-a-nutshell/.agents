@@ -158,6 +158,13 @@ views:
       - repos_csv
       - upstream_ref
       - notes
+    sort:
+      - property: scope
+        direction: ASC
+      - property: origin
+        direction: ASC
+      - property: skill
+        direction: ASC
   - type: table
     name: Repo-Local Skills
     filters: 'registry_kind == "repo_local"'
