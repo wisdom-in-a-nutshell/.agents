@@ -1,0 +1,43 @@
+filters:
+  and:
+    - file.inFolder("skills/registry-items")
+properties:
+  registry_kind:
+    displayName: Type
+  skill:
+    displayName: Skill
+  origin:
+    displayName: Origin
+  scope:
+    displayName: Scope
+  repos_csv:
+    displayName: Repos
+  upstream_ref:
+    displayName: Upstream
+  repo:
+    displayName: Repo
+  source_path:
+    displayName: Source Path
+  notes:
+    displayName: Notes
+views:
+  - type: table
+    name: Managed Skills
+    filters: registry_kind == "managed"
+    order:
+      - skill
+      - origin
+      - scope
+      - repos_csv
+      - upstream_ref
+      - notes
+    sort:
+      - property: repos_csv
+        direction: ASC
+  - type: table
+    name: Repo-Local Skills
+    filters: registry_kind == "repo_local"
+    order:
+      - repo
+      - skill
+      - notes
