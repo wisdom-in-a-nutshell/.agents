@@ -24,6 +24,7 @@ Personal agent-skill control plane.
 
 - Dry-run sync: `./scripts/sync-skills-registry.sh`
 - Apply sync: `./scripts/sync-skills-registry.sh --apply`
+- Validate generated registry artifacts: `./scripts/check-skills-registry.sh`
 
 ## Rules
 
@@ -31,3 +32,4 @@ Personal agent-skill control plane.
 - Do not edit managed skills through repo symlink destinations; edit canonical source paths.
 - Keep repo-local skills listed in `skills/registry.json` under `unmanaged_repo_local_skills`.
 - Do not add additional manifest files for skill mapping; update `skills/registry.json`.
+- If `skills/registry.json` changes, run sync/check in the same change.

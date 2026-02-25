@@ -185,6 +185,10 @@
   },
   "active": "972218cb0d483c94",
   "lastOpenFiles": [
+    "docs/references/skills-registry.md",
+    "docs/references",
+    "docs",
+    "scripts/check-skills-registry.sh",
     "skills/registry.base",
     "skills/registry.md",
     "skills/registry-items/repo-local/win--scheduled-jobs.md",
@@ -217,9 +221,6 @@
     "scripts/sync-skills-registry.py",
     "skills/registry.json",
     "scripts/sync-skills-registry.sh",
-    "scripts",
-    "skills-source/external/pretty-mermaid/node_modules/@dagrejs/graphlib/lib/data/priority-queue.js",
-    "skills-source/external/pretty-mermaid/node_modules/@dagrejs/graphlib/lib/alg/topsort.js",
     "skills-source/external/openai-docs/assets/openai.png",
     "skills-source/external/openai-docs/assets/openai-small.svg"
   ]
