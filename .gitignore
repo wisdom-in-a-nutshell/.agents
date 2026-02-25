@@ -22,3 +22,7 @@ __pycache__/
 
 # Generic caches
 .cache/
+
+# Obsidian runtime UI state (local/session-specific)
+.obsidian/workspace*.json
+skills/.obsidian/workspace*.json
