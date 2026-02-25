@@ -11,14 +11,10 @@
             "id": "0936ef9d5c9ddb98",
             "type": "leaf",
             "state": {
-              "type": "markdown",
-              "state": {
-                "file": "agent-native-repo-playbook/references/agents-md-best-practices.md",
-                "mode": "source",
-                "source": false
-              },
+              "type": "empty",
+              "state": {},
               "icon": "lucide-file",
-              "title": "agents-md-best-practices"
+              "title": "New tab"
             }
           }
         ]
@@ -185,20 +181,32 @@
   },
   "active": "dca14b0464000f8e",
   "lastOpenFiles": [
-    "agent-native-repo-playbook/references/docs-structure-and-maintenance.md",
-    "agent-native-repo-playbook/references/agents-md-best-practices.md",
+    "registry.md",
+    "project-planner/references/tasks-template.md",
+    "project-planner/references",
+    "project-planner/SKILL.md",
+    "project-planner",
     "project-executor/SKILL.md",
-    "agent-native-repo-playbook/SKILL.md",
+    "project-executor",
+    "agent-native-repo-playbook/references/docs-structure-and-maintenance.md",
     "agent-native-repo-playbook/references/best-practices.md",
-    "agent-native-repo-playbook/references/checklist.md",
-    "2026-02-24.md",
-    "agent-native-repo-playbook/scripts/practice_snapshot.sh",
-    "agent-native-repo-audit/SKILL.md",
-    "agent-native-repo-playbook/scripts/audit_repo.sh",
+    "agent-native-repo-playbook/references/agents-md-best-practices.md",
     "agent-native-repo-playbook/agents/openai.yaml",
-    "agent-native-repo-playbook/scripts",
     "agent-native-repo-playbook/references",
     "agent-native-repo-playbook/agents",
-    "agent-native-repo-playbook"
+    "agent-native-repo-playbook/SKILL.md",
+    "agent-native-repo-playbook",
+    "obsidian-markdown/SKILL.md",
+    "obsidian-markdown",
+    "obsidian-cli/SKILL.md",
+    "obsidian-cli",
+    "obsidian-bases/SKILL.md",
+    "obsidian-bases",
+    "json-canvas/SKILL.md",
+    "defuddle/SKILL.md",
+    "agent-browser/SKILL.md",
+    "agent-native-repo-playbook/references/checklist.md",
+    "2026-02-24.md",
+    "agent-native-repo-audit/SKILL.md"
   ]
 }

@@ -11,10 +11,14 @@
             "id": "972218cb0d483c94",
             "type": "leaf",
             "state": {
-              "type": "empty",
-              "state": {},
+              "type": "markdown",
+              "state": {
+                "file": "skills/registry.md",
+                "mode": "source",
+                "source": false
+              },
               "icon": "lucide-file",
-              "title": "New tab"
+              "title": "registry"
             }
           }
         ]
@@ -74,7 +78,8 @@
       }
     ],
     "direction": "horizontal",
-    "width": 300
+    "width": 200,
+    "collapsed": true
   },
   "right": {
     "id": "5ba8c577e5e2f522",
@@ -90,6 +95,7 @@
             "state": {
               "type": "backlink",
               "state": {
+                "file": "skills/registry.md",
                 "collapseAll": false,
                 "extraContext": false,
                 "sortOrder": "alphabetical",
@@ -99,7 +105,7 @@
                 "unlinkedCollapsed": true
               },
               "icon": "links-coming-in",
-              "title": "Backlinks"
+              "title": "Backlinks for registry"
             }
           },
           {
@@ -108,11 +114,12 @@
             "state": {
               "type": "outgoing-link",
               "state": {
+                "file": "skills/registry.md",
                 "linksCollapsed": false,
                 "unlinkedCollapsed": true
               },
               "icon": "links-going-out",
-              "title": "Outgoing links"
+              "title": "Outgoing links from registry"
             }
           },
           {
@@ -150,12 +157,13 @@
             "state": {
               "type": "outline",
               "state": {
+                "file": "skills/registry.md",
                 "followCursor": false,
                 "showSearch": false,
                 "searchQuery": ""
               },
               "icon": "lucide-list",
-              "title": "Outline"
+              "title": "Outline of registry"
             }
           }
         ]
@@ -177,5 +185,44 @@
     }
   },
   "active": "972218cb0d483c94",
-  "lastOpenFiles": []
+  "lastOpenFiles": [
+    "AGENTS.md",
+    "skills/registry.md",
+    "scripts/sync-skills-registry.sh",
+    "scripts",
+    "skills-source/external/pretty-mermaid/node_modules/@dagrejs/graphlib/lib/data/priority-queue.js",
+    "skills-source/external/pretty-mermaid/node_modules/@dagrejs/graphlib/lib/alg/topsort.js",
+    "skills-source/external/pretty-mermaid/node_modules/@dagrejs/graphlib/lib/alg/tarjan.js",
+    "skills-source/external/pretty-mermaid/node_modules/@dagrejs/graphlib/lib/alg/prim.js",
+    "skills-source/external/pretty-mermaid/node_modules/@dagrejs/graphlib/lib/alg/preorder.js",
+    "skills-source/external/pretty-mermaid/node_modules/@dagrejs/graphlib/lib/alg/postorder.js",
+    "skills-source/external/pretty-mermaid/node_modules/@dagrejs/graphlib/lib/alg/is-acyclic.js",
+    "skills-source/external/pretty-mermaid/node_modules/@dagrejs/graphlib/lib/alg/index.js",
+    "skills-source/external/pretty-mermaid/node_modules/@dagrejs/graphlib/README.md",
+    "skills-source/external/pretty-mermaid/node_modules/@dagrejs/dagre/README.md",
+    "skills-source/external/pretty-mermaid/node_modules/beautiful-mermaid/README.md",
+    "skills-source/external/vercel-react-best-practices/rules/server-serialization.md",
+    "skills-source/external/vercel-react-best-practices/rules/server-parallel-fetching.md",
+    "skills-source/external/vercel-react-best-practices/rules/server-dedup-props.md",
+    "skills-source/external/vercel-react-best-practices/rules/server-cache-react.md",
+    "skills-source/external/vercel-react-best-practices/rules/server-cache-lru.md",
+    "skills-source/external/vercel-react-best-practices/rules/server-auth-actions.md",
+    "skills-source/external/vercel-react-best-practices/rules/server-after-nonblocking.md",
+    "skills-source/external/vercel-react-best-practices/rules/rerender-use-ref-transient-values.md",
+    "skills-source/external/vercel-react-best-practices/rules/rerender-transitions.md",
+    "skills-source/external/vercel-react-best-practices/rules/rerender-simple-expression-in-memo.md",
+    "skills-source/external/vercel-react-best-practices/rules/rerender-move-effect-to-event.md",
+    "skills-source/external/vercel-react-best-practices/rules/rerender-memo.md",
+    "skills-source/external/vercel-react-best-practices/rules/rerender-memo-with-default-value.md",
+    "skills-source/external/vercel-react-best-practices/rules/rerender-lazy-state-init.md",
+    "skills-source/external/vercel-react-best-practices/rules/rerender-functional-setstate.md",
+    "skills-source/external/vercel-react-best-practices/rules/rerender-derived-state.md",
+    "skills-source/external/vercel-react-best-practices/rules/rerender-derived-state-no-effect.md",
+    "skills-source/external/vercel-react-best-practices/rules/rerender-dependencies.md",
+    "skills-source/external/vercel-react-best-practices/rules/rerender-defer-reads.md",
+    "skills-source/external/vercel-react-best-practices/rules/rendering-usetransition-loading.md",
+    "skills-source/external/vercel-react-best-practices/rules/rendering-svg-precision.md",
+    "skills-source/external/openai-docs/assets/openai.png",
+    "skills-source/external/openai-docs/assets/openai-small.svg"
+  ]
 }
