@@ -1,6 +1,6 @@
 filters:
   and:
-    - 'file.inFolder("skills/registry-items")'
+    - file.inFolder("skills/registry-items")
 properties:
   registry_kind:
     displayName: Type
@@ -23,17 +23,22 @@ properties:
 views:
   - type: table
     name: Managed Skills
-    filters: 'registry_kind == "managed"'
+    filters: registry_kind == "managed"
     order:
       - skill
       - origin
       - scope
       - repos_csv
-      - upstream_ref
       - notes
+      - upstream_ref
+    sort:
+      - property: notes
+        direction: ASC
+    columnSize:
+      note.repos_csv: 662
   - type: table
     name: Repo-Local Skills
-    filters: 'registry_kind == "repo_local"'
+    filters: registry_kind == "repo_local"
     order:
       - repo
       - skill
