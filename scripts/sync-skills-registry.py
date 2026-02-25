@@ -137,6 +137,8 @@ properties:
     displayName: Origin
   scope:
     displayName: Scope
+  repos:
+    displayName: Repos List
   repos_csv:
     displayName: Repos
   upstream_ref:
@@ -155,7 +157,15 @@ views:
       - skill
       - origin
       - scope
-      - repos_csv
+      - repos
+      - upstream_ref
+      - notes
+  - type: list
+    name: Managed Skills (Readable)
+    filters: 'registry_kind == "managed"'
+    order:
+      - skill
+      - repos
       - upstream_ref
       - notes
   - type: table
