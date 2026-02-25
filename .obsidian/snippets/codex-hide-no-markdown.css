@@ -10,6 +10,16 @@
   display: none !important;
 }
 
+.nav-files-container .tree-item-self[data-path="skills-source/external/defuddle/agents"],
+.nav-files-container .tree-item-self[data-path^="skills-source/external/defuddle/agents/"] {
+  display: none !important;
+}
+
+.nav-files-container .tree-item-self[data-path="skills-source/external/json-canvas/agents"],
+.nav-files-container .tree-item-self[data-path^="skills-source/external/json-canvas/agents/"] {
+  display: none !important;
+}
+
 .nav-files-container .tree-item-self[data-path="skills-source/external/openai-docs/agents"],
 .nav-files-container .tree-item-self[data-path^="skills-source/external/openai-docs/agents/"] {
   display: none !important;
@@ -20,8 +30,18 @@
   display: none !important;
 }
 
+.nav-files-container .tree-item-self[data-path="skills-source/owned/pretty-mermaid/agents"],
+.nav-files-container .tree-item-self[data-path^="skills-source/owned/pretty-mermaid/agents/"] {
+  display: none !important;
+}
+
 .nav-files-container .tree-item-self[data-path="skills-source/owned/pretty-mermaid/assets"],
 .nav-files-container .tree-item-self[data-path^="skills-source/owned/pretty-mermaid/assets/"] {
+  display: none !important;
+}
+
+.nav-files-container .tree-item-self[data-path="skills-source/external/obsidian-cli/agents"],
+.nav-files-container .tree-item-self[data-path^="skills-source/external/obsidian-cli/agents/"] {
   display: none !important;
 }
 
@@ -30,8 +50,48 @@
   display: none !important;
 }
 
+.nav-files-container .tree-item-self[data-path="skills-source/owned/project-planner/agents"],
+.nav-files-container .tree-item-self[data-path^="skills-source/owned/project-planner/agents/"] {
+  display: none !important;
+}
+
+.nav-files-container .tree-item-self[data-path="skills-source/external/agent-browser/agents"],
+.nav-files-container .tree-item-self[data-path^="skills-source/external/agent-browser/agents/"] {
+  display: none !important;
+}
+
+.nav-files-container .tree-item-self[data-path="skills-source/owned/project-executor/agents"],
+.nav-files-container .tree-item-self[data-path^="skills-source/owned/project-executor/agents/"] {
+  display: none !important;
+}
+
+.nav-files-container .tree-item-self[data-path="skills-source/external/obsidian-bases/agents"],
+.nav-files-container .tree-item-self[data-path^="skills-source/external/obsidian-bases/agents/"] {
+  display: none !important;
+}
+
 .nav-files-container .tree-item-self[data-path="skills-source/external/agent-browser/templates"],
 .nav-files-container .tree-item-self[data-path^="skills-source/external/agent-browser/templates/"] {
+  display: none !important;
+}
+
+.nav-files-container .tree-item-self[data-path="skills-source/owned/azure-webapp-config/agents"],
+.nav-files-container .tree-item-self[data-path^="skills-source/owned/azure-webapp-config/agents/"] {
+  display: none !important;
+}
+
+.nav-files-container .tree-item-self[data-path="skills-source/owned/modal-function-sync/agents"],
+.nav-files-container .tree-item-self[data-path^="skills-source/owned/modal-function-sync/agents/"] {
+  display: none !important;
+}
+
+.nav-files-container .tree-item-self[data-path="skills-source/owned/show-password-setup/agents"],
+.nav-files-container .tree-item-self[data-path^="skills-source/owned/show-password-setup/agents/"] {
+  display: none !important;
+}
+
+.nav-files-container .tree-item-self[data-path="skills-source/external/obsidian-markdown/agents"],
+.nav-files-container .tree-item-self[data-path^="skills-source/external/obsidian-markdown/agents/"] {
   display: none !important;
 }
 
@@ -45,8 +105,18 @@
   display: none !important;
 }
 
+.nav-files-container .tree-item-self[data-path="skills-source/owned/aip-dto-contract-sync/agents"],
+.nav-files-container .tree-item-self[data-path^="skills-source/owned/aip-dto-contract-sync/agents/"] {
+  display: none !important;
+}
+
 .nav-files-container .tree-item-self[data-path="skills-source/owned/azure-webapp-config/references"],
 .nav-files-container .tree-item-self[data-path^="skills-source/owned/azure-webapp-config/references/"] {
+  display: none !important;
+}
+
+.nav-files-container .tree-item-self[data-path="skills-source/external/web-design-guidelines/agents"],
+.nav-files-container .tree-item-self[data-path^="skills-source/external/web-design-guidelines/agents/"] {
   display: none !important;
 }
 
@@ -55,8 +125,18 @@
   display: none !important;
 }
 
+.nav-files-container .tree-item-self[data-path="skills-source/owned/aip-frontend-contract-apply/agents"],
+.nav-files-container .tree-item-self[data-path^="skills-source/owned/aip-frontend-contract-apply/agents/"] {
+  display: none !important;
+}
+
 .nav-files-container .tree-item-self[data-path="skills-source/owned/aip-frontend-contract-apply/scripts"],
 .nav-files-container .tree-item-self[data-path^="skills-source/owned/aip-frontend-contract-apply/scripts/"] {
+  display: none !important;
+}
+
+.nav-files-container .tree-item-self[data-path="skills-source/external/vercel-react-best-practices/agents"],
+.nav-files-container .tree-item-self[data-path^="skills-source/external/vercel-react-best-practices/agents/"] {
   display: none !important;
 }
 
