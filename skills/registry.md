@@ -20,6 +20,7 @@ Policy:
 | obsidian-cli | external | global | * | skills-source/external/obsidian-cli | kepano/obsidian-skills:skills/obsidian-cli@main |
 | obsidian-markdown | external | global | * | skills-source/external/obsidian-markdown | kepano/obsidian-skills:skills/obsidian-markdown@main |
 | agent-native-repo-playbook | owned | global | * | skills-source/owned/agent-native-repo-playbook | - |
+| client-interface-guidelines | owned | global | * | skills-source/owned/client-interface-guidelines | - |
 | project-executor | owned | global | * | skills-source/owned/project-executor | - |
 | project-planner | owned | global | * | skills-source/owned/project-planner | - |
 | vercel-react-best-practices | external | repo | adithyan-ai-videos,aipodcasting,aipodcasting-landing-page,aipodcasting-public-website,blog-personal | skills-source/external/vercel-react-best-practices | vercel-labs/agent-skills:skills/react-best-practices@main |
