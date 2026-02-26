@@ -132,10 +132,8 @@
     {
       "skill": "pretty-mermaid",
       "origin": "owned",
-      "scope": "repo",
-      "repos": [
-        "codexclaw"
-      ],
+      "scope": "global",
+      "repos": [],
       "source_path": "skills-source/owned/pretty-mermaid",
       "upstream_ref": "-"
     },

@@ -2,12 +2,12 @@
 registry_kind: managed
 skill: "pretty-mermaid"
 origin: "owned"
-scope: "repo"
-repos_csv: "codexclaw"
+scope: "global"
+repos_csv: "*"
 source_path: "skills-source/owned/pretty-mermaid"
 upstream_ref: "-"
 repos:
-  - "codexclaw"
+  - "*"
 ---
 
 Generated from `skills/registry.json`. Do not edit manually.

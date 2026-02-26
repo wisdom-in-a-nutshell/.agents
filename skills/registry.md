@@ -26,7 +26,7 @@ Policy:
 | vercel-react-best-practices | external | repo | adithyan-ai-videos,aipodcasting,aipodcasting-landing-page,aipodcasting-public-website,blog-personal | skills-source/external/vercel-react-best-practices | vercel-labs/agent-skills:skills/react-best-practices@main |
 | web-design-guidelines | external | repo | adithyan-ai-videos,aipodcasting,aipodcasting-landing-page,aipodcasting-public-website,blog-personal | skills-source/external/web-design-guidelines | vercel-labs/agent-skills:skills/web-design-guidelines@main |
 | openai-docs | external | repo | codexclaw | skills-source/external/openai-docs | openai/skills:skills/.curated/openai-docs@main |
-| pretty-mermaid | owned | repo | codexclaw | skills-source/owned/pretty-mermaid | - |
+| pretty-mermaid | owned | global | * | skills-source/owned/pretty-mermaid | - |
 | modal-function-sync | owned | repo | aipodcasting,modal_functions,win | skills-source/owned/modal-function-sync | - |
 | aip-dto-contract-sync | owned | repo | aipodcasting,win | skills-source/owned/aip-dto-contract-sync | - |
 | aip-frontend-contract-apply | owned | repo | aipodcasting,win | skills-source/owned/aip-frontend-contract-apply | - |
