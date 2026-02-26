@@ -130,6 +130,11 @@
   display: none !important;
 }
 
+.nav-files-container .tree-item-self[data-path="skills-source/owned/client-interface-guidelines/agents"],
+.nav-files-container .tree-item-self[data-path^="skills-source/owned/client-interface-guidelines/agents/"] {
+  display: none !important;
+}
+
 .nav-files-container .tree-item-self[data-path="skills-source/owned/aip-frontend-contract-apply/scripts"],
 .nav-files-container .tree-item-self[data-path^="skills-source/owned/aip-frontend-contract-apply/scripts/"] {
   display: none !important;
