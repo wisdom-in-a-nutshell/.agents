@@ -1,8 +1,8 @@
-### Naming {#naming}
+### Naming
 
 > “Note the obsessive use of abbreviations and avoidance of capital letters; [Unix] is a system invented by people to whom repetitive stress disorder is what black lung is to miners.
 > Long names get worn down to three-letter nubbins, like stones smoothed by a river.”
-> — Neal Stephenson, _[In the Beginning was the Command Line](https://web.stanford.edu/class/cs81n/command.txt)_
+> — Neal Stephenson, _In the Beginning was the Command Line_
 
 The name of your program is particularly important on the CLI: your users will be typing it all the time, and it needs to be easy to remember and type.
 
@@ -20,15 +20,13 @@ Don’t make it _too_ short: the very shortest commands are best reserved for th
 **Make it easy to type.**
 If you expect people to type your command name all day, make it easy on their hands.
 
-A real-world example: long before Docker Compose was `docker compose`, it was [`plum`](https://github.com/aanand/fig/blob/0eb7d308615bae1ad4be1ca5112ac7b6b6cbfbaf/setup.py#L26).
-This turned out to be such an awkward, one-handed hopscotch that it was immediately renamed to [`fig`](https://github.com/aanand/fig/commit/0cafdc9c6c19dab2ef2795979dc8b2f48f623379), which – as well as being shorter – flows much more easily.
+A real-world example: long before Docker Compose was `docker compose`, it was `plum`.
+This turned out to be such an awkward, one-handed hopscotch that it was immediately renamed to `fig`, which – as well as being shorter – flows much more easily.
 
-_Further reading: [The Poetics of CLI Command Names](https://smallstep.com/blog/the-poetics-of-cli-command-names/)_
-
-### Distribution {#distribution}
+### Distribution
 
 **If possible, distribute as a single binary.**
-If your language doesn’t compile to binary executables as standard, see if it has something like [PyInstaller](https://www.pyinstaller.org/).
+If your language doesn’t compile to binary executables as standard, see if it has something like PyInstaller.
 If you really can’t distribute as a single binary, use the platform’s native package installer so you aren’t scattering things on disk that can’t easily be removed.
 Tread lightly on the user’s computer.
 
@@ -37,7 +35,7 @@ If you’re making a language-specific tool, such as a code linter, then this ru
 **Make it easy to uninstall.**
 If it needs instructions, put them at the bottom of the install instructions—one of the most common times people want to uninstall software is right after installing it.
 
-### Analytics {#analytics}
+### Analytics
 
 Usage metrics can be helpful to understand how users are using your program, how to make it better, and where to focus effort.
 But, unlike websites, users of the command-line expect to be in control of their environment, and it is surprising when programs do things in the background without telling them.
@@ -51,11 +49,11 @@ If you choose to do it by default (“opt-out”), then clearly tell users about
 
 Examples of projects that collect usage statistics:
 
-- Angular.js [collects detailed analytics using Google Analytics](https://angular.io/analytics), in the name of feature prioritization.
+- Angular.js collects detailed analytics using Google Analytics, in the name of feature prioritization.
   You have to explicitly opt in.
   You can change the tracking ID to point to your own Google Analytics property if you want to track Angular usage inside your organization.
-- Homebrew sends metrics to Google Analytics and has [a nice FAQ](https://docs.brew.sh/Analytics) detailing their practices.
-- Next.js [collects anonymized usage statistics](https://nextjs.org/telemetry) and is enabled by default.
+- Homebrew sends metrics to Google Analytics and has a nice FAQ detailing their practices.
+- Next.js collects anonymized usage statistics and is enabled by default.
 
 **Consider alternatives to collecting analytics.**
 
@@ -67,6 +65,4 @@ Examples of projects that collect usage statistics:
 - Talk to your users.
   Reach out and ask people how they’re using your tool.
   Encourage feedback and feature requests in your docs and repos, and try to draw out more context from those who submit feedback.
-
-_Further reading: [Open Source Metrics](https://opensource.guide/metrics/)_
 

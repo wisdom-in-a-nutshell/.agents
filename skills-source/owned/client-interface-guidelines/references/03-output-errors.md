@@ -1,11 +1,11 @@
-### Output {#output}
+### Output
 
 **Human-readable output is paramount.**
 Humans come first, machines second.
 The most simple and straightforward heuristic for whether a particular output stream (`stdout` or `stderr`) is being read by a human is _whether or not it’s a TTY_.
-Whatever language you’re using, it will have a utility or library for doing this (e.g. [Python](https://stackoverflow.com/questions/858623/how-to-recognize-whether-a-script-is-running-on-a-tty), [Node](https://nodejs.org/api/process.html#process_a_note_on_process_i_o), [Go](https://github.com/mattn/go-isatty)).
+Whatever language you’re using, it will have a utility or library for doing this (e.g. Python, Node, Go).
 
-_Further reading on [what a TTY is](https://unix.stackexchange.com/a/4132)._
+_Further reading on what a TTY is._
 
 **Have machine-readable output where it does not impact usability.**
 Streams of text is the universal interface in UNIX.
@@ -16,17 +16,16 @@ but it can also help the usability for humans using programs.
 For example, a user should be able to pipe output to `grep` and it should do what they expect.
 
 > “Expect the output of every program to become the input to another, as yet unknown, program.”
-— [Doug McIlroy](http://web.archive.org/web/20220609080931/https://homepage.cs.uri.edu/~thenry/resources/unix_art/ch01s06.html)
+— Doug McIlroy
 
 **If human-readable output breaks machine-readable output, use `--plain` to display output in plain, tabular text format for integration with tools like `grep` or `awk`.**
 In some cases, you might need to output information in a different way to make it human-readable.
-<!-- (TK example with and without --plain) -->
 For example, if you are displaying a line-based table, you might choose to split a cell into multiple lines, fitting in more information while keeping it within the width of the screen.
 This breaks the expected behavior of there being one piece of data per line, so you should provide a `--plain` flag for scripts, which disables all such manipulation and outputs one record per line.
 
 **Display output as formatted JSON if `--json` is passed.**
 JSON allows for more structure than plain text, so it makes it much easier to output and handle complex data structures.
-[`jq`](https://stedolan.github.io/jq/) is a common tool for working with JSON on the command-line, and there is now a [whole ecosystem of tools](https://ilya-sher.org/2018/04/10/list-of-json-tools-for-command-line/) that output and manipulate JSON.
+`jq` is a common tool for working with JSON on the command-line, and there is now a whole ecosystem of tools that output and manipulate JSON.
 
 It is also widely used on the web, so by using JSON as the input and output of programs, you can pipe directly to and from web services using `curl`.
 
@@ -116,8 +115,6 @@ These things should disable colors:
 - The user passes the option `--no-color`.
 - You may also want to add a `MYAPP_NO_COLOR` environment variable in case users want to disable color specifically for your program.
 
-_Further reading: [no-color.org](https://no-color.org/), [12 Factor CLI Apps](https://medium.com/@jdxcode/12-factor-cli-apps-dd3c227a0e46)_
-
 **If `stdout` is not an interactive terminal, don’t display any animations.**
 This will stop progress bars turning into Christmas trees in CI log output.
 
@@ -125,15 +122,15 @@ This will stop progress bars turning into Christmas trees in CI log output.
 Pictures can be better than words if you need to make several things distinct, catch the user’s attention, or just add a bit of character.
 Be careful, though—it can be easy to overdo it and make your program look cluttered or feel like a toy.
 
-For example, [yubikey-agent](https://github.com/FiloSottile/yubikey-agent) uses emoji to add structure to the output so it isn’t just a wall of text, and a ❌ to draw your attention to an important piece of information:
+For example, yubikey-agent uses emoji to add structure to the output so it isn’t just a wall of text, and a ❌ to draw your attention to an important piece of information:
 
 ```shell-session
 $ yubikey-agent -setup
 🔐 The PIN is up to 8 numbers, letters, or symbols. Not just numbers!
 ❌ The key will be lost if the PIN and PUK are locked after 3 incorrect tries.
 
-Choose a new PIN/PUK: 
-Repeat the PIN/PUK: 
+Choose a new PIN/PUK:
+Repeat the PIN/PUK:
 
 🧪 Reticulating splines …
 
@@ -165,9 +162,9 @@ A good sensible set of options to use for `less` is `less -FIRX`.
 This does not page if the content fills one screen, ignores case when you search, enables color and formatting, and leaves the contents on the screen when `less` quits.
 
 There might be libraries in your language that are more robust than piping to `less`.
-For example, [pypager](https://github.com/prompt-toolkit/pypager) in Python.
+For example, pypager in Python.
 
-### Errors {#errors}
+### Errors
 
 One of the most common reasons to consult documentation is to fix errors.
 If you can make errors into documentation, then this will save the user loads of time.
@@ -191,6 +188,4 @@ Consider writing the debug log to a file instead of printing it to the terminal.
 
 **Make it effortless to submit bug reports.**
 One nice thing you can do is provide a URL and have it pre-populate as much information as possible.
-
-_Further reading: [Google: Writing Helpful Error Messages](https://developers.google.com/tech-writing/error-messages), [Nielsen Norman Group: Error-Message Guidelines](https://www.nngroup.com/articles/error-message-guidelines)_
 

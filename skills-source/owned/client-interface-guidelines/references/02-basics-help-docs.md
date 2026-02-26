@@ -1,4 +1,4 @@
-### The Basics {#the-basics}
+### The Basics
 
 There are a few basic rules you need to follow.
 Get these wrong, and your program will be either very hard to use, or flat-out broken.
@@ -8,21 +8,21 @@ Either your language’s built-in one, or a good third-party one.
 They will normally handle arguments, flag parsing, help text, and even spelling suggestions in a sensible way.
 
 Here are some that we like:
-* Multi-platform: [docopt](http://docopt.org)
-* Bash: [argbash](https://argbash.dev)
-* Go: [Cobra](https://github.com/spf13/cobra), [cli](https://github.com/urfave/cli)
-* Haskell: [optparse-applicative](https://hackage.haskell.org/package/optparse-applicative)
-* Java: [picocli](https://picocli.info/)
-* Julia: [ArgParse.jl](https://github.com/carlobaldassi/ArgParse.jl), [Comonicon.jl](https://github.com/comonicon/Comonicon.jl)
-* Kotlin: [clikt](https://ajalt.github.io/clikt/)
-* Node: [oclif](https://oclif.io/)
-* Deno: [parseArgs](https://jsr.io/@std/cli/doc/parse-args/~/parseArgs)
-* Perl: [Getopt::Long](https://metacpan.org/pod/Getopt::Long)
-* PHP: [console](https://github.com/symfony/console), [CLImate](https://climate.thephpleague.com)
-* Python: [Argparse](https://docs.python.org/3/library/argparse.html), [Click](https://click.palletsprojects.com/), [Typer](https://github.com/tiangolo/typer)
-* Ruby: [TTY](https://ttytoolkit.org/)
-* Rust: [clap](https://docs.rs/clap)
-* Swift: [swift-argument-parser](https://github.com/apple/swift-argument-parser)
+* Multi-platform: docopt
+* Bash: argbash
+* Go: Cobra, cli
+* Haskell: optparse-applicative
+* Java: picocli
+* Julia: ArgParse.jl, Comonicon.jl
+* Kotlin: clikt
+* Node: oclif
+* Deno: parseArgs
+* Perl: Getopt::Long
+* PHP: console, CLImate
+* Python: Argparse, Click, Typer
+* Ruby: TTY
+* Rust: clap
+* Swift: swift-argument-parser
 
 **Return zero exit code on success, non-zero on failure.**
 Exit codes are how scripts determine whether a program succeeded or failed, so you should report this correctly.
@@ -36,7 +36,7 @@ Anything that is machine readable should also go to `stdout`—this is where pip
 Log messages, errors, and so on should all be sent to `stderr`.
 This means that when commands are piped together, these messages are displayed to the user and not fed into the next command.
 
-### Help {#help}
+### Help
 
 **Display extensive help text when asked.**
 Display help when passed `-h` or `--help` flags.
@@ -77,8 +77,7 @@ unmodified (except for formatting, but note that IEEE754 is used
 for number representation internally, with all that that implies).
 
 For more advanced filters see the jq(1) manpage ("man jq")
-and/or https://stedolan.github.io/jq
-
+and/or jq documentation
 Example:
 
     $ echo '{"foo": 0}' | jq .
@@ -122,8 +121,6 @@ Users tend to use examples over other forms of documentation, so show them first
 If it helps explain what it’s doing and it isn’t too long, show the actual output too.
 
 You can tell a story with a series of examples, building your way toward complex uses.
-<!-- TK example? -->
-
 **If you’ve got loads of examples, put them somewhere else,** in a cheat sheet command or a web page.
 It’s useful to have exhaustive, advanced examples, but you don’t want to make your help text really long.
 
@@ -166,22 +163,21 @@ examine the history and state (see also: git help revisions)
 Bold headings make it much easier to scan.
 But, try to do it in a terminal-independent way so that your users aren't staring down a wall of escape characters.
 
-<pre>
-<code>
-<strong>$ heroku apps --help</strong>
+```
+$ heroku apps --help
 list your apps
 
-<strong>USAGE</strong>
+USAGE
   $ heroku apps
 
-<strong>OPTIONS</strong>
+OPTIONS
   -A, --all          include apps in all teams
   -p, --personal     list apps in personal account when a default team is set
   -s, --space=space  filter by space
   -t, --team=team    team to use
   --json             output in json format
 
-<strong>EXAMPLES</strong>
+EXAMPLES
   $ heroku apps
   === My Apps
   example
@@ -190,7 +186,7 @@ list your apps
   === Collaborated Apps
   theirapp   other@owner.name
 
-<strong>COMMANDS</strong>
+COMMANDS
   apps:create     creates a new app
   apps:destroy    permanently destroy an app
   apps:errors     view app errors
@@ -204,8 +200,7 @@ list your apps
   apps:stacks     show the list of available stacks
   apps:transfer   transfer applications to another user or team
   apps:unlock     unlock an app so any team member can join
-</code>
-</pre>
+```
 
 Note: When `heroku apps --help` is piped through a pager, the command emits no escape characters.
 
@@ -231,15 +226,13 @@ Secondly, be aware that if you change what the user typed, they won’t learn th
 In effect, you’re ruling that the way they typed it is valid and correct, and you’re committing to supporting that indefinitely.
 Be intentional in making that decision, and document both syntaxes.
 
-_Further reading: [“Do What I Mean”](http://www.catb.org/~esr/jargon/html/D/DWIM.html)_
-
 **If your command is expecting to have something piped to it and `stdin` is an interactive terminal, display help immediately and quit.**
 This means it doesn’t just hang, like `cat`.
 Alternatively, you could print a log message to `stderr`.
 
-### Documentation {#documentation}
+### Documentation
 
-The purpose of [help text](#help) is to give a brief, immediate sense of what your tool is, what options are available, and how to perform the most common tasks.
+The purpose of help text is to give a brief, immediate sense of what your tool is, what options are available, and how to perform the most common tasks.
 Documentation, on the other hand, is where you go into full detail.
 It’s where people go to understand what your tool is for, what it _isn’t_ for, how it works and how to do everything they might need to do.
 
@@ -251,8 +244,8 @@ The web is the most inclusive documentation format available.
 Documentation in the terminal has several nice properties: it’s fast to access, it stays in sync with the specific installed version of the tool, and it works without an internet connection.
 
 **Consider providing man pages.**
-[man pages](https://en.wikipedia.org/wiki/Man_page), Unix’s original system of documentation, are still in use today, and many users will reflexively check `man mycmd` as a first step when trying to learn about your tool.
-To make them easier to generate, you can use a tool like [ronn](http://rtomayko.github.io/ronn/ronn.1.html) (which can also generate your web docs).
+man pages, Unix’s original system of documentation, are still in use today, and many users will reflexively check `man mycmd` as a first step when trying to learn about your tool.
+To make them easier to generate, you can use a tool like ronn (which can also generate your web docs).
 
 However, not everyone knows about `man`, and it doesn’t run on all platforms, so you should also make sure your terminal docs are accessible via your tool itself.
 For example, `git` and `npm` make their man pages accessible via the `help` subcommand, so `npm help ls` is equivalent to `man npm-ls`.
@@ -274,4 +267,3 @@ DESCRIPTION
 
        ...
 ```
-

@@ -1,4 +1,4 @@
-### Arguments and flags {#arguments-and-flags}
+### Arguments and flags
 
 A note on terminology:
 
@@ -14,13 +14,9 @@ It’s a bit more typing, but it makes it much clearer what is going on.
 It also makes it easier to make changes to how you accept input in the future.
 Sometimes when using args, it’s impossible to add new input without breaking existing behavior or creating ambiguity.
 
-_Citation: [12 Factor CLI Apps](https://medium.com/@jdxcode/12-factor-cli-apps-dd3c227a0e46)._
-
 **Have full-length versions of all flags.**
 For example, have both `-h` and `--help`.
 Having the full version is useful in scripts where you want to be verbose and descriptive, and you don’t have to look up the meaning of flags everywhere.
-
-_Citation: [GNU Coding Standards](https://www.gnu.org/prep/standards/html_node/Command_002dLine-Interfaces.html)._
 
 **Only use one-letter flags for commonly used flags,** particularly at the top-level when using subcommands.
 That way you don’t “pollute” your namespace of short flags, forcing you to use convoluted letters and cases for flags you add in the future.
@@ -32,8 +28,6 @@ This also makes it work with globbing: `rm *.txt`.
 **If you’ve got two or more arguments for different things, you’re probably doing something wrong.**
 The exception is a common, primary action, where the brevity is worth memorizing.
 For example, `cp <source> <destination>`.
-
-_Citation: [12 Factor CLI Apps](https://medium.com/@jdxcode/12-factor-cli-apps-dd3c227a0e46)._
 
 **Use standard names for flags, if there is a standard.**
 If another commonly used command uses a flag name, it’s best to follow that existing pattern.
@@ -48,13 +42,13 @@ Here's a list of commonly used options:
   For example, `rm -f` will force the removal of files, even if it thinks it does not have permission to do it.
   This is also useful for commands which are doing something destructive that usually require user confirmation, but you want to force it to do that destructive action in a script.
 - `--json`: Display JSON output.
-  See the [output](#output) section.
+  See the output section.
 - `-h`, `--help`: Help.
   This should only mean help.
-  See the [help](#help) section.
-- `-n`, `--dry-run`: Dry run. 
+  See the help section.
+- `-n`, `--dry-run`: Dry run.
   Do not run the command, but describe the changes that would occur if the command were run. For example, `rsync`, `git add`.
-- `--no-input`: See the [interactivity](#interactivity) section.
+- `--no-input`: See the interactivity section.
 - `-o`, `--output`: Output file.
   For example, `sort`, `gcc`.
 - `-p`, `--port`: Port.
@@ -76,7 +70,7 @@ For example, `ls` has terse default output to optimize for scripts and other his
 
 **Prompt for user input.**
 If a user doesn’t pass an argument or flag, prompt for it.
-(See also: [Interactivity](#interactivity))
+(See also: Interactivity)
 
 **Never _require_ a prompt.**
 Always provide a way of passing input with flags or arguments.
@@ -140,7 +134,7 @@ A `--password-file` flag allows a secret to be passed in discreetly, in a wide v
 This approach has the same security problems mentioned above.
 It’s best avoided.)
 
-### Interactivity {#interactivity}
+### Interactivity
 
 **Only use prompts or interactive elements if `stdin` is an interactive terminal (a TTY).**
 This is a pretty reliable way to tell whether you’re piping data into a command or whether it's being run in a script, in which case a prompt won’t work and you should throw an error telling the user what flag to pass.
@@ -168,7 +162,7 @@ If you have several tools that are very closely related, you can make them easie
 They’re useful for sharing stuff—global flags, help text, configuration, storage mechanisms.
 
 **Be consistent across subcommands.**
-Use the same flag names for the same things, have similar output formatting, etc. 
+Use the same flag names for the same things, have similar output formatting, etc.
 
 **Use consistent names for multiple levels of subcommand.**
 If a complex piece of software has lots of objects and operations that can be performed on those objects, it is a common pattern to use two levels of subcommand for this, where one is a noun and one is a verb.
@@ -176,8 +170,6 @@ For example, `docker container create`.
 Be consistent with the verbs you use across different types of objects.
 
 Either `noun verb` or `verb noun` ordering works, but `noun verb` seems to be more common.
-
-_Further reading: [User experience, CLIs, and breaking the world, by John Starich](https://uxdesign.cc/user-experience-clis-and-breaking-the-world-baed8709244f)._
 
 **Don’t have ambiguous or similarly-named commands.**
 For example, having two subcommands called “update” and “upgrade” is quite confusing.

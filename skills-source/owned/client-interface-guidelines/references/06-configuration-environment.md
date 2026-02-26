@@ -1,4 +1,4 @@
-### Configuration {#configuration}
+### Configuration
 
 Command-line tools have lots of different types of configuration, and lots of different ways to supply it (flags, environment variables, project-level config files).
 The best way to supply each piece of configuration depends on a few factors, chief among them _specificity_, _stability_ and _complexity_.
@@ -12,8 +12,8 @@ Configuration generally falls into a few categories:
     - Setting the level of debugging output
     - Enabling a safe mode or dry run of a program
 
-    Recommendation: **Use [flags](#arguments-and-flags).**
-    [Environment variables](#environment-variables) may or may not be useful as well.
+    Recommendation: **Use flags.**
+    Environment variables may or may not be useful as well.
 
 2.  Generally stable from one invocation to the next, but not always.
     Might vary between projects.
@@ -27,7 +27,7 @@ Configuration generally falls into a few categories:
     - Specifying how or whether color should appear in output
     - Specifying an HTTP proxy server to route all requests through
 
-    Recommendation: **Use [flags](#arguments-and-flags) and probably [environment variables](#environment-variables) too.**
+    Recommendation: **Use flags and probably environment variables too.**
     Users may want to set the variables in their shell profile so they apply globally, or in `.env` for a particular project.
 
     If this configuration is sufficiently complex, it may warrant a configuration file of its own, but environment variables are usually good enough.
@@ -40,9 +40,9 @@ Configuration generally falls into a few categories:
     Recommendation: **Use a command-specific, version-controlled file.**
 
 **Follow the XDG-spec.**
-In 2010 the X Desktop Group, now [freedesktop.org](https://freedesktop.org), developed a specification for the location of base directories where config files may be located.
+In 2010 the X Desktop Group, now freedesktop.org, developed a specification for the location of base directories where config files may be located.
 One goal was to limit the proliferation of dotfiles in a user’s home directory by supporting a general-purpose `~/.config` folder.
-The XDG Base Directory Specification ([full spec](https://specifications.freedesktop.org/basedir-spec/basedir-spec-latest.html), [summary](https://wiki.archlinux.org/index.php/XDG_Base_Directory#Specification)) is supported by yarn, fish, wireshark, emacs, neovim, tmux, and many other projects you know and love.
+The XDG Base Directory Specification (full spec, summary) is supported by yarn, fish, wireshark, emacs, neovim, tmux, and many other projects you know and love.
 
 **If you automatically modify configuration that is not your program’s, ask the user for consent and tell them exactly what you’re doing.**
 Prefer creating a new config file (e.g. `/etc/cron.d/myapp`) rather than appending to an existing config file (e.g. `/etc/crontab`).
@@ -57,14 +57,14 @@ Here is the precedence for config parameters, from highest to lowest:
 - User-level configuration
 - System wide configuration
 
-### Environment variables {#environment-variables}
+### Environment variables
 
 **Environment variables are for behavior that _varies with the context_ in which a command is run.**
 The “environment” of an environment variable is the terminal session—the context in which the command is running.
 So, an env var might change each time a command runs, or between terminal sessions on one machine, or between instantiations of one project across several machines.
 
 Environment variables may duplicate the functionality of flags or configuration parameters, or they may be distinct from those things.
-See [Configuration](#configuration) for a breakdown of common types of configuration and recommendations on when environment variables are most appropriate.
+See Configuration for a breakdown of common types of configuration and recommendations on when environment variables are most appropriate.
 
 **For maximum portability, environment variable names must only contain uppercase letters, numbers, and underscores (and mustn't start with a number).**
 Which means `O_O` and `OWO` are the only emoticons that are also valid environment variable names.
@@ -73,11 +73,11 @@ Which means `O_O` and `OWO` are the only emoticons that are also valid environme
 While multi-line values are possible, they create usability issues with the `env` command.
 
 **Avoid commandeering widely used names.**
-Here’s a [list of POSIX standard env vars](https://pubs.opengroup.org/onlinepubs/009695399/basedefs/xbd_chap08.html).
+Here’s a list of POSIX standard env vars.
 
 **Check general-purpose environment variables for configuration values when possible:**
 
-- `NO_COLOR`, to disable color (see [Output](#output)) or `FORCE_COLOR` to enable it and ignore the detection logic
+- `NO_COLOR`, to disable color (see Output) or `FORCE_COLOR` to enable it and ignore the detection logic
 - `DEBUG`, to enable more verbose output
 - `EDITOR`, if you need to prompt the user to edit a file or input more than a single line
 - `HTTP_PROXY`, `HTTPS_PROXY`, `ALL_PROXY` and `NO_PROXY`, if you’re going to perform network operations
@@ -93,9 +93,9 @@ Here’s a [list of POSIX standard env vars](https://pubs.opengroup.org/onlinepu
 **Read environment variables from `.env` where appropriate.**
 If a command defines environment variables that are unlikely to change as long as the user is working in a particular directory,
 then it should also read them from a local `.env` file so users can configure it differently for different projects without having to specify them every time.
-Many languages have libraries for reading `.env` files ([Rust](https://crates.io/crates/dotenv), [Node](https://www.npmjs.com/package/dotenv), [Ruby](https://github.com/bkeepers/dotenv)).
+Many languages have libraries for reading `.env` files (Rust, Node, Ruby).
 
-**Don’t use `.env` as a substitute for a proper [configuration file](#configuration).**
+**Don’t use `.env` as a substitute for a proper configuration file.**
 `.env` files have a lot of limitations:
 
 - A `.env` file is not commonly stored in source control

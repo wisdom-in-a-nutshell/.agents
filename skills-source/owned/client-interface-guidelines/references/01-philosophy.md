@@ -1,8 +1,8 @@
-## Philosophy {#philosophy}
+## Philosophy
 
 These are what we consider to be the fundamental principles of good CLI design.
 
-### Human-first design {#human-first-design}
+### Human-first design
 
 Traditionally, UNIX commands were written under the assumption they were going to be used primarily by other programs.
 They had more in common with functions in a programming language than with graphical applications.
@@ -10,9 +10,9 @@ They had more in common with functions in a programming language than with graph
 Today, even though many CLI programs are used primarily (or even exclusively) by humans, a lot of their interaction design still carries the baggage of the past.
 It’s time to shed some of this baggage: if a command is going to be used primarily by humans, it should be designed for humans first.
 
-### Simple parts that work&nbsp;together {#simple-parts-that-work-together}
+### Simple parts that work together
 
-A core tenet of [the original UNIX philosophy](https://en.wikipedia.org/wiki/Unix_philosophy) is the idea that small, simple programs with clean interfaces can be combined to build larger systems.
+A core tenet of the original UNIX philosophy is the idea that small, simple programs with clean interfaces can be combined to build larger systems.
 Rather than stuff more and more features into those programs, you make programs that are modular enough to be recombined as needed.
 
 In the old days, pipes and shell scripts played a crucial role in the process of composing programs together.
@@ -31,7 +31,7 @@ Your software _will_ become a part in a larger system—your only choice is over
 Most importantly, designing for composability does not need to be at odds with designing for humans first.
 Much of the advice in this document is about how to achieve both.
 
-### Consistency across programs {#consistency-across-programs}
+### Consistency across programs
 
 The terminal’s conventions are hardwired into our fingers.
 We had to pay an upfront cost by learning about command line syntax, flags, environment variables and so on, but it pays off in long-term efficiency… as long as programs are consistent.
@@ -44,7 +44,7 @@ For example, many long-established UNIX commands don't output much information b
 
 When following convention would compromise a program’s usability, it might be time to break with it—but such a decision should be made with care.
 
-### Saying (just) enough {#saying-just-enough}
+### Saying (just) enough
 
 The terminal is a world of pure information.
 You could make an argument that information is the interface—and that, just like with any interface, there’s often too much or too little of it.
@@ -55,13 +55,13 @@ The end result is the same: a lack of clarity, leaving the user confused and irr
 
 It can be very difficult to get this balance right, but it’s absolutely crucial if software is to empower and serve its users.
 
-### Ease of discovery {#ease-of-discovery}
+### Ease of discovery
 
 When it comes to making functionality discoverable, GUIs have the upper hand.
 Everything you can do is laid out in front of you on the screen, so you can find what you need without having to learn anything, and perhaps even discover things you didn’t know were possible.
 
 It is assumed that command-line interfaces are the opposite of this—that you have to remember how to do everything.
-The original [Macintosh Human Interface Guidelines](https://archive.org/details/applehumaninterf00appl), published in 1987, recommend “See-and-point (instead of remember-and-type),” as if you could only choose one or the other.
+The original Macintosh Human Interface Guidelines, published in 1987, recommend “See-and-point (instead of remember-and-type),” as if you could only choose one or the other.
 
 These things needn’t be mutually exclusive.
 The efficiency of using the command-line comes from remembering commands, but there’s no reason the commands can’t help you learn and remember.
@@ -69,9 +69,7 @@ The efficiency of using the command-line comes from remembering commands, but th
 Discoverable CLIs have comprehensive help texts, provide lots of examples, suggest what command to run next, suggest what to do when there is an error.
 There are lots of ideas that can be stolen from GUIs to make CLIs easier to learn and use, even for power users.
 
-_Citation: The Design of Everyday Things (Don Norman), Macintosh Human Interface Guidelines_
-
-### Conversation as the&nbsp;norm {#conversation-as-the-norm}
+### Conversation as the norm
 
 GUI design, particularly in its early days, made heavy use of _metaphor_: desktops, files, folders, recycle bins.
 It made a lot of sense, because computers were still trying to bootstrap themselves into legitimacy.
@@ -97,9 +95,7 @@ The user is conversing with your software, whether you intended it or not.
 At worst, it’s a hostile conversation which makes them feel stupid and resentful.
 At best, it’s a pleasant exchange that speeds them on their way with newfound knowledge and a feeling of achievement.
 
-_Further reading: [The Anti-Mac User Interface (Don Gentner and Jakob Nielsen)](https://www.nngroup.com/articles/anti-mac-interface/)_
-
-### Robustness {#robustness-principle}
+### Robustness
 
 Robustness is both an objective and a subjective property.
 Software should _be_ robust, of course: unexpected input should be handled gracefully, operations should be idempotent where possible, and so on.
@@ -114,7 +110,7 @@ It’s lots of little things: keeping the user informed about what’s happening
 As a general rule, robustness can also come from keeping it simple.
 Lots of special cases and complex code tend to make a program fragile.
 
-### Empathy {#empathy}
+### Empathy
 
 Command-line tools are a programmer’s creative toolkit, so they should be enjoyable to use.
 This doesn’t mean turning them into a video game, or using lots of emoji (though there’s nothing inherently wrong with emoji 😉).
@@ -123,7 +119,7 @@ It means giving the user the feeling that you are on their side, that you want t
 There’s no list of actions you can take that will ensure they feel this way, although we hope that following our advice will take you some of the way there.
 Delighting the user means _exceeding their expectations_ at every turn, and that starts with empathy.
 
-### Chaos {#chaos}
+### Chaos
 
 The world of the terminal is a mess.
 Inconsistencies are everywhere, slowing us down and making us second-guess ourselves.
@@ -138,5 +134,5 @@ We’re just as guilty of breaking the rules as anyone.
 The time might come when you, too, have to break the rules.
 Do so with intention and clarity of purpose.
 
-> “Abandon a standard when it is demonstrably harmful to productivity or user satisfaction.” — Jef Raskin, [The Humane Interface](https://en.wikipedia.org/wiki/The_Humane_Interface)
+> “Abandon a standard when it is demonstrably harmful to productivity or user satisfaction.” — Jef Raskin, The Humane Interface
 

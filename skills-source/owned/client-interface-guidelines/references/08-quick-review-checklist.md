@@ -88,7 +88,7 @@ Use this first. Validate each line as pass/fail for the target CLI.
 - [ ] **Avoid commandeering widely used names.**
 - [ ] **Check general-purpose environment variables for configuration values when possible:**
 - [ ] **Read environment variables from `.env` where appropriate.**
-- [ ] **Don’t use `.env` as a substitute for a proper [configuration file](#configuration).**
+- [ ] **Don’t use `.env` as a substitute for a proper configuration file.**
 - [ ] **Do not read secrets from environment variables.**
 - [ ] **Make it a simple, memorable word.**
 - [ ] **Use only lowercase letters, and dashes if you really need to.**

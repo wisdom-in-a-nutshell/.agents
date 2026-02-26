@@ -1,8 +1,8 @@
-### Robustness {#robustness-guidelines}
+### Robustness
 
 **Validate user input.**
 Everywhere your program accepts data from the user, it will eventually be given bad data.
-Check early and bail out before anything bad happens, and [make the errors understandable](#errors).
+Check early and bail out before anything bad happens, and make the errors understandable.
 
 **Responsive is more important than fast.**
 Print something to the user in <100ms.
@@ -13,20 +13,17 @@ If your program displays no output for a while, it will look broken.
 A good spinner or progress indicator can make a program appear to be faster than it is.
 
 Ubuntu 20.04 has a nice progress bar that sticks to the bottom of the terminal.
-
-<!-- (TK reproduce this as a code block or animated SVG) -->
-
 If the progress bar gets stuck in one place for a long time, the user won’t know if stuff is still happening or if the program’s crashed.
 It’s good to show estimated time remaining, or even just have an animated component, to reassure them that you’re still working on it.
 
 There are many good libraries for generating progress bars.
-For example, [tqdm](https://github.com/tqdm/tqdm) for Python, [schollz/progressbar](https://github.com/schollz/progressbar) for Go, and [node-progress](https://github.com/visionmedia/node-progress) for Node.js.
+For example, tqdm for Python, schollz/progressbar for Go, and node-progress for Node.js.
 
 **Do stuff in parallel where you can, but be thoughtful about it.**
 It’s already difficult to report progress in the shell; doing it for parallel processes is ten times harder.
 Make sure it’s robust, and that the output isn’t confusingly interleaved.
 If you can use a library, do so—this is code you don’t want to write yourself.
-Libraries like [tqdm](https://github.com/tqdm/tqdm) for Python and [schollz/progressbar](https://github.com/schollz/progressbar) for Go support multiple progress bars natively.
+Libraries like tqdm for Python and schollz/progressbar for Go support multiple progress bars natively.
 
 The upside is that it can be a huge usability gain.
 For example, `docker pull`’s multiple progress bars offer crucial insight into what’s going on.
@@ -35,14 +32,14 @@ For example, `docker pull`’s multiple progress bars offer crucial insight into
 $ docker image pull ruby
 Using default tag: latest
 latest: Pulling from library/ruby
-6c33745f49b4: Pull complete 
+6c33745f49b4: Pull complete
 ef072fc32a84: Extracting [================================================>  ]  7.569MB/7.812MB
-c0afb8e68e0b: Download complete 
-d599c07d28e6: Download complete 
+c0afb8e68e0b: Download complete
+d599c07d28e6: Download complete
 f2ecc74db11a: Downloading [=======================>                           ]  89.11MB/192.3MB
-3568445c8bf2: Download complete 
+3568445c8bf2: Download complete
 b0efebc74f25: Downloading [===========================================>       ]  19.88MB/22.88MB
-9cb1ba6838a0: Download complete 
+9cb1ba6838a0: Download complete
 ```
 
 One thing to be aware of: hiding logs behind progress bars when things go _well_ makes it much easier for the user to understand what’s going on, but if there is an error, make sure you print out the logs.
@@ -59,22 +56,20 @@ This is the next step up from idempotence.
 If you can avoid needing to do any cleanup after operations, or you can defer that cleanup to the next run, your program can exit immediately on failure or interruption.
 This makes it both more robust and more responsive.
 
-_Citation: [Crash-only software: More than meets the eye](https://lwn.net/Articles/191059/)._
-
 **People are going to misuse your program.**
 Be prepared for that.
 They will wrap it in scripts, use it on bad internet connections, run many instances of it at once, and use it in environments you haven’t tested in, with quirks you didn’t anticipate.
 (Did you know macOS filesystems are case-insensitive but also case-preserving?)
 
-### Future-proofing {#future-proofing}
+### Future-proofing
 
 In software of any kind, it’s crucial that interfaces don’t change without a lengthy and well-documented deprecation process.
 Subcommands, arguments, flags, configuration files, environment variables: these are all interfaces, and you’re committing to keeping them working.
-([Semantic versioning](https://semver.org/) can only excuse so much change; if you’re putting out a major version bump every month, it’s meaningless.)
+(Semantic versioning can only excuse so much change; if you’re putting out a major version bump every month, it’s meaningless.)
 
 **Keep changes additive where you can.**
 Rather than modify the behavior of a flag in a backwards-incompatible way, maybe you can add a new flag—as long as it doesn’t bloat the interface too much.
-(See also: [Prefer flags to args](#arguments-and-flags).)
+(See also: Prefer flags to args.)
 
 **Warn before you make a non-additive change.**
 Eventually, you’ll find that you can’t avoid breaking an interface.
@@ -85,7 +80,7 @@ If possible, you should detect when they’ve changed their usage and not show t
 
 **Changing output for humans is usually OK.**
 The only way to make an interface easy to use is to iterate on it, and if the output is considered an interface, then you can’t iterate on it.
-Encourage your users to use `--plain` or `--json` in scripts to keep output stable (see [Output](#output)).
+Encourage your users to use `--plain` or `--json` in scripts to keep output stable (see Output).
 
 **Don’t have a catch-all subcommand.**
 If you have a subcommand that’s likely to be the most-used one, you might be tempted to let people omit it entirely for brevity’s sake.
@@ -113,7 +108,7 @@ Will your command still run the same as it does today, or will it stop working b
 The server most likely to not exist in 20 years is the one that you are maintaining right now.
 (But don’t build in a blocking call to Google Analytics either.)
 
-### Signals and control characters {#signals}
+### Signals and control characters
 
 **If a user hits Ctrl-C (the INT signal), exit as soon as possible.**
 Say something immediately, before you start clean-up.
@@ -131,5 +126,5 @@ $  docker-compose up
 ```
 
 Your program should expect to be started in a situation where clean-up has not been run.
-(See [Crash-only software: More than meets the eye](https://lwn.net/Articles/191059/).)
+(See Crash-only software: More than meets the eye.)
 
