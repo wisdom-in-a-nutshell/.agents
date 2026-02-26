@@ -2,40 +2,50 @@
 
 Use this skill whenever designing or reviewing a command-line client tool.
 
+## Primary Workflow (Agent-First)
+
+1. Read `09-agent-first-contract.md`.
+2. Apply `10-agent-must-should-checklist.md`.
+3. Validate with `11-agent-test-matrix-template.md`.
+4. Use section files `02` to `07` for deeper design choices.
+5. Use `08-quick-review-checklist.md` as extended coverage.
+
 ## Working Modes
 
 ### Mode A: Design a new CLI
 
-1. Read `08-quick-review-checklist.md`.
-2. Read the section files relevant to the command being designed.
-3. Produce a CLI contract before coding:
-   - command/subcommand map
-   - flags/args map
-   - help behavior
-   - stdout/stderr contract
-   - error contract
-   - interactivity rules
-   - config/env/secrets model
+1. Define the machine contract first (`09`).
+2. Choose required MUST items (`10`).
+3. Draft tests before implementation (`11`).
+4. Add human-mode polish from `02` and `03`.
 
 ### Mode B: Review an existing CLI
 
-1. Read `08-quick-review-checklist.md`.
-2. Open only section files related to detected gaps.
-3. Output a gap report:
-   - violated guideline
-   - concrete fix
-   - severity (`high`, `medium`, `low`)
+1. Run MUST checklist (`10`).
+2. Build a gap report with severity:
+   - `high`: breaks agent automation or reliability.
+   - `medium`: degrades operability or recoverability.
+   - `low`: polish/documentation gaps.
+3. Confirm with targeted tests (`11`).
 
 ## Which Reference File To Load
 
-- `01-philosophy.md`: design principles and tradeoff framing.
-- `02-basics-help-docs.md`: parser, exit codes, help, and documentation.
-- `03-output-errors.md`: output formats, stderr/stdout, and error UX.
-- `04-arguments-interactivity-subcommands.md`: flags, prompts, and subcommand patterns.
-- `05-robustness-future-signals.md`: responsiveness, recoverability, deprecation, Ctrl-C behavior.
-- `06-configuration-environment.md`: precedence, XDG, environment variable practices, secrets.
-- `07-naming-distribution-analytics.md`: naming, packaging, uninstall, analytics policy.
+- `01-philosophy.md`: principles and tradeoff framing.
+- `02-basics-help-docs.md`: parser, exit codes, help, docs.
+- `03-output-errors.md`: output modes, stderr/stdout, error UX.
+- `04-arguments-interactivity-subcommands.md`: flags, prompts, subcommands.
+- `05-robustness-future-signals.md`: responsiveness, recovery, deprecation, Ctrl-C.
+- `06-configuration-environment.md`: precedence, environment, secrets.
+- `07-naming-distribution-analytics.md`: naming, packaging, analytics.
+- `08-quick-review-checklist.md`: full CLIG-derived checklist.
+- `09-agent-first-contract.md`: required agent contract.
+- `10-agent-must-should-checklist.md`: agent-focused quality gate.
+- `11-agent-test-matrix-template.md`: validation template.
 
 ## Output Requirement
 
-Always end with a compliance checklist: `pass` / `fail` per key guideline group.
+Always end with:
+
+- MUST checklist status.
+- key SHOULD gaps.
+- concrete next implementation steps.
