@@ -2,7 +2,7 @@
 set -euo pipefail
 
 APP_NAME="${APP_NAME:-aipodcasting-app}"
-ENV_FILE="${ENV_FILE:-$HOME/GitHub/aipodcasting/.env.local}"
+ENV_FILE="${ENV_FILE:-$HOME/GitHub/aipodcasting/.env}"
 
 prompt() {
   local label="$1"
@@ -25,7 +25,7 @@ if [[ -z "$raw_show_name" ]]; then
   exit 1
 fi
 
-password_value="$(prompt 'Password (will be stored in Azure + .env.local)')"
+password_value="$(prompt 'Password (will be stored in Azure + .env)')"
 if [[ -z "$password_value" ]]; then
   echo "Password is required."
   exit 1

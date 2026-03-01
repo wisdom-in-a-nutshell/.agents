@@ -1,6 +1,6 @@
 ---
 name: show-password-setup
-description: Set up or rotate a show-specific password gate for AIPodcasting studio routes. Use when adding a new show or changing access for `/content/episodes/*?show=SHOW_NAME`, so `PASSWORD_SHOW_SHOWNAME` is set in Azure (aipodcasting-app) and local `.env.local`.
+description: Set up or rotate a show-specific password gate for AIPodcasting studio routes. Use when adding a new show or changing access for `/content/episodes/*?show=SHOW_NAME`, so `PASSWORD_SHOW_SHOWNAME` is set in Azure (aipodcasting-app) and local `.env`.
 ---
 
 # Show Password Setup
@@ -29,7 +29,7 @@ password protection flow used by the studios.
    - Var: `PASSWORD_SHOW_<SHOWNAME>`.
    - Use Azure CLI (`az webapp config appsettings set`).
 
-4. **Update local `.env.local`**
+4. **Update local `.env`**
    - Add/replace the same variable for local dev.
    - Keep secrets out of git.
 
@@ -48,7 +48,7 @@ The script will:
 - Prompt for show name + password.
 - Normalize the show name to the env var suffix.
 - Set the Azure App Service env var for `aipodcasting-app`.
-- Add/update the same var in `.env.local`.
+- Add/update the same var in `.env`.
 
 ## Resources (optional)
 
