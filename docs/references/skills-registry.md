@@ -2,6 +2,12 @@
 
 Canonical source of truth is [`skills/registry.json`](/Users/dobby/.agents/skills/registry.json).
 
+## System Overview Diagram
+
+![Skills system overview](./skills-system-overview.svg)
+
+Source diagram: [`docs/references/skills-system-overview.mmd`](./skills-system-overview.mmd)
+
 ## What Each Field Means
 
 - `managed_skills`: skills that are centrally managed and linked into global/runtime or repos.
