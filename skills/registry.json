@@ -193,6 +193,22 @@
       ],
       "source_path": "skills-source/owned/azure-webapp-config",
       "upstream_ref": "-"
+    },
+    {
+      "skill": "skill-creator",
+      "origin": "external",
+      "scope": "global",
+      "repos": [],
+      "source_path": "skills-source/external/skill-creator",
+      "upstream_ref": "openai/codex:codex-rs/skills/src/assets/samples/skill-creator@main"
+    },
+    {
+      "skill": "skill-installer",
+      "origin": "external",
+      "scope": "global",
+      "repos": [],
+      "source_path": "skills-source/external/skill-installer",
+      "upstream_ref": "openai/codex:codex-rs/skills/src/assets/samples/skill-installer@main"
     }
   ],
   "unmanaged_repo_local_skills": [
