@@ -1,4 +1,4 @@
 interface:
   display_name: "Skill Router"
-  short_description: "Route and place skills as owned, external, or repo-local."
-  default_prompt: "Decide the correct skill placement, apply the registry changes, and run sync/check."
+  short_description: "Route skill placement in .agents: owned, external, or repo-local."
+  default_prompt: "Apply .agents AGENTS.md policy, choose placement, update registry/source paths, and run sync/check when registry changes."

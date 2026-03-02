@@ -1,11 +1,17 @@
 ---
 name: skill-router
-description: Route skill work to the right destination and workflow: create new skills, classify as owned/external/repo-local, promote repo-local skills to global managed skills, and keep skills/registry.json + symlinks in sync. Use when user asks where a skill should live, asks to move/promote a skill, or asks to combine skill-creator with repository placement rules.
+description: Route skill placement for the `~/.agents` control-plane repo. Use when deciding whether a skill should be `owned`, `external`, or `repo-local`; when creating a new skill with `skill-creator`; or when promoting/moving skills between repo-local and managed registry. Apply this repo's AGENTS.md policy, update `skills/registry.json`, and run sync/check.
 ---
 
 # Skill Router
 
-Use this skill to decide where a skill should live and execute the correct flow.
+Use this skill to decide where a skill should live in the `.agents` system and execute the correct flow.
+
+## Scope
+
+- This skill is specific to the `~/.agents` repository.
+- Always apply policy from `~/.agents/AGENTS.md` first.
+- If current repo is not `~/.agents`, only decide placement and list exact changes; do not assume write access to `.agents` files.
 
 ## Decision Rules
 
@@ -23,7 +29,14 @@ Use this skill to decide where a skill should live and execute the correct flow.
 - Registry: `~/.agents/skills/registry.json`
 - Repo-local skill location: `<repo>/.agents/skills/<skill>`
 
-## Workflows
+## Standard Flow (When User Says "Create Skill")
+
+1. Clarify destination type: `owned`, `external`, or `repo-local`.
+2. If creating new managed skill, scaffold with `skill-creator` `init_skill.py`.
+3. Apply placement workflow below.
+4. If `skills/registry.json` changed, run sync/check in same change.
+
+## Placement Workflows
 
 ### A) Create New Owned Global Skill
 
@@ -78,3 +91,4 @@ cd ~/.agents
 - Edit canonical skill sources, not symlink destinations.
 - If `skills/registry.json` changes, run sync/check in the same change.
 - Keep distribution link-only.
+- Do not create additional mapping manifests; use `skills/registry.json` only.
