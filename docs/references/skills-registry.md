@@ -4,13 +4,19 @@ Canonical source of truth is [`skills/registry.json`](/Users/dobby/.agents/skill
 
 ## System Overview Diagram
 
+- `skills/registry.json` is the master list. Everything starts from this file.
+- `managed_skills` means the skill is centrally managed here.
+- `Canonical content` means the real skill files you edit, stored in `skills-source/...` (not the symlink locations).
+- `Global links` and `Repo links` are symlinks created from that real source content.
+- `unmanaged_repo_local_skills` is just a registry list for repo-local skills that stay in their own repos.
+
 ```mermaid
 flowchart LR
     R["skills/registry.json"]
     R --> M["managed_skills"]
     R --> U["unmanaged_repo_local_skills"]
 
-    M --> SRC["Canonical content in skills-source/{origin}/{skill}"]
+    M --> SRC["Real skill files in skills-source/{origin}/{skill}"]
     M --> G["Global links in ~/.agents/skills/{skill}"]
     M --> P["Repo links in ~/GitHub/{repo}/.agents/skills/{skill}"]
 
@@ -18,6 +24,11 @@ flowchart LR
 ```
 
 ### Sync and Check Flow
+
+- Use this flow after changing `skills/registry.json`.
+- `sync-skills-registry.sh --apply` does two things: regenerates registry artifacts and fixes symlinks.
+- `check-skills-registry.sh` verifies generated registry artifacts are up to date.
+- If check fails, run sync again and include the generated file changes.
 
 ```mermaid
 flowchart LR
@@ -35,6 +46,11 @@ flowchart LR
 
 ### External Skill Refresh Flow (Optional)
 
+- This is only for externally sourced skills with an `upstream_ref`.
+- It pulls the latest upstream version into `skills-source/external/...`.
+- It preserves local `agents/openai.yaml` during replacement.
+- After refresh, run sync/check so links and generated views stay consistent.
+
 ```mermaid
 flowchart LR
     A["Run ./scripts/refresh-external-skills.sh --apply"] --> B["Read external managed skills from registry"]
@@ -45,6 +61,10 @@ flowchart LR
 ```
 
 ### Automation Cadence
+
+- A launchd job runs from `~/GitHub/scripts/sync/git-auto-sync.sh`.
+- Every 15 minutes it runs sync to keep symlinks/artifacts current.
+- External refresh runs with a once-per-day gate.
 
 ```mermaid
 flowchart LR
@@ -58,7 +78,7 @@ flowchart LR
 - `unmanaged_repo_local_skills`: skills intentionally kept only inside specific repos.
 - `skill`: stable skill folder name.
 - `origin`: `external` (pulled/imported) or `owned` (authored by us).
-- `scope`: `global` (links into `~/.agents/skills`) or `repo` (links into `<repo>/.agents/skills`).
+- `scope`: `global` (links into `~/.agents/skills`) or `repo` (links into `{repo}/.agents/skills`).
 - `repos`: list of repo names for `repo` scope.
 - `source_path`: canonical folder path under `skills-source/...`.
 - `upstream_ref`: where an external skill came from (or `-` for owned).
