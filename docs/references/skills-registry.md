@@ -6,31 +6,51 @@ Canonical source of truth is [`skills/registry.json`](/Users/dobby/.agents/skill
 
 ```mermaid
 flowchart LR
-    R["skills/registry.json<br/>(single source of truth)"]
+    R["skills/registry.json"]
+    R --> M["managed_skills"]
+    R --> U["unmanaged_repo_local_skills"]
 
-    R --> SYNC["sync-skills-registry.sh --apply"]
-    SYNC --> GEN["Generate artifacts<br/>skills/registry.md<br/>skills/registry.base<br/>skills/registry-items/"]
-    SYNC --> LINKS["Create/update symlinks"]
+    M --> SRC["Canonical content in skills-source/{origin}/{skill}"]
+    M --> G["Global links in ~/.agents/skills/{skill}"]
+    M --> P["Repo links in ~/GitHub/{repo}/.agents/skills/{skill}"]
 
-    LINKS --> G["Global runtime links<br/>~/.agents/skills/<skill> -> skills-source/..."]
-    LINKS --> P["Repo runtime links<br/>~/GitHub/<repo>/.agents/skills/<skill> -> skills-source/..."]
-
-    R --> U["unmanaged_repo_local_skills<br/>(repo-local only list)"]
-
-    SYNC --> CHECK["check-skills-registry.sh"]
-    CHECK --> OK{"Artifacts in sync?"}
-    OK -->|Yes| READY["Ready to use"]
-    OK -->|No| FIX["Re-run sync and include generated files"]
-
-    R --> REF["refresh-external-skills.sh --apply (optional)"]
-    REF --> EXT["Pull external skill updates<br/>from upstream_ref"]
-    EXT --> PRES["Preserve agents/openai.yaml"]
-
-    AUTO["launchd: ~/GitHub/scripts/sync/git-auto-sync.sh"] --> A1["Every 15 min:<br/>sync-skills-registry.sh --apply"]
-    AUTO --> A2["Daily gate:<br/>refresh-external-skills.sh --apply"]
+    U --> LOCAL["Repo-local skills tracked in registry only"]
 ```
 
-Source diagram: [`docs/references/skills-system-overview.mmd`](./skills-system-overview.mmd)
+### Sync and Check Flow
+
+```mermaid
+flowchart LR
+    A["Edit skills/registry.json"] --> B["Run ./scripts/sync-skills-registry.sh --apply"]
+    B --> C["Update symlinks"]
+    B --> D["Regenerate registry views"]
+    D --> E["skills/registry.md"]
+    D --> F["skills/registry.base"]
+    D --> G["skills/registry-items/*"]
+    B --> H["Run ./scripts/check-skills-registry.sh"]
+    H --> I{"In sync?"}
+    I -->|Yes| J["Done"]
+    I -->|No| K["Re-run sync and include generated files"]
+```
+
+### External Skill Refresh Flow (Optional)
+
+```mermaid
+flowchart LR
+    A["Run ./scripts/refresh-external-skills.sh --apply"] --> B["Read external managed skills from registry"]
+    B --> C["Fetch upstream path from upstream_ref"]
+    C --> D["Replace local external skill folder"]
+    D --> E["Preserve agents/openai.yaml"]
+    E --> F["Run sync/check as needed"]
+```
+
+### Automation Cadence
+
+```mermaid
+flowchart LR
+    A["launchd job: ~/GitHub/scripts/sync/git-auto-sync.sh"] --> B["Every 15 min: sync-skills-registry.sh --apply"]
+    A --> C["Once/day gate: refresh-external-skills.sh --apply"]
+```
 
 ## What Each Field Means
 
