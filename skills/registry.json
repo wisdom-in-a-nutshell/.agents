@@ -195,6 +195,14 @@
       "upstream_ref": "-"
     },
     {
+      "skill": "skill-router",
+      "origin": "owned",
+      "scope": "global",
+      "repos": [],
+      "source_path": "skills-source/owned/skill-router",
+      "upstream_ref": "-"
+    },
+    {
       "skill": "skill-creator",
       "origin": "external",
       "scope": "global",

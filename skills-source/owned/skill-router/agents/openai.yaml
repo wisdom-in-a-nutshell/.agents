@@ -1,0 +1,4 @@
+interface:
+  display_name: "Skill Router"
+  short_description: "Route and place skills as owned, external, or repo-local."
+  default_prompt: "Decide the correct skill placement, apply the registry changes, and run sync/check."
