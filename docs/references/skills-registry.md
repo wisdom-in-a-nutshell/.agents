@@ -2,25 +2,43 @@
 
 Canonical source of truth is [`skills/registry.json`](/Users/dobby/.agents/skills/registry.json).
 
-## System Overview Diagram
+## Skill Entry Model
 
-- `skills/registry.json` is the master list. Everything starts from this file.
-- `managed_skills` means the skill is centrally managed here.
-- `Canonical content` means the real skill files you edit, stored in `skills-source/...` (not the symlink locations).
-- `Global links` and `Repo links` are symlinks created from that real source content.
-- `unmanaged_repo_local_skills` is just a registry list for repo-local skills that stay in their own repos.
+- `skills/registry.json` is the master list.
+- `managed_skills` entries are the ones this repo actively syncs.
+- `unmanaged_repo_local_skills` entries are only tracked for visibility; they are not synced by this repo.
+
+### Managed Skill Entry -> Source Folder and Links
+
+- One `managed_skills` entry decides:
+- where the real files live (`source_path`),
+- and which symlink targets are created (`scope` + `repos`).
+
+```mermaid
+flowchart TD
+    A["managed_skills entry"] --> B["origin: owned or external"]
+    A --> C["source_path: skills-source/.../<skill>"]
+    A --> D["scope: global or repo"]
+
+    B --> E["owned -> skills-source/owned/<skill>"]
+    B --> F["external -> skills-source/external/<skill>"]
+    C --> G["Real SKILL.md and files live here"]
+
+    D --> H{"scope"}
+    H -->|global| I["Create ~/.agents/skills/<skill> symlink -> source_path"]
+    H -->|repo| J["Create ~/GitHub/<repo>/.agents/skills/<skill> symlink -> source_path"]
+```
+
+### Unmanaged Repo-Local Entry
+
+- These entries document repo-local skills that remain in each repo.
+- Sync does not create global or cross-repo links for these entries.
 
 ```mermaid
 flowchart LR
-    R["skills/registry.json"]
-    R --> M["managed_skills"]
-    R --> U["unmanaged_repo_local_skills"]
-
-    M --> SRC["Real skill files in skills-source/{origin}/{skill}"]
-    M --> G["Global links in ~/.agents/skills/{skill}"]
-    M --> P["Repo links in ~/GitHub/{repo}/.agents/skills/{skill}"]
-
-    U --> LOCAL["Repo-local skills tracked in registry only"]
+    A["unmanaged_repo_local_skills entry"] --> B["Records {repo, skill}"]
+    B --> C["Reference only in this registry"]
+    C --> D["No managed symlink creation from this repo"]
 ```
 
 ### Sync and Check Flow
