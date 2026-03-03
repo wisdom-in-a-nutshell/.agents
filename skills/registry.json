@@ -217,6 +217,16 @@
       "repos": [],
       "source_path": "skills-source/external/skill-installer",
       "upstream_ref": "openai/codex:codex-rs/skills/src/assets/samples/skill-installer@main"
+    },
+    {
+      "skill": "ai-podcasting",
+      "origin": "owned",
+      "scope": "repo",
+      "repos": [
+        "aipodcasting"
+      ],
+      "source_path": "skills-source/owned/ai-podcasting",
+      "upstream_ref": "-"
     }
   ],
   "unmanaged_repo_local_skills": [

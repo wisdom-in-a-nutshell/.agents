@@ -35,6 +35,7 @@ Policy:
 | skill-router | owned | global | * | skills-source/owned/skill-router | - |
 | skill-creator | external | global | * | skills-source/external/skill-creator | openai/codex:codex-rs/skills/src/assets/samples/skill-creator@main |
 | skill-installer | external | global | * | skills-source/external/skill-installer | openai/codex:codex-rs/skills/src/assets/samples/skill-installer@main |
+| ai-podcasting | owned | repo | aipodcasting | skills-source/owned/ai-podcasting | - |
 
 ## Repo-Local Skills (Unmanaged)
 

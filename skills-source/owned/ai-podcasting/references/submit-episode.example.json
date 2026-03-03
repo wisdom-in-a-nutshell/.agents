@@ -1,0 +1,22 @@
+{
+  "show": "TCR",
+  "files": {
+    "main": {
+      "raw": "https://example.com/path/to/main-episode-file.mp4",
+      "descript": "",
+      "edited": ""
+    },
+    "intro": null,
+    "teaser": null,
+    "episode_outro": null
+  },
+  "showNotes": "Episode outline and links go here.",
+  "assetUrls": [],
+  "editorNotes": "Please remove long pauses and keep intro pacing tight.",
+  "title": "Draft working title",
+  "thumbnailText": "Draft thumbnail line",
+  "priority": "normal",
+  "scheduledDate": null,
+  "needsGuestReview": false,
+  "guests": []
+}

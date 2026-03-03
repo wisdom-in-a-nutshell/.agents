@@ -1,0 +1,10 @@
+{
+  "recordingLink": "https://example.com/path/to/intro-file.mp3",
+  "transcript": "Welcome back to The Cold Start Problem...",
+  "instructionsToEditor": "Use the first clean take and keep cuts aggressive.",
+  "title": "Final publish-ready episode title",
+  "thumbnailText": "Final thumbnail copy",
+  "videoThumbnailLink": "https://example.com/path/to/video-thumbnail-16x9.png",
+  "audioThumbnailLink": "https://example.com/path/to/audio-thumbnail-1x1.png",
+  "outroMusicLink": "https://example.com/path/to/outro-music.mp3"
+}
