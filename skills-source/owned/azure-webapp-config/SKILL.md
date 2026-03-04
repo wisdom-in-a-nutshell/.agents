@@ -25,6 +25,10 @@ Use this shared skill for Azure Web App appsettings operations.
 4. Re-run without `--dry-run` to apply.
 5. Optionally add `--restart` to force app restart after settings update.
 
+For secret-like settings, use Key Vault reference values:
+- `@Microsoft.KeyVault(SecretUri=https://<vault>.vault.azure.net/secrets/<secret-name>/)`
+- Do not write raw secret values directly into appsettings.
+
 ## Commands
 
 List available profiles:
@@ -42,6 +46,15 @@ python3 .agents/skills/azure-webapp-config/scripts/set_appsettings.py \
   --dry-run
 ```
 
+Apply Key Vault reference via profile:
+
+```bash
+python3 .agents/skills/azure-webapp-config/scripts/set_appsettings.py \
+  --profile win-backend \
+  --set \"EXAMPLE_SECRET=@Microsoft.KeyVault(SecretUri=https://kv-shared-repos.vault.azure.net/secrets/win--example-secret/)\" \
+  --dry-run
+```
+
 Apply settings via explicit app target:
 
 ```bash
@@ -56,3 +69,4 @@ python3 .agents/skills/azure-webapp-config/scripts/set_appsettings.py \
 - This skill only manages Azure appsettings.
 - Repo-specific post-steps (for example rebuilding Modal secrets) should remain in repo-local wrapper skills.
 - Keep secrets out of git-tracked files.
+- `--env-file` is powerful; avoid feeding `.env` blindly to production apps.
