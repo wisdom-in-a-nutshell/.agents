@@ -36,6 +36,7 @@ Policy:
 | skill-creator | external | global | * | skills-source/external/skill-creator | openai/codex:codex-rs/skills/src/assets/samples/skill-creator@main |
 | skill-installer | external | global | * | skills-source/external/skill-installer | openai/codex:codex-rs/skills/src/assets/samples/skill-installer@main |
 | ai-podcasting | owned | repo | aipodcasting | skills-source/owned/ai-podcasting | - |
+| codex-app-server | owned | repo | codexclaw | skills-source/owned/codex-app-server | - |
 
 ## Repo-Local Skills (Unmanaged)
 
@@ -47,7 +48,6 @@ Policy:
 | aipodcasting-public-website | visual-audit-loop |
 | aipodcasting-public-website | workflow-visual-audit |
 | blog-personal | blog-posting |
-| codexclaw | codex-app-server |
 | codexclaw | ios-mobile-gateway-workflow |
 | modal_functions | modal-function-intake |
 | win | add-env-var |

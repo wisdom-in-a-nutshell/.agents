@@ -227,6 +227,16 @@
       ],
       "source_path": "skills-source/owned/ai-podcasting",
       "upstream_ref": "-"
+    },
+    {
+      "skill": "codex-app-server",
+      "origin": "owned",
+      "scope": "repo",
+      "repos": [
+        "codexclaw"
+      ],
+      "source_path": "skills-source/owned/codex-app-server",
+      "upstream_ref": "-"
     }
   ],
   "unmanaged_repo_local_skills": [
@@ -253,10 +263,6 @@
     {
       "repo": "blog-personal",
       "skill": "blog-posting"
-    },
-    {
-      "repo": "codexclaw",
-      "skill": "codex-app-server"
     },
     {
       "repo": "codexclaw",
