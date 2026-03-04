@@ -21,6 +21,8 @@ Consult these before implementing anything new:
 - App Server docs (protocol + API + event stream): `https://developers.openai.com/codex/app-server/`
 - CLI reference (how to launch transports): `https://developers.openai.com/codex/cli/reference/#codex-app-server`
 - Background / design rationale (conceptual): `https://openai.com/index/unlocking-the-codex-harness/`
+- Live upstream README (latest): `https://raw.githubusercontent.com/openai/codex/refs/heads/main/codex-rs/app-server/README.md`
+- Local snapshot reference: `references/openai-codex-app-server-README.snapshot.md`
 
 ## What The App Server Gives You (Mental Model)
 
@@ -116,3 +118,4 @@ When implementing or debugging, consult the official docs via the MCP server:
 - Codex App Server: protocol, lifecycle, methods, notifications, approval flow
 - Configuration: project-scoped `.codex/config.toml`, enabling/disabling features (including web search behavior)
 - MCP: adding tool servers safely and predictably
+- For protocol-level details, cross-check the local snapshot in `references/openai-codex-app-server-README.snapshot.md`
