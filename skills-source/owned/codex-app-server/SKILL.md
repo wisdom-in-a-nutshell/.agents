@@ -27,21 +27,21 @@ Use this file for quick orientation only. Detailed protocol and API behavior sho
 
 ## Primary References
 
-- Local snapshot (primary detail reference): `references/openai-codex-app-server-README.snapshot.md`
+- Local reference (primary detail source): `references/openai-codex-app-server-readme.md`
 - Live upstream README (latest source for snapshot): `https://raw.githubusercontent.com/openai/codex/refs/heads/main/codex-rs/app-server/README.md`
 - App Server docs: `https://developers.openai.com/codex/app-server/`
 - CLI reference: `https://developers.openai.com/codex/cli/reference/#codex-app-server`
 
 ## Reference Policy
 
-1. Treat `references/openai-codex-app-server-README.snapshot.md` as the primary source for detailed behavior.
+1. Treat `references/openai-codex-app-server-readme.md` as the primary source for detailed behavior.
 2. If the snapshot does not answer a question clearly, fetch official docs via MCP (`openaiDeveloperDocs`).
 3. If the snapshot and MCP docs disagree, prefer the latest official docs from MCP.
 
 ## Temporary Snapshot Automation
 
-- Skill-local refresh script (fetch/update only):
-  - `./scripts/refresh_snapshot.sh`
-- Machine scheduling is intentionally outside the skill script to keep responsibilities clean.
+- Snapshot refresh is maintained by control-plane scripts outside this skill.
+- Manual refresh script:
+  - `~/.agents/scripts/refresh-codex-app-server-snapshot.sh`
 - Repo-level launchd installer:
   - `~/.agents/scripts/install-codex-app-server-snapshot-launchd.sh`
