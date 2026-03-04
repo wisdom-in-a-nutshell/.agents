@@ -6,7 +6,7 @@ REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 SKILL_DIR="${REPO_ROOT}/skills-source/owned/codex-app-server"
 
 SOURCE_URL="${CODEX_APP_SERVER_README_URL:-https://raw.githubusercontent.com/openai/codex/refs/heads/main/codex-rs/app-server/README.md}"
-TARGET_FILE="${SKILL_DIR}/references/openai-codex-app-server-readme.md"
+TARGET_FILE="${SKILL_DIR}/references/openai-codex-app-server-readme-reference.md"
 
 tmp_file="$(mktemp "${TMPDIR:-/tmp}/codex-app-server-readme.XXXXXX")"
 cleanup() {
