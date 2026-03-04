@@ -3,7 +3,7 @@ set -euo pipefail
 
 LABEL="com.dobby.codex-app-server-snapshot-refresh"
 PLIST_PATH="${HOME}/Library/LaunchAgents/${LABEL}.plist"
-REFRESH_SCRIPT="${HOME}/.agents/scripts/refresh-codex-app-server-snapshot.sh"
+REFRESH_SCRIPT="${HOME}/.agents/scripts/refresh-codex-app-server-readme-reference.sh"
 
 START_HOUR="${START_HOUR:-6}"
 START_MINUTE="${START_MINUTE:-0}"

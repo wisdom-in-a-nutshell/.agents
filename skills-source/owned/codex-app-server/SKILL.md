@@ -42,6 +42,6 @@ Use this file for quick orientation only. Detailed protocol and API behavior sho
 
 - Snapshot refresh is maintained by control-plane scripts outside this skill.
 - Manual refresh script:
-  - `~/.agents/scripts/refresh-codex-app-server-snapshot.sh`
+  - `~/.agents/scripts/refresh-codex-app-server-readme-reference.sh`
 - Repo-level launchd installer:
   - `~/.agents/scripts/install-codex-app-server-snapshot-launchd.sh`
