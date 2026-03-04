@@ -48,8 +48,9 @@ Operating model:
 - Keep root `AGENTS.md` as a router; use nested `AGENTS.md` only where local boundary rules materially differ.
 - When editing or proposing `AGENTS.md`, follow `references/agents-md-best-practices.md` and include an AGENTS audit (`Keep / Move / Delete`).
 - When defining docs contracts, prefer:
-  - `docs/architecture/` as human-first and visual-first (Mermaid in Markdown + short helper text),
+  - `docs/architecture/` as quick human-overview and visual-first (Mermaid in Markdown + short helper text),
   - `docs/references/` as durable implementation facts, command snippets, and operational lookup material for agents.
+- Prefer plain-English wording over complex prose for architecture-facing docs so a solo human can scan and understand quickly.
 - Prioritize feedback loops that agents can run autonomously.
 - Avoid heavy process designed for large teams unless explicitly requested.
 - Recommend one docs contract across repos unless the user requests exceptions.
