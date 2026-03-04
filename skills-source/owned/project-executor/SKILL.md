@@ -51,6 +51,11 @@ Continue a project by reading its `tasks.md`, executing the next actions, and ke
      - A true blocker requires human judgment/input/credentials.
      - Repo safety risk requires explicit user decision.
    - Do not stop after a single completed task when additional actionable tasks remain.
+   - Unless interrupted or blocked, keep working through the project continuously until completion.
+10. **Closeout and archive decision**
+   - When all scoped tasks are complete, first provide a short, plain-language conclusion to the user (what was done, validation status, and any residual risks).
+   - Ask for explicit permission to archive.
+   - Only move the project to `docs/projects/archive/...` after the user approves.
 
 ## Output rules
 - Keep `tasks.md` current alongside code changes.
@@ -61,6 +66,7 @@ Continue a project by reading its `tasks.md`, executing the next actions, and ke
   - fresh Progress Log,
   - clear Next 3 Actions or explicit completion note.
 - Include concise evidence in summaries (file paths for major completed items and blockers).
+- If completion is reached, include a simple conclusion, ask for archive permission, and wait for user approval before archiving.
 
 ## Consistency rules
 - Preserve required local sections if repo guidance mandates them.
