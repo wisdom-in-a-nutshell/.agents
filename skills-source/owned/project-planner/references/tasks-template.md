@@ -53,7 +53,7 @@ TEMPLATE GUIDANCE (for generating agent):
 - [ ] 
 
 ## Validation / Test Plan
-<!-- Commands, expected results, manual checks, and milestone-specific verification notes. -->
+<!-- Commands, expected results, manual checks, and milestone-specific verification notes. Prefer repo-local check scripts first; otherwise use pre-commit as the baseline when configured, plus task-specific tests/build checks. -->
 - 
 
 ## Progress Log

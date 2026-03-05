@@ -38,6 +38,11 @@ Use one project tracker file as the durable source of truth for long-running wor
 6. **Execute**
    - Implement the next milestone or task batch directly.
    - Run validation from `Validation / Test Plan` or milestone-specific commands at logical checkpoints.
+   - Prefer repo-native validation entrypoints first:
+     - documented project check scripts from repo guidance,
+     - otherwise `pre-commit run --all-files` when the repo uses pre-commit,
+     - then task-specific tests, builds, or smoke checks required by the milestone.
+   - Do not guess ad-hoc formatter or linter commands when the repo already defines a validation path.
    - If validation fails, fix forward before marking the milestone or task complete.
 7. **Checkpoint after each meaningful batch**
    - Update milestone and task checkbox state.
@@ -53,6 +58,7 @@ Use one project tracker file as the durable source of truth for long-running wor
    - Do not stop after one completed task or one validation pass when another actionable task remains.
 9. **Closeout**
    - When scoped work is complete, provide a short conclusion with validation evidence and residual risks.
+   - Follow repo-local shipping policy for commit/push behavior. Do not add a generic manual commit/push step when repo automation already handles it.
    - Ask for explicit permission before moving `docs/projects/<project>/` to `docs/projects/archive/<project>/`.
 
 ## Tracker rules
@@ -61,6 +67,7 @@ Use one project tracker file as the durable source of truth for long-running wor
 - Keep durable execution state in the repo, not only in chat.
 - Use milestone-based execution with explicit acceptance criteria and validation.
 - Default to long uninterrupted execution, not one-task-at-a-time reporting.
+- Treat repo-local validation as authoritative; use `pre-commit` as the default baseline only when no stronger repo-local entrypoint is prescribed.
 - Preserve a clear resume point in `Next 3 Actions`.
 - Record non-obvious choices in `Decisions` so later agents do not reopen them.
 - Treat blockers as first-class: add them to `Open Questions / Blockers` immediately.
@@ -70,3 +77,4 @@ Use one project tracker file as the durable source of truth for long-running wor
 
 - Use `references/tasks-template.md` when creating or normalizing `tasks.md`.
 - The template defines the standard single-file long-horizon structure for goals, scope, milestones, validation, decisions, blockers, progress, and next actions.
+- Create `docs/projects/<project>/resources/` only when the project produces reusable artifacts that help execution or verification: research notes, snapshots, generated fixtures, helper scripts, evaluation outputs, or logs worth keeping. Do not create it by default.
