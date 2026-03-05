@@ -32,7 +32,7 @@ Additional `docs/` folders are allowed when useful (for example `docs/decisions`
 
 ### `docs/projects/<project>/tasks.md`
 - Purpose: active plan, progress, and resume point.
-- Maintain with `$project-planner` and execute with `$project-executor`.
+- Maintain and execute with `$project`.
 - Question answered: "What are we doing next?"
 
 ## Maintenance policy

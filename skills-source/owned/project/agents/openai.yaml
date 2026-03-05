@@ -1,0 +1,4 @@
+interface:
+  display_name: "Project"
+  short_description: "Create, resume, and maintain long-running project trackers."
+  default_prompt: "Create or resume docs/projects/<project>/tasks.md, execute the next milestone, validate progress, and keep the tracker current."

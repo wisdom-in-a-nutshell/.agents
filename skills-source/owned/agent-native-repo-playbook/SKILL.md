@@ -56,8 +56,7 @@ Operating model:
 - Prioritize feedback loops that agents can run autonomously.
 - Avoid heavy process designed for large teams unless explicitly requested.
 - Recommend one docs contract across repos unless the user requests exceptions.
-- Use `$project-planner` for creating/updating `docs/projects/<project>/tasks.md`.
-- Use `$project-executor` for execution against those tasks files.
+- Use `$project` for creating, resuming, replanning, and closing `docs/projects/<project>/tasks.md`.
 - If repo-local guidance conflicts with this playbook, prefer repo-local sources of truth (`AGENTS.md`, decision docs, and architecture docs).
 
 ## Resources

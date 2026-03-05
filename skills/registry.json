@@ -84,6 +84,14 @@
       "upstream_ref": "-"
     },
     {
+      "skill": "project",
+      "origin": "owned",
+      "scope": "global",
+      "repos": [],
+      "source_path": "skills-source/owned/project",
+      "upstream_ref": "-"
+    },
+    {
       "skill": "project-planner",
       "origin": "owned",
       "scope": "global",

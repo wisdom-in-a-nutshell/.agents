@@ -43,7 +43,9 @@ TEMPLATE GUIDANCE (for generating agent):
 - If project-critical ambiguity would stall progress later, ask targeted follow-up questions now and record the answers here.
 
 ## Decisions
+<!-- Record non-obvious choices and rationale so the next agent does not re-open them. -->
 - 
+
 ## Open Questions / Blockers
 <!-- Use "None." only when truly empty. -->
 - None.

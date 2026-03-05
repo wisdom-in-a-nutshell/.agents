@@ -95,7 +95,7 @@ This guide is based on the OpenAI harness-engineering model and adapted for a so
 ### Must-have
 - Human intent, agent execution as the default operating model.
 - `AGENTS.md` as map and `docs/` as system of record.
-- `docs/projects/<project>/tasks.md` workflow via `$project-planner` and `$project-executor`.
+- `docs/projects/<project>/tasks.md` workflow via `$project`.
 - Fast mechanical guardrails (pre-commit, lint/test/typecheck where applicable).
 - Direct-to-main automation loop with commit/pull-rebase/push on each agent turn.
 - Docs update discipline: behavior changes and docs changes ship together.

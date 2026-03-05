@@ -1,4 +1,4 @@
 interface:
-  display_name: "Project Planner"
-  short_description: "Create or refresh long-running project task plans."
-  default_prompt: "Create or update docs/projects/<project>/tasks.md with clear goals, constraints, actionable tasks, and next 3 actions."
+  display_name: "Project Planner (Legacy)"
+  short_description: "Legacy alias for the unified project tracker workflow."
+  default_prompt: "Legacy flow: create or refresh docs/projects/<project>/tasks.md using the unified project template, then prefer the $project skill for continuation."

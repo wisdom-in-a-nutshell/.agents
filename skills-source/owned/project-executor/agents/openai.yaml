@@ -1,4 +1,4 @@
 interface:
-  display_name: "Project Executor"
-  short_description: "Resume project work from an existing tasks file."
-  default_prompt: "Continue this project from docs/projects/<project>/tasks.md, execute the next actions, and update progress and next steps."
+  display_name: "Project Executor (Legacy)"
+  short_description: "Legacy alias for the unified project tracker workflow."
+  default_prompt: "Legacy flow: resume docs/projects/<project>/tasks.md, but prefer the $project skill for the unified create/resume/replan/close workflow."
