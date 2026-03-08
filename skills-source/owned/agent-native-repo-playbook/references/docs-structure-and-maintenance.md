@@ -30,6 +30,35 @@ Additional `docs/` folders are allowed when useful (for example `docs/decisions`
 - Include: contracts, schema snapshots, API notes, env var catalogs, integration constraints.
 - Question answered: "What exact facts do I need to implement this safely?"
 
+## Fast decision rule
+
+Use this quick test when deciding between the two:
+
+- `docs/architecture/` = how the system is supposed to work
+- `docs/references/` = exact facts needed to change or operate it safely
+
+In practice:
+
+- If the doc is mainly about understanding the shape of the system, put it in `docs/architecture/`.
+- If the doc is mainly about looking up exact behavior, contracts, limits, fields, or commands, put it in `docs/references/`.
+
+## Examples
+
+Put these in `docs/architecture/`:
+
+- request/data flow through the main parts of the system
+- service or module boundaries and dependency direction
+- background job, queue, or worker architecture
+- why the repo uses a specific cache, event, or storage boundary
+
+Put these in `docs/references/`:
+
+- field precedence rules for stored or generated data
+- environment variable catalog for an app or service
+- API field contract or DTO shape summary
+- cache invalidation rules and dependency signatures
+- third-party integration constraints, limits, or command snippets
+
 ### `docs/projects/<project>/tasks.md`
 - Purpose: active plan, progress, and resume point.
 - Maintain and execute with `$project`.

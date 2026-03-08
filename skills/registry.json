@@ -68,6 +68,14 @@
       "upstream_ref": "-"
     },
     {
+      "skill": "architecture-docs",
+      "origin": "owned",
+      "scope": "global",
+      "repos": [],
+      "source_path": "skills-source/owned/architecture-docs",
+      "upstream_ref": "-"
+    },
+    {
       "skill": "client-interface-guidelines",
       "origin": "owned",
       "scope": "global",

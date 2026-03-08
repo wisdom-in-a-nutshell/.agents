@@ -1,0 +1,4 @@
+interface:
+  display_name: "Architecture Docs"
+  short_description: "Write visual-first architecture docs."
+  default_prompt: "Use $architecture-docs to document this system for humans with a short plain-English overview and a simple Mermaid flowchart TD diagram."

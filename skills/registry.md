@@ -20,6 +20,7 @@ Policy:
 | obsidian-cli | external | global | * | skills-source/external/obsidian-cli | kepano/obsidian-skills:skills/obsidian-cli@main |
 | obsidian-markdown | external | global | * | skills-source/external/obsidian-markdown | kepano/obsidian-skills:skills/obsidian-markdown@main |
 | agent-native-repo-playbook | owned | global | * | skills-source/owned/agent-native-repo-playbook | - |
+| architecture-docs | owned | global | * | skills-source/owned/architecture-docs | - |
 | client-interface-guidelines | owned | global | * | skills-source/owned/client-interface-guidelines | - |
 | project-executor | owned | global | * | skills-source/owned/project-executor | - |
 | project | owned | global | * | skills-source/owned/project | - |
