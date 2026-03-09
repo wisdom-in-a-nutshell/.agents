@@ -1,16 +1,16 @@
 # Prompt Layering
 
-Use this reference when deciding whether behavior belongs in `model_instructions_file`, workspace `AGENTS.md`, `USER.md`, or memory files.
+Use this reference when deciding whether behavior belongs in `model_instructions_file`, `AGENTS.md`, local data files, or later turn context.
 
-## Core Codex Loop Implication
+## Core Split
 
-The Codex agent-loop model separates:
+The Codex loop separates:
 
 - base `instructions`
 - `tools`
-- later `input` items such as project instructions and user context
+- later `input` items such as project guidance, environment context, user messages, and appended tool outputs
 
-For workspace design, this means `model_instructions_file` and `AGENTS.md` are different layers with different jobs.
+This is why `model_instructions_file` and `AGENTS.md` are not interchangeable.
 
 ## Practical Layer Split
 
@@ -22,64 +22,45 @@ Use for the base assistant contract:
 - what it optimizes for
 - privacy and external-action policy
 - default proactivity style
-- whether coding is the default mode or just one capability
+- whether coding is the default mode or one capability among many
 
 This is the right place when the product intentionally wants behavior different from stock Codex.
 
-### 2. Workspace `AGENTS.md`
+### 2. `AGENTS.md`
 
-Use for local boot behavior:
+Use for path-local boot behavior:
 
-- what files to read first
-- how the workspace is organized
-- where current context lives
-- when to read deeper mode-specific files
+- what to read first in this repository or folder
+- local working agreements
+- path-based overrides
+- durable local rules that should load later in the prompt chain
 
-Do not use this as a second competing "soul" file if `model_instructions_file` already defines the assistant identity.
+Do not use `AGENTS.md` as a second competing base identity layer if the base prompt already defines the assistant role.
 
-### 3. `USER.md`
+### 3. Local human/context files
 
-Use for stable facts about the human:
+Use separate files when they are data rather than instructions:
 
-- preferences
-- communication style
-- operating context
-- durable facts that should not be phrased as assistant behavior
-
-### 4. Memory files
-
-Use for changing context:
-
-- active priorities
-- recent events
+- user facts
+- profile/context notes
 - durable memory
-- archives
+- current working context
 
-Memory should evolve. Identity should not churn every day.
-
-## Design Defaults For `codexclaw-workspaces`
-
-- If the goal is a personal executive-assistant/buddy, a custom `model_instructions_file` is the long-term canonical identity layer.
-- A workspace root `AGENTS.md` is still useful for startup routing, but should stay small once the base prompt exists.
-- `SOUL.md` and `IDENTITY.md` should not remain permanent always-load competitors with the base prompt.
-- If needed, merge their durable assistant-identity content into `model_instructions_file`.
+These files can be referenced by local guidance, but they should not all try to redefine the assistant persona.
 
 ## Decision Rule
 
 Ask one question:
 
-"Is this defining the assistant, the human, or the current context?"
+"Is this base identity, path-local guidance, or mutable context?"
 
-- Assistant -> `model_instructions_file`
-- Human -> `USER.md`
-- Current context -> memory
-- Workspace loading/routing -> `AGENTS.md`
+- base identity -> `model_instructions_file`
+- path-local guidance -> `AGENTS.md`
+- mutable context -> local data/memory files
 
-## When To Reintroduce Local Overrides
+## Design Defaults
 
-Use nested `AGENTS.md` only when a folder represents a real mode boundary, for example:
-
-- `coaching/`
-- a future mode with meaningfully different startup context
-
-If the difference is not local and durable, do not add another instruction file.
+- Prefer one canonical assistant-identity source.
+- Keep changing context out of the base prompt.
+- Use local overrides only when they are truly local and durable.
+- Avoid overlapping always-load files that restate the same assistant role in different words.

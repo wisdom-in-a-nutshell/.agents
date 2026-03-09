@@ -1,4 +1,4 @@
 interface:
   display_name: "Codex Agent Loop"
-  short_description: "Codex loop guidance for workspaces"
-  default_prompt: "Use this skill when designing or updating codexclaw-workspaces prompt loading, including model_instructions_file, AGENTS.md, USER.md, memory files, and Codex agent-loop-informed assistant boot behavior."
+  short_description: "How Codex prompt layering and loops work"
+  default_prompt: "Use $codex-agent-loop to understand how Codex builds prompts, loops over tools, and where model_instructions_file, AGENTS.md, and App Server primitives fit."

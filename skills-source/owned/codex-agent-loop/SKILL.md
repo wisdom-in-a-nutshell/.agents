@@ -1,47 +1,44 @@
 ---
 name: codex-agent-loop
-description: Capture and apply Codex agent-loop mental models inside `codexclaw-workspaces`, especially when deciding what belongs in `model_instructions_file`, workspace `AGENTS.md`, `USER.md`, and memory files. Use when working on assistant identity, workspace boot behavior, prompt layering, or Codex-loop-informed personal-agent architecture for Adi or Angie profiles.
+description: Understand and apply how the Codex agent loop works, including prompt layering, `model_instructions_file`, `AGENTS.md`, tool iteration, prompt stability, and where App Server primitives fit. Use when designing Codex-native assistants, custom prompts, workspace boot flows, or runtime behavior across repositories and products.
 ---
 
 # Codex Agent Loop
 
-Use this skill when shaping how a Codex-backed personal assistant should boot inside `codexclaw-workspaces`. Keep the Codex/App Server runtime model intact, but design the workspace so the assistant feels like a long-lived personal helper rather than a generic coding agent.
+Use this skill when you need the durable mental model for how Codex actually runs: how prompts are assembled, how tool calls loop back into the next inference, how `model_instructions_file` differs from `AGENTS.md`, and how these ideas relate to App Server threads, turns, and items.
 
 ## Start Here
 
-1. Read `docs/projects/personal-agent-workspace-architecture/tasks.md`.
-2. Read the repository root `AGENTS.md`, then the relevant profile `AGENTS.md`.
-3. If working on a profile-specific question, read that profile's `USER.md` and only the memory files needed for the task.
-4. Read `references/prompt-layering.md` when the question is about `model_instructions_file`, `AGENTS.md`, or Codex agent-loop behavior.
-5. Read `references/unrolling-the-codex-agent-loop.md` for the article's detailed loop mechanics.
-6. Read `references/unrolling-the-codex-agent-loop-diagrams.md` when you need visual mental models or Mermaid reconstructions of the OpenAI article diagrams.
+1. Read `references/unrolling-the-codex-agent-loop.md` for the high-level loop mechanics.
+2. Read `references/openai-codex-prompt-loading.md` for official config and `AGENTS.md` behavior.
+3. Read `references/unrolling-the-codex-agent-loop-diagrams.md` when you need visual mental models or Mermaid reconstructions.
+4. If the task is specifically about App Server protocol or client integration, also use `$codex-app-server`.
 
 ## Working Model
 
-- Treat `model_instructions_file` as the base assistant identity layer when the product intentionally wants behavior different from stock Codex.
-- Treat workspace `AGENTS.md` as local boot and routing guidance, not the main identity layer once a custom base prompt exists.
-- Treat `USER.md` as stable facts about the human, not as assistant behavior.
-- Treat memory files as mutable context, not as identity.
-- Keep one canonical answer to "who am I?" and avoid overlapping always-load files that restate the same role in different words.
+- Treat `model_instructions_file` as the base assistant identity layer when behavior must differ from stock Codex.
+- Treat `AGENTS.md` as path-local guidance discovered later in the instruction chain.
+- Treat tool calls as part of the core loop, not as exceptional behavior.
+- Treat prompt stability as an engineering concern: stable early prompt content improves consistency and caching.
+- Keep exact protocol fields and config semantics in references, not in the main skill body.
 
 ## Design Defaults
 
-- Prefer one canonical assistant-identity source.
-- Keep base assistant behavior separate from changing user facts and changing memory.
-- Use nested `AGENTS.md` only for materially different local modes such as `coaching/`.
-- Keep this repo focused on durable private workspace data; runtime session state belongs elsewhere.
-- When a rule belongs to Codex/App Server runtime mechanics rather than workspace structure, document it in `codexclaw`, not here.
+- Separate base assistant identity from local workspace guidance.
+- Avoid overlapping always-load files that all redefine the same assistant role.
+- Prefer append-only context growth over rewriting the early prompt shape when possible.
+- Use local overrides only when they are durable and path-specific.
+- Reach for this skill for mental models; reach for exact docs or the App Server skill for implementation details.
 
-## Design Questions
+## Reference Policy
 
-- If the assistant still feels like a stock coding agent, revisit the custom `model_instructions_file`.
-- If `SOUL.md`, `IDENTITY.md`, and `AGENTS.md` overlap, consolidate.
-- If a behavior changes by mode, prefer a mode-local override over growing the global base prompt.
-- If a rule is about file loading order or workspace navigation, keep it close to the workspace layer.
+1. Treat `references/unrolling-the-codex-agent-loop.md` as the primary conceptual source.
+2. Treat `references/openai-codex-prompt-loading.md` as the primary source for official config and instruction-loading behavior.
+3. Use `references/unrolling-the-codex-agent-loop-diagrams.md` for visual reconstructions.
+4. When App Server protocol details matter, defer to `$codex-app-server` and official App Server docs.
 
 ## References
 
-- `references/prompt-layering.md`
 - `references/unrolling-the-codex-agent-loop.md`
+- `references/openai-codex-prompt-loading.md`
 - `references/unrolling-the-codex-agent-loop-diagrams.md`
-- `docs/projects/personal-agent-workspace-architecture/tasks.md`

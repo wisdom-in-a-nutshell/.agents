@@ -4,7 +4,7 @@ Source:
 
 - `https://openai.com/index/unrolling-the-codex-agent-loop/`
 
-Use this reference when working on the mental model behind Codex-backed assistants, especially when deciding how much behavior should live in a base prompt versus workspace-local guidance.
+Use this reference when working on the mental model behind Codex-backed assistants, especially when deciding how much behavior should live in a base prompt versus later local guidance.
 
 ## Why This Matters
 
@@ -16,7 +16,7 @@ The article explains the actual loop that Codex runs:
 - tool results are appended back into the conversation state
 - the loop repeats until the turn ends with an assistant message
 
-For `codexclaw-workspaces`, this matters because the assistant identity and workspace boot behavior sit on top of that loop rather than replacing it.
+This matters because assistant identity and local guidance sit on top of the loop rather than replacing it.
 
 ## Core Terms
 
@@ -89,7 +89,7 @@ The article explicitly calls out prompt caching. Stable early prompt content hel
 
 Changing tools, instructions, or other early prompt content mid-conversation can reduce caching efficiency and make behavior less predictable.
 
-### 5. Base identity and workspace routing are different jobs
+### 5. Base identity and local routing are different jobs
 
 Because `instructions` and workspace/project guidance enter at different layers, the clean split is:
 
@@ -106,7 +106,7 @@ Because `instructions` and workspace/project guidance enter at different layers,
 - Long histories eventually require compaction.
 - Compaction preserves a smaller but still useful representation of prior context.
 
-## What To Carry Into Workspace Design
+## What To Carry Into Product Design
 
 - Do not model the assistant as a single one-shot response generator.
 - Design boot behavior assuming a durable thread with multiple turns.

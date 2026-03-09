@@ -128,9 +128,9 @@ What it teaches:
 - the next user message starts a new turn
 - prior turn artifacts remain part of the ongoing thread state
 
-## Mapping Back To `codexclaw-workspaces`
+## Applying These Diagrams
 
 - Use the thread/turn model when reasoning about long-lived personal assistants.
 - Keep base assistant identity stable across turns.
-- Treat workspace memory as context appended around the loop, not as a replacement for the loop.
-- When boot behavior changes by mode, prefer a local routing layer over rewriting the whole base prompt.
+- Treat local memory and context as information appended around the loop, not as a replacement for the loop.
+- When boot behavior changes by mode or repository, prefer a local routing layer over rewriting the whole base prompt.
