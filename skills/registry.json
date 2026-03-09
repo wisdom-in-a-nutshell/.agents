@@ -253,6 +253,16 @@
       ],
       "source_path": "skills-source/owned/codex-app-server",
       "upstream_ref": "-"
+    },
+    {
+      "skill": "codex-agent-loop",
+      "origin": "owned",
+      "scope": "repo",
+      "repos": [
+        "codexclaw-workspaces"
+      ],
+      "source_path": "skills-source/owned/codex-agent-loop",
+      "upstream_ref": "-"
     }
   ],
   "unmanaged_repo_local_skills": [
@@ -283,10 +293,6 @@
     {
       "repo": "codexclaw",
       "skill": "ios-mobile-gateway-workflow"
-    },
-    {
-      "repo": "codexclaw-workspaces",
-      "skill": "codex-agent-loop"
     },
     {
       "repo": "modal_functions",

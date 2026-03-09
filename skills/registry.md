@@ -39,6 +39,7 @@ Policy:
 | skill-installer | external | global | * | skills-source/external/skill-installer | openai/codex:codex-rs/skills/src/assets/samples/skill-installer@main |
 | ai-podcasting | owned | repo | aipodcasting | skills-source/owned/ai-podcasting | - |
 | codex-app-server | owned | repo | codexclaw | skills-source/owned/codex-app-server | - |
+| codex-agent-loop | owned | repo | codexclaw-workspaces | skills-source/owned/codex-agent-loop | - |
 
 ## Repo-Local Skills (Unmanaged)
 
@@ -51,7 +52,6 @@ Policy:
 | aipodcasting-public-website | workflow-visual-audit |
 | blog-personal | blog-posting |
 | codexclaw | ios-mobile-gateway-workflow |
-| codexclaw-workspaces | codex-agent-loop |
 | modal_functions | modal-function-intake |
 | win | add-env-var |
 | win | channel-create |
