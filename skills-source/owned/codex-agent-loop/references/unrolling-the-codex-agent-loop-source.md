@@ -20,21 +20,15 @@ Mermaid draft:
 
 ```mermaid
 flowchart TD
-    U[User input]
-    P[Prompt]
-    M[Model]
-    D{Model output}
-    T[Tool call]
-    O[Tool output]
-    A[Assistant message]
+    U([User input])
+    M[Model inference]
+    A([Agent response])
+    T[Tool calls]
 
-    U --> P
-    P --> M
-    M --> D
-    D -->|calls tool| T
-    T --> O
-    O --> P
-    D -->|responds to user| A
+    U --> M
+    M --> A
+    M --> T
+    T --> M
 ```
 
 To start, the agent takes input from the user to include in the set of textual instructions it prepares for the model known as a prompt.
