@@ -286,7 +286,7 @@
     },
     {
       "repo": "codexclaw-workspaces",
-      "skill": "personal-agent-workspace"
+      "skill": "codex-agent-loop"
     },
     {
       "repo": "modal_functions",
