@@ -51,6 +51,7 @@ Policy:
 | aipodcasting-public-website | workflow-visual-audit |
 | blog-personal | blog-posting |
 | codexclaw | ios-mobile-gateway-workflow |
+| codexclaw-workspaces | personal-agent-workspace |
 | modal_functions | modal-function-intake |
 | win | add-env-var |
 | win | channel-create |

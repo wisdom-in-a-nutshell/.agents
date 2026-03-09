@@ -285,6 +285,10 @@
       "skill": "ios-mobile-gateway-workflow"
     },
     {
+      "repo": "codexclaw-workspaces",
+      "skill": "personal-agent-workspace"
+    },
+    {
       "repo": "modal_functions",
       "skill": "modal-function-intake"
     },
