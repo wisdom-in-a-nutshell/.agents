@@ -16,25 +16,6 @@ At the heart of every AI agent is something called “the agent loop.” A simpl
 
 ![Diagram titled “Agent loop” illustrating how an AI system processes a user request, calls tools, observes results, updates its plan, and returns outputs. Arrows connect steps such as user input, model reasoning, tool actions, and final response.](../assets/openai-unrolling-the-codex-agent-loop/agent-loop.svg)
 
-Mermaid draft:
-
-```mermaid
-flowchart TD
-    classDef pale fill:#edf7df,stroke:#6f9656,color:#111,stroke-width:1.5px;
-    classDef response fill:#a8d46d,stroke:#6f9656,color:#111,stroke-width:1.5px;
-    classDef infer fill:#dfeec8,stroke:#6e8ec7,color:#111,stroke-width:2px;
-
-    U([USER INPUT]):::pale
-    M[MODEL INFERENCE]:::infer
-    A([AGENT RESPONSE]):::response
-    T[TOOL CALLS]:::pale
-
-    U --> M
-    M --> A
-    M --> T
-    T --> M
-```
-
 To start, the agent takes input from the user to include in the set of textual instructions it prepares for the model known as a prompt.
 
 The next step is to query the model by sending it our instructions and asking it to generate a response, a process known as inference. During inference, the textual prompt is first translated into a sequence of input [tokens](https://platform.openai.com/docs/concepts#tokens)—integers that index into the model’s vocabulary. These tokens are then used to sample the model, producing a new sequence of output tokens.
