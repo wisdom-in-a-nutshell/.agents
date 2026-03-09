@@ -49,7 +49,7 @@ Operating model:
 - When editing or proposing `AGENTS.md`, follow `references/agents-md-best-practices.md` and include an AGENTS audit (`Keep / Move / Delete`).
 - When defining docs contracts, prefer:
   - `docs/architecture/` as quick human-overview and visual-first (Mermaid in Markdown + short helper text),
-  - `docs/references/` as durable implementation facts, command snippets, and operational lookup material for agents.
+  - `docs/references/` as durable implementation facts, command snippets, and operational lookup material for humans and agents.
 - Prefer plain-English wording over complex prose for architecture-facing docs so a solo human can scan and understand quickly.
 - Keep docs policy lightweight: use repo-local `docs/AGENTS.md` as the source of truth for that repo.
 - Do not introduce centralized policy layers or audit scripts unless the user explicitly asks.
