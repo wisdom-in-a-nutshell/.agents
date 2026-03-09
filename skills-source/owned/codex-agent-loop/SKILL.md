@@ -14,7 +14,6 @@ Use this skill when you need the durable mental model for how Codex actually run
 3. Read `references/conversation-growth-and-performance.md` for prompt growth, exact-prefix caching, statelessness, `previous_response_id`, ZDR, and compaction.
 4. Read `references/openai-codex-prompt-loading.md` for exact `model_instructions_file`, `AGENTS.md`, and project config semantics.
 5. Read `references/prompt-layering.md` when deciding what belongs in the base prompt versus local guidance or mutable context.
-6. Read `references/unrolling-the-codex-agent-loop-source.md` when you want the detailed local article capture with the original SVGs kept in sequence.
 
 ## Core Model
 
@@ -29,21 +28,19 @@ Use this skill when you need the durable mental model for how Codex actually run
 - Start with the conceptual reference before reading the lower-level details.
 - Keep the distinction between base `instructions`, later `input`, and appended tool outputs explicit.
 - Preserve the blog's mental model: a turn is not a single model call, and the loop does not end until the assistant emits a final message for that turn.
-- Use the source capture when you need fidelity or want to inspect the SVGs in the original progression.
+- Use the embedded SVGs in the references when you want the original diagrams in context.
 - Reach for exact docs when configuration behavior matters; reach for App Server docs separately when you need that server surface.
 
 ## Reference Policy
 
 1. Treat `references/unrolling-the-codex-agent-loop.md` as the main reusable explanation another agent should remember.
 2. Treat `references/building-the-initial-prompt.md` and `references/conversation-growth-and-performance.md` as the detailed mechanics that preserve most of the blog's substance.
-3. Treat `references/unrolling-the-codex-agent-loop-source.md` as the archival local capture of the blog content and SVG sequence.
-4. Treat `references/openai-codex-prompt-loading.md` as the exact supplement for official prompt-loading behavior.
+3. Treat `references/openai-codex-prompt-loading.md` as the exact supplement for official prompt-loading behavior.
 
 ## References
 
 - `references/building-the-initial-prompt.md`
 - `references/conversation-growth-and-performance.md`
-- `references/unrolling-the-codex-agent-loop-source.md`
 - `references/unrolling-the-codex-agent-loop.md`
 - `references/openai-codex-prompt-loading.md`
 - `references/prompt-layering.md`
