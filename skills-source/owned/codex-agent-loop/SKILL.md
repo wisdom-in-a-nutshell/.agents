@@ -13,6 +13,8 @@ Use this skill when shaping how a Codex-backed personal assistant should boot in
 2. Read the repository root `AGENTS.md`, then the relevant profile `AGENTS.md`.
 3. If working on a profile-specific question, read that profile's `USER.md` and only the memory files needed for the task.
 4. Read `references/prompt-layering.md` when the question is about `model_instructions_file`, `AGENTS.md`, or Codex agent-loop behavior.
+5. Read `references/unrolling-the-codex-agent-loop.md` for the article's detailed loop mechanics.
+6. Read `references/unrolling-the-codex-agent-loop-diagrams.md` when you need visual mental models or Mermaid reconstructions of the OpenAI article diagrams.
 
 ## Working Model
 
@@ -40,4 +42,6 @@ Use this skill when shaping how a Codex-backed personal assistant should boot in
 ## References
 
 - `references/prompt-layering.md`
+- `references/unrolling-the-codex-agent-loop.md`
+- `references/unrolling-the-codex-agent-loop-diagrams.md`
 - `docs/projects/personal-agent-workspace-architecture/tasks.md`
