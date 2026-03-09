@@ -22,9 +22,7 @@ Policy:
 | agent-native-repo-playbook | owned | global | * | skills-source/owned/agent-native-repo-playbook | - |
 | architecture-docs | owned | global | * | skills-source/owned/architecture-docs | - |
 | client-interface-guidelines | owned | global | * | skills-source/owned/client-interface-guidelines | - |
-| project-executor | owned | global | * | skills-source/owned/project-executor | - |
 | project | owned | global | * | skills-source/owned/project | - |
-| project-planner | owned | global | * | skills-source/owned/project-planner | - |
 | vercel-react-best-practices | external | repo | adithyan-ai-videos,aipodcasting,aipodcasting-landing-page,aipodcasting-public-website,blog-personal | skills-source/external/vercel-react-best-practices | vercel-labs/agent-skills:skills/react-best-practices@main |
 | web-design-guidelines | external | repo | adithyan-ai-videos,aipodcasting,aipodcasting-landing-page,aipodcasting-public-website,blog-personal | skills-source/external/web-design-guidelines | vercel-labs/agent-skills:skills/web-design-guidelines@main |
 | openai-docs | external | repo | codexclaw | skills-source/external/openai-docs | openai/skills:skills/.curated/openai-docs@main |

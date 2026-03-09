@@ -1,4 +1,0 @@
-interface:
-  display_name: "Project Executor (Legacy)"
-  short_description: "Legacy alias for the unified project tracker workflow."
-  default_prompt: "Legacy flow: resume docs/projects/<project>/tasks.md, but prefer the $project skill for the unified create/resume/replan/close workflow."
