@@ -5,40 +5,45 @@ description: Understand and apply how the Codex agent loop works, including prom
 
 # Codex Agent Loop
 
-Use this skill when you need the durable mental model for how Codex actually runs: how prompts are assembled, how tool calls loop back into the next inference, how `model_instructions_file` differs from `AGENTS.md`, and how these ideas relate to App Server threads, turns, and items.
+Use this skill when you need the durable mental model for how Codex actually runs: how the initial request is assembled, how inference and tool calls loop within a turn, how conversation state grows across turns, and where `model_instructions_file`, `AGENTS.md`, and local guidance enter.
 
-## Start Here
+## Read Order
 
-1. Read `references/unrolling-the-codex-agent-loop-source.md` for the high-fidelity article capture with local SVGs.
-2. Read `references/unrolling-the-codex-agent-loop.md` for the distilled loop mechanics.
-3. Read `references/openai-codex-prompt-loading.md` for official config and `AGENTS.md` behavior.
-4. If the task is specifically about App Server protocol or client integration, also use `$codex-app-server`.
+1. Read `references/unrolling-the-codex-agent-loop.md` for the end-to-end model of threads, turns, items, and tool iteration.
+2. Read `references/building-the-initial-prompt.md` for the first request, prompt item ordering, tool definitions, and SSE event flow.
+3. Read `references/conversation-growth-and-performance.md` for prompt growth, exact-prefix caching, statelessness, `previous_response_id`, ZDR, and compaction.
+4. Read `references/openai-codex-prompt-loading.md` for exact `model_instructions_file`, `AGENTS.md`, and project config semantics.
+5. Read `references/prompt-layering.md` when deciding what belongs in the base prompt versus local guidance or mutable context.
+6. Read `references/unrolling-the-codex-agent-loop-source.md` when you want the detailed local article capture with the original SVGs kept in sequence.
 
-## Working Model
+## Core Model
 
-- Treat `model_instructions_file` as the base assistant identity layer when behavior must differ from stock Codex.
-- Treat `AGENTS.md` as path-local guidance discovered later in the instruction chain.
-- Treat tool calls as part of the core loop, not as exceptional behavior.
-- Treat prompt stability as an engineering concern: stable early prompt content improves consistency and caching.
-- Keep exact protocol fields and config semantics in references, not in the main skill body.
+- A `thread` is the durable conversation container.
+- A `turn` begins with a new user request and may contain many inference and tool-call iterations before it ends.
+- The Responses API request surface is structured as `instructions`, `tools`, and `input`; the server derives the actual prompt shape from those parts.
+- Tool calls are part of the normal loop, and their outputs are appended back into later `input` items.
+- Stable early prompt content matters because it affects both behavior and prompt caching efficiency.
 
-## Design Defaults
+## Use This Skill Well
 
-- Separate base assistant identity from local workspace guidance.
-- Avoid overlapping always-load files that all redefine the same assistant role.
-- Prefer append-only context growth over rewriting the early prompt shape when possible.
-- Use local overrides only when they are durable and path-specific.
-- Reach for this skill for mental models; reach for exact docs or the App Server skill for implementation details.
+- Start with the conceptual reference before reading the lower-level details.
+- Keep the distinction between base `instructions`, later `input`, and appended tool outputs explicit.
+- Preserve the blog's mental model: a turn is not a single model call, and the loop does not end until the assistant emits a final message for that turn.
+- Use the source capture when you need fidelity or want to inspect the SVGs in the original progression.
+- Reach for exact docs when configuration behavior matters; reach for App Server docs separately when you need that server surface.
 
 ## Reference Policy
 
-1. Treat `references/unrolling-the-codex-agent-loop-source.md` as the primary source capture from the OpenAI blog.
-2. Treat `references/unrolling-the-codex-agent-loop.md` as the primary distilled conceptual summary.
-3. Treat `references/openai-codex-prompt-loading.md` as the primary source for official config and instruction-loading behavior.
-4. When App Server protocol details matter, defer to `$codex-app-server` and official App Server docs.
+1. Treat `references/unrolling-the-codex-agent-loop.md` as the main reusable explanation another agent should remember.
+2. Treat `references/building-the-initial-prompt.md` and `references/conversation-growth-and-performance.md` as the detailed mechanics that preserve most of the blog's substance.
+3. Treat `references/unrolling-the-codex-agent-loop-source.md` as the archival local capture of the blog content and SVG sequence.
+4. Treat `references/openai-codex-prompt-loading.md` as the exact supplement for official prompt-loading behavior.
 
 ## References
 
+- `references/building-the-initial-prompt.md`
+- `references/conversation-growth-and-performance.md`
 - `references/unrolling-the-codex-agent-loop-source.md`
 - `references/unrolling-the-codex-agent-loop.md`
 - `references/openai-codex-prompt-loading.md`
+- `references/prompt-layering.md`

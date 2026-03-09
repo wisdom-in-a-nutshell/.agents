@@ -4,6 +4,18 @@ Source: https://openai.com/index/unrolling-the-codex-agent-loop/
 Date: January 23, 2026
 By Michael Bolin, Member of the Technical Staff
 
+This file is the local high-fidelity article capture. Use it when you want the original progression of the post plus the SVGs inline in article order.
+
+## Contents
+
+- The agent loop
+- Model inference
+- Building the initial prompt
+- The first turn
+- Performance considerations
+- Coming next
+- Acknowledgments
+
 [Codex CLI](https://developers.openai.com/codex/cli) is our cross-platform local software agent, designed to produce high-quality, reliable software changes while operating safely and efficiently on your machine. We’ve learned a tremendous amount about how to build a world-class software agent [since we first launched the CLI in April](https://openai.com/index/introducing-o3-and-o4-mini/). To unpack those insights, this is the first post in an ongoing series where we’ll explore various aspects of how Codex works, as well as hard-earned lessons. (For an even more granular view on how the Codex CLI is built, check out our open source repository at [https://github.com/openai/codex](https://github.com/openai/codex). Many of the finer details of our design decisions are memorialized in GitHub issues and pull requests if you’d like to learn more.)
 
 To kick off, we’ll focus on the agent loop, which is the core logic in Codex CLI that is responsible for orchestrating the interaction between the user, the model, and the tools the model invokes to perform meaningful software work. We hope this post gives you a good view into the role our agent (or “harness”) plays in making use of an LLM.

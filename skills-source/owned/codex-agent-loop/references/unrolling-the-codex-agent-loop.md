@@ -1,115 +1,158 @@
-# Unrolling The Codex Agent Loop
+# How The Codex Agent Loop Works
 
-Source:
+Sources:
 
 - `https://openai.com/index/unrolling-the-codex-agent-loop/`
+- `references/openai-codex-prompt-loading.md`
 
-Use this reference when working on the mental model behind Codex-backed assistants, especially when deciding how much behavior should live in a base prompt versus later local guidance.
+## Contents
 
-## Why This Matters
+- What to remember
+- Core objects: thread, turn, items
+- The simplest loop
+- What happens inside a turn
+- How turns accumulate into a thread
+- What the harness is responsible for
+- Why builders care about prompt stability
 
-The article explains the actual loop that Codex runs:
+## What To Remember
 
-- user input is turned into prompt items
-- the model is sampled
-- the model either answers or requests a tool call
-- tool results are appended back into the conversation state
-- the loop repeats until the turn ends with an assistant message
+- Codex is a harness around model inference plus tool execution, not a single one-shot text completion.
+- A `thread` contains multiple `turn`s, and one turn may contain many model and tool iterations before it finishes.
+- The model is not handed one raw prompt string from the user. Codex sends structured `instructions`, `tools`, and `input`, and the Responses API derives the model-facing prompt from those pieces.
+- Tool calls are part of the normal loop. Their outputs are appended into later prompt items so the model can continue from new observations.
+- The loop ends only when the model emits an assistant message for that turn. The environment changes made by tools are often just as important as the final text.
 
-This matters because assistant identity and local guidance sit on top of the loop rather than replacing it.
+## Core Objects
 
-## Core Terms
+### `thread`
 
-### Thread
+- The durable conversation container.
+- Holds the running history across multiple user turns.
+- Accumulates earlier assistant messages, tool calls, tool outputs, and other items that future turns may need.
 
-- the durable conversation container
-- contains multiple turns
+### `turn`
 
-### Turn
+- One user-initiated unit of work inside a thread.
+- Starts when Codex adds the user's new message to the request.
+- May include many internal cycles of model inference, tool execution, and appended observations.
+- Ends when the model emits an assistant message instead of another tool call.
 
-- one unit of user-requested work
-- may contain many inference and tool-call iterations before completion
+### `items`
 
-### Prompt Items
+- The real building blocks of Codex conversation state.
+- Include messages, reasoning summaries, function calls, function-call outputs, environment context, skill/project guidance, and compaction artifacts.
+- Grow over time as the harness keeps appending new state instead of rebuilding the whole conversation from scratch.
 
-- the structured prompt is built from items with roles and types
-- later requests append more items rather than replacing the whole idea of the conversation
+## The Simplest Loop
 
-## Prompt Construction Takeaways
+![Diagram titled “Agent loop” illustrating how an AI system processes a user request, calls tools, observes results, updates its plan, and returns outputs. Arrows connect steps such as user input, model reasoning, tool actions, and final response.](../assets/openai-unrolling-the-codex-agent-loop/agent-loop.svg)
 
-The article describes three important payload areas:
+At the highest level, the loop is:
 
-- `instructions`
-- `tools`
-- `input`
+1. Take user input.
+2. Build a request for the model.
+3. Run inference.
+4. If the model asks for a tool, execute it and append the result.
+5. Run inference again with the expanded state.
+6. Stop only when the model emits an assistant message for the user.
 
-In Codex:
+Two details from the blog matter here:
 
-- `model_instructions_file` supplies the base `instructions` layer when set
-- otherwise built-in model instructions are used
-- `AGENTS.md` and related local guidance are aggregated later into user-side instruction content
+- The assistant's output is not only the final text. In software work, the real output may be the files changed on disk, commands run, or external side effects that happened through tools.
+- The loop is owned by the harness. The model proposes actions, but the client or harness executes tools, appends results, and decides when to call the model again.
 
-This is the key reason `model_instructions_file` and workspace `AGENTS.md` should not be treated as interchangeable.
+## What Happens Inside A Turn
 
-## Loop Mechanics
+Inside one turn, Codex does more than "send the user's text to the model."
 
-The first request starts with a prompt assembled from:
+First, it prepares a structured Responses API request:
 
-- server/base system instructions
-- client-supplied tools
-- client-supplied instructions
-- input items such as permissions guidance, developer instructions, project guidance, environment context, and the user message
+- `instructions`: the base instruction layer, either from `model_instructions_file` or the model's bundled base instructions
+- `tools`: the tool definitions available during this request
+- `input`: a list of prompt items, including sandbox and environment messages, local guidance, and finally the user's message
 
-The model then emits either:
+The model then produces streamed output. That output may include:
 
-- a final assistant message
-- or a tool request
+- visible assistant text for the UI
+- reasoning summaries
+- function calls that ask the harness to execute a tool
+- completion events that signal the current inference is done
 
-When the model emits a tool request:
+If the model emits a tool call, Codex:
 
-- the client executes the tool
-- the tool output is appended as new prompt items
-- the next model call sees the previous prompt as an exact prefix plus the new appended items
+1. executes the tool
+2. captures the tool output
+3. appends new items representing the model's call and the tool's result
+4. sends another Responses API request with the old prompt as an exact prefix plus the newly appended items
 
-## Important Design Implications
+That exact-prefix property is central to both correctness and performance. It means the next inference continues from the prior state rather than inventing a new prompt shape mid-turn.
 
-### 1. A turn is not one inference call
+## How Turns Accumulate Into A Thread
 
-A single user request can trigger many model/tool iterations.
+![Diagram titled “Multi-turn agent loop” showing how an AI agent iteratively takes user input, generates actions, consults tools, updates state, and returns results. Includes labeled steps, arrows, and example tool outputs illustrating the agent’s reasoning cycle.](../assets/openai-unrolling-the-codex-agent-loop/multi-turn-agent-loop.svg)
 
-### 2. Prompt growth is normal
+When a turn ends, Codex presents the assistant message to the user and waits. If the user replies, Codex starts a new turn in the same thread by appending:
 
-Conversation state grows across turns and within turns as tool outputs and assistant/user messages accumulate.
+- the assistant message from the prior turn
+- the user's new message
 
-### 3. Exact-prefix stability matters
+This is why the prompt keeps growing over time:
 
-The article explicitly calls out prompt caching. Stable early prompt content helps repeated calls stay efficient.
+- every turn inherits prior turns
+- every tool call inside a turn adds more items
+- every new observation becomes part of the future context unless the harness compacts it
 
-### 4. Configuration churn is expensive
+The important implication is that "conversation state" is not just chat text. It is the entire sequence of items that the Responses API needs to reconstruct the conversation, including tool-related items and sometimes opaque encrypted artifacts.
 
-Changing tools, instructions, or other early prompt content mid-conversation can reduce caching efficiency and make behavior less predictable.
+## What The Harness Is Responsible For
 
-### 5. Base identity and local routing are different jobs
+The blog makes the harness responsibilities explicit. Codex has to:
 
-Because `instructions` and workspace/project guidance enter at different layers, the clean split is:
+- choose and expose the tools available for the request
+- construct the `instructions`, `tools`, and `input` payload
+- stream and interpret Responses API events
+- execute tool calls safely
+- convert tool execution results back into `input` items
+- preserve prompt stability when possible
+- manage context-window pressure through compaction
 
-- base assistant identity -> `model_instructions_file`
-- local loading/routing -> workspace `AGENTS.md`
-- stable human facts -> `USER.md`
-- changing context -> memory files
+This is why "the agent" is not just the model. The harness is the operational layer that keeps the loop coherent.
 
-## Performance Notes From The Article
+## Where Prompt Layers Enter
 
-- Codex avoids `previous_response_id` for statelessness and Zero Data Retention compatibility.
-- Prompt caching depends on exact prefix matches.
-- Tool ordering and prompt stability matter.
-- Long histories eventually require compaction.
-- Compaction preserves a smaller but still useful representation of prior context.
+The exact mechanics live in the lower-level references, but the high-level split is:
 
-## What To Carry Into Product Design
+- `model_instructions_file` or bundled model prompt -> base `instructions`
+- tool inventory -> `tools`
+- project guidance, skills, environment context, user messages, appended tool outputs, and prior turn state -> `input`
 
-- Do not model the assistant as a single one-shot response generator.
-- Design boot behavior assuming a durable thread with multiple turns.
-- Keep the assistant identity layer stable.
-- Keep changing user/workspace context outside the base prompt.
-- Avoid overlapping always-load files that all try to redefine the same assistant persona.
+That split is why changing the base prompt is not the same thing as editing `AGENTS.md`. They land in different parts of the request and have different weight and stability characteristics.
+
+## Why Builders Care About Prompt Stability
+
+The article keeps returning to one practical point: exact early prompt stability matters.
+
+Reasons:
+
+- prompt caching only helps on exact-prefix matches
+- changing early prompt content can make behavior less predictable
+- changing tool order or configuration can create expensive cache misses
+- conversation growth is unavoidable, so you want the stable prefix to stay as reusable as possible
+
+This leads to a durable engineering rule:
+
+- keep the early prompt shape steady
+- append new information later when possible
+- avoid gratuitous churn in tools, model choice, sandbox settings, or other early request fields
+
+## What Another Agent Should Carry Forward
+
+If you only remember a handful of things from this skill, remember these:
+
+- A turn is not one model call.
+- Tool calls are first-class parts of the loop.
+- The state is a growing list of items, not just plain chat messages.
+- Codex owns the harness responsibilities around the model.
+- Base instructions, local guidance, and mutable context are different layers.
+- Prompt stability and compaction are core runtime concerns, not optional refinements.
