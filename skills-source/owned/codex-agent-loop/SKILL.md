@@ -1,6 +1,6 @@
 ---
 name: codex-agent-loop
-description: Understand and apply how the Codex agent loop works, including prompt layering, `model_instructions_file`, `AGENTS.md`, tool iteration, prompt stability, and where App Server primitives fit. Use when designing Codex-native assistants, custom prompts, workspace boot flows, or runtime behavior across repositories and products.
+description: Understand and apply how the Codex agent loop works, including request assembly (`instructions`, `tools`, `input`), thread/turn/item mental models, tool iteration, prompt growth, caching, compaction, and where `model_instructions_file` and `AGENTS.md` enter. Use when designing Codex-native assistants, custom prompts, workspace boot flows, or explaining Codex runtime behavior.
 ---
 
 # Codex Agent Loop
@@ -12,8 +12,8 @@ Use this skill when you need the durable mental model for how Codex actually run
 1. Read `references/unrolling-the-codex-agent-loop.md` for the end-to-end model of threads, turns, items, and tool iteration.
 2. Read `references/building-the-initial-prompt.md` for the first request, prompt item ordering, tool definitions, and SSE event flow.
 3. Read `references/conversation-growth-and-performance.md` for prompt growth, exact-prefix caching, statelessness, `previous_response_id`, ZDR, and compaction.
-4. Read `references/openai-codex-prompt-loading.md` for exact `model_instructions_file`, `AGENTS.md`, and project config semantics.
-5. Read `references/prompt-layering.md` when deciding what belongs in the base prompt versus local guidance or mutable context.
+4. Read `references/openai-codex-prompt-loading.md` only when exact `model_instructions_file`, `AGENTS.md`, or project config semantics matter.
+5. Read `references/prompt-layering.md` only when deciding what belongs in the base prompt versus local guidance or mutable context.
 
 ## Core Model
 
@@ -26,10 +26,11 @@ Use this skill when you need the durable mental model for how Codex actually run
 ## Use This Skill Well
 
 - Start with the conceptual reference before reading the lower-level details.
+- If the question is narrow, load only the specific reference that answers it.
 - Keep the distinction between base `instructions`, later `input`, and appended tool outputs explicit.
 - Preserve the blog's mental model: a turn is not a single model call, and the loop does not end until the assistant emits a final message for that turn.
 - Use the embedded SVGs in the references when you want the original diagrams in context.
-- Reach for exact docs when configuration behavior matters; reach for App Server docs separately when you need that server surface.
+- Reach for exact docs when configuration behavior matters.
 
 ## Reference Policy
 
