@@ -20,10 +20,14 @@ Mermaid draft:
 
 ```mermaid
 flowchart TD
-    U([User input])
-    M[Model inference]
-    A([Agent response])
-    T[Tool calls]
+    classDef pale fill:#edf7df,stroke:#6f9656,color:#111,stroke-width:1.5px;
+    classDef response fill:#a8d46d,stroke:#6f9656,color:#111,stroke-width:1.5px;
+    classDef infer fill:#dfeec8,stroke:#6e8ec7,color:#111,stroke-width:2px;
+
+    U([USER INPUT]):::pale
+    M[MODEL INFERENCE]:::infer
+    A([AGENT RESPONSE]):::response
+    T[TOOL CALLS]:::pale
 
     U --> M
     M --> A
