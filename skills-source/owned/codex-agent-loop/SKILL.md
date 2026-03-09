@@ -9,10 +9,11 @@ Use this skill when you need the durable mental model for how Codex actually run
 
 ## Start Here
 
-1. Read `references/unrolling-the-codex-agent-loop.md` for the high-level loop mechanics.
-2. Read `references/openai-codex-prompt-loading.md` for official config and `AGENTS.md` behavior.
-3. Read `references/unrolling-the-codex-agent-loop-diagrams.md` when you need visual mental models or Mermaid reconstructions.
-4. If the task is specifically about App Server protocol or client integration, also use `$codex-app-server`.
+1. Read `references/unrolling-the-codex-agent-loop-source.md` for the high-fidelity article capture with local SVGs.
+2. Read `references/unrolling-the-codex-agent-loop.md` for the distilled loop mechanics.
+3. Read `references/openai-codex-prompt-loading.md` for official config and `AGENTS.md` behavior.
+4. Read `references/unrolling-the-codex-agent-loop-diagrams.md` when you need visual mental models or Mermaid reconstructions.
+5. If the task is specifically about App Server protocol or client integration, also use `$codex-app-server`.
 
 ## Working Model
 
@@ -32,13 +33,15 @@ Use this skill when you need the durable mental model for how Codex actually run
 
 ## Reference Policy
 
-1. Treat `references/unrolling-the-codex-agent-loop.md` as the primary conceptual source.
-2. Treat `references/openai-codex-prompt-loading.md` as the primary source for official config and instruction-loading behavior.
-3. Use `references/unrolling-the-codex-agent-loop-diagrams.md` for visual reconstructions.
-4. When App Server protocol details matter, defer to `$codex-app-server` and official App Server docs.
+1. Treat `references/unrolling-the-codex-agent-loop-source.md` as the primary source capture from the OpenAI blog.
+2. Treat `references/unrolling-the-codex-agent-loop.md` as the primary distilled conceptual summary.
+3. Treat `references/openai-codex-prompt-loading.md` as the primary source for official config and instruction-loading behavior.
+4. Use `references/unrolling-the-codex-agent-loop-diagrams.md` for visual reconstructions.
+5. When App Server protocol details matter, defer to `$codex-app-server` and official App Server docs.
 
 ## References
 
+- `references/unrolling-the-codex-agent-loop-source.md`
 - `references/unrolling-the-codex-agent-loop.md`
 - `references/openai-codex-prompt-loading.md`
 - `references/unrolling-the-codex-agent-loop-diagrams.md`
