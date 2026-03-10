@@ -4,17 +4,47 @@ This repo is becoming the canonical personal control plane for Codex across both
 
 That split keeps Codex-specific policy, MCP presets, skills, docs, and managed scripts in one synced place without pretending that auth, sessions, logs, or runtime databases belong in git.
 
+## Figure 1: Ownership Layout
+
 ```mermaid
 flowchart TD
-    A[~/.agents<br/>canonical Codex control plane] --> B[~/GitHub/scripts<br/>bootstrap and apply entrypoints]
-    A --> C[Managed templates and scripts]
-    B --> D[~/.codex<br/>applied runtime home]
+    A[~/.agents<br/>canonical Codex control plane]
+    B[~/GitHub/scripts<br/>generic bootstrap + shared shell glue]
+    C[~/.codex<br/>runtime home]
+    D[Repo-local .codex<br/>project overrides]
+
+    A --> C
+    B --> C
     C --> D
-    B --> G[shared zshrc bootstrap]
-    G --> H[~/.agents/codex/shell/codex-shell.zsh]
-    D --> E[Codex CLI / App Server runtime]
-    F[Repo-local .codex/config.toml] --> E
+```
+
+## Figure 2: Apply Flow
+
+```mermaid
+flowchart TD
+    A[Edit ~/.agents] --> B[bootstrap-machine-codex.sh]
+    B --> C[sync-config.sh]
+    B --> D[sync-trusted-projects.sh]
+    B --> E[configure-ghostty-cwd.sh]
+    C --> F[~/.codex/config.toml]
+    C --> G[Xcode Codex config]
     D --> F
+    D --> G
+    E --> H[Ghostty config]
+```
+
+## Figure 3: Runtime Flow
+
+```mermaid
+flowchart TD
+    A[Ghostty / shell startup] --> B[zshrc.shared]
+    B --> C[codex-shell.zsh]
+    H[Ghostty initial-command] --> I[ghostty-codex-then-shell.sh]
+    I --> J[Codex CLI]
+    D[~/.codex/config.toml] --> J
+    E[Repo-local .codex/config.toml] --> J
+    J --> F[notify.py]
+    F --> G[git automation]
 ```
 
 ## Main Parts
@@ -85,3 +115,4 @@ These settings stay close to the repo because they describe how Codex should beh
 
 See [Codex Control Plane Ownership](/Users/dobby/.agents/docs/references/codex-control-plane-ownership.md) for the exact split.
 See [Codex Control Plane Operations](/Users/dobby/.agents/docs/references/codex-control-plane-operations.md) for exact commands, healthy-state checks, and common failure modes.
+See [Codex Control Plane Script Flows](/Users/dobby/.agents/docs/architecture/codex-control-plane-script-flows.md) for smaller diagrams showing what each main script group does.
