@@ -40,7 +40,7 @@ Codex setup is currently split across `~/.agents`, `~/.codex`, and `~/GitHub/scr
 - [x] Milestone 1 — Document the target control-plane design in `~/.agents`. Acceptance: architecture doc plus ownership reference exist and describe `.agents`, `~/.codex`, `~/GitHub/scripts`, and repo-local `.codex/`. Validate: review rendered Markdown and file paths.
 - [x] Milestone 2 — Add or move the first canonical Codex control-plane assets into `~/.agents`. Acceptance: managed scripts/config sources live in `~/.agents` and docs point to them. Validate: inspect file tree and changed references.
 - [x] Milestone 3 — Thin `~/GitHub/scripts` into bootstrap/apply entrypoints that call the `~/.agents` control plane. Acceptance: scripts still provide machine setup entrypoints, but Codex-specific source-of-truth is no longer duplicated there. Validate: dry-run relevant sync/apply commands where safe.
-- [ ] Milestone 4 — Reconcile `~/.codex` as applied runtime home. Acceptance: runtime-vs-canonical boundary is explicit, and any remaining ambiguous files are recorded with a keep/move/generate decision. Validate: compare `~/.codex` contents against the ownership reference.
+- [x] Milestone 4 — Reconcile `~/.codex` as applied runtime home. Acceptance: runtime-vs-canonical boundary is explicit, and any remaining ambiguous files are recorded with a keep/move/generate decision. Validate: compare `~/.codex` contents against the ownership reference.
 - [x] Milestone 5 — Finish Codex bootstrap centralization under `~/.agents`. Acceptance: Codex-specific machine bootstrap, trust sync, and Codex sudoers setup live under `~/.agents/codex/scripts`, and `~/GitHub/scripts` no longer owns Codex-specific wrappers. Validate: run dry-run/apply-safe commands from the new canonical paths and re-read docs.
 
 ## Execution Rules
@@ -53,12 +53,12 @@ Codex setup is currently split across `~/.agents`, `~/.codex`, and `~/GitHub/scr
 ## Decisions
 - `~/.agents` will become the canonical personal Codex control plane.
 - `~/.codex` remains the applied runtime home, not the canonical source for durable Codex policy.
+- `~/.codex` should no longer be git-tracked; it is runtime-only.
 - Repo-local `.codex/config.toml` remains the right place for project-specific MCP/tool behavior when needed.
 - `~/GitHub/scripts` should remain the bootstrap/apply shell, but not the long-term owner of Codex-specific policy and templates.
 - Codex-specific machine bootstrap, trusted-repo sync, and Codex sudoers setup now live under `~/.agents/codex/scripts`.
 
 ## Open Questions / Blockers
-- Decide later whether `~/.codex` should remain a git-tracked repo or become runtime-only after canonical assets are moved out.
 - Rotate the Cloudflare token that was previously stored in tracked `zshrc.shared`; it has been moved to a machine-local env file, but the old token value should still be treated as exposed.
 
 ## Tasks
@@ -73,7 +73,7 @@ Codex setup is currently split across `~/.agents`, `~/.codex`, and `~/GitHub/scr
 - [x] Add canonical trusted-repo sync automation under `~/.agents/codex/scripts`.
 - [x] Centralize remaining Codex-specific bootstrap helpers under `~/.agents/codex/scripts`.
 - [x] Remove Codex-specific wrappers from `~/GitHub/scripts` once the canonical `.agents` entrypoints exist.
-- [ ] Record final keep / move / generate decisions for `~/.codex`.
+- [x] Record final keep / move / generate decisions for `~/.codex`.
 - [ ] Finish the shell-side split and validate shared zshrc + Ghostty bootstrap through the new `~/.agents` Codex fragment.
 
 ## Validation / Test Plan
@@ -92,8 +92,10 @@ Codex setup is currently split across `~/.agents`, `~/.codex`, and `~/GitHub/scr
 - 2026-03-10: [IN-PROGRESS] Started the next migration batch to move remaining Codex-specific bootstrap into `~/.agents`, including trusted-repo sync, Codex machine bootstrap, and the Codex sudoers helper.
 - 2026-03-10: [IN-PROGRESS] Added `bootstrap-machine-codex.sh`, `sync-trusted-projects.sh`, and `install-sudoers-codex-ops.sh` under `~/.agents/codex/scripts`, deleted the old Codex-specific wrappers from `~/GitHub/scripts`, and updated bootstrap/docs to point at the canonical `.agents` entrypoints.
 - 2026-03-10: [IN-PROGRESS] Validated the new canonical bootstrap flow against temp config targets, then applied live trusted-project sync so exact repo roots like `/Users/dobby/GitHub/focus` are now trusted in both terminal Codex and Xcode Codex configs.
+- 2026-03-10: [IN-PROGRESS] Audited the remaining tracked contents of `~/.codex`, confirmed they were runtime state plus repo-only metadata, and decided that `~/.codex` should be runtime-only rather than git-tracked.
+- 2026-03-10: [IN-PROGRESS] Removed the `~/.codex` git repo layer and deleted repo-only files (`.git`, `.gitignore`, root/docs `AGENTS.md`, and nested `.codex/config.toml`), leaving `~/.codex` as runtime-only state plus live config.
 
 ## Next 3 Actions
-1. Reconcile `.codex` repo-specific files against the new control-plane ownership model.
-2. Decide whether `~/.codex` should remain a git-tracked repo or be reduced to runtime-only state plus generated config.
-3. Decide whether the old Codex App Server snapshot-refresh scripts should stay as archival tooling or be removed from the active control plane.
+1. Finish the shell-side validation for shared zshrc + Ghostty startup through the `.agents` Codex fragment.
+2. Decide whether the old Codex App Server snapshot-refresh scripts should stay as archival tooling or be removed from the active control plane.
+3. Decide whether any legacy backup artifacts under `~/.codex` should be pruned now that the repo layer is gone.

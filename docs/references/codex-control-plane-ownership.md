@@ -39,6 +39,7 @@ Use [Codex Control Plane](/Users/dobby/.agents/docs/architecture/codex-control-p
 - caches and temp files
 - live `config.toml`
 - runtime-installed skills and generated runtime artifacts
+- runtime migration markers and indexes such as `.personality_migration`, `session_index.jsonl`, and runtime SQLite files
 
 ### Generate or Sync Into `~/.codex`
 
@@ -58,9 +59,8 @@ Use [Codex Control Plane](/Users/dobby/.agents/docs/architecture/codex-control-p
 ### `~/.codex`
 
 - [config.toml](/Users/dobby/.codex/config.toml): live machine config; target is generated/applied, not hand-owned as the canonical source.
-- [.codex/config.toml](/Users/dobby/.codex/.codex/config.toml): project-scoped override for the `~/.codex` repo itself; reassess after migration depending on whether `~/.codex` remains git-tracked.
 - live `config.toml` now points at the canonical notify source in [notify.py](/Users/dobby/.agents/codex/scripts/notify.py).
-- [AGENTS.md](/Users/dobby/.codex/AGENTS.md) and [docs/AGENTS.md](/Users/dobby/.codex/docs/AGENTS.md): keep only if `~/.codex` remains a meaningful repo; otherwise they can move or disappear with the repo layer.
+- `~/.codex` is now runtime-only; repo-only files such as `.git`, `.gitignore`, nested `.codex/config.toml`, and repo-router docs can be removed.
 
 ### `~/GitHub/scripts`
 
@@ -88,6 +88,5 @@ Short term:
 
 Later:
 
-- decide whether `~/.codex` should keep its git repo role
 - remove remaining duplicated Codex policy from `~/GitHub/scripts`
 - reduce `~/.codex` to a cleaner applied runtime home

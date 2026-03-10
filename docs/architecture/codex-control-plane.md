@@ -50,6 +50,7 @@ Owns applied runtime state and generated live configuration:
 - any scripts that must exist at runtime because Codex points to them directly
 
 `~/.codex` is where Codex runs, not where the long-term design should live.
+It is now treated as runtime-only rather than as a git-tracked control-plane repo.
 
 ### Repo-local `.codex/`
 
@@ -66,7 +67,7 @@ These settings stay close to the repo because they describe how Codex should beh
 1. Canonical Codex policy and assets are edited in `~/.agents`.
 2. Generic machine bootstrap can call into that control plane when needed.
 3. Those commands apply managed outputs into `~/.codex`.
-4. Codex starts from `~/.codex/config.toml` and any trusted repo-local `.codex/config.toml`.
+4. Codex starts from `~/.codex/config.toml` and any trusted repo-local `.codex/config.toml` in real project repos.
 5. Repo-local overrides refine behavior for one project without changing the global control plane.
 
 ## Key Boundaries
@@ -78,7 +79,7 @@ These settings stay close to the repo because they describe how Codex should beh
 
 ## Notes
 
-- `~/.codex` can remain git-tracked temporarily during migration, but the target mental model should still treat it as an applied runtime home.
+- `~/.codex` should be treated as an applied runtime home, not as a tracked repo.
 - If a file must exist under `~/.codex` for Codex to call it directly, the preferred pattern is to keep the canonical source in `~/.agents` and sync or link it into place.
 - Deeper keep / move / generate decisions live in the ownership reference.
 
