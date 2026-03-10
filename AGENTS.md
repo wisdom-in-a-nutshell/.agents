@@ -1,16 +1,18 @@
 # .agents repo
 
-Personal agent-skill control plane.
+Personal agent and Codex control plane.
 
 ## Purpose
 
 - Keep global skill sources and runtime links reproducible across MacBook + MacMini.
+- Keep canonical personal Codex control-plane assets reproducible across MacBook + MacMini.
 - Track one canonical skill registry in git.
 - Keep repo-local skills in their repos unless explicitly promoted.
 
 ## Source of Truth
 
 - `skills/registry.json` is the only canonical registry.
+- `codex/` holds canonical personal Codex control-plane inputs.
 - Managed canonical skill content lives in:
   - `skills-source/external/<skill>/`
   - `skills-source/owned/<skill>/`
@@ -28,6 +30,8 @@ Personal agent-skill control plane.
 - Dry-run external upstream refresh: `./scripts/refresh-external-skills.sh`
 - Apply external upstream refresh: `./scripts/refresh-external-skills.sh --apply`
   - Refresh preserves local `agents/openai.yaml` inside external skill folders.
+- Dry-run Codex config apply: `./codex/scripts/sync-config.sh`
+- Apply Codex config: `./codex/scripts/sync-config.sh --apply`
 
 ## Automation Cadence
 

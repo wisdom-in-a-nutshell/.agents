@@ -1,0 +1,24 @@
+# Canonical portable baseline keys for:
+# ~/Library/Developer/Xcode/CodingAssistant/codex/config.toml
+#
+# Keep machine/session-specific MCP env values out of this file.
+
+cli_auth_credentials_store = "file"
+mcp_oauth_credentials_store = "file"
+model = "gpt-5.4"
+model_reasoning_effort = "high"
+approval_policy = "never"
+sandbox_mode = "danger-full-access"
+web_search = "live"
+personality = "pragmatic"
+service_tier = "fast"
+suppress_unstable_features_warning = true
+
+[sandbox_workspace_write]
+exclude_slash_tmp = false
+exclude_tmpdir_env_var = false
+network_access = true
+writable_roots = ["/Users/dobby/GitHub"]
+
+[mcp_servers.openaiDeveloperDocs]
+url = "https://developers.openai.com/mcp"
