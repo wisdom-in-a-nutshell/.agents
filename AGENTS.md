@@ -32,6 +32,10 @@ Personal agent and Codex control plane.
   - Refresh preserves local `agents/openai.yaml` inside external skill folders.
 - Dry-run Codex config apply: `./codex/scripts/sync-config.sh`
 - Apply Codex config: `./codex/scripts/sync-config.sh --apply`
+- Dry-run Codex trust sync: `./codex/scripts/sync-trusted-projects.sh`
+- Apply Codex trust sync: `./codex/scripts/sync-trusted-projects.sh --apply`
+- Dry-run Codex bootstrap batch: `./codex/scripts/bootstrap-machine-codex.sh`
+- Apply Codex bootstrap batch: `./codex/scripts/bootstrap-machine-codex.sh --apply`
 
 ## Automation Cadence
 

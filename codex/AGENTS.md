@@ -24,7 +24,10 @@ Canonical personal Codex control-plane assets live here.
 ## Current Scope
 
 - `scripts/sync-config.sh` is the canonical sync/apply entrypoint for machine Codex config.
+- `scripts/sync-trusted-projects.sh` is the canonical trusted-repo sync entrypoint for Codex.
+- `scripts/bootstrap-machine-codex.sh` is the canonical Codex-specific machine bootstrap batch.
 - `config/global.config.toml` and `config/xcode.config.toml` are the canonical managed baselines.
 - `scripts/notify.py` is the canonical notify automation source.
 - `scripts/configure-ghostty-cwd.sh` and `scripts/ghostty-codex-then-shell.sh` are the canonical Ghostty/Codex startup helpers.
+- `scripts/install-sudoers-codex-ops.sh` is the canonical sudoers installer for Codex machine-ops workflows.
 - `shell/codex-shell.zsh` is the Codex-specific shell fragment sourced by the shared `~/.zshrc`.

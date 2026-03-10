@@ -1,6 +1,6 @@
 # Codex Control Plane
 
-This repo is becoming the canonical personal control plane for Codex across both machines. The core idea is simple: keep the durable source of truth in `~/.agents`, keep the live runtime home in `~/.codex`, and keep `~/GitHub/scripts` as the thin bootstrap layer that applies the control plane onto a machine.
+This repo is becoming the canonical personal control plane for Codex across both machines. The core idea is simple: keep the durable source of truth in `~/.agents`, keep the live runtime home in `~/.codex`, and keep `~/GitHub/scripts` limited to generic machine bootstrap plus shared shell glue that is not Codex-owned.
 
 That split keeps Codex-specific policy, MCP presets, skills, docs, and managed scripts in one synced place without pretending that auth, sessions, logs, or runtime databases belong in git.
 
@@ -32,15 +32,13 @@ This is the repo a future agent should edit first when changing personal Codex b
 
 ### `~/GitHub/scripts`
 
-Owns machine bootstrap and orchestration entrypoints:
+Owns only generic machine bootstrap and shared shell glue that is broader than Codex:
 
-- install/apply wrappers
-- machine setup flows
-- thin delegation into the canonical Codex control plane
+- machine-wide setup flows
+- non-Codex launchd/install helpers
+- shared shell files that source Codex fragments from `~/.agents`
 
-This repo should remain useful for bootstrapping a fresh machine, but it should stop owning the detailed Codex policy and templates.
-
-It can still own generic shell bootstrap files when those files are not Codex-only. In that case, the generic shell file should source the Codex fragment from `~/.agents` rather than embedding Codex behavior directly.
+This repo should remain useful for bootstrapping a fresh machine, but it should stop owning Codex-specific wrappers, templates, and policy.
 
 ### `~/.codex`
 
@@ -66,7 +64,7 @@ These settings stay close to the repo because they describe how Codex should beh
 ## Main Flow
 
 1. Canonical Codex policy and assets are edited in `~/.agents`.
-2. `~/GitHub/scripts` provides machine-friendly commands that call into that control plane.
+2. Generic machine bootstrap can call into that control plane when needed.
 3. Those commands apply managed outputs into `~/.codex`.
 4. Codex starts from `~/.codex/config.toml` and any trusted repo-local `.codex/config.toml`.
 5. Repo-local overrides refine behavior for one project without changing the global control plane.
@@ -75,7 +73,7 @@ These settings stay close to the repo because they describe how Codex should beh
 
 - Canonical and sync-worthy belongs in `~/.agents`.
 - Applied runtime and volatile state belongs in `~/.codex`.
-- Fresh-machine bootstrap belongs in `~/GitHub/scripts`.
+- Generic machine bootstrap belongs in `~/GitHub/scripts`.
 - Repo-specific Codex behavior belongs in repo-local `.codex/`.
 
 ## Notes

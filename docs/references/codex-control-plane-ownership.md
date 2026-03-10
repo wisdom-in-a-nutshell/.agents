@@ -7,7 +7,7 @@ Use [Codex Control Plane](/Users/dobby/.agents/docs/architecture/codex-control-p
 ## Ownership Rules
 
 - `~/.agents` owns canonical, synced, durable Codex control-plane inputs.
-- `~/GitHub/scripts` owns machine bootstrap entrypoints that delegate into `~/.agents`.
+- `~/GitHub/scripts` owns generic machine bootstrap entrypoints and shared shell glue that are not Codex-owned.
 - `~/.codex` owns live runtime state and generated applied outputs.
 - Repo-local `.codex/` owns project-specific Codex overrides.
 
@@ -24,8 +24,7 @@ Use [Codex Control Plane](/Users/dobby/.agents/docs/architecture/codex-control-p
 ### Keep in `~/GitHub/scripts`
 
 - fresh-machine bootstrap entrypoints
-- generic setup flows that call the Codex control plane
-- thin wrappers that apply managed Codex state onto a machine
+- generic setup flows that may call the Codex control plane
 - generic shared shell files that source Codex fragments from `~/.agents`
 
 ### Keep in `~/.codex`
@@ -65,16 +64,18 @@ Use [Codex Control Plane](/Users/dobby/.agents/docs/architecture/codex-control-p
 
 ### `~/GitHub/scripts`
 
-- [setup/codex/AGENTS.md](/Users/dobby/GitHub/scripts/setup/codex/AGENTS.md): currently describes portable Codex bootstrap ownership; it will need to be updated once canonical ownership moves into `~/.agents`.
-- [setup/sync-codex-config.sh](/Users/dobby/GitHub/scripts/setup/sync-codex-config.sh): should remain an entrypoint, but may delegate to canonical sources in `~/.agents`.
-- [setup/bootstrap-machine.sh](/Users/dobby/GitHub/scripts/setup/bootstrap-machine.sh): should continue calling the apply flow after the ownership move.
+- [setup/bootstrap-machine.sh](/Users/dobby/GitHub/scripts/setup/bootstrap-machine.sh): generic machine bootstrap entrypoint that may invoke the Codex control plane.
+- [setup/codex/AGENTS.md](/Users/dobby/GitHub/scripts/setup/codex/AGENTS.md): now describes only the generic shared zshrc layer that remains here.
 - [setup/codex/zshrc.shared](/Users/dobby/GitHub/scripts/setup/codex/zshrc.shared): now acts as generic shared shell bootstrap and sources the Codex shell fragment from `~/.agents`.
 
 ### `~/.agents`
 
-- [AGENTS.md](/Users/dobby/.agents/AGENTS.md): likely needs a small update once `.agents` formally owns the Codex control plane.
+ - [AGENTS.md](/Users/dobby/.agents/AGENTS.md): machine-local guidance for this repo; now includes the canonical Codex control-plane commands.
 - [docs/architecture/codex-control-plane.md](/Users/dobby/.agents/docs/architecture/codex-control-plane.md): canonical high-level design.
 - [docs/projects/codex-control-plane/tasks.md](/Users/dobby/.agents/docs/projects/codex-control-plane/tasks.md): active project tracker for the migration.
+- [codex/scripts/bootstrap-machine-codex.sh](/Users/dobby/.agents/codex/scripts/bootstrap-machine-codex.sh): canonical Codex-specific machine bootstrap entrypoint.
+- [codex/scripts/sync-trusted-projects.sh](/Users/dobby/.agents/codex/scripts/sync-trusted-projects.sh): canonical trusted-repo sync for terminal + Xcode Codex configs.
+- [codex/scripts/install-sudoers-codex-ops.sh](/Users/dobby/.agents/codex/scripts/install-sudoers-codex-ops.sh): canonical Codex sudoers installer.
 
 ## Migration Intent
 
@@ -82,7 +83,7 @@ Short term:
 
 - add the canonical Codex control-plane folder under `~/.agents`
 - move the first durable Codex-managed assets there
-- rewire `~/GitHub/scripts` to delegate
+- move remaining Codex-specific setup wrappers and helpers out of `~/GitHub/scripts`
 - keep only generic shared shell bootstrap in `~/GitHub/scripts/setup/codex/` and source Codex-specific shell behavior from `~/.agents`
 
 Later:
