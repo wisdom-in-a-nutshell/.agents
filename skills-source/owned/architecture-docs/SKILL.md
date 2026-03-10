@@ -1,6 +1,6 @@
 ---
 name: architecture-docs
-description: Write or refactor high-level architecture documentation for humans. Use when Codex needs to explain how a system works, how major parts connect, how data or requests flow through the system, or how boundaries and responsibilities are divided. Prefer this skill for `docs/architecture/*`, visual-first system overviews, Mermaid diagrams, architecture indexes, and repo docs work where the user wants something easy to scan and understand quickly.
+description: Write or refactor high-level architecture documentation for humans. Use when Codex needs to explain how a system works, how major parts connect, how data or requests flow through the system, or how boundaries and responsibilities are divided. Prefer this skill for `docs/architecture/*`, visual-first system overviews, Mermaid diagrams, and repo docs work where the user wants something easy to scan and understand quickly.
 ---
 
 # Architecture Docs
@@ -29,7 +29,7 @@ Keep architecture docs visual-first and simple.
 ## Workflow
 
 1. Read the repo-local docs contract first.
-   In particular: root `AGENTS.md`, `docs/AGENTS.md`, and any existing `docs/architecture/*` index docs.
+   In particular: root `AGENTS.md`, `docs/AGENTS.md`, and the relevant existing `docs/architecture/*` pages.
 
 2. Decide whether the requested doc is really architecture.
    If it is mainly about system shape, boundaries, flow, or major tradeoffs, keep it in `docs/architecture/`.

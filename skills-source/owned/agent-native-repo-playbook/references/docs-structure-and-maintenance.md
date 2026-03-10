@@ -7,7 +7,6 @@ Use one lightweight minimum docs contract across repositories unless there is a 
 ```text
 docs/
   architecture/
-    index.md                # Optional entry map for architecture docs
     ...                     # Domain/layer/boundary documents
   references/
     ...                     # Stable implementation lookup material

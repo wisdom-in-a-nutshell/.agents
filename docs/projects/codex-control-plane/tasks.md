@@ -56,7 +56,7 @@ Codex setup is currently split across `~/.agents`, `~/.codex`, and `~/GitHub/scr
 
 ## Open Questions / Blockers
 - Decide later whether `~/.codex` should remain a git-tracked repo or become runtime-only after canonical assets are moved out.
-- Split Codex-only shell behavior from the broader shared `zshrc` before moving the shell helpers into the control plane.
+- Rotate the Cloudflare token that was previously stored in tracked `zshrc.shared`; it has been moved to a machine-local env file, but the old token value should still be treated as exposed.
 
 ## Tasks
 - [x] Create `docs/architecture/codex-control-plane.md`.
@@ -68,6 +68,7 @@ Codex setup is currently split across `~/.agents`, `~/.codex`, and `~/GitHub/scr
 - [x] Update relevant `AGENTS.md` and docs references if ownership boundaries change materially.
 - [x] Run safe validation for the changed apply/sync entrypoints.
 - [ ] Record final keep / move / generate decisions for `~/.codex`.
+- [ ] Finish the shell-side split and validate shared zshrc + Ghostty bootstrap through the new `~/.agents` Codex fragment.
 
 ## Validation / Test Plan
 - Review new docs for consistency with the current file layout and intended ownership split.
@@ -81,8 +82,9 @@ Codex setup is currently split across `~/.agents`, `~/.codex`, and `~/GitHub/scr
 - 2026-03-10: [IN-PROGRESS] Added the first canonical Codex control-plane structure under `~/.agents/codex`, moved managed config templates there, and switched `~/GitHub/scripts/setup/sync-codex-config.sh` to a wrapper.
 - 2026-03-10: [IN-PROGRESS] Moved the canonical notify script source into `~/.agents/codex/scripts` and pointed live Codex notify config at the new path.
 - 2026-03-10: [IN-PROGRESS] Validated the new control plane with `bash -n`, `python3 -m py_compile`, `./setup/sync-codex-config.sh --global-only`, and `./setup/sync-codex-config.sh --apply --xcode-only`.
+- 2026-03-10: [IN-PROGRESS] Split Codex/Ghostty shell behavior out of `setup/codex/zshrc.shared`, moved the Codex fragment to `~/.agents/codex/shell/codex-shell.zsh`, and moved the Ghostty startup helpers into `~/.agents/codex/scripts`.
 
 ## Next 3 Actions
-1. Validate the new `~/.agents/codex` sync/apply flow with safe dry-runs and path checks.
-2. Decide which remaining Codex shell/bootstrap helpers should move next and which need splitting first.
-3. Reconcile `.codex` repo-specific files against the new control-plane ownership model.
+1. Validate shared zshrc and Ghostty startup through the new `~/.agents` shell fragment and script wrappers.
+2. Reconcile `.codex` repo-specific files against the new control-plane ownership model.
+3. Decide whether `~/.codex` should remain a git-tracked repo or be reduced to runtime-only state plus generated config.

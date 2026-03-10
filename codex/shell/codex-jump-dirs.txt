@@ -1,0 +1,23 @@
+# Codex jump picker directories.
+# One path per line. Blank lines and lines starting with # are ignored.
+# $HOME and leading ~ are supported.
+
+$HOME/GitHub/win
+$HOME/GitHub/scripts
+$HOME/GitHub/aipodcasting
+$HOME/GitHub/modal_functions
+$HOME/GitHub/adi-brand
+$HOME/GitHub/adithyan-ai-videos
+$HOME/GitHub/aip-cognitive-revolution
+$HOME/GitHub/aipodcasting-landing-page
+$HOME/GitHub/aipodcasting-public-website
+$HOME/GitHub/blog-personal
+$HOME/GitHub/codexclaw
+$HOME/GitHub/codexclaw-workspaces
+$HOME/GitHub/future-of-life-institute-podcast-aipodcast-ing-theme
+$HOME/GitHub/ghost-infrastructure
+$HOME/GitHub/litellm
+$HOME/GitHub/stadia-macos-controller
+$HOME/GitHub/thoughtforms-life-theme
+$HOME/.agents
+$HOME/.codex

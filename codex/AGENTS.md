@@ -12,6 +12,7 @@ Canonical personal Codex control-plane assets live here.
 
 - `config/`: canonical Codex config fragments and templates.
 - `scripts/`: canonical Codex-specific automation scripts.
+- `shell/`: Codex-specific shell and Ghostty integration fragments.
 
 ## Rules
 
@@ -25,3 +26,5 @@ Canonical personal Codex control-plane assets live here.
 - `scripts/sync-config.sh` is the canonical sync/apply entrypoint for machine Codex config.
 - `config/global.config.toml` and `config/xcode.config.toml` are the canonical managed baselines.
 - `scripts/notify.py` is the canonical notify automation source.
+- `scripts/configure-ghostty-cwd.sh` and `scripts/ghostty-codex-then-shell.sh` are the canonical Ghostty/Codex startup helpers.
+- `shell/codex-shell.zsh` is the Codex-specific shell fragment sourced by the shared `~/.zshrc`.

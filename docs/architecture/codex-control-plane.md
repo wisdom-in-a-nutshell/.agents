@@ -10,6 +10,8 @@ flowchart TD
     A --> C[Managed templates and scripts]
     B --> D[~/.codex<br/>applied runtime home]
     C --> D
+    B --> G[shared zshrc bootstrap]
+    G --> H[~/.agents/codex/shell/codex-shell.zsh]
     D --> E[Codex CLI / App Server runtime]
     F[Repo-local .codex/config.toml] --> E
     D --> F
@@ -37,6 +39,8 @@ Owns machine bootstrap and orchestration entrypoints:
 - thin delegation into the canonical Codex control plane
 
 This repo should remain useful for bootstrapping a fresh machine, but it should stop owning the detailed Codex policy and templates.
+
+It can still own generic shell bootstrap files when those files are not Codex-only. In that case, the generic shell file should source the Codex fragment from `~/.agents` rather than embedding Codex behavior directly.
 
 ### `~/.codex`
 
