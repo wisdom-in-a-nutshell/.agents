@@ -1,6 +1,6 @@
 ---
 name: codex-agent-loop
-description: Understand and apply how the Codex agent loop works, including request assembly (`instructions`, `tools`, `input`), thread/turn/item mental models, tool iteration, prompt growth, caching, compaction, and where `model_instructions_file` and `AGENTS.md` enter. Use when designing Codex-native assistants, custom prompts, workspace boot flows, or explaining Codex runtime behavior.
+description: "Understand and apply how the Codex agent loop works, including request assembly (`instructions`, `tools`, `input`), thread/turn/item mental models, tool iteration, prompt growth, caching, compaction, and where `model_instructions_file` and `AGENTS.md` enter. Keep the local references for the durable conceptual model, but fetch current official docs via `openaiDeveloperDocs` for exact config, prompt-loading, and other evolving Codex behavior."
 ---
 
 # Codex Agent Loop
@@ -30,13 +30,22 @@ Use this skill when you need the durable mental model for how Codex actually run
 - Keep the distinction between base `instructions`, later `input`, and appended tool outputs explicit.
 - Preserve the blog's mental model: a turn is not a single model call, and the loop does not end until the assistant emits a final message for that turn.
 - Use the embedded SVGs in the references when you want the original diagrams in context.
-- Reach for exact docs when configuration behavior matters.
+- Reach for exact docs via MCP when configuration or current product behavior matters.
 
 ## Reference Policy
 
 1. Treat `references/unrolling-the-codex-agent-loop.md` as the main reusable explanation another agent should remember.
 2. Treat `references/building-the-initial-prompt.md` and `references/conversation-growth-and-performance.md` as the detailed mechanics that preserve most of the blog's substance.
-3. Treat `references/openai-codex-prompt-loading.md` as the exact supplement for official prompt-loading behavior.
+3. Fetch official docs via `openaiDeveloperDocs` before answering questions about exact current prompt loading, `AGENTS.md` discovery, fallback filenames, byte limits, config keys, or other evolving behavior.
+4. Treat `references/openai-codex-prompt-loading.md` as a local helper summary of official guidance, not a replacement for checking current docs when precision matters.
+
+## Fetch First For
+
+- `model_instructions_file` and config-key semantics
+- `AGENTS.md` discovery order, fallback filenames, and byte limits
+- project-scoped `.codex/config.toml` behavior
+- current Codex config reference details
+- any question phrased as latest, current, official, exact, or up to date
 
 ## References
 

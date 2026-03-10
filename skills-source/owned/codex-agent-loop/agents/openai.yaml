@@ -1,4 +1,4 @@
 interface:
   display_name: "Codex Agent Loop"
   short_description: "How Codex builds prompts and runs the agent loop"
-  default_prompt: "Use $codex-agent-loop to recover how Codex assembles `instructions`, `tools`, and `input`, iterates through tool calls within a turn, grows conversation state across turns, and where model_instructions_file and AGENTS.md enter."
+  default_prompt: "Use $codex-agent-loop to recover how Codex assembles `instructions`, `tools`, and `input`, iterates through tool calls within a turn, grows conversation state across turns, and where model_instructions_file and AGENTS.md enter. Use local references for the conceptual model, but fetch exact current config and prompt-loading behavior from `openaiDeveloperDocs`."
