@@ -33,7 +33,7 @@ Codex setup is currently split across `~/.agents`, `~/.codex`, and `~/GitHub/scr
 - [x] Canonical Codex-specific managed assets have an explicit home under `~/.agents`.
 - [x] `~/GitHub/scripts` Codex setup delegates to `~/.agents` rather than owning Codex policy/details directly.
 - [x] Remaining Codex-specific bootstrap helpers have moved out of `~/GitHub/scripts` and into `~/.agents`.
-- [ ] The intended split between canonical source, applied runtime, and repo-local overrides is documented and validated.
+- [x] The intended split between canonical source, applied runtime, and repo-local overrides is documented and validated.
 - [ ] Remaining migration decisions and follow-ups are captured clearly for the next run.
 
 ## Milestones
@@ -94,8 +94,9 @@ Codex setup is currently split across `~/.agents`, `~/.codex`, and `~/GitHub/scr
 - 2026-03-10: [IN-PROGRESS] Validated the new canonical bootstrap flow against temp config targets, then applied live trusted-project sync so exact repo roots like `/Users/dobby/GitHub/focus` are now trusted in both terminal Codex and Xcode Codex configs.
 - 2026-03-10: [IN-PROGRESS] Audited the remaining tracked contents of `~/.codex`, confirmed they were runtime state plus repo-only metadata, and decided that `~/.codex` should be runtime-only rather than git-tracked.
 - 2026-03-10: [IN-PROGRESS] Removed the `~/.codex` git repo layer and deleted repo-only files (`.git`, `.gitignore`, root/docs `AGENTS.md`, and nested `.codex/config.toml`), leaving `~/.codex` as runtime-only state plus live config.
+- 2026-03-10: [IN-PROGRESS] Deleted the old Codex App Server snapshot-refresh scripts and removed the remaining control-plane/skill references so the App Server skill no longer implies snapshot automation is part of the active setup.
 
 ## Next 3 Actions
 1. Finish the shell-side validation for shared zshrc + Ghostty startup through the `.agents` Codex fragment.
-2. Decide whether the old Codex App Server snapshot-refresh scripts should stay as archival tooling or be removed from the active control plane.
-3. Decide whether any legacy backup artifacts under `~/.codex` should be pruned now that the repo layer is gone.
+2. Decide whether any legacy backup artifacts under `~/.codex` should be pruned now that the repo layer is gone.
+3. Do one final cleanup pass for any stale Codex-control-plane references left in docs or scripts.

@@ -44,9 +44,6 @@ Personal agent and Codex control plane.
   - `~/.agents/scripts/refresh-external-skills.sh --apply`
 - Managed link regeneration runs every auto-sync cycle:
   - `~/.agents/scripts/sync-skills-registry.sh --apply`
-- Temporary Codex App Server snapshot refresh is managed outside the skill folder:
-  - refresh: `~/.agents/scripts/refresh-codex-app-server-readme-reference.sh`
-  - launcher: `~/.agents/scripts/install-codex-app-server-snapshot-launchd.sh`
 
 ## Rules
 

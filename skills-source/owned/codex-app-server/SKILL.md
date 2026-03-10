@@ -100,11 +100,3 @@ The local README snapshot is not part of the active reference path.
 
 - Archival helper only: `references/openai-codex-app-server-readme-reference.md`
 - Keep it for offline reading or historical comparison, not for source-of-truth decisions.
-
-## Temporary Snapshot Automation
-
-- Snapshot refresh is maintained by control-plane scripts outside this skill.
-- Manual refresh script:
-  - `~/.agents/scripts/refresh-codex-app-server-readme-reference.sh`
-- Repo-level launchd installer:
-  - `~/.agents/scripts/install-codex-app-server-snapshot-launchd.sh`
