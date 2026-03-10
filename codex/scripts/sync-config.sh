@@ -16,6 +16,7 @@ CANONICAL_GLOBAL_TEMPLATE="${CANONICAL_DIR}/global.config.toml"
 CANONICAL_XCODE_TEMPLATE="${CANONICAL_DIR}/xcode.config.toml"
 CANONICAL_XCODE_RULES_TEMPLATE="${CANONICAL_DIR}/xcode.rules"
 TIMESTAMP="$(date +%Y%m%d-%H%M%S)"
+NOTIFY_SCRIPT_PATH="${HOME}/.agents/codex/scripts/notify.py"
 SYSTEM_SKILLS_DISABLE_PATHS=(
   "${HOME}/.codex/skills/.system/skill-creator/SKILL.md"
   "${HOME}/.codex/skills/.system/skill-installer/SKILL.md"
@@ -143,9 +144,18 @@ require_readable_file() {
   [[ -r "$file" ]] || die "File is not readable: $file"
 }
 
+ensure_no_conflict_markers() {
+  local file="$1"
+  [[ -f "$file" ]] || return 0
+  if rg -n '^(<<<<<<<|=======|>>>>>>>)' "$file" >/dev/null 2>&1; then
+    die "Config contains unresolved merge conflict markers: $file"
+  fi
+}
+
 prepare_work_file() {
   local source_file="$1"
   local work_file="$2"
+  ensure_no_conflict_markers "$source_file"
   if [[ -f "$source_file" ]]; then
     cp "$source_file" "$work_file"
   else
@@ -277,6 +287,7 @@ render_global_config() {
   local target_file="$1"
   local template_file="$2"
   local section key value
+  local notify_value
 
   while IFS=$'\x1f' read -r section key value; do
     [[ -n "$key" ]] || continue
@@ -284,6 +295,90 @@ render_global_config() {
       upsert_top_level_key "$target_file" "$key" "$value"
     fi
   done < <(extract_toml_entries "$template_file")
+
+  notify_value="[\"python3\", $(quote_toml_string "$NOTIFY_SCRIPT_PATH")]"
+  upsert_top_level_key "$target_file" "notify" "$notify_value"
+}
+
+sanitize_machine_specific_entries() {
+  local target_file="$1"
+  python3 - "$target_file" "$HOME" <<'PY'
+from __future__ import annotations
+
+import re
+import sys
+from pathlib import Path
+
+
+target = Path(sys.argv[1])
+current_home = sys.argv[2].rstrip("/")
+
+text = target.read_text(encoding="utf-8") if target.exists() else ""
+lines = text.splitlines(keepends=True)
+
+project_re = re.compile(r'^\[projects\."([^"]+)"\]\s*$')
+path_re = re.compile(r'^\s*path\s*=\s*"([^"]*)"\s*$')
+system_skill_re = re.compile(
+    r"^/Users/[^/]+/\.codex/skills/\.system/skill-(creator|installer)/SKILL\.md$"
+)
+
+
+def keep_project_block(header: str) -> bool:
+    m = project_re.match(header.strip())
+    if not m:
+        return True
+    path = m.group(1)
+    return not path.startswith("/Users/") or path == current_home or path.startswith(current_home + "/")
+
+
+def keep_skill_block(block: list[str]) -> bool:
+    for line in block:
+        m = path_re.match(line.rstrip("\n"))
+        if not m:
+            continue
+        path = m.group(1)
+        if system_skill_re.match(path):
+            return path.startswith(f"{current_home}/.codex/")
+    return True
+
+
+output: list[str] = []
+i = 0
+while i < len(lines):
+    line = lines[i]
+    stripped = line.strip()
+
+    if stripped == "[[skills.config]]":
+        j = i + 1
+        while j < len(lines):
+            s = lines[j].strip()
+            if s == "[[skills.config]]" or (s.startswith("[") and s.endswith("]")):
+                break
+            j += 1
+        block = lines[i:j]
+        if keep_skill_block(block):
+            output.extend(block)
+        i = j
+        continue
+
+    if stripped.startswith("[") and stripped.endswith("]"):
+        j = i + 1
+        while j < len(lines):
+            s = lines[j].strip()
+            if s == "[[skills.config]]" or (s.startswith("[") and s.endswith("]")):
+                break
+            j += 1
+        block = lines[i:j]
+        if keep_project_block(line):
+            output.extend(block)
+        i = j
+        continue
+
+    output.append(line)
+    i += 1
+
+target.write_text("".join(output), encoding="utf-8")
+PY
 }
 
 ensure_system_skills_disabled() {
@@ -436,6 +531,7 @@ sync_global() {
   require_readable_file "$CANONICAL_GLOBAL_TEMPLATE"
   ensure_parent_dir "$original"
   prepare_work_file "$original" "$rendered"
+  sanitize_machine_specific_entries "$rendered"
   render_global_config "$rendered" "$CANONICAL_GLOBAL_TEMPLATE"
   ensure_system_skills_disabled "$rendered"
 
@@ -460,6 +556,7 @@ sync_xcode() {
   ensure_parent_dir "$original_rules"
 
   prepare_work_file "$original_cfg" "$rendered_cfg"
+  sanitize_machine_specific_entries "$rendered_cfg"
   render_xcode_config "$rendered_cfg" "$CANONICAL_XCODE_TEMPLATE"
   render_xcode_rules "$rendered_rules" "$CANONICAL_XCODE_RULES_TEMPLATE"
 

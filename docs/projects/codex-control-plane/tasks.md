@@ -96,6 +96,7 @@ Codex setup is currently split across `~/.agents`, `~/.codex`, and `~/GitHub/scr
 - 2026-03-10: [IN-PROGRESS] Removed the `~/.codex` git repo layer and deleted repo-only files (`.git`, `.gitignore`, root/docs `AGENTS.md`, and nested `.codex/config.toml`), leaving `~/.codex` as runtime-only state plus live config.
 - 2026-03-10: [IN-PROGRESS] Deleted the old Codex App Server snapshot-refresh scripts and removed the remaining control-plane/skill references so the App Server skill no longer implies snapshot automation is part of the active setup.
 - 2026-03-10: [IN-PROGRESS] Synced the MacBook (`macbook-wan`) to the new control-plane layout: pulled `.agents` + `GitHub/scripts`, ran the canonical Codex bootstrap, verified trusted repo entries, converted remote `~/.codex` to runtime-only, and confirmed shared zshrc + Ghostty startup now point at the `.agents` Codex layer on both machines.
+- 2026-03-10: [IN-PROGRESS] Fixed a sync bug where machine-specific absolute paths were being preserved across machines in `config.toml`; updated the canonical sync logic to rewrite local notify/system-skill paths and strip foreign-user project entries, then repaired both local and MacBook live Codex configs.
 
 ## Next 3 Actions
 1. Decide whether any legacy backup artifacts under `~/.codex` should be pruned now that the repo layer is gone.

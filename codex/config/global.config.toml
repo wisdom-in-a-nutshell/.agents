@@ -11,7 +11,6 @@ web_search = "live"
 personality = "pragmatic"
 service_tier = "fast"
 suppress_unstable_features_warning = true
-notify = ["python3", "/Users/dobby/.agents/codex/scripts/notify.py"]
 
 [mcp_servers.openaiDeveloperDocs]
 url = "https://developers.openai.com/mcp"
