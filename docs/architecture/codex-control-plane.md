@@ -84,3 +84,4 @@ These settings stay close to the repo because they describe how Codex should beh
 - Deeper keep / move / generate decisions live in the ownership reference.
 
 See [Codex Control Plane Ownership](/Users/dobby/.agents/docs/references/codex-control-plane-ownership.md) for the exact split.
+See [Codex Control Plane Operations](/Users/dobby/.agents/docs/references/codex-control-plane-operations.md) for exact commands, healthy-state checks, and common failure modes.

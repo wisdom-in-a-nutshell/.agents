@@ -75,6 +75,7 @@ Codex setup is currently split across `~/.agents`, `~/.codex`, and `~/GitHub/scr
 - [x] Remove Codex-specific wrappers from `~/GitHub/scripts` once the canonical `.agents` entrypoints exist.
 - [x] Record final keep / move / generate decisions for `~/.codex`.
 - [x] Finish the shell-side split and validate shared zshrc + Ghostty bootstrap through the new `~/.agents` Codex fragment.
+- [x] Add a compact reference doc for operating and validating the Codex control plane.
 
 ## Validation / Test Plan
 - Review new docs for consistency with the current file layout and intended ownership split.
@@ -97,8 +98,9 @@ Codex setup is currently split across `~/.agents`, `~/.codex`, and `~/GitHub/scr
 - 2026-03-10: [IN-PROGRESS] Deleted the old Codex App Server snapshot-refresh scripts and removed the remaining control-plane/skill references so the App Server skill no longer implies snapshot automation is part of the active setup.
 - 2026-03-10: [IN-PROGRESS] Synced the MacBook (`macbook-wan`) to the new control-plane layout: pulled `.agents` + `GitHub/scripts`, ran the canonical Codex bootstrap, verified trusted repo entries, converted remote `~/.codex` to runtime-only, and confirmed shared zshrc + Ghostty startup now point at the `.agents` Codex layer on both machines.
 - 2026-03-10: [IN-PROGRESS] Fixed a sync bug where machine-specific absolute paths were being preserved across machines in `config.toml`; updated the canonical sync logic to rewrite local notify/system-skill paths and strip foreign-user project entries, then repaired both local and MacBook live Codex configs.
+- 2026-03-10: [IN-PROGRESS] Added a companion reference doc for the Codex control plane covering exact commands, healthy-state checks, main scripts, and the failure modes we actually hit during rollout.
 
 ## Next 3 Actions
 1. Decide whether any legacy backup artifacts under `~/.codex` should be pruned now that the repo layer is gone.
-2. Decide whether to keep or delete the static archival App Server README snapshot file.
-3. Archive this project tracker once you are satisfied the cross-machine rollout is done.
+2. Archive this project tracker once you are satisfied the cross-machine rollout is done.
+3. None.
