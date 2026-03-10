@@ -34,7 +34,7 @@ Codex setup is currently split across `~/.agents`, `~/.codex`, and `~/GitHub/scr
 - [x] `~/GitHub/scripts` Codex setup delegates to `~/.agents` rather than owning Codex policy/details directly.
 - [x] Remaining Codex-specific bootstrap helpers have moved out of `~/GitHub/scripts` and into `~/.agents`.
 - [x] The intended split between canonical source, applied runtime, and repo-local overrides is documented and validated.
-- [ ] Remaining migration decisions and follow-ups are captured clearly for the next run.
+- [x] Remaining migration decisions and follow-ups are captured clearly for the next run.
 
 ## Milestones
 - [x] Milestone 1 — Document the target control-plane design in `~/.agents`. Acceptance: architecture doc plus ownership reference exist and describe `.agents`, `~/.codex`, `~/GitHub/scripts`, and repo-local `.codex/`. Validate: review rendered Markdown and file paths.
@@ -74,7 +74,7 @@ Codex setup is currently split across `~/.agents`, `~/.codex`, and `~/GitHub/scr
 - [x] Centralize remaining Codex-specific bootstrap helpers under `~/.agents/codex/scripts`.
 - [x] Remove Codex-specific wrappers from `~/GitHub/scripts` once the canonical `.agents` entrypoints exist.
 - [x] Record final keep / move / generate decisions for `~/.codex`.
-- [ ] Finish the shell-side split and validate shared zshrc + Ghostty bootstrap through the new `~/.agents` Codex fragment.
+- [x] Finish the shell-side split and validate shared zshrc + Ghostty bootstrap through the new `~/.agents` Codex fragment.
 
 ## Validation / Test Plan
 - Review new docs for consistency with the current file layout and intended ownership split.
@@ -95,8 +95,9 @@ Codex setup is currently split across `~/.agents`, `~/.codex`, and `~/GitHub/scr
 - 2026-03-10: [IN-PROGRESS] Audited the remaining tracked contents of `~/.codex`, confirmed they were runtime state plus repo-only metadata, and decided that `~/.codex` should be runtime-only rather than git-tracked.
 - 2026-03-10: [IN-PROGRESS] Removed the `~/.codex` git repo layer and deleted repo-only files (`.git`, `.gitignore`, root/docs `AGENTS.md`, and nested `.codex/config.toml`), leaving `~/.codex` as runtime-only state plus live config.
 - 2026-03-10: [IN-PROGRESS] Deleted the old Codex App Server snapshot-refresh scripts and removed the remaining control-plane/skill references so the App Server skill no longer implies snapshot automation is part of the active setup.
+- 2026-03-10: [IN-PROGRESS] Synced the MacBook (`macbook-wan`) to the new control-plane layout: pulled `.agents` + `GitHub/scripts`, ran the canonical Codex bootstrap, verified trusted repo entries, converted remote `~/.codex` to runtime-only, and confirmed shared zshrc + Ghostty startup now point at the `.agents` Codex layer on both machines.
 
 ## Next 3 Actions
-1. Finish the shell-side validation for shared zshrc + Ghostty startup through the `.agents` Codex fragment.
-2. Decide whether any legacy backup artifacts under `~/.codex` should be pruned now that the repo layer is gone.
-3. Do one final cleanup pass for any stale Codex-control-plane references left in docs or scripts.
+1. Decide whether any legacy backup artifacts under `~/.codex` should be pruned now that the repo layer is gone.
+2. Decide whether to keep or delete the static archival App Server README snapshot file.
+3. Archive this project tracker once you are satisfied the cross-machine rollout is done.
