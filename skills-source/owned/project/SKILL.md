@@ -7,7 +7,7 @@ description: Create, resume, replan, and close long-running project work using a
 
 ## Overview
 
-Use one project tracker file as the durable source of truth for long-running work. The skill decides whether to create, resume, replan, or close the tracker based on repo state and keeps that file current while it works.
+Use one project tracker file as the durable source of truth for long-running work. The skill decides whether to create, resume, replan, or close the tracker based on repo state, keeps that file current while it works, and archives finished projects by default when completion confidence is high.
 
 ## Default location
 
@@ -22,7 +22,9 @@ Use one project tracker file as the durable source of truth for long-running wor
    - Missing tracker: create it.
    - Existing active tracker: resume from `Next 3 Actions`.
    - Existing tracker with stale or incorrect tasks: replan in place, then continue.
-   - Fully complete tracker: summarize, ask for archive permission, and archive only after the user approves.
+   - Fully complete tracker:
+     - if sufficiently confident the scoped work is done, close it out and archive it immediately.
+     - if material uncertainty remains, summarize the evidence and ask the user before archiving.
 3. **Close critical gaps before deep execution**
    - If scope, success criteria, constraints, dependencies, credentials, or approvals are unclear enough that execution will predictably stall later, ask concise targeted follow-up questions before proceeding.
    - Batch missing items into one short request when possible.
@@ -59,7 +61,8 @@ Use one project tracker file as the durable source of truth for long-running wor
 9. **Closeout**
    - When scoped work is complete, provide a short conclusion with validation evidence and residual risks.
    - Follow repo-local shipping policy for commit/push behavior. Do not add a generic manual commit/push step when repo automation already handles it.
-   - Ask for explicit permission before moving `docs/projects/<project>/` to `docs/projects/archive/<project>/`.
+   - Archive by default when `Done When` is satisfied, remaining milestones/tasks are complete or explicitly descoped, validation is acceptable for the scoped work, and no material blocker remains.
+   - Ask the user before archiving only when project completion is materially uncertain or user intent appears to have shifted beyond the tracker.
 
 ## Tracker rules
 
@@ -71,7 +74,18 @@ Use one project tracker file as the durable source of truth for long-running wor
 - Preserve a clear resume point in `Next 3 Actions`.
 - Record non-obvious choices in `Decisions` so later agents do not reopen them.
 - Treat blockers as first-class: add them to `Open Questions / Blockers` immediately.
+- Bias toward finishing and archiving completed projects instead of leaving stale trackers in the active list.
+- Do not introduce a `ready-to-archive` holding state by default.
 - The current top-level run is the orchestrator; workers/background agents must not edit `tasks.md` directly.
+
+## Closeout confidence test
+
+- Archive without asking when all of the following are true:
+  - `Done When` is satisfied.
+  - Remaining milestones/tasks are either complete or explicitly descoped in the tracker.
+  - Validation has passed, or any residual failure is documented as out of scope and non-blocking.
+  - `Open Questions / Blockers` has no unresolved item that would change the deliverable if answered differently.
+- Ask before archiving when any of the above is unclear or when closure depends on product judgment rather than implementation execution.
 
 ## Resources
 

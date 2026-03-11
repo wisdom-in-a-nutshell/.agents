@@ -21,6 +21,8 @@ This guide is based on the OpenAI harness-engineering model and adapted for a so
 ## 4) Plans are first-class artifacts
 - Use `docs/projects/<project>/tasks.md` for long-running work.
 - Capture decisions and progress so any agent can resume cold.
+- Once a project is done and validated, archive it promptly instead of leaving a `ready-to-archive` limbo state.
+- Ask the human only when project completion is materially uncertain or scope may have shifted.
 
 ## 5) Enforce invariants mechanically
 - Encode boundaries and quality rules in CI/lints/tests.

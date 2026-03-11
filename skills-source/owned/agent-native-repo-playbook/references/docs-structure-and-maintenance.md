@@ -62,13 +62,14 @@ Put these in `docs/references/`:
 - Purpose: active plan, progress, and resume point.
 - Maintain and execute with `$project`.
 - Question answered: "What are we doing next?"
+- Default bias: once the scoped work is confidently complete, close out and archive it instead of keeping a completed tracker active.
 
 ## Maintenance policy
 
 1. Update `docs/architecture/` when boundaries, layering, or key flows change.
 2. Update `docs/references/` when external contracts or operational facts change.
 3. Update `docs/projects/*/tasks.md` continuously during active work.
-4. Move completed projects to `docs/projects/archive/` after closeout.
+4. Move completed projects to `docs/projects/archive/` immediately after confident closeout. Ask only when completion is materially uncertain.
 5. If the same docs mismatch repeats, add a mechanical check in CI or scripts.
 
 ## Practical rule

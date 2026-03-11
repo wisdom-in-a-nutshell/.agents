@@ -3,6 +3,7 @@ TEMPLATE GUIDANCE (for generating agent):
 - Keep this as the single durable project file for create/resume/replan/close.
 - Write as if a new agent will resume cold and should not need to rescan the repo.
 - If critical project information is missing, ask before filling the plan with fake certainty.
+- When the scoped work is clearly done, close out and archive directly instead of leaving a `ready-to-archive` holding state.
 - Remove all HTML comments from the final output.
 -->
 
@@ -39,6 +40,7 @@ TEMPLATE GUIDANCE (for generating agent):
 - Keep work scoped to the current milestone unless the tracker explicitly expands scope.
 - Run validation after each milestone or risky batch and fix failures before advancing.
 - Continue working until the scoped project is done or a true blocker requires human input; do not stop after one completed task if more actionable work remains.
+- When `Done When` is satisfied and validation is acceptable, archive the project directly; ask only if completion is materially uncertain.
 - Update this tracker whenever the plan changes materially or before ending the run.
 - If project-critical ambiguity would stall progress later, ask targeted follow-up questions now and record the answers here.
 
@@ -51,7 +53,7 @@ TEMPLATE GUIDANCE (for generating agent):
 - None.
 
 ## Tasks
-<!-- Atomic execution tasks. Include at least one validation task, one AGENTS.md review/update task, and a final archive task. -->
+<!-- Atomic execution tasks. Include at least one validation task, one AGENTS.md review/update task when guidance changes materially, and a final closeout/archive task rather than a `ready-to-archive` placeholder. -->
 - [ ] 
 
 ## Validation / Test Plan
