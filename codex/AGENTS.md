@@ -20,6 +20,8 @@ Canonical personal Codex control-plane assets live here.
 - If a script must run from `~/.codex` or another runtime path, keep the canonical source here and sync or point to it from the runtime config.
 - Prefer repo-local `.codex/config.toml` for project-specific MCP/tool behavior instead of putting repo policy here.
 - Keep mixed shell-dotfile concerns out of this folder until they are cleanly split from Codex-only behavior.
+- Treat `~/.codex/vendor_imports/` as Codex-managed runtime state.
+- Do not delete, flatten, or "clean up" `~/.codex/vendor_imports/skills`; Codex App expects it to remain a nested Git checkout of `openai/skills`.
 
 ## Current Scope
 
