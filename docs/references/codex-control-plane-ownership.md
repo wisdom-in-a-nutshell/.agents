@@ -40,6 +40,7 @@ Use [Codex Control Plane](/Users/dobby/.agents/docs/architecture/codex-control-p
 - live `config.toml`
 - runtime-installed skills and generated runtime artifacts
 - runtime migration markers and indexes such as `.personality_migration`, `session_index.jsonl`, and runtime SQLite files
+- Codex-managed vendor imports such as `vendor_imports/skills`, which is a nested Git checkout used by Codex App for recommended skills
 
 ### Generate or Sync Into `~/.codex`
 
@@ -61,6 +62,7 @@ Use [Codex Control Plane](/Users/dobby/.agents/docs/architecture/codex-control-p
 - [config.toml](/Users/dobby/.codex/config.toml): live machine config; target is generated/applied, not hand-owned as the canonical source.
 - live `config.toml` now points at the canonical notify source in [notify.py](/Users/dobby/.agents/codex/scripts/notify.py).
 - `~/.codex` is now runtime-only; repo-only files such as `.git`, `.gitignore`, nested `.codex/config.toml`, and repo-router docs can be removed.
+- [vendor_imports/skills](/Users/dobby/.codex/vendor_imports/skills): runtime-managed nested Git checkout from `openai/skills`; do not delete or flatten it during runtime cleanup.
 
 ### `~/GitHub/scripts`
 

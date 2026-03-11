@@ -20,6 +20,7 @@ Use [Codex Control Plane Ownership](/Users/dobby/.agents/docs/references/codex-c
 - `~/.codex`
   - live runtime home only
   - applied `config.toml`, auth, sessions, logs, caches, sqlite, shell snapshots
+  - Codex-managed vendor imports in `vendor_imports/`, including the nested Git checkout at `vendor_imports/skills`
   - should not be a git repo
 
 ## Canonical Commands
@@ -50,6 +51,8 @@ Use [Codex Control Plane Ownership](/Users/dobby/.agents/docs/references/codex-c
   - `notify = ["python3", "$HOME/.agents/codex/scripts/notify.py"]`
 - `~/.codex/config.toml` and Xcode Codex config contain exact trusted repo entries for local repos such as `focus`
 - `~/.codex/config.toml` contains no Git conflict markers
+- `~/.codex/vendor_imports/skills` is a valid Git checkout:
+  - `git -C ~/.codex/vendor_imports/skills rev-parse --show-toplevel`
 
 ## Main Scripts And Jobs
 
@@ -112,6 +115,20 @@ Meaning:
 
 Fix:
 - rerun `~/.agents/codex/scripts/sync-trusted-projects.sh --apply`
+
+### Recommended Skills Fail To Load
+
+Symptom:
+- Codex App shows `Unable to load recommended skills`
+- message says `Expected ~/.codex/vendor_imports/skills to be a git checkout but found an existing directory`
+
+Meaning:
+- the runtime-managed checkout under `~/.codex/vendor_imports/skills` was deleted or flattened into a plain directory
+
+Fix:
+- restore `~/.codex/vendor_imports/skills` as a real clone of `https://github.com/openai/skills.git`
+- verify with `git -C ~/.codex/vendor_imports/skills rev-parse --show-toplevel`
+- restart Codex App if it is already open
 
 ## Machine Notes
 

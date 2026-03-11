@@ -101,6 +101,7 @@ Codex setup is currently split across `~/.agents`, `~/.codex`, and `~/GitHub/scr
 - 2026-03-10: [IN-PROGRESS] Fixed a sync bug where machine-specific absolute paths were being preserved across machines in `config.toml`; updated the canonical sync logic to rewrite local notify/system-skill paths and strip foreign-user project entries, then repaired both local and MacBook live Codex configs.
 - 2026-03-10: [IN-PROGRESS] Added a companion reference doc for the Codex control plane covering exact commands, healthy-state checks, main scripts, and the failure modes we actually hit during rollout.
 - 2026-03-10: [IN-PROGRESS] Split the architecture view into smaller figures and added a dedicated script-flow architecture page so the main script groups can be understood visually without one dense diagram.
+- 2026-03-11: [IN-PROGRESS] Repaired local Codex App recommended-skills loading by restoring `~/.codex/vendor_imports/skills` as the upstream `openai/skills` Git checkout, and documented that `vendor_imports/skills` is a runtime-managed nested repo that must be preserved during `~/.codex` cleanup.
 
 ## Next 3 Actions
 1. Decide whether any legacy backup artifacts under `~/.codex` should be pruned now that the repo layer is gone.
