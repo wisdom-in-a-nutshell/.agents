@@ -23,6 +23,8 @@ Keep architecture docs visual-first and simple.
 - Start with a short plain-English explanation.
 - Prefer a simple Mermaid `flowchart TD` diagram near the top.
 - Keep diagrams high-level and readable.
+- Prefer progressive disclosure when one diagram would mix too many levels or concerns.
+  Start with the simplest useful overview, then add Level 2 / Level 3 zoom-ins instead of forcing one dense figure.
 - Push exact field names, env vars, limits, commands, schemas, and operational contracts into `docs/references/`.
 - If repo-local docs guidance conflicts with this skill, follow the repo-local docs contract.
 
@@ -45,13 +47,17 @@ Keep architecture docs visual-first and simple.
    - Mermaid `flowchart TD`
    - short section explaining the main flow or boundaries
    - short notes on tradeoffs or important constraints if needed
+   - for broader systems, use a Level 1 / Level 2 / Level 3 structure so each diagram explains one idea
 
 5. Keep the diagram simple.
    Use a few meaningful nodes and connections, not every internal detail.
+   Keep container labels passive: arrows should connect real components, not the block titles.
+   Use consistent zone coloring only when it materially improves scanability.
    Read `references/01-mermaid-guidelines.md` before writing or refactoring diagrams.
 
 6. Keep the document easy to skim.
    Use short sections, direct wording, and minimal jargon.
+   If the target renderer is available (for example Obsidian), verify the actual render and refine from what a human will really see.
 
 7. If exact facts are needed, create or update a companion doc in `docs/references/` and link it.
 

@@ -12,6 +12,18 @@ Use this as the default shape for a human-friendly architecture doc.
 6. Tradeoffs or important constraints
 7. Links to deeper references
 
+## Progressive disclosure variant
+
+Use this instead when one diagram would be too dense:
+
+1. Title
+2. Short overview
+3. Level 1 diagram: simplest whole-system view
+4. Level 2 diagram: main ownership zones or major parts
+5. Level 3 diagram: one important runtime path or boot path
+6. Short explanation after each level
+7. Links to deeper references
+
 ## Example skeleton
 
 ```markdown
@@ -55,6 +67,8 @@ flowchart TD
 ## Writing guidance
 
 - Prefer one strong diagram over many weak ones.
+- But if one diagram becomes crowded, switch to progressive disclosure instead of overstuffing it.
 - Keep the intro short and concrete.
 - Use bullets for parts and numbered steps for flow.
 - Link to deeper docs instead of overstuffing the page.
+- When using grouped blocks, make sure the block labels read as labels, not flow steps.
