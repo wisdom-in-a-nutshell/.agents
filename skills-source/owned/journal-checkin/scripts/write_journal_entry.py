@@ -11,18 +11,9 @@ from typing import Any
 from zoneinfo import ZoneInfo
 
 
-VALID_KINDS = {"morning", "evening", "night", "general"}
-KNOWN_PROFILES = {"adi", "angie"}
+VALID_KINDS = {"morning", "night", "general"}
 REQUIRED_FIELDS = {
     "morning": ["sleep_10", "energy_10", "mood_10", "grateful", "one_thing_that_matters"],
-    "evening": [
-        "mood_10",
-        "energy_10",
-        "what_moved_today",
-        "what_feels_unresolved",
-        "what_still_matters_tonight",
-        "boundary_for_tonight",
-    ],
     "night": [
         "mood_10",
         "energy_10",
@@ -37,38 +28,27 @@ SCORE_FIELDS = {"sleep_10", "energy_10", "mood_10"}
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Write profile journal entries in a normalized structure."
+        description="Write journal entries in a normalized structure."
     )
     parser.add_argument("--kind", required=True, choices=sorted(VALID_KINDS))
     parser.add_argument("--date", required=True, help="Entry date in YYYY-MM-DD format.")
     parser.add_argument("--source", required=True, help="Short source label, for example chat:text.")
     parser.add_argument("--payload-file", help="Path to a JSON payload file.")
     parser.add_argument("--payload-json", help="Inline JSON payload.")
-    parser.add_argument("--profile-root", help="Profile workspace root, for example .../adi.")
-    parser.add_argument("--workspace-root", help="Deprecated alias for --profile-root.")
+    parser.add_argument("--workspace-root", help="Workspace root to write under.")
+    parser.add_argument("--agent", help="Optional explicit value for the `agent` field.")
     parser.add_argument("--tz", default="Europe/Berlin")
     parser.add_argument("--entry-id", help="Optional stable id for general entries.")
     parser.add_argument("--allow-partial", action="store_true")
     return parser.parse_args()
 
 
-def looks_like_profile_root(path: Path) -> bool:
-    return (
-        path.name in KNOWN_PROFILES
-        and (path / "AGENTS.md").is_file()
-        and (path / "memory").is_dir()
-    )
-
-
-def detect_profile_root() -> Path:
+def detect_workspace_root() -> Path:
     cwd = Path.cwd().resolve()
     for path in [cwd, *cwd.parents]:
-        if looks_like_profile_root(path):
+        if (path / "AGENTS.md").is_file():
             return path
-    raise SystemExit(
-        "Could not infer profile root from the current working directory. "
-        "Pass --profile-root explicitly."
-    )
+    return cwd
 
 
 def load_payload(args: argparse.Namespace) -> dict[str, Any]:
@@ -134,22 +114,21 @@ def main() -> int:
 
     zone = ZoneInfo(args.tz)
     timestamp = datetime.now(zone)
-    profile_root_arg = args.profile_root or args.workspace_root
-    profile_root = (
-        Path(profile_root_arg).resolve()
-        if profile_root_arg
-        else detect_profile_root()
+    workspace_root = (
+        Path(args.workspace_root).resolve()
+        if args.workspace_root
+        else detect_workspace_root()
     )
-    if not looks_like_profile_root(profile_root):
-        raise SystemExit(f"Invalid profile root: {profile_root}")
+    if not workspace_root.is_dir():
+        raise SystemExit(f"Invalid workspace root: {workspace_root}")
 
-    output_path = build_output_path(profile_root, args.kind, args.date, timestamp, args.entry_id)
+    output_path = build_output_path(workspace_root, args.kind, args.date, timestamp, args.entry_id)
     existing = load_existing(output_path)
 
     entry: dict[str, Any] = {
         **existing,
         **payload,
-        "agent": profile_root.name,
+        "agent": args.agent or workspace_root.name,
         "date": args.date,
         "kind": args.kind,
         "tz": args.tz,

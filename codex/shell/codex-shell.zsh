@@ -13,6 +13,29 @@ codex_jump() {
   emulate -L zsh
   setopt local_options pipefail no_aliases
 
+  _codex_jump_load_usage() {
+    local usage_path="$1"
+    local usage_dir usage_count_raw usage_last_raw usage_extra
+
+    [[ -f "$usage_path" ]] || return 0
+
+    while IFS=$'\t' read -r usage_dir usage_count_raw usage_last_raw usage_extra || [[ -n "${usage_dir:-}" ]]; do
+      [[ -n "${usage_dir:-}" && -z "${usage_extra:-}" ]] || continue
+
+      if [[ "$usage_dir" == \"*\" ]]; then
+        usage_dir="${usage_dir#\"}"
+        usage_dir="${usage_dir%\"}"
+      fi
+
+      [[ -n "$usage_dir" && -d "$usage_dir" ]] || continue
+      [[ "${usage_count_raw:-}" =~ ^[0-9]+$ ]] || continue
+      [[ "${usage_last_raw:-}" =~ ^[0-9]+$ ]] || continue
+
+      usage_count["$usage_dir"]="$usage_count_raw"
+      usage_last["$usage_dir"]="$usage_last_raw"
+    done < "$usage_path"
+  }
+
   local -a candidates
   local -a uniq
   local selected
@@ -66,11 +89,7 @@ codex_jump() {
   done < <(printf '%s\n' "${candidates[@]}" | awk 'NF && !seen[$0]++')
 
   if [[ "$smart_sort" == "1" ]] && [[ -f "$usage_file" ]]; then
-    while IFS=$'\t' read -r dir count last || [[ -n "${dir:-}" ]]; do
-      [[ -n "${dir:-}" ]] || continue
-      usage_count["$dir"]="${count:-0}"
-      usage_last["$dir"]="${last:-0}"
-    done < "$usage_file"
+    _codex_jump_load_usage "$usage_file"
 
     rank_tmp="$(mktemp -t codex-jump-rank)"
     idx=0
@@ -121,13 +140,7 @@ codex_jump() {
     mkdir -p "$(dirname "$usage_file")"
     now="$(date +%s)"
 
-    if [[ -f "$usage_file" ]]; then
-      while IFS=$'\t' read -r dir count last || [[ -n "${dir:-}" ]]; do
-        [[ -n "${dir:-}" ]] || continue
-        usage_count["$dir"]="${count:-0}"
-        usage_last["$dir"]="${last:-0}"
-      done < "$usage_file"
-    fi
+    _codex_jump_load_usage "$usage_file"
 
     count="${usage_count[$selected]:-0}"
     usage_count["$selected"]="$((count + 1))"
