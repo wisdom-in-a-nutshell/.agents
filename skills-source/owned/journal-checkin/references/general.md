@@ -33,7 +33,7 @@ Schema:
   "date": "YYYY-MM-DD",
   "kind": "general",
   "tz": "Europe/Berlin",
-  "updated_at": "ISO-8601 timestamp",
+  "captured_at": "ISO-8601 timestamp",
   "source": "chat:text",
   "mood": {
     "score_10": 6,

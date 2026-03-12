@@ -144,7 +144,7 @@ def main() -> int:
         "date": args.date,
         "kind": args.kind,
         "tz": args.tz,
-        "updated_at": timestamp.isoformat(),
+        "captured_at": existing.get("captured_at", timestamp.isoformat()),
         "source": args.source,
     }
 

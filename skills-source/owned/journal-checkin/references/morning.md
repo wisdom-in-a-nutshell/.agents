@@ -35,7 +35,7 @@ Schema:
   "date": "YYYY-MM-DD",
   "kind": "morning",
   "tz": "Europe/Berlin",
-  "updated_at": "ISO-8601 timestamp",
+  "captured_at": "ISO-8601 timestamp",
   "source": "chat:text",
   "sleep": {
     "score_10": 7,
