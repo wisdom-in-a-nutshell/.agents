@@ -4,7 +4,7 @@
 cli_auth_credentials_store = "file"
 mcp_oauth_credentials_store = "file"
 model = "gpt-5.4"
-model_reasoning_effort = "xhigh"
+model_reasoning_effort = "high"
 approval_policy = "never"
 sandbox_mode = "danger-full-access"
 web_search = "live"
