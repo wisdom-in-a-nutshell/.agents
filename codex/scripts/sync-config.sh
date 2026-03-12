@@ -298,6 +298,8 @@ render_global_config() {
     [[ -n "$key" ]] || continue
     if [[ -z "$section" ]]; then
       upsert_top_level_key "$target_file" "$key" "$value"
+    else
+      upsert_section_key "$target_file" "$section" "$key" "$value"
     fi
   done < <(extract_toml_entries "$template_file")
 
