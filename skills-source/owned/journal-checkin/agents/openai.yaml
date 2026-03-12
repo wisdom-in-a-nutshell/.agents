@@ -1,0 +1,4 @@
+interface:
+  display_name: "Journal Check-In"
+  short_description: "Structured profile journaling"
+  default_prompt: "Use $journal-checkin to run a morning, evening, night, or general check-in and store it in the active profile workspace."

@@ -38,6 +38,7 @@ Policy:
 | ai-podcasting | owned | repo | aipodcasting | skills-source/owned/ai-podcasting | - |
 | codex-app-server | owned | repo | codexclaw | skills-source/owned/codex-app-server | - |
 | codex-agent-loop | owned | repo | codexclaw-workspaces | skills-source/owned/codex-agent-loop | - |
+| journal-checkin | owned | repo | codexclaw-workspaces | skills-source/owned/journal-checkin | - |
 
 ## Repo-Local Skills (Unmanaged)
 

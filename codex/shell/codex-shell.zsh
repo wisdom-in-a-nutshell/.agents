@@ -145,7 +145,13 @@ codex_jump() {
   cd "$selected" || return 1
 
   if command -v codex >/dev/null 2>&1; then
-    command codex
+    # When launched from Ghostty, keep the interrupt-to-picker loop so
+    # Cmd+Shift+G / Ctrl+C can reopen the repo picker in this tab.
+    if [[ -n "${GHOSTTY_RESOURCES_DIR:-}" ]] && (( $+functions[_codex_autostart_loop] )); then
+      _codex_autostart_loop
+    else
+      command codex
+    fi
   else
     echo "codex is not installed or not on PATH."
     return 1
