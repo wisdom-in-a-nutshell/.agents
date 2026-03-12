@@ -55,6 +55,10 @@ GIT_COMMIT_TIMEOUT_SEC = 180
 GIT_PULL_TIMEOUT_SEC = 300
 GIT_PUSH_TIMEOUT_SEC = 300
 GIT_DIFF_TIMEOUT_SEC = 120
+SLACK_NOTIFY_TIMEOUT_SEC = 60
+SLACK_MESSAGE_MAX_CHARS = 3000
+SLACK_DETAIL_MAX_CHARS = 1800
+DEFAULT_NOTIFY_SLACK_REPO = Path.home() / "GitHub" / "win"
 
 # Auto-fix flow overview:
 # 1) Agent turn completes -> notify.py runs in that repo's cwd.
@@ -144,6 +148,154 @@ def is_notify_dry_run() -> bool:
 def is_notify_bell_enabled() -> bool:
     """Return True when completion bell/audio is enabled."""
     return env_flag("CODEX_NOTIFY_BELL", True)
+
+
+def is_notify_slack_enabled() -> bool:
+    """Return True when failure notifications should fan out to Slack."""
+    return env_flag("CODEX_NOTIFY_SLACK", True)
+
+
+def slack_notify_repo() -> Path:
+    """Return the repo that owns the internal Slack notifier."""
+    raw = os.environ.get("CODEX_NOTIFY_SLACK_REPO")
+    if raw:
+        return Path(raw).expanduser()
+    return DEFAULT_NOTIFY_SLACK_REPO
+
+
+def slack_notify_python(repo: Path) -> Path:
+    """Return the Python interpreter used to invoke the Slack notifier."""
+    raw = os.environ.get("CODEX_NOTIFY_SLACK_PYTHON")
+    if raw:
+        return Path(raw).expanduser()
+    return repo / "venv" / "bin" / "python"
+
+
+def truncate_text(text: str, limit: int) -> str:
+    """Clip long text for logs and Slack messages."""
+    value = (text or "").strip()
+    if len(value) <= limit:
+        return value
+    suffix = "\n...[truncated]"
+    return value[: max(0, limit - len(suffix))] + suffix
+
+
+def current_branch_name(cwd: str) -> str:
+    """Return the current branch name, or DETACHED when unavailable."""
+    result = run(
+        ["git", "symbolic-ref", "--quiet", "--short", "HEAD"],
+        cwd,
+        timeout=GIT_STATUS_TIMEOUT_SEC,
+    )
+    if result.returncode != 0:
+        return "DETACHED"
+    branch = result.stdout.strip()
+    return branch or "DETACHED"
+
+
+def format_command(command: list[str]) -> str:
+    """Render a command list for human-readable diagnostics."""
+    return " ".join(command)
+
+
+def build_notify_issue_message(cwd: str, title: str, details: str) -> str:
+    """Build a Slack message for notify runtime issues."""
+    repo = Path(repo_root(cwd) or cwd).name
+    lines = [
+        f":warning: Codex notify {title}",
+        f"repo: `{repo}`",
+        f"branch: `{current_branch_name(cwd)}`",
+        f"path: `{cwd}`",
+    ]
+    detail_text = truncate_text(details, SLACK_DETAIL_MAX_CHARS)
+    if detail_text:
+        lines.extend(["", "details:", f"```{detail_text}```"])
+    return truncate_text("\n".join(lines), SLACK_MESSAGE_MAX_CHARS)
+
+
+def build_git_failure_message(
+    cwd: str,
+    phase: str,
+    command: list[str],
+    result: subprocess.CompletedProcess,
+) -> str:
+    """Build a Slack message for git command failures."""
+    repo = Path(repo_root(cwd) or cwd).name
+    stderr = truncate_text(result.stderr, SLACK_DETAIL_MAX_CHARS)
+    stdout = truncate_text(result.stdout, SLACK_DETAIL_MAX_CHARS)
+    lines = [
+        f":warning: Codex notify {phase} failed",
+        f"repo: `{repo}`",
+        f"branch: `{current_branch_name(cwd)}`",
+        f"path: `{cwd}`",
+        f"command: `{format_command(command)}`",
+        f"exit: `{result.returncode}`",
+    ]
+    if stderr:
+        lines.extend(["", "stderr:", f"```{stderr}```"])
+    elif stdout:
+        lines.extend(["", "stdout:", f"```{stdout}```"])
+    return truncate_text("\n".join(lines), SLACK_MESSAGE_MAX_CHARS)
+
+
+def send_internal_slack_notification(message: str) -> None:
+    """Send a best-effort internal Slack notification through the win repo."""
+    if not is_notify_slack_enabled():
+        return
+    repo = slack_notify_repo()
+    python = slack_notify_python(repo)
+    direnv = shutil.which("direnv")
+    if not direnv:
+        log("slack notify skip: direnv not found")
+        return
+    if not repo.exists():
+        log(f"slack notify skip: repo missing: {repo}")
+        return
+    if not python.exists():
+        log(f"slack notify skip: python missing: {python}")
+        return
+
+    script = (
+        "import os, sys\n"
+        "from services.notifications.slack.slack_notifier import SlackNotifier\n"
+        "message = os.environ.get('CODEX_NOTIFY_SLACK_MESSAGE', '').strip()\n"
+        "ok = SlackNotifier().send_internal(message) if message else False\n"
+        "sys.exit(0 if ok else 1)\n"
+    )
+    env = dict(os.environ)
+    env["CODEX_NOTIFY_SLACK_MESSAGE"] = truncate_text(message, SLACK_MESSAGE_MAX_CHARS)
+    result = run(
+        [direnv, "exec", str(repo), str(python), "-c", script],
+        str(repo),
+        env=env,
+        timeout=SLACK_NOTIFY_TIMEOUT_SEC,
+    )
+    if result.returncode != 0:
+        details = truncate_text(result.stderr or result.stdout, 1000)
+        if not details:
+            details = f"exit={result.returncode}"
+        log(f"slack notify failed via {repo}: {details}")
+
+
+def notify_git_failure(
+    cwd: str,
+    phase: str,
+    command: list[str],
+    result: subprocess.CompletedProcess,
+) -> None:
+    """Fan out git command failures to the internal Slack channel."""
+    try:
+        send_internal_slack_notification(build_git_failure_message(cwd, phase, command, result))
+    except Exception as exc:
+        log(f"slack notify exception in {cwd}: {exc}")
+
+
+def notify_runtime_issue(cwd: str, title: str, details: str) -> None:
+    """Fan out notify runtime issues to the internal Slack channel."""
+    try:
+        send_internal_slack_notification(build_notify_issue_message(cwd, title, details))
+    except Exception as exc:
+        log(f"slack notify exception in {cwd}: {exc}")
 
 
 def run(cmd, cwd, env=None, timeout=None):
@@ -621,6 +773,7 @@ def process_repo(cwd: str, payload: dict) -> None:
                     log(f"git add recovered after stale lock cleanup in {cwd}")
             if add.returncode != 0:
                 log(f"git add failed in {cwd}: {add.stderr.strip()}")
+                notify_git_failure(cwd, "git add", ["git", "add", "-A"], add)
                 return
         # Keep notify-internal artifacts out of commits unless explicitly desired.
         unstage_notify_artifacts(cwd)
@@ -636,6 +789,7 @@ def process_repo(cwd: str, payload: dict) -> None:
             log(f"git commit failed in {cwd}: {commit.stderr.strip()}")
             if retried:
                 log(f"git commit retry failed in {cwd}")
+            notify_git_failure(cwd, "git commit", ["git", "commit", "-m", message], commit)
             trigger_autofix(cwd, "git commit", ["git", "commit", "-m", message], commit)
             return
 
@@ -648,20 +802,24 @@ def process_repo(cwd: str, payload: dict) -> None:
         pull = run(pull_cmd, cwd, timeout=GIT_PULL_TIMEOUT_SEC)
         if pull.returncode != 0:
             log(f"git pull --rebase failed in {cwd}: {pull.stderr.strip()}")
+            notify_git_failure(cwd, "git pull --rebase", pull_cmd, pull)
             return
 
         push_cmd = ["git", "push", remote, "HEAD"]
         push = run(push_cmd, cwd, timeout=GIT_PUSH_TIMEOUT_SEC)
         if push.returncode != 0:
             log(f"git push failed in {cwd}: {push.stderr.strip()}")
+            notify_git_failure(cwd, "git push", push_cmd, push)
             trigger_autofix(cwd, "git push", push_cmd, push)
             return
     except subprocess.TimeoutExpired as exc:
         cmd = " ".join(exc.cmd) if isinstance(exc.cmd, (list, tuple)) else str(exc.cmd)
         timeout = exc.timeout if exc.timeout is not None else "unknown"
         log(f"timeout in {cwd}: cmd={cmd} timeout={timeout}s")
+        notify_runtime_issue(cwd, "timed out", f"cmd={cmd}\ntimeout={timeout}s")
     except Exception as exc:
         log(f"unexpected error in {cwd}: {exc}")
+        notify_runtime_issue(cwd, "unexpected error", str(exc))
 
 
 def build_commit_message(payload: dict) -> str:
