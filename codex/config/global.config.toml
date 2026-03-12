@@ -12,5 +12,9 @@ personality = "pragmatic"
 service_tier = "fast"
 suppress_unstable_features_warning = true
 
+[tui]
+theme = "catppuccin-macchiato"
+status_line = ["model-with-reasoning", "context-remaining", "current-dir", "codex-version", "context-window-size", "session-id", "fast-mode"]
+
 [mcp_servers.openaiDeveloperDocs]
 url = "https://developers.openai.com/mcp"
