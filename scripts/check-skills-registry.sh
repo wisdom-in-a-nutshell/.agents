@@ -10,7 +10,7 @@ cd "$REPO_ROOT"
 # registry artifacts changed. If they did, the repo was out of sync.
 python3 scripts/sync-skills-registry.py >/dev/null
 
-changes="$(git status --porcelain -- skills/registry.md skills/registry.base skills/registry-items)"
+changes="$(git status --porcelain -- skills/registry.base skills/registry-items)"
 if [[ -n "$changes" ]]; then
   echo "FAIL: skills registry artifacts were out of sync."
   echo "Regenerated files are present. Review and include them in your change:"

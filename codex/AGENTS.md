@@ -33,7 +33,7 @@ Canonical personal Codex control-plane assets live here.
 - `scripts/bootstrap-machine-codex.sh` is the canonical Codex-specific machine bootstrap batch.
 - `config/global.config.toml` and `config/xcode.config.toml` are the canonical managed baselines.
 - `config/repo-bootstrap.json` is the canonical registry for repo-local Codex bootstrap and MCP presets.
-- `scripts/sync-repo-bootstrap-registry.sh` generates the Markdown and Obsidian Base views for that registry.
+- `scripts/sync-repo-bootstrap-registry.sh` generates the Obsidian Base artifacts for that registry.
 - `config/global.agents.md` is the canonical machine-wide AGENTS content that bootstraps to `~/.codex/AGENTS.md`.
 - `scripts/notify.py` is the canonical notify automation source.
 - `scripts/configure-ghostty-cwd.sh` and `scripts/ghostty-codex-then-shell.sh` are the canonical Ghostty/Codex startup helpers.

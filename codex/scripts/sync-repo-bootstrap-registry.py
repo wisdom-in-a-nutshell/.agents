@@ -34,10 +34,6 @@ def _yaml_str(value: str) -> str:
     return json.dumps(value)
 
 
-def _md_escape(value: str) -> str:
-    return value.replace("|", r"\|").replace("\n", " ").strip()
-
-
 def _write_if_changed(path: Path, content: str) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     old = path.read_text(encoding="utf-8") if path.exists() else None
@@ -64,61 +60,6 @@ def _effective_value(defaults: dict[str, Any], item: dict[str, Any], key: str) -
     if value is None:
         return "-"
     return str(value)
-
-
-def generate_registry_md(
-    config_dir: Path,
-    defaults: dict[str, Any],
-    presets: dict[str, Any],
-    repos: list[dict[str, Any]],
-) -> None:
-    lines: list[str] = []
-    lines.append("# Codex Repo Bootstrap Registry")
-    lines.append("")
-    lines.append("Generated from `codex/config/repo-bootstrap.json`. Edit JSON only.")
-    lines.append("")
-    lines.append("## Defaults")
-    lines.append("")
-    lines.append(f"- Model: `{defaults.get('model', '-')}`")
-    lines.append(f"- Reasoning: `{defaults.get('model_reasoning_effort', '-')}`")
-    lines.append(
-        f"- Service tier: `{defaults.get('service_tier') if defaults.get('service_tier') is not None else '-'}`"
-    )
-    lines.append("")
-    lines.append("## MCP Presets")
-    lines.append("")
-    lines.append("| preset | type | target |")
-    lines.append("| --- | --- | --- |")
-    for name, preset in sorted(presets.items()):
-        if "url" in preset:
-            preset_type = "http"
-            target = str(preset["url"])
-        else:
-            preset_type = "stdio"
-            target = str(preset.get("command", "-"))
-        lines.append(
-            f"| {_md_escape(name)} | {_md_escape(preset_type)} | {_md_escape(target)} |"
-        )
-    lines.append("")
-    lines.append("## Managed Repos")
-    lines.append("")
-    lines.append(
-        "| repo | path | mcp_presets | model | reasoning | service_tier | notes |"
-    )
-    lines.append("| --- | --- | --- | --- | --- | --- | --- |")
-    for item in repos:
-        row = [
-            _md_escape(item["repo_name"]),
-            _md_escape(item["path"]),
-            _md_escape(item["mcp_presets_csv"]),
-            _md_escape(_effective_value(defaults, item, "model")),
-            _md_escape(_effective_value(defaults, item, "model_reasoning_effort")),
-            _md_escape(_effective_value(defaults, item, "service_tier")),
-            _md_escape(item.get("notes", "-")),
-        ]
-        lines.append(f"| {' | '.join(row)} |")
-    lines.append("")
-    _write_if_changed(config_dir / "repo-bootstrap.md", "\n".join(lines))
 
 
 def generate_registry_base(config_dir: Path) -> None:
@@ -272,7 +213,7 @@ def validate_registry(
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Generate Markdown and Obsidian Base views for the Codex repo bootstrap registry."
+        description="Generate Obsidian Base artifacts for the Codex repo bootstrap registry."
     )
     parser.add_argument(
         "registry_file",
@@ -304,10 +245,9 @@ def main() -> int:
         print(f"Registry validation failed: {exc}", file=sys.stderr)
         return 1
 
-    generate_registry_md(config_dir, defaults, presets, repos)
     generate_registry_base(config_dir)
     generate_registry_items(config_dir, defaults, repos)
-    print(f"Generated repo bootstrap views in {config_dir}")
+    print(f"Generated repo bootstrap Base artifacts in {config_dir}")
     return 0
 
 

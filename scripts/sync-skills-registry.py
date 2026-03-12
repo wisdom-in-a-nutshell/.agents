@@ -57,10 +57,6 @@ def sync_link(dst: Path, src: Path, apply: bool) -> None:
     dst.symlink_to(rel)
 
 
-def _md_escape(value: str) -> str:
-    return value.replace("|", r"\|").replace("\n", " ").strip()
-
-
 def _yaml_str(value: str) -> str:
     return json.dumps(value)
 
@@ -70,54 +66,6 @@ def _write_if_changed(path: Path, content: str) -> None:
     old = path.read_text(encoding="utf-8") if path.exists() else None
     if old != content:
         path.write_text(content, encoding="utf-8")
-
-
-def generate_registry_md(
-    registry_dir: Path,
-    managed: list[dict[str, Any]],
-    unmanaged: list[dict[str, Any]],
-) -> None:
-    lines: list[str] = []
-    lines.append("# Skills Registry")
-    lines.append("")
-    lines.append("Generated from `skills/registry.json`. Edit JSON only.")
-    lines.append("")
-    lines.append("Policy:")
-    lines.append("- Origins: `external`, `owned`")
-    lines.append("- Distribution: `link` only")
-    lines.append("- Canonical sources live under `skills-source/<origin>/<skill>`")
-    lines.append("- Global runtime discovery lives under `skills/<skill>` as symlinks")
-    lines.append("- Repo-scoped skills live under `<repo>/.agents/skills/<skill>` as symlinks")
-    lines.append("")
-    lines.append("## Managed Skills")
-    lines.append("")
-    lines.append("| skill | origin | scope | repos | source_path | upstream_ref |")
-    lines.append("| --- | --- | --- | --- | --- | --- |")
-    for item in managed:
-        repos = ",".join(item.get("repos", [])) if item["scope"] == "repo" else "*"
-        row = [
-            _md_escape(item["skill"]),
-            _md_escape(item["origin"]),
-            _md_escape(item["scope"]),
-            _md_escape(repos),
-            _md_escape(item["source_path"]),
-            _md_escape(item.get("upstream_ref", "-")),
-        ]
-        lines.append(f"| {' | '.join(row)} |")
-
-    lines.append("")
-    lines.append("## Repo-Local Skills (Unmanaged)")
-    lines.append("")
-    lines.append("| repo | skill |")
-    lines.append("| --- | --- |")
-    for item in unmanaged:
-        row = [
-            _md_escape(item["repo"]),
-            _md_escape(item["skill"]),
-        ]
-        lines.append(f"| {' | '.join(row)} |")
-    lines.append("")
-    _write_if_changed(registry_dir / "registry.md", "\n".join(lines))
 
 
 def generate_registry_base(registry_dir: Path) -> None:
@@ -337,7 +285,7 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description=(
             "Sync skill symlinks from a canonical JSON registry and generate "
-            "Obsidian-friendly views."
+            "Obsidian Base artifacts."
         )
     )
     parser.add_argument(
@@ -348,7 +296,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--no-generate",
         action="store_true",
-        help="Skip generating registry.md, registry.base, and registry-items files.",
+        help="Skip generating registry.base and registry-items files.",
     )
     parser.add_argument(
         "registry_file",
@@ -383,10 +331,9 @@ def main() -> int:
         return 1
 
     if not args.no_generate:
-        generate_registry_md(registry_dir, managed, unmanaged)
         generate_registry_base(registry_dir)
         generate_registry_items(registry_dir, managed, unmanaged)
-        print(f"Generated registry views in {registry_dir}")
+        print(f"Generated registry Base artifacts in {registry_dir}")
 
     run_sync(managed, root_dir, github_root, args.apply)
 
