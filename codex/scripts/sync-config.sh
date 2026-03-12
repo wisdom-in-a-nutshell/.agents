@@ -33,6 +33,7 @@ Default mode is dry-run. Use --apply to write changes.
 
 Options:
   --apply                    Apply changes in place (default: dry-run)
+  --dry-run                  Show planned changes only (default)
   --global-only              Sync ~/.codex/config.toml only
   --xcode-only               Sync Xcode Codex config/rules only
   --github-root <path>       Root path for workspace-write writable_roots
@@ -73,6 +74,10 @@ while [[ $# -gt 0 ]]; do
   case "$1" in
     --apply)
       APPLY=1
+      shift
+      ;;
+    --dry-run)
+      APPLY=0
       shift
       ;;
     --global-only)
