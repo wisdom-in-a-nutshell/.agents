@@ -129,6 +129,7 @@ agent-browser scroll down 500 --selector "div.content"  # Scroll within a specif
 agent-browser get text @e1            # Get element text
 agent-browser get url                 # Get current URL
 agent-browser get title               # Get page title
+agent-browser get cdp-url             # Get CDP WebSocket URL
 
 # Wait
 agent-browser wait @e1                # Wait for element
@@ -308,6 +309,7 @@ The `scale` parameter (3rd argument) sets `window.devicePixelRatio` without chan
 ```bash
 agent-browser --headed open https://example.com
 agent-browser highlight @e1          # Highlight element
+agent-browser inspect                # Open Chrome DevTools for the active page
 agent-browser record start demo.webm # Record session
 agent-browser profiler start         # Start Chrome DevTools profiling
 agent-browser profiler stop trace.json # Stop and save profile (path optional)
