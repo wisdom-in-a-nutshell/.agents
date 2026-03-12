@@ -9,7 +9,6 @@ approval_policy = "never"
 sandbox_mode = "danger-full-access"
 web_search = "live"
 personality = "pragmatic"
-service_tier = "fast"
 suppress_unstable_features_warning = true
 
 [features]

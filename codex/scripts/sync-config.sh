@@ -235,6 +235,31 @@ upsert_top_level_key() {
   mv "$tmp_file" "$file"
 }
 
+remove_top_level_key() {
+  local file="$1"
+  local key="$2"
+  local tmp_file="$file.tmp"
+
+  awk -v key="$key" '
+    BEGIN {
+      in_sections = 0
+      regex = "^[[:space:]]*" key "[[:space:]]*="
+    }
+    /^[[:space:]]*\[/ {
+      in_sections = 1
+      print
+      next
+    }
+    {
+      if (!in_sections && $0 ~ regex) {
+        next
+      }
+      print
+    }
+  ' "$file" > "$tmp_file"
+  mv "$tmp_file" "$file"
+}
+
 upsert_section_key() {
   local file="$1"
   local section="$2"
@@ -305,6 +330,12 @@ render_global_config() {
 
   notify_value="[\"python3\", $(quote_toml_string "$NOTIFY_SCRIPT_PATH")]"
   upsert_top_level_key "$target_file" "notify" "$notify_value"
+
+  # service_tier should follow the canonical template; if it is removed there,
+  # prune stale copies from older live configs.
+  if ! rg -n '^[[:space:]]*service_tier[[:space:]]*=' "$template_file" >/dev/null 2>&1; then
+    remove_top_level_key "$target_file" "service_tier"
+  fi
 }
 
 sanitize_machine_specific_entries() {
@@ -497,6 +528,10 @@ render_xcode_config() {
   upsert_section_key "$target_file" "sandbox_workspace_write" "writable_roots" "$writable_roots"
   # Ensure Xcode Codex trusts all repos under the configured GitHub root.
   upsert_section_key "$target_file" "$project_section" "trust_level" "\"trusted\""
+
+  if ! rg -n '^[[:space:]]*service_tier[[:space:]]*=' "$template_file" >/dev/null 2>&1; then
+    remove_top_level_key "$target_file" "service_tier"
+  fi
 }
 
 render_xcode_rules() {
