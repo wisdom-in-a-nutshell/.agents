@@ -179,6 +179,7 @@ def render_repo_config(repo: str, override: dict, presets: dict) -> str:
         "# Edit ~/.agents/codex/config/repo-bootstrap.toml and re-run the sync script.",
         f"# Repo: {repo}",
     ]
+    rendered_anything = False
 
     scalar_keys = [
         "profile",
@@ -198,6 +199,7 @@ def render_repo_config(repo: str, override: dict, presets: dict) -> str:
         if key in override:
             scalar_lines.append(f"{key} = {toml_value(override[key])}")
     if scalar_lines:
+        rendered_anything = True
         lines.append("")
         lines.extend(scalar_lines)
 
@@ -205,6 +207,7 @@ def render_repo_config(repo: str, override: dict, presets: dict) -> str:
     if features:
         if not isinstance(features, dict):
             raise TypeError(f"features for {repo} must be a table")
+        rendered_anything = True
         lines.append("")
         lines.append("[features]")
         for key, value in features.items():
@@ -220,10 +223,14 @@ def render_repo_config(repo: str, override: dict, presets: dict) -> str:
         preset = presets[preset_name]
         if not isinstance(preset, dict):
             raise TypeError(f"MCP preset `{preset_name}` must be a table")
+        rendered_anything = True
         lines.append("")
         lines.append(f"[mcp_servers.{preset_name}]")
         for key, value in preset.items():
             lines.append(f"{key} = {toml_value(value)}")
+
+    if not rendered_anything:
+        lines.append("# No repo-local Codex overrides are currently assigned.")
 
     return "\n".join(lines) + "\n"
 
