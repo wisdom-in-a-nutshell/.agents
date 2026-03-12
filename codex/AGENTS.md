@@ -29,8 +29,10 @@ Canonical personal Codex control-plane assets live here.
 - `scripts/sync-config.sh` is the canonical sync/apply entrypoint for machine Codex config.
 - `scripts/sync-global-agents-md.sh` is the canonical sync/apply entrypoint for machine-wide `~/.codex/AGENTS.md`.
 - `scripts/sync-trusted-projects.sh` is the canonical trusted-repo sync entrypoint for Codex.
+- `scripts/sync-repo-codex-configs.sh` is the canonical repo-local Codex config sync/apply entrypoint.
 - `scripts/bootstrap-machine-codex.sh` is the canonical Codex-specific machine bootstrap batch.
 - `config/global.config.toml` and `config/xcode.config.toml` are the canonical managed baselines.
+- `config/repo-bootstrap.toml` is the canonical registry for repo-local Codex bootstrap and MCP presets.
 - `config/global.agents.md` is the canonical machine-wide AGENTS content that bootstraps to `~/.codex/AGENTS.md`.
 - `scripts/notify.py` is the canonical notify automation source.
 - `scripts/configure-ghostty-cwd.sh` and `scripts/ghostty-codex-then-shell.sh` are the canonical Ghostty/Codex startup helpers.

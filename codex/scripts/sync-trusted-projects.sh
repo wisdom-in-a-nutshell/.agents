@@ -4,10 +4,14 @@ set -euo pipefail
 APPLY=0
 SYNC_GLOBAL=1
 SYNC_XCODE=1
-ROOTS=("${HOME}/GitHub")
+ROOTS=()
 GLOBAL_CONFIG="${HOME}/.codex/config.toml"
 XCODE_CONFIG="${HOME}/Library/Developer/Xcode/CodingAssistant/codex/config.toml"
 TIMESTAMP="$(date +%Y%m%d-%H%M%S)"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+CONTROL_PLANE_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+REGISTRY_FILE="${CONTROL_PLANE_DIR}/config/repo-bootstrap.toml"
+ROOTS_EXPLICIT=0
 
 usage() {
   cat <<USAGE
@@ -21,7 +25,8 @@ Options:
   --dry-run              Show diff only (default)
   --global-only          Update ~/.codex/config.toml only
   --xcode-only           Update Xcode Codex config only
-  --root <path>          Root to scan for repos (repeatable, default: ~/GitHub)
+  --root <path>          Root to scan for repos (repeatable; overrides registry roots)
+  --registry <path>      Override repo bootstrap registry used for roots/extras
   --global-config <p>    Override global config target
   --xcode-config <p>     Override Xcode config target
   -h, --help             Show this help
@@ -72,7 +77,12 @@ while [[ $# -gt 0 ]]; do
       shift
       ;;
     --root)
+      ROOTS_EXPLICIT=1
       ROOTS+=("${2:-}")
+      shift 2
+      ;;
+    --registry)
+      REGISTRY_FILE="${2:-}"
       shift 2
       ;;
     --global-config)
@@ -266,6 +276,55 @@ collect_all_repo_roots() {
   done | sort
 }
 
+collect_registry_paths() {
+  local mode="$1"
+  [[ -f "$REGISTRY_FILE" ]] || return 0
+
+  python3 - "$REGISTRY_FILE" "$mode" <<'PY'
+from __future__ import annotations
+
+import subprocess
+import sys
+from pathlib import Path
+
+try:
+    import tomllib
+except ModuleNotFoundError:  # pragma: no cover - Python < 3.11
+    import tomli as tomllib
+
+
+registry = Path(sys.argv[1]).expanduser().resolve()
+mode = sys.argv[2]
+data = tomllib.loads(registry.read_text(encoding="utf-8"))
+discovery = data.get("discovery", {})
+if not isinstance(discovery, dict):
+    raise TypeError("discovery must be a table")
+
+items = discovery.get(mode, [])
+if not isinstance(items, list):
+    raise TypeError(f"discovery.{mode} must be an array")
+
+for raw in items:
+    path = Path(raw).expanduser().resolve()
+    if mode == "extra_repos":
+        try:
+            repo_root = subprocess.run(
+                ["git", "-C", str(path), "rev-parse", "--show-toplevel"],
+                check=True,
+                capture_output=True,
+                text=True,
+            ).stdout.strip()
+        except subprocess.CalledProcessError:
+            if path.exists():
+                print(f"WARNING: skipping non-git extra repo path: {path}", file=sys.stderr)
+            continue
+        if repo_root:
+            print(str(Path(repo_root).resolve()))
+    else:
+        print(str(path))
+PY
+}
+
 apply_trust_entries() {
   local target_file="$1"
   shift
@@ -296,7 +355,21 @@ sync_target() {
   fi
 }
 
-mapfile -t REPO_ROOTS < <(collect_all_repo_roots)
+if (( ROOTS_EXPLICIT == 0 )); then
+  mapfile -t ROOTS < <(collect_registry_paths "roots")
+fi
+
+if (( ${#ROOTS[@]} == 0 )); then
+  ROOTS=("${HOME}/GitHub")
+fi
+
+mapfile -t EXTRA_REPOS < <(collect_registry_paths "extra_repos")
+mapfile -t REPO_ROOTS < <(
+  {
+    collect_all_repo_roots
+    printf '%s\n' "${EXTRA_REPOS[@]}"
+  } | awk 'NF' | sort -u
+)
 
 if (( ${#REPO_ROOTS[@]} == 0 )); then
   die "No Git repos discovered under the configured root set."

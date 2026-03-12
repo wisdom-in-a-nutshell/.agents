@@ -34,6 +34,9 @@ Use [Codex Control Plane Ownership](/Users/dobby/.agents/docs/references/codex-c
 - Sync exact trusted repo roots into terminal + Xcode Codex config:
   - [`sync-trusted-projects.sh`](/Users/dobby/.agents/codex/scripts/sync-trusted-projects.sh)
   - `~/.agents/codex/scripts/sync-trusted-projects.sh --apply`
+- Sync repo-local `.codex/config.toml` files from the canonical registry:
+  - [`sync-repo-codex-configs.sh`](/Users/adi/.agents/codex/scripts/sync-repo-codex-configs.sh)
+  - `~/.agents/codex/scripts/sync-repo-codex-configs.sh --apply`
 - Link the shared shell config:
   - [`link-shared-zshrc.sh`](/Users/dobby/GitHub/scripts/setup/codex/link-shared-zshrc.sh)
   - `~/GitHub/scripts/setup/codex/link-shared-zshrc.sh --apply`
@@ -62,11 +65,17 @@ Use [Codex Control Plane Ownership](/Users/dobby/.agents/docs/references/codex-c
   - strips foreign-user project and system-skill entries before writing
   - fails fast if the target config contains unresolved Git conflict markers
 - [`sync-trusted-projects.sh`](/Users/dobby/.agents/codex/scripts/sync-trusted-projects.sh)
-  - scans repo roots under `~/GitHub`
+  - scans repo roots from the canonical repo bootstrap registry (defaults to `~/GitHub`)
+  - includes explicit extra managed repos such as `~/.agents`
   - writes exact `[projects."<path>"] trust_level = "trusted"` entries
+- [`sync-repo-codex-configs.sh`](/Users/adi/.agents/codex/scripts/sync-repo-codex-configs.sh)
+  - renders managed repo-local `.codex/config.toml` files from the canonical registry
+  - writes minimal config files for all managed repos, with MCP presets only where assigned
+  - keeps the repo list and MCP preset definitions in [`repo-bootstrap.toml`](/Users/adi/.agents/codex/config/repo-bootstrap.toml)
 - [`bootstrap-machine-codex.sh`](/Users/dobby/.agents/codex/scripts/bootstrap-machine-codex.sh)
   - runs config sync
   - runs trusted-project sync
+  - runs repo-local Codex config sync
   - runs Ghostty config reconciliation
 - [`configure-ghostty-cwd.sh`](/Users/dobby/.agents/codex/scripts/configure-ghostty-cwd.sh)
   - ensures Ghostty uses the Codex startup wrapper

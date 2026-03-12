@@ -77,6 +77,8 @@ Use [Codex Control Plane](/Users/dobby/.agents/docs/architecture/codex-control-p
 - [docs/projects/codex-control-plane/tasks.md](/Users/dobby/.agents/docs/projects/codex-control-plane/tasks.md): active project tracker for the migration.
 - [codex/scripts/bootstrap-machine-codex.sh](/Users/dobby/.agents/codex/scripts/bootstrap-machine-codex.sh): canonical Codex-specific machine bootstrap entrypoint.
 - [codex/scripts/sync-trusted-projects.sh](/Users/dobby/.agents/codex/scripts/sync-trusted-projects.sh): canonical trusted-repo sync for terminal + Xcode Codex configs.
+- [codex/scripts/sync-repo-codex-configs.sh](/Users/adi/.agents/codex/scripts/sync-repo-codex-configs.sh): canonical repo-local Codex config sync for managed repos.
+- [codex/config/repo-bootstrap.toml](/Users/adi/.agents/codex/config/repo-bootstrap.toml): canonical repo bootstrap registry for discovery roots, extra repos, and MCP presets.
 - [codex/scripts/install-sudoers-codex-ops.sh](/Users/dobby/.agents/codex/scripts/install-sudoers-codex-ops.sh): canonical Codex sudoers installer.
 
 ## Migration Intent

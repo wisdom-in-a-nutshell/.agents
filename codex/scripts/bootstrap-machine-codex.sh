@@ -97,11 +97,13 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SYNC_CONFIG_SCRIPT="${SCRIPT_DIR}/sync-config.sh"
 SYNC_GLOBAL_AGENTS_SCRIPT="${SCRIPT_DIR}/sync-global-agents-md.sh"
 SYNC_TRUSTED_SCRIPT="${SCRIPT_DIR}/sync-trusted-projects.sh"
+SYNC_REPO_CONFIGS_SCRIPT="${SCRIPT_DIR}/sync-repo-codex-configs.sh"
 GHOSTTY_SCRIPT="${SCRIPT_DIR}/configure-ghostty-cwd.sh"
 
 [[ -x "$SYNC_CONFIG_SCRIPT" ]] || die "Missing executable: $SYNC_CONFIG_SCRIPT"
 [[ -x "$SYNC_GLOBAL_AGENTS_SCRIPT" ]] || die "Missing executable: $SYNC_GLOBAL_AGENTS_SCRIPT"
 [[ -x "$SYNC_TRUSTED_SCRIPT" ]] || die "Missing executable: $SYNC_TRUSTED_SCRIPT"
+[[ -x "$SYNC_REPO_CONFIGS_SCRIPT" ]] || die "Missing executable: $SYNC_REPO_CONFIGS_SCRIPT"
 [[ -x "$GHOSTTY_SCRIPT" ]] || die "Missing executable: $GHOSTTY_SCRIPT"
 
 sync_config_cmd=(
@@ -132,6 +134,13 @@ sync_trusted_cmd=(
 )
 log "+ ${sync_trusted_cmd[*]}"
 "${sync_trusted_cmd[@]}"
+
+sync_repo_configs_cmd=(
+  "$SYNC_REPO_CONFIGS_SCRIPT"
+  "$MODE_FLAG"
+)
+log "+ ${sync_repo_configs_cmd[*]}"
+"${sync_repo_configs_cmd[@]}"
 
 ghostty_cmd=(
   "$GHOSTTY_SCRIPT"

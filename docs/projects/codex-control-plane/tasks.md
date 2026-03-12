@@ -16,7 +16,7 @@ Codex setup is currently split across `~/.agents`, `~/.codex`, and `~/GitHub/scr
 
 ### Out of Scope
 - Migrating secrets, auth tokens, session history, or other volatile runtime state into git.
-- Rewriting every repo-local `.codex/config.toml` in this project.
+- Rewriting every repo-local `.codex/config.toml` in this project unless explicitly requested.
 - Removing `~/.codex` runtime files that Codex actively manages.
 
 ## Context / Constraints
@@ -55,6 +55,7 @@ Codex setup is currently split across `~/.agents`, `~/.codex`, and `~/GitHub/scr
 - `~/.codex` remains the applied runtime home, not the canonical source for durable Codex policy.
 - `~/.codex` should no longer be git-tracked; it is runtime-only.
 - Repo-local `.codex/config.toml` remains the right place for project-specific MCP/tool behavior when needed.
+- Canonical repo-local Codex bootstrap policy now lives in `~/.agents/codex/config/repo-bootstrap.toml` and renders managed repo-local `.codex/config.toml` files.
 - `~/GitHub/scripts` should remain the bootstrap/apply shell, but not the long-term owner of Codex-specific policy and templates.
 - Codex-specific machine bootstrap, trusted-repo sync, and Codex sudoers setup now live under `~/.agents/codex/scripts`.
 
@@ -102,6 +103,7 @@ Codex setup is currently split across `~/.agents`, `~/.codex`, and `~/GitHub/scr
 - 2026-03-10: [IN-PROGRESS] Added a companion reference doc for the Codex control plane covering exact commands, healthy-state checks, main scripts, and the failure modes we actually hit during rollout.
 - 2026-03-10: [IN-PROGRESS] Split the architecture view into smaller figures and added a dedicated script-flow architecture page so the main script groups can be understood visually without one dense diagram.
 - 2026-03-11: [IN-PROGRESS] Repaired local Codex App recommended-skills loading by restoring `~/.codex/vendor_imports/skills` as the upstream `openai/skills` Git checkout, and documented that `vendor_imports/skills` is a runtime-managed nested repo that must be preserved during `~/.codex` cleanup.
+- 2026-03-12: [IN-PROGRESS] Added a canonical repo bootstrap registry plus repo-local Codex config sync, extended trusted-project sync to include registry-managed extra repos like `~/.agents`, and wired repo-local `.codex/config.toml` rendering into the main Codex bootstrap flow.
 
 ## Next 3 Actions
 1. Decide whether any legacy backup artifacts under `~/.codex` should be pruned now that the repo layer is gone.
