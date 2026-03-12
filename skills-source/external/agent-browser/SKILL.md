@@ -44,6 +44,62 @@ agent-browser open https://example.com && agent-browser wait --load networkidle 
 
 **When to chain:** Use `&&` when you don't need to read the output of an intermediate command before proceeding (e.g., open + wait + screenshot). Run commands separately when you need to parse the output first (e.g., snapshot to discover refs, then interact using those refs).
 
+## Handling Authentication
+
+When automating a site that requires login, choose the approach that fits:
+
+**Option 1: Import auth from the user's browser (fastest for one-off tasks)**
+
+```bash
+# Connect to the user's running Chrome (they're already logged in)
+agent-browser --auto-connect state save ./auth.json
+# Use that auth state
+agent-browser --state ./auth.json open https://app.example.com/dashboard
+```
+
+State files contain session tokens in plaintext -- add to `.gitignore` and delete when no longer needed. Set `AGENT_BROWSER_ENCRYPTION_KEY` for encryption at rest.
+
+**Option 2: Persistent profile (simplest for recurring tasks)**
+
+```bash
+# First run: login manually or via automation
+agent-browser --profile ~/.myapp open https://app.example.com/login
+# ... fill credentials, submit ...
+
+# All future runs: already authenticated
+agent-browser --profile ~/.myapp open https://app.example.com/dashboard
+```
+
+**Option 3: Session name (auto-save/restore cookies + localStorage)**
+
+```bash
+agent-browser --session-name myapp open https://app.example.com/login
+# ... login flow ...
+agent-browser close  # State auto-saved
+
+# Next time: state auto-restored
+agent-browser --session-name myapp open https://app.example.com/dashboard
+```
+
+**Option 4: Auth vault (credentials stored encrypted, login by name)**
+
+```bash
+echo "$PASSWORD" | agent-browser auth save myapp --url https://app.example.com/login --username user --password-stdin
+agent-browser auth login myapp
+```
+
+**Option 5: State file (manual save/load)**
+
+```bash
+# After logging in:
+agent-browser state save ./auth.json
+# In a future session:
+agent-browser state load ./auth.json
+agent-browser open https://app.example.com/dashboard
+```
+
+See [references/authentication.md](references/authentication.md) for OAuth, 2FA, cookie-based auth, and token refresh patterns.
+
 ## Essential Commands
 
 ```bash
@@ -432,6 +488,8 @@ agent-browser click @e1              # Use new refs
 ## Annotated Screenshots (Vision Mode)
 
 Use `--annotate` to take a screenshot with numbered labels overlaid on interactive elements. Each label `[N]` maps to ref `@eN`. This also caches refs, so you can interact with elements immediately without a separate snapshot.
+
+In native mode, this currently works on the CDP-backed browser path (Chromium/Lightpanda). The Safari/WebDriver backend does not yet support `--annotate`.
 
 ```bash
 agent-browser screenshot --annotate
