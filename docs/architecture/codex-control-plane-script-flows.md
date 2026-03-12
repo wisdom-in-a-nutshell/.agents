@@ -90,7 +90,7 @@ flowchart TD
 
 ```mermaid
 flowchart TD
-    A[install-sudoers-codex-ops.sh] --> B[/etc/sudoers.d/codex-ops]
+    A[install-sudoers-codex-ops.sh] --> B["/etc/sudoers.d/codex-ops"]
     B --> C[Codex machine ops without password prompts]
 ```
 
