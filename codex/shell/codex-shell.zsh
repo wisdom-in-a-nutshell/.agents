@@ -16,24 +16,53 @@ codex_jump() {
   _codex_jump_load_usage() {
     local usage_path="$1"
     local usage_dir usage_count_raw usage_last_raw usage_extra
+    local valid_entries=0
+    local invalid_entries=0
+    local sanitized_tmp
+    local backup_path
 
     [[ -f "$usage_path" ]] || return 0
 
     while IFS=$'\t' read -r usage_dir usage_count_raw usage_last_raw usage_extra || [[ -n "${usage_dir:-}" ]]; do
-      [[ -n "${usage_dir:-}" && -z "${usage_extra:-}" ]] || continue
+      if [[ -z "${usage_dir:-}" || -n "${usage_extra:-}" ]]; then
+        (( invalid_entries++ ))
+        continue
+      fi
 
       if [[ "$usage_dir" == \"*\" ]]; then
         usage_dir="${usage_dir#\"}"
         usage_dir="${usage_dir%\"}"
       fi
 
-      [[ -n "$usage_dir" && -d "$usage_dir" ]] || continue
-      [[ "${usage_count_raw:-}" =~ ^[0-9]+$ ]] || continue
-      [[ "${usage_last_raw:-}" =~ ^[0-9]+$ ]] || continue
+      if [[ -z "$usage_dir" || ! -d "$usage_dir" || ! "${usage_count_raw:-}" =~ ^[0-9]+$ || ! "${usage_last_raw:-}" =~ ^[0-9]+$ ]]; then
+        (( invalid_entries++ ))
+        continue
+      fi
 
       usage_count["$usage_dir"]="$usage_count_raw"
       usage_last["$usage_dir"]="$usage_last_raw"
+      (( valid_entries++ ))
     done < "$usage_path"
+
+    if (( invalid_entries > 0 )); then
+      backup_path="${usage_path}.corrupt.$(date +%Y%m%d-%H%M%S)"
+      cp "$usage_path" "$backup_path" 2>/dev/null || true
+
+      sanitized_tmp="$(mktemp -t codex-jump-usage-sanitized)"
+      if (( valid_entries > 0 )); then
+        for usage_dir in "${(@k)usage_count}"; do
+          printf '%s\t%s\t%s\n' \
+            "$usage_dir" \
+            "${usage_count[$usage_dir]}" \
+            "${usage_last[$usage_dir]:-0}" >> "$sanitized_tmp"
+        done
+        sort -t $'\t' -k2,2nr -k3,3nr "$sanitized_tmp" > "${sanitized_tmp}.sorted"
+        mv "${sanitized_tmp}.sorted" "$usage_path"
+      else
+        : > "$usage_path"
+      fi
+      rm -f "$sanitized_tmp"
+    fi
   }
 
   local -a candidates
@@ -147,7 +176,7 @@ codex_jump() {
     usage_last["$selected"]="$now"
 
     usage_tmp="$(mktemp -t codex-jump-usage)"
-    for dir in "${(k)usage_count}"; do
+    for dir in "${(@k)usage_count}"; do
       printf '%s\t%s\t%s\n' "$dir" "${usage_count[$dir]}" "${usage_last[$dir]:-0}" >> "$usage_tmp"
     done
     sort -t $'\t' -k2,2nr -k3,3nr "$usage_tmp" > "${usage_tmp}.sorted"

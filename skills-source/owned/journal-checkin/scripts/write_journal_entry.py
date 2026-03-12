@@ -13,7 +13,7 @@ from zoneinfo import ZoneInfo
 
 VALID_KINDS = {"morning", "night", "general"}
 REQUIRED_FIELDS = {
-    "morning": ["sleep_10", "energy_10", "mood_10", "grateful", "one_thing_that_matters"],
+    "morning": ["sleep", "energy_10", "mood_10", "grateful", "one_thing_that_matters"],
     "night": [
         "mood_10",
         "energy_10",
@@ -23,7 +23,7 @@ REQUIRED_FIELDS = {
     ],
     "general": ["summary"],
 }
-SCORE_FIELDS = {"sleep_10", "energy_10", "mood_10"}
+SCORE_FIELDS = {"energy_10", "mood_10"}
 
 
 def parse_args() -> argparse.Namespace:
@@ -82,10 +82,36 @@ def validate_score(name: str, value: Any) -> str | None:
     return None
 
 
+def normalize_sleep(entry: dict[str, Any]) -> None:
+    sleep = entry.get("sleep")
+    legacy_score = entry.pop("sleep_10", None)
+    legacy_notes = entry.pop("sleep_notes", None)
+
+    if sleep is None:
+        if legacy_score is not None or legacy_notes is not None:
+            sleep = {}
+        else:
+            return
+
+    if not isinstance(sleep, dict):
+        return
+
+    if "score_10" not in sleep and legacy_score is not None:
+        sleep["score_10"] = legacy_score
+    if "notes" not in sleep and isinstance(legacy_notes, str) and legacy_notes.strip():
+        sleep["notes"] = legacy_notes.strip()
+
+    entry["sleep"] = sleep
+
+
 def missing_fields(kind: str, entry: dict[str, Any]) -> list[str]:
     missing: list[str] = []
     for field in REQUIRED_FIELDS[kind]:
         value = entry.get(field)
+        if field == "sleep":
+            if not isinstance(value, dict) or value.get("score_10") is None:
+                missing.append(field)
+            continue
         if field == "grateful":
             if not isinstance(value, list) or len([item for item in value if str(item).strip()]) < 3:
                 missing.append(field)
@@ -105,6 +131,17 @@ def validate_entry(kind: str, entry: dict[str, Any]) -> list[str]:
             error = validate_score(field, entry[field])
             if error:
                 errors.append(error)
+    if kind == "morning" and "sleep" in entry:
+        sleep = entry["sleep"]
+        if not isinstance(sleep, dict):
+            errors.append("sleep must be an object")
+        else:
+            error = validate_score("sleep.score_10", sleep.get("score_10"))
+            if error:
+                errors.append(error)
+            notes = sleep.get("notes")
+            if notes is not None and (not isinstance(notes, str) or not notes.strip()):
+                errors.append("sleep.notes must be a non-empty string when provided")
     return errors
 
 
@@ -135,6 +172,9 @@ def main() -> int:
         "updated_at": timestamp.isoformat(),
         "source": args.source,
     }
+
+    if args.kind == "morning":
+        normalize_sleep(entry)
 
     validation_errors = validate_entry(args.kind, entry)
     if validation_errors:
