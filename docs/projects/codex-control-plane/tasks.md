@@ -55,7 +55,7 @@ Codex setup is currently split across `~/.agents`, `~/.codex`, and `~/GitHub/scr
 - `~/.codex` remains the applied runtime home, not the canonical source for durable Codex policy.
 - `~/.codex` should no longer be git-tracked; it is runtime-only.
 - Repo-local `.codex/config.toml` remains the right place for project-specific MCP/tool behavior when needed.
-- Canonical repo-local Codex bootstrap policy now lives in `~/.agents/codex/config/repo-bootstrap.toml` and renders managed repo-local `.codex/config.toml` files.
+- Canonical repo-local Codex bootstrap policy now lives in `~/.agents/codex/config/repo-bootstrap.json` and renders managed repo-local `.codex/config.toml` files.
 - `~/GitHub/scripts` should remain the bootstrap/apply shell, but not the long-term owner of Codex-specific policy and templates.
 - Codex-specific machine bootstrap, trusted-repo sync, and Codex sudoers setup now live under `~/.agents/codex/scripts`.
 

@@ -1,0 +1,126 @@
+{
+  "defaults": {
+    "model": "gpt-5.4",
+    "model_reasoning_effort": "high",
+    "service_tier": null
+  },
+  "mcp_presets": {
+    "openaiDeveloperDocs": {
+      "url": "https://developers.openai.com/mcp"
+    },
+    "xcode": {
+      "command": "xcrun",
+      "args": [
+        "mcpbridge"
+      ],
+      "startup_timeout_sec": 180,
+      "tool_timeout_sec": 120
+    }
+  },
+  "repos": [
+    {
+      "path": "~/.agents",
+      "mcp_presets": [
+        "openaiDeveloperDocs"
+      ]
+    },
+    {
+      "path": "~/GitHub/.github"
+    },
+    {
+      "path": "~/GitHub/adi-brand"
+    },
+    {
+      "path": "~/GitHub/adithyan-ai-videos"
+    },
+    {
+      "path": "~/GitHub/aip-cognitive-revolution"
+    },
+    {
+      "path": "~/GitHub/aipodcasting"
+    },
+    {
+      "path": "~/GitHub/aipodcasting-ghost-theme"
+    },
+    {
+      "path": "~/GitHub/aipodcasting-landing-page"
+    },
+    {
+      "path": "~/GitHub/aipodcasting-public-website"
+    },
+    {
+      "path": "~/GitHub/audio-enhance"
+    },
+    {
+      "path": "~/GitHub/base-template"
+    },
+    {
+      "path": "~/GitHub/blog-aipodcast-ing"
+    },
+    {
+      "path": "~/GitHub/blog-personal"
+    },
+    {
+      "path": "~/GitHub/codexclaw",
+      "mcp_presets": [
+        "xcode",
+        "openaiDeveloperDocs"
+      ]
+    },
+    {
+      "path": "~/GitHub/codexclaw-workspaces",
+      "mcp_presets": [
+        "openaiDeveloperDocs"
+      ]
+    },
+    {
+      "path": "~/GitHub/focus"
+    },
+    {
+      "path": "~/GitHub/future-of-life-institute-podcast-aipodcast-ing-theme"
+    },
+    {
+      "path": "~/GitHub/ghost-infrastructure"
+    },
+    {
+      "path": "~/GitHub/ghost-theme-aip-blog"
+    },
+    {
+      "path": "~/GitHub/ghost-theme-template"
+    },
+    {
+      "path": "~/GitHub/grateful-journal"
+    },
+    {
+      "path": "~/GitHub/litellm"
+    },
+    {
+      "path": "~/GitHub/modal_functions"
+    },
+    {
+      "path": "~/GitHub/musings"
+    },
+    {
+      "path": "~/GitHub/podcast-website-setup"
+    },
+    {
+      "path": "~/GitHub/scripts"
+    },
+    {
+      "path": "~/GitHub/stadia-macos-controller",
+      "notes": "Intentionally no repo-local MCP presets right now."
+    },
+    {
+      "path": "~/GitHub/thoughtforms-life-theme"
+    },
+    {
+      "path": "~/GitHub/win",
+      "mcp_presets": [
+        "openaiDeveloperDocs"
+      ]
+    },
+    {
+      "path": "~/GitHub/win-ghost-storage"
+    }
+  ]
+}

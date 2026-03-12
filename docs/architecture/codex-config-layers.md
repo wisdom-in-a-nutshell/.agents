@@ -10,7 +10,7 @@ The short version is: canonical config lives in `~/.agents`, live machine config
 flowchart TD
     A[~/.agents/codex/config/global.config.toml]
     B[~/.agents/codex/config/xcode.config.toml]
-    C[~/.agents/codex/config/repo-bootstrap.toml]
+    C[~/.agents/codex/config/repo-bootstrap.json]
     D[sync-config.sh]
     E[sync-trusted-projects.sh]
     F[sync-repo-codex-configs.sh]
@@ -38,10 +38,10 @@ flowchart TD
 
 - `global.config.toml` defines the managed baseline for terminal Codex.
 - `xcode.config.toml` defines the managed baseline for Xcode Codex.
-- `repo-bootstrap.toml` defines:
+- `repo-bootstrap.json` defines:
   - which repos are managed
-  - which repos outside `~/GitHub` are included
   - which MCP presets each repo gets
+  - optional per-repo model, reasoning, and service-tier overrides
 
 These files are the source of truth.
 
@@ -64,7 +64,7 @@ So trust sync is part of config layering, not a separate unrelated feature.
 
 ### Repo-Local Config
 
-- `sync-repo-codex-configs.sh` generates repo-local `.codex/config.toml` files from `repo-bootstrap.toml`.
+- `sync-repo-codex-configs.sh` generates repo-local `.codex/config.toml` files from `repo-bootstrap.json`.
 - Most repos can have a minimal managed file with no repo-local overrides.
 - Some repos get MCP presets or later model-specific overrides.
 

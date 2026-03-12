@@ -1,0 +1,37 @@
+filters:
+  and:
+    - 'file.inFolder("codex/config/repo-bootstrap-items")'
+properties:
+  repo_name:
+    displayName: Repo
+  path:
+    displayName: Path
+  mcp_presets_csv:
+    displayName: MCP Presets
+  effective_model:
+    displayName: Model
+  effective_reasoning:
+    displayName: Reasoning
+  effective_service_tier:
+    displayName: Service Tier
+  notes:
+    displayName: Notes
+views:
+  - type: table
+    name: Repo Bootstrap
+    order:
+      - repo_name
+      - mcp_presets_csv
+      - effective_model
+      - effective_reasoning
+      - effective_service_tier
+      - notes
+  - type: table
+    name: MCP Enabled
+    filters: 'mcp_presets_csv != "-"'
+    order:
+      - repo_name
+      - mcp_presets_csv
+      - effective_model
+      - effective_reasoning
+      - effective_service_tier

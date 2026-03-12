@@ -4,7 +4,7 @@ This repo is becoming the canonical personal control plane for Codex across both
 
 That split keeps Codex-specific policy, MCP presets, skills, docs, and managed scripts in one synced place without pretending that auth, sessions, logs, or runtime databases belong in git.
 
-The newest part of that control plane is the repo bootstrap registry in `~/.agents/codex/config/repo-bootstrap.toml`. It now acts as the canonical source for:
+The newest part of that control plane is the repo bootstrap registry in `~/.agents/codex/config/repo-bootstrap.json`. It now acts as the canonical source for:
 
 - which repos are managed
 - which extra repos live outside `~/GitHub`
@@ -30,7 +30,7 @@ flowchart TD
 ```mermaid
 flowchart TD
     A[Edit ~/.agents] --> B[bootstrap-machine-codex.sh]
-    A --> R[repo-bootstrap.toml]
+    A --> R[repo-bootstrap.json]
     B --> C[sync-config.sh]
     B --> D[sync-trusted-projects.sh]
     B --> E[sync-repo-codex-configs.sh]

@@ -10,7 +10,7 @@ XCODE_CONFIG="${HOME}/Library/Developer/Xcode/CodingAssistant/codex/config.toml"
 TIMESTAMP="$(date +%Y%m%d-%H%M%S)"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 CONTROL_PLANE_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
-REGISTRY_FILE="${CONTROL_PLANE_DIR}/config/repo-bootstrap.toml"
+REGISTRY_FILE="${CONTROL_PLANE_DIR}/config/repo-bootstrap.json"
 ROOTS_EXPLICIT=0
 
 usage() {
@@ -25,8 +25,8 @@ Options:
   --dry-run              Show diff only (default)
   --global-only          Update ~/.codex/config.toml only
   --xcode-only           Update Xcode Codex config only
-  --root <path>          Root to scan for repos (repeatable; overrides registry roots)
-  --registry <path>      Override repo bootstrap registry used for roots/extras
+  --root <path>          Root to scan for repos (repeatable; bypass registry repo list)
+  --registry <path>      Override repo bootstrap registry used for managed repos
   --global-config <p>    Override global config target
   --xcode-config <p>     Override Xcode config target
   -h, --help             Show this help
@@ -276,52 +276,43 @@ collect_all_repo_roots() {
   done | sort
 }
 
-collect_registry_paths() {
-  local mode="$1"
+collect_registry_repos() {
   [[ -f "$REGISTRY_FILE" ]] || return 0
 
-  python3 - "$REGISTRY_FILE" "$mode" <<'PY'
+  python3 - "$REGISTRY_FILE" <<'PY'
 from __future__ import annotations
 
+import json
 import subprocess
 import sys
 from pathlib import Path
 
-try:
-    import tomllib
-except ModuleNotFoundError:  # pragma: no cover - Python < 3.11
-    import tomli as tomllib
-
-
 registry = Path(sys.argv[1]).expanduser().resolve()
-mode = sys.argv[2]
-data = tomllib.loads(registry.read_text(encoding="utf-8"))
-discovery = data.get("discovery", {})
-if not isinstance(discovery, dict):
-    raise TypeError("discovery must be a table")
+data = json.loads(registry.read_text(encoding="utf-8"))
+repos = data.get("repos", [])
+if not isinstance(repos, list):
+    raise TypeError("repos must be an array")
 
-items = discovery.get(mode, [])
-if not isinstance(items, list):
-    raise TypeError(f"discovery.{mode} must be an array")
-
-for raw in items:
+for item in repos:
+    if not isinstance(item, dict):
+        raise TypeError("each repo entry must be an object")
+    raw = item.get("path")
+    if not isinstance(raw, str) or not raw.strip():
+        raise TypeError("repo.path must be a non-empty string")
     path = Path(raw).expanduser().resolve()
-    if mode == "extra_repos":
-        try:
-            repo_root = subprocess.run(
-                ["git", "-C", str(path), "rev-parse", "--show-toplevel"],
-                check=True,
-                capture_output=True,
-                text=True,
-            ).stdout.strip()
-        except subprocess.CalledProcessError:
-            if path.exists():
-                print(f"WARNING: skipping non-git extra repo path: {path}", file=sys.stderr)
-            continue
-        if repo_root:
-            print(str(Path(repo_root).resolve()))
-    else:
-        print(str(path))
+    try:
+        repo_root = subprocess.run(
+            ["git", "-C", str(path), "rev-parse", "--show-toplevel"],
+            check=True,
+            capture_output=True,
+            text=True,
+        ).stdout.strip()
+    except subprocess.CalledProcessError:
+        if path.exists():
+            print(f"WARNING: skipping non-git repo path: {path}", file=sys.stderr)
+        continue
+    if repo_root:
+        print(str(Path(repo_root).resolve()))
 PY
 }
 
@@ -356,20 +347,17 @@ sync_target() {
 }
 
 if (( ROOTS_EXPLICIT == 0 )); then
-  mapfile -t ROOTS < <(collect_registry_paths "roots")
+  mapfile -t REPO_ROOTS < <(collect_registry_repos)
 fi
 
-if (( ${#ROOTS[@]} == 0 )); then
+if (( ROOTS_EXPLICIT == 1 )); then
+  mapfile -t REPO_ROOTS < <(collect_all_repo_roots)
+fi
+
+if (( ${#REPO_ROOTS[@]} == 0 )); then
   ROOTS=("${HOME}/GitHub")
+  mapfile -t REPO_ROOTS < <(collect_all_repo_roots)
 fi
-
-mapfile -t EXTRA_REPOS < <(collect_registry_paths "extra_repos")
-mapfile -t REPO_ROOTS < <(
-  {
-    collect_all_repo_roots
-    printf '%s\n' "${EXTRA_REPOS[@]}"
-  } | awk 'NF' | sort -u
-)
 
 if (( ${#REPO_ROOTS[@]} == 0 )); then
   die "No Git repos discovered under the configured root set."

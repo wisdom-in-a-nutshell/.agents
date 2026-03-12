@@ -71,7 +71,7 @@ Use [Codex Control Plane Ownership](/Users/dobby/.agents/docs/references/codex-c
 - [`sync-repo-codex-configs.sh`](/Users/adi/.agents/codex/scripts/sync-repo-codex-configs.sh)
   - renders managed repo-local `.codex/config.toml` files from the canonical registry
   - writes minimal config files for all managed repos, with MCP presets only where assigned
-  - keeps the repo list and MCP preset definitions in [`repo-bootstrap.toml`](/Users/adi/.agents/codex/config/repo-bootstrap.toml)
+  - keeps the repo list and MCP/model preset definitions in [`repo-bootstrap.json`](/Users/adi/.agents/codex/config/repo-bootstrap.json)
 - [`bootstrap-machine-codex.sh`](/Users/dobby/.agents/codex/scripts/bootstrap-machine-codex.sh)
   - runs config sync
   - runs trusted-project sync
