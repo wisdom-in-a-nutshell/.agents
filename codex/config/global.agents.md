@@ -5,7 +5,6 @@
 This file is machine-wide baseline guidance. Keep it generic and avoid portfolio-specific policy here.
 
 ## Scope Routing
-- For repositories under `/Users/adi/GitHub`, use `/Users/adi/GitHub/AGENTS.md` as the portfolio policy layer.
 - For repo best-practice recommendations, use [$agent-native-repo-playbook](/Users/adi/.agents/skills/agent-native-repo-playbook/SKILL.md).
 
 ## Global Defaults

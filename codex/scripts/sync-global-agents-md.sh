@@ -26,8 +26,8 @@ Options:
   -h, --help             Show this help
 
 Examples:
-  ~/.agents/codex/scripts/sync-global-agents.sh
-  ~/.agents/codex/scripts/sync-global-agents.sh --apply
+  ~/.agents/codex/scripts/sync-global-agents-md.sh
+  ~/.agents/codex/scripts/sync-global-agents-md.sh --apply
 USAGE
 }
 

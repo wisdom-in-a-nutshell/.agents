@@ -95,7 +95,7 @@ fi
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SYNC_CONFIG_SCRIPT="${SCRIPT_DIR}/sync-config.sh"
-SYNC_GLOBAL_AGENTS_SCRIPT="${SCRIPT_DIR}/sync-global-agents.sh"
+SYNC_GLOBAL_AGENTS_SCRIPT="${SCRIPT_DIR}/sync-global-agents-md.sh"
 SYNC_TRUSTED_SCRIPT="${SCRIPT_DIR}/sync-trusted-projects.sh"
 GHOSTTY_SCRIPT="${SCRIPT_DIR}/configure-ghostty-cwd.sh"
 

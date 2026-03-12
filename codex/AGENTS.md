@@ -27,7 +27,7 @@ Canonical personal Codex control-plane assets live here.
 ## Current Scope
 
 - `scripts/sync-config.sh` is the canonical sync/apply entrypoint for machine Codex config.
-- `scripts/sync-global-agents.sh` is the canonical sync/apply entrypoint for machine-wide `~/.codex/AGENTS.md`.
+- `scripts/sync-global-agents-md.sh` is the canonical sync/apply entrypoint for machine-wide `~/.codex/AGENTS.md`.
 - `scripts/sync-trusted-projects.sh` is the canonical trusted-repo sync entrypoint for Codex.
 - `scripts/bootstrap-machine-codex.sh` is the canonical Codex-specific machine bootstrap batch.
 - `config/global.config.toml` and `config/xcode.config.toml` are the canonical managed baselines.
