@@ -8,8 +8,10 @@ Required fields:
 
 Optional fields:
 
-- `mood_10`
-- `energy_10`
+- `mood.score_10`
+- `mood.notes`
+- `energy.score_10`
+- `energy.notes`
 - `what_feels_present`
 - `what_matters_now`
 - `next_step`
@@ -33,6 +35,14 @@ Schema:
   "tz": "Europe/Berlin",
   "updated_at": "ISO-8601 timestamp",
   "source": "chat:text",
+  "mood": {
+    "score_10": 6,
+    "notes": "Mood is unsettled."
+  },
+  "energy": {
+    "score_10": 5,
+    "notes": "Energy is flat."
+  },
   "summary": "...",
   "what_feels_present": "...",
   "what_matters_now": "...",
@@ -49,4 +59,5 @@ File naming:
 Follow-up rule:
 
 - Capture structure from the user's own format when possible.
+- Infer `mood.notes` and `energy.notes` only when the raw text clearly supports them. If not, omit them.
 - Only ask a follow-up if the summary or the key point is not clear enough to save.

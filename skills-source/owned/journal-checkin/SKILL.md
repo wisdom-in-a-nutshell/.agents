@@ -43,6 +43,7 @@ Use [write_journal_entry.py](./scripts/write_journal_entry.py) to write or updat
 - Prefer one compact block over a long reflective questionnaire.
 - If the user sends a voice note or speech-to-text dump, extract what you can first, then ask only for what is missing.
 - If the user sends text in a distinct existing format, preserve that intent and map it into the structured schema.
+- State notes are optional. Infer them from raw text only when they are clear; otherwise omit them.
 - When information is incomplete, ask for the missing fields directly instead of re-running the whole check-in.
 - Treat `morning` and `night` as complete check-ins by default.
 - Treat `general` as a flexible capture mode.
