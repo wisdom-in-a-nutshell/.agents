@@ -13,6 +13,13 @@ Personal agent and Codex control plane.
 
 - `skills/registry.json` is the only canonical registry.
 - `codex/` holds canonical personal Codex control-plane inputs.
+- `codex/config/repo-bootstrap.json` is the canonical registry for managed repo-local Codex behavior.
+  - Per repo it can define:
+    - `mcp_presets`
+    - `model`
+    - `model_reasoning_effort`
+    - `service_tier`
+    - `notes`
 - Managed canonical skill content lives in:
   - `skills-source/external/<skill>/`
   - `skills-source/owned/<skill>/`
@@ -20,6 +27,8 @@ Personal agent and Codex control plane.
 - Generated views for Obsidian live in:
   - `skills/registry.base`
   - `skills/registry-items/`
+  - `codex/config/repo-bootstrap.base`
+  - `codex/config/repo-bootstrap-items/`
 
 ## Operations
 
@@ -35,6 +44,8 @@ Personal agent and Codex control plane.
 - Apply Codex global AGENTS apply: `./codex/scripts/sync-global-agents-md.sh --apply`
 - Dry-run Codex trust sync: `./codex/scripts/sync-trusted-projects.sh`
 - Apply Codex trust sync: `./codex/scripts/sync-trusted-projects.sh --apply`
+- Rebuild Codex repo bootstrap Base artifacts: `./codex/scripts/sync-repo-bootstrap-registry.sh`
+- Apply managed repo-local Codex configs: `./codex/scripts/sync-repo-codex-configs.sh --apply`
 - Dry-run Codex bootstrap batch: `./codex/scripts/bootstrap-machine-codex.sh`
 - Apply Codex bootstrap batch: `./codex/scripts/bootstrap-machine-codex.sh --apply`
 
@@ -53,3 +64,4 @@ Personal agent and Codex control plane.
 - Keep repo-local skills listed in `skills/registry.json` under `unmanaged_repo_local_skills`.
 - Do not add additional manifest files for skill mapping; update `skills/registry.json`.
 - If `skills/registry.json` changes, run sync/check in the same change.
+- Do not hand-edit generated repo-local `.codex/config.toml` files in managed repos; update `codex/config/repo-bootstrap.json` and re-run the sync scripts.

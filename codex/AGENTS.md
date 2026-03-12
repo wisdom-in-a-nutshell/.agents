@@ -39,3 +39,18 @@ Canonical personal Codex control-plane assets live here.
 - `scripts/configure-ghostty-cwd.sh` and `scripts/ghostty-codex-then-shell.sh` are the canonical Ghostty/Codex startup helpers.
 - `scripts/install-sudoers-codex-ops.sh` is the canonical sudoers installer for Codex machine-ops workflows.
 - `shell/codex-shell.zsh` is the Codex-specific shell fragment sourced by the shared `~/.zshrc`.
+
+## Repo Bootstrap Registry
+
+- `config/repo-bootstrap.json` is the one place to decide managed repo-local Codex behavior.
+- The current per-repo control surface is:
+  - `mcp_presets`
+  - `model`
+  - `model_reasoning_effort`
+  - `service_tier`
+  - `notes`
+- `scripts/sync-repo-bootstrap-registry.sh` regenerates:
+  - `config/repo-bootstrap.base`
+  - `config/repo-bootstrap-items/`
+- `scripts/sync-repo-codex-configs.sh --apply` renders the actual repo-local `.codex/config.toml` files from that JSON registry.
+- `scripts/sync-trusted-projects.sh --apply` ensures those repo-local configs are trusted and therefore loaded by Codex.

@@ -37,6 +37,9 @@ Use [Codex Control Plane Ownership](/Users/dobby/.agents/docs/references/codex-c
 - Sync repo-local `.codex/config.toml` files from the canonical registry:
   - [`sync-repo-codex-configs.sh`](/Users/adi/.agents/codex/scripts/sync-repo-codex-configs.sh)
   - `~/.agents/codex/scripts/sync-repo-codex-configs.sh --apply`
+- Regenerate the Obsidian Base artifacts for the repo bootstrap registry:
+  - [`sync-repo-bootstrap-registry.sh`](/Users/adi/.agents/codex/scripts/sync-repo-bootstrap-registry.sh)
+  - `~/.agents/codex/scripts/sync-repo-bootstrap-registry.sh`
 - Link the shared shell config:
   - [`link-shared-zshrc.sh`](/Users/dobby/GitHub/scripts/setup/codex/link-shared-zshrc.sh)
   - `~/GitHub/scripts/setup/codex/link-shared-zshrc.sh --apply`
@@ -72,6 +75,9 @@ Use [Codex Control Plane Ownership](/Users/dobby/.agents/docs/references/codex-c
   - renders managed repo-local `.codex/config.toml` files from the canonical registry
   - writes minimal config files for all managed repos, with MCP presets only where assigned
   - keeps the repo list and MCP/model preset definitions in [`repo-bootstrap.json`](/Users/adi/.agents/codex/config/repo-bootstrap.json)
+- [`sync-repo-bootstrap-registry.sh`](/Users/adi/.agents/codex/scripts/sync-repo-bootstrap-registry.sh)
+  - regenerates the Obsidian Base artifacts from [`repo-bootstrap.json`](/Users/adi/.agents/codex/config/repo-bootstrap.json)
+  - updates [`repo-bootstrap.base`](/Users/adi/.agents/codex/config/repo-bootstrap.base) and [`repo-bootstrap-items/`](/Users/adi/.agents/codex/config/repo-bootstrap-items)
 - [`bootstrap-machine-codex.sh`](/Users/dobby/.agents/codex/scripts/bootstrap-machine-codex.sh)
   - runs config sync
   - runs trusted-project sync
@@ -81,6 +87,16 @@ Use [Codex Control Plane Ownership](/Users/dobby/.agents/docs/references/codex-c
   - ensures Ghostty uses the Codex startup wrapper
   - ensures shell integration stays on
   - installs the `Cmd+Shift+G` picker keybind
+
+## Repo Bootstrap Registry Fields
+
+- [`repo-bootstrap.json`](/Users/adi/.agents/codex/config/repo-bootstrap.json) currently controls these per-repo fields:
+  - `mcp_presets`
+  - `model`
+  - `model_reasoning_effort`
+  - `service_tier`
+  - `notes`
+- The global defaults block supplies fallback values for repos that do not override them.
 
 ## Known Failure Modes
 
