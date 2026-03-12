@@ -4,6 +4,7 @@ set -euo pipefail
 APPLY=0
 GITHUB_ROOT="${HOME}/GitHub"
 GLOBAL_CONFIG="${HOME}/.codex/config.toml"
+GLOBAL_AGENTS="${HOME}/.codex/AGENTS.md"
 XCODE_CONFIG="${HOME}/Library/Developer/Xcode/CodingAssistant/codex/config.toml"
 XCODE_RULES="${HOME}/Library/Developer/Xcode/CodingAssistant/codex/rules/xcode.rules"
 GHOSTTY_CONFIG="${HOME}/Library/Application Support/com.mitchellh.ghostty/config"
@@ -22,6 +23,7 @@ Options:
   --dry-run              Show actions only (default)
   --github-root <path>   Root used for workspace-write + repo trust scan
   --global-config <p>    Override ~/.codex/config.toml target
+  --global-agents <p>    Override ~/.codex/AGENTS.md target
   --xcode-config <p>     Override Xcode Codex config target
   --xcode-rules <p>      Override Xcode rules target
   --ghostty-config <p>   Override Ghostty config target
@@ -60,6 +62,10 @@ while [[ $# -gt 0 ]]; do
       GLOBAL_CONFIG="${2:-}"
       shift 2
       ;;
+    --global-agents)
+      GLOBAL_AGENTS="${2:-}"
+      shift 2
+      ;;
     --xcode-config)
       XCODE_CONFIG="${2:-}"
       shift 2
@@ -89,10 +95,12 @@ fi
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SYNC_CONFIG_SCRIPT="${SCRIPT_DIR}/sync-config.sh"
+SYNC_GLOBAL_AGENTS_SCRIPT="${SCRIPT_DIR}/sync-global-agents.sh"
 SYNC_TRUSTED_SCRIPT="${SCRIPT_DIR}/sync-trusted-projects.sh"
 GHOSTTY_SCRIPT="${SCRIPT_DIR}/configure-ghostty-cwd.sh"
 
 [[ -x "$SYNC_CONFIG_SCRIPT" ]] || die "Missing executable: $SYNC_CONFIG_SCRIPT"
+[[ -x "$SYNC_GLOBAL_AGENTS_SCRIPT" ]] || die "Missing executable: $SYNC_GLOBAL_AGENTS_SCRIPT"
 [[ -x "$SYNC_TRUSTED_SCRIPT" ]] || die "Missing executable: $SYNC_TRUSTED_SCRIPT"
 [[ -x "$GHOSTTY_SCRIPT" ]] || die "Missing executable: $GHOSTTY_SCRIPT"
 
@@ -106,6 +114,14 @@ sync_config_cmd=(
 )
 log "+ ${sync_config_cmd[*]}"
 "${sync_config_cmd[@]}"
+
+sync_global_agents_cmd=(
+  "$SYNC_GLOBAL_AGENTS_SCRIPT"
+  "$MODE_FLAG"
+  --global-agents "$GLOBAL_AGENTS"
+)
+log "+ ${sync_global_agents_cmd[*]}"
+"${sync_global_agents_cmd[@]}"
 
 sync_trusted_cmd=(
   "$SYNC_TRUSTED_SCRIPT"
