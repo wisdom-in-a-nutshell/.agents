@@ -4,6 +4,13 @@ This repo is becoming the canonical personal control plane for Codex across both
 
 That split keeps Codex-specific policy, MCP presets, skills, docs, and managed scripts in one synced place without pretending that auth, sessions, logs, or runtime databases belong in git.
 
+The newest part of that control plane is the repo bootstrap registry in `~/.agents/codex/config/repo-bootstrap.toml`. It now acts as the canonical source for:
+
+- which repos are managed
+- which extra repos live outside `~/GitHub`
+- which repo-local MCP presets should be enabled
+- which repo-local `.codex/config.toml` files should be generated
+
 ## Figure 1: Ownership Layout
 
 ```mermaid
@@ -23,14 +30,19 @@ flowchart TD
 ```mermaid
 flowchart TD
     A[Edit ~/.agents] --> B[bootstrap-machine-codex.sh]
+    A --> R[repo-bootstrap.toml]
     B --> C[sync-config.sh]
     B --> D[sync-trusted-projects.sh]
-    B --> E[configure-ghostty-cwd.sh]
-    C --> F[~/.codex/config.toml]
-    C --> G[Xcode Codex config]
-    D --> F
+    B --> E[sync-repo-codex-configs.sh]
+    B --> F[configure-ghostty-cwd.sh]
+    C --> G[~/.codex/config.toml]
+    C --> H[Xcode Codex config]
+    R --> D
+    R --> E
     D --> G
-    E --> H[Ghostty config]
+    D --> H
+    E --> I[Repo-local .codex/config.toml]
+    F --> J[Ghostty config]
 ```
 
 ## Figure 3: Runtime Flow
@@ -54,6 +66,7 @@ flowchart TD
 Owns the durable, synced source of truth for Codex-specific setup:
 
 - managed config fragments and presets
+- repo bootstrap registry
 - Codex-specific scripts and wrappers
 - skills, references, and architecture docs
 - migration and ownership documentation
@@ -86,6 +99,7 @@ It is now treated as runtime-only rather than as a git-tracked control-plane rep
 
 Owns project-specific Codex overrides when a repo needs different behavior:
 
+- generated or hand-owned repo-local config
 - repo MCP enablement
 - repo-local tool or app toggles
 - project-specific model or trust settings
@@ -95,8 +109,8 @@ These settings stay close to the repo because they describe how Codex should beh
 ## Main Flow
 
 1. Canonical Codex policy and assets are edited in `~/.agents`.
-2. Generic machine bootstrap can call into that control plane when needed.
-3. Those commands apply managed outputs into `~/.codex`.
+2. The global templates drive machine config in `~/.codex` and Xcode Codex config.
+3. The repo bootstrap registry drives both trusted repo discovery and managed repo-local `.codex/config.toml` generation.
 4. Codex starts from `~/.codex/config.toml` and any trusted repo-local `.codex/config.toml` in real project repos.
 5. Repo-local overrides refine behavior for one project without changing the global control plane.
 
@@ -106,6 +120,7 @@ These settings stay close to the repo because they describe how Codex should beh
 - Applied runtime and volatile state belongs in `~/.codex`.
 - Generic machine bootstrap belongs in `~/GitHub/scripts`.
 - Repo-specific Codex behavior belongs in repo-local `.codex/`.
+- The repo registry decides which repos get generated repo-local config and which MCP presets they receive.
 
 ## Notes
 

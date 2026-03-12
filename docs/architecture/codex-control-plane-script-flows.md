@@ -19,12 +19,16 @@ The scripts are easier to understand if you split them into three groups:
 flowchart TD
     A[bootstrap-machine-codex.sh] --> B[sync-config.sh]
     A --> C[sync-trusted-projects.sh]
-    A --> D[configure-ghostty-cwd.sh]
-    B --> E[~/.codex/config.toml]
-    B --> F[Xcode Codex config]
-    C --> E
+    A --> D[sync-repo-codex-configs.sh]
+    A --> E[configure-ghostty-cwd.sh]
+    R[repo-bootstrap.toml] --> C
+    R --> D
+    B --> F[~/.codex/config.toml]
+    B --> G[Xcode Codex config]
     C --> F
-    D --> G[Ghostty config]
+    C --> G
+    D --> H[Repo-local .codex/config.toml]
+    E --> I[Ghostty config]
 ```
 
 ### What This Group Does
@@ -35,6 +39,10 @@ flowchart TD
   - writes the managed terminal and Xcode Codex config
 - [`sync-trusted-projects.sh`](/Users/dobby/.agents/codex/scripts/sync-trusted-projects.sh)
   - writes exact trust entries for discovered Git repos
+- [`sync-repo-codex-configs.sh`](/Users/adi/.agents/codex/scripts/sync-repo-codex-configs.sh)
+  - renders managed repo-local `.codex/config.toml` files for all registered repos
+- [`repo-bootstrap.toml`](/Users/adi/.agents/codex/config/repo-bootstrap.toml)
+  - defines the managed repo set, extra repos outside `~/GitHub`, and repo MCP presets
 - [`configure-ghostty-cwd.sh`](/Users/dobby/.agents/codex/scripts/configure-ghostty-cwd.sh)
   - rewrites Ghostty config so Codex startup and cwd handling stay consistent
 
