@@ -130,4 +130,5 @@ These settings stay close to the repo because they describe how Codex should beh
 
 See [Codex Control Plane Ownership](/Users/dobby/.agents/docs/references/codex-control-plane-ownership.md) for the exact split.
 See [Codex Control Plane Operations](/Users/dobby/.agents/docs/references/codex-control-plane-operations.md) for exact commands, healthy-state checks, and common failure modes.
+See [Codex Config Layers](/Users/adi/.agents/docs/architecture/codex-config-layers.md) for the config-specific layering model.
 See [Codex Control Plane Script Flows](/Users/dobby/.agents/docs/architecture/codex-control-plane-script-flows.md) for smaller diagrams showing what each main script group does.
