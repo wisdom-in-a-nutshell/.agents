@@ -19,6 +19,7 @@ Use this skill to decide where a skill should live in the `.agents` system and e
 2. Use `owned` when the skill is authored locally and should be reusable globally or across repos.
 3. Use `repo-local` when the skill is specific to one repo and should remain local.
 4. If intent is ambiguous, ask one question: "Should this be external, owned, or repo-local?"
+5. Default to the narrowest useful scope. Only use `scope: global` when the skill belongs in the small default kit for unrelated repos; otherwise prefer managed `scope: repo` or unmanaged repo-local placement.
 
 ## Paths in This Environment
 

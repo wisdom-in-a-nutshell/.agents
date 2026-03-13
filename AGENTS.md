@@ -60,6 +60,7 @@ Personal agent and Codex control plane.
 ## Rules
 
 - Distribution policy is link-only.
+- Treat global skills as a minimal default kit; prefer repo scope or repo-local unless a skill is broadly useful across unrelated repos.
 - Do not edit managed skills through repo symlink destinations; edit canonical source paths.
 - Keep repo-local skills listed in `skills/registry.json` under `unmanaged_repo_local_skills`.
 - Do not add additional manifest files for skill mapping; update `skills/registry.json`.

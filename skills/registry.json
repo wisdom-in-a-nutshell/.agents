@@ -28,38 +28,6 @@
       "upstream_ref": "kepano/obsidian-skills:skills/defuddle@main"
     },
     {
-      "skill": "json-canvas",
-      "origin": "external",
-      "scope": "global",
-      "repos": [],
-      "source_path": "skills-source/external/json-canvas",
-      "upstream_ref": "kepano/obsidian-skills:skills/json-canvas@main"
-    },
-    {
-      "skill": "obsidian-bases",
-      "origin": "external",
-      "scope": "global",
-      "repos": [],
-      "source_path": "skills-source/external/obsidian-bases",
-      "upstream_ref": "kepano/obsidian-skills:skills/obsidian-bases@main"
-    },
-    {
-      "skill": "obsidian-cli",
-      "origin": "external",
-      "scope": "global",
-      "repos": [],
-      "source_path": "skills-source/external/obsidian-cli",
-      "upstream_ref": "kepano/obsidian-skills:skills/obsidian-cli@main"
-    },
-    {
-      "skill": "obsidian-markdown",
-      "origin": "external",
-      "scope": "global",
-      "repos": [],
-      "source_path": "skills-source/external/obsidian-markdown",
-      "upstream_ref": "kepano/obsidian-skills:skills/obsidian-markdown@main"
-    },
-    {
       "skill": "agent-native-repo-playbook",
       "origin": "owned",
       "scope": "global",
@@ -73,14 +41,6 @@
       "scope": "global",
       "repos": [],
       "source_path": "skills-source/owned/architecture-docs",
-      "upstream_ref": "-"
-    },
-    {
-      "skill": "client-interface-guidelines",
-      "origin": "owned",
-      "scope": "global",
-      "repos": [],
-      "source_path": "skills-source/owned/client-interface-guidelines",
       "upstream_ref": "-"
     },
     {
@@ -128,14 +88,6 @@
       ],
       "source_path": "skills-source/external/openai-docs",
       "upstream_ref": "openai/skills:skills/.curated/openai-docs@main"
-    },
-    {
-      "skill": "pretty-mermaid",
-      "origin": "owned",
-      "scope": "global",
-      "repos": [],
-      "source_path": "skills-source/owned/pretty-mermaid",
-      "upstream_ref": "-"
     },
     {
       "skill": "modal-function-sync",
@@ -193,30 +145,6 @@
       ],
       "source_path": "skills-source/owned/azure-webapp-config",
       "upstream_ref": "-"
-    },
-    {
-      "skill": "skill-router",
-      "origin": "owned",
-      "scope": "global",
-      "repos": [],
-      "source_path": "skills-source/owned/skill-router",
-      "upstream_ref": "-"
-    },
-    {
-      "skill": "skill-creator",
-      "origin": "external",
-      "scope": "global",
-      "repos": [],
-      "source_path": "skills-source/external/skill-creator",
-      "upstream_ref": "openai/codex:codex-rs/skills/src/assets/samples/skill-creator@main"
-    },
-    {
-      "skill": "skill-installer",
-      "origin": "external",
-      "scope": "global",
-      "repos": [],
-      "source_path": "skills-source/external/skill-installer",
-      "upstream_ref": "openai/codex:codex-rs/skills/src/assets/samples/skill-installer@main"
     },
     {
       "skill": "ai-podcasting",
