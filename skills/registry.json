@@ -52,6 +52,36 @@
       "upstream_ref": "-"
     },
     {
+      "skill": "skill-router",
+      "origin": "owned",
+      "scope": "repo",
+      "repos": [
+        "~/.agents"
+      ],
+      "source_path": "skills-source/owned/skill-router",
+      "upstream_ref": "-"
+    },
+    {
+      "skill": "skill-creator",
+      "origin": "external",
+      "scope": "repo",
+      "repos": [
+        "~/.agents"
+      ],
+      "source_path": "skills-source/external/skill-creator",
+      "upstream_ref": "openai/skills:skills/.system/skill-creator@main"
+    },
+    {
+      "skill": "skill-installer",
+      "origin": "external",
+      "scope": "repo",
+      "repos": [
+        "~/.agents"
+      ],
+      "source_path": "skills-source/external/skill-installer",
+      "upstream_ref": "openai/skills:skills/.system/skill-installer@main"
+    },
+    {
       "skill": "vercel-react-best-practices",
       "origin": "external",
       "scope": "repo",
