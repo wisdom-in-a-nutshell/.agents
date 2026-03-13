@@ -1,6 +1,6 @@
 ---
 repo_name: "win"
-path: "/Users/adi/GitHub/win"
+path: "/Users/dobby/GitHub/win"
 mcp_presets_csv: "openaiDeveloperDocs"
 effective_model: "gpt-5.4"
 effective_reasoning: "high"

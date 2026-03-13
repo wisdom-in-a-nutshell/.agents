@@ -18,6 +18,10 @@ Personal agent and Codex control plane.
     - `mcp_presets`
     - `model`
     - `model_reasoning_effort`
+    - `model_verbosity`
+    - `personality`
+    - `model_instructions_file`
+    - `project_root_markers`
     - `service_tier`
     - `notes`
 - Managed canonical skill content lives in:

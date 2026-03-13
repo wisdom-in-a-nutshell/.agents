@@ -3,10 +3,12 @@ registry_kind: managed
 skill: "journal-checkin"
 origin: "owned"
 scope: "repo"
-repos_csv: "codexclaw-workspaces/adi,codexclaw-workspaces/angie"
+repos_csv: "adi,angie,codexclaw-workspaces/adi,codexclaw-workspaces/angie"
 source_path: "skills-source/owned/journal-checkin"
 upstream_ref: "-"
 repos:
+  - "adi"
+  - "angie"
   - "codexclaw-workspaces/adi"
   - "codexclaw-workspaces/angie"
 ---

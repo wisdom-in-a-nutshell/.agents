@@ -1,6 +1,6 @@
 filters:
   and:
-    - file.inFolder("codex/config/repo-bootstrap-items")
+    - 'file.inFolder("codex/config/repo-bootstrap-items")'
 properties:
   repo_name:
     displayName: Repo
@@ -26,11 +26,9 @@ views:
       - effective_reasoning
       - effective_service_tier
       - notes
-    columnSize:
-      note.repo_name: 219
   - type: table
     name: MCP Enabled
-    filters: mcp_presets_csv != "-"
+    filters: 'mcp_presets_csv != "-"'
     order:
       - repo_name
       - mcp_presets_csv

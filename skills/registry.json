@@ -85,6 +85,8 @@
       "scope": "repo",
       "repos": [
         "~/.agents",
+        "adi",
+        "angie",
         "codexclaw",
         "codexclaw-workspaces",
         "win"
@@ -184,6 +186,8 @@
       "origin": "owned",
       "scope": "repo",
       "repos": [
+        "adi",
+        "angie",
         "codexclaw-workspaces/adi",
         "codexclaw-workspaces/angie"
       ],

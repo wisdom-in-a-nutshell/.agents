@@ -1,6 +1,6 @@
 ---
 repo_name: "codexclaw-workspaces"
-path: "/Users/adi/GitHub/codexclaw-workspaces"
+path: "/Users/dobby/GitHub/codexclaw-workspaces"
 mcp_presets_csv: "openaiDeveloperDocs"
 effective_model: "gpt-5.4"
 effective_reasoning: "high"

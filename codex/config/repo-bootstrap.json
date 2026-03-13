@@ -28,6 +28,19 @@
       "path": "~/GitHub/.github"
     },
     {
+      "path": "~/GitHub/adi",
+      "model": "gpt-5.4",
+      "model_reasoning_effort": "high",
+      "model_verbosity": "medium",
+      "personality": "friendly",
+      "service_tier": "fast",
+      "model_instructions_file": "../soul.md",
+      "project_root_markers": [],
+      "mcp_presets": [
+        "openaiDeveloperDocs"
+      ]
+    },
+    {
       "path": "~/GitHub/adi-brand"
     },
     {
@@ -47,6 +60,19 @@
     },
     {
       "path": "~/GitHub/aipodcasting-public-website"
+    },
+    {
+      "path": "~/GitHub/angie",
+      "model": "gpt-5.4",
+      "model_reasoning_effort": "high",
+      "model_verbosity": "medium",
+      "personality": "friendly",
+      "service_tier": "fast",
+      "model_instructions_file": "../soul.md",
+      "project_root_markers": [],
+      "mcp_presets": [
+        "openaiDeveloperDocs"
+      ]
     },
     {
       "path": "~/GitHub/audio-enhance"

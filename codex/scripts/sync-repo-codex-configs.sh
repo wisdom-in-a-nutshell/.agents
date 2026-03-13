@@ -166,6 +166,8 @@ def render_repo_config(repo: str, override: dict, presets: dict) -> str:
         "model_reasoning_effort",
         "model_reasoning_summary",
         "model_verbosity",
+        "model_instructions_file",
+        "project_root_markers",
         "web_search",
         "approval_policy",
         "sandbox_mode",

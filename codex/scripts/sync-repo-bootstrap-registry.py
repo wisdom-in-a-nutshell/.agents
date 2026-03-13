@@ -17,6 +17,8 @@ ALLOWED_SCALAR_KEYS = {
     "profile",
     "model_reasoning_summary",
     "model_verbosity",
+    "model_instructions_file",
+    "project_root_markers",
     "web_search",
     "approval_policy",
     "sandbox_mode",
@@ -182,9 +184,8 @@ def validate_registry(
             ).stdout.strip()
             repo_root = Path(repo_root_out).resolve()
         except subprocess.CalledProcessError:
-            if not repo_path.exists():
-                raise ValueError(f"repo path does not exist: {path_str}")
-            raise ValueError(f"repo path is not a git repo: {path_str}")
+            print(f"WARNING: skipping non-git path: {path_str}", file=sys.stderr)
+            continue
 
         mcp_presets = item.get("mcp_presets", [])
         if not isinstance(mcp_presets, list):

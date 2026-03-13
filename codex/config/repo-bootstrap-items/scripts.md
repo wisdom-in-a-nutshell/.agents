@@ -1,6 +1,6 @@
 ---
 repo_name: "scripts"
-path: "/Users/adi/GitHub/scripts"
+path: "/Users/dobby/GitHub/scripts"
 mcp_presets_csv: "-"
 effective_model: "gpt-5.4"
 effective_reasoning: "high"

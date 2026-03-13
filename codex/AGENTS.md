@@ -48,6 +48,10 @@ Canonical personal Codex control-plane assets live here.
   - `mcp_presets`
   - `model`
   - `model_reasoning_effort`
+  - `model_verbosity`
+  - `personality`
+  - `model_instructions_file`
+  - `project_root_markers`
   - `service_tier`
   - `notes`
 - `scripts/sync-repo-bootstrap-registry.sh` regenerates:

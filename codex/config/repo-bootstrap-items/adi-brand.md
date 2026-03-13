@@ -1,6 +1,6 @@
 ---
 repo_name: "adi-brand"
-path: "/Users/adi/GitHub/adi-brand"
+path: "/Users/dobby/GitHub/adi-brand"
 mcp_presets_csv: "-"
 effective_model: "gpt-5.4"
 effective_reasoning: "high"

@@ -1,6 +1,6 @@
 ---
 repo_name: "ghost-infrastructure"
-path: "/Users/adi/GitHub/ghost-infrastructure"
+path: "/Users/dobby/GitHub/ghost-infrastructure"
 mcp_presets_csv: "-"
 effective_model: "gpt-5.4"
 effective_reasoning: "high"

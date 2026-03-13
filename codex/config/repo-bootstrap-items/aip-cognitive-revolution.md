@@ -1,6 +1,6 @@
 ---
 repo_name: "aip-cognitive-revolution"
-path: "/Users/adi/GitHub/aip-cognitive-revolution"
+path: "/Users/dobby/GitHub/aip-cognitive-revolution"
 mcp_presets_csv: "-"
 effective_model: "gpt-5.4"
 effective_reasoning: "high"
