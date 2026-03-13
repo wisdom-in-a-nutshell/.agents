@@ -1,0 +1,4 @@
+interface:
+  display_name: "Oracle"
+  short_description: "Bundle repo context for second-model review."
+  default_prompt: "Use $oracle to package the relevant repo context and get a second-model review of this problem."
