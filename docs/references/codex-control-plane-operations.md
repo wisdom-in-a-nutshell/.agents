@@ -28,6 +28,9 @@ Use [Codex Control Plane Ownership](/Users/dobby/.agents/docs/references/codex-c
 - Apply the full Codex bootstrap batch:
   - [`bootstrap-machine-codex.sh`](/Users/dobby/.agents/codex/scripts/bootstrap-machine-codex.sh)
   - `~/.agents/codex/scripts/bootstrap-machine-codex.sh --apply`
+- Auto-apply the Codex control plane after `~/.agents` sync when `codex/` changed:
+  - [`auto-apply-codex-control-plane.sh`](/Users/adi/.agents/codex/scripts/auto-apply-codex-control-plane.sh)
+  - `~/.agents/codex/scripts/auto-apply-codex-control-plane.sh --apply`
 - Apply only the managed Codex config:
   - [`sync-config.sh`](/Users/dobby/.agents/codex/scripts/sync-config.sh)
   - `~/.agents/codex/scripts/sync-config.sh --apply`
@@ -83,6 +86,10 @@ Use [Codex Control Plane Ownership](/Users/dobby/.agents/docs/references/codex-c
   - runs trusted-project sync
   - runs repo-local Codex config sync
   - runs Ghostty config reconciliation
+- [`auto-apply-codex-control-plane.sh`](/Users/adi/.agents/codex/scripts/auto-apply-codex-control-plane.sh)
+  - checks whether `~/.agents/codex/` changed since the last successful reconcile on that machine
+  - runs [`bootstrap-machine-codex.sh`](/Users/dobby/.agents/codex/scripts/bootstrap-machine-codex.sh) only when a new Codex control-plane revision needs to be applied
+  - stores a machine-local reconcile stamp under `~/.local/state/codex-control-plane/`
 - [`configure-ghostty-cwd.sh`](/Users/dobby/.agents/codex/scripts/configure-ghostty-cwd.sh)
   - ensures Ghostty uses the Codex startup wrapper
   - ensures shell integration stays on
@@ -97,6 +104,19 @@ Use [Codex Control Plane Ownership](/Users/dobby/.agents/docs/references/codex-c
   - `service_tier`
   - `notes`
 - The global defaults block supplies fallback values for repos that do not override them.
+
+## Automatic Cross-Machine Apply
+
+- Launchd still lives in [`~/GitHub/scripts/sync/git-auto-sync.sh`](/Users/adi/GitHub/scripts/sync/git-auto-sync.sh), because scheduler ownership is part of the generic machine-ops repo.
+- Codex-specific post-sync apply logic lives in [`auto-apply-codex-control-plane.sh`](/Users/adi/.agents/codex/scripts/auto-apply-codex-control-plane.sh), because the apply contract is Codex-specific policy.
+- Practical flow:
+  1. one machine pushes a change in `~/.agents`
+  2. the other machine pulls it on the next git auto-sync cycle
+  3. `git-auto-sync.sh` calls `auto-apply-codex-control-plane.sh`
+  4. that script runs `bootstrap-machine-codex.sh --apply` only when `~/.agents/codex/` changed
+- Result:
+  - no daily manual Codex bootstrap is needed on healthy machines
+  - offline machines catch up on the next successful sync after they come online
 
 ## Known Failure Modes
 

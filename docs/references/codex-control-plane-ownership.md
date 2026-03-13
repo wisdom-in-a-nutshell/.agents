@@ -20,12 +20,14 @@ Use [Codex Control Plane](/Users/dobby/.agents/docs/architecture/codex-control-p
 - canonical config fragments and presets
 - MCP preset definitions and ownership docs
 - any launchd or apply logic that is specifically about Codex behavior across machines
+- the Codex-specific post-sync reconcile logic that decides whether a new `~/.agents/codex/` revision must be applied on a machine
 
 ### Keep in `~/GitHub/scripts`
 
 - fresh-machine bootstrap entrypoints
 - generic setup flows that may call the Codex control plane
 - generic shared shell files that source Codex fragments from `~/.agents`
+- generic launchd/scheduler entrypoints such as git auto-sync that may invoke Codex-owned reconcile scripts
 
 ### Keep in `~/.codex`
 
@@ -76,6 +78,7 @@ Use [Codex Control Plane](/Users/dobby/.agents/docs/architecture/codex-control-p
 - [docs/architecture/codex-control-plane.md](/Users/dobby/.agents/docs/architecture/codex-control-plane.md): canonical high-level design.
 - [docs/projects/codex-control-plane/tasks.md](/Users/dobby/.agents/docs/projects/codex-control-plane/tasks.md): active project tracker for the migration.
 - [codex/scripts/bootstrap-machine-codex.sh](/Users/dobby/.agents/codex/scripts/bootstrap-machine-codex.sh): canonical Codex-specific machine bootstrap entrypoint.
+- [codex/scripts/auto-apply-codex-control-plane.sh](/Users/adi/.agents/codex/scripts/auto-apply-codex-control-plane.sh): canonical Codex-specific post-sync reconcile entrypoint used for automatic cross-machine apply.
 - [codex/scripts/sync-trusted-projects.sh](/Users/dobby/.agents/codex/scripts/sync-trusted-projects.sh): canonical trusted-repo sync for terminal + Xcode Codex configs.
 - [codex/scripts/sync-repo-codex-configs.sh](/Users/adi/.agents/codex/scripts/sync-repo-codex-configs.sh): canonical repo-local Codex config sync for managed repos.
 - [codex/config/repo-bootstrap.json](/Users/adi/.agents/codex/config/repo-bootstrap.json): canonical repo bootstrap registry for managed repos plus MCP/model overrides.

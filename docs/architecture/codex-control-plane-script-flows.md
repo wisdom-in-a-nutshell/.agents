@@ -10,6 +10,7 @@ Use [Codex Control Plane Operations](/Users/dobby/.agents/docs/references/codex-
 The scripts are easier to understand if you split them into three groups:
 
 - apply scripts that write config and trust state
+- post-sync reconcile scripts that auto-apply new control-plane revisions
 - startup scripts that shape the terminal and Ghostty experience
 - post-turn scripts that run after Codex finishes a turn
 
@@ -46,7 +47,27 @@ flowchart TD
 - [`configure-ghostty-cwd.sh`](/Users/dobby/.agents/codex/scripts/configure-ghostty-cwd.sh)
   - rewrites Ghostty config so Codex startup and cwd handling stay consistent
 
-## Figure 2: Shell And Startup Scripts
+## Figure 2: Post-Sync Reconcile
+
+```mermaid
+flowchart TD
+    A[git-auto-sync.sh] --> B[auto-apply-codex-control-plane.sh]
+    B --> C{Did ~/.agents/codex change?}
+    C -->|No| D[Skip]
+    C -->|Yes| E[bootstrap-machine-codex.sh --apply]
+    E --> F[Update machine-local reconcile stamp]
+```
+
+### What This Group Does
+
+- [`git-auto-sync.sh`](/Users/adi/GitHub/scripts/sync/git-auto-sync.sh)
+  - remains the launchd-driven machine sync loop in the generic `scripts` repo
+- [`auto-apply-codex-control-plane.sh`](/Users/adi/.agents/codex/scripts/auto-apply-codex-control-plane.sh)
+  - checks whether the current `~/.agents` revision contains new Codex control-plane changes since the last successful reconcile on that machine
+  - runs the full Codex bootstrap only when needed
+  - keeps a machine-local stamp under `~/.local/state/codex-control-plane/`
+
+## Figure 3: Shell And Startup Scripts
 
 ```mermaid
 flowchart TD
@@ -69,7 +90,7 @@ flowchart TD
 - [`link-shared-zshrc.sh`](/Users/dobby/GitHub/scripts/setup/codex/link-shared-zshrc.sh)
   - links `~/.zshrc` to the tracked shared shell file
 
-## Figure 3: Post-Turn Automation
+## Figure 4: Post-Turn Automation
 
 ```mermaid
 flowchart TD
@@ -86,7 +107,7 @@ flowchart TD
 - [`notify-wrapper.sh`](/Users/dobby/.agents/codex/scripts/notify-wrapper.sh)
   - thin shell entrypoint that logs and calls `notify.py`
 
-## Figure 4: Optional Machine Policy Script
+## Figure 5: Optional Machine Policy Script
 
 ```mermaid
 flowchart TD

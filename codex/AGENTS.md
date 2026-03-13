@@ -31,6 +31,7 @@ Canonical personal Codex control-plane assets live here.
 - `scripts/sync-trusted-projects.sh` is the canonical trusted-repo sync entrypoint for Codex.
 - `scripts/sync-repo-codex-configs.sh` is the canonical repo-local Codex config sync/apply entrypoint.
 - `scripts/bootstrap-machine-codex.sh` is the canonical Codex-specific machine bootstrap batch.
+- `scripts/auto-apply-codex-control-plane.sh` is the canonical post-sync Codex reconcile entrypoint for cross-machine convergence.
 - `config/global.config.toml` and `config/xcode.config.toml` are the canonical managed baselines.
 - `config/repo-bootstrap.json` is the canonical registry for repo-local Codex bootstrap and MCP presets.
 - `scripts/sync-repo-bootstrap-registry.sh` generates the Obsidian Base artifacts for that registry.
@@ -54,3 +55,4 @@ Canonical personal Codex control-plane assets live here.
   - `config/repo-bootstrap-items/`
 - `scripts/sync-repo-codex-configs.sh --apply` renders the actual repo-local `.codex/config.toml` files from that JSON registry.
 - `scripts/sync-trusted-projects.sh --apply` ensures those repo-local configs are trusted and therefore loaded by Codex.
+- `scripts/auto-apply-codex-control-plane.sh --apply` is the machine-local post-sync reconcile hook that runs `bootstrap-machine-codex.sh --apply` when `~/.agents/codex/` changed since the last successful reconcile.
