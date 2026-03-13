@@ -136,6 +136,9 @@ agent-browser wait @e1                # Wait for element
 agent-browser wait --load networkidle # Wait for network idle
 agent-browser wait --url "**/page"    # Wait for URL pattern
 agent-browser wait 2000               # Wait milliseconds
+agent-browser wait --text "Welcome"    # Wait for text to appear (substring match)
+agent-browser wait --fn "!document.body.innerText.includes('Loading...')"  # Wait for text to disappear
+agent-browser wait "#spinner" --state hidden  # Wait for element to disappear
 
 # Downloads
 agent-browser download @e1 ./file.pdf          # Click element to trigger download
@@ -151,7 +154,15 @@ agent-browser set device "iPhone 14"          # Emulate device (viewport + user 
 agent-browser screenshot              # Screenshot to temp dir
 agent-browser screenshot --full       # Full page screenshot
 agent-browser screenshot --annotate   # Annotated screenshot with numbered element labels
+agent-browser screenshot --screenshot-dir ./shots  # Save to custom directory
+agent-browser screenshot --screenshot-format jpeg --screenshot-quality 80
 agent-browser pdf output.pdf          # Save as PDF
+
+# Clipboard
+agent-browser clipboard read                      # Read text from clipboard
+agent-browser clipboard write "Hello, World!"     # Write text to clipboard
+agent-browser clipboard copy                      # Copy current selection
+agent-browser clipboard paste                     # Paste from clipboard
 
 # Diff (compare page states)
 agent-browser diff snapshot                          # Compare current vs last snapshot
@@ -388,8 +399,9 @@ export AGENT_BROWSER_ACTION_POLICY=./policy.json
 ```
 
 Example `policy.json`:
+
 ```json
-{"default": "deny", "allow": ["navigate", "snapshot", "click", "scroll", "wait", "get"]}
+{ "default": "deny", "allow": ["navigate", "snapshot", "click", "scroll", "wait", "get"] }
 ```
 
 Auth vault operations (`auth login`, etc.) bypass action policy but domain allowlist still applies.
@@ -503,6 +515,7 @@ agent-browser click @e2              # Click using ref from annotated screenshot
 ```
 
 Use annotated screenshots when:
+
 - The page has unlabeled icon buttons or visual-only elements
 - You need to verify visual layout or styling
 - Canvas or chart elements are present (invisible to text snapshots)
@@ -545,6 +558,7 @@ agent-browser eval -b "$(echo -n 'Array.from(document.querySelectorAll("a")).map
 **Why this matters:** When the shell processes your command, inner double quotes, `!` characters (history expansion), backticks, and `$()` can all corrupt the JavaScript before it reaches agent-browser. The `--stdin` and `-b` flags bypass shell interpretation entirely.
 
 **Rules of thumb:**
+
 - Single-line, no nested quotes -> regular `eval 'expression'` with single quotes is fine
 - Nested quotes, arrow functions, template literals, or multiline -> use `eval --stdin <<'EVALEOF'`
 - Programmatic/generated scripts -> use `eval -b` with base64
@@ -565,15 +579,15 @@ Priority (lowest to highest): `~/.agent-browser/config.json` < `./agent-browser.
 
 ## Deep-Dive Documentation
 
-| Reference | When to Use |
-|-----------|-------------|
-| [references/commands.md](references/commands.md) | Full command reference with all options |
-| [references/snapshot-refs.md](references/snapshot-refs.md) | Ref lifecycle, invalidation rules, troubleshooting |
+| Reference                                                            | When to Use                                               |
+| -------------------------------------------------------------------- | --------------------------------------------------------- |
+| [references/commands.md](references/commands.md)                     | Full command reference with all options                   |
+| [references/snapshot-refs.md](references/snapshot-refs.md)           | Ref lifecycle, invalidation rules, troubleshooting        |
 | [references/session-management.md](references/session-management.md) | Parallel sessions, state persistence, concurrent scraping |
-| [references/authentication.md](references/authentication.md) | Login flows, OAuth, 2FA handling, state reuse |
-| [references/video-recording.md](references/video-recording.md) | Recording workflows for debugging and documentation |
-| [references/profiling.md](references/profiling.md) | Chrome DevTools profiling for performance analysis |
-| [references/proxy-support.md](references/proxy-support.md) | Proxy configuration, geo-testing, rotating proxies |
+| [references/authentication.md](references/authentication.md)         | Login flows, OAuth, 2FA handling, state reuse             |
+| [references/video-recording.md](references/video-recording.md)       | Recording workflows for debugging and documentation       |
+| [references/profiling.md](references/profiling.md)                   | Chrome DevTools profiling for performance analysis        |
+| [references/proxy-support.md](references/proxy-support.md)           | Proxy configuration, geo-testing, rotating proxies        |
 
 ## Experimental: Native Mode
 
@@ -614,11 +628,11 @@ Lightpanda does not support `--extension`, `--profile`, `--state`, or `--allow-f
 
 ## Ready-to-Use Templates
 
-| Template | Description |
-|----------|-------------|
-| [templates/form-automation.sh](templates/form-automation.sh) | Form filling with validation |
-| [templates/authenticated-session.sh](templates/authenticated-session.sh) | Login once, reuse state |
-| [templates/capture-workflow.sh](templates/capture-workflow.sh) | Content extraction with screenshots |
+| Template                                                                 | Description                         |
+| ------------------------------------------------------------------------ | ----------------------------------- |
+| [templates/form-automation.sh](templates/form-automation.sh)             | Form filling with validation        |
+| [templates/authenticated-session.sh](templates/authenticated-session.sh) | Login once, reuse state             |
+| [templates/capture-workflow.sh](templates/capture-workflow.sh)           | Content extraction with screenshots |
 
 ```bash
 ./templates/form-automation.sh https://example.com/form
