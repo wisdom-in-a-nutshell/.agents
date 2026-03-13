@@ -11,8 +11,8 @@ This file is machine-wide baseline guidance. Keep it generic and avoid portfolio
 - Prefer automation over manual repetition.
 - Keep instructions concise, operational, and durable.
 - Update the nearest `AGENTS.md` when a new repeatable pattern appears.
-- When a change introduces durable behavior, architecture boundaries, or operational workflow that future work will rely on, offer to update the relevant repo docs in the same change.
-- Follow the repo's docs routing guidance (typically `docs/AGENTS.md`) to decide whether the update belongs in architecture docs, reference docs, or project tracking docs.
+- When a change clearly introduces durable behavior, architecture boundaries, or operational workflow that future work will rely on, update the relevant repo docs in the same change.
+- Follow the repo's docs routing guidance (typically `docs/AGENTS.md`) to decide whether the update belongs in architecture docs, reference docs, or project tracking docs. If placement is still unclear, make the best-fit update and call it out briefly.
 
 ## Git Automation (Codex Notify)
 - This environment runs a notify hook after each agent turn that auto-stages, commits, and pushes.
