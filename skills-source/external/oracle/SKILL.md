@@ -17,11 +17,37 @@ Recommended defaults:
 - Model: GPT-5.4 Pro (either `--model gpt-5.4-pro` or a ChatGPT picker label like `--model "5.4 Pro"`)
 - Attachments: directories/globs + excludes; avoid secrets.
 
+## Browser login + reattach pattern (important)
+
+Prefer the **manual-login browser path** when using ChatGPT in browser mode. This is the most reliable workflow when the automation profile needs an initial sign-in or when reattach behavior matters.
+
+### First-time login bootstrap
+
+Run this once to create the automation profile and complete ChatGPT login manually:
+
+- `oracle --engine browser --browser-manual-login --browser-keep-browser --browser-input-timeout 120000 -p "HI"`
+
+Notes:
+- The browser stays open so you can finish login yourself.
+- After login succeeds, Oracle saves the browser automation profile for later runs.
+
+### Subsequent runs (preferred default)
+
+After the automation profile exists, prefer this browser pattern for real work:
+
+- `oracle --engine browser --browser-manual-login --browser-auto-reattach-delay 5s --browser-auto-reattach-interval 3s --browser-auto-reattach-timeout 60s -p "<task>" --file "src/**"`
+
+Interpretation:
+- `--browser-manual-login` keeps the browser-auth path explicit instead of assuming a silent reusable session.
+- The `--browser-auto-reattach-*` flags make browser recovery more reliable when Chrome detaches or the run takes a while.
+
+When browser mode behaves oddly, prefer this manual-login + auto-reattach pattern over the shorter generic browser command.
+
 ## Golden path (fast + reliable)
 
 1. Pick a tight file set (fewest files that still contain the truth).
 2. Preview what you're about to send (`--dry-run` + `--files-report` when needed).
-3. Run in browser mode for the usual GPT-5.4 Pro ChatGPT workflow; use API only when you explicitly want it.
+3. Run in browser mode using the manual-login + auto-reattach pattern above; use API only when you explicitly want it.
 4. If the run detaches/timeouts: reattach to the stored session (don't re-run).
 
 ## Commands (preferred)
@@ -36,8 +62,11 @@ Recommended defaults:
 - Token/cost sanity:
   - `npx -y @steipete/oracle --dry-run summary --files-report -p "<task>" --file "src/**"`
 
-- Browser run (main path; long-running is normal):
-  - `npx -y @steipete/oracle --engine browser --model gpt-5.4-pro -p "<task>" --file "src/**"`
+- Browser run (main path after initial login bootstrap; long-running is normal):
+  - `npx -y @steipete/oracle --engine browser --model gpt-5.4-pro --browser-manual-login --browser-auto-reattach-delay 5s --browser-auto-reattach-interval 3s --browser-auto-reattach-timeout 60s -p "<task>" --file "src/**"`
+
+- First-time login bootstrap:
+  - `npx -y @steipete/oracle --engine browser --browser-manual-login --browser-keep-browser --browser-input-timeout 120000 -p "HI"`
 
 - Manual paste fallback (assemble bundle, copy to clipboard):
   - `npx -y @steipete/oracle --render --copy -p "<task>" --file "src/**"`
@@ -85,6 +114,7 @@ Recommended defaults:
 - Runs may detach or take a long time (browser + GPT-5.4 Pro often does). If the CLI times out: don't re-run; reattach.
   - List: `oracle status --hours 72`
   - Attach: `oracle session <id> --render`
+- If the session failed because the browser/auth flow was not stable, retry with the manual-login + auto-reattach browser flags before falling back to other approaches.
 - Use `--slug "<3-5 words>"` to keep session IDs readable.
 - Duplicate prompt guard exists; use `--force` only when you truly want a fresh run.
 
