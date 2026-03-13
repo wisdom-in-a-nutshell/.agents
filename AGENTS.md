@@ -34,6 +34,7 @@ Personal agent and Codex control plane.
 
 - Dry-run sync: `./scripts/sync-skills-registry.sh`
 - Apply sync: `./scripts/sync-skills-registry.sh --apply`
+  - Sync applies desired managed links and prunes obsolete managed global runtime links.
 - Validate generated registry artifacts: `./scripts/check-skills-registry.sh`
 - Dry-run external upstream refresh: `./scripts/refresh-external-skills.sh`
 - Apply external upstream refresh: `./scripts/refresh-external-skills.sh --apply`

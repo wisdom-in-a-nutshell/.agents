@@ -37,6 +37,14 @@ def resolved_target(link_path: Path) -> Path:
     return (link_path.parent / cur).resolve()
 
 
+def is_relative_to(path: Path, parent: Path) -> bool:
+    try:
+        path.relative_to(parent)
+        return True
+    except ValueError:
+        return False
+
+
 def sync_link(dst: Path, src: Path, apply: bool) -> None:
     rel = rel_link(dst, src)
     if dst.is_symlink() and resolved_target(dst) == src.resolve():
@@ -268,17 +276,44 @@ def run_sync(
     github_root: Path,
     apply: bool,
 ) -> None:
+    desired_links: dict[Path, Path] = {}
     for item in managed:
         skill = item["skill"]
         src = item["source_abs"]
         if item["scope"] == "global":
             dst = root_dir / "skills" / skill
+            desired_links[dst] = src
             sync_link(dst, src, apply)
             continue
 
         for repo in item["repos"]:
             dst = github_root / repo / ".agents" / "skills" / skill
+            desired_links[dst] = src
             sync_link(dst, src, apply)
+
+    prune_obsolete_global_links(root_dir, desired_links, apply)
+
+
+def prune_obsolete_global_links(
+    root_dir: Path,
+    desired_links: dict[Path, Path],
+    apply: bool,
+) -> None:
+    managed_source_root = (root_dir / "skills-source").resolve()
+    skills_dir = root_dir / "skills"
+    if not skills_dir.exists():
+        return
+    for entry in sorted(skills_dir.iterdir()):
+        if not entry.is_symlink():
+            continue
+        target = resolved_target(entry)
+        if not is_relative_to(target, managed_source_root):
+            continue
+        if entry in desired_links:
+            continue
+        print(f"PRUNE {entry}")
+        if apply:
+            entry.unlink()
 
 
 def parse_args() -> argparse.Namespace:
