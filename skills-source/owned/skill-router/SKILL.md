@@ -30,6 +30,7 @@ Use this skill to decide where a skill should live in the `.agents` system and e
 - Global runtime links: `~/.agents/skills/<skill>`
 - Registry: `~/.agents/skills/registry.json`
 - Repo-local skill location: `<repo>/.agents/skills/<skill>`
+- Repo targets in managed `repos` can be repo names under `~/GitHub` or explicit repo roots such as `~/.agents` when the target repo lives outside `~/GitHub`.
 
 ## Standard Flow (When User Says "Create Skill")
 

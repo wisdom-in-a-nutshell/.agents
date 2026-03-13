@@ -84,6 +84,7 @@
       "origin": "external",
       "scope": "repo",
       "repos": [
+        "~/.agents",
         "codexclaw",
         "codexclaw-workspaces",
         "win"

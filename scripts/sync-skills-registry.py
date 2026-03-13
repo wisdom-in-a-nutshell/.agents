@@ -45,6 +45,12 @@ def is_relative_to(path: Path, parent: Path) -> bool:
         return False
 
 
+def resolve_repo_root(repo: str, github_root: Path, home: Path) -> Path:
+    if repo.startswith("~/") or repo.startswith("/"):
+        return expand_path(repo, home).resolve()
+    return (github_root / repo).resolve()
+
+
 def sync_link(dst: Path, src: Path, apply: bool) -> None:
     rel = rel_link(dst, src)
     if dst.is_symlink() and resolved_target(dst) == src.resolve():
@@ -276,6 +282,7 @@ def run_sync(
     github_root: Path,
     apply: bool,
 ) -> None:
+    home = Path.home()
     desired_links: dict[Path, Path] = {}
     for item in managed:
         skill = item["skill"]
@@ -287,7 +294,8 @@ def run_sync(
             continue
 
         for repo in item["repos"]:
-            dst = github_root / repo / ".agents" / "skills" / skill
+            repo_root = resolve_repo_root(repo, github_root, home)
+            dst = repo_root / ".agents" / "skills" / skill
             desired_links[dst] = src
             sync_link(dst, src, apply)
 

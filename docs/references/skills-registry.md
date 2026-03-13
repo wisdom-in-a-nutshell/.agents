@@ -60,5 +60,6 @@ flowchart LR
 - `scope`: `global` or `repo`.
 - `repos`: target repos for repo-scoped links.
   - When a skill depends on a repo MCP preset, keep this list aligned with the repos that declare that preset in `codex/config/repo-bootstrap.json`.
+  - Entries can be repo names under `~/GitHub` or explicit repo roots such as `~/.agents`.
 - `source_path`: real source folder under `skills-source/...`.
 - `upstream_ref`: upstream source for external skills.
