@@ -21,7 +21,7 @@ Optional fields:
 
 Prompt:
 
-1. Sleep score out of 10, and any note on how it was or what affected it?
+1. Sleep, energy, and mood out of 10 — plus any quick notes for any of them if useful.
 2. Three things you're grateful for?
 3. What is the one thing that matters today?
 4. Optional: if today goes well, what will be true?

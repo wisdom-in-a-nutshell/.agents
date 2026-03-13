@@ -141,6 +141,22 @@ Meaning:
 Fix:
 - rerun `~/.agents/codex/scripts/sync-trusted-projects.sh --apply`
 
+### Stale Snapshot-Refresh LaunchAgent
+
+Symptom:
+- `launchctl print gui/$(id -u)/com.<user>.codex-app-server-snapshot-refresh` shows a scheduled job with `last exit code = 78`
+- the job points at `~/.agents/scripts/refresh-codex-app-server-readme-reference.sh`
+- that script path no longer exists
+
+Meaning:
+- this is leftover machine state from the older Codex App Server snapshot-refresh automation
+- the automation was removed, so recreating the missing script is the wrong fix
+
+Fix:
+- unload and delete the stale LaunchAgent plist:
+- `launchctl bootout gui/$(id -u) ~/Library/LaunchAgents/com.$USER.codex-app-server-snapshot-refresh.plist >/dev/null 2>&1 || true`
+- `rm -f ~/Library/LaunchAgents/com.$USER.codex-app-server-snapshot-refresh.plist`
+
 ### Recommended Skills Fail To Load
 
 Symptom:
