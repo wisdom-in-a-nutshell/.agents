@@ -19,21 +19,7 @@ Recommended defaults:
 
 ## Browser login + reattach pattern (important)
 
-Prefer the **manual-login browser path** when using ChatGPT in browser mode. This is the most reliable workflow when the automation profile needs an initial sign-in or when reattach behavior matters.
-
-### First-time login bootstrap
-
-Run this once to create the automation profile and complete ChatGPT login manually:
-
-- `oracle --engine browser --browser-manual-login --browser-keep-browser --browser-input-timeout 120000 -p "HI"`
-
-Notes:
-- The browser stays open so you can finish login yourself.
-- After login succeeds, Oracle saves the browser automation profile for later runs.
-
-### Subsequent runs (preferred default)
-
-After the automation profile exists, prefer this browser pattern for real work:
+Prefer the **manual-login browser path** when using ChatGPT in browser mode. Assume the automation profile already exists and use this as the default browser workflow:
 
 - `oracle --engine browser --browser-manual-login --browser-auto-reattach-delay 5s --browser-auto-reattach-interval 3s --browser-auto-reattach-timeout 60s -p "<task>" --file "src/**"`
 
@@ -62,11 +48,8 @@ When browser mode behaves oddly, prefer this manual-login + auto-reattach patter
 - Token/cost sanity:
   - `npx -y @steipete/oracle --dry-run summary --files-report -p "<task>" --file "src/**"`
 
-- Browser run (main path after initial login bootstrap; long-running is normal):
+- Browser run (preferred default; long-running is normal):
   - `npx -y @steipete/oracle --engine browser --model gpt-5.4-pro --browser-manual-login --browser-auto-reattach-delay 5s --browser-auto-reattach-interval 3s --browser-auto-reattach-timeout 60s -p "<task>" --file "src/**"`
-
-- First-time login bootstrap:
-  - `npx -y @steipete/oracle --engine browser --browser-manual-login --browser-keep-browser --browser-input-timeout 120000 -p "HI"`
 
 - Manual paste fallback (assemble bundle, copy to clipboard):
   - `npx -y @steipete/oracle --render --copy -p "<task>" --file "src/**"`
