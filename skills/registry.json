@@ -176,6 +176,7 @@
       "origin": "owned",
       "scope": "repo",
       "repos": [
+        "adi",
         "codexclaw-workspaces"
       ],
       "source_path": "skills-source/owned/codex-agent-loop",
