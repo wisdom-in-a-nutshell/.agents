@@ -81,8 +81,6 @@ properties:
     displayName: Reasoning
   effective_service_tier:
     displayName: Service Tier
-  notes:
-    displayName: Notes
 views:
   - type: table
     name: Repo Bootstrap
@@ -92,7 +90,6 @@ views:
       - effective_model
       - effective_reasoning
       - effective_service_tier
-      - notes
   - type: table
     name: MCP Enabled
     filters: 'mcp_presets_csv != "-"'
@@ -123,7 +120,6 @@ def generate_registry_items(
             f"effective_model: {_yaml_str(_effective_value(defaults, item, 'model'))}",
             f"effective_reasoning: {_yaml_str(_effective_value(defaults, item, 'model_reasoning_effort'))}",
             f"effective_service_tier: {_yaml_str(_effective_value(defaults, item, 'service_tier'))}",
-            f"notes: {_yaml_str(item.get('notes', '-'))}",
             "mcp_presets:",
         ]
         if item["mcp_presets"]:
@@ -201,7 +197,6 @@ def validate_registry(
             "repo_name": _repo_name(str(repo_root)),
             "mcp_presets": [str(name) for name in mcp_presets],
             "mcp_presets_csv": ",".join(mcp_presets) if mcp_presets else "-",
-            "notes": str(item.get("notes", "-")).strip() or "-",
         }
         for key in ALLOWED_SCALAR_KEYS:
             if key in item:

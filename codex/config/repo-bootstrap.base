@@ -14,8 +14,6 @@ properties:
     displayName: Reasoning
   effective_service_tier:
     displayName: Service Tier
-  notes:
-    displayName: Notes
 views:
   - type: table
     name: Repo Bootstrap
@@ -25,7 +23,6 @@ views:
       - effective_model
       - effective_reasoning
       - effective_service_tier
-      - notes
   - type: table
     name: MCP Enabled
     filters: 'mcp_presets_csv != "-"'

@@ -133,8 +133,7 @@
       "path": "~/GitHub/scripts"
     },
     {
-      "path": "~/GitHub/stadia-macos-controller",
-      "notes": "Intentionally no repo-local MCP presets right now."
+      "path": "~/GitHub/stadia-macos-controller"
     },
     {
       "path": "~/GitHub/thoughtforms-life-theme"
