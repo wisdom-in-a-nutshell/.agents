@@ -84,7 +84,9 @@
       "origin": "external",
       "scope": "repo",
       "repos": [
-        "codexclaw"
+        "codexclaw",
+        "codexclaw-workspaces",
+        "win"
       ],
       "source_path": "skills-source/external/openai-docs",
       "upstream_ref": "openai/skills:skills/.curated/openai-docs@main"

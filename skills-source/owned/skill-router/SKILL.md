@@ -20,6 +20,7 @@ Use this skill to decide where a skill should live in the `.agents` system and e
 3. Use `repo-local` when the skill is specific to one repo and should remain local.
 4. If intent is ambiguous, ask one question: "Should this be external, owned, or repo-local?"
 5. Default to the narrowest useful scope. Only use `scope: global` when the skill belongs in the small default kit for unrelated repos; otherwise prefer managed `scope: repo` or unmanaged repo-local placement.
+6. When a skill depends on a repo-level MCP preset, keep the repo-scoped skill targets aligned with the repos that declare that preset in `codex/config/repo-bootstrap.json`.
 
 ## Paths in This Environment
 
