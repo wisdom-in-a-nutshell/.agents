@@ -253,7 +253,8 @@
       "origin": "owned",
       "scope": "repo",
       "repos": [
-        "codexclaw-workspaces"
+        "codexclaw-workspaces/adi",
+        "codexclaw-workspaces/angie"
       ],
       "source_path": "skills-source/owned/journal-checkin",
       "upstream_ref": "-"
