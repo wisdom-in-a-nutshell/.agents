@@ -69,6 +69,7 @@ Use [Codex Control Plane Ownership](/Users/dobby/.agents/docs/references/codex-c
 - [`sync-config.sh`](/Users/dobby/.agents/codex/scripts/sync-config.sh)
   - applies canonical Codex config templates into live terminal + Xcode config
   - syncs canonical role config files for managed multi-agent roles into the live runtime `agents/` directories
+  - keeps the current role split explicit: `explorer` for local repo/runtime exploration, `researcher` for MCP/skills/docs/web research
   - rewrites machine-specific notify and system-skill paths for the current `$HOME`
   - strips foreign-user project and system-skill entries before writing
   - fails fast if the target config contains unresolved Git conflict markers

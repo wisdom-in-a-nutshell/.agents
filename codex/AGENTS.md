@@ -49,6 +49,9 @@ Canonical personal Codex control-plane assets live here.
 
 - `config/repo-bootstrap.json` is the one place to decide managed repo-local Codex behavior.
 - Multi-agent role tuning belongs in `config/global.config.toml`, `config/xcode.config.toml`, and `config/agents/*.toml`, not in repo bootstrap.
+- The current managed role split is:
+  - `explorer` for local repo and runtime exploration
+  - `researcher` for MCP, skills, official docs, and web research
 - The current per-repo control surface is:
   - `mcp_presets`
   - `model`
