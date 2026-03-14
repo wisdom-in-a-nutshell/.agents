@@ -1,6 +1,11 @@
 # Codex + Ghostty shell integration.
 # Source this from a shared ~/.zshrc rather than replacing the whole shell config.
 
+if [[ "${CODEX_SHELL_LOADED:-0}" == "1" ]]; then
+  return 0
+fi
+export CODEX_SHELL_LOADED=1
+
 # Ensure Ghostty shell integration is active even in shells started via wrappers.
 if [[ -n $GHOSTTY_RESOURCES_DIR ]]; then
   source "$GHOSTTY_RESOURCES_DIR"/shell-integration/zsh/ghostty-integration
