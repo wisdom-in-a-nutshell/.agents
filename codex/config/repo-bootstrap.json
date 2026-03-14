@@ -31,7 +31,7 @@
       "path": "~/GitHub/adi",
       "model": "gpt-5.4",
       "model_reasoning_effort": "high",
-      "model_verbosity": "medium",
+      "model_verbosity": "low",
       "personality": "friendly",
       "service_tier": "fast",
       "model_instructions_file": "../soul.md",

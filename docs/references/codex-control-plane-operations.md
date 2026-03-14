@@ -95,7 +95,6 @@ Use [Codex Control Plane Ownership](/Users/dobby/.agents/docs/references/codex-c
   - ensures Ghostty uses the Codex startup wrapper
   - ensures shell integration stays on
   - installs the `Cmd+Shift+G` current-terminal picker keybind
-  - installs the `Cmd+Shift+T` picker-tab keybind that opens a new tab and immediately runs `codex_jump`
 
 ## Repo Bootstrap Registry Fields
 

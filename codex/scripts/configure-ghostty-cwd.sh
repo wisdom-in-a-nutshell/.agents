@@ -5,8 +5,6 @@ MODE="--dry-run"
 CONFIG_PATH="${HOME}/Library/Application Support/com.mitchellh.ghostty/config"
 WRAPPER_PATH="${HOME}/.agents/codex/scripts/ghostty-codex-then-shell.sh"
 PICKER_KEYBIND='keybind = super+shift+g=text:\x15\x03'
-PICKER_TAB_KEYBIND='keybind = super+shift+t=new_tab'
-PICKER_TAB_CHAIN='keybind = chain=text:codex_jump\n'
 TIMESTAMP="$(date +%Y%m%d-%H%M%S)"
 TMP_DIR="$(mktemp -d)"
 
@@ -23,7 +21,7 @@ Configure Ghostty for CWD-safe Codex startup:
   - initial-command = direct:<wrapper>
   - shell-integration = zsh
   - remove command=direct:...ghostty-codex-then-shell.sh override
-  - add codex directory picker keybinds
+  - add codex directory picker keybind
 
 Default mode is dry-run. Use --apply to write changes.
 
@@ -33,9 +31,6 @@ Options:
   --config <path>        Ghostty config path
   --wrapper <path>       Wrapper script path
   --picker-keybind <v>   Override picker keybind line
-  --picker-tab-keybind <v>
-                         Override picker-tab keybind line
-  --picker-tab-chain <v> Override chained follow-up action line
   -h, --help             Show this help
 
 Examples:
@@ -110,14 +105,6 @@ while [[ $# -gt 0 ]]; do
       PICKER_KEYBIND="${2:-}"
       shift 2
       ;;
-    --picker-tab-keybind)
-      PICKER_TAB_KEYBIND="${2:-}"
-      shift 2
-      ;;
-    --picker-tab-chain)
-      PICKER_TAB_CHAIN="${2:-}"
-      shift 2
-      ;;
     -h|--help)
       usage
       exit 0
@@ -150,8 +137,7 @@ awk '
 ' "$RENDERED" > "${RENDERED}.filtered"
 mv "${RENDERED}.filtered" "$RENDERED"
 
-# Remove managed picker-tab shortcut variants so the new-tab + codex_jump block
-# is always re-added in the right order.
+# Remove any previously managed picker-tab shortcut variants.
 awk '
   !($0 ~ /^[[:space:]]*keybind[[:space:]]*=[[:space:]]*super\+shift\+t=/) &&
   !($0 ~ /^[[:space:]]*keybind[[:space:]]*=[[:space:]]*chain=text:codex_jump\\n[[:space:]]*$/)
@@ -161,8 +147,6 @@ mv "${RENDERED}.filtered" "$RENDERED"
 upsert_key "$RENDERED" "initial-command" "direct:${WRAPPER_PATH}"
 upsert_key "$RENDERED" "shell-integration" "zsh"
 ensure_exact_line "$RENDERED" "$PICKER_KEYBIND"
-ensure_exact_line "$RENDERED" "$PICKER_TAB_KEYBIND"
-ensure_exact_line "$RENDERED" "$PICKER_TAB_CHAIN"
 
 if diff -u "$CONFIG_PATH" "$RENDERED" >/dev/null 2>&1; then
   log "No change: $CONFIG_PATH already matches desired Ghostty CWD-safe config."
