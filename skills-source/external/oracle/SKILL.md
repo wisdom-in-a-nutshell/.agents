@@ -3,38 +3,26 @@ name: oracle
 description: Use the @steipete/oracle CLI to bundle a prompt plus the right files and get a second-model review (API or browser) for debugging, refactors, design checks, or cross-validation.
 ---
 
-# Oracle (CLI) - best use
+# Oracle (CLI) — best use
 
-Oracle bundles your prompt + selected files into one "one-shot" request so another model can answer with real repo context (API or browser automation). Treat outputs as advisory: verify against the codebase + tests.
+Oracle bundles your prompt + selected files into one “one-shot” request so another model can answer with real repo context (API or browser automation). Treat outputs as advisory: verify against the codebase + tests.
 
-## Main use case (browser, GPT-5.4 Pro)
+## Main use case (browser, GPT‑5.4 Pro)
 
-Default workflow here: `--engine browser` with GPT-5.4 Pro in ChatGPT. This is the "human in the loop" path: it can take ~10 minutes to ~1 hour; expect a stored session you can reattach to.
+Default workflow here: `--engine browser` with GPT‑5.4 Pro in ChatGPT. This is the “human in the loop” path: it can take ~10 minutes to ~1 hour; expect a stored session you can reattach to.
 
 Recommended defaults:
 
 - Engine: browser (`--engine browser`)
-- Model: GPT-5.4 Pro (either `--model gpt-5.4-pro` or a ChatGPT picker label like `--model "5.4 Pro"`)
+- Model: GPT‑5.4 Pro (either `--model gpt-5.4-pro` or a ChatGPT picker label like `--model "5.4 Pro"`)
 - Attachments: directories/globs + excludes; avoid secrets.
-
-## Browser login + reattach pattern (important)
-
-Prefer the **manual-login browser path** when using ChatGPT in browser mode. Assume the automation profile already exists and use this as the default browser workflow:
-
-- `oracle --engine browser --browser-manual-login --browser-auto-reattach-delay 5s --browser-auto-reattach-interval 3s --browser-auto-reattach-timeout 60s -p "<task>" --file "src/**"`
-
-Interpretation:
-- `--browser-manual-login` keeps the browser-auth path explicit instead of assuming a silent reusable session.
-- The `--browser-auto-reattach-*` flags make browser recovery more reliable when Chrome detaches or the run takes a while.
-
-When browser mode behaves oddly, prefer this manual-login + auto-reattach pattern over the shorter generic browser command.
 
 ## Golden path (fast + reliable)
 
 1. Pick a tight file set (fewest files that still contain the truth).
-2. Preview what you're about to send (`--dry-run` + `--files-report` when needed).
-3. Run in browser mode using the manual-login + auto-reattach pattern above; use API only when you explicitly want it.
-4. If the run detaches/timeouts: reattach to the stored session (don't re-run).
+2. Preview what you’re about to send (`--dry-run` + `--files-report` when needed).
+3. Run in browser mode for the usual GPT‑5.4 Pro ChatGPT workflow; use API only when you explicitly want it.
+4. If the run detaches/timeouts: reattach to the stored session (don’t re-run).
 
 ## Commands (preferred)
 
@@ -48,8 +36,8 @@ When browser mode behaves oddly, prefer this manual-login + auto-reattach patter
 - Token/cost sanity:
   - `npx -y @steipete/oracle --dry-run summary --files-report -p "<task>" --file "src/**"`
 
-- Browser run (preferred default; long-running is normal):
-  - `npx -y @steipete/oracle --engine browser --model gpt-5.4-pro --browser-manual-login --browser-auto-reattach-delay 5s --browser-auto-reattach-interval 3s --browser-auto-reattach-timeout 60s -p "<task>" --file "src/**"`
+- Browser run (main path; long-running is normal):
+  - `npx -y @steipete/oracle --engine browser --model gpt-5.4-pro -p "<task>" --file "src/**"`
 
 - Manual paste fallback (assemble bundle, copy to clipboard):
   - `npx -y @steipete/oracle --render --copy -p "<task>" --file "src/**"`
@@ -84,44 +72,43 @@ When browser mode behaves oddly, prefer this manual-login + auto-reattach patter
 
 - Auto-pick: uses `api` when `OPENAI_API_KEY` is set, otherwise `browser`.
 - Browser engine supports GPT + Gemini only; use `--engine api` for Claude/Grok/Codex or multi-model runs.
-- API runs require explicit user consent before starting because they incur usage costs.
+- **API runs require explicit user consent** before starting because they incur usage costs.
 - Browser attachments:
   - `--browser-attachments auto|never|always` (auto pastes inline up to ~60k chars then uploads).
 - Remote browser host (signed-in machine runs automation):
   - Host: `oracle serve --host 0.0.0.0 --port 9473 --token <secret>`
   - Client: `oracle --engine browser --remote-host <host:port> --remote-token <secret> -p "<task>" --file "src/**"`
 
-## Sessions + slugs (don't lose work)
+## Sessions + slugs (don’t lose work)
 
 - Stored under `~/.oracle/sessions` (override with `ORACLE_HOME_DIR`).
-- Runs may detach or take a long time (browser + GPT-5.4 Pro often does). If the CLI times out: don't re-run; reattach.
+- Runs may detach or take a long time (browser + GPT‑5.4 Pro often does). If the CLI times out: don’t re-run; reattach.
   - List: `oracle status --hours 72`
   - Attach: `oracle session <id> --render`
-- If the session failed because the browser/auth flow was not stable, retry with the manual-login + auto-reattach browser flags before falling back to other approaches.
 - Use `--slug "<3-5 words>"` to keep session IDs readable.
 - Duplicate prompt guard exists; use `--force` only when you truly want a fresh run.
 
 ## Prompt template (high signal)
 
-Oracle starts with zero project knowledge. Assume the model cannot infer your stack, build tooling, conventions, or "obvious" paths. Include:
+Oracle starts with **zero** project knowledge. Assume the model cannot infer your stack, build tooling, conventions, or “obvious” paths. Include:
 
 - Project briefing (stack + build/test commands + platform constraints).
-- "Where things live" (key directories, entrypoints, config files, dependency boundaries).
+- “Where things live” (key directories, entrypoints, config files, dependency boundaries).
 - Exact question + what you tried + the error text (verbatim).
-- Constraints ("don't change X", "must keep public API", "perf budget", etc).
-- Desired output ("return patch plan + tests", "list risky assumptions", "give 3 options with tradeoffs").
+- Constraints (“don’t change X”, “must keep public API”, “perf budget”, etc).
+- Desired output (“return patch plan + tests”, “list risky assumptions”, “give 3 options with tradeoffs”).
 
-### "Exhaustive prompt" pattern (for later restoration)
+### “Exhaustive prompt” pattern (for later restoration)
 
 When you know this will be a long investigation, write a prompt that can stand alone later:
 
-- Top: 6-30 sentence project briefing + current goal.
+- Top: 6–30 sentence project briefing + current goal.
 - Middle: concrete repro steps + exact errors + what you already tried.
-- Bottom: attach all context files needed so a fresh model can fully understand (entrypoints, configs, key modules, docs).
+- Bottom: attach _all_ context files needed so a fresh model can fully understand (entrypoints, configs, key modules, docs).
 
-If you need to reproduce the same context later, re-run with the same prompt + `--file ...` set (Oracle runs are one-shot; the model doesn't remember prior runs).
+If you need to reproduce the same context later, re-run with the same prompt + `--file …` set (Oracle runs are one-shot; the model doesn’t remember prior runs).
 
 ## Safety
 
-- Don't attach secrets by default (`.env`, key files, auth tokens). Redact aggressively; share only what's required.
-- Prefer "just enough context": fewer files + better prompt beats whole-repo dumps.
+- Don’t attach secrets by default (`.env`, key files, auth tokens). Redact aggressively; share only what’s required.
+- Prefer “just enough context”: fewer files + better prompt beats whole-repo dumps.
