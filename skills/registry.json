@@ -20,14 +20,6 @@
       "upstream_ref": "vercel-labs/agent-browser:skills/agent-browser@main"
     },
     {
-      "skill": "defuddle",
-      "origin": "external",
-      "scope": "global",
-      "repos": [],
-      "source_path": "skills-source/external/defuddle",
-      "upstream_ref": "kepano/obsidian-skills:skills/defuddle@main"
-    },
-    {
       "skill": "agent-native-repo-playbook",
       "origin": "owned",
       "scope": "global",
@@ -44,6 +36,14 @@
       "upstream_ref": "-"
     },
     {
+      "skill": "defuddle",
+      "origin": "external",
+      "scope": "global",
+      "repos": [],
+      "source_path": "skills-source/external/defuddle",
+      "upstream_ref": "kepano/obsidian-skills:skills/defuddle@main"
+    },
+    {
       "skill": "project",
       "origin": "owned",
       "scope": "global",
@@ -52,14 +52,152 @@
       "upstream_ref": "-"
     },
     {
-      "skill": "skill-router",
+      "skill": "adi-writing",
       "origin": "owned",
       "scope": "repo",
       "repos": [
+        "adi",
+        "blog-personal"
+      ],
+      "source_path": "skills-source/owned/adi-writing",
+      "upstream_ref": "-"
+    },
+    {
+      "skill": "ai-podcasting",
+      "origin": "owned",
+      "scope": "repo",
+      "repos": [
+        "aipodcasting"
+      ],
+      "source_path": "skills-source/owned/ai-podcasting",
+      "upstream_ref": "-"
+    },
+    {
+      "skill": "aip-company",
+      "origin": "owned",
+      "scope": "repo",
+      "repos": [
+        "adi",
+        "aipodcasting-public-website",
+        "blog-personal"
+      ],
+      "source_path": "skills-source/owned/aip-company",
+      "upstream_ref": "-"
+    },
+    {
+      "skill": "aip-dto-contract-sync",
+      "origin": "owned",
+      "scope": "repo",
+      "repos": [
+        "aipodcasting",
+        "win"
+      ],
+      "source_path": "skills-source/owned/aip-dto-contract-sync",
+      "upstream_ref": "-"
+    },
+    {
+      "skill": "aip-frontend-contract-apply",
+      "origin": "owned",
+      "scope": "repo",
+      "repos": [
+        "aipodcasting",
+        "win"
+      ],
+      "source_path": "skills-source/owned/aip-frontend-contract-apply",
+      "upstream_ref": "-"
+    },
+    {
+      "skill": "azure-webapp-config",
+      "origin": "owned",
+      "scope": "repo",
+      "repos": [
+        "aipodcasting",
+        "aipodcasting-public-website",
+        "win"
+      ],
+      "source_path": "skills-source/owned/azure-webapp-config",
+      "upstream_ref": "-"
+    },
+    {
+      "skill": "codex-agent-loop",
+      "origin": "owned",
+      "scope": "repo",
+      "repos": [
+        "adi",
+        "codexclaw-workspaces"
+      ],
+      "source_path": "skills-source/owned/codex-agent-loop",
+      "upstream_ref": "-"
+    },
+    {
+      "skill": "codex-app-server",
+      "origin": "owned",
+      "scope": "repo",
+      "repos": [
+        "codexclaw"
+      ],
+      "source_path": "skills-source/owned/codex-app-server",
+      "upstream_ref": "-"
+    },
+    {
+      "skill": "journal-checkin",
+      "origin": "owned",
+      "scope": "repo",
+      "repos": [
+        "adi",
+        "angie",
+        "codexclaw-workspaces/adi",
+        "codexclaw-workspaces/angie"
+      ],
+      "source_path": "skills-source/owned/journal-checkin",
+      "upstream_ref": "-"
+    },
+    {
+      "skill": "modal-function-sync",
+      "origin": "owned",
+      "scope": "repo",
+      "repos": [
+        "aipodcasting",
+        "modal_functions",
+        "win"
+      ],
+      "source_path": "skills-source/owned/modal-function-sync",
+      "upstream_ref": "-"
+    },
+    {
+      "skill": "openai-docs",
+      "origin": "external",
+      "scope": "repo",
+      "repos": [
         "~/.agents",
+        "adi",
+        "angie",
+        "codexclaw",
+        "codexclaw-workspaces",
+        "win"
+      ],
+      "source_path": "skills-source/external/openai-docs",
+      "upstream_ref": "openai/skills:skills/.curated/openai-docs@main"
+    },
+    {
+      "skill": "oracle",
+      "origin": "external",
+      "scope": "repo",
+      "repos": [
         "adi"
       ],
-      "source_path": "skills-source/owned/skill-router",
+      "source_path": "skills-source/external/oracle",
+      "upstream_ref": "steipete/oracle:skills/oracle@main"
+    },
+    {
+      "skill": "show-password-setup",
+      "origin": "owned",
+      "scope": "repo",
+      "repos": [
+        "aipodcasting",
+        "win"
+      ],
+      "source_path": "skills-source/owned/show-password-setup",
       "upstream_ref": "-"
     },
     {
@@ -74,14 +212,15 @@
       "upstream_ref": "openai/skills:skills/.system/skill-creator@main"
     },
     {
-      "skill": "oracle",
-      "origin": "external",
+      "skill": "skill-router",
+      "origin": "owned",
       "scope": "repo",
       "repos": [
+        "~/.agents",
         "adi"
       ],
-      "source_path": "skills-source/external/oracle",
-      "upstream_ref": "steipete/oracle:skills/oracle@main"
+      "source_path": "skills-source/owned/skill-router",
+      "upstream_ref": "-"
     },
     {
       "skill": "vercel-react-best-practices",
@@ -110,133 +249,6 @@
       ],
       "source_path": "skills-source/external/web-design-guidelines",
       "upstream_ref": "vercel-labs/agent-skills:skills/web-design-guidelines@main"
-    },
-    {
-      "skill": "openai-docs",
-      "origin": "external",
-      "scope": "repo",
-      "repos": [
-        "~/.agents",
-        "adi",
-        "angie",
-        "codexclaw",
-        "codexclaw-workspaces",
-        "win"
-      ],
-      "source_path": "skills-source/external/openai-docs",
-      "upstream_ref": "openai/skills:skills/.curated/openai-docs@main"
-    },
-    {
-      "skill": "modal-function-sync",
-      "origin": "owned",
-      "scope": "repo",
-      "repos": [
-        "aipodcasting",
-        "modal_functions",
-        "win"
-      ],
-      "source_path": "skills-source/owned/modal-function-sync",
-      "upstream_ref": "-"
-    },
-    {
-      "skill": "aip-dto-contract-sync",
-      "origin": "owned",
-      "scope": "repo",
-      "repos": [
-        "aipodcasting",
-        "win"
-      ],
-      "source_path": "skills-source/owned/aip-dto-contract-sync",
-      "upstream_ref": "-"
-    },
-    {
-      "skill": "aip-frontend-contract-apply",
-      "origin": "owned",
-      "scope": "repo",
-      "repos": [
-        "aipodcasting",
-        "win"
-      ],
-      "source_path": "skills-source/owned/aip-frontend-contract-apply",
-      "upstream_ref": "-"
-    },
-    {
-      "skill": "show-password-setup",
-      "origin": "owned",
-      "scope": "repo",
-      "repos": [
-        "aipodcasting",
-        "win"
-      ],
-      "source_path": "skills-source/owned/show-password-setup",
-      "upstream_ref": "-"
-    },
-    {
-      "skill": "azure-webapp-config",
-      "origin": "owned",
-      "scope": "repo",
-      "repos": [
-        "aipodcasting",
-        "aipodcasting-public-website",
-        "win"
-      ],
-      "source_path": "skills-source/owned/azure-webapp-config",
-      "upstream_ref": "-"
-    },
-    {
-      "skill": "ai-podcasting",
-      "origin": "owned",
-      "scope": "repo",
-      "repos": [
-        "aipodcasting"
-      ],
-      "source_path": "skills-source/owned/ai-podcasting",
-      "upstream_ref": "-"
-    },
-    {
-      "skill": "codex-app-server",
-      "origin": "owned",
-      "scope": "repo",
-      "repos": [
-        "codexclaw"
-      ],
-      "source_path": "skills-source/owned/codex-app-server",
-      "upstream_ref": "-"
-    },
-    {
-      "skill": "codex-agent-loop",
-      "origin": "owned",
-      "scope": "repo",
-      "repos": [
-        "adi",
-        "codexclaw-workspaces"
-      ],
-      "source_path": "skills-source/owned/codex-agent-loop",
-      "upstream_ref": "-"
-    },
-    {
-      "skill": "journal-checkin",
-      "origin": "owned",
-      "scope": "repo",
-      "repos": [
-        "adi",
-        "angie",
-        "codexclaw-workspaces/adi",
-        "codexclaw-workspaces/angie"
-      ],
-      "source_path": "skills-source/owned/journal-checkin",
-      "upstream_ref": "-"
-    },
-    {
-      "skill": "adi-writing",
-      "origin": "owned",
-      "scope": "repo",
-      "repos": [
-        "adi",
-        "blog-personal"
-      ],
-      "source_path": "skills-source/owned/adi-writing",
-      "upstream_ref": "-"
     }
   ],
   "unmanaged_repo_local_skills": [

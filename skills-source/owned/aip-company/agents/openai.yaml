@@ -1,0 +1,4 @@
+interface:
+  display_name: "AIP Company"
+  short_description: "Canonical AI Podcasting company context, positioning, and business facts."
+  default_prompt: "Use the canonical AIP company references to ground this work. Read only the needed reference files, keep company truth consistent, and update canonical material first if the source of truth changes."
