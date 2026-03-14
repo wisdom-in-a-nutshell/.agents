@@ -36,7 +36,7 @@ Canonical personal Codex control-plane assets live here.
 - `scripts/bootstrap-machine-codex.sh` is the canonical Codex-specific machine bootstrap batch.
 - `scripts/auto-apply-codex-control-plane.sh` is the canonical post-sync Codex reconcile entrypoint for cross-machine convergence.
 - `config/global.config.toml` and `config/xcode.config.toml` are the canonical managed baselines.
-- `config/agents/*.toml` are the canonical managed role overrides for built-in multi-agent roles.
+- `config/agents/*.toml` are the canonical managed role overrides for built-in and custom multi-agent roles.
 - `config/repo-bootstrap.json` is the canonical registry for repo-local Codex bootstrap and MCP presets.
 - `scripts/sync-repo-bootstrap-registry.sh` generates the Obsidian Base artifacts for that registry.
 - `config/global.agents.md` is the canonical machine-wide AGENTS content that bootstraps to `~/.codex/AGENTS.md`.
@@ -48,7 +48,7 @@ Canonical personal Codex control-plane assets live here.
 ## Repo Bootstrap Registry
 
 - `config/repo-bootstrap.json` is the one place to decide managed repo-local Codex behavior.
-- Built-in multi-agent role tuning belongs in `config/global.config.toml`, `config/xcode.config.toml`, and `config/agents/*.toml`, not in repo bootstrap.
+- Multi-agent role tuning belongs in `config/global.config.toml`, `config/xcode.config.toml`, and `config/agents/*.toml`, not in repo bootstrap.
 - The current per-repo control surface is:
   - `mcp_presets`
   - `model`

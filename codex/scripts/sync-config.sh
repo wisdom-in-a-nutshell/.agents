@@ -339,6 +339,8 @@ render_global_config() {
   if ! rg -n '^[[:space:]]*service_tier[[:space:]]*=' "$template_file" >/dev/null 2>&1; then
     remove_top_level_key "$target_file" "service_tier"
   fi
+
+  prune_stale_agent_sections "$target_file" "$template_file"
 }
 
 sanitize_machine_specific_entries() {
@@ -509,6 +511,60 @@ target.write_text(output, encoding="utf-8")
 PY
 }
 
+prune_stale_agent_sections() {
+  local target_file="$1"
+  local template_file="$2"
+  python3 - "$target_file" "$template_file" <<'PY'
+from __future__ import annotations
+
+import re
+import sys
+from pathlib import Path
+
+
+target = Path(sys.argv[1])
+template = Path(sys.argv[2])
+
+target_text = target.read_text(encoding="utf-8") if target.exists() else ""
+template_text = template.read_text(encoding="utf-8") if template.exists() else ""
+
+agent_header_re = re.compile(r'^\[agents\.([^\]]+)\]\s*$')
+
+allowed_agents: set[str] = set()
+for line in template_text.splitlines():
+    m = agent_header_re.match(line.strip())
+    if m:
+        allowed_agents.add(m.group(1))
+
+lines = target_text.splitlines(keepends=True)
+output: list[str] = []
+i = 0
+while i < len(lines):
+    line = lines[i]
+    stripped = line.strip()
+    if stripped.startswith("[") and stripped.endswith("]"):
+        j = i + 1
+        while j < len(lines):
+            s = lines[j].strip()
+            if s == "[[skills.config]]" or (s.startswith("[") and s.endswith("]")):
+                break
+            j += 1
+        block = lines[i:j]
+        m = agent_header_re.match(stripped)
+        if m and m.group(1) not in allowed_agents:
+            i = j
+            continue
+        output.extend(block)
+        i = j
+        continue
+
+    output.append(line)
+    i += 1
+
+target.write_text("".join(output), encoding="utf-8")
+PY
+}
+
 render_xcode_config() {
   local target_file="$1"
   local template_file="$2"
@@ -535,6 +591,8 @@ render_xcode_config() {
   if ! rg -n '^[[:space:]]*service_tier[[:space:]]*=' "$template_file" >/dev/null 2>&1; then
     remove_top_level_key "$target_file" "service_tier"
   fi
+
+  prune_stale_agent_sections "$target_file" "$template_file"
 }
 
 render_xcode_rules() {
@@ -626,7 +684,8 @@ sync_agent_role_configs() {
   local label="$1"
   local source_dir="$2"
   local target_dir="$3"
-  local source_file target_file rendered_file basename
+  local source_file target_file rendered_file basename target_existing
+  local -a source_basenames=()
 
   if [[ ! -d "$source_dir" ]]; then
     return
@@ -635,6 +694,7 @@ sync_agent_role_configs() {
   shopt -s nullglob
   for source_file in "$source_dir"/*.toml; do
     basename="$(basename "$source_file")"
+    source_basenames+=("$basename")
     target_file="${target_dir}/${basename}"
     rendered_file="${TMP_DIR}/${label// /_}-${basename}"
 
@@ -650,6 +710,23 @@ sync_agent_role_configs() {
       install_rendered_file "$rendered_file" "$target_file"
     fi
   done
+
+  if [[ -d "$target_dir" ]]; then
+    for target_existing in "$target_dir"/*.toml; do
+      basename="$(basename "$target_existing")"
+      if [[ " ${source_basenames[*]} " == *" ${basename} "* ]]; then
+        continue
+      fi
+
+      log ""
+      log "=== ${label} (${target_existing}) ==="
+      log "Stale managed agent role file will be removed."
+      if (( APPLY == 1 )); then
+        rm -f "$target_existing"
+        log "Removed: $target_existing"
+      fi
+    done
+  fi
   shopt -u nullglob
 }
 

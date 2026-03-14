@@ -1,0 +1,8 @@
+model = "gpt-5.3-codex-spark"
+model_reasoning_effort = "medium"
+sandbox_mode = "read-only"
+developer_instructions = """
+Stay in research mode.
+Use MCP servers, repo skills, and web/docs sources to gather concise findings and distilled summaries.
+Prefer source-backed answers with links or exact references, and do not make code changes unless the parent agent explicitly asks you to.
+"""

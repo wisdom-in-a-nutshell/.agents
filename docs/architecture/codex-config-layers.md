@@ -38,7 +38,7 @@ flowchart TD
 
 - `global.config.toml` defines the managed baseline for terminal Codex.
 - `xcode.config.toml` defines the managed baseline for Xcode Codex.
-- `config/agents/*.toml` defines managed role-specific overrides for built-in multi-agent roles such as `explorer`, `worker`, and `monitor`.
+- `config/agents/*.toml` defines managed role-specific overrides for multi-agent roles such as `explorer` and `researcher`.
 - `repo-bootstrap.json` defines:
   - which repos are managed
   - which MCP presets each repo gets

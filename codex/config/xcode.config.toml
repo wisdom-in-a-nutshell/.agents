@@ -14,8 +14,12 @@ personality = "pragmatic"
 suppress_unstable_features_warning = true
 
 [agents.explorer]
-description = "Read-only explorer for codebase mapping, investigation, and research."
+description = "Read-only explorer for local codebase mapping and investigation."
 config_file = "agents/explorer.toml"
+
+[agents.researcher]
+description = "Read-only researcher for MCP, skills, docs, and web investigation."
+config_file = "agents/researcher.toml"
 
 [sandbox_workspace_write]
 exclude_slash_tmp = false
