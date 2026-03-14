@@ -1,0 +1,4 @@
+interface:
+  display_name: "Adi Writing"
+  short_description: "Write and edit external-facing content in Adi's voice."
+  default_prompt: "Draft or edit this in Adi's voice. Keep it direct, human, concise, and natural."

@@ -226,6 +226,17 @@
       ],
       "source_path": "skills-source/owned/journal-checkin",
       "upstream_ref": "-"
+    },
+    {
+      "skill": "adi-writing",
+      "origin": "owned",
+      "scope": "repo",
+      "repos": [
+        "adi",
+        "blog-personal"
+      ],
+      "source_path": "skills-source/owned/adi-writing",
+      "upstream_ref": "-"
     }
   ],
   "unmanaged_repo_local_skills": [
