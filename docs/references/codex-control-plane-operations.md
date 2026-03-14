@@ -105,6 +105,9 @@ Use [Codex Control Plane Ownership](/Users/dobby/.agents/docs/references/codex-c
 - [`open-ghostty-codex-picker-tab.sh`](/Users/adi/.agents/codex/scripts/open-ghostty-codex-picker-tab.sh)
   - opens a new Ghostty tab with a custom surface configuration and immediately runs `codex_jump`
   - is the one tracked helper used by both the Stadia controller `Share` action and the optional manual Keyboard Maestro `Cmd+Shift+T` macro
+- [`open-ghostty-plain-shell-split.sh`](/Users/adi/.agents/codex/scripts/open-ghostty-plain-shell-split.sh)
+  - opens a Ghostty split with `CODEX_DISABLE_AUTOSTART=1` so the new pane is a plain shell in the inherited cwd
+  - is intended for an optional Keyboard Maestro plain-shell split shortcut such as `Cmd+Opt+D`
 
 ## Repo Bootstrap Registry Fields
 
