@@ -1,6 +1,6 @@
 ---
 name: aip-company
-description: "Canonical company knowledge for AI Podcasting (AIP): positioning, business details, messaging, target customer, proof points, and company facts. Use when working on AIP strategy, website copy, messaging, pitches, founder/company descriptions, case-study framing, pricing context, or any task that needs the authoritative company understanding across `adi`, `aipodcasting-public-website`, and `blog-personal`."
+description: "Canonical company knowledge for AI Podcasting (AIP): positioning, business details, messaging, target customer, proof points, company facts, client context, and reusable company templates. Use when working on AIP strategy, website copy, messaging, pitches, founder/company descriptions, case-study framing, pricing context, client dossiers, or any task that needs the authoritative company understanding across `adi`, `aipodcasting-public-website`, and `blog-personal`."
 ---
 
 # AIP Company
@@ -18,8 +18,10 @@ Use this skill when you need to understand or write about:
 - target customer and alternatives
 - traction/proof points
 - founder/company facts used in company-facing work
+- client-specific context that should live with company knowledge
+- reusable company/client templates
 
-This skill is the canonical company home. Do not create new canonical AIP company descriptions in random repos.
+This skill is the canonical company home. Do not create new canonical AIP company descriptions or client/company reference docs in random repos.
 
 ## Canonical references
 
@@ -31,11 +33,15 @@ Read only the file(s) needed for the task:
   - use for operational/business facts, pricing context, TAM, team/company details
 - `references/positioning-notes.md`
   - use for older but still useful positioning reasoning and category nuance
+- `references/clients/*.md`
+  - use for active client dossiers and relationship-specific company context
+- `references/templates/*.md`
+  - use for reusable company/client reference templates
 
 ## Routing rule
 
 - If the task is about Adi's personal relationship to AIP, risk, identity, or current life/company tension, use `adi/memory/domains/company/AGENTS.md`.
-- If the task is about AIP as a company, use this skill.
+- If the task is about AIP as a company, its positioning, business details, clients, or company-facing templates, use this skill.
 - If canonical company truth changes, update this skill first, then update downstream repo copy only where needed.
 
 ## Writing guardrails
