@@ -56,7 +56,8 @@
       "origin": "owned",
       "scope": "repo",
       "repos": [
-        "~/.agents"
+        "~/.agents",
+        "adi"
       ],
       "source_path": "skills-source/owned/skill-router",
       "upstream_ref": "-"
