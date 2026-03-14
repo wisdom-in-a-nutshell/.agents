@@ -180,3 +180,14 @@ What would our customers do if AIP didn't exist?
 *   **Contact:** adi@aipodcast.ing
 
 > For team bios, pricing, TAM, and other operational details, see `business-details.md`.
+
+
+## Current public website messaging notes
+
+Useful current public phrasing from `aipodcasting-public-website`:
+
+- "Simple pricing. Full production."
+- "Built by operators, for creators"
+- "Powering the top 1% of audio creators"
+
+These are useful current external phrases, but keep the more durable positioning anchored in the core AIP framing above.

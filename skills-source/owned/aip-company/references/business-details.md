@@ -113,3 +113,44 @@ Adithyan and Sai have known each other for over 16 years (IIT undergrad). Deep r
 *   **Contact:** adi@aipodcast.ing
 *   **Location:** Berlin, Germany & Bangalore, India (distributed, async-first)
 *   **Status:** Bootstrapped, profitable
+
+
+## Current public-website offer snapshot
+
+This section captures the current public website framing and should be treated as the best current public offer until deliberately changed.
+
+### Public pricing page snapshot
+
+- Standard plan: **$4,000/month**
+- Standard scope includes:
+  - 4 episodes per month
+  - Up to 6 hours of raw input
+  - Full production (editing, notes, transcript, clips)
+  - Publishing to Spotify, Apple, YouTube
+  - Distribution and promotion
+  - Access to the AIP app
+- Custom / brand plan: contact-led, higher-volume production and strategic consulting
+- Current site FAQ includes: monthly commitment, cancel anytime with 30 days notice
+
+### Public about-page founder snapshot
+
+Current public site presents:
+- Adithyan Ilangovan — Co-Founder & CEO
+- Sai Dinesh Kotapothula — Co-Founder & CTO
+
+Treat this as the current public-facing founder-title framing for website consistency, even if internal role reality may be more nuanced.
+
+### Public proof framing
+
+Current public-site proof framing includes:
+- 600K+ downloads
+- 5M+ video views
+- 2x audience growth in 6 months
+- "Powering the top 1% of audio creators"
+
+### Public workflow framing
+
+Current public-site workflow includes:
+- onboarding around brand alignment, template setup, and channel configuration
+- weekly episode flow: upload -> produce -> review -> publish & promote
+- deliverables emphasized: edited episode, transcript, show notes, thumbnail, short clips, distribution
