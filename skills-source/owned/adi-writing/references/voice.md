@@ -8,12 +8,14 @@
 - Honest about uncertainty, but not timid.
 - Practical first. Insightful second. Never ornamental.
 
-## What the writing usually feels like
-- It gets to the point quickly.
-- It respects the reader's time.
-- It often starts from a concrete observation, anecdote, or tension.
-- It prefers saying one real thing clearly over saying five vague things elegantly.
-- It is willing to sound personal when the point benefits from it.
+## What consistently feels like Adi
+- Get to the point quickly.
+- Respect the reader's time.
+- Start from a concrete observation, anecdote, tension, or question.
+- Explain things as if talking to a smart friend, not performing for an audience.
+- Prefer one real thing said clearly over five vague polished things.
+- Be willing to sound personal when the point benefits from it.
+- Use strong section titles and memorable framing when it helps.
 
 ## Language rules
 - Use plain English.
@@ -50,6 +52,7 @@ Avoid these words unless there is a real reason:
 - Do not use double hyphens as a replacement.
 - Use commas or periods instead.
 - Use exclamation marks sparingly.
+- Ellipses can work in Adi's voice, but use them intentionally and not as filler.
 
 ## Editing rules
 1. Fix grammar, spelling, and punctuation.
@@ -57,44 +60,57 @@ Avoid these words unless there is a real reason:
 3. Remove true redundancy only.
 4. Do not over-polish.
 5. Do not flatten strong opinions into safe generic language.
+6. If the draft feels too AI-clean, put some humanity back into it.
 
-## Common modes
+## Stable observed patterns
+These are patterns that seem durable enough to keep.
 
-### 1) Builder / technical writing
-Use when writing about AI, engineering, tools, startups, or workflows.
+### Friendly explainer
+Adi often writes like a friend explaining something useful over coffee.
 
-Characteristics:
-- explain from first principles
-- say what matters and why
-- use concrete examples
-- avoid abstraction for its own sake
-- skeptical of unnecessary complexity
+### Lesson-driven structure
+A lot of Adi's writing naturally becomes:
+- here is the thing
+- here is what I noticed or learned
+- here is what I now recommend
 
-Typical feel:
-- "I generally hate abstractions... I only adopt them when they prove genuinely useful."
-- "Here is why this matters in practice."
+### Strong framing devices
+Adi often uses:
+- analogies
+- rhetorical questions
+- memorable section titles
+- concrete framing that makes the idea easier to hold
 
-### 2) Reflection / essay writing
-Use when writing personal essays, letters, lessons learned, or life reflections.
+### Personal but useful
+Even when the writing is personal, it usually tries to leave the reader with something useful.
+It is not confession for its own sake.
 
-Characteristics:
-- personal without becoming vague or therapy-speak
-- sincere, clear, and emotionally honest
-- grounded in lived specifics
-- often lesson-driven
+### Direct reader address
+Speaking directly to the reader often works well, but do not overdo it.
 
-Typical feel:
-- "I'm writing this for myself... things I wish I'd known earlier."
-- concrete lesson -> practical framing -> takeaway
+## Keep vs optional
 
-### 3) Short-form external writing
-Use for posts, short notes, or concise public writing.
+### Keep
+- clarity
+- friendliness
+- practical usefulness
+- personal conviction
+- directness
+- concrete examples
+- memorable framing when it helps
 
-Characteristics:
-- sharper opening
-- one core idea
-- high signal density
-- no fluffy setup
+### Optional
+These may appear in some Adi writing, but they are not mandatory:
+- light playfulness
+- rhetorical questions
+- occasional emojis
+- cheerful greetings at the top
+- slogan-like endings
+- ellipses
+
+### Do not over-copy
+Do not mechanically imitate old quirks.
+The goal is Adi's real voice, not a caricature of one phase of his writing.
 
 ## Anti-patterns
 Do not make Adi sound like:
@@ -102,12 +118,12 @@ Do not make Adi sound like:
 - a consultant writing a thought-leadership post
 - a polished but empty AI summarizer
 - a timid hedger who refuses to say anything clearly
+- a generic self-help writer using vague inspiration instead of real observation
 
-## Reference post patterns
-Representative examples from `blog-personal`:
-- `content/a-letter-early-2024-self.mdx` — reflective lesson-driven writing
-- `content/why-you-need-proxy-server-llm.mdx` — practical builder writing
-- `content/openai-codex-meetup-takeaways.mdx` — conversational observational writing
+## How to use examples
+- If the current repo contains real examples of Adi's writing, inspect a few representative pieces and adapt.
+- If there are no local examples, use this file as the base and keep the draft simple, direct, and human.
+- If Adi later corrects the tone in a durable way, update this skill.
 
 ## Final test
 Before finishing, ask:

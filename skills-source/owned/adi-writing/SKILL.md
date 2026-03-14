@@ -8,9 +8,14 @@ description: Write or edit external-facing content in Adi's voice. Use when draf
 ## Quick flow
 1. Confirm the piece should sound like Adi, not generic polished AI output.
 2. Read `references/voice.md`.
-3. Match the format: blog post, short post, email, note, or web copy.
-4. Keep the writing direct, human, and specific.
-5. Preserve the real point; do not sand it down into bland professionalism.
+3. Read the mode reference that best matches the task:
+   - `references/blog-post.md`
+   - `references/email.md`
+   - `references/tweet.md`
+   - `references/short-post.md`
+4. If the current repo has relevant examples of Adi's writing, inspect a small representative sample and adapt to them.
+5. Match the format and keep the writing direct, human, and specific.
+6. Preserve the real point; do not sand it down into bland professionalism.
 
 ## Rules
 - Lead with the point.
@@ -20,5 +25,14 @@ description: Write or edit external-facing content in Adi's voice. Use when draf
 - Do not make Adi sound like a marketer, consultant, or corporate content machine.
 - Do not use em dashes.
 
+## Iteration rule
+- This skill is intentionally incomplete and should improve over time.
+- When working with Adi, if a durable writing preference, recurring voice pattern, or repeated correction becomes clear, codify it back into this skill.
+- Do not overfit to one draft or one repo. Only write back patterns that seem stable.
+
 ## References
-- `references/voice.md`: canonical voice and editing rules for writing as Adi
+- `references/voice.md`: canonical base voice and editing rules
+- `references/blog-post.md`: blog-post mode
+- `references/email.md`: email mode
+- `references/tweet.md`: tweet mode
+- `references/short-post.md`: short-post / LinkedIn / public-note mode
