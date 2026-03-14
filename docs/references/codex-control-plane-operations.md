@@ -95,9 +95,12 @@ Use [Codex Control Plane Ownership](/Users/dobby/.agents/docs/references/codex-c
   - ensures Ghostty uses the Codex startup wrapper
   - ensures shell integration stays on
   - installs the `Cmd+Shift+G` current-terminal picker keybind
-- [`configure-keyboard-maestro-ghostty-codex-shortcut.sh`](/Users/adi/.agents/codex/scripts/configure-keyboard-maestro-ghostty-codex-shortcut.sh)
-  - installs an optional Keyboard Maestro `Cmd+Shift+T` Ghostty-only hotkey
-  - keeps Keyboard Maestro as a thin trigger layer that runs the shared picker-tab helper script
+- [`codex-shell.zsh`](/Users/adi/.agents/codex/shell/codex-shell.zsh)
+  - `codex_jump` sets the Ghostty tab/surface title to the selected repo basename before launching Codex
+  - `codex_jump` also reports the selected cwd back to Ghostty immediately so regular new tabs and splits inherit the active repo instead of falling back to `~`
+- [`open-ghostty-codex-picker-tab.sh`](/Users/adi/.agents/codex/scripts/open-ghostty-codex-picker-tab.sh)
+  - opens a new Ghostty tab with a custom surface configuration and immediately runs `codex_jump`
+  - is the one tracked helper used by both the Stadia controller `Share` action and the optional manual Keyboard Maestro `Cmd+Shift+T` macro
 
 ## Repo Bootstrap Registry Fields
 

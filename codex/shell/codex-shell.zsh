@@ -13,6 +13,19 @@ codex_jump() {
   emulate -L zsh
   setopt local_options pipefail no_aliases
 
+  _codex_set_surface_title() {
+    local raw_title="$1"
+    local safe_title="${raw_title//$'\a'/}"
+    safe_title="${safe_title//$'\e'/}"
+    safe_title="${safe_title//$'\r'/ }"
+    safe_title="${safe_title//$'\n'/ }"
+
+    # Update both the tab/icon title and the surface title so Ghostty tabs
+    # reflect the selected repo instead of the helper command name.
+    printf '\033]1;%s\007' "$safe_title"
+    printf '\033]2;%s\007' "$safe_title"
+  }
+
   _codex_jump_load_usage() {
     local usage_path="$1"
     local usage_dir usage_count_raw usage_last_raw usage_extra
@@ -166,6 +179,9 @@ codex_jump() {
 
   [[ -n "${selected:-}" ]] || return 0
 
+  local selected_name="${selected:t}"
+  [[ -n "$selected_name" ]] || selected_name="$selected"
+
   if [[ "$smart_sort" == "1" ]]; then
     mkdir -p "$(dirname "$usage_file")"
     now="$(date +%s)"
@@ -186,6 +202,10 @@ codex_jump() {
   fi
 
   cd "$selected" || return 1
+  if (( $+functions[_ghostty_report_pwd] )); then
+    _ghostty_report_pwd
+  fi
+  _codex_set_surface_title "$selected_name"
 
   if command -v codex >/dev/null 2>&1; then
     # When launched from Ghostty, keep the interrupt-to-picker loop so
