@@ -34,6 +34,7 @@ Use [Codex Control Plane Ownership](/Users/dobby/.agents/docs/references/codex-c
 - Apply only the managed Codex config:
   - [`sync-config.sh`](/Users/dobby/.agents/codex/scripts/sync-config.sh)
   - `~/.agents/codex/scripts/sync-config.sh --apply`
+  - this also syncs managed agent-role config files into the live runtime `agents/` folders
 - Sync exact trusted repo roots into terminal + Xcode Codex config:
   - [`sync-trusted-projects.sh`](/Users/dobby/.agents/codex/scripts/sync-trusted-projects.sh)
   - `~/.agents/codex/scripts/sync-trusted-projects.sh --apply`
@@ -67,6 +68,7 @@ Use [Codex Control Plane Ownership](/Users/dobby/.agents/docs/references/codex-c
 
 - [`sync-config.sh`](/Users/dobby/.agents/codex/scripts/sync-config.sh)
   - applies canonical Codex config templates into live terminal + Xcode config
+  - syncs canonical role config files for built-in multi-agent roles into the live runtime `agents/` directories
   - rewrites machine-specific notify and system-skill paths for the current `$HOME`
   - strips foreign-user project and system-skill entries before writing
   - fails fast if the target config contains unresolved Git conflict markers

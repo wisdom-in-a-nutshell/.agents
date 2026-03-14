@@ -9,10 +9,13 @@ SYNC_GLOBAL=1
 SYNC_XCODE=1
 GITHUB_ROOT="${HOME}/GitHub"
 GLOBAL_CONFIG="${HOME}/.codex/config.toml"
+GLOBAL_AGENTS_DIR="${HOME}/.codex/agents"
 XCODE_CONFIG="${HOME}/Library/Developer/Xcode/CodingAssistant/codex/config.toml"
+XCODE_AGENTS_DIR="${HOME}/Library/Developer/Xcode/CodingAssistant/codex/agents"
 XCODE_RULES="${HOME}/Library/Developer/Xcode/CodingAssistant/codex/rules/xcode.rules"
 CANONICAL_DIR="${CONTROL_PLANE_DIR}/config"
 CANONICAL_GLOBAL_TEMPLATE="${CANONICAL_DIR}/global.config.toml"
+CANONICAL_AGENTS_DIR="${CANONICAL_DIR}/agents"
 CANONICAL_XCODE_TEMPLATE="${CANONICAL_DIR}/xcode.config.toml"
 CANONICAL_XCODE_RULES_TEMPLATE="${CANONICAL_DIR}/xcode.rules"
 TIMESTAMP="$(date +%Y%m%d-%H%M%S)"
@@ -584,6 +587,8 @@ sync_global() {
   if (( APPLY == 1 )); then
     install_rendered_file "$rendered" "$original"
   fi
+
+  sync_agent_role_configs "Global Agent Roles" "$CANONICAL_AGENTS_DIR" "$GLOBAL_AGENTS_DIR"
 }
 
 sync_xcode() {
@@ -613,6 +618,39 @@ sync_xcode() {
     install_rendered_file "$rendered_cfg" "$original_cfg"
     install_rendered_file "$rendered_rules" "$original_rules"
   fi
+
+  sync_agent_role_configs "Xcode Agent Roles" "$CANONICAL_AGENTS_DIR" "$XCODE_AGENTS_DIR"
+}
+
+sync_agent_role_configs() {
+  local label="$1"
+  local source_dir="$2"
+  local target_dir="$3"
+  local source_file target_file rendered_file basename
+
+  if [[ ! -d "$source_dir" ]]; then
+    return
+  fi
+
+  shopt -s nullglob
+  for source_file in "$source_dir"/*.toml; do
+    basename="$(basename "$source_file")"
+    target_file="${target_dir}/${basename}"
+    rendered_file="${TMP_DIR}/${label// /_}-${basename}"
+
+    require_readable_file "$source_file"
+    ensure_parent_dir "$target_file"
+    cp "$source_file" "$rendered_file"
+
+    log ""
+    log "=== ${label} (${target_file}) ==="
+    show_diff "$target_file" "$rendered_file"
+
+    if (( APPLY == 1 )); then
+      install_rendered_file "$rendered_file" "$target_file"
+    fi
+  done
+  shopt -u nullglob
 }
 
 log "Control Plane: $CONTROL_PLANE_DIR"

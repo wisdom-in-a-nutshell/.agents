@@ -38,6 +38,7 @@ flowchart TD
 
 - `global.config.toml` defines the managed baseline for terminal Codex.
 - `xcode.config.toml` defines the managed baseline for Xcode Codex.
+- `config/agents/*.toml` defines managed role-specific overrides for built-in multi-agent roles such as `explorer`, `worker`, and `monitor`.
 - `repo-bootstrap.json` defines:
   - which repos are managed
   - which MCP presets each repo gets
@@ -48,6 +49,7 @@ These files are the source of truth.
 ### Live Machine Config
 
 - `sync-config.sh` writes the managed baseline into `~/.codex/config.toml` and Xcode Codex config.
+- `sync-config.sh` also syncs managed role config files into `~/.codex/agents/` and the Xcode Codex runtime `agents/` folder so relative `config_file` paths resolve from the live runtime config.
 - It preserves machine-specific/runtime-specific state that should not live in git.
 - It also prunes stale managed keys when the canonical template no longer wants them.
 

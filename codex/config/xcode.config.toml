@@ -13,6 +13,10 @@ web_search = "live"
 personality = "pragmatic"
 suppress_unstable_features_warning = true
 
+[agents.explorer]
+description = "Read-only explorer for codebase mapping, investigation, and research."
+config_file = "agents/explorer.toml"
+
 [sandbox_workspace_write]
 exclude_slash_tmp = false
 exclude_tmpdir_env_var = false
