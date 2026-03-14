@@ -98,6 +98,10 @@ Use [Codex Control Plane Ownership](/Users/dobby/.agents/docs/references/codex-c
 - [`codex-shell.zsh`](/Users/adi/.agents/codex/shell/codex-shell.zsh)
   - `codex_jump` sets the Ghostty tab/surface title to the selected repo basename before launching Codex
   - `codex_jump` also reports the selected cwd back to Ghostty immediately so regular new tabs and splits inherit the active repo instead of falling back to `~`
+  - records the active Ghostty/Codex working directory to `~/.local/state/codex-control-plane/ghostty-last-dir.txt` so cold Ghostty launches can resume there
+- [`ghostty-codex-then-shell.sh`](/Users/adi/.agents/codex/scripts/ghostty-codex-then-shell.sh)
+  - reports the current cwd and repo basename title before the first-surface Codex launch so Ghostty new-window inheritance can reuse the active repo
+  - restores the last recorded working directory on cold Ghostty launches when startup otherwise lands in `~`
 - [`open-ghostty-codex-picker-tab.sh`](/Users/adi/.agents/codex/scripts/open-ghostty-codex-picker-tab.sh)
   - opens a new Ghostty tab with a custom surface configuration and immediately runs `codex_jump`
   - is the one tracked helper used by both the Stadia controller `Share` action and the optional manual Keyboard Maestro `Cmd+Shift+T` macro

@@ -6,25 +6,41 @@ if [[ -n $GHOSTTY_RESOURCES_DIR ]]; then
   source "$GHOSTTY_RESOURCES_DIR"/shell-integration/zsh/ghostty-integration
 fi
 
+_codex_last_dir_file() {
+  printf '%s' "${CODEX_LAST_DIR_FILE:-$HOME/.local/state/codex-control-plane/ghostty-last-dir.txt}"
+}
+
+_codex_record_last_dir() {
+  local target_dir="${1:-$PWD}"
+  local state_file state_dir
+
+  [[ -n "$target_dir" && -d "$target_dir" ]] || return 0
+
+  state_file="$(_codex_last_dir_file)"
+  state_dir="${state_file:h}"
+  mkdir -p "$state_dir"
+  printf '%s\n' "$target_dir" >| "$state_file"
+}
+
+_codex_set_surface_title() {
+  local raw_title="$1"
+  local safe_title="${raw_title//$'\a'/}"
+  safe_title="${safe_title//$'\e'/}"
+  safe_title="${safe_title//$'\r'/ }"
+  safe_title="${safe_title//$'\n'/ }"
+
+  # Update both the tab/icon title and the surface title so Ghostty tabs
+  # reflect the selected repo instead of the helper command name.
+  printf '\033]1;%s\007' "$safe_title"
+  printf '\033]2;%s\007' "$safe_title"
+}
+
 # Pick a directory, cd there, and launch Codex.
 # Intended to be triggered by a Ghostty keybind via:
 #   text:\x15\x03
 codex_jump() {
   emulate -L zsh
   setopt local_options pipefail no_aliases
-
-  _codex_set_surface_title() {
-    local raw_title="$1"
-    local safe_title="${raw_title//$'\a'/}"
-    safe_title="${safe_title//$'\e'/}"
-    safe_title="${safe_title//$'\r'/ }"
-    safe_title="${safe_title//$'\n'/ }"
-
-    # Update both the tab/icon title and the surface title so Ghostty tabs
-    # reflect the selected repo instead of the helper command name.
-    printf '\033]1;%s\007' "$safe_title"
-    printf '\033]2;%s\007' "$safe_title"
-  }
 
   _codex_jump_load_usage() {
     local usage_path="$1"
@@ -202,6 +218,7 @@ codex_jump() {
   fi
 
   cd "$selected" || return 1
+  _codex_record_last_dir "$selected"
   if (( $+functions[_ghostty_report_pwd] )); then
     _ghostty_report_pwd
   fi
@@ -227,6 +244,11 @@ alias cj='codex_jump'
 _codex_autostart_loop() {
   command -v codex >/dev/null 2>&1 || return 0
 
+  _codex_record_last_dir
+  if (( $+functions[_ghostty_report_pwd] )); then
+    _ghostty_report_pwd
+  fi
+  _codex_set_surface_title "${PWD:t}"
   command codex
   local ec=$?
 
@@ -241,6 +263,11 @@ _codex_autostart_loop() {
 # Auto-start Codex for interactive Ghostty shells (new tabs/splits/windows).
 # Disable for a shell session with: export CODEX_DISABLE_AUTOSTART=1
 if [[ -o interactive ]] && [[ -n "${GHOSTTY_RESOURCES_DIR:-}" ]]; then
+  _codex_record_last_dir
+  if (( ${chpwd_functions[(I)_codex_record_last_dir]} == 0 )); then
+    chpwd_functions=(${chpwd_functions[@]} "_codex_record_last_dir")
+  fi
+
   # Ensure cwd reporting is active before Codex autostarts so new tabs/splits
   # inherit the currently focused directory instead of a stale fallback cwd.
   if (( $+functions[_ghostty_deferred_init] )); then
