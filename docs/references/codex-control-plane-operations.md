@@ -95,6 +95,9 @@ Use [Codex Control Plane Ownership](/Users/dobby/.agents/docs/references/codex-c
   - ensures Ghostty uses the Codex startup wrapper
   - ensures shell integration stays on
   - installs the `Cmd+Shift+G` current-terminal picker keybind
+- [`configure-keyboard-maestro-ghostty-codex-shortcut.sh`](/Users/adi/.agents/codex/scripts/configure-keyboard-maestro-ghostty-codex-shortcut.sh)
+  - installs an optional Keyboard Maestro `Cmd+Shift+T` Ghostty-only hotkey
+  - keeps Keyboard Maestro as a thin trigger layer that runs the shared picker-tab helper script
 
 ## Repo Bootstrap Registry Fields
 
