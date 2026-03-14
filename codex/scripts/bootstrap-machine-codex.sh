@@ -8,7 +8,6 @@ GLOBAL_AGENTS="${HOME}/.codex/AGENTS.md"
 XCODE_CONFIG="${HOME}/Library/Developer/Xcode/CodingAssistant/codex/config.toml"
 XCODE_RULES="${HOME}/Library/Developer/Xcode/CodingAssistant/codex/rules/xcode.rules"
 GHOSTTY_CONFIG="${HOME}/Library/Application Support/com.mitchellh.ghostty/config"
-KARABINER_CONFIG="${HOME}/.config/karabiner/karabiner.json"
 
 usage() {
   cat <<USAGE
@@ -28,7 +27,6 @@ Options:
   --xcode-config <p>     Override Xcode Codex config target
   --xcode-rules <p>      Override Xcode rules target
   --ghostty-config <p>   Override Ghostty config target
-  --karabiner-config <p> Override Karabiner config target
   -h, --help             Show this help
 
 Examples:
@@ -80,10 +78,6 @@ while [[ $# -gt 0 ]]; do
       GHOSTTY_CONFIG="${2:-}"
       shift 2
       ;;
-    --karabiner-config)
-      KARABINER_CONFIG="${2:-}"
-      shift 2
-      ;;
     -h|--help)
       usage
       exit 0
@@ -105,14 +99,12 @@ SYNC_GLOBAL_AGENTS_SCRIPT="${SCRIPT_DIR}/sync-global-agents-md.sh"
 SYNC_TRUSTED_SCRIPT="${SCRIPT_DIR}/sync-trusted-projects.sh"
 SYNC_REPO_CONFIGS_SCRIPT="${SCRIPT_DIR}/sync-repo-codex-configs.sh"
 GHOSTTY_SCRIPT="${SCRIPT_DIR}/configure-ghostty-cwd.sh"
-KARABINER_SCRIPT="${SCRIPT_DIR}/configure-karabiner-ghostty-codex-shortcuts.sh"
 
 [[ -x "$SYNC_CONFIG_SCRIPT" ]] || die "Missing executable: $SYNC_CONFIG_SCRIPT"
 [[ -x "$SYNC_GLOBAL_AGENTS_SCRIPT" ]] || die "Missing executable: $SYNC_GLOBAL_AGENTS_SCRIPT"
 [[ -x "$SYNC_TRUSTED_SCRIPT" ]] || die "Missing executable: $SYNC_TRUSTED_SCRIPT"
 [[ -x "$SYNC_REPO_CONFIGS_SCRIPT" ]] || die "Missing executable: $SYNC_REPO_CONFIGS_SCRIPT"
 [[ -x "$GHOSTTY_SCRIPT" ]] || die "Missing executable: $GHOSTTY_SCRIPT"
-[[ -x "$KARABINER_SCRIPT" ]] || die "Missing executable: $KARABINER_SCRIPT"
 
 sync_config_cmd=(
   "$SYNC_CONFIG_SCRIPT"
@@ -157,11 +149,3 @@ ghostty_cmd=(
 )
 log "+ ${ghostty_cmd[*]}"
 "${ghostty_cmd[@]}"
-
-karabiner_cmd=(
-  "$KARABINER_SCRIPT"
-  "$MODE_FLAG"
-  --config "$KARABINER_CONFIG"
-)
-log "+ ${karabiner_cmd[*]}"
-"${karabiner_cmd[@]}"
