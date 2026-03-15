@@ -123,8 +123,7 @@
       "origin": "owned",
       "scope": "repo",
       "repos": [
-        "adi",
-        "codexclaw-workspaces"
+        "adi"
       ],
       "source_path": "skills-source/owned/codex-agent-loop",
       "upstream_ref": "-"
@@ -145,9 +144,7 @@
       "scope": "repo",
       "repos": [
         "adi",
-        "angie",
-        "codexclaw-workspaces/adi",
-        "codexclaw-workspaces/angie"
+        "angie"
       ],
       "source_path": "skills-source/owned/journal-checkin",
       "upstream_ref": "-"
@@ -173,7 +170,6 @@
         "adi",
         "angie",
         "codexclaw",
-        "codexclaw-workspaces",
         "win"
       ],
       "source_path": "skills-source/external/openai-docs",
@@ -229,7 +225,6 @@
       "repos": [
         "adithyan-ai-videos",
         "aipodcasting",
-        "aipodcasting-landing-page",
         "aipodcasting-public-website",
         "blog-personal"
       ],
@@ -243,7 +238,6 @@
       "repos": [
         "adithyan-ai-videos",
         "aipodcasting",
-        "aipodcasting-landing-page",
         "aipodcasting-public-website",
         "blog-personal"
       ],

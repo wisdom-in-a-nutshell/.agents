@@ -41,9 +41,6 @@
       ]
     },
     {
-      "path": "~/GitHub/adi-brand"
-    },
-    {
       "path": "~/GitHub/adithyan-ai-videos"
     },
     {
@@ -51,12 +48,6 @@
     },
     {
       "path": "~/GitHub/aipodcasting"
-    },
-    {
-      "path": "~/GitHub/aipodcasting-ghost-theme"
-    },
-    {
-      "path": "~/GitHub/aipodcasting-landing-page"
     },
     {
       "path": "~/GitHub/aipodcasting-public-website"
@@ -91,12 +82,6 @@
       ]
     },
     {
-      "path": "~/GitHub/codexclaw-workspaces",
-      "mcp_presets": [
-        "openaiDeveloperDocs"
-      ]
-    },
-    {
       "path": "~/GitHub/focus"
     },
     {
@@ -116,9 +101,6 @@
     },
     {
       "path": "~/GitHub/modal_functions"
-    },
-    {
-      "path": "~/GitHub/musings"
     },
     {
       "path": "~/GitHub/podcast-website-setup"
