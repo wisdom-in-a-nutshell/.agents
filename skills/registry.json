@@ -210,6 +210,18 @@
       "upstream_ref": "steipete/oracle:skills/oracle@main"
     },
     {
+      "skill": "imagegen",
+      "origin": "external",
+      "scope": "repo",
+      "repos": [
+        "adi",
+        "angie",
+        "blog-personal"
+      ],
+      "source_path": "skills-source/external/imagegen",
+      "upstream_ref": "openai/skills:skills/.curated/imagegen@main"
+    },
+    {
       "skill": "show-password-setup",
       "origin": "owned",
       "scope": "repo",
