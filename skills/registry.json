@@ -214,6 +214,7 @@
       "origin": "external",
       "scope": "repo",
       "repos": [
+        "~/.agents",
         "adi",
         "angie",
         "blog-personal"
