@@ -15,7 +15,7 @@ $HOME/GitHub/blog-personal
 $HOME/GitHub/codexclaw
 $HOME/GitHub/codexclaw-workspaces
 $HOME/GitHub/future-of-life-institute-podcast-aipodcast-ing-theme
-$HOME/GitHub/ghost-infrastructure
+$HOME/GitHub/azure-platform-ops
 $HOME/GitHub/litellm
 $HOME/GitHub/stadia-macos-controller
 $HOME/GitHub/thoughtforms-life-theme
