@@ -64,17 +64,25 @@ cd ~/.agents
 
 ### B) Add External Skill
 
-1. Place under `~/.agents/skills-source/external/<skill>`.
-2. Add managed entry in `~/.agents/skills/registry.json` with:
+1. Add the managed entry in `~/.agents/skills/registry.json`:
+   - `skill: <skill>`
    - `origin: external`
+   - `scope: global` or `scope: repo` as needed
    - `source_path: skills-source/external/<skill>`
    - valid `upstream_ref`
-3. Run sync/check.
-4. Optional refresh:
+2. Import the canonical source from upstream:
 ```bash
 cd ~/.agents
-./scripts/refresh-external-skills.sh --apply
+./scripts/refresh-external-skills.sh --apply --skill <skill>
 ```
+3. Confirm the imported source now exists under `~/.agents/skills-source/external/<skill>`.
+4. Run sync/check:
+```bash
+cd ~/.agents
+./scripts/sync-skills-registry.sh --apply
+./scripts/check-skills-registry.sh
+```
+5. Treat direct installer-based global installs as non-canonical in this repo. Prefer registry + refresh so external skills remain reproducible and refreshable.
 
 ### C) Keep Skill Repo-Local
 

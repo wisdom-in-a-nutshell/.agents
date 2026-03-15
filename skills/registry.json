@@ -44,6 +44,14 @@
       "upstream_ref": "kepano/obsidian-skills:skills/defuddle@main"
     },
     {
+      "skill": "find-skills",
+      "origin": "external",
+      "scope": "global",
+      "repos": [],
+      "source_path": "skills-source/external/find-skills",
+      "upstream_ref": "vercel-labs/skills:skills/find-skills@main"
+    },
+    {
       "skill": "project",
       "origin": "owned",
       "scope": "global",
