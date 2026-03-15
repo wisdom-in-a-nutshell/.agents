@@ -1,6 +1,6 @@
 ---
 repo_name: "thoughtforms-life-theme"
-path: "/Users/dobby/GitHub/thoughtforms-life-theme"
+path: "/Users/adi/GitHub/thoughtforms-life-theme"
 mcp_presets_csv: "-"
 effective_model: "gpt-5.4"
 effective_reasoning: "high"

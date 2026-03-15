@@ -1,6 +1,6 @@
 ---
-repo_name: "ghost-infrastructure"
-path: "/Users/adi/GitHub/ghost-infrastructure"
+repo_name: "aipodcasting-landing-page"
+path: "/Users/adi/GitHub/aipodcasting-landing-page"
 mcp_presets_csv: "-"
 effective_model: "gpt-5.4"
 effective_reasoning: "high"

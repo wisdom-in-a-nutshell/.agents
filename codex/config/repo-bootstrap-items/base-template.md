@@ -1,6 +1,6 @@
 ---
-repo_name: "win-ghost-storage"
-path: "/Users/dobby/GitHub/win-ghost-storage"
+repo_name: "base-template"
+path: "/Users/adi/GitHub/base-template"
 mcp_presets_csv: "-"
 effective_model: "gpt-5.4"
 effective_reasoning: "high"

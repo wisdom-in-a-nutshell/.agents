@@ -112,9 +112,6 @@
       "path": "~/GitHub/ghost-theme-aip-blog"
     },
     {
-      "path": "~/GitHub/ghost-theme-template"
-    },
-    {
       "path": "~/GitHub/grateful-journal"
     },
     {
@@ -143,9 +140,6 @@
       "mcp_presets": [
         "openaiDeveloperDocs"
       ]
-    },
-    {
-      "path": "~/GitHub/win-ghost-storage"
     }
   ]
 }

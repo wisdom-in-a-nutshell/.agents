@@ -1,6 +1,6 @@
 ---
 repo_name: "aipodcasting"
-path: "/Users/dobby/GitHub/aipodcasting"
+path: "/Users/adi/GitHub/aipodcasting"
 mcp_presets_csv: "-"
 effective_model: "gpt-5.4"
 effective_reasoning: "high"
