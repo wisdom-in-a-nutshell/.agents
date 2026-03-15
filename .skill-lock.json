@@ -1,0 +1,15 @@
+{
+  "version": 3,
+  "skills": {
+    "swiftui-pro": {
+      "source": "twostraws/swiftui-agent-skill",
+      "sourceType": "github",
+      "sourceUrl": "https://github.com/twostraws/swiftui-agent-skill.git",
+      "skillPath": "swiftui-pro/SKILL.md",
+      "skillFolderHash": "550a5713c0b66f50ac33abe6a23199bd29bed76e",
+      "installedAt": "2026-03-15T11:00:16.228Z",
+      "updatedAt": "2026-03-15T11:00:16.228Z"
+    }
+  },
+  "dismissed": {}
+}
