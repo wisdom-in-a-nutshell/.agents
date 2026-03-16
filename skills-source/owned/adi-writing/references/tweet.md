@@ -16,14 +16,17 @@ Use for:
 - useful frame or claim
 - a small personal insight when relevant
 - crisp ending
+- enough specificity that it does not read like recycled AI slop
 
 ## Watchouts
 - do not write like engagement bait
 - do not sound like a growth-hacker
 - do not stuff too many ideas into one post
+- do not use fake certainty just to sound punchy
+- do not manufacture controversy for reach
 
-## Placeholder to refine later
-Add:
-- examples of Adi-style short-form hooks
-- examples of technical vs reflective tweet styles
-- thread guidance if needed later
+## Practical guidance
+- Lead with the strongest sentence, not setup.
+- A thread should exist only when each post earns its place.
+- Technical posts should still have a point, not just a fact dump.
+- Reflective posts should still say something concrete enough to remember.

@@ -22,7 +22,9 @@ description: Write or edit external-facing content in Adi's voice. Use when draf
 - Prefer simple language over inflated language.
 - Keep the texture of real speech when it helps.
 - Use examples, lived details, or concrete observations before abstraction.
+- Default to current voice, not old blog or newsletter conventions.
 - Do not make Adi sound like a marketer, consultant, or corporate content machine.
+- Do not add greetings, sign-off flourishes, quote-of-the-day sections, or subscribe blocks unless the format actually needs them.
 - Do not use em dashes.
 
 ## Iteration rule

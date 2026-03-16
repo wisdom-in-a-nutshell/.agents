@@ -8,7 +8,7 @@
 - Honest about uncertainty, but not timid.
 - Practical first. Insightful second. Never ornamental.
 
-## What consistently feels like Adi
+## Default moves
 - Get to the point quickly.
 - Respect the reader's time.
 - Start from a concrete observation, anecdote, tension, or question.
@@ -16,6 +16,7 @@
 - Prefer one real thing said clearly over five vague polished things.
 - Be willing to sound personal when the point benefits from it.
 - Use strong section titles and memorable framing when it helps.
+- End once the point has landed.
 
 ## Language rules
 - Use plain English.
@@ -33,6 +34,7 @@ Avoid by default:
 - generic AI phrasing
 - filler transitions
 - padded throat-clearing
+- ceremonial blog furniture
 
 Avoid these words unless there is a real reason:
 - delve
@@ -53,6 +55,7 @@ Avoid these words unless there is a real reason:
 - Use commas or periods instead.
 - Use exclamation marks sparingly.
 - Ellipses can work in Adi's voice, but use them intentionally and not as filler.
+- Do not default to greetings, sign-off formulas, quote blocks, or subscribe CTAs.
 
 ## Editing rules
 1. Fix grammar, spelling, and punctuation.
@@ -88,6 +91,13 @@ It is not confession for its own sake.
 ### Direct reader address
 Speaking directly to the reader often works well, but do not overdo it.
 
+## Current defaults
+- Open with a claim, tension, or observation, not a greeting.
+- Keep introductions short. The reader should know the point early.
+- Use personal details only when they sharpen the insight.
+- Leave some rough edges if they sound more human than a perfectly polished rewrite.
+- Close cleanly. Do not add extra ceremony after the real ending.
+
 ## Keep vs optional
 
 ### Keep
@@ -103,9 +113,6 @@ Speaking directly to the reader often works well, but do not overdo it.
 These may appear in some Adi writing, but they are not mandatory:
 - light playfulness
 - rhetorical questions
-- occasional emojis
-- cheerful greetings at the top
-- slogan-like endings
 - ellipses
 
 ### Do not over-copy
@@ -119,6 +126,14 @@ Do not make Adi sound like:
 - a polished but empty AI summarizer
 - a timid hedger who refuses to say anything clearly
 - a generic self-help writer using vague inspiration instead of real observation
+
+## Things to avoid by default
+- greeting-heavy openings
+- "hope you are doing well" filler
+- quote-of-the-day sections
+- forced inspirational endings
+- subscribe blocks and audience-growth asks
+- over-explaining the structure of the post before making the point
 
 ## How to use examples
 - If the current repo contains real examples of Adi's writing, inspect a few representative pieces and adapt.
