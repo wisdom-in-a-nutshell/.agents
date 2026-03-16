@@ -23,7 +23,7 @@ Generates or edits images for the current project (e.g., website assets, game as
 2. Collect inputs up front: prompt(s), exact text (verbatim), constraints/avoid list, and any input image(s)/mask(s). For multi-image edits, label each input by index and role; for edits, list invariants explicitly.
 3. If batch: write a temporary JSONL under tmp/ (one job per line), run once, then delete the JSONL.
 4. Augment prompt into a short labeled spec (structure + constraints) without inventing new creative requirements.
-5. Run the bundled CLI (`scripts/image_gen.py`) with sensible defaults (see references/cli.md). When the current repo has a local `.venv/` or `venv/`, prefer that Python before falling back to `python3` or ad-hoc installs.
+5. Run the bundled CLI (`scripts/image_gen.py`) with sensible defaults (see references/cli.md).
 6. For complex edits/generations, inspect outputs (open/view images) and validate: subject, style, composition, text accuracy, and invariants/avoid items.
 7. Iterate: make a single targeted change (prompt or mask), re-run, re-check.
 8. Save/return final outputs and note the final prompt + flags used.
@@ -53,7 +53,6 @@ If installation isn't possible in this environment, tell the user which dependen
 - Use the OpenAI Python SDK (`openai` package) for all API calls; do not use raw HTTP.
 - If the user requests edits, use `client.images.edit(...)` and include input images (and mask if provided).
 - Prefer the bundled CLI (`scripts/image_gen.py`) over writing new one-off scripts.
-- Prefer the current repo's local `.venv/bin/python` or `venv/bin/python` when available.
 - This is an owned fork of the upstream skill. Keep behavioral changes here, not in the upstream external source.
 - If the result isn’t clearly relevant or doesn’t satisfy constraints, iterate with small targeted prompt changes; only ask a question if a missing detail blocks success.
 

@@ -17,29 +17,19 @@ export CODEX_HOME="${CODEX_HOME:-$HOME/.codex}"
 export IMAGE_GEN="$CODEX_HOME/skills/imagegen/scripts/image_gen.py"
 ```
 
-If the current repo has a local virtualenv, prefer it:
-
-```
-if [ -x .venv/bin/python ]; then
-  PYTHON_BIN=.venv/bin/python
-elif [ -x venv/bin/python ]; then
-  PYTHON_BIN=venv/bin/python
-else
-  PYTHON_BIN=python3
-fi
-```
-
 Dry-run (no API call; no network required; does not require the `openai` package):
 
 ```
-"$PYTHON_BIN" "$IMAGE_GEN" generate --prompt "Test" --dry-run
+python "$IMAGE_GEN" generate --prompt "Test" --dry-run
 ```
 
 Generate (requires network):
 
 ```
-"$PYTHON_BIN" "$IMAGE_GEN" generate --prompt "A cozy alpine cabin at dawn" --size 1024x1024
+python "$IMAGE_GEN" generate --prompt "A cozy alpine cabin at dawn" --size 1024x1024
 ```
+
+The script will automatically re-launch under a repo-local `.venv/` or `venv/` when one exists.
 
 No local virtualenv? Use your active Python env:
 
