@@ -13,6 +13,7 @@ Use one project tracker file as the durable source of truth for long-running wor
 
 1. Check repo guidance (`AGENTS.md`, docs) for a prescribed location or format.
 2. If none exists, use: `docs/projects/<project>/tasks.md`.
+3. When archiving a finished project and no repo-local archive path is prescribed, use: `docs/projects/archive/<project>/tasks.md`.
 
 ## Workflow
 
@@ -25,6 +26,7 @@ Use one project tracker file as the durable source of truth for long-running wor
    - Fully complete tracker:
      - if sufficiently confident the scoped work is done, close it out and archive it immediately.
      - if material uncertainty remains, summarize the evidence and ask the user before archiving.
+   - If archiving requires an archive folder that does not exist yet, create it as part of closeout.
 3. **Close critical gaps before deep execution**
    - If scope, success criteria, constraints, dependencies, credentials, or approvals are unclear enough that execution will predictably stall later, ask concise targeted follow-up questions before proceeding.
    - Batch missing items into one short request when possible.
@@ -62,6 +64,8 @@ Use one project tracker file as the durable source of truth for long-running wor
    - When scoped work is complete, provide a short conclusion with validation evidence and residual risks.
    - Follow repo-local shipping policy for commit/push behavior. Do not add a generic manual commit/push step when repo automation already handles it.
    - Archive by default when `Done When` is satisfied, remaining milestones/tasks are complete or explicitly descoped, validation is acceptable for the scoped work, and no material blocker remains.
+   - Unless repo guidance says otherwise, archiving means moving the finished tracker from `docs/projects/<project>/tasks.md` to `docs/projects/archive/<project>/tasks.md`.
+   - If `docs/projects/archive/` or `docs/projects/archive/<project>/` is missing, create it during closeout.
    - Ask the user before archiving only when project completion is materially uncertain or user intent appears to have shifted beyond the tracker.
 
 ## Tracker rules
@@ -75,6 +79,7 @@ Use one project tracker file as the durable source of truth for long-running wor
 - Record non-obvious choices in `Decisions` so later agents do not reopen them.
 - Treat blockers as first-class: add them to `Open Questions / Blockers` immediately.
 - Bias toward finishing and archiving completed projects instead of leaving stale trackers in the active list.
+- When a project is archived, prefer moving it into a dedicated archive path rather than only marking it archived in place, unless repo guidance explicitly prefers in-place archives.
 - Do not introduce a `ready-to-archive` holding state by default.
 - The current top-level run is the orchestrator; workers/background agents must not edit `tasks.md` directly.
 
