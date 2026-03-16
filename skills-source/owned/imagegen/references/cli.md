@@ -7,7 +7,7 @@ This file contains the “command catalog” for the bundled image generation CL
 - `edit`: edit an existing image (optionally with a mask) — inpainting / background replacement / “change only X”
 - `generate-batch`: run many jobs from a JSONL file (one job per line)
 
-Real API calls require **network access** + `LLM_API_ENDPOINT` + `LLM_API_KEY`. `--dry-run` does not.
+Real API calls require **network access**. `--dry-run` does not.
 
 ## Quick start (works from any repo)
 Set a stable path to the skill CLI (default `CODEX_HOME` is `~/.codex`):
@@ -23,7 +23,7 @@ Dry-run (no API call; no network required; does not require the `openai` package
 python "$IMAGE_GEN" generate --prompt "Test" --dry-run
 ```
 
-Generate (requires `LLM_API_ENDPOINT`, `LLM_API_KEY`, and network):
+Generate (requires network):
 
 ```
 uv run --with openai python "$IMAGE_GEN" generate --prompt "A cozy alpine cabin at dawn" --size 1024x1024

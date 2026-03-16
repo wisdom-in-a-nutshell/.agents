@@ -1,6 +1,6 @@
 ---
 name: "imagegen"
-description: "Use when the user asks to generate or edit images via the OpenAI Image API (for example: generate image, edit/inpaint/mask, background removal or replacement, transparent background, product shots, concept art, covers, or batch variants); run the bundled CLI (`scripts/image_gen.py`) and require `LLM_API_ENDPOINT` plus `LLM_API_KEY` for live calls."
+description: "Use when the user asks to generate or edit images via the OpenAI Image API (for example: generate image, edit/inpaint/mask, background removal or replacement, transparent background, product shots, concept art, covers, or batch variants); run the bundled CLI (`scripts/image_gen.py`) for live calls."
 ---
 
 
@@ -45,20 +45,11 @@ If `uv` is unavailable:
 python3 -m pip install openai pillow
 ```
 
-## Environment
-- `LLM_API_ENDPOINT` must be set for live API calls.
-- `LLM_API_KEY` must be set for live API calls.
-- This owned copy passes both explicitly to the OpenAI SDK client and does not rely on ambient `OPENAI_BASE_URL` or `OPENAI_API_KEY`.
-
-If either variable is missing, tell the user to set both in their local environment before running live calls.
-- Never ask the user to paste the full key in chat. Ask them to set it locally and confirm when ready.
-
 If installation isn't possible in this environment, tell the user which dependency is missing and how to install it locally.
 
 ## Defaults & rules
 - Use `gpt-image-1.5` unless the user explicitly asks for `gpt-image-1-mini` or explicitly prefers a cheaper/faster model.
 - Assume the user wants a new image unless they explicitly ask for an edit.
-- Require `LLM_API_ENDPOINT` and `LLM_API_KEY` before any live API call.
 - Use the OpenAI Python SDK (`openai` package) for all API calls; do not use raw HTTP.
 - If the user requests edits, use `client.images.edit(...)` and include input images (and mask if provided).
 - Prefer the bundled CLI (`scripts/image_gen.py`) over writing new one-off scripts.
