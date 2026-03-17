@@ -68,16 +68,6 @@
       "upstream_ref": "vercel-labs/skills:skills/find-skills@main"
     },
     {
-      "skill": "figma",
-      "origin": "external",
-      "scope": "repo",
-      "repos": [
-        "adi"
-      ],
-      "source_path": "skills-source/external/figma",
-      "upstream_ref": "openai/skills:skills/.curated/figma@main"
-    },
-    {
       "skill": "project",
       "origin": "owned",
       "scope": "global",
