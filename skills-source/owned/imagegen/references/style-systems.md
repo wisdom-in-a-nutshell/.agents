@@ -15,6 +15,11 @@ When a visual direction becomes stable, promote it into:
 1. a **project-local style guide** for the specific series
 2. optionally, a **generic workflow note** in the skill if the pattern itself is reusable
 
+Keep this file focused on **style canon**, not on the generic image-iteration process.
+The generic process belongs in `references/working-mode.md`.
+Generic prompting principles belong in `references/prompting.md`.
+Copy/paste recipes belong in `references/sample-prompts.md`.
+
 ## What belongs in a project-local style guide
 
 - series thesis / purpose
@@ -29,9 +34,7 @@ When a visual direction becomes stable, promote it into:
 
 ## What belongs in the skill
 
-- the generic workflow for creating and maintaining a style system
-- how to structure working files
-- when to privately iterate before showing
+- only the generic guidance for when to create or update a style guide
 - how to separate project-specific canon from skill-level guidance
 
 Do **not** put project-specific canon into the generic skill unless it truly generalizes.
@@ -49,33 +52,18 @@ image-3-*.md
 reference/<final-assets>.png
 ```
 
-## Recommended working method
+## What a style guide should not try to do
 
-For each panel or recurring asset:
+Do not turn the style guide into:
+- a generic prompting manual
+- a full working log
+- a copy of `references/prompting.md`
+- a copy of `references/working-mode.md`
 
-1. create a dedicated working markdown file
-2. record:
-   - concept
-   - prompt draft(s)
-   - output file path(s)
-   - self-review after each version
-3. keep one canonical selected version
-4. when the user prefers polish-first review, iterate privately first and show only the stronger version(s)
-
-## Self-review template
-
-```md
-## Self-review - Version N
-
-What worked:
-- ...
-
-What feels off:
-- ...
-
-What should improve next:
-- ...
-```
+The style guide should answer:
+- what this visual family is
+- what makes it recognizably the same system
+- what should remain stable across future generations
 
 ## Reusable base prompt pattern
 

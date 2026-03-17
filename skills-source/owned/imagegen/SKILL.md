@@ -12,6 +12,7 @@ Generates or edits images for the current project (e.g., website assets, game as
 - Generate a new image (concept art, product shot, cover, website hero)
 - Edit an existing image (inpainting, masked edits, lighting or weather transformations, background replacement, object removal, compositing, transparent background)
 - Batch runs (many prompts, or many variants across prompts)
+- Unless the user explicitly asks for raw first-pass outputs, rough explorations, or a faster lighter-touch flow, use the default working mode for non-trivial image work: inspect outputs, keep a project-local worklog, and iterate before presenting the strongest version.
 
 ## Decision tree (generate vs edit vs batch)
 - If the user provides an input image (or says “edit/retouch/inpaint/mask/translate/localize/change only X”) → **edit**
@@ -28,15 +29,48 @@ Generates or edits images for the current project (e.g., website assets, game as
 7. Iterate: make a single targeted change (prompt or mask), re-run, re-check.
 8. Save/return final outputs and note the final prompt + flags used.
 
-### When building a recurring visual series
-If the user is creating a multi-panel comic, brand system, recurring illustration family, or any reusable visual language:
+## Working mode vs style system
+
+Treat these as two different things.
+
+### Working mode (generic default behavior)
+Use this for non-trivial image work even when there is no recurring brand or comic system yet.
+
+Unless the user explicitly asks for raw first-pass outputs, rough explorations, or a faster lighter-touch flow, assume this working mode is the default.
+
+Default working mode:
+- visually inspect your own outputs before presenting them
+- for iterative user-facing work, create a project-local working markdown file when one does not already exist
+- record for each version:
+  - prompt used
+  - output path
+  - short self-review: what worked, what feels off, what should change next
+- if the direction is clear and the user is optimizing for quality rather than seeing every attempt, privately iterate a few times before showing the strongest version
+- keep one canonical selected output once the user chooses a version
+
+When to skip the full working-mode machinery:
+- one-off throwaway generations
+- fast exploratory batches where the user explicitly wants to see raw outputs quickly
+- tiny edits where a markdown worklog would add more friction than value
+
+See `references/working-mode.md`.
+
+### Style system (only when a reusable visual language exists)
+Use this only when the image work has become a recurring system:
+- multi-panel comic
+- recurring illustration family
+- brand-like visual canon
+- mascot system
+
+If that happens:
 - create a project-local style guide / canon file for the series
-- record the shared mascot/style rules, canonical chosen outputs, and reusable base prompt there
-- keep one working markdown file per image/panel with versioned self-review notes
-- when the direction is clear and the user wants polish-first behavior, privately iterate a few times before showing the strongest version
+- record shared mascot/style rules, canonical chosen outputs, and reusable base prompt there
+- keep the style guide focused on **style canon** rather than generic process
 - preserve reusable learnings in the project and in this skill separately:
   - **project-specific look/voice/system** -> project-local style guide
   - **generic workflow pattern** -> this skill / its references
+
+See `references/style-systems.md`.
 
 ## Temp and output conventions
 - Reuse the repo's existing `.venv/` or `venv/` when present; do **not** create ad hoc temporary virtualenvs for normal image work.
@@ -184,5 +218,6 @@ Asset-type templates (website assets, game assets, wireframes, logo) are consoli
 - **`references/image-api.md`**: what knobs exist at the API level (parameters, sizes, quality, background, edit-only fields).
 - **`references/prompting.md`**: prompting principles (structure, constraints/invariants, iteration patterns).
 - **`references/sample-prompts.md`**: copy/paste prompt recipes (generate + edit workflows; examples only).
+- **`references/working-mode.md`**: default review/iteration/documentation behavior for non-trivial image work.
 - **`references/style-systems.md`**: how to document and reuse a recurring visual system, comic family, or brand-like illustration style.
 - **`references/codex-network.md`**: environment/sandbox/network-approval troubleshooting.
