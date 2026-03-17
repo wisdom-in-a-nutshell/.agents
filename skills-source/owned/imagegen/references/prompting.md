@@ -32,6 +32,7 @@
 ## Composition & layout
 - Specify framing and viewpoint (close-up, wide, top-down) and placement ("logo top-right").
 - Call out negative space if you need room for UI or overlays.
+- When no strong contrary reason exists, prefer a wide landscape canvas for scenes, comics, explainers, and diagram-like visuals.
 
 ## Constraints & invariants
 - State what must not change ("keep background unchanged").
@@ -63,7 +64,7 @@ Generate:
 - ui-mockup: Describe a real product; focus on layout, hierarchy, and common UI elements; avoid concept-art language so it looks shippable.
 - infographic-diagram: Define the audience and layout flow; label parts explicitly; require verbatim text; use `quality=high`.
 - logo-brand: Keep it simple and scalable; ask for a strong silhouette and balanced negative space; avoid gradients and fine detail.
-- illustration-story: Define panels or scene beats; keep each action concrete; for continuity, restate character traits and outfit each time.
+- illustration-story: Define panels or scene beats; keep each action concrete; for continuity, restate character traits and outfit each time; prefer `1536x1024` for wide comic/explainer panels unless square or portrait is clearly better.
 - stylized-concept: Specify style cues, material finish, and rendering approach (3D, painterly, clay); add a short "Avoid" line to prevent tacky effects.
 - historical-scene: State the location/date and required period accuracy; constrain clothing, props, and environment to match the era.
 

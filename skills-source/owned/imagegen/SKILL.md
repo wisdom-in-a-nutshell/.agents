@@ -29,11 +29,14 @@ Generates or edits images for the current project (e.g., website assets, game as
 8. Save/return final outputs and note the final prompt + flags used.
 
 ## Temp and output conventions
-- Use `tmp/imagegen/` for intermediate files (for example JSONL batches); delete when done.
-- Write final artifacts under `output/imagegen/` when working in this repo.
+- Reuse the repo's existing `.venv/` or `venv/` when present; do **not** create ad hoc temporary virtualenvs for normal image work.
+- The bundled CLI already auto-relaunches under a repo-local `.venv/` or `venv/` when one exists.
+- Use `tmp/imagegen/` only for truly temporary intermediate files (for example JSONL batches or disposable seed files), and delete them when done.
+- Write final artifacts under `output/imagegen/` when working in this repo unless the project has a more specific destination.
 - Use `--out` or `--out-dir` to control output paths; keep filenames stable and descriptive.
 
 ## Dependencies (install if missing)
+Prefer the repo's existing `.venv/` or `venv/` first. Only install missing packages into that environment unless the user explicitly wants a different setup.
 Prefer `uv` for dependency management.
 
 Python packages:
@@ -50,6 +53,9 @@ If installation isn't possible in this environment, tell the user which dependen
 ## Defaults & rules
 - Use `gpt-image-1.5` unless the user explicitly asks for `gpt-image-1-mini` or explicitly prefers a cheaper/faster model.
 - Assume the user wants a new image unless they explicitly ask for an edit.
+- Default size should generally bias toward `1536x1024` unless the user clearly wants square or portrait.
+- Use `1536x1024` by default for comic/story/explainer visuals (`illustration-story` with a panel-like composition).
+- Use `1024x1024` when the image is primarily icon-like, avatar-like, or meant to crop square.
 - Use the OpenAI Python SDK (`openai` package) for all API calls; do not use raw HTTP.
 - If the user requests edits, use `client.images.edit(...)` and include input images (and mask if provided).
 - Prefer the bundled CLI (`scripts/image_gen.py`) over writing new one-off scripts.
@@ -58,6 +64,11 @@ If installation isn't possible in this environment, tell the user which dependen
 
 ## Prompt augmentation
 Reformat user prompts into a structured, production-oriented spec. Only make implicit details explicit; do not invent new requirements.
+
+Aspect-ratio guidance:
+- Prefer a wide landscape canvas and default to `1536x1024` unless the user specifies otherwise.
+- Use `1024x1024` when the image is primarily icon-like, avatar-like, or meant to crop square.
+- Use `1024x1536` when the user clearly wants a tall/portrait composition.
 
 ## Use-case taxonomy (exact slugs)
 Classify each request into one of these buckets and keep the slug consistent across prompts and references.

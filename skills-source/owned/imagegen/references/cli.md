@@ -49,6 +49,11 @@ python "$IMAGE_GEN" generate --prompt "A cozy alpine cabin at dawn" --size 1024x
 - Output format: `png`
 - Background: unspecified (API default). If you set `--background transparent`, also set `--output-format png` or `webp`.
 
+Practical size convention:
+- Treat `1536x1024` as the practical default for most generated visuals unless square is clearly the better fit.
+- For comic/story/explainer visuals (`illustration-story`) with a panel-like layout, prefer `1536x1024` unless the user asks for square or portrait.
+- For tall vertical compositions, use `1024x1536`.
+
 ## Quality + input fidelity
 - `--quality` works for `generate`, `edit`, and `generate-batch`: `low|medium|high|auto`.
 - `--input-fidelity` is **edit-only**: `low|high` (use `high` for strict edits like identity or layout lock).
