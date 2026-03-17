@@ -8,8 +8,10 @@
 *.swo
 
 # Never commit environment or auth artifacts
-.env
-.env.*
+.env*
+!.envrc
+!.env.example
+!*.env.example
 auth.json
 credentials*
 
