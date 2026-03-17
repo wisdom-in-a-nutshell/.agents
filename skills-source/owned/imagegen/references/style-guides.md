@@ -1,6 +1,6 @@
-# Style systems for recurring image work
+# Reusable style guides for recurring image work
 
-Use this when image work is no longer a one-off prompt and has become a reusable visual system:
+Use this when image work is no longer a one-off prompt and has become a reusable visual family:
 - multi-panel comic
 - recurring blog illustrations
 - mascot-based explainer series
@@ -11,16 +11,16 @@ Use this when image work is no longer a one-off prompt and has become a reusable
 
 Do not bury durable style decisions in one prompt thread.
 
-When a visual direction becomes stable, promote it into:
-1. a **project-local style guide** for the specific series
+When a visual direction becomes stable and is worth reusing across future work, promote it into:
+1. a **style guide under `styles/` in this skill**
 2. optionally, a **generic workflow note** in the skill if the pattern itself is reusable
 
 Keep this file focused on **style canon**, not on the generic image-iteration process.
-The generic process belongs in `references/working-mode.md`.
+The generic process belongs in `references/workflow.md`.
 Generic prompting principles belong in `references/prompting.md`.
 Copy/paste recipes belong in `references/sample-prompts.md`.
 
-## What belongs in a project-local style guide
+## What belongs in a reusable style guide
 
 - series thesis / purpose
 - mascot or subject canon
@@ -32,24 +32,14 @@ Copy/paste recipes belong in `references/sample-prompts.md`.
 - naming conventions and file locations
 - any user-specific taste decisions that should not be rediscovered
 
-## What belongs in the skill
-
-- only the generic guidance for when to create or update a style guide
-- how to separate project-specific canon from skill-level guidance
-
-Do **not** put project-specific canon into the generic skill unless it truly generalizes.
+Only keep style guides here when they are actually reusable across future work.
 
 ## Recommended file pattern for a comic / recurring series
 
-At the project level:
+Inside this skill:
 
 ```text
-reference/comic-style-guide.md
-image-1-*.md
-image-2-*.md
-image-3-*.md
-...
-reference/<final-assets>.png
+styles/<style-guide>.md
 ```
 
 ## What a style guide should not try to do
@@ -58,7 +48,7 @@ Do not turn the style guide into:
 - a generic prompting manual
 - a full working log
 - a copy of `references/prompting.md`
-- a copy of `references/working-mode.md`
+- a copy of `references/workflow.md`
 
 The style guide should answer:
 - what this visual family is
@@ -67,7 +57,7 @@ The style guide should answer:
 
 ## Reusable base prompt pattern
 
-When a visual system stabilizes, store a short reusable base prompt such as:
+When a visual canon stabilizes, store a short reusable base prompt such as:
 
 ```text
 Use case: illustration-story
@@ -87,4 +77,4 @@ If the user says things like:
 - “document what we learned”
 - “use this look going forward”
 
-then create or update the project-local style guide immediately.
+then create or update a reusable style guide under `styles/`.

@@ -1,28 +1,28 @@
-# Imagegen working mode
+# Imagegen workflow
 
-Use this as the default operating pattern for non-trivial image work.
+Use this as the default workflow for non-trivial image work.
 
-Unless the user explicitly asks otherwise, assume this is the working mode to use.
-
-This is distinct from a **style system**:
-- **working mode** = how to generate, inspect, review, iterate, and document
-- **style system** = the reusable visual canon for a specific series or brand
+Unless the user explicitly asks otherwise, assume this is the workflow to use.
 
 ## Default behavior
 
 When the image task matters enough that quality and continuity matter:
 
-1. create or reuse a project-local working markdown file
-2. record per version:
+1. check whether a relevant reusable style guide already exists under `styles/` in this skill
+2. create or reuse a project-local working markdown file
+3. record per version:
    - prompt used
    - output path
    - self-review:
      - what worked
      - what feels off
      - what should improve next
-3. inspect your own generated image before handing it back
-4. if the direction is clear, iterate privately before showing the user the strongest version
-5. keep one canonical selected output once chosen
+4. inspect your own generated image before handing it back
+5. continue improving based on that self-review when the next fix is clear
+6. use **edit** when preserving an already-good composition/style is the priority
+7. use a **fresh generation** when the concept is wrong or edits keep drifting composition, aspect ratio, or clarity
+8. if the direction is clear, iterate privately before showing the user the strongest version
+9. keep one canonical selected output once chosen
 
 ## Why
 
@@ -34,7 +34,7 @@ This helps with:
 
 ## When to use
 
-Use working mode when:
+Use this workflow when:
 - the user wants polished outputs
 - the image is part of a deliverable
 - there will probably be multiple iterations
