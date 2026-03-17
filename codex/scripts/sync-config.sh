@@ -19,6 +19,8 @@ CANONICAL_AGENTS_DIR="${CANONICAL_DIR}/agents"
 CANONICAL_XCODE_TEMPLATE="${CANONICAL_DIR}/xcode.config.toml"
 CANONICAL_XCODE_RULES_TEMPLATE="${CANONICAL_DIR}/xcode.rules"
 TIMESTAMP="$(date +%Y%m%d-%H%M%S)"
+BACKUP_ROOT="${HOME}/.local/state/codex-control-plane/runtime-config-backups"
+BACKUP_MAX_AGE_DAYS=7
 NOTIFY_SCRIPT_PATH="${HOME}/.agents/codex/scripts/notify.py"
 SYSTEM_SKILLS_DISABLE_PATHS=(
   "${HOME}/.codex/skills/.system/skill-creator/SKILL.md"
@@ -44,6 +46,8 @@ Options:
   --global-config <path>     Override global codex config target
   --xcode-config <path>      Override Xcode codex config target
   --xcode-rules <path>       Override Xcode rules target
+  --backup-root <path>       Store managed runtime backups outside ~/.codex
+                             (default: ~/.local/state/codex-control-plane/runtime-config-backups)
   --canonical-dir <path>     Directory containing canonical templates:
                              global.config.toml, xcode.config.toml, xcode.rules
   -h, --help                 Show this help
@@ -107,6 +111,10 @@ while [[ $# -gt 0 ]]; do
       ;;
     --xcode-rules)
       XCODE_RULES="${2:-}"
+      shift 2
+      ;;
+    --backup-root)
+      BACKUP_ROOT="${2:-}"
       shift 2
       ;;
     --canonical-dir)
@@ -611,14 +619,26 @@ show_diff() {
   fi
 }
 
+prune_old_backups() {
+  [[ -d "$BACKUP_ROOT" ]] || return 0
+  find "$BACKUP_ROOT" -type f -name '*.bak.*' -mtime "+${BACKUP_MAX_AGE_DAYS}" -delete 2>/dev/null || true
+}
+
 install_rendered_file() {
   local rendered="$1"
   local target="$2"
-  local backup="${target}.bak.${TIMESTAMP}"
+  local backup=""
   local mode="600"
+
+  if [[ -f "$target" ]] && cmp -s "$target" "$rendered"; then
+    log "No change: $target"
+    return 0
+  fi
 
   if [[ -f "$target" ]]; then
     mode="$(stat -f "%Lp" "$target" 2>/dev/null || echo 600)"
+    backup="${BACKUP_ROOT}/${target#/}.bak.${TIMESTAMP}"
+    mkdir -p "$(dirname "$backup")"
     cp "$target" "$backup"
     log "Backup: $backup"
   fi
@@ -734,6 +754,7 @@ log "Control Plane: $CONTROL_PLANE_DIR"
 log "Canonical Dir: $CANONICAL_DIR"
 if (( APPLY == 1 )); then
   log "Mode: APPLY"
+  prune_old_backups
 else
   log "Mode: DRY-RUN (no files written)"
 fi

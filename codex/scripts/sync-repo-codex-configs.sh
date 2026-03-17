@@ -6,6 +6,7 @@ REGISTRY_FILE=""
 REPO_FILTERS=()
 TIMESTAMP="$(date +%Y%m%d-%H%M%S)"
 BACKUP_ROOT="${HOME}/.local/state/codex-control-plane/repo-config-backups"
+BACKUP_MAX_AGE_DAYS=7
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 CONTROL_PLANE_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
@@ -92,6 +93,11 @@ fi
 [[ -f "$REGISTRY_FILE" ]] || die "Missing registry file: $REGISTRY_FILE"
 [[ -r "$REGISTRY_FILE" ]] || die "Registry file is not readable: $REGISTRY_FILE"
 
+if (( APPLY == 1 )); then
+  [[ -d "$BACKUP_ROOT" ]] || mkdir -p "$BACKUP_ROOT"
+  find "$BACKUP_ROOT" -type f -name '*.bak.*' -mtime "+${BACKUP_MAX_AGE_DAYS}" -delete 2>/dev/null || true
+fi
+
 ensure_parent_dir() {
   local file="$1"
   mkdir -p "$(dirname "$file")"
@@ -112,6 +118,11 @@ install_rendered_file() {
   local target="$2"
   local backup=""
   local mode="600"
+
+  if [[ -f "$target" ]] && cmp -s "$target" "$rendered"; then
+    log "No change: $target"
+    return 0
+  fi
 
   if [[ -f "$target" ]]; then
     mode="$(stat -f "%Lp" "$target" 2>/dev/null || echo 600)"

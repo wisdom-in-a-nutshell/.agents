@@ -8,6 +8,8 @@ ROOTS=()
 GLOBAL_CONFIG="${HOME}/.codex/config.toml"
 XCODE_CONFIG="${HOME}/Library/Developer/Xcode/CodingAssistant/codex/config.toml"
 TIMESTAMP="$(date +%Y%m%d-%H%M%S)"
+BACKUP_ROOT="${HOME}/.local/state/codex-control-plane/runtime-config-backups"
+BACKUP_MAX_AGE_DAYS=7
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 CONTROL_PLANE_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 REGISTRY_FILE="${CONTROL_PLANE_DIR}/config/repo-bootstrap.json"
@@ -29,6 +31,8 @@ Options:
   --registry <path>      Override repo bootstrap registry used for managed repos
   --global-config <p>    Override global config target
   --xcode-config <p>     Override Xcode config target
+  --backup-root <path>   Store managed runtime backups outside ~/.codex
+                         (default: ~/.local/state/codex-control-plane/runtime-config-backups)
   -h, --help             Show this help
 
 Examples:
@@ -93,6 +97,10 @@ while [[ $# -gt 0 ]]; do
       XCODE_CONFIG="${2:-}"
       shift 2
       ;;
+    --backup-root)
+      BACKUP_ROOT="${2:-}"
+      shift 2
+      ;;
     -h|--help)
       usage
       exit 0
@@ -105,6 +113,11 @@ done
 
 if (( SYNC_GLOBAL == 0 && SYNC_XCODE == 0 )); then
   die "Nothing selected. Use default/all, --global-only, or --xcode-only."
+fi
+
+if (( APPLY == 1 )); then
+  [[ -d "$BACKUP_ROOT" ]] || mkdir -p "$BACKUP_ROOT"
+  find "$BACKUP_ROOT" -type f -name '*.bak.*' -mtime "+${BACKUP_MAX_AGE_DAYS}" -delete 2>/dev/null || true
 fi
 
 quote_toml_string() {
@@ -195,11 +208,18 @@ show_diff() {
 install_rendered_file() {
   local rendered="$1"
   local target="$2"
-  local backup="${target}.bak.${TIMESTAMP}"
+  local backup=""
   local mode="600"
+
+  if [[ -f "$target" ]] && cmp -s "$target" "$rendered"; then
+    log "No change: $target"
+    return 0
+  fi
 
   if [[ -f "$target" ]]; then
     mode="$(stat -f "%Lp" "$target" 2>/dev/null || echo 600)"
+    backup="${BACKUP_ROOT}/${target#/}.bak.${TIMESTAMP}"
+    mkdir -p "$(dirname "$backup")"
     cp "$target" "$backup"
     log "Backup: $backup"
   fi

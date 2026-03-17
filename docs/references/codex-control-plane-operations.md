@@ -22,6 +22,9 @@ Use [Codex Control Plane Ownership](/Users/dobby/.agents/docs/references/codex-c
   - applied `config.toml`, auth, sessions, logs, caches, sqlite, shell snapshots
   - Codex-managed vendor imports in `vendor_imports/`, including the nested Git checkout at `vendor_imports/skills`
   - should not be a git repo
+- `~/.local/state/codex-control-plane`
+  - machine-local reconcile stamps and managed backup history
+  - runtime config backups now live here instead of cluttering `~/.codex`
 
 ## Canonical Commands
 
@@ -73,14 +76,16 @@ Use [Codex Control Plane Ownership](/Users/dobby/.agents/docs/references/codex-c
   - rewrites machine-specific notify and system-skill paths for the current `$HOME`
   - strips foreign-user project and system-skill entries before writing
   - fails fast if the target config contains unresolved Git conflict markers
+  - skips no-op rewrites and stores real pre-change backups under `~/.local/state/codex-control-plane/runtime-config-backups/`
 - [`sync-trusted-projects.sh`](/Users/dobby/.agents/codex/scripts/sync-trusted-projects.sh)
   - scans repo roots from the canonical repo bootstrap registry (defaults to `~/GitHub`)
   - includes explicit extra managed repos such as `~/.agents`
   - writes exact `[projects."<path>"] trust_level = "trusted"` entries
+  - skips no-op rewrites and stores real pre-change backups under `~/.local/state/codex-control-plane/runtime-config-backups/`
 - [`sync-repo-codex-configs.sh`](/Users/adi/.agents/codex/scripts/sync-repo-codex-configs.sh)
   - renders managed repo-local `.codex/config.toml` files from the canonical registry
   - writes minimal config files for all managed repos, with MCP presets only where assigned
-  - stores backups under `~/.local/state/codex-control-plane/repo-config-backups/` instead of dirtying the git repos themselves
+  - skips no-op rewrites and stores backups under `~/.local/state/codex-control-plane/repo-config-backups/` instead of dirtying the git repos themselves
   - keeps the repo list and MCP/model preset definitions in [`repo-bootstrap.json`](/Users/adi/.agents/codex/config/repo-bootstrap.json)
 - [`sync-repo-bootstrap-registry.sh`](/Users/adi/.agents/codex/scripts/sync-repo-bootstrap-registry.sh)
   - regenerates the Obsidian Base artifacts from [`repo-bootstrap.json`](/Users/adi/.agents/codex/config/repo-bootstrap.json)
