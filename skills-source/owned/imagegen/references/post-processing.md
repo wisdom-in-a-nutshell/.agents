@@ -1,8 +1,9 @@
-# Local compositing reference (`scripts/panel_compose.py`)
+# Post-processing reference (`scripts/postprocess_image.py`)
 
-Use this when the user already has an image and the remaining work is deterministic packaging rather than model-based editing. This script is for finishing an existing image: title bands, subtitles, footers, borders, crop-inset cleanup, emphasis underlines/swash, and optional bottom notes/quotes.
+Use this only when the user explicitly asks for deterministic post-processing after AI image generation/editing. This helper is for packaging an existing image: title bands, subtitles, footers, borders, crop-inset cleanup, emphasis underlines/swash, and optional bottom notes/quotes.
 
-## When to use `panel_compose.py`
+## When to use `postprocess_image.py`
+- The user explicitly asks for deterministic post-processing after AI image generation/editing
 - Add a top title + subtitle band to an existing image
 - Add a footer or small attribution mark
 - Add a centered bottom note / quote / inner monologue
@@ -13,20 +14,21 @@ Use this when the user already has an image and the remaining work is determinis
 ## When **not** to use it
 - If the image content itself needs to change, use the model (`scripts/image_gen.py` edit flow)
 - If you need inpainting, background replacement, object removal, or compositing new visual elements, use the model
-- If the task is just generic local image processing unrelated to reusable image finishing, use the most appropriate local tool instead of forcing it through this skill
+- If the user is only asking for generic local image processing unrelated to AI image work, do not force this helper into the foreground; it is secondary to the AI workflow
+- If the user did not explicitly ask for deterministic post-processing, do not reach for this automatically
 
 ## Quick start
 Set stable paths from any repo:
 
 ```bash
 export CODEX_HOME="${CODEX_HOME:-$HOME/.codex}"
-export PANEL_COMPOSE="$CODEX_HOME/skills/imagegen/scripts/panel_compose.py"
+export IMAGE_POST="$CODEX_HOME/skills/imagegen/scripts/postprocess_image.py"
 ```
 
 Basic example:
 
 ```bash
-python "$PANEL_COMPOSE" \
+python "$IMAGE_POST" \
   --image input/panel.png \
   --out output/panel-final.png \
   --title "A capable agent can still get lost." \
@@ -39,7 +41,7 @@ python "$PANEL_COMPOSE" \
 ### Add top band + footer
 
 ```bash
-python "$PANEL_COMPOSE" \
+python "$IMAGE_POST" \
   --image input/panel.png \
   --out output/panel-framed.png \
   --title "MCP connects the agent to the outside world." \
@@ -50,7 +52,7 @@ python "$PANEL_COMPOSE" \
 ### Add underlined emphasis to key phrases
 
 ```bash
-python "$PANEL_COMPOSE" \
+python "$IMAGE_POST" \
   --image input/panel.png \
   --out output/panel-emphasis.png \
   --title "A capable agent can still get lost." \
@@ -65,7 +67,7 @@ python "$PANEL_COMPOSE" \
 ### Crop inward before packaging
 
 ```bash
-python "$PANEL_COMPOSE" \
+python "$IMAGE_POST" \
   --image input/panel-with-border.png \
   --out output/panel-cropped.png \
   --title "A capable agent can still get lost." \
@@ -75,7 +77,7 @@ python "$PANEL_COMPOSE" \
 ### Add a bottom note / quote
 
 ```bash
-python "$PANEL_COMPOSE" \
+python "$IMAGE_POST" \
   --image input/panel.png \
   --out output/panel-quoted.png \
   --title "AGENTS.md helps the agent find its bearings." \

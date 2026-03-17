@@ -1,6 +1,6 @@
 interface:
   display_name: "Image Gen"
-  short_description: "Use OpenAI's image model to generate and edit images"
+  short_description: "Generate and edit images with AI"
   icon_small: "./assets/imagegen-small.svg"
   icon_large: "./assets/imagegen.png"
-  default_prompt: "Generate or edit images for this task using the skill workflow: check `styles/` for a relevant visual family, structure the prompt clearly, create or update a project-local worklog for non-trivial work, inspect outputs yourself, iterate privately when useful, and return the strongest result with the final prompt and selected output paths."
+  default_prompt: "Handle this as an AI image generation/editing task using the skill workflow: check `styles/` for a relevant visual family, structure prompts clearly, keep a project-local worklog for non-trivial work, inspect outputs yourself, iterate privately when useful, and return the strongest final output with the final prompt and selected output paths. Do not use `scripts/postprocess_image.py` by default; only use it if the user explicitly asks for deterministic post-processing after AI generation/editing."

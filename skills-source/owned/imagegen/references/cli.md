@@ -136,3 +136,4 @@ python "$IMAGE_GEN" edit --image input.png --mask mask.png --prompt "Replace the
 ## See also
 - API parameter quick reference: `references/image-api.md`
 - Prompt examples: `references/sample-prompts.md`
+- Secondary deterministic finishing: `references/post-processing.md`
