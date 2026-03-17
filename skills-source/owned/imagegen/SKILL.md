@@ -1,6 +1,6 @@
 ---
 name: "imagegen"
-description: "Generate and edit images with AI, including image generation, inpainting, background removal or replacement, compositing, text-in-image edits, batch variants, and related AI image model tasks. Use this skill for model-based image generation/editing, not for purely local image layout, captioning, or other non-model image processing."
+description: "Generate and edit images with AI, and perform lightweight local post-processing/compositing of existing images when deterministic layout is the right tool. Use this skill for AI image generation/editing, inpainting, background removal or replacement, text-in-image edits, batch variants, and simple panel/layout packaging such as title bands, captions, footers, borders, crop-inset cleanup, emphasis underlines, and other repeatable image finishing steps."
 ---
 
 # Image Generation Skill
@@ -9,32 +9,39 @@ Generates or edits images for the current project (e.g., website assets, game as
 
 ## When to use
 - Generate a new image (concept art, product shot, cover, website hero)
-- Edit an existing image (inpainting, masked edits, lighting or weather transformations, background replacement, object removal, compositing, transparent background)
+- Edit an existing image with the model (inpainting, masked edits, lighting or weather transformations, background replacement, object removal, compositing, transparent background)
 - Batch runs (many prompts, or many variants across prompts)
+- Deterministic local composition/layout work on existing images: title bands, subtitles, footers, captions, bottom notes/quotes, borders, crop-inset cleanup, and simple emphasis underlines/swash packaging
 - Unless the user explicitly asks for raw first-pass outputs, rough explorations, or a faster lighter-touch flow, use the default workflow for non-trivial image work: inspect outputs, keep a project-local worklog, and iterate before presenting the strongest version.
 
-## Decision tree (generate vs edit vs batch)
-- If the user provides an input image (or says “edit/retouch/inpaint/mask/translate/localize/change only X”) → **edit**
+## Decision tree (generate vs edit vs batch vs compose)
+- If the user already has an image and only wants deterministic local packaging/layout (title band, footer, quote text, border, crop-inset, emphasis underline, simple captioning) → **compose**
+- Else if the user provides an input image (or says “edit/retouch/inpaint/mask/translate/localize/change only X”) → **edit**
 - Else if the user needs many different prompts/assets → **generate-batch**
 - Else → **generate**
 
 ## Workflow (default for non-trivial image work)
-1. Decide intent: generate vs edit vs batch (see decision tree above).
+1. Decide intent: generate vs edit vs batch vs compose (see decision tree above).
 2. Check `styles/` inside this skill for an existing relevant visual family before inventing a new direction.
-3. Collect inputs up front: prompt(s), exact text (verbatim), constraints/avoid list, and any input image(s)/mask(s). For multi-image edits, label each input by index and role; for edits, list invariants explicitly.
+3. Collect inputs up front.
+   - For generate/edit/batch: prompt(s), exact text (verbatim), constraints/avoid list, and any input image(s)/mask(s). For multi-image edits, label each input by index and role; for edits, list invariants explicitly.
+   - For compose: input image path, output path, exact copy (title/subtitle/footer/bottom note), highlight phrases/colors, crop inset, font preference, and any layout invariants.
 4. If batch: write a temporary JSONL under `tmp/` (one job per line), run once, then delete the JSONL.
-5. Augment the prompt into a short labeled spec using `references/prompting.md` and `references/sample-prompts.md` without inventing new creative requirements.
-6. Run the bundled CLI (`scripts/image_gen.py`) with sensible defaults (see `references/cli.md`).
+5. If generate/edit/batch: augment the prompt into a short labeled spec using `references/prompting.md` and `references/sample-prompts.md` without inventing new creative requirements.
+6. Run the right bundled tool.
+   - Model-based image work → `scripts/image_gen.py` (see `references/cli.md`)
+   - Deterministic local composition/layout → `scripts/panel_compose.py` (see `references/local-compositing.md`)
 7. For non-trivial or iterative work, create or reuse a project-local worklog and record per version:
-   - prompt used
+   - prompt or composition spec used
    - output path
    - short self-review: what worked, what feels off, what should change next
 8. Inspect outputs yourself and validate: subject, style, composition, text accuracy, and invariants/avoid items.
 9. Iterate deliberately:
    - use **edit** when preserving an already-good composition/style/character is the priority
    - use a **fresh generation** when the concept is wrong or edits keep drifting composition, aspect ratio, or clarity
+   - use **compose** when the image is basically right and the remaining work is deterministic packaging or layout
 10. Unless the user explicitly wants raw roughs, privately iterate a few times and present the strongest version.
-11. Save/return final outputs and note the final prompt + flags used; keep one canonical selected output once the user chooses a version.
+11. Save/return final outputs and note the final prompt or composition flags used; keep one canonical selected output once the user chooses a version.
 
 Use this worklog format:
 
@@ -197,13 +204,15 @@ More principles: `references/prompting.md`. Copy/paste specs: `references/sample
 Asset-type templates (website assets, game assets, wireframes, logo) are consolidated in `references/sample-prompts.md`.
 
 ## CLI + environment notes
-- CLI commands + examples: `references/cli.md`
+- Model-based CLI commands + examples: `references/cli.md`
+- Deterministic local composition/layout commands + examples: `references/local-compositing.md`
 - API parameter quick reference: `references/image-api.md`
 - If network approvals / sandbox settings are getting in the way: `references/codex-network.md`
 - The owned CLI now defaults to `1536x1024`; only override with `--size` when square/portrait is actually desired.
 
 ## Reference map
-- **`references/cli.md`**: how to *run* image generation/edits/batches via `scripts/image_gen.py` (commands, flags, recipes).
+- **`references/cli.md`**: how to *run* AI image generation/edits/batches via `scripts/image_gen.py` (commands, flags, recipes).
+- **`references/local-compositing.md`**: how to *package* an existing image via `scripts/panel_compose.py` (title bands, captions, footers, crop-inset cleanup, emphasis, bottom notes).
 - **`references/image-api.md`**: what knobs exist at the API level (parameters, sizes, quality, background, edit-only fields).
 - **`references/prompting.md`**: prompting principles (structure, constraints/invariants, iteration patterns).
 - **`references/sample-prompts.md`**: copy/paste prompt recipes (generate + edit workflows; examples only).
