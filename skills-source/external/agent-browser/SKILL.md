@@ -147,6 +147,12 @@ agent-browser download @e1 ./file.pdf          # Click element to trigger downlo
 agent-browser wait --download ./output.zip     # Wait for any download to complete
 agent-browser --download-path ./downloads open <url>  # Set default download directory
 
+# Network
+agent-browser network requests                 # Inspect tracked requests
+agent-browser network route "**/api/*" --abort  # Block matching requests
+agent-browser network har start                # Start HAR recording
+agent-browser network har stop ./capture.har   # Stop and save HAR file
+
 # Viewport & Device Emulation
 agent-browser set viewport 1920 1080          # Set viewport size (default: 1280x720)
 agent-browser set viewport 1920 1080 2        # 2x retina (same CSS size, higher res screenshots)
@@ -243,6 +249,30 @@ agent-browser state list
 agent-browser state show myapp-default.json
 agent-browser state clear myapp
 agent-browser state clean --older-than 7
+```
+
+### Working with Iframes
+
+Iframe content is automatically inlined in snapshots. Refs inside iframes carry frame context, so you can interact with them directly.
+
+```bash
+agent-browser open https://example.com/checkout
+agent-browser snapshot -i
+# @e1 [heading] "Checkout"
+# @e2 [Iframe] "payment-frame"
+#   @e3 [input] "Card number"
+#   @e4 [input] "Expiry"
+#   @e5 [button] "Pay"
+
+# Interact directly — no frame switch needed
+agent-browser fill @e3 "4111111111111111"
+agent-browser fill @e4 "12/28"
+agent-browser click @e5
+
+# To scope a snapshot to one iframe:
+agent-browser frame @e2
+agent-browser snapshot -i         # Only iframe content
+agent-browser frame main          # Return to main frame
 ```
 
 ### Data Extraction
