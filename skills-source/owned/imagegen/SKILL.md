@@ -1,6 +1,6 @@
 ---
 name: "imagegen"
-description: "Use when the user asks to generate or edit images via the OpenAI Image API (for example: generate image, edit/inpaint/mask, background removal or replacement, transparent background, product shots, concept art, covers, or batch variants); run the bundled CLI (`scripts/image_gen.py`) for live calls."
+description: "Generate and edit images with the OpenAI Image API for concept art, blog illustrations, comics, diagrams, mockups, product visuals, and image edits. Use when the user asks to generate images, edit or inpaint an image, remove or replace a background, make batch variants, or develop a recurring visual family. For non-trivial work, follow the skill workflow: check reusable style guides under `styles/`, structure prompts clearly, keep a project-local worklog with self-review, iterate privately when useful, and return the strongest final output rather than the first raw pass."
 ---
 
 # Image Generation Skill
@@ -18,7 +18,7 @@ Generates or edits images for the current project (e.g., website assets, game as
 - Else if the user needs many different prompts/assets → **generate-batch**
 - Else → **generate**
 
-## Default workflow
+## Workflow (default for non-trivial image work)
 1. Decide intent: generate vs edit vs batch (see decision tree above).
 2. Check `styles/` inside this skill for an existing relevant visual family before inventing a new direction.
 3. Collect inputs up front: prompt(s), exact text (verbatim), constraints/avoid list, and any input image(s)/mask(s). For multi-image edits, label each input by index and role; for edits, list invariants explicitly.
@@ -36,28 +36,30 @@ Generates or edits images for the current project (e.g., website assets, game as
 10. Unless the user explicitly wants raw roughs, privately iterate a few times and present the strongest version.
 11. Save/return final outputs and note the final prompt + flags used; keep one canonical selected output once the user chooses a version.
 
+Use this worklog format:
+
+```md
+## Self-review - Version N
+
+Prompt used:
+- ...
+
+Output path:
+- ...
+
+What worked:
+- ...
+
+What feels off:
+- ...
+
+What should improve next:
+- ...
+```
+
 Use a lighter-touch version of this workflow for one-off throwaway generations, fast exploratory batches, or tiny edits where a markdown worklog would add more friction than value.
 
-See `references/workflow.md`.
-
-## Reusable style guides / visual canon
-This is **not** part of the step-by-step workflow itself.
-
-The workflow only needs one thing:
-- check `styles/` first and use an existing relevant visual family if one exists
-
-Use this section only when the image work has become a recurring system:
-- multi-panel comic
-- recurring illustration family
-- brand-like visual canon
-- mascot system
-
-If that happens:
-- if no relevant style guide already exists and the visual direction becomes reusable, create a new reusable style guide under `styles/`
-- record shared mascot/style rules, canonical chosen outputs, and reusable base prompt there
-- keep the style guide focused on **style canon** rather than generic process
-
-See `references/style-guides.md`.
+If the work stabilizes into a reusable visual family, create or update a style guide under `styles/`. Keep style canon there, not workflow/process. See `references/style-guides.md`.
 
 ## Temp and output conventions
 - Reuse the repo's existing `.venv/` or `venv/` when present; do **not** create ad hoc temporary virtualenvs for normal image work.
@@ -205,6 +207,6 @@ Asset-type templates (website assets, game assets, wireframes, logo) are consoli
 - **`references/image-api.md`**: what knobs exist at the API level (parameters, sizes, quality, background, edit-only fields).
 - **`references/prompting.md`**: prompting principles (structure, constraints/invariants, iteration patterns).
 - **`references/sample-prompts.md`**: copy/paste prompt recipes (generate + edit workflows; examples only).
-- **`references/workflow.md`**: default workflow for non-trivial image work, including worklogs, self-review, and edit-vs-regenerate decisions.
 - **`references/style-guides.md`**: how to document and reuse a style guide / visual canon for a recurring comic family, mascot series, or brand-like illustration style.
+- **`styles/`**: reusable visual families and style guides that should carry across future image work.
 - **`references/codex-network.md`**: environment/sandbox/network-approval troubleshooting.

@@ -17,3 +17,7 @@ This folder holds reusable visual families for the `imagegen` skill.
 ## How to use it
 
 When a new image task begins, check whether a relevant style guide already exists here before inventing a new visual direction.
+
+## First file to check
+
+- `minimal-monochrome-webcomic-agent.md` -> reusable black-and-white webcomic / digital-agent mascot guideline for explainers and recurring comic panels

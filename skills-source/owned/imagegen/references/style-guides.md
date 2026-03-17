@@ -1,5 +1,8 @@
 # Reusable style guides for recurring image work
 
+Read this only when you need to create, update, or deliberately reuse a style guide.
+Do not treat it as the main day-to-day workflow document.
+
 Use this when image work is no longer a one-off prompt and has become a reusable visual family:
 - multi-panel comic
 - recurring blog illustrations
@@ -16,7 +19,7 @@ When a visual direction becomes stable and is worth reusing across future work, 
 2. optionally, a **generic workflow note** in the skill if the pattern itself is reusable
 
 Keep this file focused on **style canon**, not on the generic image-iteration process.
-The generic process belongs in `references/workflow.md`.
+The generic process belongs in `SKILL.md`.
 Generic prompting principles belong in `references/prompting.md`.
 Copy/paste recipes belong in `references/sample-prompts.md`.
 
@@ -48,7 +51,7 @@ Do not turn the style guide into:
 - a generic prompting manual
 - a full working log
 - a copy of `references/prompting.md`
-- a copy of `references/workflow.md`
+- a copy of the main workflow in `SKILL.md`
 
 The style guide should answer:
 - what this visual family is
