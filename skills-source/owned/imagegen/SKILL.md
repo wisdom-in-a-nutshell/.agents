@@ -1,6 +1,6 @@
 ---
 name: "imagegen"
-description: "Generate and edit images with the OpenAI Image API for concept art, blog illustrations, comics, diagrams, mockups, product visuals, and image edits. Use when the user asks to generate images, edit or inpaint an image, remove or replace a background, make batch variants, or develop a recurring visual family. For non-trivial work, follow the skill workflow: check reusable style guides under `styles/`, structure prompts clearly, keep a project-local worklog with self-review, iterate privately when useful, and return the strongest final output rather than the first raw pass."
+description: "Generate and edit images with AI, including image generation, inpainting, background removal or replacement, compositing, text-in-image edits, batch variants, and related AI image model tasks. Use this skill for model-based image generation/editing, not for purely local image layout, captioning, or other non-model image processing."
 ---
 
 # Image Generation Skill
