@@ -53,6 +53,7 @@ If installation isn't possible in this environment, tell the user which dependen
 ## Defaults & rules
 - Use `gpt-image-1.5` unless the user explicitly asks for `gpt-image-1-mini` or explicitly prefers a cheaper/faster model.
 - Assume the user wants a new image unless they explicitly ask for an edit.
+- Unless the user specifies otherwise, call the CLI as if the default size is `1536x1024`.
 - Default size should generally bias toward `1536x1024` unless the user clearly wants square or portrait.
 - Use `1536x1024` by default for comic/story/explainer visuals (`illustration-story` with a panel-like composition).
 - Use `1024x1024` when the image is primarily icon-like, avatar-like, or meant to crop square.
@@ -166,6 +167,7 @@ Asset-type templates (website assets, game assets, wireframes, logo) are consoli
 - CLI commands + examples: `references/cli.md`
 - API parameter quick reference: `references/image-api.md`
 - If network approvals / sandbox settings are getting in the way: `references/codex-network.md`
+- The owned CLI now defaults to `1536x1024`; only override with `--size` when square/portrait is actually desired.
 
 ## Reference map
 - **`references/cli.md`**: how to *run* image generation/edits/batches via `scripts/image_gen.py` (commands, flags, recipes).

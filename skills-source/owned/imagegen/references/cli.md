@@ -26,7 +26,7 @@ python "$IMAGE_GEN" generate --prompt "Test" --dry-run
 Generate (requires network):
 
 ```
-python "$IMAGE_GEN" generate --prompt "A cozy alpine cabin at dawn" --size 1024x1024
+python "$IMAGE_GEN" generate --prompt "A cozy alpine cabin at dawn"
 ```
 
 The script will automatically re-launch under a repo-local `.venv/` or `venv/` when one exists.
@@ -34,17 +34,17 @@ The script will automatically re-launch under a repo-local `.venv/` or `venv/` w
 No local virtualenv? Use your active Python env:
 
 ```
-python "$IMAGE_GEN" generate --prompt "A cozy alpine cabin at dawn" --size 1024x1024
+python "$IMAGE_GEN" generate --prompt "A cozy alpine cabin at dawn"
 ```
 
 ## Guardrails (important)
 - Use `python "$IMAGE_GEN" ...` (or equivalent full path) for generations/edits/batch work.
 - Do **not** create one-off runners (e.g. `gen_images.py`) unless the user explicitly asks for a custom wrapper.
-- **Never modify** `scripts/image_gen.py`. If something is missing, ask the user before doing anything else.
+- This is an owned fork. Modify `scripts/image_gen.py` only for deliberate durable behavior changes, and keep the docs in sync when you do.
 
 ## Defaults (unless overridden by flags)
 - Model: `gpt-image-1.5`
-- Size: `1024x1024`
+- Size: `1536x1024`
 - Quality: `auto`
 - Output format: `png`
 - Background: unspecified (API default). If you set `--background transparent`, also set `--output-format png` or `webp`.
@@ -82,7 +82,6 @@ Generate + also write a downscaled copy for fast web loading:
 ```
 uv run --with openai --with pillow python "$IMAGE_GEN" generate \
   --prompt "A cozy alpine cabin at dawn" \
-  --size 1024x1024 \
   --downscale-max-dim 1024
 ```
 

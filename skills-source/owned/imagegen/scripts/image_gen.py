@@ -20,7 +20,7 @@ from typing import Any, Dict, Iterable, List, Optional, Tuple
 from io import BytesIO
 
 DEFAULT_MODEL = "gpt-image-1.5"
-DEFAULT_SIZE = "1024x1024"
+DEFAULT_SIZE = "1536x1024"
 DEFAULT_QUALITY = "auto"
 DEFAULT_OUTPUT_FORMAT = "png"
 DEFAULT_CONCURRENCY = 5
