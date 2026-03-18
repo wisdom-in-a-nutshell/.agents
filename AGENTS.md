@@ -22,6 +22,7 @@ Personal agent and Codex control plane.
     - `personality`
     - `model_instructions_file`
     - `project_root_markers`
+    - `features`
     - `service_tier`
 - Managed canonical skill content lives in:
   - `skills-source/external/<skill>/`

@@ -61,6 +61,7 @@ Canonical personal Codex control-plane assets live here.
   - `personality`
   - `model_instructions_file`
   - `project_root_markers`
+  - `features`
   - `service_tier`
 - The registry `defaults` block is rendered into every managed repo-local `.codex/config.toml` unless a repo entry overrides those keys explicitly.
 - `scripts/sync-repo-bootstrap-registry.sh` regenerates:

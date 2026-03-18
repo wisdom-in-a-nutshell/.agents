@@ -39,6 +39,9 @@
       "model_reasoning_effort": "high",
       "model_verbosity": "low",
       "personality": "pragmatic",
+      "features": {
+        "fast_mode": true
+      },
       "service_tier": "fast",
       "model_instructions_file": "../soul.md",
       "project_root_markers": [],
@@ -64,6 +67,9 @@
       "model_reasoning_effort": "high",
       "model_verbosity": "low",
       "personality": "friendly",
+      "features": {
+        "fast_mode": true
+      },
       "service_tier": "fast",
       "model_instructions_file": "../soul.md",
       "project_root_markers": [],
