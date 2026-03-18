@@ -12,7 +12,7 @@ $HOME/GitHub/aipodcasting-public-website
 $HOME/GitHub/blog-personal
 $HOME/GitHub/codexclaw
 $HOME/GitHub/future-of-life-institute-podcast-aipodcast-ing-theme
-$HOME/GitHub/azure-platform-ops
+$HOME/GitHub/platform-ops
 $HOME/GitHub/litellm
 $HOME/GitHub/stadia-macos-controller
 $HOME/GitHub/thoughtforms-life-theme
