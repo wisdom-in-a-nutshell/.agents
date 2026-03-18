@@ -44,6 +44,14 @@
       "upstream_ref": "kepano/obsidian-skills:skills/defuddle@main"
     },
     {
+      "skill": "obsidian-bases",
+      "origin": "external",
+      "scope": "global",
+      "repos": [],
+      "source_path": "skills-source/external/obsidian-bases",
+      "upstream_ref": "kepano/obsidian-skills:skills/obsidian-bases@main"
+    },
+    {
       "skill": "obsidian-cli",
       "origin": "external",
       "scope": "global",
