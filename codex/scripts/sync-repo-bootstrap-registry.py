@@ -36,6 +36,16 @@ def _yaml_str(value: str) -> str:
     return json.dumps(value)
 
 
+def _display_path(path: Path, home: Path) -> str:
+    try:
+        rel = path.relative_to(home)
+    except ValueError:
+        return str(path)
+    if not rel.parts:
+        return "~"
+    return f"~/{rel.as_posix()}"
+
+
 def _write_if_changed(path: Path, content: str) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     old = path.read_text(encoding="utf-8") if path.exists() else None
@@ -193,7 +203,7 @@ def validate_registry(
                 )
 
         validated = {
-            "path": str(repo_root),
+            "path": _display_path(repo_root, home),
             "repo_name": _repo_name(str(repo_root)),
             "mcp_presets": [str(name) for name in mcp_presets],
             "mcp_presets_csv": ",".join(mcp_presets) if mcp_presets else "-",

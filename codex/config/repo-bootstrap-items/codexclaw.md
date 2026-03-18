@@ -1,6 +1,6 @@
 ---
 repo_name: "codexclaw"
-path: "/Users/adi/GitHub/codexclaw"
+path: "~/GitHub/codexclaw"
 mcp_presets_csv: "xcode,openaiDeveloperDocs"
 effective_model: "gpt-5.4"
 effective_reasoning: "high"

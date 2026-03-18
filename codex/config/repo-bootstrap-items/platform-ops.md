@@ -1,6 +1,6 @@
 ---
 repo_name: "platform-ops"
-path: "/Users/adi/GitHub/platform-ops"
+path: "~/GitHub/platform-ops"
 mcp_presets_csv: "cloudflare-api,cloudflare-docs"
 effective_model: "gpt-5.4"
 effective_reasoning: "high"

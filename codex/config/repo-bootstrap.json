@@ -107,11 +107,7 @@
       "path": "~/GitHub/podcast-website-setup"
     },
     {
-      "path": "~/GitHub/scripts",
-      "mcp_presets": [
-        "cloudflare-api",
-        "cloudflare-docs"
-      ]
+      "path": "~/GitHub/scripts"
     },
     {
       "path": "~/GitHub/stadia-macos-controller"

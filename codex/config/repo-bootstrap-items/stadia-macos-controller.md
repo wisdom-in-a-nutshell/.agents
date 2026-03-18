@@ -1,6 +1,6 @@
 ---
 repo_name: "stadia-macos-controller"
-path: "/Users/adi/GitHub/stadia-macos-controller"
+path: "~/GitHub/stadia-macos-controller"
 mcp_presets_csv: "-"
 effective_model: "gpt-5.4"
 effective_reasoning: "high"

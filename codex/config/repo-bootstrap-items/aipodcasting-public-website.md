@@ -1,6 +1,6 @@
 ---
 repo_name: "aipodcasting-public-website"
-path: "/Users/adi/GitHub/aipodcasting-public-website"
+path: "~/GitHub/aipodcasting-public-website"
 mcp_presets_csv: "-"
 effective_model: "gpt-5.4"
 effective_reasoning: "high"
