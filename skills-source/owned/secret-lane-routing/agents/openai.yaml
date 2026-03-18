@@ -1,0 +1,4 @@
+interface:
+  display_name: "Secret Lane Routing"
+  short_description: "Route new secrets correctly."
+  default_prompt: "Decide where a new secret should live, how it should be named, and what files or workflows must be updated."

@@ -1,6 +1,6 @@
 ---
 name: secret-lane-routing
-description: Route a new secret to the correct lane in this environment: Azure Key Vault runtime secret, repo-local `.env` bootstrap secret, machine-local shared secret under `~/.secrets`, or GitHub Actions secret/var. Use when adding a secret to any repo, deciding whether a value belongs in Key Vault vs GitHub vs local env, naming new secret families, or updating the files and workflows that consume secrets.
+description: "Route a new secret to the correct lane in this environment: Azure Key Vault runtime secret, repo-local `.env` bootstrap secret, machine-local shared secret under `~/.secrets`, or GitHub Actions secret/var. Use when adding a secret to any repo, deciding whether a value belongs in Key Vault vs GitHub vs local env, naming new secret families, or updating the files and workflows that consume secrets."
 ---
 
 # Secret Lane Routing

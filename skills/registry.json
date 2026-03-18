@@ -261,6 +261,14 @@
       "upstream_ref": "-"
     },
     {
+      "skill": "secret-lane-routing",
+      "origin": "owned",
+      "scope": "global",
+      "repos": [],
+      "source_path": "skills-source/owned/secret-lane-routing",
+      "upstream_ref": "-"
+    },
+    {
       "skill": "vercel-react-best-practices",
       "origin": "external",
       "scope": "repo",
