@@ -8,6 +8,12 @@
     "openaiDeveloperDocs": {
       "url": "https://developers.openai.com/mcp"
     },
+    "cloudflare-api": {
+      "url": "https://mcp.cloudflare.com/mcp"
+    },
+    "cloudflare-docs": {
+      "url": "https://docs.mcp.cloudflare.com/mcp"
+    },
     "xcode": {
       "command": "xcrun",
       "args": [
@@ -82,7 +88,11 @@
       "path": "~/GitHub/future-of-life-institute-podcast-aipodcast-ing-theme"
     },
     {
-      "path": "~/GitHub/azure-platform-ops"
+      "path": "~/GitHub/azure-platform-ops",
+      "mcp_presets": [
+        "cloudflare-api",
+        "cloudflare-docs"
+      ]
     },
     {
       "path": "~/GitHub/grateful-journal"
@@ -97,7 +107,11 @@
       "path": "~/GitHub/podcast-website-setup"
     },
     {
-      "path": "~/GitHub/scripts"
+      "path": "~/GitHub/scripts",
+      "mcp_presets": [
+        "cloudflare-api",
+        "cloudflare-docs"
+      ]
     },
     {
       "path": "~/GitHub/stadia-macos-controller"
