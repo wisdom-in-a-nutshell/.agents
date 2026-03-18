@@ -164,7 +164,7 @@ def toml_value(value):
     raise TypeError(f"Unsupported TOML value: {value!r}")
 
 
-def render_repo_config(repo: str, override: dict, presets: dict) -> str:
+def render_repo_config(repo: str, defaults: dict, override: dict, presets: dict) -> str:
     lines = [
         "# Managed by ~/.agents/codex/scripts/sync-repo-codex-configs.sh.",
         "# Edit ~/.agents/codex/config/repo-bootstrap.json and re-run the sync script.",
@@ -188,8 +188,9 @@ def render_repo_config(repo: str, override: dict, presets: dict) -> str:
 
     scalar_lines = []
     for key in scalar_keys:
-        if key in override:
-            scalar_lines.append(f"{key} = {toml_value(override[key])}")
+        value = override.get(key, defaults.get(key))
+        if value is not None:
+            scalar_lines.append(f"{key} = {toml_value(value)}")
     if scalar_lines:
         rendered_anything = True
         lines.append("")
@@ -232,9 +233,12 @@ tmp_dir = Path(sys.argv[2]).resolve()
 filters = {normalize_path(path) for path in sys.argv[3:] if path}
 
 data = json.loads(registry_path.read_text(encoding="utf-8"))
+defaults = data.get("defaults", {})
 presets = data.get("mcp_presets", {})
 repos_raw = data.get("repos", [])
 
+if not isinstance(defaults, dict):
+    raise TypeError("defaults must be an object")
 if not isinstance(presets, dict):
     raise TypeError("mcp_presets must be an object")
 if not isinstance(repos_raw, list):
@@ -263,7 +267,7 @@ for item in repos_raw:
     if filters and actual_repo not in filters:
         continue
 
-    rendered = render_repo_config(actual_repo, item, presets)
+    rendered = render_repo_config(actual_repo, defaults, item, presets)
     rendered_path = tmp_dir / f"{hashlib.sha256(actual_repo.encode()).hexdigest()}.toml"
     rendered_path.write_text(rendered, encoding="utf-8")
     target_path = Path(actual_repo) / ".codex" / "config.toml"

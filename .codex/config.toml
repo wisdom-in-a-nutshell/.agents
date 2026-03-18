@@ -1,5 +1,8 @@
 # Managed by ~/.agents/codex/scripts/sync-repo-codex-configs.sh.
 # Edit ~/.agents/codex/config/repo-bootstrap.json and re-run the sync script.
 
+model = "gpt-5.4"
+model_reasoning_effort = "high"
+
 [mcp_servers.openaiDeveloperDocs]
 url = "https://developers.openai.com/mcp"
