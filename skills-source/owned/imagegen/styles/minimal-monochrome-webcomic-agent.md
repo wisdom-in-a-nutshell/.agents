@@ -35,7 +35,7 @@ Avoid:
 Use one consistent digital-agent mascot across a set when continuity matters.
 
 Canonical reference asset inside this skill:
-- `styles/assets/agent-icon-ref-mono.png` -> monochrome mascot reference for preserving shape and face continuity across generations
+- `styles/assets/agent-mascot-reference.png` -> primary cute outlined mascot reference for preserving the approved comic character across generations
 
 Default mascot:
 - rounded-square white body
@@ -90,7 +90,7 @@ Avoid: glossy infographic polish, cyberpunk excess, heavy clutter, visor-face ro
 - keep the emotional shift explicit
 - keep the art text-light whenever possible
 - preserve the same mascot and world language across related panels
-- when mascot continuity matters, use `styles/assets/agent-icon-ref-mono.png` as an explicit input reference instead of relying only on prompt wording
+- when mascot continuity matters, use `styles/assets/agent-mascot-reference.png` as the primary explicit input reference instead of relying only on prompt wording
 - if a style name is used as a directional cue, still spell out the actual traits
 
 ## What this guide is for

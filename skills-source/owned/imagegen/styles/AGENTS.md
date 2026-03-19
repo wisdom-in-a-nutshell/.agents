@@ -21,4 +21,4 @@ When a new image task begins, check whether a relevant style guide already exist
 ## First file to check
 
 - `minimal-monochrome-webcomic-agent.md` -> reusable black-and-white webcomic / digital-agent mascot guideline for explainers and recurring comic panels
-- `assets/agent-icon-ref-mono.png` -> canonical monochrome mascot reference image for that comic style
+- `assets/agent-mascot-reference.png` -> primary approved cute outlined mascot reference for the monochrome comic style
