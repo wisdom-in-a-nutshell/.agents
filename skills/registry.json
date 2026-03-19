@@ -218,6 +218,17 @@
       "upstream_ref": "steipete/oracle:skills/oracle@main"
     },
     {
+      "skill": "pretty-mermaid",
+      "origin": "owned",
+      "scope": "repo",
+      "repos": [
+        "adi",
+        "codexclaw"
+      ],
+      "source_path": "skills-source/owned/pretty-mermaid",
+      "upstream_ref": "-"
+    },
+    {
       "skill": "imagegen",
       "origin": "owned",
       "scope": "repo",
