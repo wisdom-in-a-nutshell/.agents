@@ -37,6 +37,29 @@ Generates or edits images for the current project (e.g., website assets, game as
 10. Unless the user explicitly wants raw roughs, privately iterate a few times and present the strongest version.
 11. Save/return final outputs and note the final prompt + flags used; keep one canonical selected output once the user chooses a version.
 
+## Iterative continuity rule
+
+For non-trivial image work where continuity, taste, or multi-step refinement matters, do not treat each generation as a fresh isolated attempt.
+
+Default to this stronger pattern:
+- create or reuse a durable markdown worklog in the project
+- record version outputs, self-review, and next-step hypotheses there
+- keep iterating privately until there is a genuinely strong candidate, not just a plausible first pass
+- prefer showing the user the strongest candidate rather than every weak intermediate
+
+When continuity matters across versions or panels:
+- prefer **edit-from-previous-version** over fresh regeneration once you have a usable base
+- use previously selected/canonical images as explicit reference anchors for style, character, and composition continuity
+- use fresh generation mainly for the first base image or when the concept/composition is fundamentally wrong and edits keep drifting
+
+This is especially important for:
+- comics or panel sequences
+- recurring mascots / characters
+- visual families that should remain recognizably the same across assets
+- any workflow the user may want to review later through a clear version history
+
+This does **not** need to be done for every tiny throwaway image. Use judgment. The point is to make durable iterative image work legible and compounding by default.
+
 Use this worklog format:
 
 ```md
@@ -59,6 +82,14 @@ What should improve next:
 ```
 
 Use a lighter-touch version of this workflow for one-off throwaway generations, fast exploratory batches, or tiny edits where a markdown worklog would add more friction than value.
+
+When useful, expand the worklog beyond the minimal self-review format with:
+- panel/asset role in the story or system
+- prompt draft(s)
+- version hypotheses
+- why a new pass should be an edit vs a fresh generation
+
+The goal is not paperwork. The goal is preserving iteration state so future turns can continue cleanly without re-discovering taste, continuity, or direction.
 
 If the work stabilizes into a reusable visual family, create or update a style guide under `styles/`. Keep style canon there, not workflow/process. See `references/style-guides.md`.
 
