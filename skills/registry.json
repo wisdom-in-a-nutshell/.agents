@@ -155,7 +155,8 @@
       "origin": "owned",
       "scope": "repo",
       "repos": [
-        "adi"
+        "adi",
+        "codexclaw"
       ],
       "source_path": "skills-source/owned/codex-agent-loop",
       "upstream_ref": "-"
