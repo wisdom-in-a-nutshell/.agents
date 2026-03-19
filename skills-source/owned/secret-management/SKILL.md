@@ -1,18 +1,19 @@
 ---
-name: secret-lane-routing
-description: "Route a new secret to the correct lane in this environment: Azure Key Vault runtime secret, repo-local `.env` bootstrap secret, machine-local shared secret under `~/.secrets`, or GitHub Actions secret/var. Use when adding a secret to any repo, deciding whether a value belongs in Key Vault vs GitHub vs local env, naming new secret families, or updating the files and workflows that consume secrets."
+name: secret-management
+description: "Manage secrets correctly in this environment: decide whether a value belongs in Azure Key Vault runtime config, repo-local `.env` bootstrap, machine-local `~/.secrets`, or GitHub Actions; choose naming; and update the right files, workflows, and docs when adding or moving a secret."
 ---
 
-# Secret Lane Routing
+# Secret Management
 
 ## Overview
 
-Use this skill to answer two questions:
+Use this skill to answer three questions:
 
 1. Which lane owns this secret?
 2. Which files, names, and validation steps must change?
+3. How should the secret be documented so future agents do it the same way?
 
-Read [references/decision-guide.md](references/decision-guide.md) for the concrete matrix, examples, and file targets.
+Read [references/decision-guide.md](references/decision-guide.md) for the concrete matrix, examples, naming rules, and file targets.
 
 ## Workflow
 

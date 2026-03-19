@@ -261,11 +261,11 @@
       "upstream_ref": "-"
     },
     {
-      "skill": "secret-lane-routing",
+      "skill": "secret-management",
       "origin": "owned",
       "scope": "global",
       "repos": [],
-      "source_path": "skills-source/owned/secret-lane-routing",
+      "source_path": "skills-source/owned/secret-management",
       "upstream_ref": "-"
     },
     {

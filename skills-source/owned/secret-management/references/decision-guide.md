@@ -1,4 +1,4 @@
-# Secret Decision Guide
+# Secret Management Guide
 
 Use this when adding or moving a secret in this environment.
 

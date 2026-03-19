@@ -1,0 +1,4 @@
+interface:
+  display_name: "Secret Management"
+  short_description: "Manage secrets the right way."
+  default_prompt: "Decide where a secret should live, how it should be named, and what files or workflows must be updated."
