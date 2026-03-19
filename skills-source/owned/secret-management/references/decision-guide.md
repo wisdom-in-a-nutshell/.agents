@@ -53,7 +53,20 @@ Use the `GitHub CI` lane.
 
 Typical examples:
 - `CROSS_REPO_SYNC_PAT`
-- Ghost deploy keys
+- one-off workflow-only service inputs that are not worth extra Azure plumbing
+
+### 5. Is the workflow in GitHub Actions, but the value is a real third-party credential you want Key Vault to own?
+
+Use `runtime in Key Vault, fetched in CI after OIDC`.
+
+- Store the canonical value in Azure Key Vault.
+- Keep Azure identifiers in GitHub `vars`.
+- Use Azure OIDC login inside the workflow.
+- Fetch the value at runtime from Key Vault instead of storing the value in GitHub.
+
+Typical examples:
+- Ghost theme deploy keys
+- any deploy-time third-party credential you want centralized in Key Vault without making it a machine-local secret
 
 ## File Targets In This Environment
 
