@@ -95,6 +95,16 @@
       "upstream_ref": "-"
     },
     {
+      "skill": "social-media-publishing",
+      "origin": "owned",
+      "scope": "repo",
+      "repos": [
+        "adi"
+      ],
+      "source_path": "skills-source/owned/social-media-publishing",
+      "upstream_ref": "-"
+    },
+    {
       "skill": "ai-podcasting",
       "origin": "owned",
       "scope": "repo",
