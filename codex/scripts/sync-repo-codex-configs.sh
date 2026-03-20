@@ -196,10 +196,16 @@ def render_repo_config(repo: str, defaults: dict, override: dict, presets: dict)
         lines.append("")
         lines.extend(scalar_lines)
 
-    features = override.get("features")
+    default_features = defaults.get("features", {})
+    override_features = override.get("features", {})
+    if default_features and not isinstance(default_features, dict):
+        raise TypeError("defaults.features must be a table")
+    if override_features and not isinstance(override_features, dict):
+        raise TypeError(f"features for {repo} must be a table")
+
+    features = dict(default_features)
+    features.update(override_features)
     if features:
-        if not isinstance(features, dict):
-            raise TypeError(f"features for {repo} must be a table")
         rendered_anything = True
         lines.append("")
         lines.append("[features]")

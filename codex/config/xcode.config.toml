@@ -14,7 +14,7 @@ personality = "pragmatic"
 suppress_unstable_features_warning = true
 
 [features]
-fast_mode = false
+fast_mode = true
 
 [agents.explorer]
 description = "Read-only explorer for local codebase mapping and investigation."

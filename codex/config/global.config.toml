@@ -13,7 +13,7 @@ suppress_unstable_features_warning = true
 
 [features]
 js_repl = true
-fast_mode = false
+fast_mode = true
 
 [agents.explorer]
 description = "Read-only explorer for local codebase mapping and investigation."

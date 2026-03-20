@@ -24,6 +24,9 @@ ALLOWED_SCALAR_KEYS = {
     "sandbox_mode",
     "personality",
 }
+ALLOWED_DEFAULT_TABLE_KEYS = {
+    "features",
+}
 
 
 def expand_path(raw: str, home: Path) -> Path:
@@ -74,6 +77,20 @@ def _effective_value(defaults: dict[str, Any], item: dict[str, Any], key: str) -
     return str(value)
 
 
+def _effective_fast_mode(defaults: dict[str, Any], item: dict[str, Any]) -> str:
+    default_features = defaults.get("features", {})
+    item_features = item.get("features", {})
+    if default_features and not isinstance(default_features, dict):
+        return "-"
+    if item_features and not isinstance(item_features, dict):
+        return "-"
+    merged = dict(default_features)
+    merged.update(item_features)
+    if "fast_mode" not in merged:
+        return "-"
+    return str(merged["fast_mode"]).lower()
+
+
 def generate_registry_base(config_dir: Path) -> None:
     content = """filters:
   and:
@@ -89,6 +106,8 @@ properties:
     displayName: Model
   effective_reasoning:
     displayName: Reasoning
+  effective_fast_mode:
+    displayName: Fast Mode
   effective_service_tier:
     displayName: Service Tier
 views:
@@ -99,6 +118,7 @@ views:
       - mcp_presets_csv
       - effective_model
       - effective_reasoning
+      - effective_fast_mode
       - effective_service_tier
   - type: table
     name: MCP Enabled
@@ -108,6 +128,7 @@ views:
       - mcp_presets_csv
       - effective_model
       - effective_reasoning
+      - effective_fast_mode
       - effective_service_tier
 """
     _write_if_changed(config_dir / "repo-bootstrap.base", content)
@@ -129,6 +150,7 @@ def generate_registry_items(
             f"mcp_presets_csv: {_yaml_str(item['mcp_presets_csv'])}",
             f"effective_model: {_yaml_str(_effective_value(defaults, item, 'model'))}",
             f"effective_reasoning: {_yaml_str(_effective_value(defaults, item, 'model_reasoning_effort'))}",
+            f"effective_fast_mode: {_yaml_str(_effective_fast_mode(defaults, item))}",
             f"effective_service_tier: {_yaml_str(_effective_value(defaults, item, 'service_tier'))}",
             "mcp_presets:",
         ]
@@ -155,8 +177,10 @@ def validate_registry(
       raise ValueError("defaults must be an object")
 
     for key in defaults:
-        if key not in ALLOWED_SCALAR_KEYS:
+        if key not in ALLOWED_SCALAR_KEYS and key not in ALLOWED_DEFAULT_TABLE_KEYS:
             raise ValueError(f"unsupported default key: {key}")
+    if "features" in defaults and not isinstance(defaults["features"], dict):
+        raise ValueError("defaults.features must be an object")
 
     presets = data.get("mcp_presets", {})
     if not isinstance(presets, dict):
@@ -211,6 +235,10 @@ def validate_registry(
         for key in ALLOWED_SCALAR_KEYS:
             if key in item:
                 validated[key] = item[key]
+        if "features" in item:
+            if not isinstance(item["features"], dict):
+                raise ValueError(f"repos[{idx}].features must be an object")
+            validated["features"] = item["features"]
         repos.append(validated)
 
     repos.sort(key=lambda item: item["path"])

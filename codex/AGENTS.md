@@ -64,6 +64,7 @@ Canonical personal Codex control-plane assets live here.
   - `features`
   - `service_tier`
 - The registry `defaults` block is rendered into every managed repo-local `.codex/config.toml` unless a repo entry overrides those keys explicitly.
+- `defaults.features` is merged with per-repo `features`, so baseline feature flags can be enabled globally while still allowing repo overrides.
 - `scripts/sync-repo-bootstrap-registry.sh` regenerates:
   - `config/repo-bootstrap.base`
   - `config/repo-bootstrap-items/`
