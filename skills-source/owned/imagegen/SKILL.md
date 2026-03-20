@@ -34,7 +34,6 @@ Generates or edits images for the current project (e.g., website assets, game as
 9. Iterate deliberately:
    - use **edit** when preserving an already-good composition/style/character is the priority
    - use a **fresh generation** when the concept is wrong or edits keep drifting composition, aspect ratio, or clarity
-   - for **tiny symbolic or ultra-local fixes** (for example: flip one arrow direction, remove one connector, turn only one character slightly, preserve everything except one local detail), do **not** burn many full model passes; try one narrow edit or masked edit, then switch to deterministic/manual cleanup if the model keeps touching nearby content
 10. Unless the user explicitly wants raw roughs, privately iterate a few times and present the strongest version.
 11. Save/return final outputs and note the final prompt + flags used; keep one canonical selected output once the user chooses a version.
 
@@ -52,7 +51,6 @@ When continuity matters across versions or panels:
 - prefer **edit-from-previous-version** over fresh regeneration once you have a usable base
 - use previously selected/canonical images as explicit reference anchors for style, character, and composition continuity
 - use fresh generation mainly for the first base image or when the concept/composition is fundamentally wrong and edits keep drifting
-- once the user locks a final version or final multi-panel set, promote it into one obvious canonical location and, when useful, make a simple manifest/worklog entry so future turns do not drift back to superseded variants
 
 This is especially important for:
 - comics or panel sequences
@@ -135,14 +133,6 @@ If installation isn't possible in this environment, tell the user which dependen
 - Do **not** use it by default.
 - Use it only when the user explicitly asks for deterministic post-processing after AI image generation/editing.
 - Reference: `references/post-processing.md`
-
-## Deterministic / manual cleanup rule
-- If the requested change is tiny and symbolic rather than conceptual (for example arrow semantics, single-connector removal, preserving everything except one local region), do not keep escalating with broad model edits once drift is obvious.
-- Prefer this escalation order:
-  1. narrow prompt on the current best version
-  2. masked edit if the change is spatially local
-  3. deterministic/manual cleanup if the model still alters nearby content
-- Record this decision in the worklog so later turns know why the final chosen result came from manual/deterministic cleanup rather than another model pass.
 
 ## Prompt augmentation
 Reformat user prompts into a structured, production-oriented spec. Only make implicit details explicit; do not invent new requirements.
