@@ -1,4 +1,4 @@
 interface:
   display_name: "Subagent Workflows"
   short_description: "Plan and use explicit Codex subagent workflows"
-  default_prompt: "Use $subagent-workflows to split this task into an effective Codex subagent workflow, choose the right roles, and execute the delegation."
+  default_prompt: "Use $subagent-workflows to split this task with subagents, choose the right roles, and execute the delegation."
