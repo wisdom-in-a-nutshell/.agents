@@ -1,4 +1,4 @@
 interface:
   display_name: "Project"
-  short_description: "Create, resume, and maintain long-running project trackers."
-  default_prompt: "Create or resume docs/projects/<project>/tasks.md, execute the next milestone, validate progress, and keep the tracker current."
+  short_description: "Create, resume, and drive long-running project trackers."
+  default_prompt: "Create or resume docs/projects/<project>/tasks.md, decide whether the next batch benefits from subagents, execute the next milestone or delegated batch, validate progress, and keep the tracker current."

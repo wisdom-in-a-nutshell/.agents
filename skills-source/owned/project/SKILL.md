@@ -38,7 +38,11 @@ Use one project tracker file as the durable source of truth for long-running wor
 5. **Plan the next execution batch**
    - Work from `Next 3 Actions` first, then remaining milestones and tasks.
    - Keep shared-file or shared-contract work sequential.
-   - Parallelize only truly independent tasks and keep one orchestrator responsible for the tracker.
+   - If the current batch contains independent side work, multiple independent questions, or clearly separable implementation slices, you are encouraged to use subagents when that is likely faster or cleaner than staying single-threaded.
+   - Let the model decide whether delegation helps; do not force subagents when local execution is faster or when the work is tightly coupled.
+   - Prefer built-in `explorer` for local repo/runtime questions, managed `external_researcher` for information outside the repo/runtime, and built-in `worker` only for clearly isolated implementation slices with explicit ownership.
+   - Treat `tasks.md` as the durable batch checkpoint: note what the parent thread is doing, what can be delegated, and what evidence or results need to be merged back before the next batch.
+   - Keep one orchestrator responsible for the tracker and final synthesis.
 6. **Execute**
    - Implement the next milestone or task batch directly.
    - Run validation from `Validation / Test Plan` or milestone-specific commands at logical checkpoints.
@@ -52,6 +56,7 @@ Use one project tracker file as the durable source of truth for long-running wor
    - Update milestone and task checkbox state.
    - Add a dated `Progress Log` entry.
    - Refresh `Decisions`, `Open Questions / Blockers`, and `Next 3 Actions`.
+   - Merge results from any delegated subagent work back into the tracker before planning the next batch.
    - Add newly discovered tasks when needed.
    - Continue if more actionable work remains.
 8. **Run as a persistence loop**
@@ -72,6 +77,7 @@ Use one project tracker file as the durable source of truth for long-running wor
 
 - Keep `tasks.md` as the canonical active memory for the project.
 - Keep durable execution state in the repo, not only in chat.
+- Treat `tasks.md` as the durable coordination artifact for planning, checkpoints, and resume state.
 - Use milestone-based execution with explicit acceptance criteria and validation.
 - Default to long uninterrupted execution, not one-task-at-a-time reporting.
 - Treat repo-local validation as authoritative; use `pre-commit` as the default baseline only when no stronger repo-local entrypoint is prescribed.
@@ -81,7 +87,10 @@ Use one project tracker file as the durable source of truth for long-running wor
 - Bias toward finishing and archiving completed projects instead of leaving stale trackers in the active list.
 - When a project is archived, prefer moving it into a dedicated archive path rather than only marking it archived in place, unless repo guidance explicitly prefers in-place archives.
 - Do not introduce a `ready-to-archive` holding state by default.
-- The current top-level run is the orchestrator; workers/background agents must not edit `tasks.md` directly.
+- If subagents appear likely to improve speed or context hygiene, the top-level run is encouraged to use them for bounded, independent work.
+- Subagents may read `tasks.md` for context, but the current top-level run remains the only writer.
+- Do not let multiple agents edit `tasks.md` concurrently; treat it like a small coordination database that the parent thread updates at checkpoints.
+- The current top-level run is the orchestrator; delegated agents return summaries, evidence, and next actions, and the parent thread merges those results into `tasks.md`.
 
 ## Closeout confidence test
 
