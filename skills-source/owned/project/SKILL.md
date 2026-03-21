@@ -110,6 +110,7 @@ Use one project tracker file as the durable source of truth for long-running wor
 ## Resources
 
 - Use `references/tasks-template.md` when creating or normalizing `tasks.md`.
+- Use `references/subagent-conventions.md` for the current role split, project-specific delegation rules, and subagent best practices in this control plane.
 - The template defines the standard single-file long-horizon structure for goals, scope, milestones, validation, decisions, blockers, progress, the current batch, and the remaining backlog.
 - Create `docs/projects/<project>/resources/` when the project produces reusable artifacts that help execution or verification, or when delegated work benefits from durable notes, logs, or outputs worth keeping.
 - Keep `resources/` flat by default and use topic-based filenames. Only add subfolders when the project has enough material to justify them.
