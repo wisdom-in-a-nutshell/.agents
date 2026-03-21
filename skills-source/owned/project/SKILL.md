@@ -43,7 +43,7 @@ Use one project tracker file as the durable source of truth for long-running wor
    - Let the model decide whether delegation helps; do not force subagents when local execution is faster or when the work is tightly coupled.
    - Prefer built-in `explorer` for local repo/runtime questions, managed `external_researcher` for information outside the repo/runtime, and built-in `worker` only for clearly isolated implementation slices with explicit ownership.
    - Use subagents to keep noisy exploration, external verification, tests, and logs off the main thread when that improves speed or context hygiene.
-   - Treat `tasks.md` as the durable batch checkpoint: note what the parent thread is doing, what can be delegated, and what durable results need to be merged back before the next batch.
+   - Treat `tasks.md` as the durable batch checkpoint: note what the parent thread is doing, what can be delegated, and what durable results need to be written into the tracker before the next batch.
    - Keep one orchestrator responsible for the tracker and final synthesis.
 6. **Execute**
    - Implement the next milestone or task batch directly.
@@ -58,7 +58,7 @@ Use one project tracker file as the durable source of truth for long-running wor
    - Update milestone and task checkbox state.
    - Add a dated `Progress Log` entry.
    - Refresh `Decisions`, `Open Questions / Blockers`, `Current Batch`, and remaining backlog.
-   - Merge results from any delegated subagent work back into the tracker before planning the next batch, and link topic-based files in `resources/` when they hold durable notes, logs, or artifacts worth keeping.
+   - Update the tracker with the durable outcome from any delegated subagent work before planning the next batch, and link topic-based files in `resources/` when they hold durable notes, logs, or artifacts worth keeping.
    - Add newly discovered tasks when needed.
    - Continue if more actionable work remains.
 8. **Run as a persistence loop**
@@ -80,11 +80,12 @@ Use one project tracker file as the durable source of truth for long-running wor
 - Keep `tasks.md` as the canonical active memory for the project.
 - Keep durable execution state in the repo, not only in chat.
 - Treat `tasks.md` as the durable coordination artifact for planning, checkpoints, and resume state.
+- Use milestones for checkpoint-sized outcomes, `Current Batch` for active work now, and `Backlog / Remaining Work` for items that are not active yet.
 - Use `Current Batch` as the live execution board and primary resume point instead of a linear `Next 3 Actions` list.
 - Use milestone-based execution with explicit acceptance criteria and validation.
 - Default to long uninterrupted execution, not one-task-at-a-time reporting.
 - Treat repo-local validation as authoritative; use `pre-commit` as the default baseline only when no stronger repo-local entrypoint is prescribed.
-- Keep `Current Batch` small, concrete, and current; move completed or stale items out during checkpoints.
+- Keep `Current Batch` small, concrete, and current; usually 1-5 items total and usually no more than 2-3 delegated items at once unless the work is mostly read-heavy.
 - Record non-obvious choices in `Decisions` so later agents do not reopen them.
 - Treat blockers as first-class: add them to `Open Questions / Blockers` immediately.
 - Bias toward finishing and archiving completed projects instead of leaving stale trackers in the active list.
@@ -95,7 +96,7 @@ Use one project tracker file as the durable source of truth for long-running wor
 - Do not let multiple agents edit `tasks.md` concurrently; treat it like a small coordination database that the parent thread updates at checkpoints.
 - Let delegated work write topic-based notes or artifacts under `docs/projects/<project>/resources/` when durable working memory is useful.
 - Keep `resources/` simple by default. Use topic-based filenames, not agent-based or batch-based names.
-- The current top-level run is the orchestrator; delegated agents return summaries, evidence, and next actions, and the parent thread merges those results into `tasks.md`.
+- The current top-level run is the orchestrator; delegated agents return summaries, evidence, and next actions, and the parent thread records the durable outcome in `tasks.md`.
 
 ## Closeout confidence test
 

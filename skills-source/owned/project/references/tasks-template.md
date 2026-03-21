@@ -35,6 +35,12 @@ TEMPLATE GUIDANCE (for generating agent):
 <!-- Milestones should be checkpoint-sized. Include acceptance criteria and validation in the line itself. -->
 - [ ] Milestone 1 — <deliverable>. Acceptance: <criteria>. Validate: `<command>`.
 
+<!-- Structure guide:
+- `Milestones` = checkpoint-sized outcomes.
+- `Current Batch` = active work now.
+- `Backlog / Remaining Work` = not active yet.
+-->
+
 ## Execution Rules
 <!-- Keep these project-specific. Default behavior: keep diffs scoped, validate each milestone, fix failures before moving on, update this tracker continuously. -->
 - Keep work scoped to the current milestone unless the tracker explicitly expands scope.
@@ -56,7 +62,7 @@ TEMPLATE GUIDANCE (for generating agent):
 - None.
 
 ## Current Batch
-<!-- Live execution board. Keep this small, usually 1-5 active items. This is the main resume point. Status values can be `todo`, `in_progress`, `delegated`, `blocked`, or `done`. `Role` can be `parent`, `explorer`, `external_researcher`, `worker`, or another explicit role. Link a topic-based file under `resources/` when durable notes or artifacts exist. -->
+<!-- Live execution board. Keep this small, usually 1-5 active items total and usually no more than 2-3 delegated items at once unless the work is mostly read-heavy. This is the main resume point. Status values can be `todo`, `in_progress`, `delegated`, `blocked`, or `done`. `Role` can be `parent`, `explorer`, `external_researcher`, `worker`, or another explicit role. Link a topic-based file under `resources/` when durable notes or artifacts exist. -->
 | Status | Work Item | Role | Resource |
 | --- | --- | --- | --- |
 | todo |  | parent |  |
