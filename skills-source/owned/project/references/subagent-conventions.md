@@ -39,6 +39,7 @@ Keep the work local when:
 - The parent thread owns `Current Batch`, milestone state, backlog state, blockers, and closeout.
 - Subagents may read `tasks.md` for context.
 - Subagents may write topic-based notes or artifacts under `docs/projects/<project>/resources/` when durable working memory is useful.
+- Before delegated work starts, the parent thread should add or refresh the corresponding row in `Current Batch`.
 - The parent thread records the durable outcome of delegated work in `tasks.md`.
 
 ## How To Use `Current Batch`
@@ -47,8 +48,10 @@ Treat `Current Batch` as the live execution board.
 
 - Keep it small, usually `1-5` items total.
 - Usually keep delegated items to `2-3` at once unless the work is mostly read-heavy.
+- Keep one row per active parent-owned or delegated work item.
 - Each row should say what is being done now, who owns it, and whether there is a useful file in `resources/`.
 - Move completed, stale, or blocked items out during checkpoints.
+- If the board is empty or stale, rebuild it from `Milestones` and `Backlog / Remaining Work` before continuing.
 - Promote work from `Backlog / Remaining Work` into `Current Batch` only when it is truly active.
 
 Recommended meanings for the columns:

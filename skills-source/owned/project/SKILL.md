@@ -22,6 +22,7 @@ Use one project tracker file as the durable source of truth for long-running wor
 2. **Choose the mode from repo state**
    - Missing tracker: create it.
    - Existing active tracker: resume from `Current Batch`.
+   - If `Current Batch` is empty, stale, or no longer reflects the real active work, rebuild it from the remaining milestones and backlog before continuing.
    - Existing tracker with stale or incorrect tasks: replan in place, then continue.
    - Fully complete tracker:
      - if sufficiently confident the scoped work is done, close it out and archive it immediately.
@@ -36,13 +37,16 @@ Use one project tracker file as the durable source of truth for long-running wor
    - Read `Current Batch`, `Progress Log`, `Open Questions / Blockers`, `Milestones`, and `Done When` first.
    - Read only the code/docs named in `Context / Constraints` or recent progress before scanning the wider repo.
 5. **Plan the next execution batch**
+   - If `Current Batch` is empty, rebuild it from the remaining milestones and backlog before doing more work.
    - Work from `Current Batch` first, then remaining milestones and backlog.
    - Treat `Current Batch` as the live execution board and primary resume point. Keep it bounded and concrete instead of growing it into the full backlog.
+   - Each `Current Batch` row should represent one active parent-owned or delegated work item.
    - Keep shared-file or shared-contract work sequential.
    - If the current batch contains independent side work, multiple independent questions, or clearly separable implementation slices, you are encouraged to use subagents when that is likely faster or cleaner than staying single-threaded.
    - Let the model decide whether delegation helps; do not force subagents when local execution is faster or when the work is tightly coupled.
    - Prefer built-in `explorer` for local repo/runtime questions, managed `external_researcher` for information outside the repo/runtime, and built-in `worker` only for clearly isolated implementation slices with explicit ownership.
    - Use subagents to keep noisy exploration, external verification, tests, and logs off the main thread when that improves speed or context hygiene.
+   - Before spawning a delegated work item, add or update its row in `Current Batch` so the tracker reflects planned ownership and any `resources/` file path.
    - Treat `tasks.md` as the durable batch checkpoint: note what the parent thread is doing, what can be delegated, and what durable results need to be written into the tracker before the next batch.
    - Keep one orchestrator responsible for the tracker and final synthesis.
 6. **Execute**
@@ -82,10 +86,12 @@ Use one project tracker file as the durable source of truth for long-running wor
 - Treat `tasks.md` as the durable coordination artifact for planning, checkpoints, and resume state.
 - Use milestones for checkpoint-sized outcomes, `Current Batch` for active work now, and `Backlog / Remaining Work` for items that are not active yet.
 - Use `Current Batch` as the live execution board and primary resume point instead of a linear `Next 3 Actions` list.
+- If `Current Batch` is empty, stale, or obviously wrong, rebuild it from the remaining milestones and backlog before continuing.
 - Use milestone-based execution with explicit acceptance criteria and validation.
 - Default to long uninterrupted execution, not one-task-at-a-time reporting.
 - Treat repo-local validation as authoritative; use `pre-commit` as the default baseline only when no stronger repo-local entrypoint is prescribed.
 - Keep `Current Batch` small, concrete, and current; usually 1-5 items total and usually no more than 2-3 delegated items at once unless the work is mostly read-heavy.
+- Keep one row in `Current Batch` per active parent-owned or delegated work item.
 - Record non-obvious choices in `Decisions` so later agents do not reopen them.
 - Treat blockers as first-class: add them to `Open Questions / Blockers` immediately.
 - Bias toward finishing and archiving completed projects instead of leaving stale trackers in the active list.
@@ -94,6 +100,7 @@ Use one project tracker file as the durable source of truth for long-running wor
 - If subagents appear likely to improve speed or context hygiene, the top-level run is encouraged to use them for bounded, independent work.
 - Subagents may read `tasks.md` for context, but the current top-level run remains the only writer.
 - Do not let multiple agents edit `tasks.md` concurrently; treat it like a small coordination database that the parent thread updates at checkpoints.
+- Before starting delegated work, record or refresh the delegated item in `Current Batch` so the tracker reflects the real plan.
 - Let delegated work write topic-based notes or artifacts under `docs/projects/<project>/resources/` when durable working memory is useful.
 - Keep `resources/` simple by default. Use topic-based filenames, not agent-based or batch-based names.
 - The current top-level run is the orchestrator; delegated agents return summaries, evidence, and next actions, and the parent thread records the durable outcome in `tasks.md`.

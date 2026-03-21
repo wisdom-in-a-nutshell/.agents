@@ -51,7 +51,9 @@ TEMPLATE GUIDANCE (for generating agent):
 - Update this tracker whenever the plan changes materially or before ending the run.
 - If project-critical ambiguity would stall progress later, ask targeted follow-up questions now and record the answers here.
 - Use `Current Batch` as the live execution board and primary resume point.
+- If `Current Batch` is empty or stale, rebuild it from the remaining milestones and backlog before continuing.
 - If parallel work helps, keep `tasks.md` single-writer and let delegated work write topic-based files under `docs/projects/<project>/resources/` when durable notes or artifacts are useful.
+- Before starting delegated work, add or update the delegated row in `Current Batch`.
 
 ## Decisions
 <!-- Record non-obvious choices and rationale so the next agent does not re-open them. -->
@@ -62,7 +64,7 @@ TEMPLATE GUIDANCE (for generating agent):
 - None.
 
 ## Current Batch
-<!-- Live execution board. Keep this small, usually 1-5 active items total and usually no more than 2-3 delegated items at once unless the work is mostly read-heavy. This is the main resume point. Status values can be `todo`, `in_progress`, `delegated`, `blocked`, or `done`. `Role` can be `parent`, `explorer`, `external_researcher`, `worker`, or another explicit role. Link a topic-based file under `resources/` when durable notes or artifacts exist. -->
+<!-- Live execution board. Keep one row per active parent-owned or delegated work item. Keep this small, usually 1-5 active items total and usually no more than 2-3 delegated items at once unless the work is mostly read-heavy. This is the main resume point. Status values can be `todo`, `in_progress`, `delegated`, `blocked`, or `done`. `Role` can be `parent`, `explorer`, `external_researcher`, `worker`, or another explicit role. Link a topic-based file under `resources/` when durable notes or artifacts exist. -->
 | Status | Work Item | Role | Resource |
 | --- | --- | --- | --- |
 | todo |  | parent |  |
