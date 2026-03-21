@@ -76,6 +76,7 @@ Use [Codex Control Plane Ownership](/Users/dobby/.agents/docs/references/codex-c
   - disables selected built-in system skills in `~/.codex/config.toml` when the control plane should prefer managed skill copies instead
   - rewrites machine-specific notify and system-skill paths for the current `$HOME`
   - strips foreign-user project and system-skill entries before writing
+  - prunes stale global terminal `mcp_servers.*` sections that are no longer present in the canonical template
   - fails fast if the target config contains unresolved Git conflict markers
   - skips no-op rewrites and stores real pre-change backups under `~/.local/state/codex-control-plane/runtime-config-backups/`
 - [`sync-trusted-projects.sh`](/Users/dobby/.agents/codex/scripts/sync-trusted-projects.sh)

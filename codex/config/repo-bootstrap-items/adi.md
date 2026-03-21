@@ -1,13 +1,14 @@
 ---
 repo_name: "adi"
 path: "~/GitHub/adi"
-mcp_presets_csv: "openaiDeveloperDocs"
+mcp_presets_csv: "openaiDeveloperDocs,paper"
 effective_model: "gpt-5.4"
 effective_reasoning: "high"
 effective_fast_mode: "true"
 effective_service_tier: "fast"
 mcp_presets:
   - "openaiDeveloperDocs"
+  - "paper"
 ---
 
 Generated from `codex/config/repo-bootstrap.json`. Do not edit manually.

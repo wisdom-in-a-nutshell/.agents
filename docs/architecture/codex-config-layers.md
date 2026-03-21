@@ -53,7 +53,7 @@ These files are the source of truth.
 - `sync-config.sh` writes the managed baseline into `~/.codex/config.toml` and Xcode Codex config.
 - `sync-config.sh` also syncs managed role config files into `~/.codex/agents/` and the Xcode Codex runtime `agents/` folder so relative `config_file` paths resolve from the live runtime config.
 - It preserves machine-specific/runtime-specific state that should not live in git.
-- It also prunes stale managed keys when the canonical template no longer wants them.
+- It also prunes stale managed keys when the canonical template no longer wants them, including global terminal MCP server sections that are no longer declared in the canonical template.
 
 Example:
 - `service_tier = "fast"` used to be in the canonical templates.
