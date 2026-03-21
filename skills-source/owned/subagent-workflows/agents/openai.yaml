@@ -1,0 +1,4 @@
+interface:
+  display_name: "Subagent Workflows"
+  short_description: "Plan and use explicit Codex subagent workflows"
+  default_prompt: "Use $subagent-workflows to design or apply explicit Codex subagent workflows, decide when to spawn agents, and map work between built-in `explorer`, managed `external_researcher`, and any custom roles."

@@ -84,6 +84,14 @@
       "upstream_ref": "-"
     },
     {
+      "skill": "subagent-workflows",
+      "origin": "owned",
+      "scope": "global",
+      "repos": [],
+      "source_path": "skills-source/owned/subagent-workflows",
+      "upstream_ref": "-"
+    },
+    {
       "skill": "adi-writing",
       "origin": "owned",
       "scope": "repo",
