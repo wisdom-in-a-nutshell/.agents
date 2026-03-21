@@ -15,8 +15,7 @@
       "url": "http://127.0.0.1:29979/mcp"
     },
     "cloudflare-api": {
-      "url": "https://mcp.cloudflare.com/mcp",
-      "bearer_token_env_var": "CLOUDFLARE_API_TOKEN"
+      "url": "https://mcp.cloudflare.com/mcp"
     },
     "cloudflare-docs": {
       "url": "https://docs.mcp.cloudflare.com/mcp"
