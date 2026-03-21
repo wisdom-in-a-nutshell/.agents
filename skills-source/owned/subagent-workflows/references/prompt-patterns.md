@@ -20,15 +20,10 @@ Investigate this change with subagents. Have `explorer` map the affected code pa
 Use parallel subagents. Keep orchestration in the main thread. Spawn one `worker` for the backend validation changes in `server/validation/*` and one `worker` for the UI wiring in `app/settings/*`. Tell both workers they are not alone in the codebase, they must not revert others' edits, and they should keep changes confined to their assigned files. Wait for both before integrating.
 ```
 
-## Long-Running Project
-
-```text
-Use `$project` as the top-level orchestrator. Resume the tracker, keep `tasks.md` owned by the parent thread, then spawn subagents only for bounded side work: `explorer` for local code mapping, `external_researcher` for outside verification, and `worker` only for clearly isolated implementation slices. Summarize all delegated results back into the parent thread before updating the tracker.
-```
-
 ## Prompt Checklist
 
 - Name the role split explicitly.
+- Explain why the split is useful for the current task.
 - State whether to wait for all agents.
 - State the expected output shape.
 - Give workers clear ownership when files may be edited.

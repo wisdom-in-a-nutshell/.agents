@@ -24,10 +24,3 @@ Use this reference to choose a clean role split before spawning subagents.
 
 - Add a custom role only when it adds a real durable constraint, workflow, or tool surface.
 - Do not override a built-in role name unless the override adds clear value and you want to diverge from upstream behavior intentionally.
-- Prefer repo-local custom roles when the role is only useful in one repo.
-
-## Long-Running Project Rule
-
-- For `$project` work, the top-level run is the orchestrator.
-- Subagents can gather evidence, verify docs, review code, or implement bounded slices.
-- Subagents must not edit `docs/projects/<project>/tasks.md` directly.
