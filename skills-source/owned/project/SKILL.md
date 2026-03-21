@@ -21,7 +21,7 @@ Use one project tracker file as the durable source of truth for long-running wor
    - If `docs/projects/<project>/tasks.md` is missing, create it using `references/tasks-template.md`.
 2. **Choose the mode from repo state**
    - Missing tracker: create it.
-   - Existing active tracker: resume from `Next 3 Actions`.
+   - Existing active tracker: resume from `Current Batch`.
    - Existing tracker with stale or incorrect tasks: replan in place, then continue.
    - Fully complete tracker:
      - if sufficiently confident the scoped work is done, close it out and archive it immediately.
@@ -33,15 +33,17 @@ Use one project tracker file as the durable source of truth for long-running wor
    - Keep nudging until the tracker contains enough information for a long uninterrupted execution stretch.
    - Do not proceed on known project-critical ambiguity just because some implementation work is possible.
 4. **Sync context**
-   - Read `Next 3 Actions`, `Progress Log`, `Open Questions / Blockers`, `Milestones`, and `Done When` first.
+   - Read `Current Batch`, `Progress Log`, `Open Questions / Blockers`, `Milestones`, and `Done When` first.
    - Read only the code/docs named in `Context / Constraints` or recent progress before scanning the wider repo.
 5. **Plan the next execution batch**
-   - Work from `Next 3 Actions` first, then remaining milestones and tasks.
+   - Work from `Current Batch` first, then remaining milestones and backlog.
+   - Treat `Current Batch` as the live execution board and primary resume point. Keep it bounded and concrete instead of growing it into the full backlog.
    - Keep shared-file or shared-contract work sequential.
    - If the current batch contains independent side work, multiple independent questions, or clearly separable implementation slices, you are encouraged to use subagents when that is likely faster or cleaner than staying single-threaded.
    - Let the model decide whether delegation helps; do not force subagents when local execution is faster or when the work is tightly coupled.
    - Prefer built-in `explorer` for local repo/runtime questions, managed `external_researcher` for information outside the repo/runtime, and built-in `worker` only for clearly isolated implementation slices with explicit ownership.
-   - Treat `tasks.md` as the durable batch checkpoint: note what the parent thread is doing, what can be delegated, and what evidence or results need to be merged back before the next batch.
+   - Use subagents to keep noisy exploration, external verification, tests, and logs off the main thread when that improves speed or context hygiene.
+   - Treat `tasks.md` as the durable batch checkpoint: note what the parent thread is doing, what can be delegated, and what durable results need to be merged back before the next batch.
    - Keep one orchestrator responsible for the tracker and final synthesis.
 6. **Execute**
    - Implement the next milestone or task batch directly.
@@ -55,8 +57,8 @@ Use one project tracker file as the durable source of truth for long-running wor
 7. **Checkpoint after each meaningful batch**
    - Update milestone and task checkbox state.
    - Add a dated `Progress Log` entry.
-   - Refresh `Decisions`, `Open Questions / Blockers`, and `Next 3 Actions`.
-   - Merge results from any delegated subagent work back into the tracker before planning the next batch.
+   - Refresh `Decisions`, `Open Questions / Blockers`, `Current Batch`, and remaining backlog.
+   - Merge results from any delegated subagent work back into the tracker before planning the next batch, and link topic-based files in `resources/` when they hold durable notes, logs, or artifacts worth keeping.
    - Add newly discovered tasks when needed.
    - Continue if more actionable work remains.
 8. **Run as a persistence loop**
@@ -78,10 +80,11 @@ Use one project tracker file as the durable source of truth for long-running wor
 - Keep `tasks.md` as the canonical active memory for the project.
 - Keep durable execution state in the repo, not only in chat.
 - Treat `tasks.md` as the durable coordination artifact for planning, checkpoints, and resume state.
+- Use `Current Batch` as the live execution board and primary resume point instead of a linear `Next 3 Actions` list.
 - Use milestone-based execution with explicit acceptance criteria and validation.
 - Default to long uninterrupted execution, not one-task-at-a-time reporting.
 - Treat repo-local validation as authoritative; use `pre-commit` as the default baseline only when no stronger repo-local entrypoint is prescribed.
-- Preserve a clear resume point in `Next 3 Actions`.
+- Keep `Current Batch` small, concrete, and current; move completed or stale items out during checkpoints.
 - Record non-obvious choices in `Decisions` so later agents do not reopen them.
 - Treat blockers as first-class: add them to `Open Questions / Blockers` immediately.
 - Bias toward finishing and archiving completed projects instead of leaving stale trackers in the active list.
@@ -90,6 +93,8 @@ Use one project tracker file as the durable source of truth for long-running wor
 - If subagents appear likely to improve speed or context hygiene, the top-level run is encouraged to use them for bounded, independent work.
 - Subagents may read `tasks.md` for context, but the current top-level run remains the only writer.
 - Do not let multiple agents edit `tasks.md` concurrently; treat it like a small coordination database that the parent thread updates at checkpoints.
+- Let delegated work write topic-based notes or artifacts under `docs/projects/<project>/resources/` when durable working memory is useful.
+- Keep `resources/` simple by default. Use topic-based filenames, not agent-based or batch-based names.
 - The current top-level run is the orchestrator; delegated agents return summaries, evidence, and next actions, and the parent thread merges those results into `tasks.md`.
 
 ## Closeout confidence test
@@ -104,5 +109,6 @@ Use one project tracker file as the durable source of truth for long-running wor
 ## Resources
 
 - Use `references/tasks-template.md` when creating or normalizing `tasks.md`.
-- The template defines the standard single-file long-horizon structure for goals, scope, milestones, validation, decisions, blockers, progress, and next actions.
-- Create `docs/projects/<project>/resources/` only when the project produces reusable artifacts that help execution or verification: research notes, snapshots, generated fixtures, helper scripts, evaluation outputs, or logs worth keeping. Do not create it by default.
+- The template defines the standard single-file long-horizon structure for goals, scope, milestones, validation, decisions, blockers, progress, the current batch, and the remaining backlog.
+- Create `docs/projects/<project>/resources/` when the project produces reusable artifacts that help execution or verification, or when delegated work benefits from durable notes, logs, or outputs worth keeping.
+- Keep `resources/` flat by default and use topic-based filenames. Only add subfolders when the project has enough material to justify them.

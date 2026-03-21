@@ -44,6 +44,8 @@ TEMPLATE GUIDANCE (for generating agent):
 - Unless repo guidance says otherwise, archiving means moving the tracker to `docs/projects/archive/<project>/tasks.md`; create the archive folders if missing.
 - Update this tracker whenever the plan changes materially or before ending the run.
 - If project-critical ambiguity would stall progress later, ask targeted follow-up questions now and record the answers here.
+- Use `Current Batch` as the live execution board and primary resume point.
+- If parallel work helps, keep `tasks.md` single-writer and let delegated work write topic-based files under `docs/projects/<project>/resources/` when durable notes or artifacts are useful.
 
 ## Decisions
 <!-- Record non-obvious choices and rationale so the next agent does not re-open them. -->
@@ -53,8 +55,14 @@ TEMPLATE GUIDANCE (for generating agent):
 <!-- Use "None." only when truly empty. -->
 - None.
 
-## Tasks
-<!-- Atomic execution tasks. Include at least one validation task, one AGENTS.md review/update task when guidance changes materially, and a final closeout/archive task rather than a `ready-to-archive` placeholder. -->
+## Current Batch
+<!-- Live execution board. Keep this small, usually 1-5 active items. This is the main resume point. Status values can be `todo`, `in_progress`, `delegated`, `blocked`, or `done`. `Role` can be `parent`, `explorer`, `external_researcher`, `worker`, or another explicit role. Link a topic-based file under `resources/` when durable notes or artifacts exist. -->
+| Status | Work Item | Role | Resource |
+| --- | --- | --- | --- |
+| todo |  | parent |  |
+
+## Backlog / Remaining Work
+<!-- Durable list of remaining work. Promote items into Current Batch when they become active. Include at least one validation task, one AGENTS.md/doc review/update task when guidance changes materially, and a final closeout/archive task rather than a `ready-to-archive` placeholder. -->
 - [ ] 
 
 ## Validation / Test Plan
@@ -62,11 +70,5 @@ TEMPLATE GUIDANCE (for generating agent):
 - 
 
 ## Progress Log
-<!-- Format: YYYY-MM-DD: [DONE|BLOCKED|IN-PROGRESS] task or milestone — outcome -->
+<!-- Format: YYYY-MM-DD: [DONE|BLOCKED|IN-PROGRESS|DELEGATED] task or milestone — outcome -->
 - YYYY-MM-DD: [IN-PROGRESS] Created or refreshed project tracker.
-
-## Next 3 Actions
-<!-- Resume point. Keep this current after every meaningful batch. -->
-1. 
-2. 
-3. 
