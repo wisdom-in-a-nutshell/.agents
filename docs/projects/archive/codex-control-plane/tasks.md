@@ -105,8 +105,9 @@ Codex setup is currently split across `~/.agents`, `~/.codex`, and `~/GitHub/scr
 - 2026-03-11: [IN-PROGRESS] Repaired local Codex App recommended-skills loading by restoring `~/.codex/vendor_imports/skills` as the upstream `openai/skills` Git checkout, and documented that `vendor_imports/skills` is a runtime-managed nested repo that must be preserved during `~/.codex` cleanup.
 - 2026-03-12: [IN-PROGRESS] Added a canonical repo bootstrap registry plus repo-local Codex config sync, extended trusted-project sync to include registry-managed extra repos like `~/.agents`, and wired repo-local `.codex/config.toml` rendering into the main Codex bootstrap flow.
 - 2026-03-13: [IN-PROGRESS] Removed the stale `com.<user>.codex-app-server-snapshot-refresh` LaunchAgent that still pointed at a deleted script, and documented that this should be cleaned up as leftover machine state rather than recreated.
+- 2026-03-21: [DONE] Archived the completed tracker on user confirmation after the control-plane centralization work and cross-machine rollout were considered complete.
 
 ## Next 3 Actions
-1. Decide whether any legacy backup artifacts under `~/.codex` should be pruned now that the repo layer is gone.
-2. Archive this project tracker once you are satisfied the cross-machine rollout is done.
+1. None.
+2. None.
 3. None.
