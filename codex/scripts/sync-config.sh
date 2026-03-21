@@ -642,7 +642,7 @@ render_xcode_config() {
     [[ -n "$key" ]] || continue
     if [[ -z "$section" ]]; then
       upsert_top_level_key "$target_file" "$key" "$value"
-    elif [[ "$section" == "features" || "$section" == "sandbox_workspace_write" || "$section" == "mcp_servers.openaiDeveloperDocs" ]]; then
+    elif [[ "$section" == "features" || "$section" == "sandbox_workspace_write" || "$section" == "mcp_servers.openaiDeveloperDocs" || "$section" == agents.* ]]; then
       upsert_section_key "$target_file" "$section" "$key" "$value"
     fi
   done < <(extract_toml_entries "$template_file")
