@@ -75,11 +75,7 @@
       ]
     },
     {
-      "path": "~/GitHub/blog-personal",
-      "mcp_presets": [
-        "cloudflare-api",
-        "cloudflare-docs"
-      ]
+      "path": "~/GitHub/blog-personal"
     },
     {
       "path": "~/GitHub/codexclaw",
