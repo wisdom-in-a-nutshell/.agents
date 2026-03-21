@@ -29,10 +29,10 @@ For live commands and plan structure, read:
 Core commands:
 
 ```bash
-python /Users/dobby/.agents/skills-source/owned/social-media-publishing/scripts/reddit_cli.py list-flairs --subreddit OpenAI
-python /Users/dobby/.agents/skills-source/owned/social-media-publishing/scripts/reddit_cli.py list-submissions --max-items 20 --days 7
-python /Users/dobby/.agents/skills-source/owned/social-media-publishing/scripts/reddit_cli.py submit-plan --plan /abs/path/post-plan.json --dry-run
-python /Users/dobby/.agents/skills-source/owned/social-media-publishing/scripts/reddit_cli.py submit-plan --plan /abs/path/post-plan.json
+python3 ~/.agents/skills-source/owned/social-media-publishing/scripts/reddit_cli.py list-flairs --subreddit OpenAI
+python3 ~/.agents/skills-source/owned/social-media-publishing/scripts/reddit_cli.py list-submissions --max-items 20 --days 7
+python3 ~/.agents/skills-source/owned/social-media-publishing/scripts/reddit_cli.py submit-plan --plan /abs/path/post-plan.json --dry-run
+python3 ~/.agents/skills-source/owned/social-media-publishing/scripts/reddit_cli.py submit-plan --plan /abs/path/post-plan.json
 ```
 
 The CLI supports:

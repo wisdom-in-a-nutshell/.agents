@@ -21,6 +21,15 @@ Use `submit-plan` for repeatable posts or when paths/body text should stay in pr
 }
 ```
 
+Use explicit gallery image objects in JSON plan files, even when you do not need
+captions:
+
+```json
+{
+  "image_path": "relative/or/absolute/path.png"
+}
+```
+
 ## Minimal self-post example
 
 ```json
@@ -55,4 +64,8 @@ Use `submit-plan` for repeatable posts or when paths/body text should stay in pr
 
 - Relative paths are resolved relative to the plan file.
 - Absolute paths are used as-is.
-- JSON gallery arrays can be either strings or full objects with `caption` and `outbound_url`.
+- In JSON plan files, prefer explicit gallery image objects with `image_path`.
+- Optional gallery fields on each image object are `caption` and `outbound_url`.
+- If a workflow ever seems to accept plain-string gallery entries, treat that as
+  a convenience path rather than the canonical shape; object form is the safe
+  default.

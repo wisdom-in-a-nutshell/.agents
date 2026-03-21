@@ -36,7 +36,7 @@ The skill should stay reusable; the campaign should stay local to the work.
 2. Inspect flairs with:
 
 ```bash
-python /Users/dobby/.agents/skills-source/owned/social-media-publishing/scripts/reddit_cli.py list-flairs --subreddit LocalLLaMA
+python3 ~/.agents/skills-source/owned/social-media-publishing/scripts/reddit_cli.py list-flairs --subreddit LocalLLaMA
 ```
 
 3. Prepare a single plan JSON file when the post is non-trivial.
@@ -66,26 +66,26 @@ Dry-run resolves relative paths and file-backed text without posting.
 List flairs:
 
 ```bash
-python /Users/dobby/.agents/skills-source/owned/social-media-publishing/scripts/reddit_cli.py list-flairs --subreddit OpenAI
+python3 ~/.agents/skills-source/owned/social-media-publishing/scripts/reddit_cli.py list-flairs --subreddit OpenAI
 ```
 
 List recent submissions:
 
 ```bash
-python /Users/dobby/.agents/skills-source/owned/social-media-publishing/scripts/reddit_cli.py list-submissions --max-items 20 --days 7
+python3 ~/.agents/skills-source/owned/social-media-publishing/scripts/reddit_cli.py list-submissions --max-items 20 --days 7
 ```
 
 Submit a plan:
 
 ```bash
-python /Users/dobby/.agents/skills-source/owned/social-media-publishing/scripts/reddit_cli.py submit-plan --plan /abs/path/post-plan.json --dry-run
-python /Users/dobby/.agents/skills-source/owned/social-media-publishing/scripts/reddit_cli.py submit-plan --plan /abs/path/post-plan.json
+python3 ~/.agents/skills-source/owned/social-media-publishing/scripts/reddit_cli.py submit-plan --plan /abs/path/post-plan.json --dry-run
+python3 ~/.agents/skills-source/owned/social-media-publishing/scripts/reddit_cli.py submit-plan --plan /abs/path/post-plan.json
 ```
 
 Native Reddit video posting:
 
 ```bash
-python /Users/dobby/.agents/skills-source/owned/social-media-publishing/scripts/reddit_native_video_cli.py --targets-file /abs/path/targets.json --comment-file /abs/path/comment.md --video-path /abs/path/demo.mp4
+python3 ~/.agents/skills-source/owned/social-media-publishing/scripts/reddit_native_video_cli.py --targets-file /abs/path/targets.json --comment-file /abs/path/comment.md --video-path /abs/path/demo.mp4
 ```
 
 ## Analytics scope
