@@ -90,6 +90,9 @@ def generate_registry_base(views_dir: Path) -> None:
     content = """filters:
   and:
     - 'file.inFolder("docs/references/registry/skills-items")'
+formulas:
+  scope_badge: 'if(scope == "global", "🌍 global", if(scope == "repo", "📦 repo", scope))'
+  origin_badge: 'if(origin == "external", "↗ external", if(origin == "owned", "✳ owned", origin))'
 properties:
   registry_kind:
     displayName: Type
@@ -99,10 +102,14 @@ properties:
     displayName: Origin
   scope:
     displayName: Scope
+  formula.scope_badge:
+    displayName: Scope
   repos_csv:
     displayName: Repos
   upstream_ref:
     displayName: Upstream
+  formula.origin_badge:
+    displayName: Origin
   repo:
     displayName: Repo
   source_path:
@@ -113,8 +120,8 @@ views:
     filters: 'registry_kind == "managed"'
     order:
       - skill
-      - origin
-      - scope
+      - formula.origin_badge
+      - formula.scope_badge
       - repos_csv
       - upstream_ref
     sort:
