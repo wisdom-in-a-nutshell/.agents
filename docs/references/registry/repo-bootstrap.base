@@ -1,6 +1,6 @@
 filters:
   and:
-    - file.inFolder("docs/references/registry/repo-bootstrap-items")
+    - 'file.inFolder("docs/references/registry/repo-bootstrap-items")'
 properties:
   repo_name:
     displayName: Repo
@@ -28,7 +28,7 @@ views:
       - effective_service_tier
   - type: table
     name: MCP Enabled
-    filters: mcp_presets_csv != "-"
+    filters: 'mcp_presets_csv != "-"'
     order:
       - repo_name
       - mcp_presets_csv

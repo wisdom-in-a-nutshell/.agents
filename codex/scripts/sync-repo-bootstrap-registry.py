@@ -220,10 +220,14 @@ def generate_mcp_registry_base(views_dir: Path) -> None:
     content = """filters:
   and:
     - 'file.inFolder("docs/references/registry/mcp-registry-items")'
+formulas:
+  scope_badge: 'if(effective_scope == "global", "🌍 global", if(effective_scope == "repo", "📦 repo", if(effective_scope == "mixed", "🧩 mixed", effective_scope)))'
 properties:
   mcp_name:
     displayName: MCP
   effective_scope:
+    displayName: Scope
+  formula.scope_badge:
     displayName: Scope
   global_terminal:
     displayName: Global Terminal
@@ -240,7 +244,7 @@ views:
     name: MCP Registry
     order:
       - mcp_name
-      - effective_scope
+      - formula.scope_badge
       - global_terminal
       - global_xcode
       - repos_csv
@@ -251,7 +255,7 @@ views:
     filters: 'global_terminal == "true" || global_xcode == "true"'
     order:
       - mcp_name
-      - effective_scope
+      - formula.scope_badge
       - global_terminal
       - global_xcode
       - repos_csv
@@ -262,7 +266,7 @@ views:
     filters: 'repos_csv != "-"'
     order:
       - mcp_name
-      - effective_scope
+      - formula.scope_badge
       - repos_csv
       - transport
       - target
