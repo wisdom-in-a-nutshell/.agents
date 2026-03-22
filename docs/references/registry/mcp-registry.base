@@ -1,6 +1,6 @@
 filters:
   and:
-    - 'file.inFolder("docs/references/registry/mcp-registry-items")'
+    - file.inFolder("docs/references/registry/mcp-registry-items")
 properties:
   mcp_name:
     displayName: MCP
@@ -29,7 +29,7 @@ views:
       - target
   - type: table
     name: Global MCPs
-    filters: 'global_terminal == "true" || global_xcode == "true"'
+    filters: global_terminal == "true" || global_xcode == "true"
     order:
       - mcp_name
       - effective_scope
@@ -40,7 +40,7 @@ views:
       - target
   - type: table
     name: Repo MCPs
-    filters: 'repos_csv != "-"'
+    filters: repos_csv != "-"
     order:
       - mcp_name
       - effective_scope
