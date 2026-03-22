@@ -298,6 +298,24 @@ def validate_submit_payload(payload: dict[str, Any]) -> None:
 
 
 def validate_intro_copy_payload(payload: dict[str, Any]) -> None:
+  if not payload:
+    raise ClientError(
+      code="E_VALIDATION",
+      message="update-intro-copy payload must not be empty.",
+      retryable=False,
+      hint="Provide either legacy intro fields or raw backend patch fields.",
+      exit_code=2,
+    )
+
+  if any(key in payload for key in ("deliverables", "files", "submission")):
+    return
+
+  if any(
+    isinstance(payload.get(key), str) and payload.get(key, "").strip()
+    for key in ("introFile", "introTranscript", "editorInstructions")
+  ):
+    return
+
   missing_required: list[str] = []
 
   recording_link = payload.get("recordingLink", payload.get("introFile"))
@@ -635,9 +653,9 @@ def build_parser() -> argparse.ArgumentParser:
     "--payload-file",
     required=True,
     help=(
-      "Path to JSON payload file. Required fields: recordingLink, title, thumbnailText. "
-      "Optional fields: transcript, instructionsToEditor, "
-      "videoThumbnailLink, audioThumbnailLink, outroMusicLink."
+      "Path to JSON payload file. Supports either legacy alias fields "
+      "(recordingLink/title/thumbnailText/videoThumbnailLink/audioThumbnailLink/outroMusicLink) "
+      "or raw backend patch fields such as deliverables/files/submission."
     ),
   )
   intro_parser.add_argument(

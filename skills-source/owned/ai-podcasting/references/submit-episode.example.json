@@ -8,7 +8,39 @@
     },
     "intro": null,
     "teaser": null,
-    "episode_outro": null
+    "episode_outro": {
+      "edited": "https://example.com/path/to/outro-music.mp3"
+    }
+  },
+  "deliverables": {
+    "thumbnails": {
+      "video": {
+        "url": "https://example.com/path/to/video-thumbnail-16x9-primary.png",
+        "variants": [
+          {
+            "url": "https://example.com/path/to/video-thumbnail-16x9-a.png"
+          },
+          {
+            "url": "https://example.com/path/to/video-thumbnail-16x9-b.png"
+          }
+        ]
+      },
+      "audio": {
+        "url": "https://example.com/path/to/audio-thumbnail-1x1.png"
+      },
+      "options": [
+        {
+          "url": "https://example.com/path/to/thumbnail-option-1.png",
+          "title_text": "Draft thumbnail line",
+          "template": "tcr-primary"
+        },
+        {
+          "url": "https://example.com/path/to/thumbnail-option-2.png",
+          "title_text": "Alternate thumbnail line",
+          "template": "tcr-alt"
+        }
+      ]
+    }
   },
   "showNotes": "Episode outline and links go here.",
   "assetUrls": [],
