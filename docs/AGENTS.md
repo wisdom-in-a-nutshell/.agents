@@ -17,4 +17,5 @@ Use this file as the docs contract for the `.agents` control-plane repo.
 
 - Keep docs short and durable.
 - Keep root `AGENTS.md` as the repo router.
+- Prefer nested `AGENTS.md` over `README.md` for folder-level guidance that agents should pick up automatically.
 - Keep one canonical doc per topic and link to it instead of duplicating guidance.
