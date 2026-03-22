@@ -1,4 +1,4 @@
-# Registry Views
+g# Registry Views
 
 This folder contains generated Obsidian views for browsing the control plane.
 
