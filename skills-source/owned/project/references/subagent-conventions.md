@@ -30,13 +30,16 @@ Keep the work local when:
 
 - the next action is urgent and delegation would block progress
 - the work is tightly coupled across the same files or contract
+- the shared boundary is still moving and the parent thread has not frozen the contract yet
 - the task is small enough to finish directly in one pass
 - coordination cost is likely higher than the speedup
+- the delegated ownership, validation path, or handoff expectations cannot be made clear with low overhead
 
 ## Project Rules
 
 - `tasks.md` is the canonical project tracker and remains single-writer.
 - The parent thread owns `Current Batch`, milestone state, backlog state, blockers, and closeout.
+- The parent thread should freeze shared contracts before sending multiple workers to implement against them.
 - Subagents may read `tasks.md` for context.
 - Subagents may write topic-based notes or artifacts under `docs/projects/<project>/resources/` when durable working memory is useful.
 - Before delegated work starts, the parent thread should add or refresh the corresponding row in `Current Batch`.
@@ -88,8 +91,10 @@ Keep `resources/` simple by default.
 ## Anti-Patterns
 
 - letting multiple agents edit `tasks.md`
+- sending multiple workers against a moving shared contract or interface
 - splitting work that touches the same contract or file cluster without clear ownership
 - delegating tiny tasks that the parent thread could finish immediately
+- keeping weak or repeatedly redirected delegated work alive when the parent thread should take it back
 - filling `Current Batch` with backlog items instead of active work
 - turning `resources/` into an unstructured dump of raw output
 
