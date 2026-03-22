@@ -1,6 +1,6 @@
 filters:
   and:
-    - 'file.inFolder("skills/registry-items")'
+    - 'file.inFolder("docs/references/registry/skills-items")'
 properties:
   registry_kind:
     displayName: Type

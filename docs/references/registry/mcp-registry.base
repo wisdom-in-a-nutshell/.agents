@@ -1,0 +1,49 @@
+filters:
+  and:
+    - 'file.inFolder("docs/references/registry/mcp-registry-items")'
+properties:
+  mcp_name:
+    displayName: MCP
+  effective_scope:
+    displayName: Scope
+  global_terminal:
+    displayName: Global Terminal
+  global_xcode:
+    displayName: Global Xcode
+  repos_csv:
+    displayName: Repos
+  transport:
+    displayName: Transport
+  target:
+    displayName: Target
+views:
+  - type: table
+    name: MCP Registry
+    order:
+      - mcp_name
+      - effective_scope
+      - global_terminal
+      - global_xcode
+      - repos_csv
+      - transport
+      - target
+  - type: table
+    name: Global MCPs
+    filters: 'global_terminal == "true" || global_xcode == "true"'
+    order:
+      - mcp_name
+      - effective_scope
+      - global_terminal
+      - global_xcode
+      - repos_csv
+      - transport
+      - target
+  - type: table
+    name: Repo MCPs
+    filters: 'repos_csv != "-"'
+    order:
+      - mcp_name
+      - effective_scope
+      - repos_csv
+      - transport
+      - target

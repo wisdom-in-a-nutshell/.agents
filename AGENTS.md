@@ -29,10 +29,12 @@ Personal agent and Codex control plane.
   - `skills-source/owned/<skill>/`
 - Global runtime skills live in `skills/<skill>` as symlinks.
 - Generated views for Obsidian live in:
-  - `skills/registry.base`
-  - `skills/registry-items/`
-  - `codex/config/repo-bootstrap.base`
-  - `codex/config/repo-bootstrap-items/`
+  - `docs/references/registry/skills.base`
+  - `docs/references/registry/skills-items/`
+  - `docs/references/registry/repo-bootstrap.base`
+  - `docs/references/registry/repo-bootstrap-items/`
+  - `docs/references/registry/mcp-registry.base`
+  - `docs/references/registry/mcp-registry-items/`
 
 ## Operations
 

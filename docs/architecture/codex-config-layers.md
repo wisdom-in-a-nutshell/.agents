@@ -71,7 +71,7 @@ So trust sync is part of config layering, not a separate unrelated feature.
 - `sync-repo-codex-configs.sh` generates repo-local `.codex/config.toml` files from `repo-bootstrap.json`.
 - Most repos can have a minimal managed file with no repo-local overrides.
 - Some repos get MCP presets or later model-specific overrides.
-- `sync-repo-bootstrap-registry.sh` regenerates the Obsidian Base view for the same registry so the current assignments stay visible in Obsidian.
+- `sync-repo-bootstrap-registry.sh` regenerates user-facing Obsidian views for the same registry under [`docs/references/registry/`](/Users/dobby/.agents/docs/references/registry) so the current assignments stay visible in Obsidian.
 
 Current per-repo fields in `repo-bootstrap.json`:
 - `mcp_presets`

@@ -9,3 +9,4 @@ Use `docs/architecture/` for system shape and `docs/projects/<project>/tasks.md`
 - [Codex Control Plane Ownership](/Users/dobby/.agents/docs/references/codex-control-plane-ownership.md)
 - [Codex Control Plane Operations](/Users/dobby/.agents/docs/references/codex-control-plane-operations.md)
 - [Skills Registry](/Users/dobby/.agents/docs/references/skills-registry.md)
+- [Registry Views](/Users/dobby/.agents/docs/references/registry/README.md)

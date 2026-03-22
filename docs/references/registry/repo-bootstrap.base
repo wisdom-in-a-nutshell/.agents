@@ -1,6 +1,6 @@
 filters:
   and:
-    - 'file.inFolder("codex/config/repo-bootstrap-items")'
+    - 'file.inFolder("docs/references/registry/repo-bootstrap-items")'
 properties:
   repo_name:
     displayName: Repo

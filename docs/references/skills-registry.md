@@ -13,6 +13,7 @@ flowchart LR
     A[skills/registry.json] --> B[Real skill folder in skills-source/...]
     B --> C[Global symlink: ~/.agents/skills/{skill}]
     B --> D[Repo symlink: ~/GitHub/{repo}/.agents/skills/{skill}]
+    A --> E[Generated Obsidian views in docs/references/registry/]
 ```
 
 ## 2) Two Entry Types
@@ -33,6 +34,7 @@ flowchart LR
 - Edit `skills/registry.json`.
 - Run `./scripts/sync-skills-registry.sh --apply`.
 - Run `./scripts/check-skills-registry.sh`.
+- Generated Obsidian views land under [`docs/references/registry/`](/Users/dobby/.agents/docs/references/registry).
 
 ```mermaid
 flowchart LR

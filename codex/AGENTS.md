@@ -66,8 +66,10 @@ Canonical personal Codex control-plane assets live here.
 - The registry `defaults` block is rendered into every managed repo-local `.codex/config.toml` unless a repo entry overrides those keys explicitly.
 - `defaults.features` is merged with per-repo `features`, so baseline feature flags can be enabled globally while still allowing repo overrides.
 - `scripts/sync-repo-bootstrap-registry.sh` regenerates:
-  - `config/repo-bootstrap.base`
-  - `config/repo-bootstrap-items/`
+  - `../docs/references/registry/repo-bootstrap.base`
+  - `../docs/references/registry/repo-bootstrap-items/`
+  - `../docs/references/registry/mcp-registry.base`
+  - `../docs/references/registry/mcp-registry-items/`
 - `scripts/sync-repo-codex-configs.sh --apply` renders the actual repo-local `.codex/config.toml` files from that JSON registry.
 - `scripts/sync-trusted-projects.sh --apply` ensures those repo-local configs are trusted and therefore loaded by Codex.
 - `scripts/auto-apply-codex-control-plane.sh --apply` is the machine-local post-sync reconcile hook that runs `bootstrap-machine-codex.sh --apply` when `~/.agents/codex/` changed since the last successful reconcile.

@@ -6,6 +6,7 @@ import json
 import shutil
 import subprocess
 import sys
+import tomllib
 from pathlib import Path
 from typing import Any
 
@@ -56,6 +57,10 @@ def _write_if_changed(path: Path, content: str) -> None:
         path.write_text(content, encoding="utf-8")
 
 
+def generated_views_dir(root_dir: Path) -> Path:
+    return root_dir / "docs" / "references" / "registry"
+
+
 def _sanitize_file_name(name: str) -> str:
     safe = []
     for ch in name:
@@ -91,10 +96,10 @@ def _effective_fast_mode(defaults: dict[str, Any], item: dict[str, Any]) -> str:
     return str(merged["fast_mode"]).lower()
 
 
-def generate_registry_base(config_dir: Path) -> None:
+def generate_registry_base(views_dir: Path) -> None:
     content = """filters:
   and:
-    - 'file.inFolder("codex/config/repo-bootstrap-items")'
+    - 'file.inFolder("docs/references/registry/repo-bootstrap-items")'
 properties:
   repo_name:
     displayName: Repo
@@ -131,13 +136,13 @@ views:
       - effective_fast_mode
       - effective_service_tier
 """
-    _write_if_changed(config_dir / "repo-bootstrap.base", content)
+    _write_if_changed(views_dir / "repo-bootstrap.base", content)
 
 
 def generate_registry_items(
-    config_dir: Path, defaults: dict[str, Any], repos: list[dict[str, Any]]
+    views_dir: Path, defaults: dict[str, Any], repos: list[dict[str, Any]]
 ) -> None:
-    root = config_dir / "repo-bootstrap-items"
+    root = views_dir / "repo-bootstrap-items"
     shutil.rmtree(root, ignore_errors=True)
     root.mkdir(parents=True, exist_ok=True)
 
@@ -167,6 +172,149 @@ def generate_registry_items(
             ]
         )
         _write_if_changed(root / file_name, "\n".join(lines))
+
+
+def _load_global_mcp_names(config_path: Path) -> set[str]:
+    if not config_path.is_file():
+        return set()
+    with config_path.open("rb") as handle:
+        data = tomllib.load(handle)
+    mcp_servers = data.get("mcp_servers", {})
+    if not isinstance(mcp_servers, dict):
+        return set()
+    return {str(name) for name in mcp_servers.keys()}
+
+
+def _mcp_transport(preset: dict[str, Any]) -> str:
+    if "url" in preset:
+        return "url"
+    if "command" in preset:
+        return "command"
+    return "-"
+
+
+def _mcp_target(preset: dict[str, Any]) -> str:
+    if "url" in preset:
+        return str(preset["url"])
+    if "command" in preset:
+        args = preset.get("args", [])
+        if isinstance(args, list) and args:
+            return " ".join([str(preset["command"]), *[str(arg) for arg in args]])
+        return str(preset["command"])
+    return "-"
+
+
+def _mcp_scope(global_terminal: bool, global_xcode: bool, repos: list[str]) -> str:
+    has_global = global_terminal or global_xcode
+    has_repos = bool(repos)
+    if has_global and has_repos:
+        return "mixed"
+    if has_global:
+        return "global"
+    if has_repos:
+        return "repo"
+    return "-"
+
+
+def generate_mcp_registry_base(views_dir: Path) -> None:
+    content = """filters:
+  and:
+    - 'file.inFolder("docs/references/registry/mcp-registry-items")'
+properties:
+  mcp_name:
+    displayName: MCP
+  effective_scope:
+    displayName: Scope
+  global_terminal:
+    displayName: Global Terminal
+  global_xcode:
+    displayName: Global Xcode
+  repos_csv:
+    displayName: Repos
+  transport:
+    displayName: Transport
+  target:
+    displayName: Target
+views:
+  - type: table
+    name: MCP Registry
+    order:
+      - mcp_name
+      - effective_scope
+      - global_terminal
+      - global_xcode
+      - repos_csv
+      - transport
+      - target
+  - type: table
+    name: Global MCPs
+    filters: 'global_terminal == "true" || global_xcode == "true"'
+    order:
+      - mcp_name
+      - effective_scope
+      - global_terminal
+      - global_xcode
+      - repos_csv
+      - transport
+      - target
+  - type: table
+    name: Repo MCPs
+    filters: 'repos_csv != "-"'
+    order:
+      - mcp_name
+      - effective_scope
+      - repos_csv
+      - transport
+      - target
+"""
+    _write_if_changed(views_dir / "mcp-registry.base", content)
+
+
+def generate_mcp_registry_items(
+    views_dir: Path,
+    presets: dict[str, Any],
+    repos: list[dict[str, Any]],
+    global_terminal_mcp: set[str],
+    global_xcode_mcp: set[str],
+) -> None:
+    root = views_dir / "mcp-registry-items"
+    shutil.rmtree(root, ignore_errors=True)
+    root.mkdir(parents=True, exist_ok=True)
+
+    repo_usage: dict[str, list[str]] = {name: [] for name in presets}
+    for item in repos:
+        for preset_name in item["mcp_presets"]:
+            repo_usage.setdefault(preset_name, []).append(item["repo_name"])
+
+    for preset_name in sorted(presets):
+        preset = presets[preset_name]
+        repos_for_preset = sorted(repo_usage.get(preset_name, []))
+        global_terminal = preset_name in global_terminal_mcp
+        global_xcode = preset_name in global_xcode_mcp
+        lines = [
+            "---",
+            f"mcp_name: {_yaml_str(preset_name)}",
+            f"effective_scope: {_yaml_str(_mcp_scope(global_terminal, global_xcode, repos_for_preset))}",
+            f"global_terminal: {_yaml_str(str(global_terminal).lower())}",
+            f"global_xcode: {_yaml_str(str(global_xcode).lower())}",
+            f"repos_csv: {_yaml_str(','.join(repos_for_preset) if repos_for_preset else '-')}",
+            f"transport: {_yaml_str(_mcp_transport(preset))}",
+            f"target: {_yaml_str(_mcp_target(preset))}",
+            "repos:",
+        ]
+        if repos_for_preset:
+            lines.extend([f"  - {_yaml_str(repo_name)}" for repo_name in repos_for_preset])
+        else:
+            lines.append('  - "-"')
+        lines.extend(
+            [
+                "---",
+                "",
+                "Generated from `codex/config/repo-bootstrap.json` plus the managed global Codex config templates. Do not edit manually.",
+                "",
+            ]
+        )
+        _write_if_changed(root / f"{_sanitize_file_name(preset_name)}.md", "\n".join(lines))
 
 
 def validate_registry(
@@ -272,6 +420,7 @@ def main() -> int:
         return 1
 
     config_dir = registry_file.parent
+    root_dir = config_dir.parent.parent
     home = Path.home()
     try:
         defaults, presets, repos = validate_registry(data, config_dir, home)
@@ -279,9 +428,16 @@ def main() -> int:
         print(f"Registry validation failed: {exc}", file=sys.stderr)
         return 1
 
-    generate_registry_base(config_dir)
-    generate_registry_items(config_dir, defaults, repos)
-    print(f"Generated repo bootstrap Base artifacts in {config_dir}")
+    views_dir = generated_views_dir(root_dir)
+    generate_registry_base(views_dir)
+    generate_registry_items(views_dir, defaults, repos)
+    global_terminal_mcp = _load_global_mcp_names(config_dir / "global.config.toml")
+    global_xcode_mcp = _load_global_mcp_names(config_dir / "xcode.config.toml")
+    generate_mcp_registry_base(views_dir)
+    generate_mcp_registry_items(
+        views_dir, presets, repos, global_terminal_mcp, global_xcode_mcp
+    )
+    print(f"Generated repo bootstrap Base artifacts in {views_dir}")
     return 0
 
 

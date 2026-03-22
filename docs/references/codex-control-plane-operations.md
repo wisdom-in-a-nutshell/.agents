@@ -45,7 +45,7 @@ Use [Codex Control Plane Ownership](/Users/dobby/.agents/docs/references/codex-c
   - [`sync-repo-codex-configs.sh`](/Users/adi/.agents/codex/scripts/sync-repo-codex-configs.sh)
   - `~/.agents/codex/scripts/sync-repo-codex-configs.sh --apply`
 - Regenerate the Obsidian Base artifacts for the repo bootstrap registry:
-  - [`sync-repo-bootstrap-registry.sh`](/Users/adi/.agents/codex/scripts/sync-repo-bootstrap-registry.sh)
+- [`sync-repo-bootstrap-registry.sh`](/Users/adi/.agents/codex/scripts/sync-repo-bootstrap-registry.sh)
   - `~/.agents/codex/scripts/sync-repo-bootstrap-registry.sh`
 - Link the shared shell config:
   - [`link-shared-zshrc.sh`](/Users/dobby/GitHub/scripts/setup/codex/link-shared-zshrc.sh)
@@ -91,7 +91,8 @@ Use [Codex Control Plane Ownership](/Users/dobby/.agents/docs/references/codex-c
   - keeps the repo list and MCP/model preset definitions in [`repo-bootstrap.json`](/Users/adi/.agents/codex/config/repo-bootstrap.json)
 - [`sync-repo-bootstrap-registry.sh`](/Users/adi/.agents/codex/scripts/sync-repo-bootstrap-registry.sh)
   - regenerates the Obsidian Base artifacts from [`repo-bootstrap.json`](/Users/adi/.agents/codex/config/repo-bootstrap.json)
-  - updates [`repo-bootstrap.base`](/Users/adi/.agents/codex/config/repo-bootstrap.base) and [`repo-bootstrap-items/`](/Users/adi/.agents/codex/config/repo-bootstrap-items)
+  - updates the user-facing registry views under [`docs/references/registry/`](/Users/dobby/.agents/docs/references/registry)
+  - includes [`repo-bootstrap.base`](/Users/dobby/.agents/docs/references/registry/repo-bootstrap.base), [`repo-bootstrap-items/`](/Users/dobby/.agents/docs/references/registry/repo-bootstrap-items), [`mcp-registry.base`](/Users/dobby/.agents/docs/references/registry/mcp-registry.base), and [`mcp-registry-items/`](/Users/dobby/.agents/docs/references/registry/mcp-registry-items)
 - [`bootstrap-machine-codex.sh`](/Users/dobby/.agents/codex/scripts/bootstrap-machine-codex.sh)
   - runs config sync
   - runs trusted-project sync

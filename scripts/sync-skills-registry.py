@@ -82,10 +82,14 @@ def _write_if_changed(path: Path, content: str) -> None:
         path.write_text(content, encoding="utf-8")
 
 
-def generate_registry_base(registry_dir: Path) -> None:
+def generated_views_dir(root_dir: Path) -> Path:
+    return root_dir / "docs" / "references" / "registry"
+
+
+def generate_registry_base(views_dir: Path) -> None:
     content = """filters:
   and:
-    - 'file.inFolder("skills/registry-items")'
+    - 'file.inFolder("docs/references/registry/skills-items")'
 properties:
   registry_kind:
     displayName: Type
@@ -127,7 +131,7 @@ views:
       - repo
       - skill
 """
-    _write_if_changed(registry_dir / "registry.base", content)
+    _write_if_changed(views_dir / "skills.base", content)
 
 
 def _sanitize_file_name(name: str) -> str:
@@ -141,11 +145,11 @@ def _sanitize_file_name(name: str) -> str:
 
 
 def generate_registry_items(
-    registry_dir: Path,
+    views_dir: Path,
     managed: list[dict[str, Any]],
     unmanaged: list[dict[str, Any]],
 ) -> None:
-    root = registry_dir / "registry-items"
+    root = views_dir / "skills-items"
     managed_dir = root / "managed"
     repo_local_dir = root / "repo-local"
 
@@ -204,7 +208,7 @@ def generate_registry_items(
 
 
 def validate_registry(
-    data: dict[str, Any], registry_dir: Path, home: Path
+    data: dict[str, Any], root_dir: Path, home: Path
 ) -> tuple[list[dict[str, Any]], list[dict[str, Any]], Path]:
     managed = data.get("managed_skills")
     if not isinstance(managed, list) or not managed:
@@ -244,7 +248,7 @@ def validate_registry(
 
         src = Path(source_path)
         if not src.is_absolute():
-            src = (registry_dir.parent / src).resolve()
+            src = (root_dir / src).resolve()
         if not (src / "SKILL.md").is_file():
             raise ValueError(f"source missing SKILL.md for {skill}: {src}")
 
@@ -339,7 +343,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--no-generate",
         action="store_true",
-        help="Skip generating registry.base and registry-items files.",
+        help="Skip generating Obsidian registry view files.",
     )
     parser.add_argument(
         "registry_file",
@@ -368,15 +372,16 @@ def main() -> int:
     home = Path.home()
 
     try:
-        managed, unmanaged, github_root = validate_registry(data, registry_dir, home)
+        managed, unmanaged, github_root = validate_registry(data, root_dir, home)
     except ValueError as exc:
         print(f"Registry validation failed: {exc}", file=sys.stderr)
         return 1
 
     if not args.no_generate:
-        generate_registry_base(registry_dir)
-        generate_registry_items(registry_dir, managed, unmanaged)
-        print(f"Generated registry Base artifacts in {registry_dir}")
+        views_dir = generated_views_dir(root_dir)
+        generate_registry_base(views_dir)
+        generate_registry_items(views_dir, managed, unmanaged)
+        print(f"Generated registry Base artifacts in {views_dir}")
 
     run_sync(managed, root_dir, github_root, args.apply)
 
