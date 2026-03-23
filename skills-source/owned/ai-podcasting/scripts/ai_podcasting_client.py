@@ -326,10 +326,6 @@ def validate_intro_copy_payload(payload: dict[str, Any]) -> None:
   if not isinstance(title, str) or not title.strip():
     missing_required.append("title")
 
-  thumbnail_text = payload.get("thumbnailText")
-  if not isinstance(thumbnail_text, str) or not thumbnail_text.strip():
-    missing_required.append("thumbnailText")
-
   if not missing_required:
     return
 
@@ -348,7 +344,7 @@ def validate_intro_copy_payload(payload: dict[str, Any]) -> None:
     message=f"update-intro-copy is missing required fields: {missing}.",
     retryable=False,
     hint=(
-      "Required: recordingLink, title, thumbnailText. "
+      "Required: recordingLink, title. "
       f"Optional: {optional_fields}."
     ),
     exit_code=2,

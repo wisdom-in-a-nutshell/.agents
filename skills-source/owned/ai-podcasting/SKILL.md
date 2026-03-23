@@ -74,8 +74,8 @@ python3 .agents/skills/ai-podcasting/scripts/ai_podcasting_client.py \
    Required (command): `--source-id`, `--payload-file`.
    Supported payload modes:
    1. Legacy alias mode:
-      Required user-facing fields: `recordingLink`, `title`, `thumbnailText`.
-      Optional user-facing fields: `transcript`, `instructionsToEditor`, `videoThumbnailLink`, `audioThumbnailLink`, `outroMusicLink`.
+      Required user-facing fields: `recordingLink`, `title`.
+      Optional user-facing fields: `thumbnailText`, `transcript`, `instructionsToEditor`, `videoThumbnailLink`, `audioThumbnailLink`, `outroMusicLink`.
       API mapping: `recordingLink -> introFile`, `transcript -> introTranscript`, `instructionsToEditor -> editorInstructions`.
       TCR media mapping: `videoThumbnailLink -> deliverables.thumbnails.video.url`, `audioThumbnailLink -> deliverables.thumbnails.audio.url`, `outroMusicLink -> files.episode_outro.edited`.
    2. Raw backend patch mode:
@@ -130,14 +130,14 @@ When values are missing in chat context, follow this flow:
      Mandatory fields:
      1. recordingLink
      2. title
-     3. thumbnailText
 
      Optional fields:
-     1. transcript
-     2. instructionsToEditor
-     3. videoThumbnailLink
-     4. audioThumbnailLink
-     5. outroMusicLink
+     1. thumbnailText
+     2. transcript
+     3. instructionsToEditor
+     4. videoThumbnailLink
+     5. audioThumbnailLink
+     6. outroMusicLink
 
      Provide values in any format you want, and I will set them in the episode."
    - Raw patch mode:
