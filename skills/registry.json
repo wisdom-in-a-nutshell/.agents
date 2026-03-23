@@ -253,6 +253,16 @@
       "upstream_ref": "-"
     },
     {
+      "skill": "health",
+      "origin": "owned",
+      "scope": "repo",
+      "repos": [
+        "adi"
+      ],
+      "source_path": "skills-source/owned/health",
+      "upstream_ref": "-"
+    },
+    {
       "skill": "show-password-setup",
       "origin": "owned",
       "scope": "repo",
