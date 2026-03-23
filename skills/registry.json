@@ -223,7 +223,8 @@
       "origin": "external",
       "scope": "repo",
       "repos": [
-        "adi"
+        "adi",
+        "codexclaw"
       ],
       "source_path": "skills-source/external/oracle",
       "upstream_ref": "steipete/oracle:skills/oracle@main"
