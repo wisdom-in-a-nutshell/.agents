@@ -35,4 +35,5 @@ Reading defaults:
 Current upstream implementation:
 
 - Withings is the only implemented provider.
+- Current fetch path is the `win` snapshot endpoint, not a direct provider call from the skill.
 - `HEALTH_REFERENCE_ROOT` can override the sink root when the health store lives outside the current repo root.

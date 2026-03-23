@@ -12,8 +12,8 @@ Important boundary:
 
 - The canonical read surface is the local sink under `reference/health/`.
 - The current upstream source is Withings.
-- The skill owns the sync script and current provider integration details.
-- OAuth bootstrap and callback hosting may live elsewhere; this skill assumes sync credentials already exist in the repo environment.
+- `win` owns Withings auth, token refresh, and upstream normalization.
+- The skill only fetches the normalized snapshot JSON and writes the local sink.
 
 ## Default Workflow
 
@@ -52,37 +52,19 @@ Useful variants:
 
 ```bash
 python3 .agents/skills/health/scripts/sync_health.py --json
-python3 .agents/skills/health/scripts/sync_health.py --backfill
 python3 .agents/skills/health/scripts/sync_health.py --output-root /tmp/health-sink
+python3 .agents/skills/health/scripts/sync_health.py --days-back 3
 ```
 
 Current defaults:
 
-- provider: `withings`
-- sink root resolution:
+- API URL:
+  - `HEALTH_SNAPSHOT_API_URL` if set
+  - otherwise the stable `win` `/personal/health/withings-snapshot` URL
+- sink root:
   - `HEALTH_REFERENCE_ROOT` if set
   - otherwise `reference/health/` under the current repo root
 - recent sync window: 2 days for measurements, activity, workouts, and sleep
-
-## Env Contract
-
-Minimum sync env:
-
-- `WITHINGS_CLIENT_ID`
-- `WITHINGS_CLIENT_SECRET`
-
-Optional overrides:
-
-- `WITHINGS_TOKEN_STORE`
-  - default: `key_vault`
-- `WITHINGS_KEY_VAULT_NAME`
-  - default: `kv-shared-repos`
-- `WITHINGS_REFRESH_TOKEN_SECRET_NAME`
-  - default: `withings--refresh-token-adi`
-- `WITHINGS_REFRESH_TOKEN`
-  - used only in `env` token-store mode
-- `WITHINGS_API_BASE_URL`
-- `HEALTH_REFERENCE_ROOT`
 
 Repo bootstrap default:
 
@@ -92,9 +74,9 @@ scripts/local/secrets/bootstrap_local_env_from_keyvault.sh
 
 ## Implementation Notes
 
-- The skill is self-contained and should not import repo-specific business logic.
-- Keep provider logic inside the skill scripts so the skill can be linked into another repo and still run.
-- Extend the current Withings implementation in the skill itself when new health domains are needed.
+- The skill should stay thin.
+- Do not duplicate Withings auth or token logic here.
+- Extend the `win` snapshot endpoint when new health domains are needed, then keep this skill as a simple local writer.
 
 ## Resources
 

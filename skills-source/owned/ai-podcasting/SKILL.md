@@ -1,6 +1,6 @@
 ---
 name: ai-podcasting
-description: Submit AI Podcasting episodes and update intro/title/thumbnail copy through AIP frontend API routes. Use when clients want agent-driven episode operations without using the GUI, including listing non-published episodes to get source_id, submitting a new episode, or patching intro copy for an existing episode.
+description: Submit AI Podcasting episodes and update intro/title/thumbnail copy through AIP frontend API routes. Use when clients want agent-driven episode operations without using the GUI, including listing non-published episodes to get source_id, submitting a new episode, patching intro copy for an existing episode, or clarifying whether an ambiguous "submit" request means main episode submission vs intro update.
 ---
 
 # AI Podcasting
@@ -88,7 +88,16 @@ When values are missing in chat context, follow this flow:
 
 1. Before asking follow-up questions, scan the current chat thread and reuse any values the user already provided.
    Do not ask again for values that are already clear in context.
-2. For submit flow, ask only for missing required submit values.
+2. First disambiguate the operation when the user's wording does not make it clear whether they mean a new main episode submission or an intro update for an existing episode.
+   Do not assume that "submit", "this episode", or similar phrasing means `submit-episode`.
+   If the intent is ambiguous, ask exactly:
+   "Do you want to:
+   1. submit a new main episode file
+   2. update intro/title/thumbnail assets for an existing episode
+
+   Reply with 1 or 2."
+   Only continue into submit or intro-specific prompts after the user picks one.
+3. For submit flow, ask only for missing required submit values.
    Required submit value:
    1. main episode file link (`files.main.raw` or `fileUrl`) as a public HTTP/HTTPS URL.
    Optional submit values:
@@ -101,19 +110,19 @@ When values are missing in chat context, follow this flow:
    7. scheduledDate
    8. needsGuestReview
    9. guests
-3. For intro updates without `source_id`, run `list-backlog-episodes` first.
-4. Ask the user which episode to target using an enumerated list, not raw ids only.
+4. For intro updates without `source_id`, run `list-backlog-episodes` first.
+5. Ask the user which episode to target using an enumerated list, not raw ids only.
    Render exactly:
    `1. <short title> — <source_id>`
    `2. <short title> — <source_id>`
    `...`
    Then ask: `Reply with the episode number or source_id.`
    If the user replies with a number (for example `4`), map that number to the corresponding `source_id` and continue without asking them to repeat the full id.
-5. Ask only for missing required values.
-6. Enforce a strict two-step prompt sequence:
+6. Ask only for missing required values.
+7. Enforce a strict two-step prompt sequence for intro updates:
    - Step 1 message: episode list + `Reply with the episode number or source_id.`
    - Step 2 message (only after episode is selected): required/optional field collection.
-7. For intro updates, choose the prompt shape that matches the user intent:
+8. For intro updates, choose the prompt shape that matches the user intent:
    - Alias mode:
      Use when the user is giving simple copy fields or single thumbnail URLs.
      Prompt:
@@ -144,9 +153,9 @@ When values are missing in chat context, follow this flow:
 
      I will convert it into the API payload."
    Never ask the user to pick an episode id again after step 1 is completed.
-8. If optional values are unclear, omit them instead of guessing.
-9. Use `--dry-run` if the user wants confirmation before the write call.
-10. For file-type fields (`recordingLink`, `videoThumbnailLink`, `audioThumbnailLink`, `outroMusicLink`, raw thumbnail URLs, outro URLs, and submit main file link):
+9. If optional values are unclear, omit them instead of guessing.
+10. Use `--dry-run` if the user wants confirmation before the write call.
+11. For file-type fields (`recordingLink`, `videoThumbnailLink`, `audioThumbnailLink`, `outroMusicLink`, raw thumbnail URLs, outro URLs, and submit main file link):
    - The current client expects publicly reachable HTTP/HTTPS URLs.
    - If the user provides a local file path, ask them to upload it to cloud storage first and share a public link.
    - Do not pass local filesystem paths to the API payload.

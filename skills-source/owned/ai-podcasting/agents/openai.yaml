@@ -1,4 +1,4 @@
 interface:
   display_name: "AI Podcasting"
   short_description: "Submit episodes and update intro copy via API."
-  default_prompt: "Use the ai_podcasting_client to list backlog episodes, submit new episodes, and update intro/title/thumbnail copy through backend API routes."
+  default_prompt: "Use the ai_podcasting_client to list backlog episodes, submit new episodes, and update intro/title/thumbnail copy through backend API routes. If the user says 'submit' ambiguously, first clarify whether they mean a new main episode submission or an intro update."
