@@ -219,17 +219,6 @@
       "upstream_ref": "openai/skills:skills/.curated/openai-docs@main"
     },
     {
-      "skill": "oracle",
-      "origin": "external",
-      "scope": "repo",
-      "repos": [
-        "adi",
-        "codexclaw"
-      ],
-      "source_path": "skills-source/external/oracle",
-      "upstream_ref": "steipete/oracle:skills/oracle@main"
-    },
-    {
       "skill": "pretty-mermaid",
       "origin": "owned",
       "scope": "repo",
