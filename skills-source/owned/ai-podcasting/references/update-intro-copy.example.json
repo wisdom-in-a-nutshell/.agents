@@ -4,7 +4,10 @@
   "instructionsToEditor": "Use first take for opener and tighten pauses.",
   "title": "Final publish-ready episode title",
   "thumbnailText": "Final thumbnail copy",
-  "videoThumbnailLink": "https://example.com/path/to/video-thumbnail-16x9.png",
+  "videoThumbnails": [
+    "https://example.com/path/to/video-thumbnail-16x9-primary.png",
+    "https://example.com/path/to/video-thumbnail-16x9-alt.png"
+  ],
   "audioThumbnailLink": "https://example.com/path/to/audio-thumbnail-1x1.png",
   "outroMusicLink": "https://example.com/path/to/outro-music.mp3"
 }

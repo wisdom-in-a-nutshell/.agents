@@ -1,4 +1,4 @@
 interface:
   display_name: "Health"
-  short_description: "Read or refresh the personal health sink"
-  default_prompt: "Use $health to inspect or refresh personal health data."
+  short_description: "Read or refresh a repo-local health sink"
+  default_prompt: "Use $health to inspect or refresh personal health data in the current repo."

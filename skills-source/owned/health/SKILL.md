@@ -1,6 +1,6 @@
 ---
 name: health
-description: Read or refresh the personal health sink. Use when answering questions about sleep, activity, workouts, weight, body composition, devices, or when syncing fresh health data into `reference/health/`.
+description: Read or refresh a repo-local personal health sink. Use when answering questions about sleep, activity, workouts, weight, body composition, devices, or when syncing fresh health data into `reference/health/` from the configured health snapshot API.
 ---
 
 # Health
@@ -14,6 +14,7 @@ Important boundary:
 - The current upstream source is Withings.
 - `win` owns Withings auth, token refresh, and upstream normalization.
 - The skill only fetches the normalized snapshot JSON and writes the local sink.
+- The skill is portable across repos; by default it writes to `reference/health/` under the current repo root.
 
 ## Default Workflow
 
@@ -65,6 +66,19 @@ Current defaults:
   - `HEALTH_REFERENCE_ROOT` if set
   - otherwise `reference/health/` under the current repo root
 - recent sync window: 2 days for measurements, activity, workouts, and sleep
+
+Path behavior:
+
+- Nothing is hard-coded to `adi`.
+- Running the script inside another repo writes to that repo's `reference/health/` by default.
+- Use `--output-root` or `HEALTH_REFERENCE_ROOT` when the sink should live somewhere else.
+- The default person selector is the current repo root name, overridden by `HEALTH_PERSON` or `--person`.
+
+Current person/account boundary:
+
+- The current `win` snapshot endpoint supports the person keys `adi` and `angie`.
+- The skill passes the repo root name as the default person key, so `adi` maps to Adi and `angie` maps to Angie.
+- Keep separate sink roots per person or per repo; do not mix multiple people into one `reference/health/`.
 
 Repo bootstrap default:
 

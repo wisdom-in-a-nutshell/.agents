@@ -72,16 +72,17 @@ python3 .agents/skills/ai-podcasting/scripts/ai_podcasting_client.py \
    Optional: any additional backend-supported episode fields. The client preserves richer payloads such as `deliverables.thumbnails.options`, `deliverables.thumbnails.video.variants`, and `files.episode_outro`.
 3. `update-intro-copy`:
    Required (command): `--source-id`, `--payload-file`.
-   Supported payload modes:
-   1. Legacy alias mode:
-      Required user-facing fields: `recordingLink`, `title`.
-      Common optional user-facing fields: `videoThumbnailLink`, `thumbnailText`, `transcript`, `instructionsToEditor`, `audioThumbnailLink`, `outroMusicLink`.
-      API mapping: `recordingLink -> introFile`, `transcript -> introTranscript`, `instructionsToEditor -> editorInstructions`.
-      TCR media mapping: `videoThumbnailLink -> deliverables.thumbnails.video.url`, `audioThumbnailLink -> deliverables.thumbnails.audio.url`, `outroMusicLink -> files.episode_outro.edited`.
-      Note: `videoThumbnailLink` is the simple single-URL alias. For one or more video thumbnail candidates, use raw backend patch mode with `deliverables.thumbnails.video.url` and/or `deliverables.thumbnails.video.variants`.
-   2. Raw backend patch mode:
-      Pass backend-shaped fields directly when updating multiple thumbnails or richer media payloads.
-      Prefer this mode for `deliverables.thumbnails.options`, `deliverables.thumbnails.video.variants`, `files.episode_outro`, or any nested patch the frontend already supports.
+   The client supports the current app intro payload directly.
+   For conversation-driven usage, prefer these user-facing fields:
+   Required: `recordingLink`, `title`.
+   Optional: `videoThumbnails`, `thumbnailText`, `transcript`, `instructionsToEditor`, `audioThumbnailLink`, `outroMusicLink`.
+   `videoThumbnails` may be either:
+   - one public HTTP/HTTPS URL
+   - a list of public HTTP/HTTPS URLs
+   The client normalizes `videoThumbnails` into the app's thumbnail shape:
+   - `deliverables.thumbnails.video.url` = first thumbnail URL
+   - `deliverables.thumbnails.video.variants` = ordered list of all provided thumbnail URLs
+   The client also accepts the full current app payload if the agent already has it.
 
 ## Conversation Policy
 
@@ -123,46 +124,25 @@ When values are missing in chat context, follow this flow:
 7. Enforce a strict two-step prompt sequence for intro updates:
    - Step 1 message: episode list + `Reply with the episode number or source_id.`
    - Step 2 message (only after episode is selected): required/optional field collection.
-8. For intro updates, choose the prompt shape that matches the user intent:
-   - Alias mode:
-     Use when the user is giving simple copy fields or single thumbnail URLs.
-     Prompt:
-     "Episode selected: <source_id>.
-     Required:
-     1. recordingLink
-     2. title
+8. For intro updates, use one prompt shape by default:
+   "Episode selected: <source_id>.
+   Required:
+   1. recordingLink
+   2. title
 
-     Common optional:
-     1. videoThumbnailLink (single URL)
-     2. thumbnailText
+   Optional:
+   1. videoThumbnails (give one URL or multiple URLs)
+   2. thumbnailText
+   3. transcript
+   4. instructionsToEditor
+   5. audioThumbnailLink
+   6. outroMusicLink
 
-     Other optional:
-     1. transcript
-     2. instructionsToEditor
-     3. audioThumbnailLink
-     4. outroMusicLink
-
-     If you want to provide multiple video thumbnails, use raw backend fields such as:
-     - deliverables.thumbnails.video.url
-     - deliverables.thumbnails.video.variants
-
-     Provide values in any format you want, and I will set them in the episode."
-   - Raw patch mode:
-     Use when the user needs multiple thumbnails, thumbnail variants/options, or a richer `files` / `deliverables` patch.
-     Prompt:
-     "Episode selected: <source_id>.
-     Provide the intro patch payload in any format you want.
-     Prefer raw backend fields for multi-thumbnail or nested media updates, for example:
-     - deliverables.thumbnails.options
-     - deliverables.thumbnails.video.variants
-     - files.episode_outro
-     - introFile / introTranscript / editorInstructions
-
-     I will convert it into the API payload."
+   Provide values in any format you want, and I will set them in the episode."
    Never ask the user to pick an episode id again after step 1 is completed.
 9. If optional values are unclear, omit them instead of guessing.
 10. Use `--dry-run` if the user wants confirmation before the write call.
-11. For file-type fields (`recordingLink`, `videoThumbnailLink`, `audioThumbnailLink`, `outroMusicLink`, raw thumbnail URLs, outro URLs, and submit main file link):
+11. For file-type fields (`recordingLink`, `videoThumbnails`, `audioThumbnailLink`, `outroMusicLink`, and submit main file link):
    - The current client expects publicly reachable HTTP/HTTPS URLs.
    - If the user provides a local file path, ask them to upload it to cloud storage first and share a public link.
    - Do not pass local filesystem paths to the API payload.

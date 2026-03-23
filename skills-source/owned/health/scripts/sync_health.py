@@ -77,12 +77,17 @@ def _default_api_url() -> str:
     ).strip()
 
 
+def _default_person() -> str:
+    return (_env("HEALTH_PERSON") or REPO_ROOT.name).strip().lower()
+
+
 def _parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="Fetch the normalized health snapshot and refresh the local sink.",
     )
     parser.add_argument("--api-url", default=_default_api_url())
     parser.add_argument("--output-root", type=Path, default=_default_output_root())
+    parser.add_argument("--person", default=_default_person())
     parser.add_argument("--days-back", type=int, default=None)
     parser.add_argument("--measurement-days-back", type=int, default=None)
     parser.add_argument("--activity-days-back", type=int, default=None)
@@ -92,7 +97,7 @@ def _parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def _fetch_snapshot(*, api_url: str, params: dict[str, int]) -> dict[str, Any]:
+def _fetch_snapshot(*, api_url: str, params: dict[str, Any]) -> dict[str, Any]:
     query_params = {key: value for key, value in params.items() if value is not None}
     url = api_url
     if query_params:
@@ -213,6 +218,7 @@ def _load_latest_payload_from_history(*, root: Path, generated_at: datetime) -> 
 def main() -> None:
     args = _parse_args()
     params = {
+        "person": args.person,
         "days_back": args.days_back,
         "measurement_days_back": args.measurement_days_back,
         "activity_days_back": args.activity_days_back,
@@ -228,6 +234,7 @@ def main() -> None:
                 {
                     "api_url": args.api_url,
                     "output_root": str(args.output_root),
+                    "person": args.person,
                     "windows": snapshot.get("windows", {}),
                     "written_paths": [str(path) for path in written_paths],
                 },

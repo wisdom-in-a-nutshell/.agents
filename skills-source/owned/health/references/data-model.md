@@ -37,3 +37,6 @@ Current upstream implementation:
 - Withings is the only implemented provider.
 - Current fetch path is the `win` snapshot endpoint, not a direct provider call from the skill.
 - `HEALTH_REFERENCE_ROOT` can override the sink root when the health store lives outside the current repo root.
+- Without `HEALTH_REFERENCE_ROOT`, the script writes to `reference/health/` under the current repo root it is invoked from.
+- The default person selector is the current repo root name, overridden by `HEALTH_PERSON` or `--person`.
+- The current snapshot endpoint supports `adi` and `angie`; keep separate sink roots or separate repos per person.
