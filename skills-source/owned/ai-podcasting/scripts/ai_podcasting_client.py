@@ -25,6 +25,7 @@ INTRO_COPY_FIELDS = {
   "title",
   "thumbnailText",
   "videoThumbnailLink",
+  "videoThumbnailLinks",
   "audioThumbnailLink",
   "outroMusicLink",
 }
@@ -36,6 +37,7 @@ INTRO_COPY_FIELD_MAP = {
   "title": "title",
   "thumbnailText": "thumbnailText",
   "videoThumbnailLink": "videoThumbnailLink",
+  "videoThumbnailLinks": "videoThumbnailLinks",
   "audioThumbnailLink": "audioThumbnailLink",
   "outroMusicLink": "outroMusicLink",
   # Backward-compatible aliases
@@ -241,6 +243,24 @@ def looks_like_local_path(value: str) -> bool:
   return stripped.startswith("/") or stripped.startswith("./") or stripped.startswith("../")
 
 
+def normalize_public_url_list(value: Any) -> list[str]:
+  if isinstance(value, str):
+    candidate = value.strip()
+    return [candidate] if candidate else []
+
+  if not isinstance(value, list):
+    return []
+
+  normalized: list[str] = []
+  for item in value:
+    if isinstance(item, str):
+      candidate = item.strip()
+      if candidate:
+        normalized.append(candidate)
+
+  return normalized
+
+
 def validate_submit_payload(payload: dict[str, Any]) -> None:
   show = payload.get("show")
   if show is not None and str(show).strip().upper() not in ("", FIXED_SHOW):
@@ -331,6 +351,7 @@ def validate_intro_copy_payload(payload: dict[str, Any]) -> None:
 
   optional_fields = ", ".join(
     [
+      "thumbnailText",
       "transcript",
       "instructionsToEditor",
       "videoThumbnailLink",
@@ -357,18 +378,29 @@ def normalize_intro_copy_payload(payload: dict[str, Any]) -> dict[str, Any]:
     mapped_key = INTRO_COPY_FIELD_MAP.get(key, key)
     normalized[mapped_key] = value
 
-  video_thumbnail_link = normalized.pop("videoThumbnailLink", None)
+  video_thumbnail_links = normalize_public_url_list(normalized.pop("videoThumbnailLinks", None))
+  video_thumbnail_links.extend(
+    normalize_public_url_list(normalized.pop("videoThumbnailLink", None))
+  )
   audio_thumbnail_link = normalized.pop("audioThumbnailLink", None)
   outro_music_link = normalized.pop("outroMusicLink", None)
 
-  if isinstance(video_thumbnail_link, str) and video_thumbnail_link.strip():
+  deduped_video_thumbnail_links: list[str] = []
+  seen_video_links: set[str] = set()
+  for link in video_thumbnail_links:
+    if link not in seen_video_links:
+      deduped_video_thumbnail_links.append(link)
+      seen_video_links.add(link)
+
+  if deduped_video_thumbnail_links:
     deliverables = normalized.setdefault("deliverables", {})
     if isinstance(deliverables, dict):
       thumbnails = deliverables.setdefault("thumbnails", {})
       if isinstance(thumbnails, dict):
         video = thumbnails.setdefault("video", {})
         if isinstance(video, dict):
-          video["url"] = video_thumbnail_link.strip()
+          video["url"] = deduped_video_thumbnail_links[0]
+          video["variants"] = [{"url": link} for link in deduped_video_thumbnail_links]
 
   if isinstance(audio_thumbnail_link, str) and audio_thumbnail_link.strip():
     deliverables = normalized.setdefault("deliverables", {})
@@ -650,8 +682,9 @@ def build_parser() -> argparse.ArgumentParser:
     required=True,
     help=(
       "Path to JSON payload file. Supports either legacy alias fields "
-      "(recordingLink/title/thumbnailText/videoThumbnailLink/audioThumbnailLink/outroMusicLink) "
-      "or raw backend patch fields such as deliverables/files/submission."
+      "(recordingLink/title/thumbnailText/videoThumbnailLink/videoThumbnailLinks/"
+      "audioThumbnailLink/outroMusicLink). "
+      "Provide one or multiple video thumbnail URLs and the client will normalize them."
     ),
   )
   intro_parser.add_argument(

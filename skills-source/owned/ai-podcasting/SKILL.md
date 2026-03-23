@@ -75,9 +75,10 @@ python3 .agents/skills/ai-podcasting/scripts/ai_podcasting_client.py \
    Supported payload modes:
    1. Legacy alias mode:
       Required user-facing fields: `recordingLink`, `title`.
-      Optional user-facing fields: `thumbnailText`, `transcript`, `instructionsToEditor`, `videoThumbnailLink`, `audioThumbnailLink`, `outroMusicLink`.
+      Common optional user-facing fields: `videoThumbnailLink`, `thumbnailText`, `transcript`, `instructionsToEditor`, `audioThumbnailLink`, `outroMusicLink`.
       API mapping: `recordingLink -> introFile`, `transcript -> introTranscript`, `instructionsToEditor -> editorInstructions`.
       TCR media mapping: `videoThumbnailLink -> deliverables.thumbnails.video.url`, `audioThumbnailLink -> deliverables.thumbnails.audio.url`, `outroMusicLink -> files.episode_outro.edited`.
+      Note: `videoThumbnailLink` is the simple single-URL alias. For one or more video thumbnail candidates, use raw backend patch mode with `deliverables.thumbnails.video.url` and/or `deliverables.thumbnails.video.variants`.
    2. Raw backend patch mode:
       Pass backend-shaped fields directly when updating multiple thumbnails or richer media payloads.
       Prefer this mode for `deliverables.thumbnails.options`, `deliverables.thumbnails.video.variants`, `files.episode_outro`, or any nested patch the frontend already supports.
@@ -127,17 +128,23 @@ When values are missing in chat context, follow this flow:
      Use when the user is giving simple copy fields or single thumbnail URLs.
      Prompt:
      "Episode selected: <source_id>.
-     Mandatory fields:
+     Required:
      1. recordingLink
      2. title
 
-     Optional fields:
-     1. thumbnailText
-     2. transcript
-     3. instructionsToEditor
-     4. videoThumbnailLink
-     5. audioThumbnailLink
-     6. outroMusicLink
+     Common optional:
+     1. videoThumbnailLink (single URL)
+     2. thumbnailText
+
+     Other optional:
+     1. transcript
+     2. instructionsToEditor
+     3. audioThumbnailLink
+     4. outroMusicLink
+
+     If you want to provide multiple video thumbnails, use raw backend fields such as:
+     - deliverables.thumbnails.video.url
+     - deliverables.thumbnails.video.variants
 
      Provide values in any format you want, and I will set them in the episode."
    - Raw patch mode:
