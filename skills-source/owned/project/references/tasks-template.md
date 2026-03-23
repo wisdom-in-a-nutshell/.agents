@@ -53,6 +53,7 @@ TEMPLATE GUIDANCE (for generating agent):
 - Use `Current Batch` as the live execution board and primary resume point.
 - If `Current Batch` is empty or stale, rebuild it from the remaining milestones and backlog before continuing.
 - If parallel work helps, keep `tasks.md` single-writer and let delegated work write topic-based files under `docs/projects/<project>/resources/` when durable notes or artifacts are useful.
+- For long-running or cross-repo work, add a closeout learnings task that reviews `docs/projects/<project>/learnings/README.md` before archive and keep appending to that file during the project when the run reveals missing docs, weak tooling, or other agent-facing improvements.
 - Before starting delegated work, add or update the delegated row in `Current Batch`.
 
 ## Decisions
@@ -70,7 +71,7 @@ TEMPLATE GUIDANCE (for generating agent):
 | todo |  | parent |  |
 
 ## Backlog / Remaining Work
-<!-- Durable list of remaining work. Promote items into Current Batch when they become active. Include at least one validation task, one AGENTS.md/doc review/update task when guidance changes materially, and a final closeout/archive task rather than a `ready-to-archive` placeholder. -->
+<!-- Durable list of remaining work. Promote items into Current Batch when they become active. Include at least one validation task, one AGENTS.md/doc review/update task when guidance changes materially, and a final closeout/archive task rather than a `ready-to-archive` placeholder. For long-running or cross-repo projects, also include a closeout learnings task that reviews and finalizes `docs/projects/<project>/learnings/README.md` for future agent improvement. -->
 - [ ] 
 
 ## Validation / Test Plan

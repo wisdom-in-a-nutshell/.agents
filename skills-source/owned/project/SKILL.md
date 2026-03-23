@@ -78,6 +78,7 @@ Use one project tracker file as the durable source of truth for long-running wor
 9. **Closeout**
    - When scoped work is complete, provide a short conclusion with validation evidence and residual risks.
    - When subagents were used, include a short delegation retrospective: what was delegated, what helped, what created overhead, and what heuristic should change next time.
+   - For long-running, multi-session, cross-repo, or tooling-heavy projects, keep a running project learnings file at `docs/projects/<project>/learnings/README.md`. During the run, append concrete improvements the work exposed for MCPs, skills, `AGENTS.md`, docs, validation loops, delegation heuristics, or other agent-facing tooling; before archive, review and finalize it. Add a tracker task to review this file if one is not already present.
    - Follow repo-local shipping policy for commit/push behavior. Do not add a generic manual commit/push step when repo automation already handles it.
    - Archive by default when `Done When` is satisfied, remaining milestones/tasks are complete or explicitly descoped, validation is acceptable for the scoped work, and no material blocker remains.
    - Unless repo guidance says otherwise, archiving means moving the finished tracker from `docs/projects/<project>/tasks.md` to `docs/projects/archive/<project>/tasks.md`.
@@ -124,7 +125,10 @@ Use one project tracker file as the durable source of truth for long-running wor
 ## Resources
 
 - Use `references/tasks-template.md` when creating or normalizing `tasks.md`.
+- Use `references/learnings-template.md` when bootstrapping a project-specific `docs/projects/<project>/learnings/README.md` file.
 - Use `references/subagent-conventions.md` for the current role split, project-specific delegation rules, and subagent best practices in this control plane.
 - The template defines the standard single-file long-horizon structure for goals, scope, milestones, validation, decisions, blockers, progress, the current batch, and the remaining backlog.
 - Create `docs/projects/<project>/resources/` when the project produces reusable artifacts that help execution or verification, or when delegated work benefits from durable notes, logs, or outputs worth keeping.
+- Create `docs/projects/<project>/learnings/` when the project is long-running enough to justify a durable retrospective or process-improvement log.
+- Reserve `resources/` for supporting project artifacts and working memory. Reserve `learnings/` for retrospective notes about what would have made the run easier. Reserve `references/` for static skill/source material.
 - Keep `resources/` flat by default and use topic-based filenames. Only add subfolders when the project has enough material to justify them.
