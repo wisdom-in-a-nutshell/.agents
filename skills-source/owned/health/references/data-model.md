@@ -26,11 +26,12 @@ History pattern:
 
 Reading defaults:
 
-1. Read `latest.json` first.
-2. Only inspect `by-date/` when the user wants trend/history.
-3. Treat `weight/` and `body-composition/` as separate datasets.
-4. Treat `metrics/sleep/stages/` as the real sleep source today.
-5. Do not rely on `metrics/sleep/summary/` unless it actually contains rows; the current snapshot for this account/source may be empty.
+1. For common questions, prefer `scripts/query_health.py`.
+2. Read `latest.json` first when inspecting raw files manually.
+3. Only inspect `by-date/` when the user wants trend/history or when the query script does not cover the question yet.
+4. Treat `weight/` and `body-composition/` as separate datasets.
+5. Treat `metrics/sleep/stages/` as the real sleep source today.
+6. Do not rely on `metrics/sleep/summary/` unless it actually contains rows; the current snapshot for this account/source may be empty.
 
 Current upstream implementation:
 
