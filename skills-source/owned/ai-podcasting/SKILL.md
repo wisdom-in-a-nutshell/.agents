@@ -67,7 +67,8 @@ python3 scripts/aip_local_upload_helper.py \
 - Fixed show: `TCR`
 - The CLI does not accept base-url overrides or env-based base URL changes.
 - The CLI does not accept show selection; all submit/list operations are locked to `TCR`.
-- Use `--dry-run` for request preview without state changes.
+- Use `--dry-run` for request preview without creating or patching an episode.
+- When local file paths are present, `--dry-run` may still request storage URLs so the preview can show the final public links, but it does not upload file bytes.
 - JSON mode returns a stable envelope with:
   - `schema_version`
   - `command`
@@ -87,6 +88,7 @@ python3 scripts/aip_local_upload_helper.py \
    The main file link may be either:
    - a public HTTP/HTTPS URL
    - a local file path, which the helper uploads first
+   `assetUrls` may also be public URLs or local file paths; local paths are uploaded first.
    Optional: any additional backend-supported episode fields. The client preserves richer payloads such as `deliverables.thumbnails.options`, `deliverables.thumbnails.video.variants`, and `files.episode_outro`.
 3. `update-intro-copy`:
    Required (command): `--source-id`, `--payload-file`.
@@ -162,7 +164,7 @@ When values are missing in chat context, follow this flow:
    Never ask the user to pick an episode id again after step 1 is completed.
 9. If optional values are unclear, omit them instead of guessing.
 10. Use `--dry-run` if the user wants confirmation before the write call.
-11. For file-type fields (`recordingLink`, `videoThumbnails`, `audioThumbnailLink`, `outroMusicLink`, and submit main file link):
+11. For file-type fields (`recordingLink`, `videoThumbnails`, `audioThumbnailLink`, `outroMusicLink`, submit main file link, and submit `assetUrls` entries):
    - The client accepts either public HTTP/HTTPS URLs or local file paths.
    - If the user provides a local file path, run `scripts/aip_local_upload_helper.py` first and use its returned public URL.
    - Do not pass unresolved local filesystem paths to the episode API payload.
