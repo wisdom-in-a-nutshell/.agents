@@ -6,7 +6,6 @@ from __future__ import annotations
 import argparse
 from datetime import datetime
 import json
-import os
 from pathlib import Path
 import sys
 from typing import Any
@@ -34,58 +33,18 @@ def _discover_repo_root(start: Path) -> Path:
 REPO_ROOT = _discover_repo_root(Path.cwd())
 
 
-def _read_env_file_values() -> dict[str, str]:
-    path = Path(os.environ.get("HEALTH_ENV_FILE") or REPO_ROOT / ".env")
-    if not path.exists():
-        return {}
-
-    parsed: dict[str, str] = {}
-    for line in path.read_text(encoding="utf-8").splitlines():
-        raw = line.strip()
-        if not raw or raw.startswith("#") or "=" not in raw:
-            continue
-        key, value = raw.split("=", 1)
-        key = key.strip().removeprefix("export ").strip()
-        value = value.strip()
-        if len(value) >= 2 and value[0] == value[-1] and value[0] in {'"', "'"}:
-            value = value[1:-1]
-        parsed[key] = value
-    return parsed
-
-
-ENV_FILE_VALUES = _read_env_file_values()
-
-
-def _env(name: str, default: str | None = None) -> str | None:
-    value = os.environ.get(name)
-    if value is None:
-        value = ENV_FILE_VALUES.get(name, default)
-    return value
-
-
 def _default_output_root() -> Path:
-    env_root = _env("HEALTH_REFERENCE_ROOT")
-    if env_root:
-        return Path(env_root).expanduser().resolve()
     return (REPO_ROOT / "reference" / "health").resolve()
 
 
-def _default_api_url() -> str:
-    return (
-        _env("HEALTH_SNAPSHOT_API_URL", DEFAULT_HEALTH_SNAPSHOT_API_URL)
-        or DEFAULT_HEALTH_SNAPSHOT_API_URL
-    ).strip()
-
-
 def _default_person() -> str:
-    return (_env("HEALTH_PERSON") or REPO_ROOT.name).strip().lower()
+    return REPO_ROOT.name.strip().lower()
 
 
 def _parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="Fetch the normalized health snapshot and refresh the local sink.",
     )
-    parser.add_argument("--api-url", default=_default_api_url())
     parser.add_argument("--output-root", type=Path, default=_default_output_root())
     parser.add_argument("--person", default=_default_person())
     parser.add_argument("--days-back", type=int, default=None)
@@ -252,14 +211,14 @@ def main() -> None:
         "workout_days_back": args.workout_days_back,
         "sleep_days_back": args.sleep_days_back,
     }
-    snapshot = _fetch_snapshot(api_url=args.api_url, params=params)
+    snapshot = _fetch_snapshot(api_url=DEFAULT_HEALTH_SNAPSHOT_API_URL, params=params)
     written_paths = _write_health_snapshot(output_root=args.output_root, snapshot=snapshot)
 
     if args.json:
         print(
             json.dumps(
                 {
-                    "api_url": args.api_url,
+                    "api_url": DEFAULT_HEALTH_SNAPSHOT_API_URL,
                     "output_root": str(args.output_root),
                     "person": args.person,
                     "windows": snapshot.get("windows", {}),

@@ -1,6 +1,6 @@
 ---
 name: health
-description: Read or refresh a repo-local personal health sink. Use when answering questions about sleep, activity, workouts, weight, body composition, devices, or when syncing fresh health data into `reference/health/` from the configured health snapshot API.
+description: Read or refresh a repo-local personal health sink. Use when answering questions about sleep, activity, workouts, weight, body composition, devices, or when syncing fresh health data into `reference/health/` from the canonical health snapshot API.
 ---
 
 # Health
@@ -60,31 +60,23 @@ python3 .agents/skills/health/scripts/sync_health.py --days-back 3
 Current defaults:
 
 - API URL:
-  - `HEALTH_SNAPSHOT_API_URL` if set
-  - otherwise the currently configured deployed health snapshot URL
+  - the hardcoded canonical deployed health snapshot URL in `scripts/sync_health.py`
 - sink root:
-  - `HEALTH_REFERENCE_ROOT` if set
-  - otherwise `reference/health/` under the current repo root
+  - `reference/health/` under the current repo root
 - recent sync window: 2 days for measurements, activity, workouts, and sleep
 
 Path behavior:
 
 - Nothing is hard-coded to `adi`.
 - Running the script inside another repo writes to that repo's `reference/health/` by default.
-- Use `--output-root` or `HEALTH_REFERENCE_ROOT` when the sink should live somewhere else.
-- The default person selector is the current repo root name, overridden by `HEALTH_PERSON` or `--person`.
+- Use `--output-root` when the sink should live somewhere else.
+- The default person selector is the current repo root name, overridden by `--person` only when needed.
 
 Current person/account boundary:
 
 - The current snapshot endpoint supports the person keys `adi` and `angie`.
 - The skill passes the repo root name as the default person key, so `adi` maps to Adi and `angie` maps to Angie.
 - Keep separate sink roots per person or per repo; do not mix multiple people into one `reference/health/`.
-
-Repo bootstrap default:
-
-```bash
-scripts/local/secrets/bootstrap_local_env_from_keyvault.sh
-```
 
 ## Implementation Notes
 
