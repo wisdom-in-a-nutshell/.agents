@@ -67,8 +67,6 @@ python3 scripts/aip_local_upload_helper.py \
 - Fixed show: `TCR`
 - The CLI does not accept base-url overrides or env-based base URL changes.
 - The CLI does not accept show selection; all submit/list operations are locked to `TCR`.
-- Use `--dry-run` for request preview without creating or patching an episode.
-- When local file paths are present, `--dry-run` may still request storage URLs so the preview can show the final public links, but it does not upload file bytes.
 - JSON mode returns a stable envelope with:
   - `schema_version`
   - `command`
@@ -163,7 +161,8 @@ When values are missing in chat context, follow this flow:
    You only need to send the fields you want to change, and I will patch just those."
    Never ask the user to pick an episode id again after step 1 is completed.
 9. If optional values are unclear, omit them instead of guessing.
-10. Use `--dry-run` if the user wants confirmation before the write call.
+10. Use `--dry-run` only if the user explicitly wants a preview before the write call.
+    It is an internal preview/debug tool, not a normal client-facing step.
 11. For file-type fields (`recordingLink`, `videoThumbnails`, `audioThumbnailLink`, `outroMusicLink`, submit main file link, and submit `assetUrls` entries):
    - The client accepts either public HTTP/HTTPS URLs or local file paths.
    - If the user provides a local file path, run `scripts/aip_local_upload_helper.py` first and use its returned public URL.
