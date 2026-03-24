@@ -314,32 +314,53 @@ def validate_submit_payload(payload: dict[str, Any]) -> None:
       exit_code=2,
     )
 
+  main_episode_file = payload.get("mainEpisodeFile")
   file_url = payload.get("fileUrl")
   files = payload.get("files")
-  has_file_url = isinstance(file_url, str) and bool(file_url.strip())
   has_main_raw = (
     isinstance(files, dict)
     and isinstance(files.get("main"), dict)
     and isinstance(files["main"].get("raw"), str)
     and bool(files["main"]["raw"].strip())
   )
+  has_main_episode_file = isinstance(main_episode_file, str) and bool(main_episode_file.strip())
+  has_file_url = isinstance(file_url, str) and bool(file_url.strip())
 
-  if not has_file_url and not has_main_raw:
+  normalized_main_episode_file = str(main_episode_file).strip() if has_main_episode_file else ""
+  normalized_file_url = str(file_url).strip() if has_file_url else ""
+  normalized_main_raw = str(files["main"]["raw"]).strip() if has_main_raw else ""
+  candidate_sources: list[tuple[str, str]] = []
+  if has_main_episode_file:
+    candidate_sources.append(("mainEpisodeFile", normalized_main_episode_file))
+  if has_file_url:
+    candidate_sources.append(("fileUrl", normalized_file_url))
+  if has_main_raw:
+    candidate_sources.append(("files.main.raw", normalized_main_raw))
+
+  unique_source_values = {value for _, value in candidate_sources}
+  if len(unique_source_values) > 1:
+    conflicting_fields = ", ".join(field for field, _ in candidate_sources)
     raise ClientError(
       code="E_VALIDATION",
-      message="submit-episode payload requires either files.main.raw or fileUrl.",
+      message=f"submit-episode payload has conflicting main file values across {conflicting_fields}.",
+      retryable=False,
+      hint="Provide one main episode file, or keep all aliases identical.",
+      exit_code=2,
+    )
+
+  if not candidate_sources:
+    raise ClientError(
+      code="E_VALIDATION",
+      message="submit-episode payload requires a main episode file.",
       retryable=False,
       hint="Use references/submit-episode.example.json as baseline.",
       exit_code=2,
     )
 
-  candidate_links: list[str] = []
-  if has_file_url:
-    candidate_links.append(str(file_url).strip())
-  if has_main_raw:
-    candidate_links.append(str(files["main"]["raw"]).strip())
-
-  validate_upload_source_list("submit-episode main file", candidate_links)
+  validate_upload_source_list(
+    "submit-episode main file",
+    [next(iter(unique_source_values))],
+  )
 
 
 def validate_intro_copy_payload(payload: dict[str, Any]) -> None:
@@ -422,31 +443,45 @@ def normalize_submit_payload(
 ) -> tuple[dict[str, Any], list[dict[str, Any]]]:
   normalized = json.loads(json.dumps(payload))
   upload_records: list[dict[str, Any]] = []
+  main_file_value = ""
+  main_file_field = ""
 
-  if isinstance(normalized.get("fileUrl"), str) and normalized["fileUrl"].strip():
-    resolved_url, upload_record = resolve_upload_source_url(
-      normalized["fileUrl"],
-      "fileUrl",
+  files = normalized.get("files")
+  if (
+    isinstance(files, dict)
+    and isinstance(files.get("main"), dict)
+    and isinstance(files["main"].get("raw"), str)
+    and files["main"]["raw"].strip()
+  ):
+    main_file_value = files["main"]["raw"].strip()
+    main_file_field = "files.main.raw"
+  elif (
+    isinstance(normalized.get("mainEpisodeFile"), str)
+    and normalized["mainEpisodeFile"].strip()
+  ):
+    main_file_value = normalized["mainEpisodeFile"].strip()
+    main_file_field = "mainEpisodeFile"
+  elif isinstance(normalized.get("fileUrl"), str) and normalized["fileUrl"].strip():
+    main_file_value = normalized["fileUrl"].strip()
+    main_file_field = "fileUrl"
+
+  if main_file_value:
+    resolved_main_file, upload_record = resolve_upload_source_url(
+      main_file_value,
+      main_file_field,
       timeout_seconds,
       dry_run,
     )
-    normalized["fileUrl"] = resolved_url
+    files = normalized.setdefault("files", {})
+    if isinstance(files, dict):
+      main = files.setdefault("main", {})
+      if isinstance(main, dict):
+        main["raw"] = resolved_main_file
     if upload_record:
       upload_records.append(upload_record)
 
-  files = normalized.get("files")
-  if isinstance(files, dict):
-    main = files.get("main")
-    if isinstance(main, dict) and isinstance(main.get("raw"), str) and main["raw"].strip():
-      resolved_url, upload_record = resolve_upload_source_url(
-        main["raw"],
-        "files.main.raw",
-        timeout_seconds,
-        dry_run,
-      )
-      main["raw"] = resolved_url
-      if upload_record:
-        upload_records.append(upload_record)
+  normalized.pop("fileUrl", None)
+  normalized.pop("mainEpisodeFile", None)
 
   asset_urls = normalized.get("assetUrls")
   if isinstance(asset_urls, list):
@@ -859,8 +894,10 @@ def build_parser() -> argparse.ArgumentParser:
     "--payload-file",
     required=True,
     help=(
-      "Path to JSON payload file. Main-file fields may be public URLs or local file paths. "
-      "Local file paths are uploaded first and replaced with public URLs."
+      "Path to JSON payload file. Provide the main episode file as mainEpisodeFile for plain-English "
+      "input, or as files.main.raw if you already have the backend payload shape. A top-level fileUrl "
+      "is also accepted as a compatibility alias. Main-file fields may be public URLs or local file "
+      "paths. Local file paths are uploaded first and replaced with public URLs."
     ),
   )
   submit_parser.add_argument(

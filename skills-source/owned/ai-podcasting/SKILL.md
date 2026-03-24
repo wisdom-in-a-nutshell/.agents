@@ -81,11 +81,13 @@ python3 scripts/aip_local_upload_helper.py \
    Required: none.
    Optional: `--start-date`, `--end-date`, `--limit`.
 2. `submit-episode`:
-   Required: `--payload-file` with at least one main file link (`files.main.raw` or `fileUrl`).
+   Required: `--payload-file` with at least one main episode file link.
    Show handling: always forced to `TCR` by the CLI.
    The main file link may be either:
    - a public HTTP/HTTPS URL
    - a local file path, which the helper uploads first
+   For plain-English payloads, the CLI accepts `mainEpisodeFile` and normalizes it to the backend
+   submit shape automatically.
    `assetUrls` may also be public URLs or local file paths; local paths are uploaded first.
    Optional: any additional backend-supported episode fields. The client preserves richer payloads such as `deliverables.thumbnails.options`, `deliverables.thumbnails.video.variants`, and `files.episode_outro`.
 3. `update-intro-copy`:
@@ -121,7 +123,7 @@ When values are missing in chat context, follow this flow:
    Only continue into submit or intro-specific prompts after the user picks one.
 3. For submit flow, ask only for missing required submit values.
    Required submit value:
-   1. main episode file link (`files.main.raw` or `fileUrl`) as either a public HTTP/HTTPS URL or a local file path.
+   1. main episode file link as either a public HTTP/HTTPS URL or a local file path.
    Optional submit values:
    1. showNotes
    2. assetUrls
