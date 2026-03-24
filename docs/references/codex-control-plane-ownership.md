@@ -75,9 +75,8 @@ Use [Codex Control Plane](/Users/dobby/.agents/docs/architecture/codex-control-p
 
 ### `~/.agents`
 
- - [AGENTS.md](/Users/dobby/.agents/AGENTS.md): machine-local guidance for this repo; now includes the canonical Codex control-plane commands.
+- [AGENTS.md](/Users/dobby/.agents/AGENTS.md): machine-local guidance for this repo; now includes the canonical Codex control-plane commands.
 - [docs/architecture/codex-control-plane.md](/Users/dobby/.agents/docs/architecture/codex-control-plane.md): canonical high-level design.
-- [docs/projects/archive/codex-control-plane/tasks.md](/Users/dobby/.agents/docs/projects/archive/codex-control-plane/tasks.md): archived project tracker for the completed migration.
 - [codex/scripts/bootstrap-machine-codex.sh](/Users/dobby/.agents/codex/scripts/bootstrap-machine-codex.sh): canonical Codex-specific machine bootstrap entrypoint.
 - [codex/scripts/auto-apply-codex-control-plane.sh](/Users/adi/.agents/codex/scripts/auto-apply-codex-control-plane.sh): canonical Codex-specific post-sync reconcile entrypoint used for automatic cross-machine apply.
 - [codex/scripts/sync-trusted-projects.sh](/Users/dobby/.agents/codex/scripts/sync-trusted-projects.sh): canonical trusted-repo sync for terminal + Xcode Codex configs.
