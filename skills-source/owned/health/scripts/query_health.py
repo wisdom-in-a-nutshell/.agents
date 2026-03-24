@@ -414,6 +414,7 @@ def _workout_summary(record: dict[str, Any]) -> dict[str, Any]:
         "date": record.get("date"),
         "workout_id": record.get("workout_id"),
         "category": record.get("category"),
+        "category_label": record.get("category_label"),
         "start_at": record.get("start_at"),
         "end_at": record.get("end_at"),
         "duration_s": _seconds_between(record["start_at"], record["end_at"]) if isinstance(record.get("start_at"), str) and isinstance(record.get("end_at"), str) else None,
@@ -422,6 +423,8 @@ def _workout_summary(record: dict[str, Any]) -> dict[str, Any]:
         "steps": metrics.get("steps"),
         "calories": _round_or_none(float(metrics["calories"])) if isinstance(metrics.get("calories"), (int, float)) else None,
         "intensity": metrics.get("intensity"),
+        "source_model_id": record.get("source_model_id"),
+        "source_model": record.get("source_model"),
         "timezone": record.get("timezone"),
     }
 
@@ -757,8 +760,12 @@ def _render_human(command: str, data: dict[str, Any]) -> str:
     if command == "activity workouts":
         if not data["found"]:
             return f"No workouts found between {data['window']['start_date']} and {data['window']['end_date']}."
+        labels = sorted({workout["category_label"] for workout in data["workouts"] if isinstance(workout.get("category_label"), str)})
+        label_prefix = ""
+        if len(labels) == 1:
+            label_prefix = f"{labels[0]} "
         return (
-            f"Workouts over {data['window']['days']} days ending {data['window']['end_date']}: "
+            f"{label_prefix}workouts over {data['window']['days']} days ending {data['window']['end_date']}: "
             f"{data['coverage']['workout_count']} workout(s), "
             f"{data['total_distance_km']} km total distance, "
             f"{data['total_steps']} total steps."
