@@ -9,7 +9,7 @@ Use this skill for client-facing, agent-driven episode operations in this reposi
 
 ## What This Skill Runs
 
-Run a single CLI with three commands from `scripts/ai_podcasting_client.py`:
+Run the main CLI at `scripts/ai_podcasting_client.py` for episode operations:
 
 1. `list-backlog-episodes`:
    Get non-published `TCR` episodes and return `source_id` values.
@@ -19,6 +19,10 @@ Run a single CLI with three commands from `scripts/ai_podcasting_client.py`:
    Patch intro/title/thumbnail/outro assets for an existing episode via `/api/episodes/{sourceId}/intro`.
 
 This skill calls backend API routes directly. Do not automate the browser UI for these flows.
+
+Use `scripts/aip_local_upload_helper.py` only when the user gives a local file path for a file-like
+field. The helper uploads the file and returns a public URL for the main CLI to use. Keep this
+implicit in chat unless the user asks.
 
 ## Quick Start
 
@@ -46,6 +50,13 @@ python3 .agents/skills/ai-podcasting/scripts/ai_podcasting_client.py \
   --payload-file .agents/skills/ai-podcasting/references/update-intro-copy-tcr.example.json
 ```
 
+4. Upload a local file and get a public URL:
+
+```bash
+python3 .agents/skills/ai-podcasting/scripts/aip_local_upload_helper.py \
+  --json /absolute/path/to/file.png
+```
+
 ## Interface Notes
 
 - Fixed endpoint: `https://app.aipodcast.ing`
@@ -67,8 +78,11 @@ python3 .agents/skills/ai-podcasting/scripts/ai_podcasting_client.py \
    Required: none.
    Optional: `--start-date`, `--end-date`, `--limit`.
 2. `submit-episode`:
-   Required: `--payload-file` with at least one main file link (`files.main.raw` or `fileUrl`) as a public HTTP/HTTPS URL.
+   Required: `--payload-file` with at least one main file link (`files.main.raw` or `fileUrl`).
    Show handling: always forced to `TCR` by the CLI.
+   The main file link may be either:
+   - a public HTTP/HTTPS URL
+   - a local file path, which the helper uploads first
    Optional: any additional backend-supported episode fields. The client preserves richer payloads such as `deliverables.thumbnails.options`, `deliverables.thumbnails.video.variants`, and `files.episode_outro`.
 3. `update-intro-copy`:
    Required (command): `--source-id`, `--payload-file`.
@@ -83,6 +97,8 @@ python3 .agents/skills/ai-podcasting/scripts/ai_podcasting_client.py \
    - `deliverables.thumbnails.video.url` = first thumbnail URL
    - `deliverables.thumbnails.video.variants` = ordered list of all provided thumbnail URLs
    The client also accepts the full current app payload if the agent already has it.
+   Local paths are allowed for file-like fields. The helper uploads them and the client uses the
+   returned public URLs.
 
 ## Conversation Policy
 
@@ -101,7 +117,7 @@ When values are missing in chat context, follow this flow:
    Only continue into submit or intro-specific prompts after the user picks one.
 3. For submit flow, ask only for missing required submit values.
    Required submit value:
-   1. main episode file link (`files.main.raw` or `fileUrl`) as a public HTTP/HTTPS URL.
+   1. main episode file link (`files.main.raw` or `fileUrl`) as either a public HTTP/HTTPS URL or a local file path.
    Optional submit values:
    1. showNotes
    2. assetUrls
@@ -143,13 +159,14 @@ When values are missing in chat context, follow this flow:
 9. If optional values are unclear, omit them instead of guessing.
 10. Use `--dry-run` if the user wants confirmation before the write call.
 11. For file-type fields (`recordingLink`, `videoThumbnails`, `audioThumbnailLink`, `outroMusicLink`, and submit main file link):
-   - The current client expects publicly reachable HTTP/HTTPS URLs.
-   - If the user provides a local file path, ask them to upload it to cloud storage first and share a public link.
-   - Do not pass local filesystem paths to the API payload.
+   - The client accepts either public HTTP/HTTPS URLs or local file paths.
+   - If the user provides a local file path, run `scripts/aip_local_upload_helper.py` first and use its returned public URL.
+   - Do not pass unresolved local filesystem paths to the episode API payload.
 
 ## Resources
 
 - `scripts/ai_podcasting_client.py`: Single client interface with subcommands.
+- `scripts/aip_local_upload_helper.py`: Upload helper for local file paths; returns public URLs.
 - `references/submit-episode.example.json`: Example payload for submit flow.
 - `references/update-intro-copy.example.json`: Example payload for intro/copy patch flow.
 - `references/update-intro-copy-tcr.example.json`: Example payload for TCR-style final title/thumbnail updates.

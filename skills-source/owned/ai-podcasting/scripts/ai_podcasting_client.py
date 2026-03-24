@@ -14,6 +14,11 @@ from typing import Any
 from urllib import error as urlerror
 from urllib import parse as urlparse
 from urllib import request as urlrequest
+from aip_local_upload_helper import (
+  UploadHelperError,
+  resolve_upload_source_url,
+  validate_upload_source_list,
+)
 
 SCHEMA_VERSION = "1.0"
 FIXED_API_BASE_URL = "https://app.aipodcast.ing"
@@ -232,19 +237,6 @@ def ensure_mapping(payload: Any, context: str) -> dict[str, Any]:
   )
 
 
-def is_public_http_url(value: str) -> bool:
-  try:
-    parsed = urlparse.urlparse(value.strip())
-  except Exception:
-    return False
-  return parsed.scheme in ("http", "https") and bool(parsed.netloc)
-
-
-def looks_like_local_path(value: str) -> bool:
-  stripped = value.strip()
-  return stripped.startswith("/") or stripped.startswith("./") or stripped.startswith("../")
-
-
 def normalize_public_url_list(value: Any) -> list[str]:
   if isinstance(value, str):
     candidate = value.strip()
@@ -261,27 +253,6 @@ def normalize_public_url_list(value: Any) -> list[str]:
         normalized.append(candidate)
 
   return normalized
-
-
-def validate_public_url_list(field_name: str, links: list[str]) -> None:
-  for link in links:
-    if looks_like_local_path(link):
-      raise ClientError(
-        code="E_VALIDATION",
-        message=f"{field_name} must use public HTTP/HTTPS URLs, not local file paths.",
-        retryable=False,
-        hint="Upload the file to cloud storage first and provide a public HTTPS link.",
-        exit_code=2,
-      )
-
-    if not is_public_http_url(link):
-      raise ClientError(
-        code="E_VALIDATION",
-        message=f"{field_name} must contain valid public HTTP/HTTPS URLs.",
-        retryable=False,
-        hint="Provide a reachable public HTTPS link.",
-        exit_code=2,
-      )
 
 
 def normalize_video_thumbnail_links(payload: dict[str, Any]) -> list[str]:
@@ -368,24 +339,7 @@ def validate_submit_payload(payload: dict[str, Any]) -> None:
   if has_main_raw:
     candidate_links.append(str(files["main"]["raw"]).strip())
 
-  for link in candidate_links:
-    if looks_like_local_path(link):
-      raise ClientError(
-        code="E_VALIDATION",
-        message="submit-episode main file must be a public URL, not a local file path.",
-        retryable=False,
-        hint="Upload the file to cloud storage first and provide a public HTTPS link.",
-        exit_code=2,
-      )
-
-  if not any(is_public_http_url(link) for link in candidate_links):
-    raise ClientError(
-      code="E_VALIDATION",
-      message="submit-episode main file link must be a valid public HTTP/HTTPS URL.",
-      retryable=False,
-      hint="Set files.main.raw or fileUrl to a reachable public HTTPS link.",
-      exit_code=2,
-    )
+  validate_upload_source_list("submit-episode main file", candidate_links)
 
 
 def validate_intro_copy_payload(payload: dict[str, Any]) -> None:
@@ -404,7 +358,7 @@ def validate_intro_copy_payload(payload: dict[str, Any]) -> None:
   if not isinstance(recording_link, str) or not recording_link.strip():
     missing_required.append("recordingLink")
   else:
-    validate_public_url_list("recordingLink", [recording_link.strip()])
+    validate_upload_source_list("recordingLink", [recording_link.strip()])
 
   title = payload.get("title")
   if not isinstance(title, str) or not title.strip():
@@ -412,15 +366,15 @@ def validate_intro_copy_payload(payload: dict[str, Any]) -> None:
 
   video_thumbnail_links = normalize_video_thumbnail_links(payload)
   if video_thumbnail_links:
-    validate_public_url_list("videoThumbnails", video_thumbnail_links)
+    validate_upload_source_list("videoThumbnails", video_thumbnail_links)
 
   audio_thumbnail_link = payload.get("audioThumbnailLink")
   if isinstance(audio_thumbnail_link, str) and audio_thumbnail_link.strip():
-    validate_public_url_list("audioThumbnailLink", [audio_thumbnail_link.strip()])
+    validate_upload_source_list("audioThumbnailLink", [audio_thumbnail_link.strip()])
 
   outro_music_link = payload.get("outroMusicLink")
   if isinstance(outro_music_link, str) and outro_music_link.strip():
-    validate_public_url_list("outroMusicLink", [outro_music_link.strip()])
+    validate_upload_source_list("outroMusicLink", [outro_music_link.strip()])
 
   if not missing_required:
     return
@@ -448,8 +402,66 @@ def validate_intro_copy_payload(payload: dict[str, Any]) -> None:
   )
 
 
-def normalize_intro_copy_payload(payload: dict[str, Any]) -> dict[str, Any]:
+def normalize_submit_payload(
+  payload: dict[str, Any],
+  timeout_seconds: float,
+  dry_run: bool,
+) -> tuple[dict[str, Any], list[dict[str, Any]]]:
+  normalized = json.loads(json.dumps(payload))
+  upload_records: list[dict[str, Any]] = []
+
+  if isinstance(normalized.get("fileUrl"), str) and normalized["fileUrl"].strip():
+    resolved_url, upload_record = resolve_upload_source_url(
+      normalized["fileUrl"],
+      "fileUrl",
+      timeout_seconds,
+      dry_run,
+    )
+    normalized["fileUrl"] = resolved_url
+    if upload_record:
+      upload_records.append(upload_record)
+
+  files = normalized.get("files")
+  if isinstance(files, dict):
+    main = files.get("main")
+    if isinstance(main, dict) and isinstance(main.get("raw"), str) and main["raw"].strip():
+      resolved_url, upload_record = resolve_upload_source_url(
+        main["raw"],
+        "files.main.raw",
+        timeout_seconds,
+        dry_run,
+      )
+      main["raw"] = resolved_url
+      if upload_record:
+        upload_records.append(upload_record)
+
+  asset_urls = normalized.get("assetUrls")
+  if isinstance(asset_urls, list):
+    resolved_asset_urls: list[str] = []
+    for index, asset_url in enumerate(asset_urls):
+      if not isinstance(asset_url, str) or not asset_url.strip():
+        continue
+      resolved_url, upload_record = resolve_upload_source_url(
+        asset_url,
+        f"assetUrls[{index}]",
+        timeout_seconds,
+        dry_run,
+      )
+      resolved_asset_urls.append(resolved_url)
+      if upload_record:
+        upload_records.append(upload_record)
+    normalized["assetUrls"] = resolved_asset_urls
+
+  return normalized, upload_records
+
+
+def normalize_intro_copy_payload(
+  payload: dict[str, Any],
+  timeout_seconds: float,
+  dry_run: bool,
+) -> tuple[dict[str, Any], list[dict[str, Any]]]:
   normalized: dict[str, Any] = {}
+  upload_records: list[dict[str, Any]] = []
   for key, value in payload.items():
     mapped_key = INTRO_COPY_FIELD_MAP.get(key, key)
     normalized[mapped_key] = value
@@ -493,15 +505,90 @@ def normalize_intro_copy_payload(payload: dict[str, Any]) -> dict[str, Any]:
       if isinstance(episode_outro, dict):
         episode_outro["edited"] = outro_music_link.strip()
 
+  if isinstance(normalized.get("introFile"), str) and normalized["introFile"].strip():
+    resolved_url, upload_record = resolve_upload_source_url(
+      normalized["introFile"],
+      "introFile",
+      timeout_seconds,
+      dry_run,
+    )
+    normalized["introFile"] = resolved_url
+    if upload_record:
+      upload_records.append(upload_record)
+
   deliverables = normalized.get("deliverables")
   if isinstance(deliverables, dict):
     thumbnails = deliverables.get("thumbnails")
     if isinstance(thumbnails, dict):
       video = thumbnails.get("video")
       if isinstance(video, dict):
+        current_url = video.get("url")
+        if isinstance(current_url, str) and current_url.strip():
+          resolved_url, upload_record = resolve_upload_source_url(
+            current_url,
+            "deliverables.thumbnails.video.url",
+            timeout_seconds,
+            dry_run,
+          )
+          video["url"] = resolved_url
+          if upload_record:
+            upload_records.append(upload_record)
+
+        variants = video.get("variants")
+        if isinstance(variants, list):
+          resolved_variants: list[dict[str, Any]] = []
+          for index, variant in enumerate(variants):
+            if not isinstance(variant, dict):
+              continue
+            variant_copy = dict(variant)
+            variant_url = variant_copy.get("url")
+            if not isinstance(variant_url, str) or not variant_url.strip():
+              continue
+            resolved_url, upload_record = resolve_upload_source_url(
+              variant_url,
+              f"deliverables.thumbnails.video.variants[{index}].url",
+              timeout_seconds,
+              dry_run,
+            )
+            variant_copy["url"] = resolved_url
+            resolved_variants.append(variant_copy)
+            if upload_record:
+              upload_records.append(upload_record)
+          video["variants"] = resolved_variants
+
         ensure_video_thumbnail_payload(video)
 
-  return normalized
+      audio = thumbnails.get("audio")
+      if isinstance(audio, dict):
+        audio_url = audio.get("url")
+        if isinstance(audio_url, str) and audio_url.strip():
+          resolved_url, upload_record = resolve_upload_source_url(
+            audio_url,
+            "deliverables.thumbnails.audio.url",
+            timeout_seconds,
+            dry_run,
+          )
+          audio["url"] = resolved_url
+          if upload_record:
+            upload_records.append(upload_record)
+
+  files = normalized.get("files")
+  if isinstance(files, dict):
+    episode_outro = files.get("episode_outro")
+    if isinstance(episode_outro, dict):
+      edited_url = episode_outro.get("edited")
+      if isinstance(edited_url, str) and edited_url.strip():
+        resolved_url, upload_record = resolve_upload_source_url(
+          edited_url,
+          "files.episode_outro.edited",
+          timeout_seconds,
+          dry_run,
+        )
+        episode_outro["edited"] = resolved_url
+        if upload_record:
+          upload_records.append(upload_record)
+
+  return normalized, upload_records
 
 
 def normalize_episode_item(item: dict[str, Any]) -> dict[str, str]:
@@ -578,6 +665,7 @@ def run_list_backlog_episodes(args: argparse.Namespace) -> dict[str, Any]:
 def run_submit_episode(args: argparse.Namespace) -> dict[str, Any]:
   payload = ensure_mapping(load_json_file(args.payload_file), "submit-episode")
   validate_submit_payload(payload)
+  payload, upload_records = normalize_submit_payload(payload, args.timeout_seconds, args.dry_run)
   payload["show"] = FIXED_SHOW
 
   url = build_url(FIXED_API_BASE_URL, "/api/episodes/submit")
@@ -585,6 +673,7 @@ def run_submit_episode(args: argparse.Namespace) -> dict[str, Any]:
   if args.dry_run:
     return {
       "dry_run": True,
+      "planned_uploads": upload_records,
       "request": {"method": "POST", "url": url, "payload": payload},
     }
 
@@ -613,13 +702,18 @@ def run_update_intro_copy(args: argparse.Namespace) -> dict[str, Any]:
 
   payload = ensure_mapping(load_json_file(args.payload_file), "update-intro-copy")
   validate_intro_copy_payload(payload)
-  payload = normalize_intro_copy_payload(payload)
+  payload, upload_records = normalize_intro_copy_payload(
+    payload,
+    args.timeout_seconds,
+    args.dry_run,
+  )
   encoded_source_id = urlparse.quote(source_id, safe="")
   url = build_url(FIXED_API_BASE_URL, f"/api/episodes/{encoded_source_id}/intro")
 
   if args.dry_run:
     return {
       "dry_run": True,
+      "planned_uploads": upload_records,
       "request": {"method": "PATCH", "url": url, "payload": payload},
     }
 
@@ -748,7 +842,14 @@ def build_parser() -> argparse.ArgumentParser:
     "submit-episode",
     help="Submit a new episode payload to /api/episodes/submit.",
   )
-  submit_parser.add_argument("--payload-file", required=True, help="Path to JSON payload file.")
+  submit_parser.add_argument(
+    "--payload-file",
+    required=True,
+    help=(
+      "Path to JSON payload file. Main-file fields may be public URLs or local file paths. "
+      "Local file paths are uploaded first and replaced with public URLs."
+    ),
+  )
   submit_parser.add_argument(
     "--dry-run",
     action="store_true",
@@ -767,6 +868,7 @@ def build_parser() -> argparse.ArgumentParser:
       "Path to JSON payload file. Supports the current app intro payload directly, "
       "or the user-facing convenience fields "
       "(recordingLink/title/thumbnailText/videoThumbnails/audioThumbnailLink/outroMusicLink). "
+      "File-like fields may be public URLs or local file paths. "
       "Provide one or multiple video thumbnail URLs and the client will normalize them "
       "into the app's thumbnail shape."
     ),
@@ -826,7 +928,7 @@ def main() -> int:
       print_human_success(args.command, data)
 
     return 0
-  except ClientError as exc:
+  except (ClientError, UploadHelperError) as exc:
     duration_ms = int((time.perf_counter() - start) * 1000)
     error_payload = {
       "code": exc.code,
