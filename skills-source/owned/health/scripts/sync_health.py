@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Fetch a personal health snapshot from WIN and write the local health sink."""
+"""Fetch a normalized personal health snapshot and write the local health sink."""
 
 from __future__ import annotations
 
@@ -115,10 +115,30 @@ def _fetch_snapshot(*, api_url: str, params: dict[str, Any]) -> dict[str, Any]:
     return payload
 
 
+def _infer_source(snapshot: dict[str, Any]) -> str:
+    for key in ("source", "provider", "upstream_source"):
+        value = snapshot.get(key)
+        if isinstance(value, str) and value.strip():
+            return value.strip()
+
+    devices_latest = (
+        snapshot.get("metrics", {})
+        .get("devices", {})
+        .get("latest", {})
+    )
+    if isinstance(devices_latest, dict):
+        value = devices_latest.get("source")
+        if isinstance(value, str) and value.strip():
+            return value.strip()
+
+    return "api"
+
+
 def _write_health_snapshot(*, output_root: Path, snapshot: dict[str, Any]) -> list[Path]:
     metrics_root = output_root / "metrics"
     generated_at = datetime.fromisoformat(snapshot["generated_at"])
     metrics = snapshot["metrics"]
+    source = _infer_source(snapshot)
     written_paths: list[Path] = []
 
     devices = metrics["devices"]
@@ -128,6 +148,7 @@ def _write_health_snapshot(*, output_root: Path, snapshot: dict[str, Any]) -> li
             latest_payload=devices["latest"],
             snapshot_payload=devices["snapshot"],
             snapshot_date=devices["snapshot_date"],
+            source=source,
         )
     )
 
@@ -146,6 +167,7 @@ def _write_health_snapshot(*, output_root: Path, snapshot: dict[str, Any]) -> li
                 root=root,
                 dated_records=metrics[dataset_name]["by_date"],
                 generated_at=generated_at,
+                source=source,
             )
         )
 
@@ -157,12 +179,13 @@ def _write_dated_record_map(
     root: Path,
     dated_records: dict[str, list[dict[str, Any]]],
     generated_at: datetime,
+    source: str,
 ) -> list[Path]:
     written_paths: list[Path] = []
     for record_date in sorted(dated_records):
         payload = {
             "date": record_date,
-            "source": "withings",
+            "source": source,
             "generated_at": generated_at.isoformat(),
             "records": dated_records[record_date],
         }
@@ -171,7 +194,10 @@ def _write_dated_record_map(
         written_paths.append(dated_path)
 
     latest_path = root / "latest.json"
-    _write_json(latest_path, _load_latest_payload_from_history(root=root, generated_at=generated_at))
+    _write_json(
+        latest_path,
+        _load_latest_payload_from_history(root=root, generated_at=generated_at, source=source),
+    )
     written_paths.append(latest_path)
     return written_paths
 
@@ -182,11 +208,12 @@ def _write_latest_and_snapshot(
     latest_payload: dict[str, Any],
     snapshot_payload: dict[str, Any],
     snapshot_date: str,
+    source: str,
 ) -> list[Path]:
     latest_path = root / "latest.json"
     snapshot_path = root / "snapshots" / snapshot_date[:4] / f"{snapshot_date}.json"
-    _write_json(latest_path, latest_payload)
-    _write_json(snapshot_path, snapshot_payload)
+    _write_json(latest_path, {**latest_payload, "source": latest_payload.get("source", source)})
+    _write_json(snapshot_path, {**snapshot_payload, "source": snapshot_payload.get("source", source)})
     return [latest_path, snapshot_path]
 
 
@@ -195,10 +222,10 @@ def _write_json(path: Path, payload: dict[str, Any]) -> None:
     path.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
 
 
-def _load_latest_payload_from_history(*, root: Path, generated_at: datetime) -> dict[str, Any]:
+def _load_latest_payload_from_history(*, root: Path, generated_at: datetime, source: str) -> dict[str, Any]:
     by_date_root = root / "by-date"
     if not by_date_root.exists():
-        return {"date": None, "generated_at": generated_at.isoformat(), "records": [], "source": "withings"}
+        return {"date": None, "generated_at": generated_at.isoformat(), "records": [], "source": source}
 
     latest_payload: dict[str, Any] | None = None
     latest_date: str | None = None
@@ -211,8 +238,8 @@ def _load_latest_payload_from_history(*, root: Path, generated_at: datetime) -> 
             latest_date = payload_date
             latest_payload = payload
     if latest_payload is None:
-        return {"date": None, "generated_at": generated_at.isoformat(), "records": [], "source": "withings"}
-    return {**latest_payload, "generated_at": generated_at.isoformat()}
+        return {"date": None, "generated_at": generated_at.isoformat(), "records": [], "source": source}
+    return {**latest_payload, "generated_at": generated_at.isoformat(), "source": latest_payload.get("source", source)}
 
 
 def main() -> None:

@@ -30,12 +30,12 @@ Reading defaults:
 2. Only inspect `by-date/` when the user wants trend/history.
 3. Treat `weight/` and `body-composition/` as separate datasets.
 4. Treat `metrics/sleep/stages/` as the real sleep source today.
-5. Do not rely on `metrics/sleep/summary/` unless it actually contains rows; Withings currently returns empty summary results for this account/source.
+5. Do not rely on `metrics/sleep/summary/` unless it actually contains rows; the current snapshot for this account/source may be empty.
 
 Current upstream implementation:
 
-- Withings is the only implemented provider.
-- Current fetch path is the `win` snapshot endpoint, not a direct provider call from the skill.
+- Current fetch path is a normalized health snapshot endpoint, not a direct provider call from the skill.
+- Provider details should stay upstream; the local sink contract should not depend on a specific health vendor.
 - `HEALTH_REFERENCE_ROOT` can override the sink root when the health store lives outside the current repo root.
 - Without `HEALTH_REFERENCE_ROOT`, the script writes to `reference/health/` under the current repo root it is invoked from.
 - The default person selector is the current repo root name, overridden by `HEALTH_PERSON` or `--person`.

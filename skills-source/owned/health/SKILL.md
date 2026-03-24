@@ -11,8 +11,8 @@ Use this skill for personal health work in the local memory-bank flow.
 Important boundary:
 
 - The canonical read surface is the local sink under `reference/health/`.
-- The current upstream source is Withings.
-- `win` owns Withings auth, token refresh, and upstream normalization.
+- The skill pulls from a normalized health snapshot API.
+- Upstream systems own provider auth, token refresh, and normalization.
 - The skill only fetches the normalized snapshot JSON and writes the local sink.
 - The skill is portable across repos; by default it writes to `reference/health/` under the current repo root.
 
@@ -21,7 +21,7 @@ Important boundary:
 1. Identify whether the user wants a read, a refresh, or both.
 2. For normal health questions, read the local sink first.
 3. Only run a sync when the user asks for refresh/current data or when the sink is clearly stale for the question.
-4. After syncing, re-read the sink instead of reasoning from raw upstream payloads.
+4. After syncing, re-read the sink instead of reasoning from raw API payloads.
 
 ## Read Path
 
@@ -61,7 +61,7 @@ Current defaults:
 
 - API URL:
   - `HEALTH_SNAPSHOT_API_URL` if set
-  - otherwise the stable `win` `/personal/health/withings-snapshot` URL
+  - otherwise the currently configured deployed health snapshot URL
 - sink root:
   - `HEALTH_REFERENCE_ROOT` if set
   - otherwise `reference/health/` under the current repo root
@@ -76,7 +76,7 @@ Path behavior:
 
 Current person/account boundary:
 
-- The current `win` snapshot endpoint supports the person keys `adi` and `angie`.
+- The current snapshot endpoint supports the person keys `adi` and `angie`.
 - The skill passes the repo root name as the default person key, so `adi` maps to Adi and `angie` maps to Angie.
 - Keep separate sink roots per person or per repo; do not mix multiple people into one `reference/health/`.
 
@@ -89,8 +89,8 @@ scripts/local/secrets/bootstrap_local_env_from_keyvault.sh
 ## Implementation Notes
 
 - The skill should stay thin.
-- Do not duplicate Withings auth or token logic here.
-- Extend the `win` snapshot endpoint when new health domains are needed, then keep this skill as a simple local writer.
+- Do not duplicate provider auth or token logic here.
+- Extend the upstream snapshot endpoint when new health domains are needed, then keep this skill as a simple local writer.
 
 ## Resources
 
