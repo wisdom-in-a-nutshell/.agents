@@ -182,6 +182,16 @@
       "upstream_ref": "-"
     },
     {
+      "skill": "client-interface-guidelines",
+      "origin": "owned",
+      "scope": "repo",
+      "repos": [
+        "adi"
+      ],
+      "source_path": "skills-source/owned/client-interface-guidelines",
+      "upstream_ref": "-"
+    },
+    {
       "skill": "journal-checkin",
       "origin": "owned",
       "scope": "repo",
