@@ -27,23 +27,19 @@ Important boundary:
 
 ## Read Path
 
-For common questions, use:
+For common questions, use the local query CLI:
 
 - `python3 .agents/skills/health/scripts/query_health.py --help`
-- `python3 .agents/skills/health/scripts/query_health.py weight latest --json`
-- `python3 .agents/skills/health/scripts/query_health.py weight avg --days 7 --json`
-- `python3 .agents/skills/health/scripts/query_health.py sleep latest --json`
-- `python3 .agents/skills/health/scripts/query_health.py sleep range --days 7 --json`
-- `python3 .agents/skills/health/scripts/query_health.py activity today --json`
-- `python3 .agents/skills/health/scripts/query_health.py activity workouts --days 7 --json`
-- `python3 .agents/skills/health/scripts/query_health.py summary recent --days 7 --json`
+- detailed command list: `references/query-cli.md`
 
-Use the script for questions like:
+Use the query CLI for questions like:
 
 - how did I sleep today / this week
 - what is my weight today / average weight this week
 - did I do any activities today
 - did I work out this week
+- how many kilometers did I run last week
+- what is my stored height
 - how am I doing lately
 
 Read the local files directly when:
@@ -58,6 +54,7 @@ Read the local files directly when:
 - `reference/health/metrics/activity/workouts/latest.json`
 - `reference/health/metrics/sleep/stages/latest.json`
 - `reference/health/metrics/devices/latest.json`
+- `reference/health/profile/latest.json`
 
 History lives under `reference/health/metrics/**/by-date/YYYY/YYYY-MM-DD.json`.
 
@@ -117,5 +114,6 @@ Current person/account boundary:
 ## Resources
 
 - `references/data-model.md` - current sink layout and reading rules.
+- `references/query-cli.md` - query CLI commands, modes, and common routing examples.
 - `scripts/sync_health.py` - canonical sync entrypoint for this skill.
 - `scripts/query_health.py` - canonical local query/read entrypoint for common health questions.

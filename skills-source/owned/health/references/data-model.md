@@ -6,8 +6,19 @@ Canonical sink root:
 
 Primary split:
 
+- `profile/` for stable structured health facts
 - `metrics/` for recurring structured JSON data
 - `records/` for documents and irregular artifacts
+
+Stable profile pattern:
+
+- `profile/latest.json` is the canonical home for structured facts that are
+  important for lookup or calculations but are not naturally time-series data.
+- Example fits:
+  - height
+  - other mostly-static body facts when they become useful later
+- Keep durable support-relevant interpretation in memory, but keep the factual
+  structured value itself in `profile/`.
 
 Current recurring metric datasets:
 
@@ -27,11 +38,12 @@ History pattern:
 Reading defaults:
 
 1. For common questions, prefer `scripts/query_health.py`.
-2. Read `latest.json` first when inspecting raw files manually.
-3. Only inspect `by-date/` when the user wants trend/history or when the query script does not cover the question yet.
-4. Treat `weight/` and `body-composition/` as separate datasets.
-5. Treat `metrics/sleep/stages/` as the real sleep source today.
-6. Do not rely on `metrics/sleep/summary/` unless it actually contains rows; the current snapshot for this account/source may be empty.
+2. For stable body/profile facts, read `profile/latest.json`.
+3. Read `latest.json` first when inspecting raw files manually.
+4. Only inspect `by-date/` when the user wants trend/history or when the query script does not cover the question yet.
+5. Treat `weight/` and `body-composition/` as separate datasets.
+6. Treat `metrics/sleep/stages/` as the real sleep source today.
+7. Do not rely on `metrics/sleep/summary/` unless it actually contains rows; the current snapshot for this account/source may be empty.
 
 Current upstream implementation:
 

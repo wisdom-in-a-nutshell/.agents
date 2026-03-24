@@ -60,6 +60,7 @@ def _discover_repo_root(start: Path) -> Path:
 REPO_ROOT = _discover_repo_root(Path.cwd())
 HEALTH_ROOT = REPO_ROOT / "reference" / "health"
 METRICS_ROOT = HEALTH_ROOT / "metrics"
+PROFILE_ROOT = HEALTH_ROOT / "profile"
 
 
 def _now_utc() -> datetime:
@@ -127,6 +128,18 @@ def _load_json(path: Path) -> dict[str, Any]:
             exit_code=EXIT_DEPENDENCY,
         )
     return payload
+
+
+def _profile_latest_payload() -> dict[str, Any]:
+    path = PROFILE_ROOT / "latest.json"
+    if not path.exists():
+        raise HealthQueryError(
+            code="E_PROFILE_MISSING",
+            message=f"Missing health profile file: {path}",
+            hint="Create reference/health/profile/latest.json with the stable health facts you want to query.",
+            exit_code=EXIT_DEPENDENCY,
+        )
+    return _load_json(path)
 
 
 def _dataset_dir(*parts: str) -> Path:
@@ -524,9 +537,54 @@ def _summary_recent(*, days: int, end_date: date | None) -> dict[str, Any]:
     }
 
 
+def _profile_latest() -> dict[str, Any]:
+    payload = _profile_latest_payload()
+    body = payload.get("body")
+    if not isinstance(body, dict):
+        raise HealthQueryError(
+            code="E_INVALID_PROFILE",
+            message="Health profile file is missing a top-level body object.",
+            hint="Store stable facts under the body key in reference/health/profile/latest.json.",
+            exit_code=EXIT_DEPENDENCY,
+        )
+    return {
+        "health_root": str(HEALTH_ROOT),
+        "profile_root": str(PROFILE_ROOT),
+        "found": True,
+        "source": payload.get("source"),
+        "updated_at": payload.get("updated_at"),
+        "body": body,
+    }
+
+
+def _profile_height() -> dict[str, Any]:
+    payload = _profile_latest()
+    body = payload["body"]
+    height_cm = body.get("height_cm")
+    found = isinstance(height_cm, (int, float))
+    return {
+        "health_root": payload["health_root"],
+        "profile_root": payload["profile_root"],
+        "found": found,
+        "source": payload.get("source"),
+        "updated_at": payload.get("updated_at"),
+        "height_cm": height_cm if found else None,
+        "height_m": round(float(height_cm) / 100.0, 3) if found else None,
+    }
+
+
 def _build_parser() -> argparse.ArgumentParser:
     parser = HealthArgumentParser(
         description="Query the local health sink with a stable agent-first CLI.",
+        epilog=(
+            "Examples:\n"
+            "  python3 .agents/skills/health/scripts/query_health.py weight latest --human\n"
+            "  python3 .agents/skills/health/scripts/query_health.py weight avg --days 7 --json\n"
+            "  python3 .agents/skills/health/scripts/query_health.py sleep latest --human\n"
+            "  python3 .agents/skills/health/scripts/query_health.py activity workouts --days 7 --human\n"
+            "  python3 .agents/skills/health/scripts/query_health.py profile height --human"
+        ),
+        formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     mode = parser.add_mutually_exclusive_group()
     mode.add_argument("--json", action="store_true", help="Emit machine-readable JSON.")
@@ -535,6 +593,11 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--no-input", action="store_true", help="Confirm non-interactive execution.")
 
     subparsers = parser.add_subparsers(dest="domain", required=True)
+
+    profile = subparsers.add_parser("profile", help="Query stable health profile facts.")
+    profile_sub = profile.add_subparsers(dest="action", required=True)
+    profile_sub.add_parser("latest", help="Return the stable health profile object.")
+    profile_sub.add_parser("height", help="Return the stored height value.")
 
     weight = subparsers.add_parser("weight", help="Query weight measurements.")
     weight_sub = weight.add_subparsers(dest="action", required=True)
@@ -602,6 +665,10 @@ def _resolve_mode_from_argv(argv: list[str]) -> str:
 
 
 def _run_query(args: argparse.Namespace) -> tuple[str, dict[str, Any]]:
+    if args.domain == "profile" and args.action == "latest":
+        return "profile latest", _profile_latest()
+    if args.domain == "profile" and args.action == "height":
+        return "profile height", _profile_height()
     if args.domain == "weight" and args.action == "latest":
         return "weight latest", _weight_latest()
     if args.domain == "weight" and args.action == "avg":
@@ -628,6 +695,17 @@ def _run_query(args: argparse.Namespace) -> tuple[str, dict[str, Any]]:
 
 
 def _render_human(command: str, data: dict[str, Any]) -> str:
+    if command == "profile latest":
+        if not data["found"]:
+            return "No stable health profile found."
+        keys = ", ".join(sorted(data["body"].keys())) if data.get("body") else "no fields"
+        return f"Stable health profile loaded from {data['profile_root']}/latest.json with fields: {keys}."
+
+    if command == "profile height":
+        if not data["found"]:
+            return "No stored height found in the health profile."
+        return f"Stored height: {data['height_cm']} cm ({data['height_m']} m)."
+
     if command == "weight latest":
         if not data["found"]:
             return "No weight measurement found."
