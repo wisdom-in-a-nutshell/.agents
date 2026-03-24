@@ -88,8 +88,8 @@ python3 .agents/skills/ai-podcasting/scripts/aip_local_upload_helper.py \
    Required (command): `--source-id`, `--payload-file`.
    The client supports the current app intro payload directly.
    For conversation-driven usage, prefer these user-facing fields:
-   Required: `recordingLink`, `title`.
-   Optional: `videoThumbnails`, `thumbnailText`, `transcript`, `instructionsToEditor`, `audioThumbnailLink`, `outroMusicLink`.
+   There are no required patch fields beyond `source_id`.
+   Common patch fields: `recordingLink`, `title`, `videoThumbnails`, `thumbnailText`, `transcript`, `instructionsToEditor`, `audioThumbnailLink`, `outroMusicLink`.
    `videoThumbnails` may be either:
    - one public HTTP/HTTPS URL
    - a list of public HTTP/HTTPS URLs
@@ -136,25 +136,25 @@ When values are missing in chat context, follow this flow:
    `...`
    Then ask: `Reply with the episode number or source_id.`
    If the user replies with a number (for example `4`), map that number to the corresponding `source_id` and continue without asking them to repeat the full id.
-6. Ask only for missing required values.
+6. Ask only for the fields the user wants to change.
 7. Enforce a strict two-step prompt sequence for intro updates:
    - Step 1 message: episode list + `Reply with the episode number or source_id.`
    - Step 2 message (only after episode is selected): required/optional field collection.
 8. For intro updates, use one prompt shape by default:
    "Episode selected: <source_id>.
-   Required:
+   Provide any fields you want to update.
+
+   Common fields:
    1. recordingLink
    2. title
+   3. videoThumbnails (give one URL or multiple URLs)
+   4. thumbnailText
+   5. transcript
+   6. instructionsToEditor
+   7. audioThumbnailLink
+   8. outroMusicLink
 
-   Optional:
-   1. videoThumbnails (give one URL or multiple URLs)
-   2. thumbnailText
-   3. transcript
-   4. instructionsToEditor
-   5. audioThumbnailLink
-   6. outroMusicLink
-
-   Provide values in any format you want, and I will set them in the episode."
+   You only need to send the fields you want to change, and I will patch just those."
    Never ask the user to pick an episode id again after step 1 is completed.
 9. If optional values are unclear, omit them instead of guessing.
 10. Use `--dry-run` if the user wants confirmation before the write call.

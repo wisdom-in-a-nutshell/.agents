@@ -348,21 +348,59 @@ def validate_intro_copy_payload(payload: dict[str, Any]) -> None:
       code="E_VALIDATION",
       message="update-intro-copy payload must not be empty.",
       retryable=False,
-      hint="Provide the current intro payload or the user-facing intro fields for recording, title, and thumbnails.",
+      hint="Provide at least one intro field to update.",
       exit_code=2,
     )
 
-  missing_required: list[str] = []
-
   recording_link = payload.get("recordingLink", payload.get("introFile"))
-  if not isinstance(recording_link, str) or not recording_link.strip():
-    missing_required.append("recordingLink")
-  else:
+  if isinstance(recording_link, str) and recording_link.strip():
     validate_upload_source_list("recordingLink", [recording_link.strip()])
 
   title = payload.get("title")
-  if not isinstance(title, str) or not title.strip():
-    missing_required.append("title")
+  if "title" in payload and (not isinstance(title, str) or not title.strip()):
+    raise ClientError(
+      code="E_VALIDATION",
+      message="title must be a non-empty string when provided.",
+      retryable=False,
+      hint="Omit title if you are not updating it.",
+      exit_code=2,
+    )
+
+  thumbnail_text = payload.get("thumbnailText")
+  if "thumbnailText" in payload and (
+    not isinstance(thumbnail_text, str) or not thumbnail_text.strip()
+  ):
+    raise ClientError(
+      code="E_VALIDATION",
+      message="thumbnailText must be a non-empty string when provided.",
+      retryable=False,
+      hint="Omit thumbnailText if you are not updating it.",
+      exit_code=2,
+    )
+
+  transcript = payload.get("transcript", payload.get("introTranscript"))
+  if (
+    "transcript" in payload or "introTranscript" in payload
+  ) and (not isinstance(transcript, str) or not transcript.strip()):
+    raise ClientError(
+      code="E_VALIDATION",
+      message="transcript must be a non-empty string when provided.",
+      retryable=False,
+      hint="Omit transcript if you are not updating it.",
+      exit_code=2,
+    )
+
+  instructions_to_editor = payload.get("instructionsToEditor", payload.get("editorInstructions"))
+  if (
+    "instructionsToEditor" in payload or "editorInstructions" in payload
+  ) and (not isinstance(instructions_to_editor, str) or not instructions_to_editor.strip()):
+    raise ClientError(
+      code="E_VALIDATION",
+      message="instructionsToEditor must be a non-empty string when provided.",
+      retryable=False,
+      hint="Omit instructionsToEditor if you are not updating it.",
+      exit_code=2,
+    )
 
   video_thumbnail_links = normalize_video_thumbnail_links(payload)
   if video_thumbnail_links:
@@ -375,31 +413,6 @@ def validate_intro_copy_payload(payload: dict[str, Any]) -> None:
   outro_music_link = payload.get("outroMusicLink")
   if isinstance(outro_music_link, str) and outro_music_link.strip():
     validate_upload_source_list("outroMusicLink", [outro_music_link.strip()])
-
-  if not missing_required:
-    return
-
-  optional_fields = ", ".join(
-    [
-      "videoThumbnails",
-      "thumbnailText",
-      "transcript",
-      "instructionsToEditor",
-      "audioThumbnailLink",
-      "outroMusicLink",
-    ]
-  )
-  missing = ", ".join(missing_required)
-  raise ClientError(
-    code="E_VALIDATION",
-    message=f"update-intro-copy is missing required fields: {missing}.",
-    retryable=False,
-    hint=(
-      "Required: recordingLink, title. "
-      f"Optional: {optional_fields}."
-    ),
-    exit_code=2,
-  )
 
 
 def normalize_submit_payload(
