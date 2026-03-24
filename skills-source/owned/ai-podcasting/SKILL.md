@@ -24,36 +24,40 @@ Use `scripts/aip_local_upload_helper.py` only when the user gives a local file p
 field. The helper uploads the file and returns a public URL for the main CLI to use. Keep this
 implicit in chat unless the user asks.
 
+All script and reference paths in this skill are relative to the skill directory itself, not the
+repository root. Do not run `scripts/...` from the repo root unless you first `cd` into this skill
+directory. When in doubt, use the absolute skill path shown by the harness.
+
 ## Quick Start
 
 1. List backlog episodes to find the target ID:
 
 ```bash
-python3 .agents/skills/ai-podcasting/scripts/ai_podcasting_client.py \
+python3 scripts/ai_podcasting_client.py \
   --json list-backlog-episodes
 ```
 
 2. Submit a new episode (creates a new episode; no `source_id` input needed):
 
 ```bash
-python3 .agents/skills/ai-podcasting/scripts/ai_podcasting_client.py \
+python3 scripts/ai_podcasting_client.py \
   --json submit-episode \
-  --payload-file .agents/skills/ai-podcasting/references/submit-episode.example.json
+  --payload-file references/submit-episode.example.json
 ```
 
 3. Update intro copy for an existing episode (`source_id` required):
 
 ```bash
-python3 .agents/skills/ai-podcasting/scripts/ai_podcasting_client.py \
+python3 scripts/ai_podcasting_client.py \
   --json update-intro-copy \
   --source-id <EPISODE_SOURCE_ID> \
-  --payload-file .agents/skills/ai-podcasting/references/update-intro-copy-tcr.example.json
+  --payload-file references/update-intro-copy-tcr.example.json
 ```
 
 4. Upload a local file and get a public URL:
 
 ```bash
-python3 .agents/skills/ai-podcasting/scripts/aip_local_upload_helper.py \
+python3 scripts/aip_local_upload_helper.py \
   --json /absolute/path/to/file.png
 ```
 
