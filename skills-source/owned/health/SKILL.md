@@ -85,7 +85,7 @@ Current defaults:
   - the hardcoded canonical deployed health snapshot URL in `scripts/sync_health.py`
 - sink root:
   - `reference/health/` under the current repo root
-- recent sync window: 2 days for measurements, activity, workouts, and sleep
+- recent sync window: 3 days for measurements, activity, workouts, and sleep
 
 Path behavior:
 
