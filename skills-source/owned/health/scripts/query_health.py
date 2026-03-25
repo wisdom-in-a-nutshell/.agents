@@ -429,6 +429,29 @@ def _workout_summary(record: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def _human_workout_collection_label(workouts: list[dict[str, Any]]) -> str:
+    labels = sorted(
+        {
+            workout["category_label"]
+            for workout in workouts
+            if isinstance(workout.get("category_label"), str)
+        }
+    )
+    if len(labels) != 1:
+        return "Workouts"
+
+    label = labels[0]
+    special_cases = {
+        "Run": "Runs",
+        "Walk": "Walks",
+    }
+    if label in special_cases:
+        return special_cases[label]
+    if label.endswith("ing"):
+        return f"{label} workouts"
+    return f"{label} workouts"
+
+
 def _activity_workouts(*, days: int, end_date: date | None) -> dict[str, Any]:
     payloads = _dated_payloads("activity", "workouts")
     start_date, final_date = _window_dates(days, end_date)
@@ -760,12 +783,9 @@ def _render_human(command: str, data: dict[str, Any]) -> str:
     if command == "activity workouts":
         if not data["found"]:
             return f"No workouts found between {data['window']['start_date']} and {data['window']['end_date']}."
-        labels = sorted({workout["category_label"] for workout in data["workouts"] if isinstance(workout.get("category_label"), str)})
-        label_prefix = ""
-        if len(labels) == 1:
-            label_prefix = f"{labels[0]} "
+        collection_label = _human_workout_collection_label(data["workouts"])
         return (
-            f"{label_prefix}workouts over {data['window']['days']} days ending {data['window']['end_date']}: "
+            f"{collection_label} over {data['window']['days']} days ending {data['window']['end_date']}: "
             f"{data['coverage']['workout_count']} workout(s), "
             f"{data['total_distance_km']} km total distance, "
             f"{data['total_steps']} total steps."
