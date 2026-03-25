@@ -53,6 +53,7 @@ For user-facing answers built from this CLI:
 
 - Prefer minimal markdown tables when returning multiple health metrics or recent rows.
 - Keep the table compact and omit non-essential columns.
+- For recent same-year rows, prefer short dates like `03-23` instead of repeating the full year.
 - This is a soft default; switch to prose when the question is better served by a short direct answer.
 
 ## Output modes

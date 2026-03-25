@@ -83,6 +83,16 @@ def _parse_iso_date(value: str) -> date:
     return date.fromisoformat(value)
 
 
+def _format_short_date(value: str | None) -> str | None:
+    if not isinstance(value, str):
+        return None
+    try:
+        parsed = _parse_iso_date(value)
+    except ValueError:
+        return value
+    return parsed.strftime("%m-%d")
+
+
 def _round_or_none(value: float | None, digits: int = 3) -> float | None:
     return None if value is None else round(value, digits)
 
@@ -205,6 +215,7 @@ def _weight_latest() -> dict[str, Any]:
         "source": payload.get("source"),
         "found": found,
         "date": payload.get("date"),
+        "date_short": _format_short_date(payload.get("date")),
         "generated_at": payload.get("generated_at"),
         "record": record if found else None,
         "weight_kg": _round_or_none(record.get("weight_kg")) if found else None,
@@ -223,6 +234,7 @@ def _weight_avg(*, days: int, end_date: date | None) -> dict[str, Any]:
                 points.append(
                     {
                         "date": payload["date"],
+                        "date_short": _format_short_date(payload["date"]),
                         "captured_at": record.get("captured_at"),
                         "weight_kg": float(record["weight_kg"]),
                     }
@@ -294,6 +306,7 @@ def _summarize_sleep_record(record: dict[str, Any]) -> dict[str, Any]:
 
     return {
         "date": record.get("date"),
+        "date_short": _format_short_date(record.get("date")),
         "sleep_start": start,
         "sleep_end": end,
         "duration_in_bed_s": duration_in_bed_s,
@@ -371,6 +384,7 @@ def _activity_record_summary(record: dict[str, Any]) -> dict[str, Any]:
     distance_m = float(record["distance_m"]) if isinstance(record.get("distance_m"), (int, float)) else None
     return {
         "date": record.get("date"),
+        "date_short": _format_short_date(record.get("date")),
         "steps": record.get("steps"),
         "distance_m": _round_or_none(distance_m),
         "distance_km": _km_from_meters(distance_m),
@@ -391,9 +405,10 @@ def _activity_date(*, query_date: date) -> dict[str, Any]:
         return {
             "health_root": str(HEALTH_ROOT),
             "found": False,
-            "query_date": query_date.isoformat(),
-            "record": None,
-        }
+        "query_date": query_date.isoformat(),
+        "query_date_short": _format_short_date(query_date.isoformat()),
+        "record": None,
+    }
     payload = _load_json(path)
     records = payload.get("records") or []
     record = records[0] if records else None
@@ -402,6 +417,7 @@ def _activity_date(*, query_date: date) -> dict[str, Any]:
         "source": payload.get("source"),
         "found": isinstance(record, dict),
         "query_date": query_date.isoformat(),
+        "query_date_short": _format_short_date(query_date.isoformat()),
         "generated_at": payload.get("generated_at"),
         "record": _activity_record_summary(record) if isinstance(record, dict) else None,
     }
@@ -412,6 +428,7 @@ def _workout_summary(record: dict[str, Any]) -> dict[str, Any]:
     distance_m = float(metrics["distance"]) if isinstance(metrics.get("distance"), (int, float)) else None
     return {
         "date": record.get("date"),
+        "date_short": _format_short_date(record.get("date")),
         "workout_id": record.get("workout_id"),
         "category": record.get("category"),
         "category_label": record.get("category_label"),
@@ -735,7 +752,8 @@ def _render_human(command: str, data: dict[str, Any]) -> str:
     if command == "weight latest":
         if not data["found"]:
             return "No weight measurement found."
-        return f"Latest weight: {data['weight_kg']} kg on {data['date']}."
+        display_date = data.get("date_short") or data["date"]
+        return f"Latest weight: {data['weight_kg']} kg on {display_date}."
 
     if command == "weight avg":
         if not data["found"]:
@@ -751,8 +769,9 @@ def _render_human(command: str, data: dict[str, Any]) -> str:
         if not data["found"]:
             return "No sleep session found."
         session = data["session"]
+        display_date = session.get("date_short") or session["date"]
         return (
-            f"Latest sleep ({session['date']}): "
+            f"Latest sleep ({display_date}): "
             f"{session['asleep_duration_human']} asleep, "
             f"{session['duration_in_bed_human']} in bed, "
             f"{session['awake_interruptions']} awake interruption(s)."
@@ -771,10 +790,12 @@ def _render_human(command: str, data: dict[str, Any]) -> str:
 
     if command in {"activity today", "activity date"}:
         if not data["found"]:
-            return f"No daily activity record found for {data['query_date']}."
+            display_date = data.get("query_date_short") or data["query_date"]
+            return f"No daily activity record found for {display_date}."
         record = data["record"]
+        display_date = data.get("query_date_short") or data["query_date"]
         return (
-            f"Activity for {data['query_date']}: "
+            f"Activity for {display_date}: "
             f"{record['steps']} steps, "
             f"{record['distance_km']} km, "
             f"{record['active_duration_human']} active."
