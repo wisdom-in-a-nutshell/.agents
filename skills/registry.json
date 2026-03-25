@@ -76,6 +76,16 @@
       "upstream_ref": "vercel-labs/skills:skills/find-skills@main"
     },
     {
+      "skill": "frontend-skill",
+      "origin": "external",
+      "scope": "repo",
+      "repos": [
+        "adi"
+      ],
+      "source_path": "skills-source/external/frontend-skill",
+      "upstream_ref": "openai/skills:skills/.curated/frontend-skill@main"
+    },
+    {
       "skill": "project",
       "origin": "owned",
       "scope": "global",
