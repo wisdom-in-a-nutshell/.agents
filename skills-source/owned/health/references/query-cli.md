@@ -46,6 +46,15 @@ python3 .agents/skills/health/scripts/query_health.py activity workouts --days 7
 python3 .agents/skills/health/scripts/query_health.py summary recent --days 7 --json
 ```
 
+
+## Presentation Default
+
+For user-facing answers built from this CLI:
+
+- Prefer minimal markdown tables when returning multiple health metrics or recent rows.
+- Keep the table compact and omit non-essential columns.
+- This is a soft default; switch to prose when the question is better served by a short direct answer.
+
 ## Output modes
 
 - `--json` for machine-readable output

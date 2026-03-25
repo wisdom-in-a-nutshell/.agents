@@ -63,6 +63,15 @@ Current sleep rule:
 - `metrics/sleep/stages/` is the useful sleep dataset.
 - `metrics/sleep/summary/` currently stays empty for this account/source and should not be treated as the primary sleep source.
 
+
+## Presentation Default
+
+When answering user-facing health questions that return several metrics or repeated rows:
+
+- Prefer minimal markdown tables by default.
+- Keep only the columns needed to answer the question.
+- Treat this as a soft preference, not a hard rule; use prose or a fuller format when context, nuance, or warnings matter more than compactness.
+
 ## Refresh Path
 
 Canonical command:
