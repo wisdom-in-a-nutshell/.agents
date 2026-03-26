@@ -59,7 +59,7 @@ def load_payload(args: argparse.Namespace) -> dict[str, Any]:
     raise SystemExit("Provide --payload-file or --payload-json.")
 
 
-def load_existing(path: Path) -> dict[str, Any]:
+def load_existing_json(path: Path) -> dict[str, Any]:
     if not path.exists():
         return {}
     return json.loads(path.read_text())
@@ -69,8 +69,7 @@ def build_output_path(workspace_root: Path, kind: str, date: str, timestamp: dat
     day_dir = workspace_root / "journal" / "entries" / date
     day_dir.mkdir(parents=True, exist_ok=True)
     if kind == "general":
-        suffix = entry_id or timestamp.strftime("%H%M%S")
-        return day_dir / f"general-{suffix}.json"
+        return day_dir / "general.md"
     return day_dir / f"{kind}.json"
 
 
@@ -120,6 +119,80 @@ def validate_entry(kind: str, entry: dict[str, Any]) -> list[str]:
     return errors
 
 
+def render_general_markdown(entry: dict[str, Any], timestamp: datetime) -> str:
+    def add_section(lines: list[str], title: str, value: Any) -> None:
+        if value is None:
+            return
+        if isinstance(value, list):
+            items = [str(item).strip() for item in value if str(item).strip()]
+            if not items:
+                return
+            lines.append(f"## {title}")
+            lines.extend([f"- {item}" for item in items])
+            lines.append("")
+            return
+        text = str(value).strip()
+        if not text:
+            return
+        lines.append(f"## {title}")
+        lines.append(text)
+        lines.append("")
+
+    lines = [f"# General Journal — {entry['date']}", ""]
+    lines.append(f"## {timestamp.strftime('%H:%M')}")
+    lines.append("")
+    lines.append(f"- source: {entry.get('source', '')}")
+    if entry.get("tags"):
+        lines.append(f"- tags: {', '.join(str(tag) for tag in entry['tags'])}")
+    lines.append("")
+
+    add_section(lines, "Summary", entry.get("summary"))
+    add_section(lines, "What Feels Present", entry.get("what_feels_present"))
+    add_section(lines, "What Matters Now", entry.get("what_matters_now"))
+    add_section(lines, "Next Step", entry.get("next_step"))
+
+    mood = entry.get("mood")
+    if isinstance(mood, dict):
+        bits = []
+        if mood.get("score_10") is not None:
+            bits.append(f"score: {mood['score_10']}/10")
+        if mood.get("notes"):
+            bits.append(f"notes: {mood['notes']}")
+        if bits:
+            lines.append("## Mood")
+            lines.extend([f"- {bit}" for bit in bits])
+            lines.append("")
+
+    energy = entry.get("energy")
+    if isinstance(energy, dict):
+        bits = []
+        if energy.get("score_10") is not None:
+            bits.append(f"score: {energy['score_10']}/10")
+        if energy.get("notes"):
+            bits.append(f"notes: {energy['notes']}")
+        if bits:
+            lines.append("## Energy")
+            lines.extend([f"- {bit}" for bit in bits])
+            lines.append("")
+
+    raw_input = entry.get("raw_input")
+    if raw_input:
+        lines.append("## Raw Input")
+        lines.append(raw_input.strip())
+        lines.append("")
+
+    return "\n".join(lines).rstrip() + "\n"
+
+
+def append_general_markdown(path: Path, entry: dict[str, Any], timestamp: datetime) -> None:
+    block = render_general_markdown(entry, timestamp)
+    if path.exists() and path.read_text().strip():
+        existing = path.read_text().rstrip() + "\n\n---\n\n"
+    else:
+        existing = ""
+    path.write_text(existing + block)
+
+
 def main() -> int:
     args = parse_args()
     payload = load_payload(args)
@@ -135,8 +208,27 @@ def main() -> int:
         raise SystemExit(f"Invalid workspace root: {workspace_root}")
 
     output_path = build_output_path(workspace_root, args.kind, args.date, timestamp, args.entry_id)
-    existing = load_existing(output_path)
 
+    if args.kind == "general":
+        entry: dict[str, Any] = {
+            **payload,
+            "agent": args.agent or workspace_root.name,
+            "date": args.date,
+            "kind": args.kind,
+            "tz": args.tz,
+            "captured_at": timestamp.isoformat(),
+            "source": args.source,
+        }
+        if not args.allow_partial:
+            missing = missing_fields(args.kind, entry)
+            if missing:
+                print(json.dumps({"ok": False, "missing": missing}, indent=2))
+                return 3
+        append_general_markdown(output_path, entry, timestamp)
+        print(json.dumps({"ok": True, "path": str(output_path)}, indent=2))
+        return 0
+
+    existing = load_existing_json(output_path)
     entry: dict[str, Any] = {
         **existing,
         **payload,

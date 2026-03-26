@@ -8,7 +8,7 @@ description: Run a structured journaling and check-in workflow and store results
 This skill has two jobs:
 
 - run a short, mode-specific check-in
-- save the result as clean JSON in the journal tree so later synthesis and querying are easy
+- save the result in a durable format in the journal tree: JSON for structured morning/night check-ins, Markdown for flexible general journaling
 
 Read only the mode file you need:
 
@@ -24,9 +24,9 @@ Use [write_journal_entry.py](./scripts/write_journal_entry.py) to write or updat
 2. Ask only the prompt set for that mode.
 3. If required information is missing, nudge until the mode is complete.
 4. If the user gives a rough block of text in their own format, extract what you can first instead of forcing your prompt order.
-5. Normalize the content into structured JSON.
+5. Normalize the content into the right storage shape for the mode.
 6. Write the entry with the helper script.
-6. Confirm what was saved and where.
+7. Confirm what was saved and where.
 
 ## Mode Selection
 
@@ -54,8 +54,8 @@ Use [write_journal_entry.py](./scripts/write_journal_entry.py) to write or updat
 - Use one stable file per day for:
   - `morning.json`
   - `night.json`
-- Use timestamped files for flexible captures:
-  - `general-HHMMSS.json`
+  - `general.md`
+- Append multiple flexible journal captures for the same day into `general.md` instead of creating fragmented timestamped JSON files.
 - Keep `raw_input` when the source text was dictated, messy, or useful for later reinterpretation.
 - Preserve continuity by glancing at nearby entries when the user asks follow-up questions or wants synthesis.
 

@@ -54,7 +54,8 @@ Schema:
 
 File naming:
 
-- `general-HHMMSS.json`
+- `general.md`
+- Append multiple captures from the same day into that file as separate timestamped sections.
 
 Follow-up rule:
 
