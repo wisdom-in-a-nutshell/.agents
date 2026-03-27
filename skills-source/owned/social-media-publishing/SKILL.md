@@ -1,6 +1,6 @@
 ---
 name: social-media-publishing
-description: Reddit-first social publishing workflow plus blog-post publication prep and LinkedIn posting support. Use when Codex needs to publish or distribute a blog post, video, launch, or visual explainer; prepare blog assets; decide between gallery, image, self, or link format; post to Reddit; publish the source post before distribution; or authenticate and publish LinkedIn posts through the channel CLI.
+description: Reddit-first social publishing workflow plus blog-post publication prep and LinkedIn/X posting support. Use when Codex needs to publish or distribute a blog post, video, launch, or visual explainer; prepare blog assets; decide between gallery, image, self, or link format; post to Reddit; publish the source post before distribution; or authenticate and publish LinkedIn or X posts through the channel CLI.
 ---
 
 # Social Media Publishing
@@ -93,6 +93,31 @@ python3 ~/.agents/skills-source/owned/social-media-publishing/scripts/linkedin/c
 
 This helper uses machine-local generated secrets under `~/.secrets/linkedin/` and should stay one-user until the workflow is more mature.
 
+
+## X
+
+Use the bundled X CLI at `scripts/x/cli.py` for local X posting.
+
+Read first:
+- `references/x/posting.md`
+- `references/x/copy.md`
+
+Only if setup is still missing:
+- `references/x/auth.md`
+
+Current supported flow:
+- runtime/auth inspection via `status`
+- text posts
+- machine-readable JSON output by default, plus optional `--plain` inspection mode
+
+Core commands:
+
+```bash
+python3 ~/.agents/skills-source/owned/social-media-publishing/scripts/x/cli.py status
+python3 ~/.agents/skills-source/owned/social-media-publishing/scripts/x/cli.py post --text-file /abs/path/body.txt --dry-run
+python3 ~/.agents/skills-source/owned/social-media-publishing/scripts/x/cli.py post --text-file /abs/path/body.txt
+```
+
 ## Packaging Rules
 
 - Keep the skill reusable and the campaign local.
@@ -112,3 +137,6 @@ This helper uses machine-local generated secrets under `~/.secrets/linkedin/` an
 - `scripts/linkedin/cli.py`: local LinkedIn posting CLI.
 - `references/linkedin/posting.md`: LinkedIn posting setup and usage.
 - `references/linkedin/copy.md`: LinkedIn copy defaults and reusable post baselines.
+- `scripts/x/cli.py`: local X posting CLI.
+- `references/x/posting.md`: X posting setup and usage.
+- `references/x/copy.md`: X copy defaults.

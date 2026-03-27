@@ -20,7 +20,9 @@ Use this skill for reusable publishing workflows that should travel across repos
 - blog source-publishing flow -> `references/blog/publishing.md`
 - Reddit flow -> `references/reddit/workflow.md`
 - LinkedIn setup and copy defaults -> `references/linkedin/`
+- X setup and copy defaults -> `references/x/`
 - For LinkedIn on a fresh boot, prefer `scripts/linkedin/cli.py status` before guessing what is configured or permitted.
+- For X on a fresh boot, prefer `scripts/x/cli.py status` before guessing what is configured or permitted.
 
 ## Write-back rule
 
