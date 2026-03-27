@@ -1,6 +1,6 @@
 ---
 name: client-interface-guidelines
-description: "Design or review AI-agent-first command-line client interfaces with human fallback. Use when creating or improving CLI/client tools that require stable machine contracts (`--json`), deterministic outputs, structured errors, non-interactive operation, robust exit codes, secure secret handling, and reliable automation behavior."
+description: "Design or review machine-primary command-line client interfaces for agent execution. Use when creating or improving CLI/client tools that require stable JSON contracts, deterministic outputs, structured errors, non-interactive operation, robust exit codes, secure secret handling, and operator inspection paths without turning the CLI into a human-first UI."
 ---
 
 # Client Interface Guidelines
@@ -8,7 +8,9 @@ description: "Design or review AI-agent-first command-line client interfaces wit
 ## Overview
 
 Apply this skill as the default gate for agent-native CLI/client tools.
-Optimize for machine reliability first, then add human-friendly ergonomics.
+
+Optimize for machine reliability first.
+Treat operator inspection as a secondary debugging and status layer, not as a co-equal interface mode.
 
 ## Workflow
 
@@ -42,3 +44,4 @@ Optimize for machine reliability first, then add human-friendly ergonomics.
 - Strict stdout/stderr separation.
 - Secure secret handling with no flag/env secret input.
 - Additive interface evolution with explicit deprecation path.
+- JSON is the default behavioral contract unless there is a strong reason otherwise.

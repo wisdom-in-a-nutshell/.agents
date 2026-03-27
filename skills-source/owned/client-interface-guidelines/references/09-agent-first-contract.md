@@ -1,19 +1,18 @@
 # Agent-First CLI Contract
 
 Use this contract when the primary caller is an AI agent.
-Humans are supported as a secondary interaction mode.
+Operator inspection is supported as a secondary debugging and status path.
 
 ## Interface Modes
 
 - `--json`: machine-readable output mode.
-- `--human`: human-readable output mode.
-- `--plain`: stable plain-text mode for shell tooling.
+- `--plain`: stable plain-text mode for shell tooling or quick inspection.
 
 Behavior defaults:
 
-- If `stdout` is not a TTY, default to machine-readable output.
-- If `stdout` is a TTY, default to concise human output.
-- Explicit flags always override defaults.
+- Default to machine-readable output.
+- Do not let TTY detection change the semantic shape of the main result.
+- Explicit flags may request a secondary inspection view, but the primary contract remains JSON.
 
 ## Machine Output Shape
 
@@ -76,7 +75,21 @@ Minimum mapping:
 - Prefer additive schema changes.
 - Return consistently shaped objects for the same command class.
 - Avoid embedding volatile text in machine fields.
-- Put human narrative in `message` or human mode output, not in structured keys.
+- Put operator guidance in `error.hint`, dedicated inspection commands, or explicit debug output, not in structured keys that should remain stable.
+
+## Inspection Rules
+
+- Prefer dedicated inspection commands such as `status`, `get`, `list`, `inspect`, and `validate`.
+- Use `--plain` only as an operator convenience when JSON is too heavy for quick shell inspection.
+- Do not invent a large parallel “human mode” surface unless the tool is genuinely used interactively by humans as a primary workflow.
+
+## Anti-Patterns
+
+- TTY-sensitive changes to output structure.
+- Mixing structured results and free-form prose on stdout.
+- Pretty tables or decorative formatting as the default result surface.
+- Progress chatter on stdout.
+- Commands that require prompts during normal operation.
 
 ## Security Rules
 

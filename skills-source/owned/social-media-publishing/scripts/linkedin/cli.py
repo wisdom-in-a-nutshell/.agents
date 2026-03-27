@@ -618,6 +618,13 @@ def to_iso_from_epoch_ms(value: Any) -> str | None:
         return None
 
 
+def to_iso_from_epoch_seconds(value: Any) -> str | None:
+    try:
+        return datetime.fromtimestamp(float(value), tz=UTC).replace(microsecond=0).isoformat().replace("+00:00", "Z")
+    except Exception:
+        return None
+
+
 def summarize_post(post: dict[str, Any]) -> dict[str, Any]:
     return {
         "id": post.get("id"),
@@ -631,53 +638,19 @@ def summarize_post(post: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-def format_success_human(command: str, data: dict[str, Any]) -> str:
-    if command == "linkedin authorize":
-        lines = [f"Saved LinkedIn tokens to {data['tokens_file']}"]
-        if data.get("name"):
-            lines.append(f"Authorized as: {data['name']}")
-        if data.get("author_urn"):
-            lines.append(f"Author URN: {data['author_urn']}")
-        return "\n".join(lines)
-    if command == "linkedin whoami":
-        lines = []
-        if data.get("name"):
-            lines.append(f"Authorized as: {data['name']}")
-        if data.get("sub"):
-            lines.append(f"Member sub: {data['sub']}")
-        if data.get("author_urn"):
-            lines.append(f"Author URN: {data['author_urn']}")
-        return "\n".join(lines) if lines else json.dumps(data, indent=2, sort_keys=True)
-    if command in {"linkedin post", "linkedin post-image", "linkedin post-images", "linkedin comment"}:
-        if data.get("dry_run"):
-            return json.dumps(data["payload"], indent=2, sort_keys=True)
-        lines = [f"LinkedIn response status: {data['http_status']}"]
-        if data.get("post_urn"):
-            lines.append(f"Post URN: {data['post_urn']}")
-        if data.get("comment_id"):
-            lines.append(f"Comment ID: {data['comment_id']}")
-        if data.get("comment_urn"):
-            lines.append(f"Comment URN: {data['comment_urn']}")
-        return "\n".join(lines)
-    if command == "linkedin get-post":
-        post = data["post"]
-        lines = [f"Post: {post.get('id')}"]
-        if post.get("published_at"):
-            lines.append(f"Published: {post['published_at']}")
-        if post.get("visibility"):
-            lines.append(f"Visibility: {post['visibility']}")
-        if post.get("commentary"):
-            lines.append(f"Commentary: {post['commentary']}")
-        return "\n".join(lines)
-    if command == "linkedin list-posts":
-        posts = data.get("posts", [])
-        if not posts:
-            return "No posts found."
-        return "\n".join(
-            f"{post.get('published_at') or '-'}\t{post.get('id')}\t{post.get('visibility') or '-'}"
-            for post in posts
-        )
-    return json.dumps(data, indent=2, sort_keys=True)
+def make_lenient_config(args: argparse.Namespace) -> Config:
+    env_path = Path(args.env_file).expanduser()
+    env_values = parse_env_file(env_path)
+    return Config(
+        client_id=os.environ.get("LINKEDIN_CLIENT_ID") or env_values.get("LINKEDIN_CLIENT_ID") or "",
+        client_secret=os.environ.get("LINKEDIN_CLIENT_SECRET") or env_values.get("LINKEDIN_CLIENT_SECRET") or "",
+        redirect_uri=os.environ.get("LINKEDIN_REDIRECT_URI") or env_values.get("LINKEDIN_REDIRECT_URI") or DEFAULT_REDIRECT_URI,
+        scope=os.environ.get("LINKEDIN_SCOPE") or env_values.get("LINKEDIN_SCOPE") or DEFAULT_SCOPE,
+        linkedin_version=getattr(args, "linkedin_version", None) or os.environ.get("LINKEDIN_VERSION") or env_values.get("LINKEDIN_VERSION") or DEFAULT_LINKEDIN_VERSION,
+        request_timeout_seconds=float(getattr(args, "request_timeout_seconds", DEFAULT_REQUEST_TIMEOUT_SECONDS)),
+        env_path=env_path,
+        tokens_path=resolve_tokens_path(Path(args.tokens_file).expanduser()),
+    )
 
 
 def flatten_plain(prefix: str, value: Any) -> list[str]:
@@ -700,13 +673,9 @@ def flatten_plain(prefix: str, value: Any) -> list[str]:
 
 
 def determine_output_mode(args: argparse.Namespace) -> str:
-    if getattr(args, "json", False):
-        return "json"
     if getattr(args, "plain", False):
         return "plain"
-    if getattr(args, "human", False):
-        return "human"
-    return "human" if sys.stdout.isatty() else "json"
+    return "json"
 
 
 def emit_success(args: argparse.Namespace, command: str, data: dict[str, Any], *, start_time: float, request_id: str) -> int:
@@ -725,10 +694,8 @@ def emit_success(args: argparse.Namespace, command: str, data: dict[str, Any], *
     }
     if mode == "json":
         print(json.dumps(envelope, indent=2, sort_keys=True))
-    elif mode == "plain":
-        print("\n".join(flatten_plain("data", data)))
     else:
-        print(format_success_human(command, data))
+        print("\n".join(flatten_plain("data", data)))
     return 0
 
 
@@ -754,14 +721,10 @@ def emit_error(args: argparse.Namespace, command: str, error: CliError, *, start
     }
     if mode == "json":
         print(json.dumps(envelope, indent=2, sort_keys=True), file=sys.stderr)
-    elif mode == "plain":
+    else:
         print(f"error.code={error.code}\nerror.message={str(error)}", file=sys.stderr)
         if error.hint:
             print(f"error.hint={error.hint}", file=sys.stderr)
-    else:
-        print(f"Error [{error.code}]: {error}", file=sys.stderr)
-        if error.hint:
-            print(f"Hint: {error.hint}", file=sys.stderr)
     return error.exit_code
 
 
@@ -810,6 +773,139 @@ def command_whoami(args: argparse.Namespace) -> dict[str, Any]:
         "author_urn": build_author_urn(tokens),
         "profile": userinfo,
     }
+
+
+def command_status(args: argparse.Namespace) -> dict[str, Any]:
+    config = make_lenient_config(args)
+    env_values = parse_env_file(config.env_path)
+    data: dict[str, Any] = {
+        "files": {
+            "env_file": str(config.env_path),
+            "env_file_exists": config.env_path.exists(),
+            "tokens_file": str(config.tokens_path),
+            "tokens_file_exists": config.tokens_path.exists(),
+            "using_legacy_tokens_file": config.tokens_path == LEGACY_TOKENS_PATH,
+        },
+        "auth": {
+            "has_client_id": bool(config.client_id),
+            "has_client_secret": bool(config.client_secret),
+            "redirect_uri": env_values.get("LINKEDIN_REDIRECT_URI") or DEFAULT_REDIRECT_URI,
+            "scope": env_values.get("LINKEDIN_SCOPE") or DEFAULT_SCOPE,
+            "linkedin_version": config.linkedin_version,
+            "authorized": False,
+        },
+        "identity": None,
+        "capabilities": {
+            "supported_commands": [
+                "authorize",
+                "status",
+                "whoami",
+                "post",
+                "post-image",
+                "post-images",
+                "comment",
+                "get-post",
+                "list-posts",
+            ],
+            "json_default": True,
+            "plain_available": True,
+            "can_authorize": bool(config.client_id and config.client_secret),
+            "can_post": False,
+            "read_back": {
+                "probed": False,
+                "allowed": None,
+                "reason": "probe_not_run",
+            },
+        },
+        "notes": [],
+    }
+
+    if not config.env_path.exists():
+        data["notes"].append("LinkedIn env file is missing. Authorize will not work until machine secrets are synced.")
+    if not config.tokens_path.exists():
+        data["notes"].append("LinkedIn token file is missing. Run authorize once on this machine.")
+        return data
+
+    tokens = load_tokens(config.tokens_path)
+    access_token_valid = token_still_valid(tokens)
+    data["auth"].update(
+        {
+            "authorized": True,
+            "access_token_valid_now": access_token_valid,
+            "authorized_at": to_iso_from_epoch_seconds(tokens.get("authorized_at")),
+            "access_token_expires_at": to_iso_from_epoch_seconds(tokens.get("access_token_expires_at")),
+            "refresh_token_expires_at": to_iso_from_epoch_seconds(tokens.get("refresh_token_expires_at")),
+            "has_refresh_token": bool(tokens.get("refresh_token")),
+            "member_sub_cached": tokens.get("member_sub"),
+        }
+    )
+    if access_token_valid and tokens.get("member_sub"):
+        data["capabilities"]["can_post"] = True
+        data["identity"] = {
+            "name": (tokens.get("member_profile") or {}).get("name"),
+            "sub": tokens.get("member_sub"),
+            "author_urn": tokens.get("author_urn") or f"urn:li:person:{tokens.get('member_sub')}",
+            "source": "cached_token",
+        }
+
+    if not access_token_valid and not (config.client_id and config.client_secret):
+        data["notes"].append("Access token appears expired and client credentials are not available for refresh.")
+        return data
+
+    try:
+        tokens = ensure_member_context(config, tokens)
+        userinfo = get_userinfo(config, tokens["access_token"])
+        data["identity"] = {
+            "name": userinfo.get("name"),
+            "sub": userinfo.get("sub"),
+            "author_urn": build_author_urn(tokens),
+            "source": "live_userinfo",
+        }
+        data["capabilities"]["can_post"] = True
+    except CliError as exc:
+        data["notes"].append(f"Identity check failed: {exc.code} {exc}")
+        if exc.hint:
+            data["notes"].append(exc.hint)
+        if data["capabilities"]["can_post"]:
+            data["notes"].append("Using cached member identity from the token file; posting may still work.")
+            return data
+        return data
+
+    if args.no_probe_read:
+        data["notes"].append("Read-back probe skipped.")
+        return data
+
+    data["capabilities"]["read_back"]["probed"] = True
+    author_urn = build_author_urn(tokens)
+    query = urllib.parse.urlencode(
+        {
+            "author": author_urn,
+            "q": "author",
+            "count": 1,
+            "sortBy": "LAST_MODIFIED",
+        }
+    )
+    try:
+        get_rest_json(
+            config,
+            tokens["access_token"],
+            f"{REST_POSTS_URL}?{query}",
+            version=config.linkedin_version,
+            extra_headers={"X-RestLi-Method": "FINDER"},
+        )
+        data["capabilities"]["read_back"].update({"allowed": True, "reason": "list_posts_ok"})
+    except CliError as exc:
+        data["capabilities"]["read_back"].update(
+            {
+                "allowed": False,
+                "reason": exc.code,
+                "message": str(exc),
+                "hint": exc.hint,
+            }
+        )
+        data["notes"].append("Posting is available, but LinkedIn read-back endpoints may still be permission-limited for this app.")
+
+    return data
 
 
 def command_post(args: argparse.Namespace) -> dict[str, Any]:
@@ -1011,9 +1107,8 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--linkedin-version", default=DEFAULT_LINKEDIN_VERSION, help="LinkedIn REST API version for /rest endpoints, formatted as YYYYMM.")
     parser.add_argument("--request-timeout-seconds", type=float, default=DEFAULT_REQUEST_TIMEOUT_SECONDS, help="HTTP request timeout in seconds.")
     mode = parser.add_mutually_exclusive_group()
-    mode.add_argument("--json", action="store_true", help="Emit machine-readable JSON output.")
-    mode.add_argument("--human", action="store_true", help="Emit concise human-readable output.")
-    mode.add_argument("--plain", action="store_true", help="Emit stable plain text for shell pipelines.")
+    mode.add_argument("--json", action="store_true", help="Emit machine-readable JSON output. This is also the default.")
+    mode.add_argument("--plain", action="store_true", help="Emit stable plain text for shell pipelines or quick operator inspection.")
     parser.add_argument("--no-input", action="store_true", help="Disable browser auto-open and any interactive input.")
 
     subparsers = parser.add_subparsers(dest="command", required=True)
@@ -1022,6 +1117,10 @@ def build_parser() -> argparse.ArgumentParser:
     authorize.add_argument("--timeout", type=int, default=180, help="Seconds to wait for the OAuth callback.")
     authorize.add_argument("--no-browser", action="store_true", help="Print the URL without opening a browser.")
     authorize.set_defaults(func=command_authorize, command_path="linkedin authorize")
+
+    status = subparsers.add_parser("status", help="Inspect LinkedIn auth/runtime state for this machine and app.")
+    status.add_argument("--no-probe-read", action="store_true", help="Skip the non-mutating read-back permission probe.")
+    status.set_defaults(func=command_status, command_path="linkedin status")
 
     whoami = subparsers.add_parser("whoami", help="Show the LinkedIn profile tied to the current token.")
     whoami.set_defaults(func=command_whoami, command_path="linkedin whoami")

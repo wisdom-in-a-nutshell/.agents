@@ -6,6 +6,8 @@ If LinkedIn is already authenticated on this machine, start here.
 
 If not, use `references/linkedin/auth.md` once and then come back.
 
+On a fresh boot, run `status` first so the client can surface what is actually usable on this machine right now.
+
 ## What this covers
 
 This is the simplest useful local workflow for day-to-day LinkedIn posting:
@@ -52,10 +54,23 @@ Script:
 The LinkedIn CLI now follows a more agent-first contract:
 
 - `--json` returns one structured JSON object
-- `--human` returns concise operator-facing output
 - `--plain` returns stable plain text for shell pipelines
 - `--no-input` disables browser auto-open and any interactive input assumptions
 - non-zero exit codes are classified by failure type
+
+Default behavior is JSON. Use `--plain` only when you explicitly want a lighter inspection view.
+
+### First command on a fresh boot
+
+```bash
+python3 ~/.agents/skills-source/owned/social-media-publishing/scripts/linkedin/cli.py status
+```
+
+What it surfaces:
+- resolved env file and token file
+- whether the current token is present and still valid
+- which LinkedIn identity is connected
+- whether non-mutating read-back permissions appear to work for this app
 
 Stable exit code model:
 - `0` success

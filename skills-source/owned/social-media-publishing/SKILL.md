@@ -69,17 +69,19 @@ Only if setup or re-auth is needed:
 
 Current supported flow:
 - local OAuth authorization
+- runtime/auth inspection via `status`
 - identity check
 - text posts
 - article or URL shares
 - single-image posts
 - multi-image posts
 - comments on posts
-- machine-readable `--json` output plus `--human` and `--plain` modes
+- machine-readable JSON output by default, plus optional `--plain` inspection mode
 
 Core commands:
 
 ```bash
+python3 ~/.agents/skills-source/owned/social-media-publishing/scripts/linkedin/cli.py status
 python3 ~/.agents/skills-source/owned/social-media-publishing/scripts/linkedin/cli.py authorize
 python3 ~/.agents/skills-source/owned/social-media-publishing/scripts/linkedin/cli.py whoami
 python3 ~/.agents/skills-source/owned/social-media-publishing/scripts/linkedin/cli.py post --text-file /abs/path/body.txt --url https://example.com/post --title "Post title" --description "Short description" --dry-run
