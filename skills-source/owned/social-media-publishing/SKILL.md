@@ -1,6 +1,6 @@
 ---
 name: social-media-publishing
-description: Reddit-first social publishing workflow plus blog-post publication prep. Use when Codex needs to publish or distribute a blog post, video, launch, or visual explainer; prepare blog assets; decide between gallery, image, self, or link format; post to Reddit; or publish the source post before distribution.
+description: Reddit-first social publishing workflow plus blog-post publication prep and LinkedIn personal posting support. Use when Codex needs to publish or distribute a blog post, video, launch, or visual explainer; prepare blog assets; decide between gallery, image, self, or link format; post to Reddit; publish the source post before distribution; or authenticate and publish personal LinkedIn posts through the local helper.
 ---
 
 # Social Media Publishing
@@ -56,6 +56,29 @@ The CLI supports:
 - optional first-comment posting
 - authenticated submission history lookup
 
+## LinkedIn
+
+Use the bundled personal-posting helper at `scripts/linkedin_personal_cli.py` for one-user local LinkedIn publishing.
+
+Read first:
+- `references/linkedin/personal-posting.md`
+
+Current supported flow:
+- local OAuth authorization
+- identity check
+- text posts
+- article or URL shares
+
+Core commands:
+
+```bash
+python3 ~/.agents/skills-source/owned/social-media-publishing/scripts/linkedin_personal_cli.py authorize
+python3 ~/.agents/skills-source/owned/social-media-publishing/scripts/linkedin_personal_cli.py whoami
+python3 ~/.agents/skills-source/owned/social-media-publishing/scripts/linkedin_personal_cli.py post --text-file /abs/path/body.txt --url https://example.com/post --title "Post title" --description "Short description" --dry-run
+```
+
+This helper uses machine-local generated secrets under `~/.secrets/linkedin/` and should stay one-user until the workflow is more mature.
+
 ## Packaging Rules
 
 - Keep the skill reusable and the campaign local.
@@ -72,3 +95,5 @@ The CLI supports:
 - `references/blog/publishing.md`: blog publication workflow before distribution.
 - `references/reddit/workflow.md`: operational Reddit workflow.
 - `references/reddit/plan-schema.md`: portable Reddit plan-file contract.
+- `scripts/linkedin_personal_cli.py`: local LinkedIn personal-posting helper.
+- `references/linkedin/personal-posting.md`: LinkedIn personal posting setup and usage.

@@ -1,4 +1,4 @@
 interface:
   display_name: "Social Media Publishing"
-  short_description: "Reddit-first publishing workflows"
-  default_prompt: "Use $social-media-publishing to publish a blog-backed post and prepare a Reddit distribution workflow."
+  short_description: "Reddit + LinkedIn publishing"
+  default_prompt: "Use $social-media-publishing to publish a blog-backed post and prepare Reddit or LinkedIn distribution."
