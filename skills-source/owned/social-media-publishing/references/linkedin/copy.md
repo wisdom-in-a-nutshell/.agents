@@ -32,6 +32,8 @@ That keeps:
 - the reusable rule in this skill
 - the actual post copy in the active campaign
 
+If the machine is already authenticated, normal posting should only need the plain text blob plus the chosen image assets.
+
 ## Packaging note
 
 If the post also needs a blog link, do not force it into the main body by default.

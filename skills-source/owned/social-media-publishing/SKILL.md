@@ -64,12 +64,18 @@ Read first:
 - `references/linkedin/posting.md`
 - `references/linkedin/copy.md`
 
+Only if setup or re-auth is needed:
+- `references/linkedin/auth.md`
+
 Current supported flow:
 - local OAuth authorization
 - identity check
 - text posts
 - article or URL shares
+- single-image posts
 - multi-image posts
+- comments on posts
+- machine-readable `--json` output plus `--human` and `--plain` modes
 
 Core commands:
 
@@ -77,7 +83,10 @@ Core commands:
 python3 ~/.agents/skills-source/owned/social-media-publishing/scripts/linkedin/cli.py authorize
 python3 ~/.agents/skills-source/owned/social-media-publishing/scripts/linkedin/cli.py whoami
 python3 ~/.agents/skills-source/owned/social-media-publishing/scripts/linkedin/cli.py post --text-file /abs/path/body.txt --url https://example.com/post --title "Post title" --description "Short description" --dry-run
+python3 ~/.agents/skills-source/owned/social-media-publishing/scripts/linkedin/cli.py post-image --text-file /abs/path/body.txt --image /abs/path/cover.jpg --dry-run
 python3 ~/.agents/skills-source/owned/social-media-publishing/scripts/linkedin/cli.py post-images --text-file /abs/path/body.txt --image /abs/path/slide-1.jpg --image /abs/path/slide-2.jpg --dry-run
+python3 ~/.agents/skills-source/owned/social-media-publishing/scripts/linkedin/cli.py comment --post-urn urn:li:ugcPost:... --text-file /abs/path/comment.txt --dry-run
+python3 ~/.agents/skills-source/owned/social-media-publishing/scripts/linkedin/cli.py --json list-posts --count 5
 ```
 
 This helper uses machine-local generated secrets under `~/.secrets/linkedin/` and should stay one-user until the workflow is more mature.

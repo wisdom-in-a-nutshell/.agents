@@ -1,16 +1,22 @@
-# LinkedIn posting setup
+# LinkedIn posting
 
 Use this when Adi wants to publish his own blog posts or personal updates to LinkedIn from local tooling.
 
-## What this setup covers
+If LinkedIn is already authenticated on this machine, start here.
 
-This is the simplest useful local setup for LinkedIn posting:
-- OAuth app bootstrap
-- machine-local secret storage
-- local token storage
+If not, use `references/linkedin/auth.md` once and then come back.
+
+## What this covers
+
+This is the simplest useful local workflow for day-to-day LinkedIn posting:
 - text posts
 - article or URL shares, which is the main case for blog posts
+- single-image posts
 - multi-image organic posts for personal profile publishing
+- comments on posts
+- machine-readable CLI output for agent use
+
+It assumes auth is already in place.
 
 It does not yet cover video, company pages, or multi-user auth.
 
@@ -34,43 +40,29 @@ That keeps it:
 - Images API: https://learn.microsoft.com/en-us/linkedin/marketing/community-management/shares/images-api?view=li-lms-2026-02
 - MultiImage API: https://learn.microsoft.com/en-us/linkedin/marketing/community-management/shares/multiimage-post-api?view=li-lms-2026-03
 
-## Secret lane
-
-Use the machine-local shared lane.
-
-Do not put LinkedIn app secrets in this repo.
-
-Store them under:
-- `~/.secrets/linkedin/env`
-- `~/.secrets/linkedin/posting.tokens.json`
-
-If an older setup still has `~/.secrets/linkedin/personal-posting.tokens.json`, the CLI falls back to it automatically.
-
-Generated env file after machine-secret sync:
-
-```bash
-LINKEDIN_CLIENT_ID=...
-LINKEDIN_CLIENT_SECRET=...
-```
-
-The script defaults the redirect URI and scope, so those do not need to be stored as secrets.
-
-## One-time LinkedIn app setup
-
-1. Go to the LinkedIn Developer Portal and create an app.
-2. Under the app's Auth settings, add this redirect URL exactly:
-   - `http://127.0.0.1:8765/callback`
-3. Under Products, add:
-   - `Share on LinkedIn`
-4. If you want the script to resolve your user identifier through OIDC as part of the same flow, also add:
-   - `Sign In with LinkedIn using OpenID Connect`
-5. Store the Client ID and Client Secret in Key Vault under the `linkedin--...` family, then sync machine secrets
-
 ## Local CLI
 
 Script:
 - `scripts/linkedin/cli.py`
 - `references/linkedin/copy.md` for native-first copy defaults and reusable post text
+- `references/linkedin/auth.md` only if setup or re-auth is needed
+
+## Interface contract
+
+The LinkedIn CLI now follows a more agent-first contract:
+
+- `--json` returns one structured JSON object
+- `--human` returns concise operator-facing output
+- `--plain` returns stable plain text for shell pipelines
+- `--no-input` disables browser auto-open and any interactive input assumptions
+- non-zero exit codes are classified by failure type
+
+Stable exit code model:
+- `0` success
+- `2` invalid usage or validation failure
+- `3` authentication or authorization failure
+- `4` network, dependency, or rate-limit failure
+- `5` timeout
 
 ## Text format rule
 
@@ -82,25 +74,6 @@ Practical rule:
 - normal Markdown such as `**bold**` or `[label](url)` should not be used as if LinkedIn will render it
 
 LinkedIn's newer Posts API describes commentary as text stored in `little` text format. That format is mainly for plain text plus LinkedIn-specific constructs such as mentions and hashtags, not general Markdown rendering.
-
-### Authorize
-
-```bash
-python3 ~/.agents/skills-source/owned/social-media-publishing/scripts/linkedin/cli.py authorize
-```
-
-What it does:
-- opens the LinkedIn OAuth consent flow
-- listens on the local callback URL
-- exchanges the auth code for a token
-- calls the LinkedIn userinfo endpoint
-- stores the token JSON locally
-
-### Confirm identity
-
-```bash
-python3 ~/.agents/skills-source/owned/social-media-publishing/scripts/linkedin/cli.py whoami
-```
 
 ### Dry-run a blog post share
 
@@ -121,6 +94,15 @@ python3 ~/.agents/skills-source/owned/social-media-publishing/scripts/linkedin/c
   --url https://adithyan.io/blog/codex-plugins-visual-explainer \
   --title "Codex plugins, visually explained" \
   --description "A seven-panel visual guide to what Codex plugins are."
+```
+
+### Dry-run a single-image post
+
+```bash
+python3 ~/.agents/skills-source/owned/social-media-publishing/scripts/linkedin/cli.py post-image \
+  --text-file /abs/path/body.txt \
+  --image /abs/path/cover.jpg \
+  --dry-run
 ```
 
 ### Dry-run a multi-image post
@@ -156,6 +138,28 @@ python3 ~/.agents/skills-source/owned/social-media-publishing/scripts/linkedin/c
   --image /abs/path/slide-3.jpg
 ```
 
+### Dry-run a comment / first comment
+
+```bash
+python3 ~/.agents/skills-source/owned/social-media-publishing/scripts/linkedin/cli.py comment \
+  --post-urn urn:li:ugcPost:1234567890 \
+  --text-file /abs/path/comment.txt \
+  --dry-run
+```
+
+### Fetch one post by URN
+
+```bash
+python3 ~/.agents/skills-source/owned/social-media-publishing/scripts/linkedin/cli.py --json get-post \
+  --post-urn urn:li:ugcPost:1234567890
+```
+
+### List recent posts
+
+```bash
+python3 ~/.agents/skills-source/owned/social-media-publishing/scripts/linkedin/cli.py --json list-posts --count 5
+```
+
 ## Important implementation note
 
 The script uses LinkedIn's `ugcPosts` endpoint for member shares.
@@ -176,9 +180,25 @@ Multi-image posts use LinkedIn's newer `/rest/images` and `/rest/posts` endpoint
 - upload each binary file
 - create one organic `multiImage` post that references the returned image URNs
 
+Comments use LinkedIn's `/rest/socialActions/{postUrn}/comments` endpoint.
+
+Single-image posts use the same image upload path as multi-image posts, but publish a `media` payload instead of `multiImage`.
+
 The CLI defaults `Linkedin-Version` to `202603` for those `/rest` calls and exposes `--linkedin-version` if LinkedIn changes the required version later.
 
 If the source draft starts in Markdown, convert it to plain text before posting.
+
+If auth stops working, re-run the setup in `references/linkedin/auth.md`.
+
+## Current permission caveat
+
+With the current LinkedIn app used in this workspace, posting works, but read-back endpoints may still return `403 ACCESS_DENIED`.
+
+That means:
+- `post`, `post-image`, `post-images`, and likely `comment` are the most reliable day-to-day commands
+- `get-post` and `list-posts` may require additional LinkedIn access that this app does not currently have
+
+Treat the read-back commands as best-effort until LinkedIn confirms the right product/scope path for this app.
 
 ## Next likely upgrade
 
