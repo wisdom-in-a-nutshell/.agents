@@ -23,6 +23,7 @@ BACKUP_ROOT="${HOME}/.local/state/codex-control-plane/runtime-config-backups"
 BACKUP_MAX_AGE_DAYS=7
 NOTIFY_SCRIPT_PATH="${HOME}/.agents/codex/scripts/notify.py"
 SYSTEM_SKILLS_DISABLE_PATHS=(
+  "${HOME}/.codex/skills/.system/imagegen/SKILL.md"
   "${HOME}/.codex/skills/.system/openai-docs/SKILL.md"
   "${HOME}/.codex/skills/.system/skill-creator/SKILL.md"
   "${HOME}/.codex/skills/.system/skill-installer/SKILL.md"
@@ -372,7 +373,7 @@ lines = text.splitlines(keepends=True)
 project_re = re.compile(r'^\[projects\."([^"]+)"\]\s*$')
 path_re = re.compile(r'^\s*path\s*=\s*"([^"]*)"\s*$')
 system_skill_re = re.compile(
-    r"^/Users/[^/]+/\.codex/skills/\.system/skill-(creator|installer)/SKILL\.md$"
+    r"^/Users/[^/]+/\.codex/skills/\.system/(imagegen|openai-docs|skill-creator|skill-installer)/SKILL\.md$"
 )
 
 

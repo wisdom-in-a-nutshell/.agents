@@ -73,7 +73,7 @@ Use [Codex Control Plane Ownership](/Users/dobby/.agents/docs/references/codex-c
   - applies canonical Codex config templates into live terminal + Xcode config
   - syncs canonical role config files for managed multi-agent roles into the live runtime `agents/` directories
   - keeps the current role setup explicit: built-in `explorer` for local repo/runtime exploration, managed `external_researcher` for information outside the local repo/runtime
-  - disables selected built-in system skills in `~/.codex/config.toml` when the control plane should prefer managed skill copies instead
+  - disables selected built-in system skills in `~/.codex/config.toml` when the control plane should prefer managed skill copies instead, including currently `imagegen`, `openai-docs`, `skill-creator`, and `skill-installer`
   - rewrites machine-specific notify and system-skill paths for the current `$HOME`
   - strips foreign-user project and system-skill entries before writing
   - prunes stale global terminal `mcp_servers.*` sections that are no longer present in the canonical template
