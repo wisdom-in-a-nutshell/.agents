@@ -1,6 +1,6 @@
 ---
 name: social-media-publishing
-description: Reddit-first social publishing workflow plus blog-post publication prep and LinkedIn personal posting support. Use when Codex needs to publish or distribute a blog post, video, launch, or visual explainer; prepare blog assets; decide between gallery, image, self, or link format; post to Reddit; publish the source post before distribution; or authenticate and publish personal LinkedIn posts through the local helper.
+description: Reddit-first social publishing workflow plus blog-post publication prep and LinkedIn posting support. Use when Codex needs to publish or distribute a blog post, video, launch, or visual explainer; prepare blog assets; decide between gallery, image, self, or link format; post to Reddit; publish the source post before distribution; or authenticate and publish LinkedIn posts through the channel CLI.
 ---
 
 # Social Media Publishing
@@ -32,7 +32,7 @@ Keep the durable repo-specific steps in the repo where they belong. Do not bloat
 
 ## Reddit
 
-Use the bundled CLI at `scripts/reddit_cli.py`.
+Use the bundled CLI at `scripts/reddit/cli.py`.
 
 For live commands and plan structure, read:
 - `references/reddit/workflow.md`
@@ -41,10 +41,10 @@ For live commands and plan structure, read:
 Core commands:
 
 ```bash
-python3 ~/.agents/skills-source/owned/social-media-publishing/scripts/reddit_cli.py list-flairs --subreddit OpenAI
-python3 ~/.agents/skills-source/owned/social-media-publishing/scripts/reddit_cli.py list-submissions --max-items 20 --days 7
-python3 ~/.agents/skills-source/owned/social-media-publishing/scripts/reddit_cli.py submit-plan --plan /abs/path/post-plan.json --dry-run
-python3 ~/.agents/skills-source/owned/social-media-publishing/scripts/reddit_cli.py submit-plan --plan /abs/path/post-plan.json
+python3 ~/.agents/skills-source/owned/social-media-publishing/scripts/reddit/cli.py list-flairs --subreddit OpenAI
+python3 ~/.agents/skills-source/owned/social-media-publishing/scripts/reddit/cli.py list-submissions --max-items 20 --days 7
+python3 ~/.agents/skills-source/owned/social-media-publishing/scripts/reddit/cli.py submit-plan --plan /abs/path/post-plan.json --dry-run
+python3 ~/.agents/skills-source/owned/social-media-publishing/scripts/reddit/cli.py submit-plan --plan /abs/path/post-plan.json
 ```
 
 The CLI supports:
@@ -58,23 +58,26 @@ The CLI supports:
 
 ## LinkedIn
 
-Use the bundled personal-posting helper at `scripts/linkedin_personal_cli.py` for one-user local LinkedIn publishing.
+Use the bundled LinkedIn CLI at `scripts/linkedin/cli.py` for local LinkedIn publishing.
 
 Read first:
-- `references/linkedin/personal-posting.md`
+- `references/linkedin/posting.md`
+- `references/linkedin/copy.md`
 
 Current supported flow:
 - local OAuth authorization
 - identity check
 - text posts
 - article or URL shares
+- multi-image posts
 
 Core commands:
 
 ```bash
-python3 ~/.agents/skills-source/owned/social-media-publishing/scripts/linkedin_personal_cli.py authorize
-python3 ~/.agents/skills-source/owned/social-media-publishing/scripts/linkedin_personal_cli.py whoami
-python3 ~/.agents/skills-source/owned/social-media-publishing/scripts/linkedin_personal_cli.py post --text-file /abs/path/body.txt --url https://example.com/post --title "Post title" --description "Short description" --dry-run
+python3 ~/.agents/skills-source/owned/social-media-publishing/scripts/linkedin/cli.py authorize
+python3 ~/.agents/skills-source/owned/social-media-publishing/scripts/linkedin/cli.py whoami
+python3 ~/.agents/skills-source/owned/social-media-publishing/scripts/linkedin/cli.py post --text-file /abs/path/body.txt --url https://example.com/post --title "Post title" --description "Short description" --dry-run
+python3 ~/.agents/skills-source/owned/social-media-publishing/scripts/linkedin/cli.py post-images --text-file /abs/path/body.txt --image /abs/path/slide-1.jpg --image /abs/path/slide-2.jpg --dry-run
 ```
 
 This helper uses machine-local generated secrets under `~/.secrets/linkedin/` and should stay one-user until the workflow is more mature.
@@ -90,10 +93,11 @@ This helper uses machine-local generated secrets under `~/.secrets/linkedin/` an
 
 ## Resources
 
-- `scripts/reddit_cli.py`: CLI entrypoint.
-- `scripts/social_media_publishing/reddit/`: self-contained Reddit client package.
+- `scripts/reddit/cli.py`: Reddit CLI entrypoint.
+- `scripts/reddit/`: self-contained Reddit helpers and models.
 - `references/blog/publishing.md`: blog publication workflow before distribution.
 - `references/reddit/workflow.md`: operational Reddit workflow.
 - `references/reddit/plan-schema.md`: portable Reddit plan-file contract.
-- `scripts/linkedin_personal_cli.py`: local LinkedIn personal-posting helper.
-- `references/linkedin/personal-posting.md`: LinkedIn personal posting setup and usage.
+- `scripts/linkedin/cli.py`: local LinkedIn posting CLI.
+- `references/linkedin/posting.md`: LinkedIn posting setup and usage.
+- `references/linkedin/copy.md`: LinkedIn copy defaults and reusable post baselines.

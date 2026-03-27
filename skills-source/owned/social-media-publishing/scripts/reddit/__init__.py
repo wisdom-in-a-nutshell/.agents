@@ -1,13 +1,13 @@
 """Reddit publishing helpers for the social-media-publishing skill."""
 
-from social_media_publishing.reddit.analytics import (
+from .analytics import (
     RedditProfilePostsResult,
     RedditProfileWorkflow,
     RedditProfileWorkflowConfig,
     RedditProfileWorkflowError,
 )
-from social_media_publishing.reddit.client import RedditClient, RedditClientError
-from social_media_publishing.reddit.models import (
+from .client import RedditClient, RedditClientError
+from .models import (
     FlairTemplate,
     GalleryImage,
     PrawSubmitResponse,
@@ -17,14 +17,14 @@ from social_media_publishing.reddit.models import (
     RedditPost,
     RedditSubmitResponse,
 )
-from social_media_publishing.reddit.native_video import (
+from .native_video import (
     NativeRedditVideoPostingWorkflow,
     RedditVideoPostingConfig,
     RedditVideoPostResult,
     RedditVideoPostTarget,
     encode_video_for_reddit_native_upload,
 )
-from social_media_publishing.reddit.praw_client import PrawClient
+from .praw_client import PrawClient
 
 __all__ = [
     "FlairTemplate",

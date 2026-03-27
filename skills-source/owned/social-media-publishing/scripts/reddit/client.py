@@ -7,7 +7,7 @@ from typing import Iterable, Optional
 
 import httpx
 
-from social_media_publishing.reddit.models import (
+from .models import (
     RedditAuthSettings,
     RedditListing,
     RedditMediaUploadLease,

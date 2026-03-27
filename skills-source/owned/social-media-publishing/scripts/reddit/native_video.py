@@ -11,7 +11,7 @@ from typing import Any, Optional
 import httpx
 from pydantic import BaseModel, ConfigDict, Field
 
-from social_media_publishing.reddit.praw_client import PrawClient
+from .praw_client import PrawClient
 
 
 class RedditVideoPostTarget(BaseModel):

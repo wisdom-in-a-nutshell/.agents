@@ -9,12 +9,24 @@ from pathlib import Path
 
 import httpx
 
-from social_media_publishing.reddit import (
-    NativeRedditVideoPostingWorkflow,
-    RedditVideoPostingConfig,
-    RedditVideoPostTarget,
-    encode_video_for_reddit_native_upload,
-)
+if __package__ in {None, ""}:
+    import sys
+    from pathlib import Path as _Path
+
+    sys.path.insert(0, str(_Path(__file__).resolve().parent.parent))
+    from reddit import (
+        NativeRedditVideoPostingWorkflow,
+        RedditVideoPostingConfig,
+        RedditVideoPostTarget,
+        encode_video_for_reddit_native_upload,
+    )
+else:
+    from . import (
+        NativeRedditVideoPostingWorkflow,
+        RedditVideoPostingConfig,
+        RedditVideoPostTarget,
+        encode_video_for_reddit_native_upload,
+    )
 
 
 def _parse_args() -> argparse.Namespace:
@@ -60,10 +72,7 @@ def _resolve_source_video(args: argparse.Namespace, work_dir: Path) -> Path:
         return Path(args.video_path).expanduser().resolve()
     if not args.video_url:
         raise ValueError("Provide --video-path or --video-url.")
-    return _download_video(
-        url=args.video_url,
-        output_path=work_dir / "reddit-native-video-source.mp4",
-    )
+    return _download_video(url=args.video_url, output_path=work_dir / "reddit-native-video-source.mp4")
 
 
 def main() -> int:
@@ -75,10 +84,7 @@ def main() -> int:
     upload_video = source_video
     if not args.skip_encode:
         upload_video = work_dir / "reddit-native-video-encoded.mp4"
-        encode_video_for_reddit_native_upload(
-            input_path=source_video,
-            output_path=upload_video,
-        )
+        encode_video_for_reddit_native_upload(input_path=source_video, output_path=upload_video)
 
     targets_raw = json.loads(Path(args.targets_file).read_text())
     targets = [RedditVideoPostTarget.model_validate(item) for item in targets_raw]

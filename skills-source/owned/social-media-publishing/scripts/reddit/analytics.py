@@ -7,8 +7,8 @@ from typing import Callable, Iterable, Optional, Protocol
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from social_media_publishing.reddit.client import RedditClient, RedditClientError
-from social_media_publishing.reddit.models import RedditPost
+from .client import RedditClient, RedditClientError
+from .models import RedditPost
 
 
 class RedditProfileWorkflowConfig(BaseModel):

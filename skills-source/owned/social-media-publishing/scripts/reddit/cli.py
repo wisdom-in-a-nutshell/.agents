@@ -10,7 +10,14 @@ from typing import Any, Optional
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
-from social_media_publishing.reddit import GalleryImage, PrawClient, RedditClient
+if __package__ in {None, ""}:
+    import sys
+    from pathlib import Path as _Path
+
+    sys.path.insert(0, str(_Path(__file__).resolve().parent.parent))
+    from reddit import GalleryImage, PrawClient, RedditClient
+else:
+    from . import GalleryImage, PrawClient, RedditClient
 
 
 class SubmissionPlan(BaseModel):
@@ -203,24 +210,14 @@ def _list_flairs(subreddit: str) -> int:
     return 0
 
 
-def _list_submissions(
-    *,
-    username: Optional[str],
-    max_items: int,
-    days: Optional[int],
-    include_hidden: bool,
-) -> int:
+def _list_submissions(*, username: Optional[str], max_items: int, days: Optional[int], include_hidden: bool) -> int:
     cutoff = None
     if days:
         cutoff = datetime.now(timezone.utc) - timedelta(days=days)
 
     with RedditClient() as client:
         posts = []
-        for post in client.iter_user_submissions(
-            username=username,
-            max_items=max_items,
-            include_hidden=include_hidden,
-        ):
+        for post in client.iter_user_submissions(username=username, max_items=max_items, include_hidden=include_hidden):
             if cutoff and post.created_utc < cutoff:
                 continue
             posts.append(post.model_dump(mode="json"))
@@ -247,123 +244,77 @@ def _execute_plan(plan: SubmissionPlan, *, base_dir: Path, dry_run: bool) -> int
     client = PrawClient()
     result: dict[str, Any]
     if payload["kind"] == "self":
-        response = client.submit_self(
-            subreddit=payload["subreddit"],
-            title=payload["title"],
-            selftext=payload["selftext"],
-            flair_id=payload.get("flair_id"),
-            flair_text=payload.get("flair_text"),
-            nsfw=payload["nsfw"],
-            spoiler=payload["spoiler"],
-            send_replies=payload["send_replies"],
-        )
+        response = client.submit_self(subreddit=payload["subreddit"], title=payload["title"], selftext=payload["selftext"], flair_id=payload.get("flair_id"), flair_text=payload.get("flair_text"), nsfw=payload["nsfw"], spoiler=payload["spoiler"], send_replies=payload["send_replies"])
     elif payload["kind"] == "link":
-        response = client.submit_link(
-            subreddit=payload["subreddit"],
-            title=payload["title"],
-            url=payload["url"],
-            flair_id=payload.get("flair_id"),
-            flair_text=payload.get("flair_text"),
-            nsfw=payload["nsfw"],
-            spoiler=payload["spoiler"],
-            send_replies=payload["send_replies"],
-            resubmit=payload["resubmit"],
-        )
+        response = client.submit_link(subreddit=payload["subreddit"], title=payload["title"], url=payload["url"], flair_id=payload.get("flair_id"), flair_text=payload.get("flair_text"), nsfw=payload["nsfw"], spoiler=payload["spoiler"], send_replies=payload["send_replies"])
     elif payload["kind"] == "image":
-        response = client.submit_image(
-            subreddit=payload["subreddit"],
-            title=payload["title"],
-            image_path=payload["image_path"],
-            flair_id=payload.get("flair_id"),
-            flair_text=payload.get("flair_text"),
-            nsfw=payload["nsfw"],
-            spoiler=payload["spoiler"],
-            send_replies=payload["send_replies"],
-        )
+        response = client.submit_image(subreddit=payload["subreddit"], title=payload["title"], image_path=Path(payload["image_path"]), flair_id=payload.get("flair_id"), flair_text=payload.get("flair_text"), nsfw=payload["nsfw"], spoiler=payload["spoiler"], send_replies=payload["send_replies"])
     elif payload["kind"] == "gallery":
-        response = client.submit_gallery(
-            subreddit=payload["subreddit"],
-            title=payload["title"],
-            images=[GalleryImage.model_validate(item) for item in payload["images"]],
-            flair_id=payload.get("flair_id"),
-            flair_text=payload.get("flair_text"),
-            nsfw=payload["nsfw"],
-            spoiler=payload["spoiler"],
-            send_replies=payload["send_replies"],
-        )
+        response = client.submit_gallery(subreddit=payload["subreddit"], title=payload["title"], images=[GalleryImage.model_validate(item) for item in payload["images"]], flair_id=payload.get("flair_id"), flair_text=payload.get("flair_text"), nsfw=payload["nsfw"], spoiler=payload["spoiler"], send_replies=payload["send_replies"])
     else:
-        raise SystemExit(f"Unsupported plan kind: {payload['kind']}")
+        raise SystemExit(f"Unsupported kind: {payload['kind']}")
 
-    result = {"post": response.model_dump()}
+    result = {"submission": response.model_dump(mode="json"), "kind": payload["kind"]}
     comment_text = payload.get("comment_text")
     if comment_text:
-        result["comment_url"] = client.add_comment(
-            post_url=response.url,
-            text=comment_text,
-        )
-
+        comment = client.add_comment(response.name, comment_text)
+        result["comment"] = comment.model_dump(mode="json")
     print(json.dumps(result, indent=2))
     return 0
 
 
 def _resolved_payload(plan: SubmissionPlan, base_dir: Path) -> dict[str, Any]:
-    payload = plan.model_dump()
-    kind = payload["kind"]
-    if kind not in {"link", "self", "image", "gallery"}:
-        raise SystemExit("kind must be one of: link, self, image, gallery.")
-
-    if payload.get("selftext_file"):
-        payload["selftext"] = _read_text_file(base_dir / payload["selftext_file"])
-    if payload.get("comment_file"):
-        payload["comment_text"] = _read_text_file(base_dir / payload["comment_file"])
-    if payload.get("image_path"):
-        payload["image_path"] = str((base_dir / payload["image_path"]).resolve())
-    if payload.get("images"):
+    payload = plan.model_dump(mode="json")
+    if plan.selftext_file:
+        payload["selftext"] = _resolve_text(Path(plan.selftext_file), base_dir)
+    if plan.comment_file:
+        payload["comment_text"] = _resolve_text(Path(plan.comment_file), base_dir)
+    if plan.image_path:
+        payload["image_path"] = str(_resolve_path(Path(plan.image_path), base_dir))
+    if plan.images:
         payload["images"] = [
-            _resolve_gallery_item(image, base_dir) for image in payload["images"]
+            {
+                **image.model_dump(mode="json"),
+                "image_path": str(_resolve_path(Path(image.image_path), base_dir)),
+            }
+            for image in plan.images
         ]
-
-    if kind == "link" and not payload.get("url"):
-        raise SystemExit("url is required for link submissions.")
-    if kind == "self":
-        payload["selftext"] = payload.get("selftext") or ""
-    if kind == "image" and not payload.get("image_path"):
-        raise SystemExit("image_path is required for image submissions.")
-    if kind == "gallery" and not payload.get("images"):
-        raise SystemExit("images are required for gallery submissions.")
     return payload
 
 
-def _resolve_gallery_item(image: GalleryImage | dict[str, Any], base_dir: Path) -> dict[str, Any]:
-    if isinstance(image, GalleryImage):
-        item = image.model_dump()
-    else:
-        item = dict(image)
-    item["image_path"] = str((base_dir / item["image_path"]).resolve())
-    return item
+def _resolve_text(path: Path, base_dir: Path) -> str:
+    return _resolve_path(path, base_dir).read_text().strip()
+
+
+def _resolve_path(path: Path, base_dir: Path) -> Path:
+    expanded = path.expanduser()
+    if expanded.is_absolute():
+        return expanded
+    return (base_dir / expanded).resolve()
 
 
 def _load_gallery_images(path: Path, base_dir: Path) -> list[GalleryImage]:
-    if path.suffix.lower() == ".json":
-        raw = json.loads(path.read_text())
-        if not isinstance(raw, list):
-            raise SystemExit("Gallery JSON must contain a list.")
-        items = []
-        for item in raw:
-            if isinstance(item, str):
-                items.append(GalleryImage(image_path=str((base_dir / item).resolve())))
-            else:
-                payload = dict(item)
-                payload["image_path"] = str((base_dir / payload["image_path"]).resolve())
-                items.append(GalleryImage.model_validate(payload))
-        return items
+    raw_text = path.read_text().strip()
+    if not raw_text:
+        return []
+    try:
+        parsed = json.loads(raw_text)
+    except json.JSONDecodeError:
+        lines = [line.strip() for line in raw_text.splitlines() if line.strip()]
+        return [GalleryImage(image_path=str(_resolve_path(Path(line), base_dir))) for line in lines]
 
-    lines = [line.strip() for line in path.read_text().splitlines() if line.strip()]
-    return [GalleryImage(image_path=str((base_dir / line).resolve())) for line in lines]
+    if not isinstance(parsed, list):
+        raise SystemExit("Gallery images file must decode to a JSON list.")
 
-
-def _read_text_file(path: Path) -> str:
-    return path.read_text().strip()
+    images: list[GalleryImage] = []
+    for item in parsed:
+        try:
+            image = GalleryImage.model_validate(item)
+        except ValidationError as exc:
+            raise SystemExit(str(exc)) from exc
+        image.image_path = str(_resolve_path(Path(image.image_path), base_dir))
+        images.append(image)
+    return images
 
 
 if __name__ == "__main__":

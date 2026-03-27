@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import mimetypes
 import os
 import secrets
 import sys
@@ -17,13 +18,17 @@ from pathlib import Path
 from typing import Any
 
 DEFAULT_ENV_PATH = Path.home() / ".secrets/linkedin/env"
-DEFAULT_TOKENS_PATH = Path.home() / ".secrets/linkedin/personal-posting.tokens.json"
+DEFAULT_TOKENS_PATH = Path.home() / ".secrets/linkedin/posting.tokens.json"
+LEGACY_TOKENS_PATH = Path.home() / ".secrets/linkedin/personal-posting.tokens.json"
 AUTH_URL = "https://www.linkedin.com/oauth/v2/authorization"
 TOKEN_URL = "https://www.linkedin.com/oauth/v2/accessToken"
 USERINFO_URL = "https://api.linkedin.com/v2/userinfo"
 UGC_POSTS_URL = "https://api.linkedin.com/v2/ugcPosts"
+REST_POSTS_URL = "https://api.linkedin.com/rest/posts"
+INITIALIZE_IMAGE_UPLOAD_URL = "https://api.linkedin.com/rest/images?action=initializeUpload"
 DEFAULT_SCOPE = "openid profile w_member_social"
 DEFAULT_REDIRECT_URI = "http://127.0.0.1:8765/callback"
+DEFAULT_LINKEDIN_VERSION = "202603"
 
 
 class CliError(RuntimeError):
@@ -36,6 +41,7 @@ class Config:
     client_secret: str
     redirect_uri: str
     scope: str
+    linkedin_version: str
     env_path: Path
     tokens_path: Path
 
@@ -67,6 +73,7 @@ def build_config(args: argparse.Namespace) -> Config:
     client_secret = get_value("LINKEDIN_CLIENT_SECRET")
     redirect_uri = get_value("LINKEDIN_REDIRECT_URI", DEFAULT_REDIRECT_URI)
     scope = get_value("LINKEDIN_SCOPE", DEFAULT_SCOPE)
+    linkedin_version = getattr(args, "linkedin_version", None) or get_value("LINKEDIN_VERSION", DEFAULT_LINKEDIN_VERSION)
 
     if not client_id:
         raise CliError(
@@ -82,9 +89,18 @@ def build_config(args: argparse.Namespace) -> Config:
         client_secret=client_secret,
         redirect_uri=redirect_uri,
         scope=scope,
+        linkedin_version=linkedin_version,
         env_path=Path(args.env_file).expanduser(),
-        tokens_path=Path(args.tokens_file).expanduser(),
+        tokens_path=resolve_tokens_path(Path(args.tokens_file).expanduser()),
     )
+
+
+def resolve_tokens_path(path: Path) -> Path:
+    if path.exists():
+        return path
+    if path == DEFAULT_TOKENS_PATH and LEGACY_TOKENS_PATH.exists():
+        return LEGACY_TOKENS_PATH
+    return path
 
 
 def http_request(method: str, url: str, *, headers: dict[str, str] | None = None, data: bytes | None = None) -> tuple[int, dict[str, str], bytes]:
@@ -223,6 +239,150 @@ def post_ugc(access_token: str, payload: dict[str, Any]) -> tuple[int, dict[str,
     )
 
 
+def linkedin_rest_headers(access_token: str, *, version: str, content_type: str = "application/json") -> dict[str, str]:
+    return {
+        "Authorization": f"Bearer {access_token}",
+        "Linkedin-Version": version,
+        "X-Restli-Protocol-Version": "2.0.0",
+        "Content-Type": content_type,
+    }
+
+
+def post_rest_json(access_token: str, url: str, payload: dict[str, Any], *, version: str) -> tuple[int, dict[str, str], bytes]:
+    return http_request(
+        "POST",
+        url,
+        headers=linkedin_rest_headers(access_token, version=version),
+        data=json.dumps(payload).encode("utf-8"),
+    )
+
+
+def initialize_image_upload(access_token: str, *, owner: str, version: str) -> tuple[str, str]:
+    payload = {"initializeUploadRequest": {"owner": owner}}
+    _, _, body = post_rest_json(access_token, INITIALIZE_IMAGE_UPLOAD_URL, payload, version=version)
+    response = json.loads(body.decode("utf-8"))
+    value = response.get("value") or {}
+    upload_url = value.get("uploadUrl")
+    image_urn = value.get("image")
+    if not upload_url or not image_urn:
+        raise CliError(f"LinkedIn image initializeUpload response was missing uploadUrl/image.\n{json.dumps(response, indent=2, sort_keys=True)}")
+    return str(upload_url), str(image_urn)
+
+
+def upload_image_binary(access_token: str, *, upload_url: str, image_path: Path) -> None:
+    content_type = mimetypes.guess_type(str(image_path))[0] or "application/octet-stream"
+    data = image_path.read_bytes()
+    headers = {
+        "Authorization": f"Bearer {access_token}",
+        "Content-Type": content_type,
+    }
+    last_error: CliError | None = None
+    for method in ("PUT", "POST"):
+        request = urllib.request.Request(upload_url, method=method, headers=headers, data=data)
+        try:
+            with urllib.request.urlopen(request):
+                return
+        except urllib.error.HTTPError as exc:
+            body = exc.read().decode("utf-8", errors="replace")
+            last_error = CliError(f"HTTP {exc.code} uploading {image_path.name} with {method}\n{body}")
+        except urllib.error.URLError as exc:
+            last_error = CliError(f"Upload failed for {image_path.name} with {method}: {exc}")
+    assert last_error is not None
+    raise last_error
+
+
+def build_rest_distribution_payload() -> dict[str, Any]:
+    return {
+        "feedDistribution": "MAIN_FEED",
+        "targetEntities": [],
+        "thirdPartyDistributionChannels": [],
+    }
+
+
+def build_rest_article_post_payload(
+    *,
+    author: str,
+    text: str,
+    visibility: str,
+    url: str,
+    title: str | None,
+    description: str | None,
+) -> dict[str, Any]:
+    article: dict[str, Any] = {"source": url}
+    if title:
+        article["title"] = title
+    if description:
+        article["description"] = description
+    return {
+        "author": author,
+        "commentary": text,
+        "visibility": visibility,
+        "distribution": build_rest_distribution_payload(),
+        "content": {"article": article},
+        "lifecycleState": "PUBLISHED",
+        "isReshareDisabledByAuthor": False,
+    }
+
+
+def build_image_post_payload(
+    *,
+    author: str,
+    text: str,
+    visibility: str,
+    image_entries: list[dict[str, str]],
+) -> dict[str, Any]:
+    content_key = "multiImage" if len(image_entries) > 1 else "media"
+    content_value: dict[str, Any]
+    if len(image_entries) > 1:
+        content_value = {
+            "images": image_entries,
+        }
+    else:
+        image = image_entries[0]
+        content_value = {
+            "id": image["id"],
+        }
+        if image.get("altText"):
+            content_value["altText"] = image["altText"]
+        if image.get("title"):
+            content_value["title"] = image["title"]
+    return {
+        "author": author,
+        "commentary": text,
+        "visibility": visibility,
+        "distribution": build_rest_distribution_payload(),
+        "content": {content_key: content_value},
+        "lifecycleState": "PUBLISHED",
+        "isReshareDisabledByAuthor": False,
+    }
+
+
+def load_image_paths(raw_paths: list[str]) -> list[Path]:
+    paths = [Path(raw).expanduser() for raw in raw_paths]
+    missing = [str(path) for path in paths if not path.exists()]
+    if missing:
+        raise CliError(f"Image file(s) not found:\n- " + "\n- ".join(missing))
+    if len(paths) > 20:
+        raise CliError("LinkedIn supports at most 20 images in one post.")
+    return paths
+
+
+def build_image_entries(image_paths: list[Path], alt_texts: list[str], image_urns: list[str]) -> list[dict[str, str]]:
+    if len(alt_texts) not in {0, len(image_paths)}:
+        raise CliError("Provide either no --alt-text values or one --alt-text per --image in the same order.")
+    entries: list[dict[str, str]] = []
+    for index, (path, image_urn) in enumerate(zip(image_paths, image_urns, strict=True)):
+        entry: dict[str, str] = {"id": image_urn}
+        if alt_texts:
+            alt_text = alt_texts[index].strip()
+            if alt_text:
+                entry["altText"] = alt_text
+        if len(image_paths) == 1:
+            entry["title"] = path.stem.replace("-", " ").replace("_", " ")
+        entries.append(entry)
+    return entries
+
+
 class CallbackHandler(BaseHTTPRequestHandler):
     server_version = "LinkedInLocalAuth/1.0"
 
@@ -356,10 +516,83 @@ def command_post(args: argparse.Namespace) -> int:
     return 0
 
 
+def command_post_images(args: argparse.Namespace) -> int:
+    config = build_config(args)
+    tokens = ensure_access_token(config, load_tokens(config.tokens_path))
+    if not tokens.get("member_sub"):
+        userinfo = get_userinfo(tokens["access_token"])
+        tokens["member_sub"] = userinfo.get("sub")
+        tokens["author_urn"] = f"urn:li:person:{userinfo.get('sub')}" if userinfo.get("sub") else None
+        tokens["member_profile"] = userinfo
+        save_tokens(config.tokens_path, tokens)
+
+    text = load_post_text(args)
+    image_paths = load_image_paths(args.image)
+    if len(image_paths) < 2:
+        raise CliError("Use at least two --image values for a LinkedIn multi-image post.")
+
+    if args.dry_run:
+        dry_run_payload = {
+            "author": build_author_urn(tokens),
+            "commentary": text,
+            "visibility": args.visibility,
+            "distribution": build_rest_distribution_payload(),
+            "content": {
+                "multiImage": {
+                    "images": [
+                        {
+                            "localPath": str(path),
+                            **({"altText": args.alt_text[index].strip()} if index < len(args.alt_text) and args.alt_text[index].strip() else {}),
+                        }
+                        for index, path in enumerate(image_paths)
+                    ]
+                }
+            },
+            "lifecycleState": "PUBLISHED",
+            "isReshareDisabledByAuthor": False,
+        }
+        print(json.dumps(dry_run_payload, indent=2, sort_keys=True))
+        return 0
+
+    image_urns: list[str] = []
+    author_urn = build_author_urn(tokens)
+    for image_path in image_paths:
+        upload_url, image_urn = initialize_image_upload(
+            tokens["access_token"],
+            owner=author_urn,
+            version=config.linkedin_version,
+        )
+        upload_image_binary(tokens["access_token"], upload_url=upload_url, image_path=image_path)
+        image_urns.append(image_urn)
+        if args.upload_settle_seconds > 0:
+            time.sleep(args.upload_settle_seconds)
+
+    payload = build_image_post_payload(
+        author=author_urn,
+        text=text,
+        visibility=args.visibility,
+        image_entries=build_image_entries(image_paths, args.alt_text, image_urns),
+    )
+    status, headers, body = post_rest_json(
+        tokens["access_token"],
+        REST_POSTS_URL,
+        payload,
+        version=config.linkedin_version,
+    )
+    print(f"LinkedIn response status: {status}")
+    restli_id = headers.get("X-RestLi-Id") or headers.get("x-restli-id")
+    if restli_id:
+        print(f"X-RestLi-Id: {restli_id}")
+    if body:
+        print(body.decode("utf-8", errors="replace"))
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(description="Local LinkedIn personal posting helper.")
+    parser = argparse.ArgumentParser(description="Local LinkedIn posting helper.")
     parser.add_argument("--env-file", default=str(DEFAULT_ENV_PATH), help="Path to machine-local LinkedIn app credentials env file.")
     parser.add_argument("--tokens-file", default=str(DEFAULT_TOKENS_PATH), help="Path to machine-local LinkedIn token JSON file.")
+    parser.add_argument("--linkedin-version", default=DEFAULT_LINKEDIN_VERSION, help="LinkedIn REST API version for /rest endpoints, formatted as YYYYMM.")
     subparsers = parser.add_subparsers(dest="command", required=True)
 
     authorize = subparsers.add_parser("authorize", help="Run the local OAuth authorize flow and save tokens.")
@@ -379,6 +612,16 @@ def build_parser() -> argparse.ArgumentParser:
     post.add_argument("--visibility", choices=["PUBLIC", "CONNECTIONS"], default="PUBLIC")
     post.add_argument("--dry-run", action="store_true", help="Print the request payload without publishing.")
     post.set_defaults(func=command_post)
+
+    post_images = subparsers.add_parser("post-images", help="Publish a LinkedIn multi-image post with commentary text.")
+    post_images.add_argument("--text", help="Inline post text.")
+    post_images.add_argument("--text-file", help="Path to a file containing post text.")
+    post_images.add_argument("--image", action="append", required=True, help="Image file path. Pass once per image in order.")
+    post_images.add_argument("--alt-text", action="append", default=[], help="Optional alt text. Pass once per image in the same order.")
+    post_images.add_argument("--visibility", choices=["PUBLIC", "CONNECTIONS"], default="PUBLIC")
+    post_images.add_argument("--upload-settle-seconds", type=float, default=0.75, help="Small pause after each upload before creating the post.")
+    post_images.add_argument("--dry-run", action="store_true", help="Print the planned payload without uploading or publishing.")
+    post_images.set_defaults(func=command_post_images)
     return parser
 
 

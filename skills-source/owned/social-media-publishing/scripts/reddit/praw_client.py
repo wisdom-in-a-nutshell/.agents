@@ -7,7 +7,7 @@ from pathlib import Path
 from types import ModuleType
 from typing import Any, Optional
 
-from social_media_publishing.reddit.models import (
+from .models import (
     FlairTemplate,
     GalleryImage,
     PrawSubmitResponse,
