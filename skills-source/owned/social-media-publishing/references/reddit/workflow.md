@@ -6,16 +6,27 @@
 - Reddit gallery, image, link, and self-post submission.
 - Optional first-comment posting without browser automation.
 - Authenticated profile-submission fetches for lightweight analytics.
+- Native Reddit video posting.
 - A portable JSON plan format that can live in any repo.
 
 ## Runtime dependencies
 
-The active Python environment should have:
+The Reddit clients expect machine-local credentials at:
+- `~/.secrets/reddit/env`
+
+The active Python interpreter should have:
 - `praw`
 - `httpx`
 - `pydantic`
 - `pyotp` only when Reddit 2FA automation is needed
 - `ffmpeg` only for native Reddit video uploads
+
+On a fresh boot, start with:
+
+```bash
+python3 ~/.agents/skills-source/owned/social-media-publishing/scripts/reddit/cli.py status
+python3 ~/.agents/skills-source/owned/social-media-publishing/scripts/reddit/native_video_cli.py status
+```
 
 ## Keep state outside the skill
 
@@ -33,16 +44,17 @@ The skill should stay reusable; the campaign should stay local to the work.
 ## Recommended workflow
 
 1. Create or gather the content assets in the active project.
-2. Inspect flairs with:
+2. Inspect runtime status first.
+3. Inspect flairs with:
 
 ```bash
-python3 ~/.agents/skills-source/owned/social-media-publishing/scripts/reddit_cli.py list-flairs --subreddit LocalLLaMA
+python3 ~/.agents/skills-source/owned/social-media-publishing/scripts/reddit/cli.py list-flairs --subreddit LocalLLaMA
 ```
 
-3. Prepare a single plan JSON file when the post is non-trivial.
-4. Dry-run the plan before live submission.
-5. Submit the post.
-6. Update the project-local tracker with the final URL, comment URL, and any moderation outcome.
+4. Prepare a single plan JSON file when the post is non-trivial.
+5. Dry-run the plan before live submission.
+6. Submit the post.
+7. Update the project-local tracker with the final URL, comment URL, and any moderation outcome.
 
 ## Dry-run first
 
@@ -54,6 +66,8 @@ Use `submit-plan --dry-run` whenever:
 
 Dry-run resolves relative paths and file-backed text without posting.
 
+For native video, use `post --dry-run` first whenever the targets file, comment file, or video path changed.
+
 ## Platform fit rules
 
 - Prefer gallery posts when the content is inherently visual and the subreddit allows it.
@@ -63,29 +77,37 @@ Dry-run resolves relative paths and file-backed text without posting.
 
 ## Commands
 
+Status:
+
+```bash
+python3 ~/.agents/skills-source/owned/social-media-publishing/scripts/reddit/cli.py status
+python3 ~/.agents/skills-source/owned/social-media-publishing/scripts/reddit/native_video_cli.py status
+```
+
 List flairs:
 
 ```bash
-python3 ~/.agents/skills-source/owned/social-media-publishing/scripts/reddit_cli.py list-flairs --subreddit OpenAI
+python3 ~/.agents/skills-source/owned/social-media-publishing/scripts/reddit/cli.py list-flairs --subreddit OpenAI
 ```
 
 List recent submissions:
 
 ```bash
-python3 ~/.agents/skills-source/owned/social-media-publishing/scripts/reddit_cli.py list-submissions --max-items 20 --days 7
+python3 ~/.agents/skills-source/owned/social-media-publishing/scripts/reddit/cli.py list-submissions --max-items 20 --days 7
 ```
 
 Submit a plan:
 
 ```bash
-python3 ~/.agents/skills-source/owned/social-media-publishing/scripts/reddit_cli.py submit-plan --plan /abs/path/post-plan.json --dry-run
-python3 ~/.agents/skills-source/owned/social-media-publishing/scripts/reddit_cli.py submit-plan --plan /abs/path/post-plan.json
+python3 ~/.agents/skills-source/owned/social-media-publishing/scripts/reddit/cli.py submit-plan --plan /abs/path/post-plan.json --dry-run
+python3 ~/.agents/skills-source/owned/social-media-publishing/scripts/reddit/cli.py submit-plan --plan /abs/path/post-plan.json
 ```
 
 Native Reddit video posting:
 
 ```bash
-python3 ~/.agents/skills-source/owned/social-media-publishing/scripts/reddit_native_video_cli.py --targets-file /abs/path/targets.json --comment-file /abs/path/comment.md --video-path /abs/path/demo.mp4
+python3 ~/.agents/skills-source/owned/social-media-publishing/scripts/reddit/native_video_cli.py post --targets-file /abs/path/targets.json --comment-file /abs/path/comment.md --video-path /abs/path/demo.mp4 --dry-run
+python3 ~/.agents/skills-source/owned/social-media-publishing/scripts/reddit/native_video_cli.py post --targets-file /abs/path/targets.json --comment-file /abs/path/comment.md --video-path /abs/path/demo.mp4
 ```
 
 ## Analytics scope

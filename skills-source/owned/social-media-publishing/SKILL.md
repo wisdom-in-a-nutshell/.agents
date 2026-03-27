@@ -41,6 +41,7 @@ For live commands and plan structure, read:
 Core commands:
 
 ```bash
+python3 ~/.agents/skills-source/owned/social-media-publishing/scripts/reddit/cli.py status
 python3 ~/.agents/skills-source/owned/social-media-publishing/scripts/reddit/cli.py list-flairs --subreddit OpenAI
 python3 ~/.agents/skills-source/owned/social-media-publishing/scripts/reddit/cli.py list-submissions --max-items 20 --days 7
 python3 ~/.agents/skills-source/owned/social-media-publishing/scripts/reddit/cli.py submit-plan --plan /abs/path/post-plan.json --dry-run
