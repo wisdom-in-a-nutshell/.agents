@@ -94,23 +94,17 @@ The goal is not paperwork. The goal is preserving iteration state so future turn
 If the work stabilizes into a reusable visual family, create or update a style guide under `styles/`. Keep style canon there, not workflow/process. See `references/style-guides.md`.
 
 ## Temp and output conventions
-- Reuse the repo's existing `.venv/` or `venv/` when present; do **not** create ad hoc temporary virtualenvs for normal image work.
-- The bundled CLI already auto-relaunches under a repo-local `.venv/` or `venv/` when one exists.
+- Do not rely on repo-local virtualenv auto-switching for this owned skill. Treat the runtime as machine-global.
 - Use `tmp/imagegen/` only for truly temporary intermediate files (for example JSONL batches or disposable seed files), and delete them when done.
 - Write final artifacts under `output/imagegen/` when working in this repo unless the project has a more specific destination.
 - Use `--out` or `--out-dir` to control output paths; keep filenames stable and descriptive.
 
 ## Dependencies (install if missing)
-Prefer the repo's existing `.venv/` or `venv/` first. Only install missing packages into that environment unless the user explicitly wants a different setup.
-Prefer `uv` for dependency management.
+Prefer the machine-global `python3` environment for this owned skill.
 
 Python packages:
 ```
-uv pip install openai pillow
-```
-If `uv` is unavailable:
-```
-python3 -m pip install openai pillow
+python3 -m pip install --user --break-system-packages openai pillow
 ```
 
 If installation isn't possible in this environment, tell the user which dependency is missing and how to install it locally.

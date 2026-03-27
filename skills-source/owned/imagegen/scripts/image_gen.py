@@ -32,8 +32,6 @@ ALLOWED_BACKGROUNDS = {"transparent", "opaque", "auto", None}
 
 MAX_IMAGE_BYTES = 50 * 1024 * 1024
 MAX_BATCH_JOBS = 500
-LOCAL_VENV_REEXEC_GUARD = "IMAGEGEN_LOCAL_VENV_REEXEC"
-
 
 def _die(message: str, code: int = 1) -> None:
     print(f"Error: {message}", file=sys.stderr)
@@ -42,30 +40,6 @@ def _die(message: str, code: int = 1) -> None:
 
 def _warn(message: str) -> None:
     print(f"Warning: {message}", file=sys.stderr)
-
-
-def _find_local_venv_python(start: Path) -> Optional[Path]:
-    search_roots = [start, *start.parents]
-    for root in search_roots:
-        for rel in ((".venv", "bin", "python"), ("venv", "bin", "python")):
-            candidate = root.joinpath(*rel)
-            if candidate.is_file() and os.access(candidate, os.X_OK):
-                return candidate
-    return None
-
-
-def _maybe_reexec_local_venv() -> None:
-    if os.getenv(LOCAL_VENV_REEXEC_GUARD) == "1":
-        return
-    local_python = _find_local_venv_python(Path.cwd())
-    if not local_python:
-        return
-    current_python = Path(sys.executable).resolve()
-    if current_python == local_python.resolve():
-        return
-    os.environ[LOCAL_VENV_REEXEC_GUARD] = "1"
-    print(f"Using local virtualenv Python: {local_python}", file=sys.stderr)
-    os.execv(str(local_python), [str(local_python), __file__, *sys.argv[1:]])
 
 
 def _ensure_api_env(dry_run: bool) -> None:
@@ -334,7 +308,7 @@ def _create_client():
     try:
         from openai import OpenAI
     except ImportError as exc:
-        _die("openai SDK not installed. Install with `uv pip install openai`.")
+        _die("openai SDK not installed. Install it into your normal python3 with `python3 -m pip install --user --break-system-packages openai pillow`.")
     return OpenAI(
         base_url=os.getenv("LLM_API_ENDPOINT"),
         api_key=os.getenv("LLM_API_KEY"),
@@ -348,9 +322,9 @@ def _create_async_client():
         try:
             import openai as _openai  # noqa: F401
         except ImportError:
-            _die("openai SDK not installed. Install with `uv pip install openai`.")
+            _die("openai SDK not installed. Install it into your normal python3 with `python3 -m pip install --user --break-system-packages openai pillow`.")
         _die(
-            "AsyncOpenAI not available in this openai SDK version. Upgrade with `uv pip install -U openai`."
+            "AsyncOpenAI not available in this openai SDK version. Upgrade your normal python3 package with `python3 -m pip install --user --break-system-packages -U openai`."
         )
     return AsyncOpenAI(
         base_url=os.getenv("LLM_API_ENDPOINT"),
@@ -906,5 +880,4 @@ def main() -> int:
 
 
 if __name__ == "__main__":
-    _maybe_reexec_local_venv()
     raise SystemExit(main())

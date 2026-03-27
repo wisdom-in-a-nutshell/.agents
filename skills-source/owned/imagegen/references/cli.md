@@ -29,9 +29,7 @@ Generate (requires network):
 python "$IMAGE_GEN" generate --prompt "A cozy alpine cabin at dawn"
 ```
 
-The script will automatically re-launch under a repo-local `.venv/` or `venv/` when one exists.
-
-No local virtualenv? Use your active Python env:
+Use your normal `python3` environment for this owned skill.
 
 ```
 python "$IMAGE_GEN" generate --prompt "A cozy alpine cabin at dawn"
@@ -69,10 +67,10 @@ python "$IMAGE_GEN" edit --image input.png --prompt "Change only the background"
 - In the edit prompt, repeat invariants (e.g., “change only the background; keep the subject unchanged”) to reduce drift.
 
 ## Optional deps
-Prefer `uv run --with ...` for an out-of-the-box run without changing the current project env; otherwise install into your active env:
+Install into your normal `python3` environment when missing:
 
 ```
-uv pip install openai
+python3 -m pip install --user --break-system-packages openai pillow
 ```
 
 ## Common recipes
@@ -80,14 +78,14 @@ uv pip install openai
 Generate + also write a downscaled copy for fast web loading:
 
 ```
-uv run --with openai --with pillow python "$IMAGE_GEN" generate \
+python3 "$IMAGE_GEN" generate \
   --prompt "A cozy alpine cabin at dawn" \
   --downscale-max-dim 1024
 ```
 
 Notes:
 - Downscaling writes an extra file next to the original (default suffix `-web`, e.g. `output-web.png`).
-- Downscaling requires Pillow (use `uv run --with pillow ...` or install it into your env).
+- Downscaling requires Pillow in your normal `python3` environment.
 
 Generate with augmentation fields:
 
