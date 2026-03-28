@@ -16,6 +16,9 @@ js_repl = true
 fast_mode = true
 apps = true
 
+[apps._default]
+enabled = false
+
 [agents.external_researcher]
 description = "Read-only researcher for information outside the local codebase and runtime."
 config_file = "agents/external_researcher.toml"
