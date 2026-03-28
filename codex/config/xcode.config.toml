@@ -15,6 +15,7 @@ suppress_unstable_features_warning = true
 
 [features]
 fast_mode = true
+apps = true
 
 [agents.external_researcher]
 description = "Read-only researcher for information outside the local codebase and runtime."
