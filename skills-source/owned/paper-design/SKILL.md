@@ -65,6 +65,7 @@ Important non-obvious truths:
 - Because of that limitation, on the first Paper action for a project or whenever page context is ambiguous, explicitly confirm the intended page with the user before creating or editing artboards.
 - For multi-artboard deliverables, default to creating and iterating one artboard at a time unless the user explicitly asks for all panels or a batch upfront.
 - Before showing a Paper result to the user, run at least one screenshot-based self-review pass and fix visible issues (overflow, hidden text, broken hierarchy, obvious alignment bugs) when they are easy to correct.
+- A panel is not ready just because the direction feels good; core legibility and visual integrity still need to be checked explicitly in the screenshot.
 - stale or long-running sessions are a common cause of MCP weirdness; restarting is often the first fix
 - the Paper app appears to support AI image generation, but the current Paper MCP tool surface here does **not** expose a dedicated image-generation tool
 - When writing HTML into Paper, prefer padding, gap, and explicit positioning over margins for placement; margin-based layout is more fragile in practice here.
