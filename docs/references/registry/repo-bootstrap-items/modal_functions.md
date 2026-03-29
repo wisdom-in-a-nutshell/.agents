@@ -2,7 +2,7 @@
 repo_name: "modal_functions"
 path: "~/GitHub/modal_functions"
 mcp_count: 0
-skill_count: 10
+skill_count: 11
 repo_local_skill_count: 1
 model: "gpt-5.4"
 reasoning: "high"
@@ -19,6 +19,7 @@ global_skills:
   - "skill-creator"
 repo_skills:
   - "agent-native-repo-playbook"
+  - "client-interface-guidelines"
   - "modal-function-sync"
 repo_local_skills:
   - "modal-function-intake"
@@ -26,6 +27,7 @@ skills:
   - "agent-browser"
   - "agent-native-repo-playbook"
   - "architecture-docs"
+  - "client-interface-guidelines"
   - "defuddle"
   - "find-skills"
   - "modal-function-intake"

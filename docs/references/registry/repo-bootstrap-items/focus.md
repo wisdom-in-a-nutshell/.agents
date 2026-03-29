@@ -2,7 +2,7 @@
 repo_name: "focus"
 path: "~/GitHub/focus"
 mcp_count: 0
-skill_count: 8
+skill_count: 9
 repo_local_skill_count: 0
 model: "gpt-5.4"
 reasoning: "high"
@@ -19,11 +19,13 @@ global_skills:
   - "skill-creator"
 repo_skills:
   - "agent-native-repo-playbook"
+  - "client-interface-guidelines"
 repo_local_skills: []
 skills:
   - "agent-browser"
   - "agent-native-repo-playbook"
   - "architecture-docs"
+  - "client-interface-guidelines"
   - "defuddle"
   - "find-skills"
   - "project"

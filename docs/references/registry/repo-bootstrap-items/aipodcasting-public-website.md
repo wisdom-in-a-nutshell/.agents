@@ -2,7 +2,7 @@
 repo_name: "aipodcasting-public-website"
 path: "~/GitHub/aipodcasting-public-website"
 mcp_count: 0
-skill_count: 14
+skill_count: 15
 repo_local_skill_count: 2
 model: "gpt-5.4"
 reasoning: "high"
@@ -21,6 +21,7 @@ repo_skills:
   - "agent-native-repo-playbook"
   - "aip-company"
   - "azure-webapp-config"
+  - "client-interface-guidelines"
   - "vercel-react-best-practices"
   - "web-design-guidelines"
 repo_local_skills:
@@ -32,6 +33,7 @@ skills:
   - "aip-company"
   - "architecture-docs"
   - "azure-webapp-config"
+  - "client-interface-guidelines"
   - "defuddle"
   - "designer-workflow"
   - "find-skills"

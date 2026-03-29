@@ -2,7 +2,7 @@
 repo_name: "adithyan-ai-videos"
 path: "~/GitHub/adithyan-ai-videos"
 mcp_count: 0
-skill_count: 12
+skill_count: 13
 repo_local_skill_count: 2
 model: "gpt-5.4"
 reasoning: "high"
@@ -19,6 +19,7 @@ global_skills:
   - "skill-creator"
 repo_skills:
   - "agent-native-repo-playbook"
+  - "client-interface-guidelines"
   - "vercel-react-best-practices"
   - "web-design-guidelines"
 repo_local_skills:
@@ -28,6 +29,7 @@ skills:
   - "agent-browser"
   - "agent-native-repo-playbook"
   - "architecture-docs"
+  - "client-interface-guidelines"
   - "creating-video"
   - "defuddle"
   - "find-skills"

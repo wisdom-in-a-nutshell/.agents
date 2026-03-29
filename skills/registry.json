@@ -212,8 +212,25 @@
       "origin": "owned",
       "scope": "repo",
       "repos": [
+        "~/.agents",
+        ".github",
         "adi",
-        "scripts"
+        "adithyan-ai-videos",
+        "aip-cognitive-revolution",
+        "aipodcasting",
+        "aipodcasting-public-website",
+        "angie",
+        "blog-personal",
+        "codexclaw",
+        "focus",
+        "future-of-life-institute-podcast-aipodcast-ing-theme",
+        "platform-ops",
+        "litellm",
+        "modal_functions",
+        "scripts",
+        "stadia-macos-controller",
+        "thoughtforms-life-theme",
+        "win"
       ],
       "source_path": "skills-source/owned/client-interface-guidelines",
       "upstream_ref": "-"

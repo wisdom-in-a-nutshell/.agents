@@ -2,7 +2,7 @@
 repo_name: "codexclaw"
 path: "~/GitHub/codexclaw"
 mcp_count: 2
-skill_count: 12
+skill_count: 13
 repo_local_skill_count: 1
 model: "gpt-5.4"
 reasoning: "high"
@@ -21,6 +21,7 @@ global_skills:
   - "skill-creator"
 repo_skills:
   - "agent-native-repo-playbook"
+  - "client-interface-guidelines"
   - "codex-agent-loop"
   - "codex-app-server"
   - "openai-docs"
@@ -30,6 +31,7 @@ skills:
   - "agent-browser"
   - "agent-native-repo-playbook"
   - "architecture-docs"
+  - "client-interface-guidelines"
   - "codex-agent-loop"
   - "codex-app-server"
   - "defuddle"

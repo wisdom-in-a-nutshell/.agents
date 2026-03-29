@@ -2,7 +2,7 @@
 repo_name: "blog-personal"
 path: "~/GitHub/blog-personal"
 mcp_count: 0
-skill_count: 14
+skill_count: 15
 repo_local_skill_count: 1
 model: "gpt-5.4"
 reasoning: "high"
@@ -21,6 +21,7 @@ repo_skills:
   - "adi-writing"
   - "agent-native-repo-playbook"
   - "aip-company"
+  - "client-interface-guidelines"
   - "imagegen"
   - "vercel-react-best-practices"
   - "web-design-guidelines"
@@ -33,6 +34,7 @@ skills:
   - "aip-company"
   - "architecture-docs"
   - "blog-posting"
+  - "client-interface-guidelines"
   - "defuddle"
   - "find-skills"
   - "imagegen"

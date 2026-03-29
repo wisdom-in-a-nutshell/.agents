@@ -2,7 +2,7 @@
 repo_name: "win"
 path: "~/GitHub/win"
 mcp_count: 1
-skill_count: 20
+skill_count: 21
 repo_local_skill_count: 6
 model: "gpt-5.4"
 reasoning: "high"
@@ -23,6 +23,7 @@ repo_skills:
   - "aip-dto-contract-sync"
   - "aip-frontend-contract-apply"
   - "azure-webapp-config"
+  - "client-interface-guidelines"
   - "modal-function-sync"
   - "openai-docs"
   - "show-password-setup"
@@ -42,6 +43,7 @@ skills:
   - "architecture-docs"
   - "azure-webapp-config"
   - "channel-create"
+  - "client-interface-guidelines"
   - "contact-form-automation"
   - "defuddle"
   - "descript-api-docs-sync"

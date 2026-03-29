@@ -2,7 +2,7 @@
 repo_name: "aipodcasting"
 path: "~/GitHub/aipodcasting"
 mcp_count: 0
-skill_count: 16
+skill_count: 17
 repo_local_skill_count: 0
 model: "gpt-5.4"
 reasoning: "high"
@@ -23,6 +23,7 @@ repo_skills:
   - "aip-dto-contract-sync"
   - "aip-frontend-contract-apply"
   - "azure-webapp-config"
+  - "client-interface-guidelines"
   - "modal-function-sync"
   - "show-password-setup"
   - "vercel-react-best-practices"
@@ -36,6 +37,7 @@ skills:
   - "aip-frontend-contract-apply"
   - "architecture-docs"
   - "azure-webapp-config"
+  - "client-interface-guidelines"
   - "defuddle"
   - "find-skills"
   - "modal-function-sync"
