@@ -144,7 +144,9 @@ views:
       - repo_name
       - mcps
       - skill_count
-      - skills
+      - global_skills
+      - repo_skills
+      - repo_local_skills
       - model
       - reasoning
       - fast_mode
@@ -156,7 +158,9 @@ views:
       - repo_name
       - mcps
       - skill_count
-      - skills
+      - global_skills
+      - repo_skills
+      - repo_local_skills
       - model
       - reasoning
       - fast_mode
@@ -167,7 +171,6 @@ views:
     order:
       - repo_name
       - skill_count
-      - skills
       - global_skills
       - repo_skills
       - repo_local_skills
@@ -178,7 +181,8 @@ views:
     order:
       - repo_name
       - repo_local_skills
-      - skills
+      - repo_skills
+      - global_skills
       - mcps
       - model
       - reasoning
