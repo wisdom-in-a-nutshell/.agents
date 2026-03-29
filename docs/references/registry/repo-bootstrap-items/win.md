@@ -2,7 +2,7 @@
 repo_name: "win"
 path: "~/GitHub/win"
 mcp_count: 1
-skill_count: 22
+skill_count: 20
 repo_local_skill_count: 6
 model: "gpt-5.4"
 reasoning: "high"
@@ -15,8 +15,6 @@ global_skills:
   - "architecture-docs"
   - "defuddle"
   - "find-skills"
-  - "obsidian-cli"
-  - "obsidian-markdown"
   - "project"
   - "secret-management"
   - "skill-creator"
@@ -50,8 +48,6 @@ skills:
   - "find-skills"
   - "log-investigation"
   - "modal-function-sync"
-  - "obsidian-cli"
-  - "obsidian-markdown"
   - "openai-docs"
   - "project"
   - "scheduled-jobs"

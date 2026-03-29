@@ -2,7 +2,7 @@
 repo_name: "platform-ops"
 path: "~/GitHub/platform-ops"
 mcp_count: 2
-skill_count: 10
+skill_count: 8
 repo_local_skill_count: 0
 model: "gpt-5.4"
 reasoning: "high"
@@ -16,8 +16,6 @@ global_skills:
   - "architecture-docs"
   - "defuddle"
   - "find-skills"
-  - "obsidian-cli"
-  - "obsidian-markdown"
   - "project"
   - "secret-management"
   - "skill-creator"
@@ -30,8 +28,6 @@ skills:
   - "architecture-docs"
   - "defuddle"
   - "find-skills"
-  - "obsidian-cli"
-  - "obsidian-markdown"
   - "project"
   - "secret-management"
   - "skill-creator"

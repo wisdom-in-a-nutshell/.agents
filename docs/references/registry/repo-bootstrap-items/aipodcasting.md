@@ -2,7 +2,7 @@
 repo_name: "aipodcasting"
 path: "~/GitHub/aipodcasting"
 mcp_count: 0
-skill_count: 18
+skill_count: 16
 repo_local_skill_count: 0
 model: "gpt-5.4"
 reasoning: "high"
@@ -14,8 +14,6 @@ global_skills:
   - "architecture-docs"
   - "defuddle"
   - "find-skills"
-  - "obsidian-cli"
-  - "obsidian-markdown"
   - "project"
   - "secret-management"
   - "skill-creator"
@@ -41,8 +39,6 @@ skills:
   - "defuddle"
   - "find-skills"
   - "modal-function-sync"
-  - "obsidian-cli"
-  - "obsidian-markdown"
   - "project"
   - "secret-management"
   - "show-password-setup"

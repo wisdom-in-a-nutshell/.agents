@@ -2,7 +2,7 @@
 repo_name: "focus"
 path: "~/GitHub/focus"
 mcp_count: 0
-skill_count: 10
+skill_count: 8
 repo_local_skill_count: 0
 model: "gpt-5.4"
 reasoning: "high"
@@ -14,8 +14,6 @@ global_skills:
   - "architecture-docs"
   - "defuddle"
   - "find-skills"
-  - "obsidian-cli"
-  - "obsidian-markdown"
   - "project"
   - "secret-management"
   - "skill-creator"
@@ -28,8 +26,6 @@ skills:
   - "architecture-docs"
   - "defuddle"
   - "find-skills"
-  - "obsidian-cli"
-  - "obsidian-markdown"
   - "project"
   - "secret-management"
   - "skill-creator"

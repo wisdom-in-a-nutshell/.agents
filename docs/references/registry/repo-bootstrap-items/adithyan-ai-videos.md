@@ -2,7 +2,7 @@
 repo_name: "adithyan-ai-videos"
 path: "~/GitHub/adithyan-ai-videos"
 mcp_count: 0
-skill_count: 14
+skill_count: 12
 repo_local_skill_count: 2
 model: "gpt-5.4"
 reasoning: "high"
@@ -14,8 +14,6 @@ global_skills:
   - "architecture-docs"
   - "defuddle"
   - "find-skills"
-  - "obsidian-cli"
-  - "obsidian-markdown"
   - "project"
   - "secret-management"
   - "skill-creator"
@@ -33,8 +31,6 @@ skills:
   - "creating-video"
   - "defuddle"
   - "find-skills"
-  - "obsidian-cli"
-  - "obsidian-markdown"
   - "project"
   - "remotion"
   - "secret-management"

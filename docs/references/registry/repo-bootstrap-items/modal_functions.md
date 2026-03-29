@@ -2,7 +2,7 @@
 repo_name: "modal_functions"
 path: "~/GitHub/modal_functions"
 mcp_count: 0
-skill_count: 12
+skill_count: 10
 repo_local_skill_count: 1
 model: "gpt-5.4"
 reasoning: "high"
@@ -14,8 +14,6 @@ global_skills:
   - "architecture-docs"
   - "defuddle"
   - "find-skills"
-  - "obsidian-cli"
-  - "obsidian-markdown"
   - "project"
   - "secret-management"
   - "skill-creator"
@@ -32,8 +30,6 @@ skills:
   - "find-skills"
   - "modal-function-intake"
   - "modal-function-sync"
-  - "obsidian-cli"
-  - "obsidian-markdown"
   - "project"
   - "secret-management"
   - "skill-creator"

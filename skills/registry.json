@@ -66,16 +66,20 @@
     {
       "skill": "obsidian-cli",
       "origin": "external",
-      "scope": "global",
-      "repos": [],
+      "scope": "repo",
+      "repos": [
+        "~/.agents"
+      ],
       "source_path": "skills-source/external/obsidian-cli",
       "upstream_ref": "kepano/obsidian-skills:skills/obsidian-cli@main"
     },
     {
       "skill": "obsidian-markdown",
       "origin": "external",
-      "scope": "global",
-      "repos": [],
+      "scope": "repo",
+      "repos": [
+        "~/.agents"
+      ],
       "source_path": "skills-source/external/obsidian-markdown",
       "upstream_ref": "kepano/obsidian-skills:skills/obsidian-markdown@main"
     },

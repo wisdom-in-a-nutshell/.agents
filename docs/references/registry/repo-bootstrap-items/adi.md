@@ -2,7 +2,7 @@
 repo_name: "adi"
 path: "~/GitHub/adi"
 mcp_count: 2
-skill_count: 21
+skill_count: 19
 repo_local_skill_count: 0
 model: "gpt-5.4"
 reasoning: "high"
@@ -16,8 +16,6 @@ global_skills:
   - "architecture-docs"
   - "defuddle"
   - "find-skills"
-  - "obsidian-cli"
-  - "obsidian-markdown"
   - "project"
   - "secret-management"
   - "skill-creator"
@@ -49,8 +47,6 @@ skills:
   - "health"
   - "imagegen"
   - "journal-checkin"
-  - "obsidian-cli"
-  - "obsidian-markdown"
   - "openai-docs"
   - "paper-design"
   - "project"
