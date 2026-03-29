@@ -1,0 +1,12 @@
+interface:
+  display_name: "Paper Design"
+  short_description: "Paper canvas and MCP workflow guide"
+  default_prompt: "Use $paper-design to help me design, inspect, or edit a Paper canvas and explain how the Paper workflow works."
+
+dependencies:
+  tools:
+    - type: "mcp"
+      value: "paper"
+      description: "Paper MCP server from the Paper Desktop app"
+      transport: "streamable_http"
+      url: "http://127.0.0.1:29979/mcp"

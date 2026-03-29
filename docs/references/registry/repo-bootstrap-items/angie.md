@@ -2,7 +2,7 @@
 repo_name: "angie"
 path: "~/GitHub/angie"
 mcp_count: 1
-skill_count: 14
+skill_count: 13
 repo_local_skill_count: 0
 model: "gpt-5.4"
 reasoning: "high"
@@ -12,17 +12,16 @@ mcps:
   - "openaiDeveloperDocs"
 global_skills:
   - "agent-browser"
-  - "agent-native-repo-playbook"
   - "architecture-docs"
   - "defuddle"
   - "find-skills"
-  - "obsidian-bases"
   - "obsidian-cli"
   - "obsidian-markdown"
   - "project"
   - "secret-management"
   - "skill-creator"
 repo_skills:
+  - "agent-native-repo-playbook"
   - "imagegen"
   - "journal-checkin"
   - "openai-docs"
@@ -35,7 +34,6 @@ skills:
   - "find-skills"
   - "imagegen"
   - "journal-checkin"
-  - "obsidian-bases"
   - "obsidian-cli"
   - "obsidian-markdown"
   - "openai-docs"

@@ -22,8 +22,28 @@
     {
       "skill": "agent-native-repo-playbook",
       "origin": "owned",
-      "scope": "global",
-      "repos": [],
+      "scope": "repo",
+      "repos": [
+        "~/.agents",
+        ".github",
+        "adi",
+        "adithyan-ai-videos",
+        "aip-cognitive-revolution",
+        "aipodcasting",
+        "aipodcasting-public-website",
+        "angie",
+        "blog-personal",
+        "codexclaw",
+        "focus",
+        "future-of-life-institute-podcast-aipodcast-ing-theme",
+        "platform-ops",
+        "litellm",
+        "modal_functions",
+        "scripts",
+        "stadia-macos-controller",
+        "thoughtforms-life-theme",
+        "win"
+      ],
       "source_path": "skills-source/owned/agent-native-repo-playbook",
       "upstream_ref": "-"
     },
@@ -42,14 +62,6 @@
       "repos": [],
       "source_path": "skills-source/external/defuddle",
       "upstream_ref": "kepano/obsidian-skills:skills/defuddle@main"
-    },
-    {
-      "skill": "obsidian-bases",
-      "origin": "external",
-      "scope": "global",
-      "repos": [],
-      "source_path": "skills-source/external/obsidian-bases",
-      "upstream_ref": "kepano/obsidian-skills:skills/obsidian-bases@main"
     },
     {
       "skill": "obsidian-cli",
@@ -262,6 +274,17 @@
       "upstream_ref": "-"
     },
     {
+      "skill": "paper-design",
+      "origin": "owned",
+      "scope": "repo",
+      "repos": [
+        "~/.agents",
+        "adi"
+      ],
+      "source_path": "skills-source/owned/paper-design",
+      "upstream_ref": "-"
+    },
+    {
       "skill": "show-password-setup",
       "origin": "owned",
       "scope": "repo",
@@ -331,10 +354,6 @@
     {
       "repo": "aipodcasting-public-website",
       "skill": "visual-audit-loop"
-    },
-    {
-      "repo": "aipodcasting-public-website",
-      "skill": "workflow-visual-audit"
     },
     {
       "repo": "blog-personal",

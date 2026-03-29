@@ -13,11 +13,9 @@ mcps:
   - "paper"
 global_skills:
   - "agent-browser"
-  - "agent-native-repo-playbook"
   - "architecture-docs"
   - "defuddle"
   - "find-skills"
-  - "obsidian-bases"
   - "obsidian-cli"
   - "obsidian-markdown"
   - "project"
@@ -25,6 +23,7 @@ global_skills:
   - "skill-creator"
 repo_skills:
   - "adi-writing"
+  - "agent-native-repo-playbook"
   - "aip-company"
   - "client-interface-guidelines"
   - "codex-agent-loop"
@@ -33,6 +32,7 @@ repo_skills:
   - "imagegen"
   - "journal-checkin"
   - "openai-docs"
+  - "paper-design"
   - "social-media-publishing"
 repo_local_skills: []
 skills:
@@ -49,10 +49,10 @@ skills:
   - "health"
   - "imagegen"
   - "journal-checkin"
-  - "obsidian-bases"
   - "obsidian-cli"
   - "obsidian-markdown"
   - "openai-docs"
+  - "paper-design"
   - "project"
   - "secret-management"
   - "skill-creator"

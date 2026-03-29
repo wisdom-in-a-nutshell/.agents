@@ -2,7 +2,7 @@
 repo_name: "win"
 path: "~/GitHub/win"
 mcp_count: 1
-skill_count: 23
+skill_count: 22
 repo_local_skill_count: 6
 model: "gpt-5.4"
 reasoning: "high"
@@ -12,17 +12,16 @@ mcps:
   - "openaiDeveloperDocs"
 global_skills:
   - "agent-browser"
-  - "agent-native-repo-playbook"
   - "architecture-docs"
   - "defuddle"
   - "find-skills"
-  - "obsidian-bases"
   - "obsidian-cli"
   - "obsidian-markdown"
   - "project"
   - "secret-management"
   - "skill-creator"
 repo_skills:
+  - "agent-native-repo-playbook"
   - "aip-dto-contract-sync"
   - "aip-frontend-contract-apply"
   - "azure-webapp-config"
@@ -51,7 +50,6 @@ skills:
   - "find-skills"
   - "log-investigation"
   - "modal-function-sync"
-  - "obsidian-bases"
   - "obsidian-cli"
   - "obsidian-markdown"
   - "openai-docs"

@@ -2,7 +2,7 @@
 repo_name: "aipodcasting"
 path: "~/GitHub/aipodcasting"
 mcp_count: 0
-skill_count: 19
+skill_count: 18
 repo_local_skill_count: 0
 model: "gpt-5.4"
 reasoning: "high"
@@ -11,17 +11,16 @@ service_tier: "-"
 mcps: []
 global_skills:
   - "agent-browser"
-  - "agent-native-repo-playbook"
   - "architecture-docs"
   - "defuddle"
   - "find-skills"
-  - "obsidian-bases"
   - "obsidian-cli"
   - "obsidian-markdown"
   - "project"
   - "secret-management"
   - "skill-creator"
 repo_skills:
+  - "agent-native-repo-playbook"
   - "ai-podcasting"
   - "aip-dto-contract-sync"
   - "aip-frontend-contract-apply"
@@ -42,7 +41,6 @@ skills:
   - "defuddle"
   - "find-skills"
   - "modal-function-sync"
-  - "obsidian-bases"
   - "obsidian-cli"
   - "obsidian-markdown"
   - "project"

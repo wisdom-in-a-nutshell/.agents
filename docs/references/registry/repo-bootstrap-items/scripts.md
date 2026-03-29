@@ -2,7 +2,7 @@
 repo_name: "scripts"
 path: "~/GitHub/scripts"
 mcp_count: 0
-skill_count: 11
+skill_count: 10
 repo_local_skill_count: 0
 model: "gpt-5.4"
 reasoning: "high"
@@ -11,17 +11,16 @@ service_tier: "-"
 mcps: []
 global_skills:
   - "agent-browser"
-  - "agent-native-repo-playbook"
   - "architecture-docs"
   - "defuddle"
   - "find-skills"
-  - "obsidian-bases"
   - "obsidian-cli"
   - "obsidian-markdown"
   - "project"
   - "secret-management"
   - "skill-creator"
-repo_skills: []
+repo_skills:
+  - "agent-native-repo-playbook"
 repo_local_skills: []
 skills:
   - "agent-browser"
@@ -29,7 +28,6 @@ skills:
   - "architecture-docs"
   - "defuddle"
   - "find-skills"
-  - "obsidian-bases"
   - "obsidian-cli"
   - "obsidian-markdown"
   - "project"

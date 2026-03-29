@@ -2,7 +2,7 @@
 repo_name: "blog-personal"
 path: "~/GitHub/blog-personal"
 mcp_count: 0
-skill_count: 17
+skill_count: 16
 repo_local_skill_count: 1
 model: "gpt-5.4"
 reasoning: "high"
@@ -11,11 +11,9 @@ service_tier: "-"
 mcps: []
 global_skills:
   - "agent-browser"
-  - "agent-native-repo-playbook"
   - "architecture-docs"
   - "defuddle"
   - "find-skills"
-  - "obsidian-bases"
   - "obsidian-cli"
   - "obsidian-markdown"
   - "project"
@@ -23,6 +21,7 @@ global_skills:
   - "skill-creator"
 repo_skills:
   - "adi-writing"
+  - "agent-native-repo-playbook"
   - "aip-company"
   - "imagegen"
   - "vercel-react-best-practices"
@@ -39,7 +38,6 @@ skills:
   - "defuddle"
   - "find-skills"
   - "imagegen"
-  - "obsidian-bases"
   - "obsidian-cli"
   - "obsidian-markdown"
   - "project"
