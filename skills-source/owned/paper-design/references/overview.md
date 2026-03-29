@@ -50,6 +50,10 @@ So the skill should **not** try to restate the whole MCP schema.
 
 When the user is making collateral for a channel or publication surface, ask the primary destination early (for example Reddit, LinkedIn, X, blog, presentation). Use that to choose the initial artboard ratio instead of defaulting blindly. If the destination is still unclear, ask before laying out the canvas.
 
+Because the MCP only acts on the currently open page, confirm the intended page explicitly at the start of a project or whenever there is page ambiguity. If the wrong page is open, ask the user to switch before creating artboards.
+
+For multi-panel work like carousels, do not create the whole set by default. Start with the first artboard, iterate with the user, and only create additional panels as the work progresses unless the user explicitly asks for a batch.
+
 1. inspect the current file first
 2. work on the selected node/frame when possible
 3. make small visual moves, not giant blind rewrites

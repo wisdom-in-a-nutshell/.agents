@@ -39,10 +39,12 @@ Do not duplicate the full tool list here unless the runtime actually changes and
 Default flow when editing a Paper file together:
 1. orient with `get_basic_info`
 2. check `get_selection` if the user may already be pointing at something
-3. if the work is intended for publication, ask the primary destination early (for example Reddit, LinkedIn, X, blog, presentation) and choose artboard ratio from that
-4. inspect before large edits
-5. make small incremental changes
-6. verify visually with screenshots
+3. confirm the correct Paper page before creating anything; if the intended page is unclear or the currently open page looks wrong, explicitly ask the user to switch to the right page first
+4. if the work is intended for publication, ask the primary destination early (for example Reddit, LinkedIn, X, blog, presentation) and choose artboard ratio from that
+5. inspect before large edits
+6. when creating multi-panel work such as a carousel, default to one artboard at a time unless the user explicitly asks for batch creation
+7. make small incremental changes
+8. verify visually with screenshots
 
 ### 2. Practical product notes
 
@@ -57,6 +59,9 @@ Important non-obvious truths:
 - For social or publishing collateral, determine the primary destination early because aspect ratio and layout should be chosen from the publishing surface, not guessed later. If the destination is unclear, ask.
 - Paper Desktop needs to be open with a file loaded for the MCP to work
 - the MCP operates on the currently open Paper file
+- In the current MCP surface here, Dobby can create artboards and edit nodes in the currently open page, but does not have a dedicated page-creation/switching tool. So page choice is controlled by the page the human currently has open in Paper.
+- Because of that limitation, on the first Paper action for a project or whenever page context is ambiguous, explicitly confirm the intended page with the user before creating or editing artboards.
+- For multi-artboard deliverables, default to creating and iterating one artboard at a time unless the user explicitly asks for all panels or a batch upfront.
 - stale or long-running sessions are a common cause of MCP weirdness; restarting is often the first fix
 - the Paper app appears to support AI image generation, but the current Paper MCP tool surface here does **not** expose a dedicated image-generation tool
 - for agent-generated imagery, use a separate image-generation workflow and then place the result into Paper
