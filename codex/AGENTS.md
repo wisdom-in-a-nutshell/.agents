@@ -67,6 +67,7 @@ Canonical personal Codex control-plane assets live here.
 - `defaults.features` is merged with per-repo `features`, so baseline feature flags can be enabled globally while still allowing repo overrides.
 - `scripts/sync-repo-bootstrap-registry.sh` regenerates:
   - `../docs/references/registry/repo-bootstrap.base`
+    - includes effective per-repo skill availability merged from `../skills/registry.json`
   - `../docs/references/registry/repo-bootstrap-items/`
   - `../docs/references/registry/mcp-registry.base`
   - `../docs/references/registry/mcp-registry-items/`

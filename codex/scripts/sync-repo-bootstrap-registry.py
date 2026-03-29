@@ -75,6 +75,10 @@ def _repo_name(path: str) -> str:
     return Path(path).name or path
 
 
+def _csv_or_dash(values: list[str]) -> str:
+    return ",".join(values) if values else "-"
+
+
 def _effective_value(defaults: dict[str, Any], item: dict[str, Any], key: str) -> str:
     value = item.get(key, defaults.get(key))
     if value is None:
@@ -107,6 +111,16 @@ properties:
     displayName: Path
   mcp_presets_csv:
     displayName: MCP Presets
+  effective_skill_count:
+    displayName: Skill Count
+  effective_skills_csv:
+    displayName: Skills
+  global_skills_csv:
+    displayName: Global Skills
+  repo_scoped_skills_csv:
+    displayName: Repo Skills
+  repo_local_skills_csv:
+    displayName: Repo-Local Skills
   effective_model:
     displayName: Model
   effective_reasoning:
@@ -121,6 +135,8 @@ views:
     order:
       - repo_name
       - mcp_presets_csv
+      - effective_skill_count
+      - effective_skills_csv
       - effective_model
       - effective_reasoning
       - effective_fast_mode
@@ -130,6 +146,31 @@ views:
     filters: 'mcp_presets_csv != "-"'
     order:
       - repo_name
+      - mcp_presets_csv
+      - effective_skill_count
+      - effective_skills_csv
+      - effective_model
+      - effective_reasoning
+      - effective_fast_mode
+      - effective_service_tier
+  - type: table
+    name: Skills Enabled
+    filters: 'effective_skills_csv != "-"'
+    order:
+      - repo_name
+      - effective_skill_count
+      - effective_skills_csv
+      - global_skills_csv
+      - repo_scoped_skills_csv
+      - repo_local_skills_csv
+      - mcp_presets_csv
+  - type: table
+    name: Repo-Local Skills
+    filters: 'repo_local_skills_csv != "-"'
+    order:
+      - repo_name
+      - repo_local_skills_csv
+      - effective_skills_csv
       - mcp_presets_csv
       - effective_model
       - effective_reasoning
@@ -153,6 +194,11 @@ def generate_registry_items(
             f"repo_name: {_yaml_str(item['repo_name'])}",
             f"path: {_yaml_str(item['path'])}",
             f"mcp_presets_csv: {_yaml_str(item['mcp_presets_csv'])}",
+            f"effective_skill_count: {len(item['effective_skills'])}",
+            f"effective_skills_csv: {_yaml_str(item['effective_skills_csv'])}",
+            f"global_skills_csv: {_yaml_str(item['global_skills_csv'])}",
+            f"repo_scoped_skills_csv: {_yaml_str(item['repo_scoped_skills_csv'])}",
+            f"repo_local_skills_csv: {_yaml_str(item['repo_local_skills_csv'])}",
             f"effective_model: {_yaml_str(_effective_value(defaults, item, 'model'))}",
             f"effective_reasoning: {_yaml_str(_effective_value(defaults, item, 'model_reasoning_effort'))}",
             f"effective_fast_mode: {_yaml_str(_effective_fast_mode(defaults, item))}",
@@ -163,11 +209,35 @@ def generate_registry_items(
             lines.extend([f"  - {_yaml_str(name)}" for name in item["mcp_presets"]])
         else:
             lines.append('  - "-"')
+        lines.append("global_skills:")
+        if item["global_skills"]:
+            lines.extend([f"  - {_yaml_str(name)}" for name in item["global_skills"]])
+        else:
+            lines.append('  - "-"')
+        lines.append("repo_scoped_skills:")
+        if item["repo_scoped_skills"]:
+            lines.extend(
+                [f"  - {_yaml_str(name)}" for name in item["repo_scoped_skills"]]
+            )
+        else:
+            lines.append('  - "-"')
+        lines.append("repo_local_skills:")
+        if item["repo_local_skills"]:
+            lines.extend(
+                [f"  - {_yaml_str(name)}" for name in item["repo_local_skills"]]
+            )
+        else:
+            lines.append('  - "-"')
+        lines.append("effective_skills:")
+        if item["effective_skills"]:
+            lines.extend([f"  - {_yaml_str(name)}" for name in item["effective_skills"]])
+        else:
+            lines.append('  - "-"')
         lines.extend(
             [
                 "---",
                 "",
-                "Generated from `codex/config/repo-bootstrap.json`. Do not edit manually.",
+                "Generated from `codex/config/repo-bootstrap.json` and `skills/registry.json`. Do not edit manually.",
                 "",
             ]
         )
@@ -214,6 +284,99 @@ def _mcp_scope(global_terminal: bool, global_xcode: bool, repos: list[str]) -> s
     if has_repos:
         return "repo"
     return "-"
+
+
+def _resolve_repo_root(path: Path) -> Path:
+    try:
+        repo_root_out = subprocess.run(
+            ["git", "-C", str(path), "rev-parse", "--show-toplevel"],
+            check=True,
+            capture_output=True,
+            text=True,
+        ).stdout.strip()
+        return Path(repo_root_out).resolve()
+    except subprocess.CalledProcessError:
+        return path.resolve()
+
+
+def _load_skill_assignments(
+    root_dir: Path, home: Path, repos: list[dict[str, Any]]
+) -> None:
+    registry_file = root_dir / "skills" / "registry.json"
+    if not registry_file.is_file():
+        for item in repos:
+            item["global_skills"] = []
+            item["repo_scoped_skills"] = []
+            item["repo_local_skills"] = []
+            item["effective_skills"] = []
+            item["global_skills_csv"] = "-"
+            item["repo_scoped_skills_csv"] = "-"
+            item["repo_local_skills_csv"] = "-"
+            item["effective_skills_csv"] = "-"
+        return
+
+    data = json.loads(registry_file.read_text(encoding="utf-8"))
+    github_root_raw = data.get("paths", {}).get("github_root", "~/GitHub")
+    github_root = expand_path(str(github_root_raw), home).resolve()
+    repo_by_root = {item["repo_root"]: item for item in repos}
+    global_skills: set[str] = set()
+    repo_scoped: dict[Path, set[str]] = {item["repo_root"]: set() for item in repos}
+    repo_local: dict[Path, set[str]] = {item["repo_root"]: set() for item in repos}
+
+    for raw_item in data.get("managed_skills", []):
+        if not isinstance(raw_item, dict):
+            continue
+        skill = str(raw_item.get("skill", "")).strip()
+        scope = str(raw_item.get("scope", "")).strip()
+        if not skill:
+            continue
+        if scope == "global":
+            global_skills.add(skill)
+            continue
+        if scope != "repo":
+            continue
+        repos_raw = raw_item.get("repos", [])
+        if not isinstance(repos_raw, list):
+            continue
+        for repo_ref in repos_raw:
+            repo_root = _resolve_repo_root(
+                expand_path(str(repo_ref), home)
+                if str(repo_ref).startswith(("~/", "/"))
+                else github_root / str(repo_ref)
+            )
+            if repo_root in repo_scoped:
+                repo_scoped[repo_root].add(skill)
+
+    for raw_item in data.get("unmanaged_repo_local_skills", []):
+        if not isinstance(raw_item, dict):
+            continue
+        skill = str(raw_item.get("skill", "")).strip()
+        repo_ref = str(raw_item.get("repo", "")).strip()
+        if not skill or not repo_ref:
+            continue
+        repo_root = _resolve_repo_root(
+            expand_path(repo_ref, home)
+            if repo_ref.startswith(("~/", "/"))
+            else github_root / repo_ref
+        )
+        if repo_root in repo_local:
+            repo_local[repo_root].add(skill)
+
+    global_skill_list = sorted(global_skills)
+    for repo_root, item in repo_by_root.items():
+        repo_scoped_list = sorted(repo_scoped.get(repo_root, set()))
+        repo_local_list = sorted(repo_local.get(repo_root, set()))
+        effective_skills = sorted(
+            set(global_skill_list) | set(repo_scoped_list) | set(repo_local_list)
+        )
+        item["global_skills"] = global_skill_list
+        item["repo_scoped_skills"] = repo_scoped_list
+        item["repo_local_skills"] = repo_local_list
+        item["effective_skills"] = effective_skills
+        item["global_skills_csv"] = _csv_or_dash(global_skill_list)
+        item["repo_scoped_skills_csv"] = _csv_or_dash(repo_scoped_list)
+        item["repo_local_skills_csv"] = _csv_or_dash(repo_local_list)
+        item["effective_skills_csv"] = _csv_or_dash(effective_skills)
 
 
 def generate_mcp_registry_base(views_dir: Path) -> None:
@@ -356,16 +519,8 @@ def validate_registry(
             raise ValueError(f"duplicate repo path: {path_str}")
         seen.add(str(repo_path))
 
-        repo_root = repo_path
-        try:
-            repo_root_out = subprocess.run(
-                ["git", "-C", str(repo_path), "rev-parse", "--show-toplevel"],
-                check=True,
-                capture_output=True,
-                text=True,
-            ).stdout.strip()
-            repo_root = Path(repo_root_out).resolve()
-        except subprocess.CalledProcessError:
+        repo_root = _resolve_repo_root(repo_path)
+        if repo_root == repo_path.resolve() and not (repo_root / ".git").exists():
             print(f"WARNING: skipping non-git path: {path_str}", file=sys.stderr)
             continue
 
@@ -381,6 +536,7 @@ def validate_registry(
         validated = {
             "path": _display_path(repo_root, home),
             "repo_name": _repo_name(str(repo_root)),
+            "repo_root": repo_root,
             "mcp_presets": [str(name) for name in mcp_presets],
             "mcp_presets_csv": ",".join(mcp_presets) if mcp_presets else "-",
         }
@@ -433,6 +589,7 @@ def main() -> int:
         return 1
 
     views_dir = generated_views_dir(root_dir)
+    _load_skill_assignments(root_dir, home, repos)
     generate_registry_base(views_dir)
     generate_registry_items(views_dir, defaults, repos)
     global_terminal_mcp = _load_global_mcp_names(config_dir / "global.config.toml")

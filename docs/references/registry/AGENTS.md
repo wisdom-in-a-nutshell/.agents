@@ -13,4 +13,5 @@ Generated views:
 
 - [`skills.base`](/Users/dobby/.agents/docs/references/registry/skills.base)
 - [`repo-bootstrap.base`](/Users/dobby/.agents/docs/references/registry/repo-bootstrap.base)
+  - per-repo Codex bootstrap view, including MCP presets plus effective skill availability derived from [`skills/registry.json`](/Users/dobby/.agents/skills/registry.json)
 - [`mcp-registry.base`](/Users/dobby/.agents/docs/references/registry/mcp-registry.base)

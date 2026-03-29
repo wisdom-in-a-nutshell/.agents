@@ -1,6 +1,6 @@
 filters:
   and:
-    - 'file.inFolder("docs/references/registry/repo-bootstrap-items")'
+    - file.inFolder("docs/references/registry/repo-bootstrap-items")
 properties:
   repo_name:
     displayName: Repo
@@ -8,6 +8,16 @@ properties:
     displayName: Path
   mcp_presets_csv:
     displayName: MCP Presets
+  effective_skill_count:
+    displayName: Skill Count
+  effective_skills_csv:
+    displayName: Skills
+  global_skills_csv:
+    displayName: Global Skills
+  repo_scoped_skills_csv:
+    displayName: Repo Skills
+  repo_local_skills_csv:
+    displayName: Repo-Local Skills
   effective_model:
     displayName: Model
   effective_reasoning:
@@ -22,15 +32,42 @@ views:
     order:
       - repo_name
       - mcp_presets_csv
+      - effective_skill_count
+      - effective_skills_csv
       - effective_model
       - effective_reasoning
       - effective_fast_mode
       - effective_service_tier
   - type: table
     name: MCP Enabled
-    filters: 'mcp_presets_csv != "-"'
+    filters: mcp_presets_csv != "-"
     order:
       - repo_name
+      - mcp_presets_csv
+      - effective_skill_count
+      - effective_skills_csv
+      - effective_model
+      - effective_reasoning
+      - effective_fast_mode
+      - effective_service_tier
+  - type: table
+    name: Skills Enabled
+    filters: effective_skills_csv != "-"
+    order:
+      - repo_name
+      - effective_skill_count
+      - effective_skills_csv
+      - global_skills_csv
+      - repo_scoped_skills_csv
+      - repo_local_skills_csv
+      - mcp_presets_csv
+  - type: table
+    name: Repo-Local Skills
+    filters: repo_local_skills_csv != "-"
+    order:
+      - repo_name
+      - repo_local_skills_csv
+      - effective_skills_csv
       - mcp_presets_csv
       - effective_model
       - effective_reasoning

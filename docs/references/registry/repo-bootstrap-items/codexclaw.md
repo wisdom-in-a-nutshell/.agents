@@ -2,6 +2,11 @@
 repo_name: "codexclaw"
 path: "~/GitHub/codexclaw"
 mcp_presets_csv: "xcode,openaiDeveloperDocs"
+effective_skill_count: 16
+effective_skills_csv: "agent-browser,agent-native-repo-playbook,architecture-docs,codex-agent-loop,codex-app-server,defuddle,find-skills,ios-mobile-gateway-workflow,obsidian-bases,obsidian-cli,obsidian-markdown,openai-docs,pretty-mermaid,project,secret-management,skill-creator"
+global_skills_csv: "agent-browser,agent-native-repo-playbook,architecture-docs,defuddle,find-skills,obsidian-bases,obsidian-cli,obsidian-markdown,project,secret-management,skill-creator"
+repo_scoped_skills_csv: "codex-agent-loop,codex-app-server,openai-docs,pretty-mermaid"
+repo_local_skills_csv: "ios-mobile-gateway-workflow"
 effective_model: "gpt-5.4"
 effective_reasoning: "high"
 effective_fast_mode: "true"
@@ -9,6 +14,42 @@ effective_service_tier: "-"
 mcp_presets:
   - "xcode"
   - "openaiDeveloperDocs"
+global_skills:
+  - "agent-browser"
+  - "agent-native-repo-playbook"
+  - "architecture-docs"
+  - "defuddle"
+  - "find-skills"
+  - "obsidian-bases"
+  - "obsidian-cli"
+  - "obsidian-markdown"
+  - "project"
+  - "secret-management"
+  - "skill-creator"
+repo_scoped_skills:
+  - "codex-agent-loop"
+  - "codex-app-server"
+  - "openai-docs"
+  - "pretty-mermaid"
+repo_local_skills:
+  - "ios-mobile-gateway-workflow"
+effective_skills:
+  - "agent-browser"
+  - "agent-native-repo-playbook"
+  - "architecture-docs"
+  - "codex-agent-loop"
+  - "codex-app-server"
+  - "defuddle"
+  - "find-skills"
+  - "ios-mobile-gateway-workflow"
+  - "obsidian-bases"
+  - "obsidian-cli"
+  - "obsidian-markdown"
+  - "openai-docs"
+  - "pretty-mermaid"
+  - "project"
+  - "secret-management"
+  - "skill-creator"
 ---
 
-Generated from `codex/config/repo-bootstrap.json`. Do not edit manually.
+Generated from `codex/config/repo-bootstrap.json` and `skills/registry.json`. Do not edit manually.
