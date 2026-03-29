@@ -75,8 +75,12 @@ def _repo_name(path: str) -> str:
     return Path(path).name or path
 
 
-def _csv_or_dash(values: list[str]) -> str:
-    return ",".join(values) if values else "-"
+def _append_yaml_list(lines: list[str], key: str, values: list[str]) -> None:
+    if not values:
+        lines.append(f"{key}: []")
+        return
+    lines.append(f"{key}:")
+    lines.extend([f"  - {_yaml_str(value)}" for value in values])
 
 
 def _effective_value(defaults: dict[str, Any], item: dict[str, Any], key: str) -> str:
@@ -109,73 +113,77 @@ properties:
     displayName: Repo
   path:
     displayName: Path
-  mcp_presets_csv:
-    displayName: MCP Presets
-  effective_skill_count:
+  mcp_count:
+    displayName: MCP Count
+  mcps:
+    displayName: MCPs
+  skill_count:
     displayName: Skill Count
-  effective_skills_csv:
+  repo_local_skill_count:
+    displayName: Repo-Local Skill Count
+  skills:
     displayName: Skills
-  global_skills_csv:
+  global_skills:
     displayName: Global Skills
-  repo_scoped_skills_csv:
+  repo_skills:
     displayName: Repo Skills
-  repo_local_skills_csv:
+  repo_local_skills:
     displayName: Repo-Local Skills
-  effective_model:
+  model:
     displayName: Model
-  effective_reasoning:
+  reasoning:
     displayName: Reasoning
-  effective_fast_mode:
+  fast_mode:
     displayName: Fast Mode
-  effective_service_tier:
+  service_tier:
     displayName: Service Tier
 views:
   - type: table
     name: Repo Bootstrap
     order:
       - repo_name
-      - mcp_presets_csv
-      - effective_skill_count
-      - effective_skills_csv
-      - effective_model
-      - effective_reasoning
-      - effective_fast_mode
-      - effective_service_tier
+      - mcps
+      - skill_count
+      - skills
+      - model
+      - reasoning
+      - fast_mode
+      - service_tier
   - type: table
     name: MCP Enabled
-    filters: 'mcp_presets_csv != "-"'
+    filters: 'mcp_count > 0'
     order:
       - repo_name
-      - mcp_presets_csv
-      - effective_skill_count
-      - effective_skills_csv
-      - effective_model
-      - effective_reasoning
-      - effective_fast_mode
-      - effective_service_tier
+      - mcps
+      - skill_count
+      - skills
+      - model
+      - reasoning
+      - fast_mode
+      - service_tier
   - type: table
     name: Skills Enabled
-    filters: 'effective_skills_csv != "-"'
+    filters: 'skill_count > 0'
     order:
       - repo_name
-      - effective_skill_count
-      - effective_skills_csv
-      - global_skills_csv
-      - repo_scoped_skills_csv
-      - repo_local_skills_csv
-      - mcp_presets_csv
+      - skill_count
+      - skills
+      - global_skills
+      - repo_skills
+      - repo_local_skills
+      - mcps
   - type: table
     name: Repo-Local Skills
-    filters: 'repo_local_skills_csv != "-"'
+    filters: 'repo_local_skill_count > 0'
     order:
       - repo_name
-      - repo_local_skills_csv
-      - effective_skills_csv
-      - mcp_presets_csv
-      - effective_model
-      - effective_reasoning
-      - effective_fast_mode
-      - effective_service_tier
+      - repo_local_skills
+      - skills
+      - mcps
+      - model
+      - reasoning
+      - fast_mode
+      - service_tier
 """
     _write_if_changed(views_dir / "repo-bootstrap.base", content)
 
@@ -193,46 +201,19 @@ def generate_registry_items(
             "---",
             f"repo_name: {_yaml_str(item['repo_name'])}",
             f"path: {_yaml_str(item['path'])}",
-            f"mcp_presets_csv: {_yaml_str(item['mcp_presets_csv'])}",
-            f"effective_skill_count: {len(item['effective_skills'])}",
-            f"effective_skills_csv: {_yaml_str(item['effective_skills_csv'])}",
-            f"global_skills_csv: {_yaml_str(item['global_skills_csv'])}",
-            f"repo_scoped_skills_csv: {_yaml_str(item['repo_scoped_skills_csv'])}",
-            f"repo_local_skills_csv: {_yaml_str(item['repo_local_skills_csv'])}",
-            f"effective_model: {_yaml_str(_effective_value(defaults, item, 'model'))}",
-            f"effective_reasoning: {_yaml_str(_effective_value(defaults, item, 'model_reasoning_effort'))}",
-            f"effective_fast_mode: {_yaml_str(_effective_fast_mode(defaults, item))}",
-            f"effective_service_tier: {_yaml_str(_effective_value(defaults, item, 'service_tier'))}",
-            "mcp_presets:",
+            f"mcp_count: {len(item['mcp_presets'])}",
+            f"skill_count: {len(item['skills'])}",
+            f"repo_local_skill_count: {len(item['repo_local_skills'])}",
+            f"model: {_yaml_str(_effective_value(defaults, item, 'model'))}",
+            f"reasoning: {_yaml_str(_effective_value(defaults, item, 'model_reasoning_effort'))}",
+            f"fast_mode: {_yaml_str(_effective_fast_mode(defaults, item))}",
+            f"service_tier: {_yaml_str(_effective_value(defaults, item, 'service_tier'))}",
         ]
-        if item["mcp_presets"]:
-            lines.extend([f"  - {_yaml_str(name)}" for name in item["mcp_presets"]])
-        else:
-            lines.append('  - "-"')
-        lines.append("global_skills:")
-        if item["global_skills"]:
-            lines.extend([f"  - {_yaml_str(name)}" for name in item["global_skills"]])
-        else:
-            lines.append('  - "-"')
-        lines.append("repo_scoped_skills:")
-        if item["repo_scoped_skills"]:
-            lines.extend(
-                [f"  - {_yaml_str(name)}" for name in item["repo_scoped_skills"]]
-            )
-        else:
-            lines.append('  - "-"')
-        lines.append("repo_local_skills:")
-        if item["repo_local_skills"]:
-            lines.extend(
-                [f"  - {_yaml_str(name)}" for name in item["repo_local_skills"]]
-            )
-        else:
-            lines.append('  - "-"')
-        lines.append("effective_skills:")
-        if item["effective_skills"]:
-            lines.extend([f"  - {_yaml_str(name)}" for name in item["effective_skills"]])
-        else:
-            lines.append('  - "-"')
+        _append_yaml_list(lines, "mcps", item["mcp_presets"])
+        _append_yaml_list(lines, "global_skills", item["global_skills"])
+        _append_yaml_list(lines, "repo_skills", item["repo_scoped_skills"])
+        _append_yaml_list(lines, "repo_local_skills", item["repo_local_skills"])
+        _append_yaml_list(lines, "skills", item["skills"])
         lines.extend(
             [
                 "---",
@@ -308,11 +289,7 @@ def _load_skill_assignments(
             item["global_skills"] = []
             item["repo_scoped_skills"] = []
             item["repo_local_skills"] = []
-            item["effective_skills"] = []
-            item["global_skills_csv"] = "-"
-            item["repo_scoped_skills_csv"] = "-"
-            item["repo_local_skills_csv"] = "-"
-            item["effective_skills_csv"] = "-"
+            item["skills"] = []
         return
 
     data = json.loads(registry_file.read_text(encoding="utf-8"))
@@ -366,17 +343,13 @@ def _load_skill_assignments(
     for repo_root, item in repo_by_root.items():
         repo_scoped_list = sorted(repo_scoped.get(repo_root, set()))
         repo_local_list = sorted(repo_local.get(repo_root, set()))
-        effective_skills = sorted(
+        skills = sorted(
             set(global_skill_list) | set(repo_scoped_list) | set(repo_local_list)
         )
         item["global_skills"] = global_skill_list
         item["repo_scoped_skills"] = repo_scoped_list
         item["repo_local_skills"] = repo_local_list
-        item["effective_skills"] = effective_skills
-        item["global_skills_csv"] = _csv_or_dash(global_skill_list)
-        item["repo_scoped_skills_csv"] = _csv_or_dash(repo_scoped_list)
-        item["repo_local_skills_csv"] = _csv_or_dash(repo_local_list)
-        item["effective_skills_csv"] = _csv_or_dash(effective_skills)
+        item["skills"] = skills
 
 
 def generate_mcp_registry_base(views_dir: Path) -> None:

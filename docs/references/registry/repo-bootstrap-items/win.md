@@ -1,17 +1,14 @@
 ---
 repo_name: "win"
 path: "~/GitHub/win"
-mcp_presets_csv: "openaiDeveloperDocs"
-effective_skill_count: 23
-effective_skills_csv: "add-env-var,agent-browser,agent-native-repo-playbook,aip-dto-contract-sync,aip-frontend-contract-apply,architecture-docs,azure-webapp-config,channel-create,contact-form-automation,defuddle,descript-api-docs-sync,find-skills,log-investigation,modal-function-sync,obsidian-bases,obsidian-cli,obsidian-markdown,openai-docs,project,scheduled-jobs,secret-management,show-password-setup,skill-creator"
-global_skills_csv: "agent-browser,agent-native-repo-playbook,architecture-docs,defuddle,find-skills,obsidian-bases,obsidian-cli,obsidian-markdown,project,secret-management,skill-creator"
-repo_scoped_skills_csv: "aip-dto-contract-sync,aip-frontend-contract-apply,azure-webapp-config,modal-function-sync,openai-docs,show-password-setup"
-repo_local_skills_csv: "add-env-var,channel-create,contact-form-automation,descript-api-docs-sync,log-investigation,scheduled-jobs"
-effective_model: "gpt-5.4"
-effective_reasoning: "high"
-effective_fast_mode: "true"
-effective_service_tier: "-"
-mcp_presets:
+mcp_count: 1
+skill_count: 23
+repo_local_skill_count: 6
+model: "gpt-5.4"
+reasoning: "high"
+fast_mode: "true"
+service_tier: "-"
+mcps:
   - "openaiDeveloperDocs"
 global_skills:
   - "agent-browser"
@@ -25,7 +22,7 @@ global_skills:
   - "project"
   - "secret-management"
   - "skill-creator"
-repo_scoped_skills:
+repo_skills:
   - "aip-dto-contract-sync"
   - "aip-frontend-contract-apply"
   - "azure-webapp-config"
@@ -39,7 +36,7 @@ repo_local_skills:
   - "descript-api-docs-sync"
   - "log-investigation"
   - "scheduled-jobs"
-effective_skills:
+skills:
   - "add-env-var"
   - "agent-browser"
   - "agent-native-repo-playbook"

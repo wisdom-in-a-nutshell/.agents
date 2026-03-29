@@ -1,17 +1,14 @@
 ---
 repo_name: "adi"
 path: "~/GitHub/adi"
-mcp_presets_csv: "openaiDeveloperDocs,paper"
-effective_skill_count: 23
-effective_skills_csv: "adi-writing,agent-browser,agent-native-repo-playbook,aip-company,architecture-docs,client-interface-guidelines,codex-agent-loop,defuddle,find-skills,frontend-skill,health,imagegen,journal-checkin,obsidian-bases,obsidian-cli,obsidian-markdown,openai-docs,pretty-mermaid,project,secret-management,skill-creator,skill-router,social-media-publishing"
-global_skills_csv: "agent-browser,agent-native-repo-playbook,architecture-docs,defuddle,find-skills,obsidian-bases,obsidian-cli,obsidian-markdown,project,secret-management,skill-creator"
-repo_scoped_skills_csv: "adi-writing,aip-company,client-interface-guidelines,codex-agent-loop,frontend-skill,health,imagegen,journal-checkin,openai-docs,pretty-mermaid,skill-router,social-media-publishing"
-repo_local_skills_csv: "-"
-effective_model: "gpt-5.4"
-effective_reasoning: "high"
-effective_fast_mode: "true"
-effective_service_tier: "fast"
-mcp_presets:
+mcp_count: 2
+skill_count: 23
+repo_local_skill_count: 0
+model: "gpt-5.4"
+reasoning: "high"
+fast_mode: "true"
+service_tier: "fast"
+mcps:
   - "openaiDeveloperDocs"
   - "paper"
 global_skills:
@@ -26,7 +23,7 @@ global_skills:
   - "project"
   - "secret-management"
   - "skill-creator"
-repo_scoped_skills:
+repo_skills:
   - "adi-writing"
   - "aip-company"
   - "client-interface-guidelines"
@@ -39,9 +36,8 @@ repo_scoped_skills:
   - "pretty-mermaid"
   - "skill-router"
   - "social-media-publishing"
-repo_local_skills:
-  - "-"
-effective_skills:
+repo_local_skills: []
+skills:
   - "adi-writing"
   - "agent-browser"
   - "agent-native-repo-playbook"

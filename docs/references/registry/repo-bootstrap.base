@@ -6,70 +6,76 @@ properties:
     displayName: Repo
   path:
     displayName: Path
-  mcp_presets_csv:
-    displayName: MCP Presets
-  effective_skill_count:
+  mcp_count:
+    displayName: MCP Count
+  mcps:
+    displayName: MCPs
+  skill_count:
     displayName: Skill Count
-  effective_skills_csv:
+  repo_local_skill_count:
+    displayName: Repo-Local Skill Count
+  skills:
     displayName: Skills
-  global_skills_csv:
+  global_skills:
     displayName: Global Skills
-  repo_scoped_skills_csv:
+  repo_skills:
     displayName: Repo Skills
-  repo_local_skills_csv:
+  repo_local_skills:
     displayName: Repo-Local Skills
-  effective_model:
+  model:
     displayName: Model
-  effective_reasoning:
+  reasoning:
     displayName: Reasoning
-  effective_fast_mode:
+  fast_mode:
     displayName: Fast Mode
-  effective_service_tier:
+  service_tier:
     displayName: Service Tier
 views:
   - type: table
     name: Repo Bootstrap
     order:
       - repo_name
-      - mcp_presets_csv
-      - effective_skill_count
-      - effective_skills_csv
-      - effective_model
-      - effective_reasoning
-      - effective_fast_mode
-      - effective_service_tier
+      - mcps
+      - skill_count
+      - skills
+      - model
+      - reasoning
+      - fast_mode
+      - service_tier
+    columnSize:
+      note.mcps: 346
   - type: table
     name: MCP Enabled
-    filters: mcp_presets_csv != "-"
+    filters: mcp_count > 0
     order:
       - repo_name
-      - mcp_presets_csv
-      - effective_skill_count
-      - effective_skills_csv
-      - effective_model
-      - effective_reasoning
-      - effective_fast_mode
-      - effective_service_tier
+      - mcps
+      - skill_count
+      - skills
+      - model
+      - reasoning
+      - fast_mode
+      - service_tier
   - type: table
     name: Skills Enabled
-    filters: effective_skills_csv != "-"
+    filters: skill_count > 0
     order:
       - repo_name
-      - effective_skill_count
-      - effective_skills_csv
-      - global_skills_csv
-      - repo_scoped_skills_csv
-      - repo_local_skills_csv
-      - mcp_presets_csv
+      - skill_count
+      - skills
+      - global_skills
+      - repo_skills
+      - repo_local_skills
+      - mcps
   - type: table
     name: Repo-Local Skills
-    filters: repo_local_skills_csv != "-"
+    filters: repo_local_skill_count > 0
     order:
       - repo_name
-      - repo_local_skills_csv
-      - effective_skills_csv
-      - mcp_presets_csv
-      - effective_model
-      - effective_reasoning
-      - effective_fast_mode
-      - effective_service_tier
+      - repo_local_skills
+      - skills
+      - mcps
+      - model
+      - reasoning
+      - fast_mode
+      - service_tier

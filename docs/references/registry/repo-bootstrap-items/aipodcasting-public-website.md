@@ -1,18 +1,14 @@
 ---
 repo_name: "aipodcasting-public-website"
 path: "~/GitHub/aipodcasting-public-website"
-mcp_presets_csv: "-"
-effective_skill_count: 18
-effective_skills_csv: "agent-browser,agent-native-repo-playbook,aip-company,architecture-docs,azure-webapp-config,defuddle,designer-workflow,find-skills,obsidian-bases,obsidian-cli,obsidian-markdown,project,secret-management,skill-creator,vercel-react-best-practices,visual-audit-loop,web-design-guidelines,workflow-visual-audit"
-global_skills_csv: "agent-browser,agent-native-repo-playbook,architecture-docs,defuddle,find-skills,obsidian-bases,obsidian-cli,obsidian-markdown,project,secret-management,skill-creator"
-repo_scoped_skills_csv: "aip-company,azure-webapp-config,vercel-react-best-practices,web-design-guidelines"
-repo_local_skills_csv: "designer-workflow,visual-audit-loop,workflow-visual-audit"
-effective_model: "gpt-5.4"
-effective_reasoning: "high"
-effective_fast_mode: "true"
-effective_service_tier: "-"
-mcp_presets:
-  - "-"
+mcp_count: 0
+skill_count: 18
+repo_local_skill_count: 3
+model: "gpt-5.4"
+reasoning: "high"
+fast_mode: "true"
+service_tier: "-"
+mcps: []
 global_skills:
   - "agent-browser"
   - "agent-native-repo-playbook"
@@ -25,7 +21,7 @@ global_skills:
   - "project"
   - "secret-management"
   - "skill-creator"
-repo_scoped_skills:
+repo_skills:
   - "aip-company"
   - "azure-webapp-config"
   - "vercel-react-best-practices"
@@ -34,7 +30,7 @@ repo_local_skills:
   - "designer-workflow"
   - "visual-audit-loop"
   - "workflow-visual-audit"
-effective_skills:
+skills:
   - "agent-browser"
   - "agent-native-repo-playbook"
   - "aip-company"
