@@ -212,7 +212,8 @@
       "origin": "owned",
       "scope": "repo",
       "repos": [
-        "adi"
+        "adi",
+        "scripts"
       ],
       "source_path": "skills-source/owned/client-interface-guidelines",
       "upstream_ref": "-"
