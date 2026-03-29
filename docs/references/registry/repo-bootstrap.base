@@ -1,6 +1,6 @@
 filters:
   and:
-    - file.inFolder("docs/references/registry/repo-bootstrap-items")
+    - 'file.inFolder("docs/references/registry/repo-bootstrap-items")'
 properties:
   repo_name:
     displayName: Repo
@@ -42,12 +42,9 @@ views:
       - reasoning
       - fast_mode
       - service_tier
-    sort:
-      - property: skills
-        direction: DESC
   - type: table
     name: MCP Enabled
-    filters: mcp_count > 0
+    filters: 'mcp_count > 0'
     order:
       - repo_name
       - mcps
@@ -59,7 +56,7 @@ views:
       - service_tier
   - type: table
     name: Skills Enabled
-    filters: skill_count > 0
+    filters: 'skill_count > 0'
     order:
       - repo_name
       - skill_count
@@ -70,7 +67,7 @@ views:
       - mcps
   - type: table
     name: Repo-Local Skills
-    filters: repo_local_skill_count > 0
+    filters: 'repo_local_skill_count > 0'
     order:
       - repo_name
       - repo_local_skills
@@ -80,15 +77,3 @@ views:
       - reasoning
       - fast_mode
       - service_tier
-  - type: list
-    name: Skills Detail
-    filters: skill_count > 0
-    order:
-      - repo_name
-      - skill_count
-      - skills
-      - repo_skills
-      - repo_local_skills
-      - mcps
-      - model
-      - reasoning
