@@ -2,7 +2,7 @@
 repo_name: "adi"
 path: "~/GitHub/adi"
 mcp_count: 2
-skill_count: 23
+skill_count: 21
 repo_local_skill_count: 0
 model: "gpt-5.4"
 reasoning: "high"
@@ -33,8 +33,6 @@ repo_skills:
   - "imagegen"
   - "journal-checkin"
   - "openai-docs"
-  - "pretty-mermaid"
-  - "skill-router"
   - "social-media-publishing"
 repo_local_skills: []
 skills:
@@ -55,11 +53,9 @@ skills:
   - "obsidian-cli"
   - "obsidian-markdown"
   - "openai-docs"
-  - "pretty-mermaid"
   - "project"
   - "secret-management"
   - "skill-creator"
-  - "skill-router"
   - "social-media-publishing"
 ---
 

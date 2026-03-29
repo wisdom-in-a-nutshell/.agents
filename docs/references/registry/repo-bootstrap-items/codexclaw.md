@@ -2,7 +2,7 @@
 repo_name: "codexclaw"
 path: "~/GitHub/codexclaw"
 mcp_count: 2
-skill_count: 16
+skill_count: 15
 repo_local_skill_count: 1
 model: "gpt-5.4"
 reasoning: "high"
@@ -27,7 +27,6 @@ repo_skills:
   - "codex-agent-loop"
   - "codex-app-server"
   - "openai-docs"
-  - "pretty-mermaid"
 repo_local_skills:
   - "ios-mobile-gateway-workflow"
 skills:
@@ -43,7 +42,6 @@ skills:
   - "obsidian-cli"
   - "obsidian-markdown"
   - "openai-docs"
-  - "pretty-mermaid"
   - "project"
   - "secret-management"
   - "skill-creator"

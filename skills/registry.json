@@ -239,17 +239,6 @@
       "upstream_ref": "openai/skills:skills/.curated/openai-docs@main"
     },
     {
-      "skill": "pretty-mermaid",
-      "origin": "owned",
-      "scope": "repo",
-      "repos": [
-        "adi",
-        "codexclaw"
-      ],
-      "source_path": "skills-source/owned/pretty-mermaid",
-      "upstream_ref": "-"
-    },
-    {
       "skill": "imagegen",
       "origin": "owned",
       "scope": "repo",
@@ -290,17 +279,6 @@
       "repos": [],
       "source_path": "skills-source/external/skill-creator",
       "upstream_ref": "openai/skills:skills/.system/skill-creator@main"
-    },
-    {
-      "skill": "skill-router",
-      "origin": "owned",
-      "scope": "repo",
-      "repos": [
-        "~/.agents",
-        "adi"
-      ],
-      "source_path": "skills-source/owned/skill-router",
-      "upstream_ref": "-"
     },
     {
       "skill": "secret-management",
