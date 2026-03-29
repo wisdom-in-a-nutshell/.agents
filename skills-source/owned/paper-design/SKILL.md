@@ -37,6 +37,8 @@ Do not duplicate the full tool list here unless the runtime actually changes and
 ### 1. Collaborative Paper workflow
 
 Default flow when editing a Paper file together:
+Use a review loop by default: make a change, take a screenshot, inspect for layout or clarity issues, fix them, and only present the result to the user when it is directionally solid and obvious bugs are gone.
+
 1. orient with `get_basic_info`
 2. check `get_selection` if the user may already be pointing at something
 3. confirm the correct Paper page before creating anything; if the intended page is unclear or the currently open page looks wrong, explicitly ask the user to switch to the right page first
@@ -62,6 +64,7 @@ Important non-obvious truths:
 - In the current MCP surface here, Dobby can create artboards and edit nodes in the currently open page, but does not have a dedicated page-creation/switching tool. So page choice is controlled by the page the human currently has open in Paper.
 - Because of that limitation, on the first Paper action for a project or whenever page context is ambiguous, explicitly confirm the intended page with the user before creating or editing artboards.
 - For multi-artboard deliverables, default to creating and iterating one artboard at a time unless the user explicitly asks for all panels or a batch upfront.
+- Before showing a Paper result to the user, run at least one screenshot-based self-review pass and fix visible issues (overflow, hidden text, broken hierarchy, obvious alignment bugs) when they are easy to correct.
 - stale or long-running sessions are a common cause of MCP weirdness; restarting is often the first fix
 - the Paper app appears to support AI image generation, but the current Paper MCP tool surface here does **not** expose a dedicated image-generation tool
 - for agent-generated imagery, use a separate image-generation workflow and then place the result into Paper

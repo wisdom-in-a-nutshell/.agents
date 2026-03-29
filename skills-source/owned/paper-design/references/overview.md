@@ -54,6 +54,8 @@ Because the MCP only acts on the currently open page, confirm the intended page 
 
 For multi-panel work like carousels, do not create the whole set by default. Start with the first artboard, iterate with the user, and only create additional panels as the work progresses unless the user explicitly asks for a batch.
 
+Default review behavior: after each meaningful Paper edit, take a screenshot and inspect it. Keep iterating until the direction is coherent and obvious bugs are fixed before asking the user for feedback.
+
 1. inspect the current file first
 2. work on the selected node/frame when possible
 3. make small visual moves, not giant blind rewrites
