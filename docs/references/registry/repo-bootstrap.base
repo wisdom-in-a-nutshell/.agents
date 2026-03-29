@@ -42,8 +42,9 @@ views:
       - reasoning
       - fast_mode
       - service_tier
-    columnSize:
-      note.mcps: 346
+    sort:
+      - property: skills
+        direction: DESC
   - type: table
     name: MCP Enabled
     filters: mcp_count > 0
@@ -79,3 +80,15 @@ views:
       - reasoning
       - fast_mode
       - service_tier
+  - type: list
+    name: Skills Detail
+    filters: skill_count > 0
+    order:
+      - repo_name
+      - skill_count
+      - skills
+      - repo_skills
+      - repo_local_skills
+      - mcps
+      - model
+      - reasoning

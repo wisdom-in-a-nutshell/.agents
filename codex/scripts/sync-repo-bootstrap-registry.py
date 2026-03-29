@@ -184,6 +184,18 @@ views:
       - reasoning
       - fast_mode
       - service_tier
+  - type: list
+    name: Skills Detail
+    filters: 'skill_count > 0'
+    order:
+      - repo_name
+      - skill_count
+      - skills
+      - repo_skills
+      - repo_local_skills
+      - mcps
+      - model
+      - reasoning
 """
     _write_if_changed(views_dir / "repo-bootstrap.base", content)
 
