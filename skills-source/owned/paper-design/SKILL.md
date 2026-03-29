@@ -47,6 +47,7 @@ Use a review loop by default: make a change, take a screenshot, inspect for layo
 6. when creating multi-panel work such as a carousel, default to one artboard at a time unless the user explicitly asks for batch creation
 7. make small incremental changes
 8. verify visually with screenshots
+9. if a panel is still stuck after meaningful self-review or the judgment is mostly about visual hierarchy/taste, consider using an independent evaluator sub-agent to review screenshots and critique the work before declaring it done
 
 ### 2. Practical product notes
 
@@ -66,6 +67,8 @@ Important non-obvious truths:
 - For multi-artboard deliverables, default to creating and iterating one artboard at a time unless the user explicitly asks for all panels or a batch upfront.
 - Before showing a Paper result to the user, run at least one screenshot-based self-review pass and fix visible issues (overflow, hidden text, broken hierarchy, obvious alignment bugs) when they are easy to correct.
 - A panel is not ready just because the direction feels good; core legibility and visual integrity still need to be checked explicitly in the screenshot.
+- For taste-heavy visual work, self-review can plateau. If a panel has already gone through a few meaningful revisions and the remaining question is mostly about taste, hierarchy, or narrative clarity, consider an independent evaluator sub-agent review pass using screenshots.
+- Do not make external evaluation the default for every tiny spacing tweak; use it selectively for high-leverage review points.
 - stale or long-running sessions are a common cause of MCP weirdness; restarting is often the first fix
 - the Paper app appears to support AI image generation, but the current Paper MCP tool surface here does **not** expose a dedicated image-generation tool
 - When writing HTML into Paper, prefer padding, gap, and explicit positioning over margins for placement; margin-based layout is more fragile in practice here.

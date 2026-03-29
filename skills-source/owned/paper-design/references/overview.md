@@ -76,3 +76,9 @@ When Paper is being used as a bridge to code, results are better when the design
 
 If something is already obvious from the live MCP schema, do not duplicate it here.
 If something is only needed rarely, look it up live instead of bloating this note.
+
+
+## Review escalation
+- Start with screenshot-based self-review.
+- If visual iteration stalls or the question becomes mainly one of taste, hierarchy, or narrative clarity, consider an independent evaluator sub-agent to review screenshots.
+- Keep this selective; obvious mechanical fixes should still be handled locally without extra coordination overhead.
