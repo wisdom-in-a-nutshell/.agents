@@ -4,9 +4,6 @@ set -euo pipefail
 APPLY=0
 REGISTRY_FILE=""
 REPO_FILTERS=()
-TIMESTAMP="$(date +%Y%m%d-%H%M%S)"
-BACKUP_ROOT="${HOME}/.local/state/codex-control-plane/repo-config-backups"
-BACKUP_MAX_AGE_DAYS=7
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 CONTROL_PLANE_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
@@ -24,8 +21,6 @@ Options:
   --dry-run              Show diffs only (default)
   --registry <path>      Override repo bootstrap registry
                          (default: codex/config/repo-bootstrap.json)
-  --backup-root <path>   Store repo-config backups outside git repos
-                         (default: ~/.local/state/codex-control-plane/repo-config-backups)
   --repo <path>          Limit sync to an exact repo path (repeatable)
   -h, --help             Show this help
 
@@ -68,10 +63,6 @@ while [[ $# -gt 0 ]]; do
       REGISTRY_FILE="${2:-}"
       shift 2
       ;;
-    --backup-root)
-      BACKUP_ROOT="${2:-}"
-      shift 2
-      ;;
     --repo)
       REPO_FILTERS+=("${2:-}")
       shift 2
@@ -93,11 +84,6 @@ fi
 [[ -f "$REGISTRY_FILE" ]] || die "Missing registry file: $REGISTRY_FILE"
 [[ -r "$REGISTRY_FILE" ]] || die "Registry file is not readable: $REGISTRY_FILE"
 
-if (( APPLY == 1 )); then
-  [[ -d "$BACKUP_ROOT" ]] || mkdir -p "$BACKUP_ROOT"
-  find "$BACKUP_ROOT" -type f -name '*.bak.*' -mtime "+${BACKUP_MAX_AGE_DAYS}" -delete 2>/dev/null || true
-fi
-
 ensure_parent_dir() {
   local file="$1"
   mkdir -p "$(dirname "$file")"
@@ -116,7 +102,6 @@ show_diff() {
 install_rendered_file() {
   local rendered="$1"
   local target="$2"
-  local backup=""
   local mode="600"
 
   if [[ -f "$target" ]] && cmp -s "$target" "$rendered"; then
@@ -126,10 +111,6 @@ install_rendered_file() {
 
   if [[ -f "$target" ]]; then
     mode="$(stat -f "%Lp" "$target" 2>/dev/null || echo 600)"
-    backup="${BACKUP_ROOT}/${target#/}.bak.${TIMESTAMP}"
-    mkdir -p "$(dirname "$backup")"
-    cp "$target" "$backup"
-    log "Backup: $backup"
   fi
 
   install -m "$mode" "$rendered" "$target"

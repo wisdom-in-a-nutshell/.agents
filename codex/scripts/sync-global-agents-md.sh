@@ -7,7 +7,6 @@ CONTROL_PLANE_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 APPLY=0
 GLOBAL_AGENTS="${HOME}/.codex/AGENTS.md"
 CANONICAL_AGENTS="${CONTROL_PLANE_DIR}/config/global.agents.md"
-TIMESTAMP="$(date +%Y%m%d-%H%M%S)"
 
 usage() {
   cat <<USAGE
@@ -43,33 +42,6 @@ die() {
 ensure_parent_dir() {
   local file="$1"
   mkdir -p "$(dirname "$file")"
-}
-
-backup_runtime_file_if_needed() {
-  local file="$1"
-  local backup_path="$file.bak.$TIMESTAMP"
-
-  if [[ ! -e "$file" && ! -L "$file" ]]; then
-    return 0
-  fi
-
-  if [[ -L "$file" ]]; then
-    rm -f "$file"
-    return 0
-  fi
-
-  if [[ ! -s "$file" ]]; then
-    rm -f "$file"
-    return 0
-  fi
-
-  if cmp -s "$file" "$CANONICAL_AGENTS"; then
-    rm -f "$file"
-    return 0
-  fi
-
-  mv "$file" "$backup_path"
-  log "Backed up existing runtime AGENTS file to $backup_path"
 }
 
 while [[ $# -gt 0 ]]; do
@@ -124,6 +96,8 @@ if (( APPLY == 0 )); then
   exit 0
 fi
 
-backup_runtime_file_if_needed "$GLOBAL_AGENTS"
+if [[ -e "$GLOBAL_AGENTS" || -L "$GLOBAL_AGENTS" ]]; then
+  rm -f "$GLOBAL_AGENTS"
+fi
 ln -s "$CANONICAL_AGENTS" "$GLOBAL_AGENTS"
 log "Linked $GLOBAL_AGENTS -> $CANONICAL_AGENTS"

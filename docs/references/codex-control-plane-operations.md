@@ -23,8 +23,7 @@ Use [Codex Control Plane Ownership](/Users/dobby/.agents/docs/references/codex-c
   - Codex-managed vendor imports in `vendor_imports/`, including the nested Git checkout at `vendor_imports/skills`
   - should not be a git repo
 - `~/.local/state/codex-control-plane`
-  - machine-local reconcile stamps and managed backup history
-  - runtime config backups now live here instead of cluttering `~/.codex`
+  - machine-local reconcile stamps and quarantine state
 
 ## Canonical Commands
 
@@ -85,18 +84,18 @@ Use [Codex Control Plane Ownership](/Users/dobby/.agents/docs/references/codex-c
   - prunes stale global terminal `mcp_servers.*` sections that are no longer present in the canonical template
   - validates role-file invariants before install, including non-empty `name` + `description`
   - fails fast if the target config contains unresolved Git conflict markers
-  - skips no-op rewrites and stores real pre-change backups under `~/.local/state/codex-control-plane/runtime-config-backups/`
+  - skips no-op rewrites
 - [`sync-trusted-projects.sh`](/Users/dobby/.agents/codex/scripts/sync-trusted-projects.sh)
   - scans repo roots from the canonical repo bootstrap registry (defaults to `~/GitHub`)
   - includes explicit extra managed repos such as `~/.agents`
   - writes exact `[projects."<path>"] trust_level = "trusted"` entries
-  - skips no-op rewrites and stores real pre-change backups under `~/.local/state/codex-control-plane/runtime-config-backups/`
+  - skips no-op rewrites
 - [`sync-repo-codex-configs.sh`](/Users/dobby/.agents/codex/scripts/sync-repo-codex-configs.sh)
   - renders managed repo-local Codex files from the canonical registry
   - writes `.codex/config.toml` for all managed repos
   - writes repo-local `.codex/agents/*.toml` files for any repo-scoped custom agents assigned in the registry
   - validates repo-scoped custom-agent role files before writing them into managed repos
-  - skips no-op rewrites and stores backups under `~/.local/state/codex-control-plane/repo-config-backups/` instead of dirtying the git repos themselves
+  - skips no-op rewrites instead of dirtying the git repos unnecessarily
   - keeps the repo list and MCP/model preset definitions in [`repo-bootstrap.json`](/Users/dobby/.agents/codex/config/repo-bootstrap.json)
 - [`check-codex-control-plane.sh`](/Users/dobby/.agents/codex/scripts/check-codex-control-plane.sh)
   - validates canonical `global.config.toml`, `xcode.config.toml`, and `repo-bootstrap.json`

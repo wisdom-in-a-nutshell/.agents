@@ -5,7 +5,6 @@ MODE="--dry-run"
 CONFIG_PATH="${HOME}/Library/Application Support/com.mitchellh.ghostty/config"
 WRAPPER_PATH="${HOME}/.agents/codex/scripts/ghostty-codex-then-shell.sh"
 PICKER_KEYBIND='keybind = super+shift+g=text:\x15\x03'
-TIMESTAMP="$(date +%Y%m%d-%H%M%S)"
 TMP_DIR="$(mktemp -d)"
 
 cleanup() {
@@ -161,9 +160,6 @@ if [[ "$MODE" == "--dry-run" ]]; then
   exit 0
 fi
 
-BACKUP_PATH="${CONFIG_PATH}.bak.${TIMESTAMP}"
-cp "$CONFIG_PATH" "$BACKUP_PATH"
 install -m 600 "$RENDERED" "$CONFIG_PATH"
 
-log "Backup: $BACKUP_PATH"
 log "Updated: $CONFIG_PATH"
