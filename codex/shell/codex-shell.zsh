@@ -47,6 +47,22 @@ codex_jump() {
   emulate -L zsh
   setopt local_options pipefail no_aliases
 
+  _codex_jump_display_label() {
+    local raw_dir="$1"
+
+    if [[ -n "$github_root" && "$raw_dir" == "$github_root/"* ]]; then
+      printf '%s\n' "${raw_dir#$github_root/}"
+      return 0
+    fi
+
+    if [[ "$raw_dir" == "$HOME/"* ]]; then
+      printf '~/%s\n' "${raw_dir#$HOME/}"
+      return 0
+    fi
+
+    printf '%s\n' "$raw_dir"
+  }
+
   _codex_jump_load_usage() {
     local usage_path="$1"
     local usage_dir usage_count_raw usage_last_raw usage_extra
@@ -100,10 +116,13 @@ codex_jump() {
   }
 
   local -a candidates
+  local -a display_rows
   local -a uniq
   local selected
+  local selected_row
   local dir
   local line
+  local display_label
   local dirs_file="${CODEX_JUMP_DIRS_FILE:-$HOME/.agents/codex/shell/codex-jump-dirs.txt}"
   local github_root="${CODEX_JUMP_GITHUB_ROOT:-$HOME/GitHub}"
   local usage_file="${CODEX_JUMP_USAGE_FILE:-$HOME/.local/state/codex-jump-usage.tsv}"
@@ -174,10 +193,18 @@ codex_jump() {
   fi
 
   if command -v fzf >/dev/null 2>&1; then
-    selected="$(
-      printf '%s\n' "${uniq[@]}" \
-        | fzf --prompt='Codex Dir > ' --height=45% --layout=reverse --cycle --border
+    display_rows=()
+    for dir in "${uniq[@]}"; do
+      display_label="$(_codex_jump_display_label "$dir")"
+      display_rows+=("${display_label}"$'\t'"${dir}")
+    done
+
+    selected_row="$(
+      printf '%s\n' "${display_rows[@]}" \
+        | fzf --prompt='Codex Dir > ' --height=45% --layout=reverse --cycle --border --delimiter=$'\t' --with-nth=1
     )" || return 0
+
+    selected="${selected_row#*$'\t'}"
   else
     local i=1
 
@@ -188,7 +215,7 @@ codex_jump() {
 
     echo "Select directory:"
     for dir in "${uniq[@]}"; do
-      echo "  $i) $dir"
+      echo "  $i) $(_codex_jump_display_label "$dir")"
       (( i++ ))
     done
     echo -n "> "
