@@ -185,31 +185,6 @@ views:
       - fast_mode
       - service_tier
   - type: table
-    name: Skills Enabled
-    filters: 'skill_count > 0'
-    order:
-      - repo_name
-      - skill_count
-      - repo_local_skill_count
-      - agents
-      - mcps
-      - model
-      - reasoning
-  - type: table
-    name: Agents Enabled
-    filters: 'agent_count > 0'
-    order:
-      - repo_name
-      - agents
-      - global_agents
-      - custom_agents
-      - mcps
-      - skill_count
-      - model
-      - reasoning
-      - fast_mode
-      - service_tier
-  - type: table
     name: Custom Agents
     filters: 'custom_agent_count > 0'
     order:
@@ -231,21 +206,9 @@ views:
       - repo_skills
       - repo_local_skills
       - skill_count
+      - repo_local_skill_count
       - mcps
       - agents
-  - type: table
-    name: Repo-Local Skills
-    filters: 'repo_local_skill_count > 0'
-    order:
-      - repo_name
-      - repo_local_skills
-      - repo_skills
-      - global_skills
-      - mcps
-      - model
-      - reasoning
-      - fast_mode
-      - service_tier
 """
     _write_if_changed(views_dir / "repo-bootstrap.base", content)
 
