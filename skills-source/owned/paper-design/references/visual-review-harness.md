@@ -118,6 +118,7 @@ Even when the user does not explicitly say this, default to finishing a few stro
 
 When one panel is stuck:
 - keep the canonical story panels in the main lane (`1`, `2`, `3`, ...)
+- before iterating on a presentable panel, branch to a new artboard variant instead of editing the only visible version in place
 - create horizontal variants beside the stuck panel (`3A`, `3B`, `3C`)
 - keep everything on the same page so the user can see both the main story and the active explorations
 - do **not** keep overwriting the same canonical panel once the work has already had a couple of meaningful revisions and the remaining feedback is conceptual, compositional, or evaluator-driven
