@@ -127,8 +127,12 @@ codex_jump() {
   local github_root="${CODEX_JUMP_GITHUB_ROOT:-$HOME/GitHub}"
   local usage_file="${CODEX_JUMP_USAGE_FILE:-$HOME/.local/state/codex-jump-usage.tsv}"
   local smart_sort="${CODEX_JUMP_SMART_SORT:-1}"
+  local recent_window_days="${CODEX_JUMP_RECENT_WINDOW_DAYS:-14}"
+  local recent_window_seconds=0
   local usage_tmp
   local rank_tmp
+  local recent_rank_tmp
+  local older_rank_tmp
   local idx
   local now
   local count
@@ -173,23 +177,44 @@ codex_jump() {
 
   if [[ "$smart_sort" == "1" ]] && [[ -f "$usage_file" ]]; then
     _codex_jump_load_usage "$usage_file"
+    now="$(date +%s)"
 
-    rank_tmp="$(mktemp -t codex-jump-rank)"
+    if [[ "$recent_window_days" =~ ^[0-9]+$ ]] && (( recent_window_days > 0 )); then
+      recent_window_seconds="$((recent_window_days * 86400))"
+    fi
+
+    recent_rank_tmp="$(mktemp -t codex-jump-rank-recent)"
+    older_rank_tmp="$(mktemp -t codex-jump-rank-older)"
     idx=0
     for dir in "${uniq[@]}"; do
       (( idx++ ))
-      printf '%s\t%s\t%s\t%s\n' \
-        "${usage_count[$dir]:-0}" \
-        "${usage_last[$dir]:-0}" \
-        "$idx" \
-        "$dir" >> "$rank_tmp"
+      count="${usage_count[$dir]:-0}"
+      last="${usage_last[$dir]:-0}"
+
+      if (( recent_window_seconds > 0 )) && (( last >= now - recent_window_seconds )); then
+        printf '%s\t%s\t%s\n' \
+          "$last" \
+          "$count" \
+          "$dir" >> "$recent_rank_tmp"
+      else
+        printf '%s\t%s\t%s\t%s\n' \
+          "$count" \
+          "$last" \
+          "$idx" \
+          "$dir" >> "$older_rank_tmp"
+      fi
     done
 
     uniq=()
+    while IFS=$'\t' read -r last count dir; do
+      [[ -n "${dir:-}" ]] && uniq+=("$dir")
+    done < <(sort -t $'\t' -k1,1nr -k2,2nr "$recent_rank_tmp")
+
     while IFS=$'\t' read -r count last idx dir; do
       [[ -n "${dir:-}" ]] && uniq+=("$dir")
-    done < <(sort -t $'\t' -k1,1nr -k2,2nr -k3,3n "$rank_tmp")
-    rm -f "$rank_tmp"
+    done < <(sort -t $'\t' -k1,1nr -k2,2nr -k3,3n "$older_rank_tmp")
+
+    rm -f "$recent_rank_tmp" "$older_rank_tmp"
   fi
 
   if command -v fzf >/dev/null 2>&1; then
