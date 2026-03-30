@@ -16,6 +16,7 @@ description: Write or edit external-facing content in Adi's voice. Use when draf
 4. If the current repo has relevant examples of Adi's writing, inspect a small representative sample and adapt to them.
 5. Match the format and keep the writing direct, human, and specific.
 6. Preserve the real point; do not sand it down into bland professionalism.
+7. When a repo already exposes `LLM_API_ENDPOINT` and `LLM_API_KEY`, you can use `scripts/draft_with_llm.py` for a fast first draft in Adi's voice.
 
 ## Rules
 - Lead with the point.
