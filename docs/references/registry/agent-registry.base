@@ -1,8 +1,8 @@
 filters:
   and:
-    - 'file.inFolder("docs/references/registry/agent-registry-items")'
+    - file.inFolder("docs/references/registry/agent-registry-items")
 formulas:
-  scope_badge: 'if(effective_scope == "global", "🌍 global", if(effective_scope == "repo", "📦 repo", if(effective_scope == "mixed", "🧩 mixed", effective_scope)))'
+  scope_badge: if(effective_scope == "global", "🌍 global", if(effective_scope == "repo", "📦 repo", if(effective_scope == "mixed", "🧩 mixed", effective_scope)))
 properties:
   agent_name:
     displayName: Agent
@@ -33,7 +33,7 @@ views:
       - description
   - type: table
     name: Global Agents
-    filters: 'global_terminal == "true" || global_xcode == "true"'
+    filters: global_terminal == "true" || global_xcode == "true"
     order:
       - agent_name
       - formula.scope_badge
@@ -44,7 +44,7 @@ views:
       - description
   - type: table
     name: Repo Agents
-    filters: 'repos_csv != "-"'
+    filters: repos_csv != "-"
     order:
       - agent_name
       - formula.scope_badge
