@@ -53,6 +53,7 @@ Canonical personal Codex control-plane assets live here.
 - The current managed role setup is:
   - built-in `explorer` remains available for local repo and runtime exploration
   - managed `external_researcher` handles information outside the local repo and runtime
+  - managed `visual_reviewer` handles screenshot-based visual review for layout, hierarchy, clarity, and related critique
 - The current per-repo control surface is:
   - `mcp_presets`
   - `model`

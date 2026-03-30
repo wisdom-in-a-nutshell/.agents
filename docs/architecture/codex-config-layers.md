@@ -38,9 +38,10 @@ flowchart TD
 
 - `global.config.toml` defines the managed baseline for terminal Codex.
 - `xcode.config.toml` defines the managed baseline for Xcode Codex.
-- `config/agents/*.toml` defines managed role-specific overrides for custom multi-agent roles such as `external_researcher`.
+- `config/agents/*.toml` defines managed role-specific overrides for custom multi-agent roles such as `external_researcher` and `visual_reviewer`.
   - built-in `explorer` remains available upstream for local repo and runtime exploration.
   - `external_researcher` is the managed custom role for information outside the local repo and runtime, using docs, MCP servers, skills, and web sources as needed.
+  - `visual_reviewer` is the managed custom role for screenshot-based visual critique focused on hierarchy, clarity, composition, and visual integrity.
 - `repo-bootstrap.json` defines:
   - which repos are managed
   - which MCP presets each repo gets
