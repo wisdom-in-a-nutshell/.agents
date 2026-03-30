@@ -116,6 +116,22 @@ def _effective_scope(global_terminal: bool, global_xcode: bool, repos: list[str]
     return "-"
 
 
+def _load_agent_role_config(config_path: Path) -> dict[str, str]:
+    if not config_path.is_file():
+        return {
+            "model": "-",
+            "reasoning": "-",
+            "sandbox_mode": "-",
+        }
+    with config_path.open("rb") as handle:
+        data = tomllib.load(handle)
+    return {
+        "model": str(data.get("model", "-")),
+        "reasoning": str(data.get("model_reasoning_effort", "-")),
+        "sandbox_mode": str(data.get("sandbox_mode", "-")),
+    }
+
+
 def generate_registry_base(views_dir: Path) -> None:
     content = """filters:
   and:
@@ -499,6 +515,12 @@ properties:
     displayName: Repos
   config_file:
     displayName: Config File
+  model:
+    displayName: Model
+  reasoning:
+    displayName: Reasoning
+  sandbox_mode:
+    displayName: Sandbox
   description:
     displayName: Description
 views:
@@ -510,6 +532,9 @@ views:
       - global_terminal
       - global_xcode
       - repos_csv
+      - model
+      - reasoning
+      - sandbox_mode
       - config_file
       - description
   - type: table
@@ -521,6 +546,9 @@ views:
       - global_terminal
       - global_xcode
       - repos_csv
+      - model
+      - reasoning
+      - sandbox_mode
       - config_file
       - description
   - type: table
@@ -530,6 +558,9 @@ views:
       - agent_name
       - formula.scope_badge
       - repos_csv
+      - model
+      - reasoning
+      - sandbox_mode
       - config_file
       - description
 """
@@ -550,9 +581,17 @@ def _load_global_agent_declarations(config_path: Path) -> dict[str, dict[str, st
             continue
         description = str(agent.get("description", "")).strip() or "-"
         config_file = str(agent.get("config_file", "")).strip() or "-"
+        role_meta = _load_agent_role_config((config_path.parent / config_file).resolve()) if config_file != "-" else {
+            "model": "-",
+            "reasoning": "-",
+            "sandbox_mode": "-",
+        }
         declarations[str(name)] = {
             "description": description,
             "config_file": config_file,
+            "model": role_meta["model"],
+            "reasoning": role_meta["reasoning"],
+            "sandbox_mode": role_meta["sandbox_mode"],
         }
     return declarations
 
@@ -599,10 +638,16 @@ def generate_agent_registry_items(
         if agent_name in agent_presets:
             description = str(agent_presets[agent_name]["description"])
             config_file = f"agents/{agent_presets[agent_name]['config_file']}"
+            model = str(agent_presets[agent_name].get("model", "-"))
+            reasoning = str(agent_presets[agent_name].get("reasoning", "-"))
+            sandbox_mode = str(agent_presets[agent_name].get("sandbox_mode", "-"))
         else:
             source = global_terminal_agents.get(agent_name) or global_xcode_agents.get(agent_name) or {}
             description = str(source.get("description", "-"))
             config_file = str(source.get("config_file", "-"))
+            model = str(source.get("model", "-"))
+            reasoning = str(source.get("reasoning", "-"))
+            sandbox_mode = str(source.get("sandbox_mode", "-"))
         lines = [
             "---",
             f"agent_name: {_yaml_str(agent_name)}",
@@ -610,6 +655,9 @@ def generate_agent_registry_items(
             f"global_terminal: {_yaml_str(str(global_terminal).lower())}",
             f"global_xcode: {_yaml_str(str(global_xcode).lower())}",
             f"repos_csv: {_yaml_str(','.join(repos_for_agent) if repos_for_agent else '-')}",
+            f"model: {_yaml_str(model)}",
+            f"reasoning: {_yaml_str(reasoning)}",
+            f"sandbox_mode: {_yaml_str(sandbox_mode)}",
             f"config_file: {_yaml_str(config_file)}",
             f"description: {_yaml_str(description)}",
             "repos:",
@@ -670,6 +718,7 @@ def validate_registry(
             "description": description,
             "config_file": config_file,
             "nickname_candidates": nickname_candidates,
+            **_load_agent_role_config(config_path),
         }
 
     repos_raw = data.get("repos")

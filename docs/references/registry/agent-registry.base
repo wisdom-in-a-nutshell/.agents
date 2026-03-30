@@ -1,8 +1,8 @@
 filters:
   and:
-    - file.inFolder("docs/references/registry/agent-registry-items")
+    - 'file.inFolder("docs/references/registry/agent-registry-items")'
 formulas:
-  scope_badge: if(effective_scope == "global", "🌍 global", if(effective_scope == "repo", "📦 repo", if(effective_scope == "mixed", "🧩 mixed", effective_scope)))
+  scope_badge: 'if(effective_scope == "global", "🌍 global", if(effective_scope == "repo", "📦 repo", if(effective_scope == "mixed", "🧩 mixed", effective_scope)))'
 properties:
   agent_name:
     displayName: Agent
@@ -18,6 +18,12 @@ properties:
     displayName: Repos
   config_file:
     displayName: Config File
+  model:
+    displayName: Model
+  reasoning:
+    displayName: Reasoning
+  sandbox_mode:
+    displayName: Sandbox
   description:
     displayName: Description
 views:
@@ -29,28 +35,34 @@ views:
       - global_terminal
       - global_xcode
       - repos_csv
+      - model
+      - reasoning
+      - sandbox_mode
       - config_file
       - description
-    sort:
-      - property: description
-        direction: ASC
   - type: table
     name: Global Agents
-    filters: global_terminal == "true" || global_xcode == "true"
+    filters: 'global_terminal == "true" || global_xcode == "true"'
     order:
       - agent_name
       - formula.scope_badge
       - global_terminal
       - global_xcode
       - repos_csv
+      - model
+      - reasoning
+      - sandbox_mode
       - config_file
       - description
   - type: table
     name: Repo Agents
-    filters: repos_csv != "-"
+    filters: 'repos_csv != "-"'
     order:
       - agent_name
       - formula.scope_badge
       - repos_csv
+      - model
+      - reasoning
+      - sandbox_mode
       - config_file
       - description
