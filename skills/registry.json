@@ -102,6 +102,16 @@
       "upstream_ref": "openai/skills:skills/.curated/frontend-skill@main"
     },
     {
+      "skill": "pretty-mermaid",
+      "origin": "owned",
+      "scope": "repo",
+      "repos": [
+        "adi"
+      ],
+      "source_path": "skills-source/owned/pretty-mermaid",
+      "upstream_ref": "-"
+    },
+    {
       "skill": "project",
       "origin": "owned",
       "scope": "global",
