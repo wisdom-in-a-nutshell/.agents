@@ -96,7 +96,8 @@
       "origin": "external",
       "scope": "repo",
       "repos": [
-        "adi"
+        "adi",
+        "blog-personal"
       ],
       "source_path": "skills-source/external/frontend-skill",
       "upstream_ref": "openai/skills:skills/.curated/frontend-skill@main"
@@ -312,7 +313,8 @@
       "scope": "repo",
       "repos": [
         "~/.agents",
-        "adi"
+        "adi",
+        "blog-personal"
       ],
       "source_path": "skills-source/owned/paper-design",
       "upstream_ref": "-"

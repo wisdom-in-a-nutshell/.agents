@@ -1,8 +1,8 @@
 ---
 repo_name: "blog-personal"
 path: "~/GitHub/blog-personal"
-mcp_count: 0
-skill_count: 15
+mcp_count: 1
+skill_count: 17
 repo_local_skill_count: 1
 global_agent_count: 1
 custom_agent_count: 0
@@ -11,7 +11,8 @@ model: "gpt-5.4"
 reasoning: "high"
 fast_mode: "true"
 service_tier: "-"
-mcps: []
+mcps:
+  - "paper"
 global_agents:
   - "external_researcher"
 custom_agents: []
@@ -30,7 +31,9 @@ repo_skills:
   - "agent-native-repo-playbook"
   - "aip-company"
   - "client-interface-guidelines"
+  - "frontend-skill"
   - "imagegen"
+  - "paper-design"
   - "vercel-react-best-practices"
   - "web-design-guidelines"
 repo_local_skills:
@@ -45,7 +48,9 @@ skills:
   - "client-interface-guidelines"
   - "defuddle"
   - "find-skills"
+  - "frontend-skill"
   - "imagegen"
+  - "paper-design"
   - "project"
   - "secret-management"
   - "skill-creator"

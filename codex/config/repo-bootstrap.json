@@ -93,7 +93,10 @@
       ]
     },
     {
-      "path": "~/GitHub/blog-personal"
+      "path": "~/GitHub/blog-personal",
+      "mcp_presets": [
+        "paper"
+      ]
     },
     {
       "path": "~/GitHub/codexclaw",
