@@ -49,6 +49,8 @@ Use a review loop by default: make a change, take a screenshot, inspect for layo
 7. make small incremental changes
 8. verify visually with screenshots
 9. if a panel is still stuck after meaningful self-review or the judgment is mostly about visual hierarchy/taste, consider using an independent evaluator sub-agent to review screenshots and critique the work before declaring it done
+10. when using an independent evaluator, do not rely on the generator's memory of the critique; have the evaluator produce a short review artifact first, then synthesize from that artifact
+11. if the user explicitly wants an evaluator-driven iteration loop, continue for at least 3 meaningful iterations (or 3-4 if needed) and keep going until the evaluator is generally happy or the review scores are roughly 8+ across the active rubric categories
 
 ### Variant iteration lane
 

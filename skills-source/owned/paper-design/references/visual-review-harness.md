@@ -54,6 +54,32 @@ Do not use an evaluator for:
 
 The evaluator should review screenshots, not vague descriptions.
 
+### Evaluator handoff pattern
+
+If you use an independent evaluator, make the handoff auditable:
+
+1. generator creates or updates the panel
+2. generator captures the current screenshot
+3. evaluator sub-agent reviews the screenshot
+4. evaluator writes a short review artifact
+5. parent agent reads that artifact and decides what to do next
+
+Do **not** treat the generator's own memory of the evaluator feedback as sufficient.
+
+Suggested artifact locations:
+- project-local review note if the project already has a learnings/logs area
+- otherwise a temporary file under `capture/tmp/`
+
+The review artifact should be short and structured:
+- panel name
+- intended idea
+- scores or pass/fail by small rubric
+- 3 concrete criticisms
+- 2 specific recommendations
+- keep polishing vs branch variants
+
+If the user explicitly wants an evaluator-driven loop, do not stop after one pass. Continue through at least 3 meaningful iterations (or 3-4 if needed) and keep going until the evaluator is generally happy or the active rubric categories are roughly 8+.
+
 ## Variant lane pattern
 
 When one panel is stuck:
