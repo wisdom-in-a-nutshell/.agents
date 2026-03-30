@@ -96,9 +96,13 @@ Use [Codex Control Plane Ownership](/Users/dobby/.agents/docs/references/codex-c
 - [`sync-repo-bootstrap-registry.sh`](/Users/adi/.agents/codex/scripts/sync-repo-bootstrap-registry.sh)
   - regenerates the Obsidian Base artifacts from [`repo-bootstrap.json`](/Users/adi/.agents/codex/config/repo-bootstrap.json)
   - enriches the per-repo view with effective skills from [`skills/registry.json`](/Users/dobby/.agents/skills/registry.json)
-  - now also exposes repo-scoped custom agent assignments per repo
+  - now also exposes effective agents per repo:
+    - `global_agents`
+    - `custom_agents`
+    - `agents`
+  - and generates a separate role-centric agent scope registry
   - updates the user-facing registry views under [`docs/references/registry/`](/Users/dobby/.agents/docs/references/registry)
-  - includes [`repo-bootstrap.base`](/Users/dobby/.agents/docs/references/registry/repo-bootstrap.base), [`repo-bootstrap-items/`](/Users/dobby/.agents/docs/references/registry/repo-bootstrap-items), [`mcp-registry.base`](/Users/dobby/.agents/docs/references/registry/mcp-registry.base), and [`mcp-registry-items/`](/Users/dobby/.agents/docs/references/registry/mcp-registry-items)
+  - includes [`repo-bootstrap.base`](/Users/dobby/.agents/docs/references/registry/repo-bootstrap.base), [`repo-bootstrap-items/`](/Users/dobby/.agents/docs/references/registry/repo-bootstrap-items), [`mcp-registry.base`](/Users/dobby/.agents/docs/references/registry/mcp-registry.base), [`mcp-registry-items/`](/Users/dobby/.agents/docs/references/registry/mcp-registry-items), [`agent-registry.base`](/Users/dobby/.agents/docs/references/registry/agent-registry.base), and [`agent-registry-items/`](/Users/dobby/.agents/docs/references/registry/agent-registry-items)
 - [`bootstrap-machine-codex.sh`](/Users/dobby/.agents/codex/scripts/bootstrap-machine-codex.sh)
   - runs config sync
   - runs trusted-project sync

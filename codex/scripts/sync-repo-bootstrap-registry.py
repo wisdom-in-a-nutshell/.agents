@@ -104,6 +104,18 @@ def _effective_fast_mode(defaults: dict[str, Any], item: dict[str, Any]) -> str:
     return str(merged["fast_mode"]).lower()
 
 
+def _effective_scope(global_terminal: bool, global_xcode: bool, repos: list[str]) -> str:
+    has_global = global_terminal or global_xcode
+    has_repos = bool(repos)
+    if has_global and has_repos:
+        return "mixed"
+    if has_global:
+        return "global"
+    if has_repos:
+        return "repo"
+    return "-"
+
+
 def generate_registry_base(views_dir: Path) -> None:
     content = """filters:
   and:
@@ -121,7 +133,11 @@ properties:
     displayName: Skill Count
   repo_local_skill_count:
     displayName: Repo-Local Skill Count
+  global_agent_count:
+    displayName: Global Agent Count
   custom_agent_count:
+    displayName: Custom Agent Count
+  agent_count:
     displayName: Agent Count
   skills:
     displayName: Skills
@@ -131,6 +147,10 @@ properties:
     displayName: Repo Skills
   repo_local_skills:
     displayName: Repo-Local Skills
+  agents:
+    displayName: Agents
+  global_agents:
+    displayName: Global Agents
   custom_agents:
     displayName: Custom Agents
   model:
@@ -147,7 +167,7 @@ views:
     order:
       - repo_name
       - mcps
-      - custom_agents
+      - agents
       - skill_count
       - global_skills
       - repo_skills
@@ -162,7 +182,7 @@ views:
     order:
       - repo_name
       - mcps
-      - custom_agents
+      - agents
       - skill_count
       - global_skills
       - repo_skills
@@ -176,18 +196,33 @@ views:
     filters: 'skill_count > 0'
     order:
       - repo_name
-      - custom_agents
+      - agents
       - skill_count
       - global_skills
       - repo_skills
       - repo_local_skills
       - mcps
   - type: table
+    name: Agents Enabled
+    filters: 'agent_count > 0'
+    order:
+      - repo_name
+      - agents
+      - global_agents
+      - custom_agents
+      - mcps
+      - skill_count
+      - model
+      - reasoning
+      - fast_mode
+      - service_tier
+  - type: table
     name: Custom Agents
     filters: 'custom_agent_count > 0'
     order:
       - repo_name
       - custom_agents
+      - global_agents
       - mcps
       - skill_count
       - model
@@ -227,14 +262,18 @@ def generate_registry_items(
             f"mcp_count: {len(item['mcp_presets'])}",
             f"skill_count: {len(item['skills'])}",
             f"repo_local_skill_count: {len(item['repo_local_skills'])}",
+            f"global_agent_count: {len(item['global_agents'])}",
             f"custom_agent_count: {len(item['custom_agents'])}",
+            f"agent_count: {len(item['agents'])}",
             f"model: {_yaml_str(_effective_value(defaults, item, 'model'))}",
             f"reasoning: {_yaml_str(_effective_value(defaults, item, 'model_reasoning_effort'))}",
             f"fast_mode: {_yaml_str(_effective_fast_mode(defaults, item))}",
             f"service_tier: {_yaml_str(_effective_value(defaults, item, 'service_tier'))}",
         ]
         _append_yaml_list(lines, "mcps", item["mcp_presets"])
+        _append_yaml_list(lines, "global_agents", item["global_agents"])
         _append_yaml_list(lines, "custom_agents", item["custom_agents"])
+        _append_yaml_list(lines, "agents", item["agents"])
         _append_yaml_list(lines, "global_skills", item["global_skills"])
         _append_yaml_list(lines, "repo_skills", item["repo_scoped_skills"])
         _append_yaml_list(lines, "repo_local_skills", item["repo_local_skills"])
@@ -277,18 +316,6 @@ def _mcp_target(preset: dict[str, Any]) -> str:
         if isinstance(args, list) and args:
             return " ".join([str(preset["command"]), *[str(arg) for arg in args]])
         return str(preset["command"])
-    return "-"
-
-
-def _mcp_scope(global_terminal: bool, global_xcode: bool, repos: list[str]) -> str:
-    has_global = global_terminal or global_xcode
-    has_repos = bool(repos)
-    if has_global and has_repos:
-        return "mixed"
-    if has_global:
-        return "global"
-    if has_repos:
-        return "repo"
     return "-"
 
 
@@ -459,7 +486,7 @@ def generate_mcp_registry_items(
         lines = [
             "---",
             f"mcp_name: {_yaml_str(preset_name)}",
-            f"effective_scope: {_yaml_str(_mcp_scope(global_terminal, global_xcode, repos_for_preset))}",
+            f"effective_scope: {_yaml_str(_effective_scope(global_terminal, global_xcode, repos_for_preset))}",
             f"global_terminal: {_yaml_str(str(global_terminal).lower())}",
             f"global_xcode: {_yaml_str(str(global_xcode).lower())}",
             f"repos_csv: {_yaml_str(','.join(repos_for_preset) if repos_for_preset else '-')}",
@@ -480,6 +507,157 @@ def generate_mcp_registry_items(
             ]
         )
         _write_if_changed(root / f"{_sanitize_file_name(preset_name)}.md", "\n".join(lines))
+
+
+def generate_agent_registry_base(views_dir: Path) -> None:
+    content = """filters:
+  and:
+    - 'file.inFolder("docs/references/registry/agent-registry-items")'
+formulas:
+  scope_badge: 'if(effective_scope == "global", "🌍 global", if(effective_scope == "repo", "📦 repo", if(effective_scope == "mixed", "🧩 mixed", effective_scope)))'
+properties:
+  agent_name:
+    displayName: Agent
+  effective_scope:
+    displayName: Scope
+  formula.scope_badge:
+    displayName: Scope
+  global_terminal:
+    displayName: Global Terminal
+  global_xcode:
+    displayName: Global Xcode
+  repos_csv:
+    displayName: Repos
+  config_file:
+    displayName: Config File
+  description:
+    displayName: Description
+views:
+  - type: table
+    name: Agent Registry
+    order:
+      - agent_name
+      - formula.scope_badge
+      - global_terminal
+      - global_xcode
+      - repos_csv
+      - config_file
+      - description
+  - type: table
+    name: Global Agents
+    filters: 'global_terminal == "true" || global_xcode == "true"'
+    order:
+      - agent_name
+      - formula.scope_badge
+      - global_terminal
+      - global_xcode
+      - repos_csv
+      - config_file
+      - description
+  - type: table
+    name: Repo Agents
+    filters: 'repos_csv != "-"'
+    order:
+      - agent_name
+      - formula.scope_badge
+      - repos_csv
+      - config_file
+      - description
+"""
+    _write_if_changed(views_dir / "agent-registry.base", content)
+
+
+def _load_global_agent_declarations(config_path: Path) -> dict[str, dict[str, str]]:
+    if not config_path.is_file():
+        return {}
+    with config_path.open("rb") as handle:
+        data = tomllib.load(handle)
+    agents = data.get("agents", {})
+    if not isinstance(agents, dict):
+        return {}
+    declarations: dict[str, dict[str, str]] = {}
+    for name, agent in agents.items():
+        if not isinstance(agent, dict):
+            continue
+        description = str(agent.get("description", "")).strip() or "-"
+        config_file = str(agent.get("config_file", "")).strip() or "-"
+        declarations[str(name)] = {
+            "description": description,
+            "config_file": config_file,
+        }
+    return declarations
+
+
+def apply_agent_assignments(
+    repos: list[dict[str, Any]],
+    global_terminal_agents: dict[str, dict[str, str]],
+    global_xcode_agents: dict[str, dict[str, str]],
+) -> None:
+    global_agents = sorted(set(global_terminal_agents) | set(global_xcode_agents))
+    global_agent_set = set(global_agents)
+    for item in repos:
+        item["global_agents"] = global_agents
+        item["agents"] = sorted(global_agent_set | set(item["custom_agents"]))
+
+
+def generate_agent_registry_items(
+    views_dir: Path,
+    global_terminal_agents: dict[str, dict[str, str]],
+    global_xcode_agents: dict[str, dict[str, str]],
+    agent_presets: dict[str, Any],
+    repos: list[dict[str, Any]],
+) -> None:
+    root = views_dir / "agent-registry-items"
+    shutil.rmtree(root, ignore_errors=True)
+    root.mkdir(parents=True, exist_ok=True)
+
+    repo_usage: dict[str, list[str]] = {}
+    for item in repos:
+        for agent_name in item["custom_agents"]:
+            repo_usage.setdefault(agent_name, []).append(item["repo_name"])
+
+    all_agent_names = sorted(
+        set(global_terminal_agents)
+        | set(global_xcode_agents)
+        | set(agent_presets)
+        | set(repo_usage)
+    )
+
+    for agent_name in all_agent_names:
+        global_terminal = agent_name in global_terminal_agents
+        global_xcode = agent_name in global_xcode_agents
+        repos_for_agent = sorted(repo_usage.get(agent_name, []))
+        if agent_name in agent_presets:
+            description = str(agent_presets[agent_name]["description"])
+            config_file = f"agents/{agent_presets[agent_name]['config_file']}"
+        else:
+            source = global_terminal_agents.get(agent_name) or global_xcode_agents.get(agent_name) or {}
+            description = str(source.get("description", "-"))
+            config_file = str(source.get("config_file", "-"))
+        lines = [
+            "---",
+            f"agent_name: {_yaml_str(agent_name)}",
+            f"effective_scope: {_yaml_str(_effective_scope(global_terminal, global_xcode, repos_for_agent))}",
+            f"global_terminal: {_yaml_str(str(global_terminal).lower())}",
+            f"global_xcode: {_yaml_str(str(global_xcode).lower())}",
+            f"repos_csv: {_yaml_str(','.join(repos_for_agent) if repos_for_agent else '-')}",
+            f"config_file: {_yaml_str(config_file)}",
+            f"description: {_yaml_str(description)}",
+            "repos:",
+        ]
+        if repos_for_agent:
+            lines.extend([f"  - {_yaml_str(repo_name)}" for repo_name in repos_for_agent])
+        else:
+            lines.append('  - "-"')
+        lines.extend(
+            [
+                "---",
+                "",
+                "Generated from `codex/config/repo-bootstrap.json` plus the managed global Codex config templates. Do not edit manually.",
+                "",
+            ]
+        )
+        _write_if_changed(root / f"{_sanitize_file_name(agent_name)}.md", "\n".join(lines))
 
 
 def validate_registry(
@@ -623,6 +801,9 @@ def main() -> int:
 
     views_dir = generated_views_dir(root_dir)
     _load_skill_assignments(root_dir, home, repos)
+    global_terminal_agents = _load_global_agent_declarations(config_dir / "global.config.toml")
+    global_xcode_agents = _load_global_agent_declarations(config_dir / "xcode.config.toml")
+    apply_agent_assignments(repos, global_terminal_agents, global_xcode_agents)
     generate_registry_base(views_dir)
     generate_registry_items(views_dir, defaults, repos)
     global_terminal_mcp = _load_global_mcp_names(config_dir / "global.config.toml")
@@ -630,6 +811,10 @@ def main() -> int:
     generate_mcp_registry_base(views_dir)
     generate_mcp_registry_items(
         views_dir, presets, repos, global_terminal_mcp, global_xcode_mcp
+    )
+    generate_agent_registry_base(views_dir)
+    generate_agent_registry_items(
+        views_dir, global_terminal_agents, global_xcode_agents, agent_presets, repos
     )
     print(f"Generated repo bootstrap Base artifacts in {views_dir}")
     return 0

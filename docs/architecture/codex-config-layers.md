@@ -73,6 +73,11 @@ So trust sync is part of config layering, not a separate unrelated feature.
 - Most repos can have a minimal managed file with no repo-local overrides.
 - Some repos get MCP presets or later model-specific overrides.
 - `sync-repo-bootstrap-registry.sh` regenerates user-facing Obsidian views for the same registry under [`docs/references/registry/`](/Users/dobby/.agents/docs/references/registry) so the current repo assignments stay visible in Obsidian, including effective skills merged from [`skills/registry.json`](/Users/dobby/.agents/skills/registry.json).
+  - the per-repo view now includes:
+    - `global_agents`
+    - `custom_agents`
+    - `agents`
+  - and the generated registry now also includes a role-centric [`agent-registry.base`](/Users/dobby/.agents/docs/references/registry/agent-registry.base)
 
 Current per-repo fields in `repo-bootstrap.json`:
 - `mcp_presets`
@@ -96,5 +101,6 @@ Additional shared bootstrap metadata in `repo-bootstrap.json`:
 ## Notes
 
 - Use `docs/architecture/` to understand the shape of the system.
+- Use [Capability Bootstrap Model](/Users/dobby/.agents/docs/architecture/capability-bootstrap-model.md) for the consolidated skills / MCPs / agents model.
 - Use [Codex Control Plane Operations](/Users/adi/.agents/docs/references/codex-control-plane-operations.md) for exact commands.
 - Use [Codex Control Plane Ownership](/Users/adi/.agents/docs/references/codex-control-plane-ownership.md) for the keep/move/generate split.

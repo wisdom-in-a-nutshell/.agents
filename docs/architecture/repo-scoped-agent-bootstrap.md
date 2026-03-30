@@ -1,10 +1,10 @@
 # Repo-Scoped Agent Bootstrap
 
-This page describes the architecture we are moving toward for repo-scoped Codex sub-agents.
+This page describes the current architecture for repo-scoped Codex sub-agents.
 
 The goal is simple: keep one canonical control plane in `~/.agents`, but allow specific repos to receive specific custom agent roles without promoting every experimental role into the global runtime.
 
-Today the control plane already bootstraps repo-local `.codex/config.toml` files from `codex/config/repo-bootstrap.json`. The missing piece is repo-scoped custom agents. The architecture below extends that same bootstrap path instead of introducing a second system.
+The control plane bootstraps repo-local `.codex/config.toml` files from `codex/config/repo-bootstrap.json`, and it now extends that same path to repo-scoped custom agents instead of introducing a second bootstrap system.
 
 ## Overview
 
@@ -44,10 +44,11 @@ flowchart TD
 
 ## Current State
 
-Today the repo bootstrap system already does two important jobs:
+The repo bootstrap system now does three important jobs:
 
 1. `sync-repo-codex-configs.sh` renders repo-local `.codex/config.toml` from `repo-bootstrap.json`
-2. `sync-repo-bootstrap-registry.sh` generates the Obsidian Base views under `docs/references/registry/`
+2. `sync-repo-codex-configs.sh` also materializes repo-local `.codex/agents/*.toml` for any assigned repo-scoped custom agents
+3. `sync-repo-bootstrap-registry.sh` generates the Obsidian Base views under `docs/references/registry/`
 
 But the current registry only models:
 
@@ -64,7 +65,7 @@ Custom agent roles are still defined globally through:
 
 That is good for durable cross-repo roles such as `external_researcher`, but it is the wrong layer for repo-specific roles such as a visual reviewer that should exist only in a design-heavy repo.
 
-## Target Architecture
+## Current Architecture
 
 ### 1. Canonical role definitions stay in `~/.agents`
 
@@ -111,7 +112,7 @@ The registry should remain declarative. It should carry only the declaration met
 
 ### 3. Repo config sync renders both declaration and role files
 
-`sync-repo-codex-configs.sh` should grow from a single-file renderer into a repo-local Codex config renderer that writes:
+`sync-repo-codex-configs.sh` is the repo-local Codex config renderer that writes:
 
 - `.codex/config.toml`
 - `.codex/agents/*.toml` for assigned custom agents
@@ -122,12 +123,19 @@ That script becomes the canonical place that patches together:
 - role definition source from `codex/config/agents/*.toml`
 - repo-local output under `.codex/`
 
-### 4. Obsidian registry should expose repo-scoped agents
+### 4. Obsidian registry exposes repo-scoped agents
 
-The generated registry views should show, per repo:
+The generated registry views now show, per repo:
 
 - `custom_agent_count`
 - `custom_agents`
+- `global_agents`
+- `agents`
+
+And there is now a separate agent-scope registry:
+
+- `agent-registry.base`
+- `agent-registry-items/`
 
 That keeps the control plane auditable in Obsidian the same way MCPs and skills already are.
 
@@ -231,14 +239,14 @@ It avoids the two bad extremes:
 - polluting global config with repo-specific roles
 - creating a second parallel agent-bootstrap system outside the existing repo bootstrap path
 
-## What should change next
+## What this architecture gives us now
 
-The next implementation step should be:
-
-1. extend `repo-bootstrap.json` validation to allow `custom_agents`
-2. teach `sync-repo-codex-configs.sh` to render repo-local agent declarations and copy the referenced role TOMLs
-3. teach `sync-repo-bootstrap-registry.py` to expose custom agents in the generated views
-4. only then assign repo-scoped roles such as `visual_reviewer` to repos like `adi`
+1. one canonical repo owns the control plane
+2. global roles stay minimal and durable
+3. repo-specific roles can be bootstrapped centrally without polluting the global runtime
+4. Obsidian can show both:
+   - effective per-repo agents
+   - role-centric scope across terminal, Xcode, and repo usage
 
 ## Related docs
 
