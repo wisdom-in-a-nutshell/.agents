@@ -45,6 +45,7 @@ This harness keeps the work legible and skeptical.
    - Keep iterating until the panel is directionally strong and you would personally feel good presenting it.
    - Only surface rougher intermediate states when the user explicitly wants live co-design or micro-iteration.
 
+
 ## Independent evaluator rule
 
 Use an evaluator by default for non-one-shot visual work, and selectively for everything else.
