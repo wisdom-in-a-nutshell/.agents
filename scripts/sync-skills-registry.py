@@ -104,8 +104,10 @@ properties:
     displayName: Scope
   formula.scope_badge:
     displayName: Scope
-  repos_csv:
+  repos:
     displayName: Repos
+  repos_csv:
+    displayName: Repos CSV
   upstream_ref:
     displayName: Upstream
   formula.origin_badge:
@@ -122,7 +124,7 @@ views:
       - skill
       - formula.origin_badge
       - formula.scope_badge
-      - repos_csv
+      - repos
       - upstream_ref
     sort:
       - property: scope

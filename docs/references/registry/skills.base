@@ -1,9 +1,9 @@
 filters:
   and:
-    - file.inFolder("docs/references/registry/skills-items")
+    - 'file.inFolder("docs/references/registry/skills-items")'
 formulas:
-  scope_badge: if(scope == "global", "🌍 global", if(scope == "repo", "📦 repo", scope))
-  origin_badge: if(origin == "external", "↗ external", if(origin == "owned", "✳ owned", origin))
+  scope_badge: 'if(scope == "global", "🌍 global", if(scope == "repo", "📦 repo", scope))'
+  origin_badge: 'if(origin == "external", "↗ external", if(origin == "owned", "✳ owned", origin))'
 properties:
   registry_kind:
     displayName: Type
@@ -15,8 +15,10 @@ properties:
     displayName: Scope
   formula.scope_badge:
     displayName: Scope
-  repos_csv:
+  repos:
     displayName: Repos
+  repos_csv:
+    displayName: Repos CSV
   upstream_ref:
     displayName: Upstream
   formula.origin_badge:
@@ -28,12 +30,12 @@ properties:
 views:
   - type: table
     name: Managed Skills
-    filters: registry_kind == "managed"
+    filters: 'registry_kind == "managed"'
     order:
       - skill
       - formula.origin_badge
       - formula.scope_badge
-      - repos_csv
+      - repos
       - upstream_ref
     sort:
       - property: scope
@@ -44,7 +46,7 @@ views:
         direction: ASC
   - type: table
     name: Repo-Local Skills
-    filters: registry_kind == "repo_local"
+    filters: 'registry_kind == "repo_local"'
     order:
       - repo
       - skill

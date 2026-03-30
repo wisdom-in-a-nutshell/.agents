@@ -86,5 +86,5 @@ So the system is eventually consistent, not instantly consistent.
 - let the 15-minute sync loop apply it automatically
 
 If you want the next level of detail after this page:
-- read [Codex Control Plane Script Flows](/Users/adi/.agents/docs/architecture/codex-control-plane-script-flows.md)
-- then read [Codex Control Plane Operations](/Users/adi/.agents/docs/references/codex-control-plane-operations.md)
+- read [Codex Control Plane Script Flows](/Users/dobby/.agents/docs/architecture/codex-control-plane-script-flows.md)
+- then read [Codex Control Plane Operations](/Users/dobby/.agents/docs/references/codex-control-plane-operations.md)

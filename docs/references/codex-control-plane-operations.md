@@ -32,7 +32,7 @@ Use [Codex Control Plane Ownership](/Users/dobby/.agents/docs/references/codex-c
   - [`bootstrap-machine-codex.sh`](/Users/dobby/.agents/codex/scripts/bootstrap-machine-codex.sh)
   - `~/.agents/codex/scripts/bootstrap-machine-codex.sh --apply`
 - Auto-apply the Codex control plane after `~/.agents` sync when `codex/` changed:
-  - [`auto-apply-codex-control-plane.sh`](/Users/adi/.agents/codex/scripts/auto-apply-codex-control-plane.sh)
+  - [`auto-apply-codex-control-plane.sh`](/Users/dobby/.agents/codex/scripts/auto-apply-codex-control-plane.sh)
   - `~/.agents/codex/scripts/auto-apply-codex-control-plane.sh --apply`
 - Apply only the managed Codex config:
   - [`sync-config.sh`](/Users/dobby/.agents/codex/scripts/sync-config.sh)
@@ -42,10 +42,10 @@ Use [Codex Control Plane Ownership](/Users/dobby/.agents/docs/references/codex-c
   - [`sync-trusted-projects.sh`](/Users/dobby/.agents/codex/scripts/sync-trusted-projects.sh)
   - `~/.agents/codex/scripts/sync-trusted-projects.sh --apply`
 - Sync repo-local `.codex/config.toml` files from the canonical registry:
-  - [`sync-repo-codex-configs.sh`](/Users/adi/.agents/codex/scripts/sync-repo-codex-configs.sh)
+  - [`sync-repo-codex-configs.sh`](/Users/dobby/.agents/codex/scripts/sync-repo-codex-configs.sh)
   - `~/.agents/codex/scripts/sync-repo-codex-configs.sh --apply`
 - Regenerate the Obsidian Base artifacts for the repo bootstrap registry:
-- [`sync-repo-bootstrap-registry.sh`](/Users/adi/.agents/codex/scripts/sync-repo-bootstrap-registry.sh)
+- [`sync-repo-bootstrap-registry.sh`](/Users/dobby/.agents/codex/scripts/sync-repo-bootstrap-registry.sh)
   - `~/.agents/codex/scripts/sync-repo-bootstrap-registry.sh`
 - Link the shared shell config:
   - [`link-shared-zshrc.sh`](/Users/dobby/GitHub/scripts/setup/codex/link-shared-zshrc.sh)
@@ -87,14 +87,14 @@ Use [Codex Control Plane Ownership](/Users/dobby/.agents/docs/references/codex-c
   - includes explicit extra managed repos such as `~/.agents`
   - writes exact `[projects."<path>"] trust_level = "trusted"` entries
   - skips no-op rewrites and stores real pre-change backups under `~/.local/state/codex-control-plane/runtime-config-backups/`
-- [`sync-repo-codex-configs.sh`](/Users/adi/.agents/codex/scripts/sync-repo-codex-configs.sh)
+- [`sync-repo-codex-configs.sh`](/Users/dobby/.agents/codex/scripts/sync-repo-codex-configs.sh)
   - renders managed repo-local Codex files from the canonical registry
   - writes `.codex/config.toml` for all managed repos
   - writes repo-local `.codex/agents/*.toml` files for any repo-scoped custom agents assigned in the registry
   - skips no-op rewrites and stores backups under `~/.local/state/codex-control-plane/repo-config-backups/` instead of dirtying the git repos themselves
-  - keeps the repo list and MCP/model preset definitions in [`repo-bootstrap.json`](/Users/adi/.agents/codex/config/repo-bootstrap.json)
-- [`sync-repo-bootstrap-registry.sh`](/Users/adi/.agents/codex/scripts/sync-repo-bootstrap-registry.sh)
-  - regenerates the Obsidian Base artifacts from [`repo-bootstrap.json`](/Users/adi/.agents/codex/config/repo-bootstrap.json)
+  - keeps the repo list and MCP/model preset definitions in [`repo-bootstrap.json`](/Users/dobby/.agents/codex/config/repo-bootstrap.json)
+- [`sync-repo-bootstrap-registry.sh`](/Users/dobby/.agents/codex/scripts/sync-repo-bootstrap-registry.sh)
+  - regenerates the Obsidian Base artifacts from [`repo-bootstrap.json`](/Users/dobby/.agents/codex/config/repo-bootstrap.json)
   - enriches the per-repo view with effective skills from [`skills/registry.json`](/Users/dobby/.agents/skills/registry.json)
   - now also exposes effective agents per repo:
     - `global_agents`
@@ -108,7 +108,7 @@ Use [Codex Control Plane Ownership](/Users/dobby/.agents/docs/references/codex-c
   - runs trusted-project sync
   - runs repo-local Codex config sync
   - runs Ghostty config reconciliation
-- [`auto-apply-codex-control-plane.sh`](/Users/adi/.agents/codex/scripts/auto-apply-codex-control-plane.sh)
+- [`auto-apply-codex-control-plane.sh`](/Users/dobby/.agents/codex/scripts/auto-apply-codex-control-plane.sh)
   - checks whether `~/.agents/codex/` changed since the last successful reconcile on that machine
   - runs [`bootstrap-machine-codex.sh`](/Users/dobby/.agents/codex/scripts/bootstrap-machine-codex.sh) only when a new Codex control-plane revision needs to be applied
   - stores a machine-local reconcile stamp under `~/.local/state/codex-control-plane/`
@@ -116,26 +116,26 @@ Use [Codex Control Plane Ownership](/Users/dobby/.agents/docs/references/codex-c
   - ensures Ghostty uses the Codex startup wrapper
   - ensures shell integration stays on
   - installs the `Cmd+Shift+G` current-terminal picker keybind
-- [`codex-shell.zsh`](/Users/adi/.agents/codex/shell/codex-shell.zsh)
+- [`codex-shell.zsh`](/Users/dobby/.agents/codex/shell/codex-shell.zsh)
   - `codex_jump` sets the Ghostty tab/surface title to the selected repo basename before launching Codex
   - `codex_jump` also reports the selected cwd back to Ghostty immediately so regular new tabs and splits inherit the active repo instead of falling back to `~`
   - records the active Ghostty/Codex working directory to `~/.local/state/codex-control-plane/ghostty-last-dir.txt` so cold Ghostty launches can resume there
-- [`ghostty-codex-then-shell.sh`](/Users/adi/.agents/codex/scripts/ghostty-codex-then-shell.sh)
+- [`ghostty-codex-then-shell.sh`](/Users/dobby/.agents/codex/scripts/ghostty-codex-then-shell.sh)
   - reports the current cwd and repo basename title before the first-surface Codex launch so Ghostty new-window inheritance can reuse the active repo
   - restores the last recorded working directory on cold Ghostty launches when startup otherwise lands in `~`
-- [`open-ghostty-codex-picker-tab.sh`](/Users/adi/.agents/codex/scripts/open-ghostty-codex-picker-tab.sh)
+- [`open-ghostty-codex-picker-tab.sh`](/Users/dobby/.agents/codex/scripts/open-ghostty-codex-picker-tab.sh)
   - opens a new Ghostty tab with a custom surface configuration and immediately runs `codex_jump`
   - is the one tracked helper used by both the Stadia controller `Share` action and the optional manual Keyboard Maestro `Cmd+Shift+T` macro
-- [`open-ghostty-codex-picker-split.sh`](/Users/adi/.agents/codex/scripts/open-ghostty-codex-picker-split.sh)
+- [`open-ghostty-codex-picker-split.sh`](/Users/dobby/.agents/codex/scripts/open-ghostty-codex-picker-split.sh)
   - opens a Ghostty split with a custom surface configuration and immediately runs `codex_jump` in the new split
   - is the tracked helper used by the Stadia controller `leftThumbstickButton` split-picker action
-- [`open-ghostty-plain-shell-split.sh`](/Users/adi/.agents/codex/scripts/open-ghostty-plain-shell-split.sh)
+- [`open-ghostty-plain-shell-split.sh`](/Users/dobby/.agents/codex/scripts/open-ghostty-plain-shell-split.sh)
   - opens a Ghostty split with `CODEX_DISABLE_AUTOSTART=1` so the new pane is a plain shell in the inherited cwd
   - is intended for an optional Keyboard Maestro plain-shell split shortcut such as `Cmd+Opt+D`
 
 ## Repo Bootstrap Registry Fields
 
-- [`repo-bootstrap.json`](/Users/adi/.agents/codex/config/repo-bootstrap.json) currently controls these per-repo fields:
+- [`repo-bootstrap.json`](/Users/dobby/.agents/codex/config/repo-bootstrap.json) currently controls these per-repo fields:
   - `mcp_presets`
   - `custom_agents`
   - `model`
@@ -148,8 +148,8 @@ Use [Codex Control Plane Ownership](/Users/dobby/.agents/docs/references/codex-c
 
 ## Automatic Cross-Machine Apply
 
-- Launchd still lives in [`~/GitHub/scripts/sync/git-auto-sync.sh`](/Users/adi/GitHub/scripts/sync/git-auto-sync.sh), because scheduler ownership is part of the generic machine-ops repo.
-- Codex-specific post-sync apply logic lives in [`auto-apply-codex-control-plane.sh`](/Users/adi/.agents/codex/scripts/auto-apply-codex-control-plane.sh), because the apply contract is Codex-specific policy.
+- Launchd still lives in [`~/GitHub/scripts/sync/git-auto-sync.sh`](/Users/dobby/GitHub/scripts/sync/git-auto-sync.sh), because scheduler ownership is part of the generic machine-ops repo.
+- Codex-specific post-sync apply logic lives in [`auto-apply-codex-control-plane.sh`](/Users/dobby/.agents/codex/scripts/auto-apply-codex-control-plane.sh), because the apply contract is Codex-specific policy.
 - Practical flow:
   1. one machine pushes a change in `~/.agents`
   2. the other machine pulls it on the next git auto-sync cycle

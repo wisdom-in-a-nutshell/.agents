@@ -40,10 +40,10 @@ flowchart TD
   - writes the managed terminal and Xcode Codex config
 - [`sync-trusted-projects.sh`](/Users/dobby/.agents/codex/scripts/sync-trusted-projects.sh)
   - writes exact trust entries for discovered Git repos
-- [`sync-repo-codex-configs.sh`](/Users/adi/.agents/codex/scripts/sync-repo-codex-configs.sh)
+- [`sync-repo-codex-configs.sh`](/Users/dobby/.agents/codex/scripts/sync-repo-codex-configs.sh)
   - renders managed repo-local `.codex/config.toml` files for all registered repos
   - also materializes repo-local `.codex/agents/*.toml` files for assigned repo-scoped custom agents
-- [`repo-bootstrap.json`](/Users/adi/.agents/codex/config/repo-bootstrap.json)
+- [`repo-bootstrap.json`](/Users/dobby/.agents/codex/config/repo-bootstrap.json)
   - defines the managed repo set, repo MCP presets, repo-scoped custom agents, and per-repo model/service-tier/reasoning overrides
 - [`configure-ghostty-cwd.sh`](/Users/dobby/.agents/codex/scripts/configure-ghostty-cwd.sh)
   - rewrites Ghostty config so Codex startup and cwd handling stay consistent
@@ -61,9 +61,9 @@ flowchart TD
 
 ### What This Group Does
 
-- [`git-auto-sync.sh`](/Users/adi/GitHub/scripts/sync/git-auto-sync.sh)
+- [`git-auto-sync.sh`](/Users/dobby/GitHub/scripts/sync/git-auto-sync.sh)
   - remains the launchd-driven machine sync loop in the generic `scripts` repo
-- [`auto-apply-codex-control-plane.sh`](/Users/adi/.agents/codex/scripts/auto-apply-codex-control-plane.sh)
+- [`auto-apply-codex-control-plane.sh`](/Users/dobby/.agents/codex/scripts/auto-apply-codex-control-plane.sh)
   - checks whether the current `~/.agents` revision contains new Codex control-plane changes since the last successful reconcile on that machine
   - runs the full Codex bootstrap only when needed
   - keeps a machine-local stamp under `~/.local/state/codex-control-plane/`

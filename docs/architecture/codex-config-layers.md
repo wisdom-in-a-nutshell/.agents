@@ -102,5 +102,5 @@ Additional shared bootstrap metadata in `repo-bootstrap.json`:
 
 - Use `docs/architecture/` to understand the shape of the system.
 - Use [Capability Bootstrap Model](/Users/dobby/.agents/docs/architecture/capability-bootstrap-model.md) for the consolidated skills / MCPs / agents model.
-- Use [Codex Control Plane Operations](/Users/adi/.agents/docs/references/codex-control-plane-operations.md) for exact commands.
-- Use [Codex Control Plane Ownership](/Users/adi/.agents/docs/references/codex-control-plane-ownership.md) for the keep/move/generate split.
+- Use [Codex Control Plane Operations](/Users/dobby/.agents/docs/references/codex-control-plane-operations.md) for exact commands.
+- Use [Codex Control Plane Ownership](/Users/dobby/.agents/docs/references/codex-control-plane-ownership.md) for the keep/move/generate split.

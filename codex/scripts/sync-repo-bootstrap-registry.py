@@ -406,8 +406,10 @@ properties:
     displayName: Global Terminal
   global_xcode:
     displayName: Global Xcode
-  repos_csv:
+  repos:
     displayName: Repos
+  repos_csv:
+    displayName: Repos CSV
   transport:
     displayName: Transport
   target:
@@ -420,7 +422,7 @@ views:
       - formula.scope_badge
       - global_terminal
       - global_xcode
-      - repos_csv
+      - repos
       - transport
       - target
   - type: table
@@ -431,7 +433,7 @@ views:
       - formula.scope_badge
       - global_terminal
       - global_xcode
-      - repos_csv
+      - repos
       - transport
       - target
   - type: table
@@ -440,7 +442,7 @@ views:
     order:
       - mcp_name
       - formula.scope_badge
-      - repos_csv
+      - repos
       - transport
       - target
 """
@@ -511,8 +513,10 @@ properties:
     displayName: Global Terminal
   global_xcode:
     displayName: Global Xcode
-  repos_csv:
+  repos:
     displayName: Repos
+  repos_csv:
+    displayName: Repos CSV
   config_file:
     displayName: Config File
   model:
@@ -531,7 +535,7 @@ views:
       - formula.scope_badge
       - global_terminal
       - global_xcode
-      - repos_csv
+      - repos
       - model
       - reasoning
       - sandbox_mode
@@ -545,7 +549,7 @@ views:
       - formula.scope_badge
       - global_terminal
       - global_xcode
-      - repos_csv
+      - repos
       - model
       - reasoning
       - sandbox_mode
@@ -557,7 +561,7 @@ views:
     order:
       - agent_name
       - formula.scope_badge
-      - repos_csv
+      - repos
       - model
       - reasoning
       - sandbox_mode
