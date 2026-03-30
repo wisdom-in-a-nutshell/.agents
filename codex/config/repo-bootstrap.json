@@ -78,8 +78,12 @@
         "openaiDeveloperDocs",
         "paper"
       ],
+      "features": {
+        "multi_agent": true
+      },
       "custom_agents": [
-        "visual_reviewer"
+        "visual_reviewer",
+        "writer"
       ]
     },
     {
@@ -109,6 +113,12 @@
     },
     {
       "path": "~/GitHub/blog-personal",
+      "features": {
+        "multi_agent": true
+      },
+      "custom_agents": [
+        "writer"
+      ],
       "mcp_presets": [
         "paper"
       ]
