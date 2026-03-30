@@ -166,9 +166,10 @@ views:
     name: Repo Bootstrap
     order:
       - repo_name
+      - skill_count
+      - repo_local_skill_count
       - mcps
       - agents
-      - skill_count
       - model
       - reasoning
       - fast_mode
@@ -189,10 +190,11 @@ views:
     filters: 'custom_agent_count > 0'
     order:
       - repo_name
+      - skill_count
+      - repo_local_skill_count
       - custom_agents
       - global_agents
       - mcps
-      - skill_count
       - model
       - reasoning
       - fast_mode
@@ -202,11 +204,11 @@ views:
     filters: 'skill_count > 0'
     order:
       - repo_name
+      - skill_count
+      - repo_local_skill_count
       - global_skills
       - repo_skills
       - repo_local_skills
-      - skill_count
-      - repo_local_skill_count
       - mcps
       - agents
 """
