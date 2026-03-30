@@ -16,7 +16,8 @@ description: Write or edit external-facing content in Adi's voice. Use when draf
 4. If the current repo has relevant examples of Adi's writing, inspect a small representative sample and adapt to them.
 5. Match the format and keep the writing direct, human, and specific.
 6. Preserve the real point; do not sand it down into bland professionalism.
-7. When a repo already exposes `LLM_API_ENDPOINT` and `LLM_API_KEY`, you can use `scripts/draft_with_llm.py` for a fast first draft in Adi's voice.
+7. When a repo already exposes `LLM_API_ENDPOINT` and `LLM_API_KEY`, you can use `scripts/draft_with_llm.py` as a machine-first helper for fast first drafts, prompt inspection, and env validation.
+8. When calling the helper, err on the side of over-specifying context. Pass the current draft, relevant repo examples, factual constraints, what to preserve, what to change, and any personal motivation or audience cues. More context usually gives better voice fidelity.
 
 ## Rules
 - Lead with the point.
@@ -39,3 +40,20 @@ description: Write or edit external-facing content in Adi's voice. Use when draf
 - `references/email.md`: email mode
 - `references/tweet.md`: tweet mode
 - `references/short-post.md`: short-post / LinkedIn / public-note mode
+
+## Helper script
+
+Use `scripts/draft_with_llm.py` as the machine-first helper I invoke behind the scenes when I need a first draft, need to inspect the exact prompt, or need to verify repo-local LLM wiring.
+
+Core commands:
+
+```bash
+python3 ~/.agents/skills-source/owned/adi-writing/scripts/draft_with_llm.py validate-env
+python3 ~/.agents/skills-source/owned/adi-writing/scripts/draft_with_llm.py render-prompt --mode blog-post --input-file /abs/path/brief.md
+python3 ~/.agents/skills-source/owned/adi-writing/scripts/draft_with_llm.py draft --mode blog-post --input-file /abs/path/brief.md --plain
+```
+
+Defaults:
+- env: `LLM_API_ENDPOINT`, `LLM_API_KEY`
+- model: `claude-4.6-sonnet`
+- output: JSON by default, `--plain` for raw text inspection
