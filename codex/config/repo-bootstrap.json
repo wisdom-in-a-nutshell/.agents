@@ -30,6 +30,15 @@
     }
   },
   "agent_presets": {
+    "bedrock_sonnet": {
+      "description": "Opt-in alternate-provider sub-agent powered by LiteLLM on AWS Bedrock Claude Sonnet 4.6.",
+      "config_file": "bedrock_sonnet.toml",
+      "nickname_candidates": [
+        "Bedrock",
+        "Sonnet",
+        "Bridge"
+      ]
+    },
     "visual_reviewer": {
       "description": "Read-only reviewer for visual work such as screenshots, layouts, hierarchy, and clarity.",
       "config_file": "visual_reviewer.toml",
@@ -43,6 +52,12 @@
   "repos": [
     {
       "path": "~/.agents",
+      "features": {
+        "multi_agent": true
+      },
+      "custom_agents": [
+        "bedrock_sonnet"
+      ],
       "mcp_presets": [
         "openaiDeveloperDocs"
       ]
@@ -126,6 +141,13 @@
     },
     {
       "path": "~/GitHub/scripts"
+      ,
+      "features": {
+        "multi_agent": true
+      },
+      "custom_agents": [
+        "bedrock_sonnet"
+      ]
     },
     {
       "path": "~/GitHub/stadia-macos-controller"

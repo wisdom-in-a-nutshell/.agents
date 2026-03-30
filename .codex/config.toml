@@ -6,6 +6,12 @@ model_reasoning_effort = "high"
 
 [features]
 fast_mode = true
+multi_agent = true
 
 [mcp_servers.openaiDeveloperDocs]
 url = "https://developers.openai.com/mcp"
+
+[agents.bedrock_sonnet]
+description = "Opt-in alternate-provider sub-agent powered by LiteLLM on AWS Bedrock Claude Sonnet 4.6."
+config_file = "agents/bedrock_sonnet.toml"
+nickname_candidates = ["Bedrock", "Sonnet", "Bridge"]

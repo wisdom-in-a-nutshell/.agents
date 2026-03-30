@@ -9,12 +9,21 @@ approval_policy = "never"
 sandbox_mode = "danger-full-access"
 web_search = "live"
 personality = "pragmatic"
+service_tier = "fast"
 suppress_unstable_features_warning = true
 
 [features]
 js_repl = true
 fast_mode = true
 apps = false
+
+[model_providers.litellm]
+name = "LiteLLM"
+base_url = "https://aip-litellm-proxy.azurewebsites.net/v1"
+env_key = "LLM_API_KEY"
+env_key_instructions = "Set LLM_API_KEY to the LiteLLM proxy key before using the Bedrock Sonnet sub-agent."
+wire_api = "responses"
+supports_websockets = false
 
 [agents.external_researcher]
 description = "Read-only researcher for information outside the local codebase and runtime."

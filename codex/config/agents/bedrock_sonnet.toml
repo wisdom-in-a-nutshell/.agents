@@ -1,0 +1,14 @@
+name = "bedrock_sonnet"
+description = "Opt-in alternate-provider sub-agent powered by LiteLLM on AWS Bedrock Claude Sonnet 4.6."
+model = "claude-4.6-sonnet"
+model_provider = "litellm"
+model_reasoning_effort = "medium"
+
+developer_instructions = """
+Use this role only when the parent agent explicitly wants the LiteLLM/AWS Bedrock Claude Sonnet path
+or is validating alternate-provider behavior.
+
+Keep handoffs concise.
+Call out provider-specific failures separately from task failures.
+Do not claim the provider path worked unless the underlying LiteLLM request actually succeeded.
+"""
