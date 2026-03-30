@@ -1,11 +1,11 @@
 filters:
   and:
-    - 'file.inFolder("docs/references/registry/mcp-registry-items")'
+    - 'file.inFolder("docs/references/registry/agent-registry-items")'
 formulas:
   scope_badge: 'if(effective_scope == "global", "🌍 global", if(effective_scope == "repo", "📦 repo", if(effective_scope == "mixed", "🧩 mixed", effective_scope)))'
 properties:
-  mcp_name:
-    displayName: MCP
+  agent_name:
+    displayName: Agent
   effective_scope:
     displayName: Scope
   formula.scope_badge:
@@ -16,38 +16,38 @@ properties:
     displayName: Global Xcode
   repos_csv:
     displayName: Repos
-  transport:
-    displayName: Transport
-  target:
-    displayName: Target
+  config_file:
+    displayName: Config File
+  description:
+    displayName: Description
 views:
   - type: table
-    name: MCP Registry
+    name: Agent Registry
     order:
-      - mcp_name
+      - agent_name
       - formula.scope_badge
       - global_terminal
       - global_xcode
       - repos_csv
-      - transport
-      - target
+      - config_file
+      - description
   - type: table
-    name: Global MCPs
+    name: Global Agents
     filters: 'global_terminal == "true" || global_xcode == "true"'
     order:
-      - mcp_name
+      - agent_name
       - formula.scope_badge
       - global_terminal
       - global_xcode
       - repos_csv
-      - transport
-      - target
+      - config_file
+      - description
   - type: table
-    name: Repo MCPs
+    name: Repo Agents
     filters: 'repos_csv != "-"'
     order:
-      - mcp_name
+      - agent_name
       - formula.scope_badge
       - repos_csv
-      - transport
-      - target
+      - config_file
+      - description

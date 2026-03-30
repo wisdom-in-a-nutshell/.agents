@@ -4,7 +4,9 @@ path: "~/GitHub/adi"
 mcp_count: 2
 skill_count: 20
 repo_local_skill_count: 0
+global_agent_count: 1
 custom_agent_count: 1
+agent_count: 2
 model: "gpt-5.4"
 reasoning: "high"
 fast_mode: "true"
@@ -12,7 +14,12 @@ service_tier: "fast"
 mcps:
   - "openaiDeveloperDocs"
   - "paper"
+global_agents:
+  - "external_researcher"
 custom_agents:
+  - "visual_reviewer"
+agents:
+  - "external_researcher"
   - "visual_reviewer"
 global_skills:
   - "agent-browser"
