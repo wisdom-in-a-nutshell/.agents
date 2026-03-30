@@ -6,13 +6,14 @@ Use this when the user is not just asking for social copy, but wants the source 
 
 1. Identify the owning blog repo.
 2. Read that repo's `AGENTS.md` and publishing-related docs first.
-3. Add the post content in the repo's canonical content location.
-4. Add images or media assets in the repo's canonical public asset location.
-5. If the repo has a reusable gallery or sequence component pattern, use that instead of inventing a one-off render path.
-6. Make the post public in frontmatter or repo-specific metadata.
-7. Run the repo's verification commands.
-8. Push and confirm deployment.
-9. Only then prepare link-first social distribution if the URL matters.
+3. If that repo has a repo-local skill for blog mechanics, read that too and let it take over the repo-specific details.
+4. Add the post content in the repo's canonical content location.
+5. Add images or media assets in the repo's canonical public asset location.
+6. If the repo has a reusable gallery or sequence component pattern, use that instead of inventing a one-off render path.
+7. Make the post public in frontmatter or repo-specific metadata.
+8. Run the repo's verification commands.
+9. Push and confirm deployment.
+10. Only then prepare link-first social distribution if the URL matters.
 
 ## What to document after doing it once
 
@@ -27,12 +28,26 @@ Good homes for that durable knowledge:
 
 This is the concrete pattern used for Adi's personal blog at `../blog-personal/`.
 
-### Read first
+Go to `../blog-personal` and treat it as the working repo.
+
+### Read in this order
 
 1. `AGENTS.md`
 2. `docs/AGENTS.md`
-3. `docs/architecture/site-architecture.md`
-4. `docs/references/content-verification.md`
+3. `.agents/skills/blog-posting/SKILL.md`
+4. `docs/architecture/site-architecture.md`
+5. `docs/references/content-verification.md`
+
+Use `.agents/skills/blog-posting/SKILL.md` for repo-local publishing mechanics.
+Use `adi-writing` for the post copy so the writing stays in Adi's voice.
+Do the work in `../blog-personal`; do not keep the real blog mechanics in this social skill when the target repo already documents them locally.
+
+When delegating, spawn a sub-agent scoped to `../blog-personal` and tell it to read:
+- `AGENTS.md`
+- `docs/AGENTS.md`
+- `.agents/skills/blog-posting/SKILL.md`
+
+There is no special blog parameter to set. The important part is the repo path plus the repo-local instructions.
 
 ### Content pattern
 

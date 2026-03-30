@@ -26,9 +26,7 @@ Keep campaign assets in the active project. Keep durable repo-specific publishin
 If the user asks to publish the source post itself before distribution, read:
 - `references/blog/publishing.md`
 
-That reference covers the default pattern and the concrete `blog-personal` workflow we just used.
-
-Keep the durable repo-specific steps in the repo where they belong. Do not bloat this skill with repo-local architecture details.
+Keep durable repo-specific publishing mechanics in the owning repo and in the reference file, not in this top-level skill body.
 
 ## Reddit
 
