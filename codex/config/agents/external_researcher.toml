@@ -1,3 +1,4 @@
+name = "external_researcher"
 model = "gpt-5.3-codex-spark"
 model_reasoning_effort = "medium"
 sandbox_mode = "read-only"
