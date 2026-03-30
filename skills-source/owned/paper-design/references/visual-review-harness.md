@@ -33,6 +33,7 @@ This harness keeps the work legible and skeptical.
 4. **Screenshot review**
    - Take a screenshot.
    - Check for obvious failures first: clipping, crushing, overlap, weak hierarchy, unreadable labels, broken spacing.
+   - Also check small-detail visibility explicitly: icon contrast, icon size, low-contrast strokes, and other elements that can disappear against dark surfaces.
 
 5. **Evaluator decision**
    - For non-one-shot visual work, assume the visual review pattern by default rather than treating evaluator review as a rare escalation.
@@ -55,12 +56,16 @@ The strongest fit is when:
 - the creator is looping or attached to a direction
 - the remaining issue is more about taste, hierarchy, or narrative clarity than mechanics
 
+If the runtime exposes a dedicated screenshot-review agent such as `visual_reviewer`, prefer that first for Paper panel review. If it is unavailable, fall back to another independent sub-agent rather than relying on self-review alone.
+
 Do not use an evaluator for:
 - tiny spacing nudges
 - obvious clipping/overflow bugs
 - small text corrections
 
 The evaluator should review screenshots, not vague descriptions.
+
+Use the dedicated `visual_reviewer` agent for screenshot-based Paper critique. It is a better fit than a generic evaluator for layout, hierarchy, spacing, readability, icon visibility, and visual coherence checks.
 
 ### Evaluator handoff pattern
 

@@ -51,6 +51,8 @@ Use a review loop by default: make a change, take a screenshot, inspect for layo
 9. for non-one-shot visual work, default to the visual review pattern rather than showing the first plausible version to the user
 10. visual review pattern = build, screenshot review, evaluator handoff, revise, repeat
 11. when using an evaluator, do not rely on the generator's memory of the critique; have the evaluator produce a short review artifact first, then synthesize from that artifact
+11a. use the `visual_reviewer` sub-agent as the independent screenshot reviewer for Paper work
+11b. if that reviewer is somehow unavailable in a future runtime, fall back to another independent evaluator agent rather than self-review alone
 12. keep iterating until the work is directionally strong and you would personally feel good putting it in front of the user; do not bounce every intermediate version back to the human unless they explicitly want live micro-iteration
 13. if the user explicitly wants evaluator-driven iteration, continue for at least 3 meaningful iterations (or 3-4 if needed) and keep going until the evaluator is generally happy or the review scores are roughly 8+ across the active rubric categories
 14. for a newly created visual panel that is not a one-shot, do not present the first-pass composition as the answer before it has gone through the visual review pattern, unless the user explicitly asks to see rough first passes live
