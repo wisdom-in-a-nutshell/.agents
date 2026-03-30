@@ -57,6 +57,12 @@ views:
       - reasoning
       - fast_mode
       - service_tier
+    sort:
+      - property: agents
+        direction: DESC
+    columnSize:
+      note.mcps: 322
+      note.global_skills: 213
   - type: table
     name: MCP Enabled
     filters: mcp_count > 0
