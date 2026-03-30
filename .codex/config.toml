@@ -6,12 +6,6 @@ model_reasoning_effort = "high"
 
 [features]
 fast_mode = true
-multi_agent = true
 
 [mcp_servers.openaiDeveloperDocs]
 url = "https://developers.openai.com/mcp"
-
-[agents.writer]
-description = "Writing-focused sub-agent. Highly encouraged for copywriting, rewriting, and tone-sensitive drafting."
-config_file = "agents/writer.toml"
-nickname_candidates = ["Quill", "Scribe", "Muse"]

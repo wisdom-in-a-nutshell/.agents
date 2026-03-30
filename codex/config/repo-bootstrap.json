@@ -52,12 +52,6 @@
   "repos": [
     {
       "path": "~/.agents",
-      "features": {
-        "multi_agent": true
-      },
-      "custom_agents": [
-        "writer"
-      ],
       "mcp_presets": [
         "openaiDeveloperDocs"
       ]
@@ -151,13 +145,6 @@
     },
     {
       "path": "~/GitHub/scripts"
-      ,
-      "features": {
-        "multi_agent": true
-      },
-      "custom_agents": [
-        "writer"
-      ]
     },
     {
       "path": "~/GitHub/stadia-macos-controller"
