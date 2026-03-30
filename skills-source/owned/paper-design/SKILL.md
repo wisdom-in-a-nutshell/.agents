@@ -17,6 +17,7 @@ The live Paper MCP already provides the real tool surface. This skill only adds 
 - current limitations and caveats
 
 Start with `references/overview.md`.
+If the task is taste-heavy visual iteration, evaluator loops, or variant comparison work, also load `references/visual-review-harness.md`.
 
 ## What the live MCP already gives you
 
@@ -48,6 +49,27 @@ Use a review loop by default: make a change, take a screenshot, inspect for layo
 7. make small incremental changes
 8. verify visually with screenshots
 9. if a panel is still stuck after meaningful self-review or the judgment is mostly about visual hierarchy/taste, consider using an independent evaluator sub-agent to review screenshots and critique the work before declaring it done
+
+### Variant iteration lane
+
+For taste-heavy visual work, a useful optional pattern is:
+- keep the canonical story panels in one main vertical sequence (`1`, `2`, `3`, ...)
+- keep that main sequence readable on the same Paper page so the current narrative is always visible at a glance
+- create horizontal variants for a single stuck panel (`3A`, `3B`, `3C`) beside that panel instead of overwriting it immediately
+- use an evaluator pass to compare variants against a small explicit rubric
+- once one variant clearly wins, either promote it into the main panel slot or keep the older one nearby until the user is comfortable deleting it
+
+Use this selectively when:
+- the panel concept is still unclear
+- multiple visual directions are plausible
+- the team wants visible iteration history instead of hidden rewrite churn
+
+Do not turn every panel into a variant explosion. Prefer this for stuck, high-leverage panels only.
+
+When using this pattern, make the layout logic obvious:
+- main/canonical panels = the primary reading lane
+- variants = adjacent exploration lane for one panel only
+- evaluator rubric = explicit and panel-specific, not generic
 
 ### 2. Practical product notes
 
@@ -98,5 +120,6 @@ So:
 
 - `references/overview.md` — the distilled working notes
 - `references/known-shortcuts.md` — the small verified shortcut list
+- `references/visual-review-harness.md` — optional workflow for screenshot review, evaluator passes, and variant lanes
 
 If a future task needs more than these notes, browse the live Paper docs/site at that time instead of keeping a giant local scrape.

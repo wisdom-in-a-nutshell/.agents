@@ -56,8 +56,6 @@ For multi-panel work like carousels, do not create the whole set by default. Sta
 
 Default review behavior: after each meaningful Paper edit, take a screenshot and inspect it. Keep iterating until the direction is coherent and obvious bugs are fixed before asking the user for feedback.
 
-Do not stop the review loop just because the overall idea is promising. If a core element is still visibly overlapped, crushed, clipped, misaligned, or hard to read in the screenshot, keep fixing it before presenting the panel as ready.
-
 1. inspect the current file first
 2. work on the selected node/frame when possible
 3. make small visual moves, not giant blind rewrites
@@ -78,7 +76,7 @@ If something is already obvious from the live MCP schema, do not duplicate it he
 If something is only needed rarely, look it up live instead of bloating this note.
 
 
-## Review escalation
-- Start with screenshot-based self-review.
-- If visual iteration stalls or the question becomes mainly one of taste, hierarchy, or narrative clarity, consider an independent evaluator sub-agent to review screenshots.
-- Keep this selective; obvious mechanical fixes should still be handled locally without extra coordination overhead.
+## Visual review workflows
+
+For taste-heavy visual iteration, evaluator review, and variant lanes, see:
+- `references/visual-review-harness.md`
