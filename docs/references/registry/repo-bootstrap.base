@@ -1,6 +1,6 @@
 filters:
   and:
-    - file.inFolder("docs/references/registry/repo-bootstrap-items")
+    - 'file.inFolder("docs/references/registry/repo-bootstrap-items")'
 properties:
   repo_name:
     displayName: Repo
@@ -50,48 +50,35 @@ views:
       - mcps
       - agents
       - skill_count
-      - global_skills
-      - repo_skills
-      - repo_local_skills
       - model
       - reasoning
       - fast_mode
       - service_tier
-    sort:
-      - property: agents
-        direction: DESC
-    columnSize:
-      note.mcps: 322
-      note.global_skills: 213
   - type: table
     name: MCP Enabled
-    filters: mcp_count > 0
+    filters: 'mcp_count > 0'
     order:
       - repo_name
       - mcps
       - agents
-      - skill_count
-      - global_skills
-      - repo_skills
-      - repo_local_skills
       - model
       - reasoning
       - fast_mode
       - service_tier
   - type: table
     name: Skills Enabled
-    filters: skill_count > 0
+    filters: 'skill_count > 0'
     order:
       - repo_name
-      - agents
       - skill_count
-      - global_skills
-      - repo_skills
-      - repo_local_skills
+      - repo_local_skill_count
+      - agents
       - mcps
+      - model
+      - reasoning
   - type: table
     name: Agents Enabled
-    filters: agent_count > 0
+    filters: 'agent_count > 0'
     order:
       - repo_name
       - agents
@@ -105,7 +92,7 @@ views:
       - service_tier
   - type: table
     name: Custom Agents
-    filters: custom_agent_count > 0
+    filters: 'custom_agent_count > 0'
     order:
       - repo_name
       - custom_agents
@@ -117,8 +104,19 @@ views:
       - fast_mode
       - service_tier
   - type: table
+    name: Skill Detail
+    filters: 'skill_count > 0'
+    order:
+      - repo_name
+      - global_skills
+      - repo_skills
+      - repo_local_skills
+      - skill_count
+      - mcps
+      - agents
+  - type: table
     name: Repo-Local Skills
-    filters: repo_local_skill_count > 0
+    filters: 'repo_local_skill_count > 0'
     order:
       - repo_name
       - repo_local_skills

@@ -169,9 +169,6 @@ views:
       - mcps
       - agents
       - skill_count
-      - global_skills
-      - repo_skills
-      - repo_local_skills
       - model
       - reasoning
       - fast_mode
@@ -183,10 +180,6 @@ views:
       - repo_name
       - mcps
       - agents
-      - skill_count
-      - global_skills
-      - repo_skills
-      - repo_local_skills
       - model
       - reasoning
       - fast_mode
@@ -196,12 +189,12 @@ views:
     filters: 'skill_count > 0'
     order:
       - repo_name
-      - agents
       - skill_count
-      - global_skills
-      - repo_skills
-      - repo_local_skills
+      - repo_local_skill_count
+      - agents
       - mcps
+      - model
+      - reasoning
   - type: table
     name: Agents Enabled
     filters: 'agent_count > 0'
@@ -229,6 +222,17 @@ views:
       - reasoning
       - fast_mode
       - service_tier
+  - type: table
+    name: Skill Detail
+    filters: 'skill_count > 0'
+    order:
+      - repo_name
+      - global_skills
+      - repo_skills
+      - repo_local_skills
+      - skill_count
+      - mcps
+      - agents
   - type: table
     name: Repo-Local Skills
     filters: 'repo_local_skill_count > 0'
