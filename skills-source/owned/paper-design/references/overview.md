@@ -45,6 +45,8 @@ So the skill should **not** try to restate the whole MCP schema.
 - The Paper app appears to support AI image generation, but the current Paper MCP tool surface here does not expose a dedicated image-generation tool.
 - For agent-generated images, use a separate image-generation workflow and then place the result into Paper.
 - Paper's public docs are sparse on shortcuts; use the verified notes only.
+- For icons, keep one icon family per panel. Use Lucide-style outline SVGs for conceptual/system icons and official SVGs for brands/products/clients.
+- There is no vendored general-purpose icon library in this repo right now. Fetch or stage only the specific SVGs you need instead of pulling a whole icon repo by default.
 
 ## Good default collaboration flow
 
