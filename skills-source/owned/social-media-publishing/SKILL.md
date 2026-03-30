@@ -36,6 +36,9 @@ For live commands and plan structure, read:
 - `references/reddit/workflow.md`
 - `references/reddit/plan-schema.md`
 
+If the content is Codex / App Server / coding-agent-internals related and you expect repeated Reddit distribution, also read:
+- `references/reddit/topics/codex.md`
+
 Core commands:
 
 ```bash

@@ -39,6 +39,13 @@ Keep them in the active repo or project that owns the content:
 - subreddit notes
 - posting logs
 
+For recurring topic families, keep only the project-local Reddit files that materially help future posting. Usually that means:
+- one notes file for topic-specific subreddit guidance or quirks
+- the current first-comment draft if it will likely be reused
+- per-subreddit plan files only while the campaign is active
+- final URLs and outcomes in the project tracker when the posts actually go live
+
+Do not create extra structure unless it is helping.
 The skill should stay reusable; the campaign should stay local to the work.
 
 ## Recommended workflow
