@@ -35,6 +35,7 @@ Canonical personal Codex control-plane assets live here.
 - `scripts/sync-trusted-projects.sh` is the canonical trusted-repo sync entrypoint for Codex.
 - `scripts/sync-repo-codex-configs.sh` is the canonical repo-local Codex config sync/apply entrypoint.
 - `scripts/bootstrap-machine-codex.sh` is the canonical Codex-specific machine bootstrap batch.
+- `scripts/check-codex-control-plane.sh` is the canonical Codex control-plane validation entrypoint.
 - `scripts/auto-apply-codex-control-plane.sh` is the canonical post-sync Codex reconcile entrypoint for cross-machine convergence.
 - `config/global.config.toml` and `config/xcode.config.toml` are the canonical managed baselines.
 - `config/agents/*.toml` are the canonical managed role overrides for built-in and custom multi-agent roles.
@@ -75,4 +76,5 @@ Canonical personal Codex control-plane assets live here.
   - `../docs/references/registry/mcp-registry-items/`
 - `scripts/sync-repo-codex-configs.sh --apply` renders the actual repo-local `.codex/config.toml` files from that JSON registry.
 - `scripts/sync-trusted-projects.sh --apply` ensures those repo-local configs are trusted and therefore loaded by Codex.
+- `scripts/check-codex-control-plane.sh` validates canonical role definitions, runtime role declarations, and repo-scoped custom-agent render output after sync.
 - `scripts/auto-apply-codex-control-plane.sh --apply` is the machine-local post-sync reconcile hook that runs `bootstrap-machine-codex.sh --apply` when `~/.agents/codex/` changed since the last successful reconcile.

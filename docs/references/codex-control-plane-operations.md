@@ -37,7 +37,10 @@ Use [Codex Control Plane Ownership](/Users/dobby/.agents/docs/references/codex-c
 - Apply only the managed Codex config:
   - [`sync-config.sh`](/Users/dobby/.agents/codex/scripts/sync-config.sh)
   - `~/.agents/codex/scripts/sync-config.sh --apply`
-  - this also syncs managed agent-role config files into the live runtime `agents/` folders
+  - this syncs only the agent-role files actually referenced by the managed global/Xcode configs into the live runtime `agents/` folders
+- Validate canonical and rendered Codex control-plane state:
+  - [`check-codex-control-plane.sh`](/Users/dobby/.agents/codex/scripts/check-codex-control-plane.sh)
+  - `~/.agents/codex/scripts/check-codex-control-plane.sh`
 - Sync exact trusted repo roots into terminal + Xcode Codex config:
   - [`sync-trusted-projects.sh`](/Users/dobby/.agents/codex/scripts/sync-trusted-projects.sh)
   - `~/.agents/codex/scripts/sync-trusted-projects.sh --apply`
@@ -71,7 +74,7 @@ Use [Codex Control Plane Ownership](/Users/dobby/.agents/docs/references/codex-c
 
 - [`sync-config.sh`](/Users/dobby/.agents/codex/scripts/sync-config.sh)
   - applies canonical Codex config templates into live terminal + Xcode config
-  - syncs canonical role config files for managed multi-agent roles into the live runtime `agents/` directories
+  - syncs only the role config files referenced by the managed global + Xcode configs into the live runtime `agents/` directories
   - keeps the current role setup explicit: built-in `explorer` for local repo/runtime exploration, managed `external_researcher` for information outside the local repo/runtime
   - leaves repo-scoped custom roles to the repo bootstrap path instead of enabling them globally by default
   - keeps Apps/connectors globally disabled through the managed `features.apps = false` baseline unless you intentionally re-enable them later
@@ -80,6 +83,7 @@ Use [Codex Control Plane Ownership](/Users/dobby/.agents/docs/references/codex-c
   - strips foreign-user project and system-skill entries before writing
   - prunes stale global `apps.*` sections that are no longer present in the canonical template, so old local app-disable overrides do not stick around
   - prunes stale global terminal `mcp_servers.*` sections that are no longer present in the canonical template
+  - validates role-file invariants before install, including non-empty `name` + `description`
   - fails fast if the target config contains unresolved Git conflict markers
   - skips no-op rewrites and stores real pre-change backups under `~/.local/state/codex-control-plane/runtime-config-backups/`
 - [`sync-trusted-projects.sh`](/Users/dobby/.agents/codex/scripts/sync-trusted-projects.sh)
@@ -91,8 +95,15 @@ Use [Codex Control Plane Ownership](/Users/dobby/.agents/docs/references/codex-c
   - renders managed repo-local Codex files from the canonical registry
   - writes `.codex/config.toml` for all managed repos
   - writes repo-local `.codex/agents/*.toml` files for any repo-scoped custom agents assigned in the registry
+  - validates repo-scoped custom-agent role files before writing them into managed repos
   - skips no-op rewrites and stores backups under `~/.local/state/codex-control-plane/repo-config-backups/` instead of dirtying the git repos themselves
   - keeps the repo list and MCP/model preset definitions in [`repo-bootstrap.json`](/Users/dobby/.agents/codex/config/repo-bootstrap.json)
+- [`check-codex-control-plane.sh`](/Users/dobby/.agents/codex/scripts/check-codex-control-plane.sh)
+  - validates canonical `global.config.toml`, `xcode.config.toml`, and `repo-bootstrap.json`
+  - validates canonical role TOMLs and rendered runtime role TOMLs
+  - catches missing or malformed `name` / `description` in role files
+  - catches runtime `agents/` directories containing unreferenced role files
+  - validates generated repo-local `.codex/config.toml` agent declarations for managed repos present on the machine
 - [`sync-repo-bootstrap-registry.sh`](/Users/dobby/.agents/codex/scripts/sync-repo-bootstrap-registry.sh)
   - regenerates the Obsidian Base artifacts from [`repo-bootstrap.json`](/Users/dobby/.agents/codex/config/repo-bootstrap.json)
   - enriches the per-repo view with effective skills from [`skills/registry.json`](/Users/dobby/.agents/skills/registry.json)
@@ -108,6 +119,7 @@ Use [Codex Control Plane Ownership](/Users/dobby/.agents/docs/references/codex-c
   - runs trusted-project sync
   - runs repo-local Codex config sync
   - runs Ghostty config reconciliation
+  - runs control-plane validation at the end and fails if the rendered state is inconsistent
 - [`auto-apply-codex-control-plane.sh`](/Users/dobby/.agents/codex/scripts/auto-apply-codex-control-plane.sh)
   - checks whether `~/.agents/codex/` changed since the last successful reconcile on that machine
   - runs [`bootstrap-machine-codex.sh`](/Users/dobby/.agents/codex/scripts/bootstrap-machine-codex.sh) only when a new Codex control-plane revision needs to be applied

@@ -146,6 +146,11 @@ import subprocess
 import sys
 from pathlib import Path
 
+try:
+    import tomllib
+except ModuleNotFoundError:  # pragma: no cover
+    import tomli as tomllib  # type: ignore
+
 
 def normalize_path(raw: str) -> str:
     return str(Path(raw).expanduser().resolve())
@@ -162,6 +167,27 @@ def toml_value(value):
     if isinstance(value, list):
         return "[" + ", ".join(toml_value(item) for item in value) + "]"
     raise TypeError(f"Unsupported TOML value: {value!r}")
+
+
+def validate_role_file(path: Path, expected_name: str) -> None:
+    try:
+        data = tomllib.loads(path.read_text(encoding="utf-8"))
+    except Exception as exc:
+        raise TypeError(f"Invalid agent role TOML at {path}: {exc}") from exc
+
+    if not isinstance(data, dict):
+        raise TypeError(f"Agent role file must parse to a TOML table: {path}")
+
+    name = data.get("name")
+    description = data.get("description")
+    if not isinstance(name, str) or not name.strip():
+        raise TypeError(f"Agent role file must define a non-empty `name`: {path}")
+    if not isinstance(description, str) or not description.strip():
+        raise TypeError(f"Agent role file must define a non-empty `description`: {path}")
+    if name.strip() != expected_name:
+        raise TypeError(
+            f"Agent role file name `{name.strip()}` does not match expected role `{expected_name}`: {path}"
+        )
 
 
 def render_repo_config(repo: str, defaults: dict, override: dict, presets: dict, agent_presets: dict) -> str:
@@ -236,6 +262,8 @@ def render_repo_config(repo: str, defaults: dict, override: dict, presets: dict,
         if agent_name not in agent_presets:
             raise KeyError(f"Unknown custom agent `{agent_name}` for {repo}")
         agent = agent_presets[agent_name]
+        if not isinstance(agent.get("description"), str) or not agent["description"].strip():
+            raise TypeError(f"custom agent `{agent_name}` must define a non-empty description")
         rendered_anything = True
         lines.append("")
         lines.append(f"[agents.{agent_name}]")
@@ -308,11 +336,15 @@ for item in repos_raw:
             raise KeyError(f"Unknown custom agent `{agent_name}` for {actual_repo}")
         preset = agent_presets[agent_name]
         config_file = preset.get("config_file")
+        description = preset.get("description")
         if not isinstance(config_file, str) or not config_file.strip():
             raise TypeError(f"custom agent `{agent_name}` must define config_file")
+        if not isinstance(description, str) or not description.strip():
+            raise TypeError(f"custom agent `{agent_name}` must define a non-empty description")
         source_path = agents_dir / config_file
         if not source_path.is_file():
             raise FileNotFoundError(f"Missing agent role file for `{agent_name}`: {source_path}")
+        validate_role_file(source_path, agent_name)
         rendered_role_path = tmp_dir / f"{hashlib.sha256((actual_repo + ':' + agent_name).encode()).hexdigest()}-{Path(config_file).name}"
         rendered_role_path.write_text(source_path.read_text(encoding='utf-8'), encoding='utf-8')
         target_role_path = Path(actual_repo) / ".codex" / "agents" / Path(config_file).name

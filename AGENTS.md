@@ -55,6 +55,7 @@ Personal agent and Codex control plane.
 - Apply managed repo-local Codex configs: `./codex/scripts/sync-repo-codex-configs.sh --apply`
 - Dry-run Codex bootstrap batch: `./codex/scripts/bootstrap-machine-codex.sh`
 - Apply Codex bootstrap batch: `./codex/scripts/bootstrap-machine-codex.sh --apply`
+- Validate Codex control-plane inputs + rendered runtimes: `./codex/scripts/check-codex-control-plane.sh`
 
 ## Automation Cadence
 
@@ -73,3 +74,4 @@ Personal agent and Codex control plane.
 - Do not add additional manifest files for skill mapping; update `skills/registry.json`.
 - If `skills/registry.json` changes, run sync/check in the same change.
 - Do not hand-edit generated repo-local `.codex/config.toml` files in managed repos; update `codex/config/repo-bootstrap.json` and re-run the sync scripts.
+- If `codex/config/agents/*.toml`, `codex/config/global.config.toml`, `codex/config/xcode.config.toml`, or `codex/config/repo-bootstrap.json` changes, run the Codex control-plane validation script in the same change.

@@ -99,12 +99,14 @@ SYNC_GLOBAL_AGENTS_SCRIPT="${SCRIPT_DIR}/sync-global-agents-md.sh"
 SYNC_TRUSTED_SCRIPT="${SCRIPT_DIR}/sync-trusted-projects.sh"
 SYNC_REPO_CONFIGS_SCRIPT="${SCRIPT_DIR}/sync-repo-codex-configs.sh"
 GHOSTTY_SCRIPT="${SCRIPT_DIR}/configure-ghostty-cwd.sh"
+CHECK_CONTROL_PLANE_SCRIPT="${SCRIPT_DIR}/check-codex-control-plane.sh"
 
 [[ -x "$SYNC_CONFIG_SCRIPT" ]] || die "Missing executable: $SYNC_CONFIG_SCRIPT"
 [[ -x "$SYNC_GLOBAL_AGENTS_SCRIPT" ]] || die "Missing executable: $SYNC_GLOBAL_AGENTS_SCRIPT"
 [[ -x "$SYNC_TRUSTED_SCRIPT" ]] || die "Missing executable: $SYNC_TRUSTED_SCRIPT"
 [[ -x "$SYNC_REPO_CONFIGS_SCRIPT" ]] || die "Missing executable: $SYNC_REPO_CONFIGS_SCRIPT"
 [[ -x "$GHOSTTY_SCRIPT" ]] || die "Missing executable: $GHOSTTY_SCRIPT"
+[[ -x "$CHECK_CONTROL_PLANE_SCRIPT" ]] || die "Missing executable: $CHECK_CONTROL_PLANE_SCRIPT"
 
 sync_config_cmd=(
   "$SYNC_CONFIG_SCRIPT"
@@ -149,3 +151,11 @@ ghostty_cmd=(
 )
 log "+ ${ghostty_cmd[*]}"
 "${ghostty_cmd[@]}"
+
+check_cmd=(
+  "$CHECK_CONTROL_PLANE_SCRIPT"
+  --global-config "$GLOBAL_CONFIG"
+  --xcode-config "$XCODE_CONFIG"
+)
+log "+ ${check_cmd[*]}"
+"${check_cmd[@]}"

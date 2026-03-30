@@ -162,6 +162,88 @@ require_readable_file() {
   [[ -r "$file" ]] || die "File is not readable: $file"
 }
 
+validate_agent_role_file() {
+  local file="$1"
+  local expected_name="${2:-}"
+
+  python3 - "$file" "$expected_name" <<'PY'
+from __future__ import annotations
+
+import sys
+from pathlib import Path
+
+try:
+    import tomllib
+except ModuleNotFoundError:  # pragma: no cover
+    import tomli as tomllib  # type: ignore
+
+
+path = Path(sys.argv[1])
+expected_name = sys.argv[2].strip()
+
+try:
+    data = tomllib.loads(path.read_text(encoding="utf-8"))
+except Exception as exc:  # pragma: no cover - surfaced to shell
+    raise SystemExit(f"{path}: invalid TOML: {exc}") from exc
+
+if not isinstance(data, dict):
+    raise SystemExit(f"{path}: role file must parse to a TOML table")
+
+name = data.get("name")
+description = data.get("description")
+
+if not isinstance(name, str) or not name.strip():
+    raise SystemExit(f"{path}: role file must define a non-empty `name`")
+if not isinstance(description, str) or not description.strip():
+    raise SystemExit(f"{path}: role file must define a non-empty `description`")
+if expected_name and name.strip() != expected_name:
+    raise SystemExit(
+        f"{path}: role file name `{name.strip()}` does not match expected role `{expected_name}`"
+    )
+PY
+}
+
+extract_referenced_agent_role_files() {
+  local config_file="$1"
+
+  python3 - "$config_file" <<'PY'
+from __future__ import annotations
+
+import os
+import sys
+from pathlib import Path
+
+try:
+    import tomllib
+except ModuleNotFoundError:  # pragma: no cover
+    import tomli as tomllib  # type: ignore
+
+
+config_path = Path(sys.argv[1])
+if not config_path.is_file():
+    raise SystemExit(f"Missing config file: {config_path}")
+
+data = tomllib.loads(config_path.read_text(encoding="utf-8"))
+agents = data.get("agents", {})
+if agents is None:
+    agents = {}
+if not isinstance(agents, dict):
+    raise SystemExit(f"{config_path}: `agents` must be a TOML table")
+
+for role_name in sorted(k for k in agents.keys() if isinstance(k, str)):
+    role = agents.get(role_name)
+    if not isinstance(role, dict):
+        raise SystemExit(f"{config_path}: agents.{role_name} must be a TOML table")
+    description = role.get("description")
+    config_file = role.get("config_file")
+    if not isinstance(description, str) or not description.strip():
+        raise SystemExit(f"{config_path}: agents.{role_name} must define a non-empty description")
+    if not isinstance(config_file, str) or not config_file.strip():
+        raise SystemExit(f"{config_path}: agents.{role_name} must define a non-empty config_file")
+    print(f"{role_name}\t{os.path.basename(config_file.strip())}")
+PY
+}
+
 ensure_no_conflict_markers() {
   local file="$1"
   [[ -f "$file" ]] || return 0
@@ -779,7 +861,7 @@ sync_global() {
     install_rendered_file "$rendered" "$original"
   fi
 
-  sync_agent_role_configs "Global Agent Roles" "$CANONICAL_AGENTS_DIR" "$GLOBAL_AGENTS_DIR"
+  sync_agent_role_configs "Global Agent Roles" "$CANONICAL_AGENTS_DIR" "$GLOBAL_AGENTS_DIR" "$CANONICAL_GLOBAL_TEMPLATE"
 }
 
 sync_xcode() {
@@ -810,30 +892,40 @@ sync_xcode() {
     install_rendered_file "$rendered_rules" "$original_rules"
   fi
 
-  sync_agent_role_configs "Xcode Agent Roles" "$CANONICAL_AGENTS_DIR" "$XCODE_AGENTS_DIR"
+  sync_agent_role_configs "Xcode Agent Roles" "$CANONICAL_AGENTS_DIR" "$XCODE_AGENTS_DIR" "$CANONICAL_XCODE_TEMPLATE"
 }
 
 sync_agent_role_configs() {
   local label="$1"
   local source_dir="$2"
   local target_dir="$3"
-  local source_file target_file rendered_file basename target_existing
+  local declaring_config="$4"
+  local source_file target_file rendered_file basename target_existing role_name
   local -a source_basenames=()
 
   if [[ ! -d "$source_dir" ]]; then
     return
   fi
 
+  require_readable_file "$declaring_config"
+
+  declare -A referenced_role_basenames=()
+  while IFS=$'\t' read -r role_name basename; do
+    [[ -n "$role_name" && -n "$basename" ]] || continue
+    referenced_role_basenames["$basename"]="$role_name"
+  done < <(extract_referenced_agent_role_files "$declaring_config")
+
   shopt -s nullglob
-  for source_file in "$source_dir"/*.toml; do
-    basename="$(basename "$source_file")"
-    source_basenames+=("$basename")
+  for basename in "${!referenced_role_basenames[@]}"; do
+    source_file="${source_dir}/${basename}"
     target_file="${target_dir}/${basename}"
     rendered_file="${TMP_DIR}/${label// /_}-${basename}"
 
     require_readable_file "$source_file"
+    validate_agent_role_file "$source_file" "${referenced_role_basenames[$basename]}"
     ensure_parent_dir "$target_file"
     cp "$source_file" "$rendered_file"
+    source_basenames+=("$basename")
 
     log ""
     log "=== ${label} (${target_file}) ==="

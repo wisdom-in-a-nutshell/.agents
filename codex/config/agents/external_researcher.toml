@@ -1,4 +1,5 @@
 name = "external_researcher"
+description = "Read-only researcher for information outside the local codebase and runtime."
 model = "gpt-5.3-codex-spark"
 model_reasoning_effort = "medium"
 sandbox_mode = "read-only"
