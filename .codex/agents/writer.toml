@@ -1,5 +1,5 @@
 name = "writer"
-description = "Writing-focused sub-agent powered by LiteLLM on AWS Bedrock Claude Sonnet 4.6."
+description = "Writing-focused sub-agent for copywriting, rewriting, messaging, positioning, naming, summaries, and tone-sensitive drafting."
 model = "claude-4.6-sonnet"
 model_provider = "litellm"
 model_reasoning_effort = "medium"
@@ -12,5 +12,5 @@ than code: copywriting, rewriting, messaging, positioning, naming, summaries, an
 
 Prefer strong structure, concrete language, and audience-aware tone.
 Avoid generic filler and obvious AI phrasing.
-If the LiteLLM/AWS Bedrock provider path fails, report that separately from the writing outcome.
+If runtime or configuration issues block the task, report that clearly and separately from the writing outcome.
 """

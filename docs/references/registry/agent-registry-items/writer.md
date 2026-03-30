@@ -8,7 +8,7 @@ model: "claude-4.6-sonnet"
 reasoning: "medium"
 sandbox_mode: "-"
 config_file: "agents/writer.toml"
-description: "Writing-focused sub-agent powered by LiteLLM on AWS Bedrock Claude Sonnet 4.6. Highly encouraged for copywriting, rewriting, and tone-sensitive drafting."
+description: "Writing-focused sub-agent. Highly encouraged for copywriting, rewriting, and tone-sensitive drafting."
 repos:
   - ".agents"
   - "scripts"
