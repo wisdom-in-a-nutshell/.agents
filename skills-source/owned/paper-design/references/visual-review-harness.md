@@ -66,6 +66,26 @@ Do not use an evaluator for:
 
 The evaluator should review screenshots, not vague descriptions.
 
+### Paper screenshot handoff helper
+
+For Paper work, do **not** hand-build base64 data URLs for evaluator handoffs.
+
+Use `scripts/paper_review_handoff.mjs` to:
+- capture a Paper screenshot via `mcp__paper__get_screenshot`
+- write it to a temp file
+- pass it to `visual_reviewer` as a `local_image` item
+
+Preferred posture:
+- `local_image` file handoff first
+- hand-built `data:image/...;base64,...` strings only as a fallback
+
+This avoids malformed image payloads and makes the evaluator handoff reproducible.
+
+Typical js_repl pattern:
+- `const { buildVisualReviewerItems } = await import("/Users/dobby/.agents/skills-source/owned/paper-design/scripts/paper_review_handoff.mjs")`
+- `const { items } = await buildVisualReviewerItems("ARTBOARD_ID", "Review this panel for hierarchy and clarity.")`
+- use `items` directly in `spawn_agent({ agent_type: "visual_reviewer", items })`
+
 ### Evaluator handoff pattern
 
 If you use an independent evaluator, make the handoff auditable:
