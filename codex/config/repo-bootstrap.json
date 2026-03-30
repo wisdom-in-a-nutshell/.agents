@@ -29,6 +29,17 @@
       "tool_timeout_sec": 120
     }
   },
+  "agent_presets": {
+    "visual_reviewer": {
+      "description": "Read-only reviewer for visual work such as screenshots, layouts, hierarchy, and clarity.",
+      "config_file": "visual_reviewer.toml",
+      "nickname_candidates": [
+        "Lens",
+        "Critic",
+        "Review"
+      ]
+    }
+  },
   "repos": [
     {
       "path": "~/.agents",
@@ -51,6 +62,9 @@
       "mcp_presets": [
         "openaiDeveloperDocs",
         "paper"
+      ],
+      "custom_agents": [
+        "visual_reviewer"
       ]
     },
     {

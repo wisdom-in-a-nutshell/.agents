@@ -9,6 +9,7 @@ The newest part of that control plane is the repo bootstrap registry in `~/.agen
 - which repos are managed
 - which extra repos live outside `~/GitHub`
 - which repo-local MCP presets should be enabled
+- which repo-scoped custom agents should be enabled
 - which repo-local `.codex/config.toml` files should be generated
 
 ## Figure 1: Ownership Layout
@@ -131,4 +132,5 @@ These settings stay close to the repo because they describe how Codex should beh
 See [Codex Control Plane Ownership](/Users/dobby/.agents/docs/references/codex-control-plane-ownership.md) for the exact split.
 See [Codex Control Plane Operations](/Users/dobby/.agents/docs/references/codex-control-plane-operations.md) for exact commands, healthy-state checks, and common failure modes.
 See [Codex Config Layers](/Users/adi/.agents/docs/architecture/codex-config-layers.md) for the config-specific layering model.
+See [Repo-Scoped Agent Bootstrap](/Users/dobby/.agents/docs/architecture/repo-scoped-agent-bootstrap.md) for the target design for repo-specific custom sub-agents bootstrapped from the same control plane.
 See [Codex Control Plane Script Flows](/Users/dobby/.agents/docs/architecture/codex-control-plane-script-flows.md) for smaller diagrams showing what each main script group does.

@@ -38,10 +38,10 @@ flowchart TD
 
 - `global.config.toml` defines the managed baseline for terminal Codex.
 - `xcode.config.toml` defines the managed baseline for Xcode Codex.
-- `config/agents/*.toml` defines managed role-specific overrides for custom multi-agent roles such as `external_researcher` and `visual_reviewer`.
+- `config/agents/*.toml` defines managed role-specific overrides for custom multi-agent roles such as `external_researcher`, plus the canonical role behavior files reused by repo-scoped roles.
   - built-in `explorer` remains available upstream for local repo and runtime exploration.
   - `external_researcher` is the managed custom role for information outside the local repo and runtime, using docs, MCP servers, skills, and web sources as needed.
-  - `visual_reviewer` is the managed custom role for screenshot-based visual critique focused on hierarchy, clarity, composition, and visual integrity.
+  - repo-scoped roles such as `visual_reviewer` are assigned from `repo-bootstrap.json` and materialized into repo-local `.codex/agents/` folders instead of being enabled globally.
 - `repo-bootstrap.json` defines:
   - which repos are managed
   - which MCP presets each repo gets
@@ -76,10 +76,14 @@ So trust sync is part of config layering, not a separate unrelated feature.
 
 Current per-repo fields in `repo-bootstrap.json`:
 - `mcp_presets`
+- `custom_agents`
 - `model`
 - `model_reasoning_effort`
 - `service_tier`
 - `notes`
+
+Additional shared bootstrap metadata in `repo-bootstrap.json`:
+- `agent_presets`
 
 ## Main Flow
 

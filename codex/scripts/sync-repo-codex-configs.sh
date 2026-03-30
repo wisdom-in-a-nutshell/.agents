@@ -16,7 +16,7 @@ usage() {
   cat <<USAGE
 Usage: $(basename "$0") [options]
 
-Render managed repo-local .codex/config.toml files from the canonical registry.
+Render managed repo-local Codex config files from the canonical registry.
 Default mode is dry-run. Use --apply to write changes.
 
 Options:
@@ -164,7 +164,7 @@ def toml_value(value):
     raise TypeError(f"Unsupported TOML value: {value!r}")
 
 
-def render_repo_config(repo: str, defaults: dict, override: dict, presets: dict) -> str:
+def render_repo_config(repo: str, defaults: dict, override: dict, presets: dict, agent_presets: dict) -> str:
     lines = [
         "# Managed by ~/.agents/codex/scripts/sync-repo-codex-configs.sh.",
         "# Edit ~/.agents/codex/config/repo-bootstrap.json and re-run the sync script.",
@@ -228,6 +228,23 @@ def render_repo_config(repo: str, defaults: dict, override: dict, presets: dict)
         for key, value in preset.items():
             lines.append(f"{key} = {toml_value(value)}")
 
+    custom_agent_names = override.get("custom_agents", [])
+    if not isinstance(custom_agent_names, list):
+        raise TypeError(f"custom_agents for {repo} must be an array")
+
+    for agent_name in custom_agent_names:
+        if agent_name not in agent_presets:
+            raise KeyError(f"Unknown custom agent `{agent_name}` for {repo}")
+        agent = agent_presets[agent_name]
+        rendered_anything = True
+        lines.append("")
+        lines.append(f"[agents.{agent_name}]")
+        lines.append(f"description = {toml_value(agent['description'])}")
+        lines.append(f"config_file = {toml_value('agents/' + agent['config_file'])}")
+        nickname_candidates = agent.get("nickname_candidates", [])
+        if nickname_candidates:
+            lines.append(f"nickname_candidates = {toml_value(nickname_candidates)}")
+
     if not rendered_anything:
         lines.append("# No repo-local Codex overrides are currently assigned.")
 
@@ -241,16 +258,20 @@ filters = {normalize_path(path) for path in sys.argv[3:] if path}
 data = json.loads(registry_path.read_text(encoding="utf-8"))
 defaults = data.get("defaults", {})
 presets = data.get("mcp_presets", {})
+agent_presets = data.get("agent_presets", {})
 repos_raw = data.get("repos", [])
 
 if not isinstance(defaults, dict):
     raise TypeError("defaults must be an object")
 if not isinstance(presets, dict):
     raise TypeError("mcp_presets must be an object")
+if not isinstance(agent_presets, dict):
+    raise TypeError("agent_presets must be an object")
 if not isinstance(repos_raw, list):
     raise TypeError("repos must be an array")
 
 manifest_lines: list[str] = []
+agents_dir = registry_path.parent / "agents"
 for item in repos_raw:
     if not isinstance(item, dict):
         raise TypeError("each repo entry must be an object")
@@ -273,11 +294,29 @@ for item in repos_raw:
     if filters and actual_repo not in filters:
         continue
 
-    rendered = render_repo_config(actual_repo, defaults, item, presets)
+    rendered = render_repo_config(actual_repo, defaults, item, presets, agent_presets)
     rendered_path = tmp_dir / f"{hashlib.sha256(actual_repo.encode()).hexdigest()}.toml"
     rendered_path.write_text(rendered, encoding="utf-8")
     target_path = Path(actual_repo) / ".codex" / "config.toml"
     manifest_lines.append(f"{actual_repo}\t{target_path}\t{rendered_path}")
+
+    custom_agent_names = item.get("custom_agents", [])
+    if not isinstance(custom_agent_names, list):
+        raise TypeError(f"custom_agents for {actual_repo} must be an array")
+    for agent_name in custom_agent_names:
+        if agent_name not in agent_presets:
+            raise KeyError(f"Unknown custom agent `{agent_name}` for {actual_repo}")
+        preset = agent_presets[agent_name]
+        config_file = preset.get("config_file")
+        if not isinstance(config_file, str) or not config_file.strip():
+            raise TypeError(f"custom agent `{agent_name}` must define config_file")
+        source_path = agents_dir / config_file
+        if not source_path.is_file():
+            raise FileNotFoundError(f"Missing agent role file for `{agent_name}`: {source_path}")
+        rendered_role_path = tmp_dir / f"{hashlib.sha256((actual_repo + ':' + agent_name).encode()).hexdigest()}-{Path(config_file).name}"
+        rendered_role_path.write_text(source_path.read_text(encoding='utf-8'), encoding='utf-8')
+        target_role_path = Path(actual_repo) / ".codex" / "agents" / Path(config_file).name
+        manifest_lines.append(f"{actual_repo}\t{target_role_path}\t{rendered_role_path}")
 
 for line in manifest_lines:
     print(line)
@@ -288,14 +327,14 @@ if (( ${#MANIFEST[@]} == 0 )); then
   die "No managed repo configs were rendered."
 fi
 
-log "Rendered ${#MANIFEST[@]} managed repo-local Codex configs from ${REGISTRY_FILE}."
+log "Rendered ${#MANIFEST[@]} managed repo-local Codex files from ${REGISTRY_FILE}."
 
 for entry in "${MANIFEST[@]}"; do
   IFS=$'\t' read -r repo target rendered <<<"$entry"
   ensure_parent_dir "$target"
 
   log ""
-  log "=== Repo Codex Config (${repo}) ==="
+  log "=== Repo Codex File (${repo}) ==="
   show_diff "$target" "$rendered"
 
   if (( APPLY == 1 )); then

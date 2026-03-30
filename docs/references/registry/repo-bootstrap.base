@@ -14,6 +14,8 @@ properties:
     displayName: Skill Count
   repo_local_skill_count:
     displayName: Repo-Local Skill Count
+  custom_agent_count:
+    displayName: Agent Count
   skills:
     displayName: Skills
   global_skills:
@@ -22,6 +24,8 @@ properties:
     displayName: Repo Skills
   repo_local_skills:
     displayName: Repo-Local Skills
+  custom_agents:
+    displayName: Custom Agents
   model:
     displayName: Model
   reasoning:
@@ -36,6 +40,7 @@ views:
     order:
       - repo_name
       - mcps
+      - custom_agents
       - skill_count
       - global_skills
       - repo_skills
@@ -50,6 +55,7 @@ views:
     order:
       - repo_name
       - mcps
+      - custom_agents
       - skill_count
       - global_skills
       - repo_skills
@@ -63,11 +69,24 @@ views:
     filters: 'skill_count > 0'
     order:
       - repo_name
+      - custom_agents
       - skill_count
       - global_skills
       - repo_skills
       - repo_local_skills
       - mcps
+  - type: table
+    name: Custom Agents
+    filters: 'custom_agent_count > 0'
+    order:
+      - repo_name
+      - custom_agents
+      - mcps
+      - skill_count
+      - model
+      - reasoning
+      - fast_mode
+      - service_tier
   - type: table
     name: Repo-Local Skills
     filters: 'repo_local_skill_count > 0'

@@ -121,6 +121,8 @@ properties:
     displayName: Skill Count
   repo_local_skill_count:
     displayName: Repo-Local Skill Count
+  custom_agent_count:
+    displayName: Agent Count
   skills:
     displayName: Skills
   global_skills:
@@ -129,6 +131,8 @@ properties:
     displayName: Repo Skills
   repo_local_skills:
     displayName: Repo-Local Skills
+  custom_agents:
+    displayName: Custom Agents
   model:
     displayName: Model
   reasoning:
@@ -143,6 +147,7 @@ views:
     order:
       - repo_name
       - mcps
+      - custom_agents
       - skill_count
       - global_skills
       - repo_skills
@@ -157,6 +162,7 @@ views:
     order:
       - repo_name
       - mcps
+      - custom_agents
       - skill_count
       - global_skills
       - repo_skills
@@ -170,11 +176,24 @@ views:
     filters: 'skill_count > 0'
     order:
       - repo_name
+      - custom_agents
       - skill_count
       - global_skills
       - repo_skills
       - repo_local_skills
       - mcps
+  - type: table
+    name: Custom Agents
+    filters: 'custom_agent_count > 0'
+    order:
+      - repo_name
+      - custom_agents
+      - mcps
+      - skill_count
+      - model
+      - reasoning
+      - fast_mode
+      - service_tier
   - type: table
     name: Repo-Local Skills
     filters: 'repo_local_skill_count > 0'
@@ -208,12 +227,14 @@ def generate_registry_items(
             f"mcp_count: {len(item['mcp_presets'])}",
             f"skill_count: {len(item['skills'])}",
             f"repo_local_skill_count: {len(item['repo_local_skills'])}",
+            f"custom_agent_count: {len(item['custom_agents'])}",
             f"model: {_yaml_str(_effective_value(defaults, item, 'model'))}",
             f"reasoning: {_yaml_str(_effective_value(defaults, item, 'model_reasoning_effort'))}",
             f"fast_mode: {_yaml_str(_effective_fast_mode(defaults, item))}",
             f"service_tier: {_yaml_str(_effective_value(defaults, item, 'service_tier'))}",
         ]
         _append_yaml_list(lines, "mcps", item["mcp_presets"])
+        _append_yaml_list(lines, "custom_agents", item["custom_agents"])
         _append_yaml_list(lines, "global_skills", item["global_skills"])
         _append_yaml_list(lines, "repo_skills", item["repo_scoped_skills"])
         _append_yaml_list(lines, "repo_local_skills", item["repo_local_skills"])
@@ -463,7 +484,7 @@ def generate_mcp_registry_items(
 
 def validate_registry(
     data: dict[str, Any], config_dir: Path, home: Path
-) -> tuple[dict[str, Any], dict[str, Any], list[dict[str, Any]]]:
+) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any], list[dict[str, Any]]]:
     defaults = data.get("defaults", {})
     if not isinstance(defaults, dict):
       raise ValueError("defaults must be an object")
@@ -477,6 +498,32 @@ def validate_registry(
     presets = data.get("mcp_presets", {})
     if not isinstance(presets, dict):
         raise ValueError("mcp_presets must be an object")
+
+    agent_presets = data.get("agent_presets", {})
+    if not isinstance(agent_presets, dict):
+        raise ValueError("agent_presets must be an object")
+    agents_dir = config_dir / "agents"
+    validated_agent_presets: dict[str, Any] = {}
+    for name, preset in agent_presets.items():
+        if not isinstance(preset, dict):
+            raise ValueError(f"agent_presets.{name} must be an object")
+        description = preset.get("description")
+        config_file = preset.get("config_file")
+        nickname_candidates = preset.get("nickname_candidates", [])
+        if not isinstance(description, str) or not description.strip():
+            raise ValueError(f"agent_presets.{name}.description must be a non-empty string")
+        if not isinstance(config_file, str) or not config_file.strip():
+            raise ValueError(f"agent_presets.{name}.config_file must be a non-empty string")
+        if not isinstance(nickname_candidates, list) or any(not isinstance(item, str) for item in nickname_candidates):
+            raise ValueError(f"agent_presets.{name}.nickname_candidates must be an array of strings")
+        config_path = agents_dir / config_file
+        if not config_path.is_file():
+            raise ValueError(f"agent_presets.{name}.config_file points to missing file: {config_path}")
+        validated_agent_presets[str(name)] = {
+            "description": description,
+            "config_file": config_file,
+            "nickname_candidates": nickname_candidates,
+        }
 
     repos_raw = data.get("repos")
     if not isinstance(repos_raw, list) or not repos_raw:
@@ -516,7 +563,16 @@ def validate_registry(
             "repo_root": repo_root,
             "mcp_presets": [str(name) for name in mcp_presets],
             "mcp_presets_csv": ",".join(mcp_presets) if mcp_presets else "-",
+            "custom_agents": [],
         }
+        custom_agents = item.get("custom_agents", [])
+        if not isinstance(custom_agents, list):
+            raise ValueError(f"repos[{idx}].custom_agents must be an array")
+        for agent_name in custom_agents:
+            agent_name = str(agent_name)
+            if agent_name not in validated_agent_presets:
+                raise ValueError(f"repos[{idx}] references unknown custom agent: {agent_name}")
+            validated["custom_agents"].append(agent_name)
         for key in ALLOWED_SCALAR_KEYS:
             if key in item:
                 validated[key] = item[key]
@@ -527,7 +583,7 @@ def validate_registry(
         repos.append(validated)
 
     repos.sort(key=lambda item: item["path"])
-    return defaults, presets, repos
+    return defaults, presets, validated_agent_presets, repos
 
 
 def parse_args() -> argparse.Namespace:
@@ -560,7 +616,7 @@ def main() -> int:
     root_dir = config_dir.parent.parent
     home = Path.home()
     try:
-        defaults, presets, repos = validate_registry(data, config_dir, home)
+        defaults, presets, agent_presets, repos = validate_registry(data, config_dir, home)
     except ValueError as exc:
         print(f"Registry validation failed: {exc}", file=sys.stderr)
         return 1

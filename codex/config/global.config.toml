@@ -20,11 +20,6 @@ apps = false
 description = "Read-only researcher for information outside the local codebase and runtime."
 config_file = "agents/external_researcher.toml"
 
-[agents.visual_reviewer]
-description = "Read-only reviewer for visual work such as screenshots, layouts, hierarchy, and clarity."
-config_file = "agents/visual_reviewer.toml"
-nickname_candidates = ["Lens", "Critic", "Review"]
-
 [tui]
 theme = "catppuccin-macchiato"
 status_line = ["model-with-reasoning", "context-remaining", "current-dir", "codex-version", "context-window-size", "session-id", "fast-mode"]

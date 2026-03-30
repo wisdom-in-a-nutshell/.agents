@@ -4,11 +4,13 @@ path: "~/GitHub/blog-personal"
 mcp_count: 0
 skill_count: 15
 repo_local_skill_count: 1
+custom_agent_count: 0
 model: "gpt-5.4"
 reasoning: "high"
 fast_mode: "true"
 service_tier: "-"
 mcps: []
+custom_agents: []
 global_skills:
   - "agent-browser"
   - "architecture-docs"
