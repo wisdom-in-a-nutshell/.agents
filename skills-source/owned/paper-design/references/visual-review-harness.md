@@ -96,6 +96,8 @@ When one panel is stuck:
 - keep the canonical story panels in the main lane (`1`, `2`, `3`, ...)
 - create horizontal variants beside the stuck panel (`3A`, `3B`, `3C`)
 - keep everything on the same page so the user can see both the main story and the active explorations
+- do **not** keep overwriting the same canonical panel once the work has already had a couple of meaningful revisions and the remaining feedback is conceptual, compositional, or evaluator-driven
+- if a panel has already gone through roughly 2 meaningful revision cycles and is still not landing, branch by default instead of continuing hidden rewrite churn on the canonical artboard
 
 This preserves visible iteration history without corrupting the canonical sequence.
 
