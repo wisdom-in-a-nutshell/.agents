@@ -53,6 +53,7 @@ When the user is making collateral for a channel or publication surface, ask the
 Because the MCP only acts on the currently open page, confirm the intended page explicitly at the start of a project or whenever there is page ambiguity. If the wrong page is open, ask the user to switch before creating artboards.
 
 For multi-panel work like carousels, do not create the whole set by default. Start with the first artboard, iterate with the user, and only create additional panels as the work progresses unless the user explicitly asks for a batch.
+When a new canonical panel is created in a narrative sequence, place it directly below the previous canonical panel by default. Paper's create-artboard auto-placement finds open space, but that is not the same thing as the intended story order.
 
 Default review behavior: after each meaningful Paper edit, take a screenshot and inspect it. Keep iterating until the direction is coherent and obvious bugs are fixed before asking the user for feedback.
 

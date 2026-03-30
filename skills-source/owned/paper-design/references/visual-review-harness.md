@@ -1,10 +1,10 @@
 # Visual review harness for Paper work
 
-Use this only when the Paper task is visually sensitive enough that normal edit-and-check is not enough:
+Use this when the Paper task is a real visual deliverable rather than a one-shot tweak:
 - social carousels
-- taste-heavy explainers
+- explainers
 - concept boards with multiple plausible directions
-- panels that feel stuck after a few meaningful revisions
+- new panels that need shaping before they are worth showing
 
 Do **not** turn every Paper task into a heavy harness.
 
@@ -35,7 +35,7 @@ This harness keeps the work legible and skeptical.
    - Check for obvious failures first: clipping, crushing, overlap, weak hierarchy, unreadable labels, broken spacing.
 
 5. **Evaluator decision**
-   - For taste-heavy or visually sensitive work, assume an independent evaluator loop by default rather than treating it as an exceptional escalation.
+   - For non-one-shot visual work, assume the visual review pattern by default rather than treating evaluator review as a rare escalation.
 
 6. **Simplify**
    - Remove anything that is not load-bearing.
@@ -47,10 +47,10 @@ This harness keeps the work legible and skeptical.
 
 ## Independent evaluator rule
 
-Use an evaluator by default for taste-heavy visual work, and selectively for everything else.
+Use an evaluator by default for non-one-shot visual work, and selectively for everything else.
 
 The strongest fit is when:
-- the panel is subjective or composition-heavy
+- the panel is a real visual deliverable
 - the creator is looping or attached to a direction
 - the remaining issue is more about taste, hierarchy, or narrative clarity than mechanics
 
@@ -87,7 +87,7 @@ The review artifact should be short and structured:
 
 If the user explicitly wants an evaluator-driven loop, do not stop after one pass. Continue through at least 3 meaningful iterations (or 3-4 if needed) and keep going until the evaluator is generally happy or the active rubric categories are roughly 8+.
 
-Even when the user does not explicitly say this, default to finishing a few strong internal iterations before presenting the panel back if the work is clearly taste-heavy and the first pass is not ready.
+Even when the user does not explicitly say this, default to finishing a few strong internal iterations before presenting the panel back if the work is not a one-shot and the first pass is not ready.
 
 ## Variant lane pattern
 

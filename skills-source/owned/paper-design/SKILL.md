@@ -48,15 +48,18 @@ Use a review loop by default: make a change, take a screenshot, inspect for layo
 6. when creating multi-panel work such as a carousel, default to one artboard at a time unless the user explicitly asks for batch creation
 7. make small incremental changes
 8. verify visually with screenshots
-9. for taste-heavy or visually sensitive Paper work, assume an evaluator-driven review loop by default rather than showing the first plausible version to the user
-10. when using an independent evaluator, do not rely on the generator's memory of the critique; have the evaluator produce a short review artifact first, then synthesize from that artifact
-11. keep iterating until the work is directionally strong and you would personally feel good putting it in front of the user; do not bounce every intermediate version back to the human unless they explicitly want live micro-iteration
-12. if the user explicitly wants an evaluator-driven iteration loop, continue for at least 3 meaningful iterations (or 3-4 if needed) and keep going until the evaluator is generally happy or the review scores are roughly 8+ across the active rubric categories
+9. for non-one-shot visual work, default to the visual review pattern rather than showing the first plausible version to the user
+10. visual review pattern = build, screenshot review, evaluator handoff, revise, repeat
+11. when using an evaluator, do not rely on the generator's memory of the critique; have the evaluator produce a short review artifact first, then synthesize from that artifact
+12. keep iterating until the work is directionally strong and you would personally feel good putting it in front of the user; do not bounce every intermediate version back to the human unless they explicitly want live micro-iteration
+13. if the user explicitly wants evaluator-driven iteration, continue for at least 3 meaningful iterations (or 3-4 if needed) and keep going until the evaluator is generally happy or the review scores are roughly 8+ across the active rubric categories
+14. for a newly created visual panel that is not a one-shot, do not present the first-pass composition as the answer before it has gone through the visual review pattern, unless the user explicitly asks to see rough first passes live
 
 ### Variant iteration lane
 
 For taste-heavy visual work, a useful optional pattern is:
 - keep the canonical story panels in one main vertical sequence (`1`, `2`, `3`, ...)
+- place each new canonical panel directly below the previous canonical panel by default; do not rely on Paper's auto-placement as the intended story layout
 - keep that main sequence readable on the same Paper page so the current narrative is always visible at a glance
 - create horizontal variants for a single stuck panel (`3A`, `3B`, `3C`) beside that panel instead of overwriting it immediately
 - use an evaluator pass to compare variants against a small explicit rubric
@@ -92,8 +95,8 @@ Important non-obvious truths:
 - For multi-artboard deliverables, default to creating and iterating one artboard at a time unless the user explicitly asks for all panels or a batch upfront.
 - Before showing a Paper result to the user, run at least one screenshot-based self-review pass and fix visible issues (overflow, hidden text, broken hierarchy, obvious alignment bugs) when they are easy to correct.
 - A panel is not ready just because the direction feels good; core legibility and visual integrity still need to be checked explicitly in the screenshot.
-- For taste-heavy visual work, self-review can plateau. If a panel has already gone through a few meaningful revisions and the remaining question is mostly about taste, hierarchy, or narrative clarity, consider an independent evaluator sub-agent review pass using screenshots.
-- Do not make external evaluation the default for every tiny spacing tweak; use it selectively for high-leverage review points.
+- For non-one-shot visual work, the default should be the visual review pattern, not first-pass presentation.
+- Do not make external evaluation the default for every tiny spacing tweak; use it when the panel is a real visual deliverable rather than a one-shot micro-fix.
 - stale or long-running sessions are a common cause of MCP weirdness; restarting is often the first fix
 - the Paper app appears to support AI image generation, but the current Paper MCP tool surface here does **not** expose a dedicated image-generation tool
 - When writing HTML into Paper, prefer padding, gap, and explicit positioning over margins for placement; margin-based layout is more fragile in practice here.
