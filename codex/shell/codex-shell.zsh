@@ -183,6 +183,9 @@ codex_jump() {
       recent_window_seconds="$((recent_window_days * 86400))"
     fi
 
+    # Keep the picker easy to steer:
+    # - repos used recently are pinned first by pure recency
+    # - older repos fall back to lifetime frequency with recency as a tiebreaker
     recent_rank_tmp="$(mktemp -t codex-jump-rank-recent)"
     older_rank_tmp="$(mktemp -t codex-jump-rank-older)"
     idx=0
