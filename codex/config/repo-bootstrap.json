@@ -34,9 +34,9 @@
       "description": "Writing-focused sub-agent powered by LiteLLM on AWS Bedrock Claude Sonnet 4.6. Highly encouraged for copywriting, rewriting, and tone-sensitive drafting.",
       "config_file": "writer.toml",
       "nickname_candidates": [
-        "Writer",
-        "Copy",
-        "Draft"
+        "Quill",
+        "Scribe",
+        "Muse"
       ]
     },
     "visual_reviewer": {

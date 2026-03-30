@@ -14,4 +14,4 @@ url = "https://developers.openai.com/mcp"
 [agents.writer]
 description = "Writing-focused sub-agent powered by LiteLLM on AWS Bedrock Claude Sonnet 4.6. Highly encouraged for copywriting, rewriting, and tone-sensitive drafting."
 config_file = "agents/writer.toml"
-nickname_candidates = ["Writer", "Copy", "Draft"]
+nickname_candidates = ["Quill", "Scribe", "Muse"]
