@@ -48,9 +48,10 @@ Use a review loop by default: make a change, take a screenshot, inspect for layo
 6. when creating multi-panel work such as a carousel, default to one artboard at a time unless the user explicitly asks for batch creation
 7. make small incremental changes
 8. verify visually with screenshots
-9. if a panel is still stuck after meaningful self-review or the judgment is mostly about visual hierarchy/taste, consider using an independent evaluator sub-agent to review screenshots and critique the work before declaring it done
+9. for taste-heavy or visually sensitive Paper work, assume an evaluator-driven review loop by default rather than showing the first plausible version to the user
 10. when using an independent evaluator, do not rely on the generator's memory of the critique; have the evaluator produce a short review artifact first, then synthesize from that artifact
-11. if the user explicitly wants an evaluator-driven iteration loop, continue for at least 3 meaningful iterations (or 3-4 if needed) and keep going until the evaluator is generally happy or the review scores are roughly 8+ across the active rubric categories
+11. keep iterating until the work is directionally strong and you would personally feel good putting it in front of the user; do not bounce every intermediate version back to the human unless they explicitly want live micro-iteration
+12. if the user explicitly wants an evaluator-driven iteration loop, continue for at least 3 meaningful iterations (or 3-4 if needed) and keep going until the evaluator is generally happy or the review scores are roughly 8+ across the active rubric categories
 
 ### Variant iteration lane
 

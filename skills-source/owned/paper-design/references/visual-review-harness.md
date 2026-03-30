@@ -35,17 +35,24 @@ This harness keeps the work legible and skeptical.
    - Check for obvious failures first: clipping, crushing, overlap, weak hierarchy, unreadable labels, broken spacing.
 
 5. **Evaluator decision**
-   - If the remaining question is mostly taste, hierarchy, or narrative clarity, consider an independent evaluator sub-agent.
+   - For taste-heavy or visually sensitive work, assume an independent evaluator loop by default rather than treating it as an exceptional escalation.
 
 6. **Simplify**
    - Remove anything that is not load-bearing.
 
+7. **Presentation gate**
+   - Do not show the user every plausible intermediate.
+   - Keep iterating until the panel is directionally strong and you would personally feel good presenting it.
+   - Only surface rougher intermediate states when the user explicitly wants live co-design or micro-iteration.
+
 ## Independent evaluator rule
 
-Use an evaluator selectively when:
-- the panel has already gone through 2–3 meaningful revisions
+Use an evaluator by default for taste-heavy visual work, and selectively for everything else.
+
+The strongest fit is when:
+- the panel is subjective or composition-heavy
 - the creator is looping or attached to a direction
-- the remaining issue is subjective rather than mechanical
+- the remaining issue is more about taste, hierarchy, or narrative clarity than mechanics
 
 Do not use an evaluator for:
 - tiny spacing nudges
@@ -80,6 +87,8 @@ The review artifact should be short and structured:
 
 If the user explicitly wants an evaluator-driven loop, do not stop after one pass. Continue through at least 3 meaningful iterations (or 3-4 if needed) and keep going until the evaluator is generally happy or the active rubric categories are roughly 8+.
 
+Even when the user does not explicitly say this, default to finishing a few strong internal iterations before presenting the panel back if the work is clearly taste-heavy and the first pass is not ready.
+
 ## Variant lane pattern
 
 When one panel is stuck:
@@ -95,6 +104,20 @@ This preserves visible iteration history without corrupting the canonical sequen
 - evaluator = compare variants against an explicit rubric
 
 Do not let variant lanes sprawl forever. Collapse back to one winner.
+
+### Marking the winner / finalized panel
+
+Use a simple state convention:
+- during active comparison: keep the variants as `3A`, `3B`, `3C`
+- when one variant is clearly winning but not fully locked: mark it as the **winner** in conversation or rename it with a light suffix like `- Winner`
+- once the user accepts it as final for now: promote that version back to the canonical panel name (`Panel 3 - Recommended path`) and keep older variants nearby only if they are still useful for comparison
+
+Practical default:
+- canonical/main panel name = the finalized version
+- variant suffixes = exploration history
+- optional project note = record which variant won
+
+This keeps the page readable and avoids leaving three competing “final” states on the same canvas.
 
 ## Panel-specific rubric
 
