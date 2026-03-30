@@ -30,13 +30,13 @@
     }
   },
   "agent_presets": {
-    "bedrock_sonnet": {
-      "description": "Opt-in alternate-provider sub-agent powered by LiteLLM on AWS Bedrock Claude Sonnet 4.6.",
-      "config_file": "bedrock_sonnet.toml",
+    "writer": {
+      "description": "Writing-focused sub-agent powered by LiteLLM on AWS Bedrock Claude Sonnet 4.6. Highly encouraged for copywriting, rewriting, and tone-sensitive drafting.",
+      "config_file": "writer.toml",
       "nickname_candidates": [
-        "Bedrock",
-        "Sonnet",
-        "Bridge"
+        "Writer",
+        "Copy",
+        "Draft"
       ]
     },
     "visual_reviewer": {
@@ -56,7 +56,7 @@
         "multi_agent": true
       },
       "custom_agents": [
-        "bedrock_sonnet"
+        "writer"
       ],
       "mcp_presets": [
         "openaiDeveloperDocs"
@@ -146,7 +146,7 @@
         "multi_agent": true
       },
       "custom_agents": [
-        "bedrock_sonnet"
+        "writer"
       ]
     },
     {

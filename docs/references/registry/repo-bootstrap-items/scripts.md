@@ -15,10 +15,10 @@ mcps: []
 global_agents:
   - "external_researcher"
 custom_agents:
-  - "bedrock_sonnet"
+  - "writer"
 agents:
-  - "bedrock_sonnet"
   - "external_researcher"
+  - "writer"
 global_skills:
   - "agent-browser"
   - "architecture-docs"

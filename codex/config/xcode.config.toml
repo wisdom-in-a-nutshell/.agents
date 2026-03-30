@@ -21,7 +21,7 @@ apps = false
 name = "LiteLLM"
 base_url = "https://aip-litellm-proxy.azurewebsites.net/v1"
 env_key = "LLM_API_KEY"
-env_key_instructions = "Set LLM_API_KEY to the LiteLLM proxy key before using the Bedrock Sonnet sub-agent."
+env_key_instructions = "Set LLM_API_KEY to the LiteLLM proxy key before using the Writer sub-agent."
 wire_api = "responses"
 supports_websockets = false
 
