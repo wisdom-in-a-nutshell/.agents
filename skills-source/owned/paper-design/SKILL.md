@@ -103,10 +103,7 @@ Important non-obvious truths:
 - the Paper app appears to support AI image generation, but the current Paper MCP tool surface here does **not** expose a dedicated image-generation tool
 - When writing HTML into Paper, prefer padding, gap, and explicit positioning over margins for placement; margin-based layout is more fragile in practice here.
 - for agent-generated imagery, use a separate image-generation workflow and then place the result into Paper
-- for icons in Paper work, use one consistent family per panel
-- default conceptual/system icons to **Lucide-style outline SVGs**
-- default brand/product/client marks to **official SVG logos**, not Lucide
-- if the repo does not already vendor the needed icons, fetch only the specific SVGs needed and stage them locally rather than pulling a huge icon repo
+- for icon sourcing/family rules, see `references/overview.md`
 
 ### 3. Design-to-code guidance
 
