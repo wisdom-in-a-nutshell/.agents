@@ -48,22 +48,12 @@ So the skill should **not** try to restate the whole MCP schema.
 - For icons, keep one icon family per panel. Use Lucide-style outline SVGs for conceptual/system icons and official SVGs for brands/products/clients.
 - There is no vendored general-purpose icon library in this repo right now. Fetch or stage only the specific SVGs you need instead of pulling a whole icon repo by default.
 
-## Good default collaboration flow
+## Collaboration workflow
 
-When the user is making collateral for a channel or publication surface, ask the primary destination early (for example Reddit, LinkedIn, X, blog, presentation). Use that to choose the initial artboard ratio instead of defaulting blindly. If the destination is still unclear, ask before laying out the canvas.
+The step-by-step editing workflow now lives in:
+- `references/collaboration-workflow.md`
 
-Because the MCP only acts on the currently open page, confirm the intended page explicitly at the start of a project or whenever there is page ambiguity. If the wrong page is open, ask the user to switch before creating artboards.
-
-For multi-panel work like carousels, do not create the whole set by default. Start with the first artboard, iterate with the user, and only create additional panels as the work progresses unless the user explicitly asks for a batch.
-When a new canonical panel is created in a narrative sequence, place it directly below the previous canonical panel by default. Paper's create-artboard auto-placement finds open space, but that is not the same thing as the intended story order.
-
-Default review behavior: after each meaningful Paper edit, take a screenshot and inspect it. Keep iterating until the direction is coherent and obvious bugs are fixed before asking the user for feedback.
-
-1. inspect the current file first
-2. work on the selected node/frame when possible
-3. make small visual moves, not giant blind rewrites
-4. verify after changes with screenshots
-5. if the user asks how Paper works, answer from these notes first and only go to the live site when needed
+Keep this file focused on Paper product truths and local conventions.
 
 ## Design-to-code note
 

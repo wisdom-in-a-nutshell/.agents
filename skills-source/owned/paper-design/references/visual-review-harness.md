@@ -1,6 +1,6 @@
 # Visual review harness for Paper work
 
-Use this when the Paper task is a real visual deliverable rather than a one-shot tweak:
+Use this when normal self-review is not enough and the Paper task is a real visual deliverable rather than a one-shot tweak:
 - social carousels
 - explainers
 - concept boards with multiple plausible directions
@@ -44,6 +44,7 @@ This harness keeps the work legible and skeptical.
 7. **Presentation gate**
    - Do not show the user every plausible intermediate.
    - Keep iterating until the panel is directionally strong and you would personally feel good presenting it.
+   - If the next improvement is obvious, do it. Do not ask the human whether you should continue unless a real choice or blocker appears.
    - Only surface rougher intermediate states when the user explicitly wants live co-design or micro-iteration.
 
 
@@ -56,7 +57,7 @@ The strongest fit is when:
 - the creator is looping or attached to a direction
 - the remaining issue is more about taste, hierarchy, or narrative clarity than mechanics
 
-If the runtime exposes a dedicated screenshot-review agent such as `visual_reviewer`, prefer that first for Paper panel review. If it is unavailable, fall back to another independent sub-agent rather than relying on self-review alone.
+Use the dedicated `visual_reviewer` agent for Paper screenshot critique. If it is somehow unavailable in a future runtime, fall back to another independent sub-agent rather than relying on self-review alone.
 
 Do not use an evaluator for:
 - tiny spacing nudges
@@ -64,8 +65,6 @@ Do not use an evaluator for:
 - small text corrections
 
 The evaluator should review screenshots, not vague descriptions.
-
-Use the dedicated `visual_reviewer` agent for screenshot-based Paper critique. It is a better fit than a generic evaluator for layout, hierarchy, spacing, readability, icon visibility, and visual coherence checks.
 
 ### Evaluator handoff pattern
 
