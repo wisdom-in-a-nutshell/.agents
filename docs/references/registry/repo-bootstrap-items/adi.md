@@ -2,7 +2,7 @@
 repo_name: "adi"
 path: "~/GitHub/adi"
 mcp_count: 2
-skill_count: 19
+skill_count: 20
 repo_local_skill_count: 0
 model: "gpt-5.4"
 reasoning: "high"
@@ -25,6 +25,7 @@ repo_skills:
   - "aip-company"
   - "client-interface-guidelines"
   - "codex-agent-loop"
+  - "codex-app-server"
   - "frontend-skill"
   - "health"
   - "imagegen"
@@ -41,6 +42,7 @@ skills:
   - "architecture-docs"
   - "client-interface-guidelines"
   - "codex-agent-loop"
+  - "codex-app-server"
   - "defuddle"
   - "find-skills"
   - "frontend-skill"
