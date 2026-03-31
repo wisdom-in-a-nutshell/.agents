@@ -56,7 +56,8 @@ flowchart TD
     B --> C{Did ~/.agents/codex change?}
     C -->|No| D[Skip]
     C -->|Yes| E[bootstrap-machine-codex.sh --apply]
-    E --> F[Update machine-local reconcile stamp]
+    E --> F[reapply shared shell links]
+    F --> G[Update machine-local reconcile stamp]
 ```
 
 ### What This Group Does
@@ -67,12 +68,14 @@ flowchart TD
   - checks whether the current `~/.agents` revision contains new Codex control-plane changes since the last successful reconcile on that machine
   - runs the full Codex bootstrap only when needed
   - keeps a machine-local stamp under `~/.local/state/codex-control-plane/`
+  - the surrounding `~/GitHub/scripts/sync/git-auto-sync.sh` loop also reapplies the shared `~/.zshrc` and `~/.zprofile` links after the Codex auto-apply step
 
 ## Figure 3: Shell And Startup Scripts
 
 ```mermaid
 flowchart TD
     A[zshrc.shared] --> B[codex-shell.zsh]
+    A2[zprofile.shared] --> G[Codex CLI]
     C[Ghostty initial-command] --> D[ghostty-codex-then-shell.sh]
     B --> E[codex_jump]
     B --> F[Ghostty auto-start loop]
@@ -84,12 +87,16 @@ flowchart TD
 
 - [`zshrc.shared`](/Users/dobby/GitHub/scripts/setup/codex/zshrc.shared)
   - generic shared shell file that sources the Codex shell fragment
+- [`zprofile.shared`](/Users/dobby/GitHub/scripts/setup/codex/zprofile.shared)
+  - shared login-shell bootstrap that hydrates machine-local shared env and trusted repo-local env for `zsh -lc` shells
 - [`codex-shell.zsh`](/Users/dobby/.agents/codex/shell/codex-shell.zsh)
   - defines Codex shell behavior such as the jump picker and Ghostty auto-start logic
 - [`ghostty-codex-then-shell.sh`](/Users/dobby/.agents/codex/scripts/ghostty-codex-then-shell.sh)
   - runs Codex first, then falls back to a normal login shell
 - [`link-shared-zshrc.sh`](/Users/dobby/GitHub/scripts/setup/codex/link-shared-zshrc.sh)
   - links `~/.zshrc` to the tracked shared shell file
+- [`link-shared-zprofile.sh`](/Users/dobby/GitHub/scripts/setup/codex/link-shared-zprofile.sh)
+  - links `~/.zprofile` to the tracked shared login-shell file
 
 ## Figure 4: Post-Turn Automation
 

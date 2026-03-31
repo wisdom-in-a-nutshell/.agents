@@ -55,6 +55,9 @@ Personal agent and Codex control plane.
 - Apply managed repo-local Codex configs: `./codex/scripts/sync-repo-codex-configs.sh --apply`
 - Dry-run Codex bootstrap batch: `./codex/scripts/bootstrap-machine-codex.sh`
 - Apply Codex bootstrap batch: `./codex/scripts/bootstrap-machine-codex.sh --apply`
+  - This applies the Codex control-plane outputs only; the shared shell links still live in `~/GitHub/scripts`.
+- Link shared zshrc: `~/GitHub/scripts/setup/codex/link-shared-zshrc.sh --apply`
+- Link shared zprofile: `~/GitHub/scripts/setup/codex/link-shared-zprofile.sh --apply`
 - Validate Codex control-plane inputs + rendered runtimes: `./codex/scripts/check-codex-control-plane.sh`
 
 ## Automation Cadence

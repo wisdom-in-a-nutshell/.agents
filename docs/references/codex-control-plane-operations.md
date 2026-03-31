@@ -16,6 +16,7 @@ Use [Codex Control Plane Ownership](/Users/dobby/.agents/docs/references/codex-c
 - `~/GitHub/scripts`
   - generic machine bootstrap and shared shell glue
   - shared zshrc in [`setup/codex/zshrc.shared`](/Users/dobby/GitHub/scripts/setup/codex/zshrc.shared)
+  - shared zprofile in [`setup/codex/zprofile.shared`](/Users/dobby/GitHub/scripts/setup/codex/zprofile.shared)
   - machine bootstrap entrypoint in [`setup/bootstrap-machine.sh`](/Users/dobby/GitHub/scripts/setup/bootstrap-machine.sh)
 - `~/.codex`
   - live runtime home only
@@ -30,6 +31,7 @@ Use [Codex Control Plane Ownership](/Users/dobby/.agents/docs/references/codex-c
 - Apply the full Codex bootstrap batch:
   - [`bootstrap-machine-codex.sh`](/Users/dobby/.agents/codex/scripts/bootstrap-machine-codex.sh)
   - `~/.agents/codex/scripts/bootstrap-machine-codex.sh --apply`
+  - this applies the Codex control-plane outputs only; shared shell links still come from `~/GitHub/scripts/setup/codex/`
 - Auto-apply the Codex control plane after `~/.agents` sync when `codex/` changed:
   - [`auto-apply-codex-control-plane.sh`](/Users/dobby/.agents/codex/scripts/auto-apply-codex-control-plane.sh)
   - `~/.agents/codex/scripts/auto-apply-codex-control-plane.sh --apply`
@@ -52,6 +54,8 @@ Use [Codex Control Plane Ownership](/Users/dobby/.agents/docs/references/codex-c
 - Link the shared shell config:
   - [`link-shared-zshrc.sh`](/Users/dobby/GitHub/scripts/setup/codex/link-shared-zshrc.sh)
   - `~/GitHub/scripts/setup/codex/link-shared-zshrc.sh --apply`
+  - [`link-shared-zprofile.sh`](/Users/dobby/GitHub/scripts/setup/codex/link-shared-zprofile.sh)
+  - `~/GitHub/scripts/setup/codex/link-shared-zprofile.sh --apply`
 
 ## Healthy State Checklist
 
@@ -60,6 +64,9 @@ Use [Codex Control Plane Ownership](/Users/dobby/.agents/docs/references/codex-c
 - `~/.zshrc` points at the shared tracked shell file:
   - `readlink ~/.zshrc`
   - expected target: `~/GitHub/scripts/setup/codex/zshrc.shared`
+- `~/.zprofile` points at the shared tracked login-shell file:
+  - `readlink ~/.zprofile`
+  - expected target: `~/GitHub/scripts/setup/codex/zprofile.shared`
 - Ghostty points at the canonical Codex startup wrapper:
   - `initial-command = direct:$HOME/.agents/codex/scripts/ghostty-codex-then-shell.sh`
 - `~/.codex/config.toml` uses the local machine notify path:
