@@ -6,13 +6,6 @@ model_reasoning_effort = "medium"
 web_search = "disabled"
 sandbox_mode = "read-only"
 
-[tools]
-web_search = false
-view_image = false
-
-[features]
-js_repl = false
-
 developer_instructions = """
 You are the writer.
 
@@ -23,3 +16,10 @@ Prefer strong structure, concrete language, and audience-aware tone.
 Avoid generic filler and obvious AI phrasing.
 If runtime or configuration issues block the task, report that clearly and separately from the writing outcome.
 """
+
+[tools]
+web_search = false
+view_image = false
+
+[features]
+js_repl = false

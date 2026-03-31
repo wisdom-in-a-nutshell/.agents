@@ -50,7 +50,8 @@ Canonical personal Codex control-plane assets live here.
 ## Repo Bootstrap Registry
 
 - `config/repo-bootstrap.json` is the one place to decide managed repo-local Codex behavior.
-- Multi-agent role tuning belongs in `config/global.config.toml`, `config/xcode.config.toml`, and `config/agents/*.toml`, not in repo bootstrap.
+- Role identity belongs in `config/global.config.toml`, `config/xcode.config.toml`, and `config/agents/*.toml`.
+- Repo-specific sub-agent policy belongs in `config/repo-bootstrap.json` when the same role needs different MCP exposure or tool posture in different repos.
 - The current managed role setup is:
   - built-in `explorer` remains available for local repo and runtime exploration
   - managed `external_researcher` handles information outside the local repo and runtime
@@ -58,6 +59,7 @@ Canonical personal Codex control-plane assets live here.
 - The current per-repo control surface is:
   - `mcp_presets`
   - `custom_agents`
+  - `agent_policies`
   - `model`
   - `model_reasoning_effort`
   - `model_verbosity`
@@ -66,7 +68,13 @@ Canonical personal Codex control-plane assets live here.
   - `project_root_markers`
   - `features`
   - `service_tier`
-- `repo-bootstrap.json` also carries `agent_presets`, which define the reusable declaration metadata for repo-scoped custom roles while the role behavior stays in `config/agents/*.toml`.
+- `repo-bootstrap.json` also carries:
+  - `agent_presets`
+    - reusable declaration metadata for managed repo-local agent entries
+  - `agent_policy_presets`
+    - reusable repo-local policy overlays such as MCP allow-lists or deny-all posture
+- `agent_presets` can back both repo-scoped custom agents and repo-local overrides for global agents such as `writer`.
+- `agent_policy_presets` let the repo sync render repo-local `agents/*.toml` from canonical role templates plus repo policy, so new MCP presets default safely instead of relying on hand-edited role files.
 - The registry `defaults` block is rendered into every managed repo-local `.codex/config.toml` unless a repo entry overrides those keys explicitly.
 - `defaults.features` is merged with per-repo `features`, so baseline feature flags can be enabled globally while still allowing repo overrides.
 - `scripts/sync-repo-bootstrap-registry.sh` regenerates:
@@ -76,6 +84,7 @@ Canonical personal Codex control-plane assets live here.
   - `../docs/references/registry/mcp-registry.base`
   - `../docs/references/registry/mcp-registry-items/`
 - `scripts/sync-repo-codex-configs.sh --apply` renders the actual repo-local `.codex/config.toml` files from that JSON registry.
+- The same sync also renders repo-local `.codex/agents/*.toml` for any repo-assigned custom agents or repo-assigned agent-policy overlays.
 - `scripts/sync-trusted-projects.sh --apply` ensures those repo-local configs are trusted and therefore loaded by Codex.
 - `scripts/check-codex-control-plane.sh` validates canonical role definitions, runtime role declarations, and repo-scoped custom-agent render output after sync.
 - `scripts/auto-apply-codex-control-plane.sh --apply` is the machine-local post-sync reconcile hook that runs `bootstrap-machine-codex.sh --apply` when `~/.agents/codex/` changed since the last successful reconcile.

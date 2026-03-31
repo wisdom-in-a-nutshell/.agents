@@ -6,9 +6,13 @@ import json
 import shutil
 import subprocess
 import sys
-import tomllib
 from pathlib import Path
 from typing import Any
+
+try:
+    import tomllib
+except ModuleNotFoundError:  # pragma: no cover
+    import tomli as tomllib  # type: ignore
 
 
 ALLOWED_SCALAR_KEYS = {
@@ -27,6 +31,18 @@ ALLOWED_SCALAR_KEYS = {
 }
 ALLOWED_DEFAULT_TABLE_KEYS = {
     "features",
+}
+ROLE_OVERRIDE_SCALAR_KEYS = {
+    "model",
+    "model_provider",
+    "model_reasoning_effort",
+    "model_reasoning_summary",
+    "model_verbosity",
+    "web_search",
+    "approval_policy",
+    "sandbox_mode",
+    "personality",
+    "service_tier",
 }
 
 
@@ -132,6 +148,60 @@ def _load_agent_role_config(config_path: Path) -> dict[str, str]:
     }
 
 
+def _validate_policy_object(policy: dict[str, Any], *, label: str, mcp_presets: dict[str, Any]) -> dict[str, Any]:
+    allowed_keys = ROLE_OVERRIDE_SCALAR_KEYS | {"tools", "features", "mcp"}
+    unexpected = sorted(set(policy.keys()) - allowed_keys)
+    if unexpected:
+        raise ValueError(f"{label} has unsupported keys: {', '.join(unexpected)}")
+
+    normalized: dict[str, Any] = {}
+    for key in ROLE_OVERRIDE_SCALAR_KEYS:
+        if key in policy:
+            value = policy[key]
+            if value is not None and not isinstance(value, (str, int, bool, list)):
+                raise ValueError(f"{label}.{key} must be a TOML-scalar-compatible value")
+            normalized[key] = value
+
+    for table_key in ("tools", "features"):
+        if table_key in policy:
+            table = policy[table_key]
+            if not isinstance(table, dict):
+                raise ValueError(f"{label}.{table_key} must be an object")
+            if any(not isinstance(name, str) for name in table):
+                raise ValueError(f"{label}.{table_key} keys must be strings")
+            normalized[table_key] = dict(table)
+
+    if "mcp" in policy:
+        mcp = policy["mcp"]
+        if not isinstance(mcp, dict):
+            raise ValueError(f"{label}.mcp must be an object")
+        mode = mcp.get("mode", "inherit")
+        if mode not in {"inherit", "deny_all", "allow_list"}:
+            raise ValueError(f"{label}.mcp.mode must be one of: inherit, deny_all, allow_list")
+        presets = mcp.get("presets", [])
+        if presets is None:
+            presets = []
+        if not isinstance(presets, list) or any(not isinstance(item, str) for item in presets):
+            raise ValueError(f"{label}.mcp.presets must be an array of strings")
+        unknown = sorted(set(presets) - set(mcp_presets))
+        if unknown:
+            raise ValueError(f"{label}.mcp references unknown MCP presets: {', '.join(unknown)}")
+        normalized["mcp"] = {
+            "mode": mode,
+            "presets": [str(item) for item in presets],
+        }
+
+    return normalized
+
+
+def _resolve_repo_agent_names(custom_agents: list[str], agent_policy_map: dict[str, Any]) -> list[str]:
+    ordered: list[str] = []
+    for agent_name in [*custom_agents, *agent_policy_map.keys()]:
+        if agent_name not in ordered:
+            ordered.append(agent_name)
+    return ordered
+
+
 def generate_registry_base(views_dir: Path) -> None:
     content = """filters:
   and:
@@ -153,6 +223,10 @@ properties:
     displayName: Global Agent Count
   custom_agent_count:
     displayName: Custom Agent Count
+  repo_agent_count:
+    displayName: Repo Agent Count
+  agent_policy_count:
+    displayName: Agent Policy Count
   agent_count:
     displayName: Agent Count
   skills:
@@ -169,6 +243,12 @@ properties:
     displayName: Global Agents
   custom_agents:
     displayName: Custom Agents
+  repo_agents:
+    displayName: Repo Agents
+  agent_policy_agents:
+    displayName: Agent Policy Agents
+  agent_policy_bindings:
+    displayName: Agent Policies
   model:
     displayName: Model
   reasoning:
@@ -185,6 +265,7 @@ views:
       - skill_count
       - repo_local_skill_count
       - mcps
+      - repo_agents
       - agents
       - model
       - reasoning
@@ -209,6 +290,8 @@ views:
       - skill_count
       - repo_local_skill_count
       - custom_agents
+      - repo_agents
+      - agent_policy_bindings
       - global_agents
       - mcps
       - model
@@ -249,6 +332,8 @@ def generate_registry_items(
             f"repo_local_skill_count: {len(item['repo_local_skills'])}",
             f"global_agent_count: {len(item['global_agents'])}",
             f"custom_agent_count: {len(item['custom_agents'])}",
+            f"repo_agent_count: {len(item['repo_agents'])}",
+            f"agent_policy_count: {len(item['agent_policy_agents'])}",
             f"agent_count: {len(item['agents'])}",
             f"model: {_yaml_str(_effective_value(defaults, item, 'model'))}",
             f"reasoning: {_yaml_str(_effective_value(defaults, item, 'model_reasoning_effort'))}",
@@ -258,6 +343,9 @@ def generate_registry_items(
         _append_yaml_list(lines, "mcps", item["mcp_presets"])
         _append_yaml_list(lines, "global_agents", item["global_agents"])
         _append_yaml_list(lines, "custom_agents", item["custom_agents"])
+        _append_yaml_list(lines, "repo_agents", item["repo_agents"])
+        _append_yaml_list(lines, "agent_policy_agents", item["agent_policy_agents"])
+        _append_yaml_list(lines, "agent_policy_bindings", item["agent_policy_bindings"])
         _append_yaml_list(lines, "agents", item["agents"])
         _append_yaml_list(lines, "global_skills", item["global_skills"])
         _append_yaml_list(lines, "repo_skills", item["repo_scoped_skills"])
@@ -609,7 +697,7 @@ def apply_agent_assignments(
     global_agent_set = set(global_agents)
     for item in repos:
         item["global_agents"] = global_agents
-        item["agents"] = sorted(global_agent_set | set(item["custom_agents"]))
+        item["agents"] = sorted(global_agent_set | set(item["repo_agents"]))
 
 
 def generate_agent_registry_items(
@@ -625,7 +713,7 @@ def generate_agent_registry_items(
 
     repo_usage: dict[str, list[str]] = {}
     for item in repos:
-        for agent_name in item["custom_agents"]:
+        for agent_name in item["repo_agents"]:
             repo_usage.setdefault(agent_name, []).append(item["repo_name"])
 
     all_agent_names = sorted(
@@ -686,7 +774,7 @@ def validate_registry(
 ) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any], list[dict[str, Any]]]:
     defaults = data.get("defaults", {})
     if not isinstance(defaults, dict):
-      raise ValueError("defaults must be an object")
+        raise ValueError("defaults must be an object")
 
     for key in defaults:
         if key not in ALLOWED_SCALAR_KEYS and key not in ALLOWED_DEFAULT_TABLE_KEYS:
@@ -701,6 +789,9 @@ def validate_registry(
     agent_presets = data.get("agent_presets", {})
     if not isinstance(agent_presets, dict):
         raise ValueError("agent_presets must be an object")
+    agent_policy_presets = data.get("agent_policy_presets", {})
+    if not isinstance(agent_policy_presets, dict):
+        raise ValueError("agent_policy_presets must be an object")
     agents_dir = config_dir / "agents"
     validated_agent_presets: dict[str, Any] = {}
     for name, preset in agent_presets.items():
@@ -724,6 +815,18 @@ def validate_registry(
             "nickname_candidates": nickname_candidates,
             **_load_agent_role_config(config_path),
         }
+
+    validated_agent_policy_presets: dict[str, Any] = {}
+    for name, preset in agent_policy_presets.items():
+        if not isinstance(name, str) or not name.strip():
+            raise ValueError("agent_policy_presets keys must be non-empty strings")
+        if not isinstance(preset, dict):
+            raise ValueError(f"agent_policy_presets.{name} must be an object")
+        validated_agent_policy_presets[str(name)] = _validate_policy_object(
+            preset,
+            label=f"agent_policy_presets.{name}",
+            mcp_presets=presets,
+        )
 
     repos_raw = data.get("repos")
     if not isinstance(repos_raw, list) or not repos_raw:
@@ -764,6 +867,8 @@ def validate_registry(
             "mcp_presets": [str(name) for name in mcp_presets],
             "mcp_presets_csv": ",".join(mcp_presets) if mcp_presets else "-",
             "custom_agents": [],
+            "agent_policy_agents": [],
+            "agent_policy_bindings": [],
         }
         custom_agents = item.get("custom_agents", [])
         if not isinstance(custom_agents, list):
@@ -773,6 +878,40 @@ def validate_registry(
             if agent_name not in validated_agent_presets:
                 raise ValueError(f"repos[{idx}] references unknown custom agent: {agent_name}")
             validated["custom_agents"].append(agent_name)
+
+        raw_agent_policies = item.get("agent_policies", {})
+        if raw_agent_policies is None:
+            raw_agent_policies = {}
+        if not isinstance(raw_agent_policies, dict):
+            raise ValueError(f"repos[{idx}].agent_policies must be an object")
+        resolved_agent_policies: dict[str, Any] = {}
+        for agent_name, raw_policy in raw_agent_policies.items():
+            agent_name = str(agent_name)
+            if agent_name not in validated_agent_presets:
+                raise ValueError(f"repos[{idx}] references unknown agent policy target: {agent_name}")
+            if isinstance(raw_policy, str):
+                if raw_policy not in validated_agent_policy_presets:
+                    raise ValueError(
+                        f"repos[{idx}].agent_policies.{agent_name} references unknown preset: {raw_policy}"
+                    )
+                resolved_agent_policies[agent_name] = dict(validated_agent_policy_presets[raw_policy])
+                validated["agent_policy_bindings"].append(f"{agent_name}={raw_policy}")
+                continue
+            if isinstance(raw_policy, dict):
+                resolved_agent_policies[agent_name] = _validate_policy_object(
+                    raw_policy,
+                    label=f"repos[{idx}].agent_policies.{agent_name}",
+                    mcp_presets=presets,
+                )
+                validated["agent_policy_bindings"].append(f"{agent_name}=inline")
+                continue
+            raise ValueError(
+                f"repos[{idx}].agent_policies.{agent_name} must be a preset name or object"
+            )
+        validated["agent_policy_agents"] = sorted(resolved_agent_policies.keys())
+        validated["repo_agents"] = _resolve_repo_agent_names(
+            validated["custom_agents"], resolved_agent_policies
+        )
         for key in ALLOWED_SCALAR_KEYS:
             if key in item:
                 validated[key] = item[key]

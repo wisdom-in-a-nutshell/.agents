@@ -16,6 +16,7 @@ Personal agent and Codex control plane.
 - `codex/config/repo-bootstrap.json` is the canonical registry for managed repo-local Codex behavior.
   - Per repo it can define:
     - `mcp_presets`
+    - `agent_policies`
     - `model`
     - `model_reasoning_effort`
     - `model_verbosity`
@@ -77,4 +78,5 @@ Personal agent and Codex control plane.
 - Do not add additional manifest files for skill mapping; update `skills/registry.json`.
 - If `skills/registry.json` changes, run sync/check in the same change.
 - Do not hand-edit generated repo-local `.codex/config.toml` files in managed repos; update `codex/config/repo-bootstrap.json` and re-run the sync scripts.
+- Do not hand-edit generated repo-local `.codex/agents/*.toml` files in managed repos; update `codex/config/repo-bootstrap.json` or `codex/config/agents/*.toml` and re-run the sync scripts.
 - If `codex/config/agents/*.toml`, `codex/config/global.config.toml`, `codex/config/xcode.config.toml`, or `codex/config/repo-bootstrap.json` changes, run the Codex control-plane validation script in the same change.

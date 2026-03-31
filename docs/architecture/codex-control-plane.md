@@ -10,6 +10,7 @@ The newest part of that control plane is the repo bootstrap registry in `~/.agen
 - which extra repos live outside `~/GitHub`
 - which repo-local MCP presets should be enabled
 - which repo-scoped custom agents should be enabled
+- which repo-scoped agent-policy overlays should be rendered
 - which repo-local `.codex/config.toml` files should be generated
 
 ## Figure 1: Ownership Layout
@@ -122,6 +123,7 @@ These settings stay close to the repo because they describe how Codex should beh
 - Generic machine bootstrap belongs in `~/GitHub/scripts`.
 - Repo-specific Codex behavior belongs in repo-local `.codex/`.
 - The repo registry decides which repos get generated repo-local config and which MCP presets they receive.
+- The same registry also decides which repo-local agent role files should be rendered from canonical role templates plus repo policy.
 
 ## Notes
 

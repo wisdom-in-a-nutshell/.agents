@@ -87,6 +87,20 @@ except ModuleNotFoundError:  # pragma: no cover
     import tomli as tomllib  # type: ignore
 
 
+ROLE_OVERRIDE_SCALAR_KEYS = {
+    "model",
+    "model_provider",
+    "model_reasoning_effort",
+    "model_reasoning_summary",
+    "model_verbosity",
+    "web_search",
+    "approval_policy",
+    "sandbox_mode",
+    "personality",
+    "service_tier",
+}
+
+
 def fail(message: str) -> None:
     raise SystemExit(f"ERROR: {message}")
 
@@ -116,18 +130,65 @@ def validate_role_file(path: Path, expected_name: str) -> dict:
     return data
 
 
+def validate_policy_object(policy: dict, *, label: str, mcp_presets: dict) -> None:
+    allowed_keys = ROLE_OVERRIDE_SCALAR_KEYS | {"tools", "features", "mcp"}
+    unexpected = sorted(set(policy.keys()) - allowed_keys)
+    if unexpected:
+        fail(f"{label} has unsupported keys: {', '.join(unexpected)}")
+
+    for key in ROLE_OVERRIDE_SCALAR_KEYS:
+        if key in policy:
+            value = policy[key]
+            if value is not None and not isinstance(value, (str, int, bool, list)):
+                fail(f"{label}.{key} must be a TOML-scalar-compatible value")
+
+    for table_key in ("tools", "features"):
+        if table_key in policy:
+            table = policy[table_key]
+            if not isinstance(table, dict):
+                fail(f"{label}.{table_key} must be an object")
+            if any(not isinstance(name, str) for name in table):
+                fail(f"{label}.{table_key} keys must be strings")
+
+    if "mcp" in policy:
+        mcp = policy["mcp"]
+        if not isinstance(mcp, dict):
+            fail(f"{label}.mcp must be an object")
+        mode = mcp.get("mode", "inherit")
+        if mode not in {"inherit", "deny_all", "allow_list"}:
+            fail(f"{label}.mcp.mode must be one of: inherit, deny_all, allow_list")
+        presets = mcp.get("presets", [])
+        if presets is None:
+            presets = []
+        if not isinstance(presets, list) or any(not isinstance(item, str) for item in presets):
+            fail(f"{label}.mcp.presets must be an array of strings")
+        unknown = sorted(set(presets) - set(mcp_presets))
+        if unknown:
+            fail(f"{label}.mcp references unknown MCP presets: {', '.join(unknown)}")
+
+
+def normalize_repo_agent_names(custom_agents: list[str], agent_policies: dict[str, object]) -> list[str]:
+    ordered: list[str] = []
+    for agent_name in [*custom_agents, *agent_policies.keys()]:
+        if agent_name not in ordered:
+            ordered.append(agent_name)
+    return ordered
+
+
 def validate_agent_declarations(config_path: Path, *, agent_files_base: Path, require_runtime_files: bool, check_runtime_extras: bool) -> list[str]:
     data = load_toml(config_path)
     agents = data.get("agents", {}) or {}
     if not isinstance(agents, dict):
         fail(f"`agents` must be a TOML table in {config_path}")
 
+    declared_names: list[str] = []
     expected_basenames: list[str] = []
     for role_name, value in sorted(agents.items()):
         if not isinstance(role_name, str):
             fail(f"agent role name must be a string in {config_path}")
         if not isinstance(value, dict):
             fail(f"agents.{role_name} must be a TOML table in {config_path}")
+        declared_names.append(role_name)
         description = value.get("description")
         config_file = value.get("config_file")
         if not isinstance(description, str) or not description.strip():
@@ -149,7 +210,7 @@ def validate_agent_declarations(config_path: Path, *, agent_files_base: Path, re
                 f"runtime agents dir {agent_files_base} contains unreferenced role files: {', '.join(extras)}"
             )
 
-    return expected_basenames
+    return declared_names
 
 
 def is_git_repo(path: Path) -> bool:
@@ -219,6 +280,18 @@ if agent_presets is None:
 if not isinstance(agent_presets, dict):
     fail(f"agent_presets must be an object in {registry_path}")
 
+agent_policy_presets = registry.get("agent_policy_presets", {})
+if agent_policy_presets is None:
+    agent_policy_presets = {}
+if not isinstance(agent_policy_presets, dict):
+    fail(f"agent_policy_presets must be an object in {registry_path}")
+
+mcp_presets = registry.get("mcp_presets", {})
+if mcp_presets is None:
+    mcp_presets = {}
+if not isinstance(mcp_presets, dict):
+    fail(f"mcp_presets must be an object in {registry_path}")
+
 for agent_name, preset in sorted(agent_presets.items()):
     if not isinstance(preset, dict):
         fail(f"agent_presets.{agent_name} must be an object")
@@ -230,6 +303,17 @@ for agent_name, preset in sorted(agent_presets.items()):
         fail(f"agent_presets.{agent_name} must define a non-empty config_file")
     role_path = (registry_path.parent / "agents" / config_file).resolve()
     validate_role_file(role_path, agent_name)
+
+for preset_name, preset in sorted(agent_policy_presets.items()):
+    if not isinstance(preset_name, str) or not preset_name.strip():
+        fail("agent_policy_presets keys must be non-empty strings")
+    if not isinstance(preset, dict):
+        fail(f"agent_policy_presets.{preset_name} must be an object")
+    validate_policy_object(
+        preset,
+        label=f"agent_policy_presets.{preset_name}",
+        mcp_presets=mcp_presets,
+    )
 
 repos = registry.get("repos", [])
 if not isinstance(repos, list):
@@ -255,6 +339,32 @@ for item in repos:
         if agent_name not in agent_presets:
             fail(f"repo {repo_path} references unknown custom agent `{agent_name}`")
 
+    raw_agent_policies = item.get("agent_policies", {})
+    if raw_agent_policies is None:
+        raw_agent_policies = {}
+    if not isinstance(raw_agent_policies, dict):
+        fail(f"agent_policies for {repo_path} must be an object")
+    for agent_name, raw_policy in raw_agent_policies.items():
+        if agent_name not in agent_presets:
+            fail(f"repo {repo_path} references unknown agent policy target `{agent_name}`")
+        if isinstance(raw_policy, str):
+            if raw_policy not in agent_policy_presets:
+                fail(f"repo {repo_path} references unknown agent policy preset `{raw_policy}` for `{agent_name}`")
+            continue
+        if isinstance(raw_policy, dict):
+            validate_policy_object(
+                raw_policy,
+                label=f"repos[{repo_path}].agent_policies.{agent_name}",
+                mcp_presets=mcp_presets,
+            )
+            continue
+        fail(f"agent_policies.{agent_name} for {repo_path} must be a preset name or object")
+
+    expected_repo_agents = normalize_repo_agent_names(
+        [str(agent_name) for agent_name in custom_agents],
+        {str(agent_name): raw_policy for agent_name, raw_policy in raw_agent_policies.items()},
+    )
+
     if not repo_path.exists() or not is_git_repo(repo_path):
         continue
 
@@ -262,12 +372,16 @@ for item in repos:
     if not repo_config.exists():
         continue
 
-    validate_agent_declarations(
+    declared_repo_agents = validate_agent_declarations(
         repo_config,
         agent_files_base=repo_path / ".codex" / "agents",
         require_runtime_files=True,
         check_runtime_extras=False,
     )
+    if sorted(declared_repo_agents) != sorted(expected_repo_agents):
+        fail(
+            f"repo {repo_path} declares agents {sorted(declared_repo_agents)} but registry expects {sorted(expected_repo_agents)}"
+        )
     validated_repo_count += 1
 
 print("OK: Codex control plane validation passed")

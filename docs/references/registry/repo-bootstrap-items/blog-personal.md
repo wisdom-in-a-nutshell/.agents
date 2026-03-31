@@ -6,6 +6,8 @@ skill_count: 17
 repo_local_skill_count: 1
 global_agent_count: 2
 custom_agent_count: 0
+repo_agent_count: 1
+agent_policy_count: 1
 agent_count: 2
 model: "gpt-5.4"
 reasoning: "high"
@@ -17,6 +19,12 @@ global_agents:
   - "external_researcher"
   - "writer"
 custom_agents: []
+repo_agents:
+  - "writer"
+agent_policy_agents:
+  - "writer"
+agent_policy_bindings:
+  - "writer=writer_no_mcp"
 agents:
   - "external_researcher"
   - "writer"
