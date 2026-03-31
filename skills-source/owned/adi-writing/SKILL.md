@@ -16,8 +16,9 @@ description: Write or edit external-facing content in Adi's voice. Use when draf
 4. If the current repo has relevant examples of Adi's writing, inspect a small representative sample and adapt to them.
 5. Match the format and keep the writing direct, human, and specific.
 6. Preserve the real point; do not sand it down into bland professionalism.
-7. When a repo already exposes `LLM_API_ENDPOINT` and `LLM_API_KEY`, you can use `scripts/draft_with_llm.py` as a machine-first helper for fast first drafts, prompt inspection, and env validation.
-8. When calling the helper, err on the side of over-specifying context. Pass the current draft, relevant repo examples, factual constraints, what to preserve, what to change, and any personal motivation or audience cues. More context usually gives better voice fidelity.
+7. When the runtime exposes a `writer` sub-agent, prefer using it for first drafts, rewrites, summaries, and tone-sensitive passes instead of local helper scripts.
+8. When delegating to the `writer` sub-agent, pass strong context: the current draft, target format, audience, relevant repo examples, factual constraints, what to preserve, what to change, and any personal motivation or tone cues.
+9. Keep fact-checking, source verification, and final editorial judgment with the parent agent unless the task is explicitly pure writing.
 
 ## Rules
 - Lead with the point.
@@ -41,19 +42,18 @@ description: Write or edit external-facing content in Adi's voice. Use when draf
 - `references/tweet.md`: tweet mode
 - `references/short-post.md`: short-post / LinkedIn / public-note mode
 
-## Helper script
+## Writer sub-agent usage
 
-Use `scripts/draft_with_llm.py` as the machine-first helper I invoke behind the scenes when I need a first draft, need to inspect the exact prompt, or need to verify repo-local LLM wiring.
+When available, the preferred drafting helper for this skill is the `writer` sub-agent rather than a repo-local script.
 
-Core commands:
+Practical rule:
+- use the parent agent for structure, research, factual verification, and deciding the final shape
+- use the `writer` sub-agent for wording, rewriting, tightening, and voice-sensitive drafting passes
 
-```bash
-python3 ~/.agents/skills-source/owned/adi-writing/scripts/draft_with_llm.py validate-env
-python3 ~/.agents/skills-source/owned/adi-writing/scripts/draft_with_llm.py render-prompt --mode blog-post --input-file /abs/path/brief.md
-python3 ~/.agents/skills-source/owned/adi-writing/scripts/draft_with_llm.py draft --mode blog-post --input-file /abs/path/brief.md --plain
-```
-
-Defaults:
-- env: `LLM_API_ENDPOINT`, `LLM_API_KEY`
-- model: `claude-4.6-sonnet`
-- output: JSON by default, `--plain` for raw text inspection
+When handing work to the `writer` sub-agent, include:
+- the exact task
+- the target format
+- the current draft or raw notes
+- relevant repo examples if they matter
+- factual constraints and non-negotiables
+- what tone to preserve or avoid
