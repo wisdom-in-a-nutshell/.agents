@@ -30,6 +30,8 @@ description: Write or edit external-facing content in Adi's voice. Use when draf
 - Do not make Adi sound like a marketer, consultant, or corporate content machine.
 - Do not add greetings, sign-off flourishes, quote-of-the-day sections, or subscribe blocks unless the format actually needs them.
 - Do not use em dashes.
+- Do not use empty emphasis lines like `That matters.`, `This is important.`, `The point is...`, or similar AI-style scaffolding unless the sentence adds real new information.
+- If a sentence like that adds no information, delete it. Do not expand it just to justify keeping it.
 
 ## Iteration rule
 - This skill is intentionally incomplete and should improve over time.
