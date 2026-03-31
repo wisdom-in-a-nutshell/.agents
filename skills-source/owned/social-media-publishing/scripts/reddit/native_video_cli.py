@@ -11,6 +11,18 @@ import time
 from pathlib import Path
 from typing import Any
 
+
+def _ensure_package_root_on_path() -> None:
+    """Ensure direct script execution can import the sibling `reddit` package."""
+    package_root = Path(__file__).resolve().parent.parent
+    package_root_str = str(package_root)
+    if package_root_str not in sys.path:
+        sys.path.insert(0, package_root_str)
+
+
+_ensure_package_root_on_path()
+
+
 def _load_cli_support():
     support_path = Path(__file__).resolve().with_name("cli_support.py")
     spec = importlib.util.spec_from_file_location("reddit_cli_support", support_path)
