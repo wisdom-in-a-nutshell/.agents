@@ -35,11 +35,11 @@ class RedditVideoPostingConfig(BaseModel):
         ...,
         description="Markdown comment posted after media is verified live.",
     )
-    poll_timeout_seconds: int = Field(default=600, ge=30)
+    poll_timeout_seconds: int = Field(default=1200, ge=30)
     poll_interval_seconds: int = Field(default=15, ge=5)
     sleep_between_posts_seconds: int = Field(default=30, ge=0)
     retry_attempts: int = Field(default=1, ge=1)
-    delete_failed_posts: bool = Field(default=True)
+    delete_failed_posts: bool = Field(default=False)
     existing_post_lookback_minutes: int = Field(default=360, ge=5)
     existing_post_ready_check_seconds: int = Field(default=120, ge=10)
 
@@ -153,8 +153,21 @@ class NativeRedditVideoPostingWorkflow:
                     comment_url=comment_url,
                     note="Reused existing ready post with matching title.",
                 )
-            if self._config.delete_failed_posts:
-                self._delete_submission(existing)
+            return RedditVideoPostResult(
+                subreddit=target.subreddit,
+                title=target.title,
+                status="existing_pending",
+                post_id=existing.id,
+                post_url=self._submission_url(existing),
+                error=(
+                    "A matching recent post already exists but the native video is not ready yet. "
+                    "Skipped creating a duplicate post."
+                ),
+                note=(
+                    "Wait longer for Reddit media processing or inspect the existing submission manually "
+                    "before retrying in a strict subreddit."
+                ),
+            )
 
         last_error: Optional[str] = None
         recovered_note: Optional[str] = None

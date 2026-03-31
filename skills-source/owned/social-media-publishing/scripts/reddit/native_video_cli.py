@@ -69,10 +69,11 @@ def build_parser() -> argparse.ArgumentParser:
     post.add_argument("--video-path", help="Optional local source video path.")
     post.add_argument("--work-dir", default="tmp/reddit_uploads")
     post.add_argument("--skip-encode", action="store_true")
-    post.add_argument("--poll-timeout-seconds", type=int, default=600)
+    post.add_argument("--poll-timeout-seconds", type=int, default=1200)
     post.add_argument("--poll-interval-seconds", type=int, default=15)
     post.add_argument("--sleep-between-posts-seconds", type=int, default=45)
-    post.add_argument("--retry-attempts", type=int, default=2)
+    post.add_argument("--retry-attempts", type=int, default=1)
+    post.add_argument("--delete-failed-posts", action="store_true", help="Delete posts that never become ready. Disabled by default because some subreddits enforce cooldowns.")
     post.add_argument("--targets-file", required=True, help="JSON file containing a list of {subreddit,title,flair_keywords?} objects.")
     post.add_argument("--comment-file", required=True, help="Markdown/text file used as the first comment after the video goes live.")
     post.add_argument("--dry-run", action="store_true")
@@ -110,6 +111,7 @@ def command_post(args: argparse.Namespace) -> dict[str, Any]:
             "poll_interval_seconds": args.poll_interval_seconds,
             "sleep_between_posts_seconds": args.sleep_between_posts_seconds,
             "retry_attempts": args.retry_attempts,
+            "delete_failed_posts": args.delete_failed_posts,
         }
 
     seed_env_from_file(Path(args.env_file).expanduser())
@@ -140,7 +142,7 @@ def command_post(args: argparse.Namespace) -> dict[str, Any]:
             poll_interval_seconds=args.poll_interval_seconds,
             sleep_between_posts_seconds=args.sleep_between_posts_seconds,
             retry_attempts=args.retry_attempts,
-            delete_failed_posts=True,
+            delete_failed_posts=args.delete_failed_posts,
         )
         workflow = NativeRedditVideoPostingWorkflow(config=config)
         try:
