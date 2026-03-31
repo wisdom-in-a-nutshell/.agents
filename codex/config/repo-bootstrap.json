@@ -49,21 +49,6 @@
       ]
     }
   },
-  "agent_policy_presets": {
-    "writer_no_mcp": {
-      "mcp": {
-        "mode": "deny_all"
-      }
-    },
-    "visual_reviewer_paper_only": {
-      "mcp": {
-        "mode": "allow_list",
-        "presets": [
-          "paper"
-        ]
-      }
-    }
-  },
   "repos": [
     {
       "path": "~/.agents",
@@ -88,12 +73,9 @@
         "paper"
       ],
       "custom_agents": [
-        "visual_reviewer"
-      ],
-      "agent_policies": {
-        "writer": "writer_no_mcp",
-        "visual_reviewer": "visual_reviewer_paper_only"
-      }
+        "visual_reviewer",
+        "writer"
+      ]
     },
     {
       "path": "~/GitHub/adithyan-ai-videos"
@@ -125,9 +107,9 @@
       "mcp_presets": [
         "paper"
       ],
-      "agent_policies": {
-        "writer": "writer_no_mcp"
-      }
+      "custom_agents": [
+        "writer"
+      ]
     },
     {
       "path": "~/GitHub/codexclaw",
