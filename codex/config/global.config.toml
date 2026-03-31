@@ -17,6 +17,12 @@ js_repl = true
 fast_mode = true
 apps = false
 
+[plugins."gmail@openai-curated"]
+enabled = false
+
+[plugins."google-calendar@openai-curated"]
+enabled = false
+
 [model_providers.litellm]
 name = "LiteLLM"
 base_url = "https://aip-litellm-proxy.azurewebsites.net/v1"

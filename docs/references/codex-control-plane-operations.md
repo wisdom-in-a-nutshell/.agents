@@ -83,11 +83,11 @@ Use [Codex Control Plane Ownership](/Users/dobby/.agents/docs/references/codex-c
   - syncs only the role config files referenced by the managed global + Xcode configs into the live runtime `agents/` directories
   - keeps the current role setup explicit: built-in `explorer` for local repo/runtime exploration, managed `external_researcher` for information outside the local repo/runtime
   - leaves repo-scoped custom roles to the repo bootstrap path instead of enabling them globally by default
-  - keeps Apps/connectors globally disabled through the managed `features.apps = false` baseline unless you intentionally re-enable them later
+  - keeps Apps/connectors globally disabled through the managed `features.apps = false` baseline and explicit managed `plugins.*.enabled = false` entries unless you intentionally re-enable them later
   - disables selected built-in system skills in `~/.codex/config.toml` when the control plane should prefer managed skill copies instead, including currently `imagegen`, `openai-docs`, `skill-creator`, and `skill-installer`
   - rewrites machine-specific notify and system-skill paths for the current `$HOME`
   - strips foreign-user project and system-skill entries before writing
-  - prunes stale global `apps.*` sections that are no longer present in the canonical template, so old local app-disable overrides do not stick around
+  - prunes stale global `apps.*` and `plugins.*` sections that are no longer present in the canonical template, so old local connector/plugin state does not stick around
   - prunes stale global terminal `mcp_servers.*` sections that are no longer present in the canonical template
   - validates role-file invariants before install, including non-empty `name` + `description`
   - fails fast if the target config contains unresolved Git conflict markers

@@ -17,8 +17,9 @@ description: Write or edit external-facing content in Adi's voice. Use when draf
 5. Match the format and keep the writing direct, human, and specific.
 6. Preserve the real point; do not sand it down into bland professionalism.
 7. When the runtime exposes a `writer` sub-agent, prefer using it for first drafts, rewrites, summaries, and tone-sensitive passes instead of local helper scripts.
-8. When delegating to the `writer` sub-agent, pass strong context: the current draft, target format, audience, relevant repo examples, factual constraints, what to preserve, what to change, and any personal motivation or tone cues.
-9. Keep fact-checking, source verification, and final editorial judgment with the parent agent unless the task is explicitly pure writing.
+8. Do not treat the `writer` sub-agent like a dumb helper. It can read the relevant skill references, inspect local examples, and pull the context it needs.
+9. Only pass the key framing it would not reliably infer on its own: the exact task, target format, constraints, audience, and anything important to preserve or avoid.
+10. Keep fact-checking, source verification, and final editorial judgment with the parent agent unless the task is explicitly pure writing.
 
 ## Rules
 - Lead with the point.
@@ -44,16 +45,18 @@ description: Write or edit external-facing content in Adi's voice. Use when draf
 
 ## Writer sub-agent usage
 
-When available, the preferred drafting helper for this skill is the `writer` sub-agent rather than a repo-local script.
+When available, the preferred drafting helper for this skill is the `writer` sub-agent.
 
 Practical rule:
 - use the parent agent for structure, research, factual verification, and deciding the final shape
 - use the `writer` sub-agent for wording, rewriting, tightening, and voice-sensitive drafting passes
 
-When handing work to the `writer` sub-agent, include:
+Do not over-coordinate the `writer` sub-agent.
+It can read this skill, inspect references, and use local context on its own.
+
+When handing work to the `writer` sub-agent, give it only the load-bearing context:
 - the exact task
 - the target format
-- the current draft or raw notes
-- relevant repo examples if they matter
+- the current draft or raw notes when relevant
 - factual constraints and non-negotiables
 - what tone to preserve or avoid
