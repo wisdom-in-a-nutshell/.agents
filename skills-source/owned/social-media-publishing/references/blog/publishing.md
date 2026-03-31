@@ -15,6 +15,9 @@ Use this when the user is not just asking for social copy, but wants the source 
 9. Push and confirm deployment.
 10. Only then prepare link-first social distribution if the URL matters.
 
+By default, “public” means setting `hidden: false` in the frontmatter.
+Only set `hidden: true` if the user explicitly asks for a draft/private post.
+
 ## What to document after doing it once
 
 If a repo-specific workflow clearly repeats, codify it in that repo, not only in this skill.

@@ -20,6 +20,7 @@ Keep campaign assets in the active project. Keep durable repo-specific publishin
 5. Prefer a plan file for repeatable or multi-step posts.
 6. Dry-run the plan before live submission when paths, long comments, or strict communities are involved.
 7. After posting, update the project-local tracker with the post URL, comment URL, and moderation outcome.
+8. For source-post workflows, default to publishing the post publicly (set `hidden: false` in frontmatter unless the user explicitly asks for a private/draft post).
 
 ## Blog-backed publishing
 
