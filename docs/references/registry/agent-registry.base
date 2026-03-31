@@ -26,6 +26,22 @@ properties:
     displayName: Reasoning
   sandbox_mode:
     displayName: Sandbox
+  web_search:
+    displayName: Web Search
+  js_repl:
+    displayName: JS REPL
+  enabled_mcps:
+    displayName: Enabled MCPs
+  disabled_mcps:
+    displayName: Disabled MCPs
+  disabled_tools:
+    displayName: Disabled Tools
+  enabled_tools:
+    displayName: Enabled Tools
+  disabled_features:
+    displayName: Disabled Features
+  enabled_features:
+    displayName: Enabled Features
   description:
     displayName: Description
 views:
@@ -40,8 +56,15 @@ views:
       - model
       - reasoning
       - sandbox_mode
+      - web_search
+      - js_repl
+      - enabled_mcps
+      - disabled_mcps
+      - disabled_tools
       - config_file
       - description
+    columnSize:
+      note.repos: 144
   - type: table
     name: Global Agents
     filters: global_terminal == "true" || global_xcode == "true"
@@ -54,6 +77,11 @@ views:
       - model
       - reasoning
       - sandbox_mode
+      - web_search
+      - js_repl
+      - enabled_mcps
+      - disabled_mcps
+      - disabled_tools
       - config_file
       - description
   - type: table
@@ -66,5 +94,10 @@ views:
       - model
       - reasoning
       - sandbox_mode
+      - web_search
+      - js_repl
+      - enabled_mcps
+      - disabled_mcps
+      - disabled_tools
       - config_file
       - description

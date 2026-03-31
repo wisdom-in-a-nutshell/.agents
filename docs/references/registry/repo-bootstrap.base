@@ -18,10 +18,6 @@ properties:
     displayName: Global Agent Count
   custom_agent_count:
     displayName: Custom Agent Count
-  repo_agent_count:
-    displayName: Repo Agent Count
-  agent_policy_count:
-    displayName: Agent Policy Count
   agent_count:
     displayName: Agent Count
   skills:
@@ -38,12 +34,6 @@ properties:
     displayName: Global Agents
   custom_agents:
     displayName: Custom Agents
-  repo_agents:
-    displayName: Repo Agents
-  agent_policy_agents:
-    displayName: Agent Policy Agents
-  agent_policy_bindings:
-    displayName: Agent Policies
   model:
     displayName: Model
   reasoning:
@@ -60,7 +50,7 @@ views:
       - skill_count
       - repo_local_skill_count
       - mcps
-      - repo_agents
+      - custom_agents
       - agents
       - model
       - reasoning
@@ -85,8 +75,6 @@ views:
       - skill_count
       - repo_local_skill_count
       - custom_agents
-      - repo_agents
-      - agent_policy_bindings
       - global_agents
       - mcps
       - model

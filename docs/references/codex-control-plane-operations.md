@@ -101,6 +101,7 @@ Use [Codex Control Plane Ownership](/Users/dobby/.agents/docs/references/codex-c
   - renders managed repo-local Codex files from the canonical registry
   - writes `.codex/config.toml` for all managed repos
   - writes repo-local `.codex/agents/*.toml` files for any repo-scoped custom agents assigned in the registry
+  - copies canonical role behavior from [`codex/config/agents/*.toml`](/Users/dobby/.agents/codex/config/agents) into those repo-local agent files
   - validates repo-scoped custom-agent role files before writing them into managed repos
   - skips no-op rewrites instead of dirtying the git repos unnecessarily
   - keeps the repo list and MCP/model preset definitions in [`repo-bootstrap.json`](/Users/dobby/.agents/codex/config/repo-bootstrap.json)
@@ -117,7 +118,7 @@ Use [Codex Control Plane Ownership](/Users/dobby/.agents/docs/references/codex-c
     - `global_agents`
     - `custom_agents`
     - `agents`
-  - and generates a separate role-centric agent scope registry
+  - and generates a role-centric agent registry with both scope and capability data
   - updates the user-facing registry views under [`docs/references/registry/`](/Users/dobby/.agents/docs/references/registry)
   - includes [`repo-bootstrap.base`](/Users/dobby/.agents/docs/references/registry/repo-bootstrap.base), [`repo-bootstrap-items/`](/Users/dobby/.agents/docs/references/registry/repo-bootstrap-items), [`mcp-registry.base`](/Users/dobby/.agents/docs/references/registry/mcp-registry.base), [`mcp-registry-items/`](/Users/dobby/.agents/docs/references/registry/mcp-registry-items), [`agent-registry.base`](/Users/dobby/.agents/docs/references/registry/agent-registry.base), and [`agent-registry-items/`](/Users/dobby/.agents/docs/references/registry/agent-registry-items)
 - [`bootstrap-machine-codex.sh`](/Users/dobby/.agents/codex/scripts/bootstrap-machine-codex.sh)
@@ -162,6 +163,7 @@ Use [Codex Control Plane Ownership](/Users/dobby/.agents/docs/references/codex-c
   - `notes`
 - Shared declaration metadata for repo-scoped custom agents lives in the same registry under:
   - `agent_presets`
+- Agent behavior itself stays in [`codex/config/agents/*.toml`](/Users/dobby/.agents/codex/config/agents), including MCP posture, tool disables, feature disables, and sandbox level.
 - The global defaults block supplies fallback values for repos that do not override them.
 
 ## Automatic Cross-Machine Apply

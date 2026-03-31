@@ -114,8 +114,8 @@ That is why MCPs need a separate scope-aware registry.
   - `codex/config/agents/*.toml`
 - repo-scoped agent assignment in:
   - `codex/config/repo-bootstrap.json`
-    - `agent_presets`
     - `custom_agents`
+    - `agent_presets`
 
 ### Scope model
 
@@ -135,7 +135,7 @@ That is why MCPs need a separate scope-aware registry.
   - `global_agents`
   - `custom_agents`
   - `agents`
-- role-centric scope registry in `agent-registry.base`
+- role-centric scope and capability registry in `agent-registry.base`
 
 ### Why this shape
 
@@ -144,16 +144,14 @@ Agents have two different concerns:
 1. **role behavior**
 2. **where that role is enabled**
 
-So the model must separate:
+So the model separates:
 
-- canonical role definition
-- global declaration
-- repo-scoped assignment
+- canonical role definition in `codex/config/agents/*.toml`
+- global declaration in the managed global config templates
+- repo-scoped exposure in `repo-bootstrap.json`
 
-That is why agents need both:
-
-- a repo-effective view like skills
-- and a scope registry like MCPs
+The important simplification is that agent capabilities stay on the role itself.
+Repo bootstrap does not re-define per-agent MCP/tool policy.
 
 ## Working Rules
 

@@ -16,7 +16,7 @@ Personal agent and Codex control plane.
 - `codex/config/repo-bootstrap.json` is the canonical registry for managed repo-local Codex behavior.
   - Per repo it can define:
     - `mcp_presets`
-    - `agent_policies`
+    - `custom_agents`
     - `model`
     - `model_reasoning_effort`
     - `model_verbosity`
@@ -34,6 +34,8 @@ Personal agent and Codex control plane.
   - `docs/references/registry/skills-items/`
   - `docs/references/registry/repo-bootstrap.base`
   - `docs/references/registry/repo-bootstrap-items/`
+  - `docs/references/registry/agent-registry.base`
+  - `docs/references/registry/agent-registry-items/`
   - `docs/references/registry/mcp-registry.base`
   - `docs/references/registry/mcp-registry-items/`
 

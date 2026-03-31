@@ -1,4 +1,4 @@
-~/# Codex Control Plane
+# Codex Control Plane
 
 This repo is becoming the canonical personal control plane for Codex across both machines. The core idea is simple: keep the durable source of truth in `~/.agents`, keep the live runtime home in `~/.codex`, and keep `~/GitHub/scripts` limited to generic machine bootstrap plus shared shell glue that is not Codex-owned.
 
@@ -10,7 +10,6 @@ The newest part of that control plane is the repo bootstrap registry in `~/.agen
 - which extra repos live outside `~/GitHub`
 - which repo-local MCP presets should be enabled
 - which repo-scoped custom agents should be enabled
-- which repo-scoped agent-policy overlays should be rendered
 - which repo-local `.codex/config.toml` files should be generated
 
 ## Figure 1: Ownership Layout

@@ -51,15 +51,19 @@ Canonical personal Codex control-plane assets live here.
 
 - `config/repo-bootstrap.json` is the one place to decide managed repo-local Codex behavior.
 - Role identity belongs in `config/global.config.toml`, `config/xcode.config.toml`, and `config/agents/*.toml`.
-- Repo-specific sub-agent policy belongs in `config/repo-bootstrap.json` when the same role needs different MCP exposure or tool posture in different repos.
+- Role capabilities also belong in `config/agents/*.toml`.
+  - MCP exposure
+  - tool disables
+  - feature disables such as `js_repl`
+  - sandbox level
+- Repo bootstrap should only decide where an agent is exposed, not re-define what that agent can do.
 - The current managed role setup is:
   - built-in `explorer` remains available for local repo and runtime exploration
   - managed `external_researcher` handles information outside the local repo and runtime
-  - managed `writer` is repo-bootstrapped where writing-specific policy is needed, rather than declared globally
+  - managed `writer` is repo-bootstrapped where writing support is needed, rather than declared globally
 - The current per-repo control surface is:
   - `mcp_presets`
   - `custom_agents`
-  - `agent_policies`
   - `model`
   - `model_reasoning_effort`
   - `model_verbosity`
@@ -71,21 +75,21 @@ Canonical personal Codex control-plane assets live here.
 - `repo-bootstrap.json` also carries:
   - `agent_presets`
     - reusable declaration metadata for managed repo-local agent entries
-  - `agent_policy_presets`
-    - reusable repo-local policy overlays such as MCP allow-lists or deny-all posture
-- `agent_presets` can back both repo-scoped custom agents and repo-local overrides for global agents such as `writer`.
-- The current main use of `agent_presets` is repo-scoped materialization of agents such as `writer` and `visual_reviewer` into selected repos.
-- `agent_policy_presets` let the repo sync render repo-local `agents/*.toml` from canonical role templates plus repo policy, so new MCP presets default safely instead of relying on hand-edited role files.
+- `agent_presets` are only for repo-local declaration metadata such as description, source role file, and nicknames.
+- Canonical role TOMLs remain the single source of truth for agent behavior.
 - The registry `defaults` block is rendered into every managed repo-local `.codex/config.toml` unless a repo entry overrides those keys explicitly.
 - `defaults.features` is merged with per-repo `features`, so baseline feature flags can be enabled globally while still allowing repo overrides.
 - `scripts/sync-repo-bootstrap-registry.sh` regenerates:
   - `../docs/references/registry/repo-bootstrap.base`
     - includes effective per-repo skill availability merged from `../skills/registry.json`
   - `../docs/references/registry/repo-bootstrap-items/`
+  - `../docs/references/registry/agent-registry.base`
+    - includes scope plus effective agent-level capabilities such as sandbox, MCP exposure, web search, and `js_repl`
+  - `../docs/references/registry/agent-registry-items/`
   - `../docs/references/registry/mcp-registry.base`
   - `../docs/references/registry/mcp-registry-items/`
 - `scripts/sync-repo-codex-configs.sh --apply` renders the actual repo-local `.codex/config.toml` files from that JSON registry.
-- The same sync also renders repo-local `.codex/agents/*.toml` for any repo-assigned custom agents or repo-assigned agent-policy overlays.
+- The same sync also renders repo-local `.codex/agents/*.toml` for any repo-assigned custom agents by copying the canonical role TOMLs.
 - `scripts/sync-trusted-projects.sh --apply` ensures those repo-local configs are trusted and therefore loaded by Codex.
 - `scripts/check-codex-control-plane.sh` validates canonical role definitions, runtime role declarations, and repo-scoped custom-agent render output after sync.
 - `scripts/auto-apply-codex-control-plane.sh --apply` is the machine-local post-sync reconcile hook that runs `bootstrap-machine-codex.sh --apply` when `~/.agents/codex/` changed since the last successful reconcile.

@@ -33,6 +33,9 @@ Review the actual artifact, not a vague description of it.
 Do not make code or file changes unless the parent agent explicitly asks you to.
 """
 
+[features]
+js_repl = true
+
 [mcp_servers.openaiDeveloperDocs]
 url = "https://developers.openai.com/mcp"
 enabled = false
