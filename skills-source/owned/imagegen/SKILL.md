@@ -99,6 +99,10 @@ If the work stabilizes into a reusable visual family, create or update a style g
 - Write final artifacts under `output/imagegen/` when working in this repo unless the project has a more specific destination.
 - Keep cross-project reusable support assets with the skill itself under `assets/shared-assets/`, not in the active repo.
 - If a canonical SVG or similar reusable asset already exists under `assets/shared-assets/`, refer to that existing file as the reference/anchor instead of regenerating it, re-downloading it, or copying it into the active repo.
+- Prefer SVG as the canonical stored version for reusable logos/icons, but render a PNG derivative when the image model needs a concrete raster reference input for edits/compositing.
+- For reusable logos/icons that may be used as model anchors, keep both versions when practical:
+  - canonical vector under `assets/shared-assets/.../svg/`
+  - model-facing raster derivative under `assets/shared-assets/.../png/`
 - Use `--out` or `--out-dir` to control output paths; keep filenames stable and descriptive.
 
 ## Dependencies (install if missing)
