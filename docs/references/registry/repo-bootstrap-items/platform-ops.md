@@ -4,11 +4,11 @@ path: "~/GitHub/platform-ops"
 mcp_count: 2
 skill_count: 9
 repo_local_skill_count: 0
-global_agent_count: 2
+global_agent_count: 1
 custom_agent_count: 0
 repo_agent_count: 0
 agent_policy_count: 0
-agent_count: 2
+agent_count: 1
 model: "gpt-5.4"
 reasoning: "high"
 fast_mode: "true"
@@ -18,14 +18,12 @@ mcps:
   - "cloudflare-docs"
 global_agents:
   - "external_researcher"
-  - "writer"
 custom_agents: []
 repo_agents: []
 agent_policy_agents: []
 agent_policy_bindings: []
 agents:
   - "external_researcher"
-  - "writer"
 global_skills:
   - "agent-browser"
   - "architecture-docs"

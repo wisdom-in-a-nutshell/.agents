@@ -1,8 +1,8 @@
 ---
 agent_name: "writer"
-effective_scope: "mixed"
-global_terminal: "true"
-global_xcode: "true"
+effective_scope: "repo"
+global_terminal: "false"
+global_xcode: "false"
 repos_csv: "adi,blog-personal"
 model: "claude-4.6-sonnet"
 reasoning: "medium"

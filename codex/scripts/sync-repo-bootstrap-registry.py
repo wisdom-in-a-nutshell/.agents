@@ -148,6 +148,16 @@ def _load_agent_role_config(config_path: Path) -> dict[str, str]:
     }
 
 
+def _load_agent_role_data(config_path: Path) -> dict[str, Any]:
+    if not config_path.is_file():
+        return {}
+    with config_path.open("rb") as handle:
+        data = tomllib.load(handle)
+    if not isinstance(data, dict):
+        return {}
+    return data
+
+
 def _validate_policy_object(policy: dict[str, Any], *, label: str, mcp_presets: dict[str, Any]) -> dict[str, Any]:
     allowed_keys = ROLE_OVERRIDE_SCALAR_KEYS | {"tools", "features", "mcp"}
     unexpected = sorted(set(policy.keys()) - allowed_keys)
@@ -200,6 +210,128 @@ def _resolve_repo_agent_names(custom_agents: list[str], agent_policy_map: dict[s
         if agent_name not in ordered:
             ordered.append(agent_name)
     return ordered
+
+
+def _merge_boolish_table(base: dict[str, Any] | None, overrides: dict[str, Any] | None) -> dict[str, Any]:
+    merged = dict(base or {})
+    if overrides:
+        merged.update(overrides)
+    return merged
+
+
+def _apply_agent_policy_to_role(
+    role_data: dict[str, Any],
+    *,
+    repo_mcp_preset_names: list[str],
+    mcp_presets: dict[str, Any],
+    policy: dict[str, Any],
+) -> dict[str, Any]:
+    merged = dict(role_data)
+    for key in ROLE_OVERRIDE_SCALAR_KEYS:
+        if key in policy:
+            merged[key] = policy[key]
+
+    for table_key in ("tools", "features"):
+        merged_table = _merge_boolish_table(
+            merged.get(table_key) if isinstance(merged.get(table_key), dict) else None,
+            policy.get(table_key) if isinstance(policy.get(table_key), dict) else None,
+        )
+        if merged_table:
+            merged[table_key] = merged_table
+        else:
+            merged.pop(table_key, None)
+
+    base_mcp_servers = dict(merged.get("mcp_servers", {}) or {})
+    mcp_policy = policy.get("mcp")
+    if isinstance(mcp_policy, dict):
+        mode = str(mcp_policy.get("mode", "inherit"))
+        if mode in {"deny_all", "allow_list"}:
+            allowed = set(mcp_policy.get("presets", [])) if mode == "allow_list" else set()
+            for preset_name in repo_mcp_preset_names:
+                server_config = dict(mcp_presets[preset_name])
+                server_config["enabled"] = preset_name in allowed
+                base_mcp_servers[preset_name] = server_config
+    if base_mcp_servers:
+        merged["mcp_servers"] = base_mcp_servers
+    else:
+        merged.pop("mcp_servers", None)
+
+    return merged
+
+
+def _string_list(value: Any) -> list[str]:
+    if not isinstance(value, list):
+        return []
+    return [str(item) for item in value]
+
+
+def _tool_state_lists(role_data: dict[str, Any]) -> tuple[list[str], list[str]]:
+    tools = role_data.get("tools", {})
+    if not isinstance(tools, dict):
+        return [], []
+    enabled = sorted(str(name) for name, value in tools.items() if value is True)
+    disabled = sorted(str(name) for name, value in tools.items() if value is False)
+    return enabled, disabled
+
+
+def _feature_state_lists(role_data: dict[str, Any]) -> tuple[list[str], list[str]]:
+    features = role_data.get("features", {})
+    if not isinstance(features, dict):
+        return [], []
+    enabled = sorted(str(name) for name, value in features.items() if value is True)
+    disabled = sorted(str(name) for name, value in features.items() if value is False)
+    return enabled, disabled
+
+
+def _mcp_state_lists(role_data: dict[str, Any]) -> tuple[list[str], list[str]]:
+    mcp_servers = role_data.get("mcp_servers", {})
+    if not isinstance(mcp_servers, dict):
+        return [], []
+    enabled: list[str] = []
+    disabled: list[str] = []
+    for name, config in mcp_servers.items():
+        if isinstance(config, dict) and config.get("enabled") is False:
+            disabled.append(str(name))
+        else:
+            enabled.append(str(name))
+    return sorted(enabled), sorted(disabled)
+
+
+def _capability_item(
+    *,
+    agent_name: str,
+    config_file: str,
+    role_data: dict[str, Any],
+    scope_type: str,
+    repo_name: str,
+    policy_binding: str,
+) -> dict[str, Any]:
+    enabled_tools, disabled_tools = _tool_state_lists(role_data)
+    enabled_features, disabled_features = _feature_state_lists(role_data)
+    enabled_mcps, disabled_mcps = _mcp_state_lists(role_data)
+    js_repl = "-"
+    features = role_data.get("features", {})
+    if isinstance(features, dict) and "js_repl" in features:
+        js_repl = str(features["js_repl"]).lower()
+    return {
+        "agent_name": agent_name,
+        "scope_type": scope_type,
+        "repo_name": repo_name,
+        "config_file": config_file,
+        "model": str(role_data.get("model", "-")),
+        "reasoning": str(role_data.get("model_reasoning_effort", "-")),
+        "sandbox_mode": str(role_data.get("sandbox_mode", "-")),
+        "web_search": str(role_data.get("web_search", "-")),
+        "js_repl": js_repl,
+        "policy_binding": policy_binding,
+        "enabled_tools": enabled_tools,
+        "disabled_tools": disabled_tools,
+        "enabled_features": enabled_features,
+        "disabled_features": disabled_features,
+        "enabled_mcps": enabled_mcps,
+        "disabled_mcps": disabled_mcps,
+        "description": str(role_data.get("description", "-")),
+    }
 
 
 def generate_registry_base(views_dir: Path) -> None:
@@ -659,7 +791,7 @@ views:
     _write_if_changed(views_dir / "agent-registry.base", content)
 
 
-def _load_global_agent_declarations(config_path: Path) -> dict[str, dict[str, str]]:
+def _load_global_agent_declarations(config_path: Path) -> dict[str, dict[str, Any]]:
     if not config_path.is_file():
         return {}
     with config_path.open("rb") as handle:
@@ -673,25 +805,28 @@ def _load_global_agent_declarations(config_path: Path) -> dict[str, dict[str, st
             continue
         description = str(agent.get("description", "")).strip() or "-"
         config_file = str(agent.get("config_file", "")).strip() or "-"
-        role_meta = _load_agent_role_config((config_path.parent / config_file).resolve()) if config_file != "-" else {
+        role_path = (config_path.parent / config_file).resolve() if config_file != "-" else None
+        role_meta = _load_agent_role_config(role_path) if role_path else {
             "model": "-",
             "reasoning": "-",
             "sandbox_mode": "-",
         }
+        role_data = _load_agent_role_data(role_path) if role_path else {}
         declarations[str(name)] = {
             "description": description,
             "config_file": config_file,
             "model": role_meta["model"],
             "reasoning": role_meta["reasoning"],
             "sandbox_mode": role_meta["sandbox_mode"],
+            "role_data": role_data,
         }
     return declarations
 
 
 def apply_agent_assignments(
     repos: list[dict[str, Any]],
-    global_terminal_agents: dict[str, dict[str, str]],
-    global_xcode_agents: dict[str, dict[str, str]],
+    global_terminal_agents: dict[str, dict[str, Any]],
+    global_xcode_agents: dict[str, dict[str, Any]],
 ) -> None:
     global_agents = sorted(set(global_terminal_agents) | set(global_xcode_agents))
     global_agent_set = set(global_agents)
@@ -702,8 +837,8 @@ def apply_agent_assignments(
 
 def generate_agent_registry_items(
     views_dir: Path,
-    global_terminal_agents: dict[str, dict[str, str]],
-    global_xcode_agents: dict[str, dict[str, str]],
+    global_terminal_agents: dict[str, dict[str, Any]],
+    global_xcode_agents: dict[str, dict[str, Any]],
     agent_presets: dict[str, Any],
     repos: list[dict[str, Any]],
 ) -> None:
@@ -769,6 +904,183 @@ def generate_agent_registry_items(
         _write_if_changed(root / f"{_sanitize_file_name(agent_name)}.md", "\n".join(lines))
 
 
+def generate_agent_capabilities_base(views_dir: Path) -> None:
+    content = """filters:
+  and:
+    - 'file.inFolder("docs/references/registry/agent-capabilities-items")'
+properties:
+  agent_name:
+    displayName: Agent
+  scope_type:
+    displayName: Scope
+  repo_name:
+    displayName: Repo
+  model:
+    displayName: Model
+  reasoning:
+    displayName: Reasoning
+  sandbox_mode:
+    displayName: Sandbox
+  web_search:
+    displayName: Web Search
+  js_repl:
+    displayName: JS REPL
+  enabled_mcps:
+    displayName: Enabled MCPs
+  disabled_mcps:
+    displayName: Disabled MCPs
+  disabled_tools:
+    displayName: Disabled Tools
+  enabled_tools:
+    displayName: Enabled Tools
+  disabled_features:
+    displayName: Disabled Features
+  enabled_features:
+    displayName: Enabled Features
+  policy_binding:
+    displayName: Policy
+  config_file:
+    displayName: Config File
+views:
+  - type: table
+    name: Agent Capabilities
+    order:
+      - agent_name
+      - scope_type
+      - repo_name
+      - model
+      - web_search
+      - js_repl
+      - enabled_mcps
+      - disabled_mcps
+      - disabled_tools
+      - policy_binding
+  - type: table
+    name: Repo Agent Capabilities
+    filters: 'scope_type == "repo"'
+    order:
+      - repo_name
+      - agent_name
+      - model
+      - web_search
+      - js_repl
+      - enabled_mcps
+      - disabled_mcps
+      - disabled_tools
+      - policy_binding
+  - type: table
+    name: MCP Restricted
+    filters: 'disabled_mcps.length() > 0'
+    order:
+      - agent_name
+      - scope_type
+      - repo_name
+      - enabled_mcps
+      - disabled_mcps
+      - policy_binding
+"""
+    _write_if_changed(views_dir / "agent-capabilities.base", content)
+
+
+def generate_agent_capabilities_items(
+    views_dir: Path,
+    global_terminal_agents: dict[str, dict[str, Any]],
+    global_xcode_agents: dict[str, dict[str, Any]],
+    agent_presets: dict[str, Any],
+    repos: list[dict[str, Any]],
+    mcp_presets: dict[str, Any],
+) -> None:
+    root = views_dir / "agent-capabilities-items"
+    shutil.rmtree(root, ignore_errors=True)
+    root.mkdir(parents=True, exist_ok=True)
+
+    items: list[dict[str, Any]] = []
+
+    for agent_name, meta in sorted(global_terminal_agents.items()):
+        role_data = meta.get("role_data", {}) if isinstance(meta.get("role_data"), dict) else {}
+        items.append(
+            _capability_item(
+                agent_name=agent_name,
+                config_file=str(meta.get("config_file", "-")),
+                role_data=role_data,
+                scope_type="global_terminal",
+                repo_name="-",
+                policy_binding="-",
+            )
+        )
+
+    for agent_name, meta in sorted(global_xcode_agents.items()):
+        role_data = meta.get("role_data", {}) if isinstance(meta.get("role_data"), dict) else {}
+        items.append(
+            _capability_item(
+                agent_name=agent_name,
+                config_file=str(meta.get("config_file", "-")),
+                role_data=role_data,
+                scope_type="global_xcode",
+                repo_name="-",
+                policy_binding="-",
+            )
+        )
+
+    for repo in repos:
+        repo_name = str(repo["repo_name"])
+        repo_mcp_presets = [str(name) for name in repo["mcp_presets"]]
+        policy_map = repo.get("resolved_agent_policies", {})
+        binding_map = repo.get("agent_policy_binding_map", {})
+        for agent_name in repo["repo_agents"]:
+            preset = agent_presets.get(agent_name, {})
+            role_data = preset.get("role_data", {}) if isinstance(preset.get("role_data"), dict) else {}
+            effective_role = _apply_agent_policy_to_role(
+                role_data,
+                repo_mcp_preset_names=repo_mcp_presets,
+                mcp_presets=mcp_presets,
+                policy=policy_map.get(agent_name, {}),
+            )
+            items.append(
+                _capability_item(
+                    agent_name=str(agent_name),
+                    config_file=f"agents/{preset.get('config_file', '-')}",
+                    role_data=effective_role,
+                    scope_type="repo",
+                    repo_name=repo_name,
+                    policy_binding=str(binding_map.get(agent_name, "-")),
+                )
+            )
+
+    for item in items:
+        repo_slug = item["repo_name"] if item["repo_name"] != "-" else item["scope_type"]
+        file_name = f"{_sanitize_file_name(repo_slug)}--{_sanitize_file_name(item['agent_name'])}.md"
+        lines = [
+            "---",
+            f"agent_name: {_yaml_str(item['agent_name'])}",
+            f"scope_type: {_yaml_str(item['scope_type'])}",
+            f"repo_name: {_yaml_str(item['repo_name'])}",
+            f"model: {_yaml_str(item['model'])}",
+            f"reasoning: {_yaml_str(item['reasoning'])}",
+            f"sandbox_mode: {_yaml_str(item['sandbox_mode'])}",
+            f"web_search: {_yaml_str(item['web_search'])}",
+            f"js_repl: {_yaml_str(item['js_repl'])}",
+            f"policy_binding: {_yaml_str(item['policy_binding'])}",
+            f"config_file: {_yaml_str(item['config_file'])}",
+        ]
+        _append_yaml_list(lines, "enabled_mcps", item["enabled_mcps"])
+        _append_yaml_list(lines, "disabled_mcps", item["disabled_mcps"])
+        _append_yaml_list(lines, "enabled_tools", item["enabled_tools"])
+        _append_yaml_list(lines, "disabled_tools", item["disabled_tools"])
+        _append_yaml_list(lines, "enabled_features", item["enabled_features"])
+        _append_yaml_list(lines, "disabled_features", item["disabled_features"])
+        lines.extend(
+            [
+                f"description: {_yaml_str(item['description'])}",
+                "---",
+                "",
+                "Generated from `codex/config/repo-bootstrap.json` plus the managed agent templates. Do not edit manually.",
+                "",
+            ]
+        )
+        _write_if_changed(root / file_name, "\n".join(lines))
+
+
 def validate_registry(
     data: dict[str, Any], config_dir: Path, home: Path
 ) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any], list[dict[str, Any]]]:
@@ -813,6 +1125,7 @@ def validate_registry(
             "description": description,
             "config_file": config_file,
             "nickname_candidates": nickname_candidates,
+            "role_data": _load_agent_role_data(config_path),
             **_load_agent_role_config(config_path),
         }
 
@@ -869,6 +1182,8 @@ def validate_registry(
             "custom_agents": [],
             "agent_policy_agents": [],
             "agent_policy_bindings": [],
+            "agent_policy_binding_map": {},
+            "resolved_agent_policies": {},
         }
         custom_agents = item.get("custom_agents", [])
         if not isinstance(custom_agents, list):
@@ -896,6 +1211,7 @@ def validate_registry(
                     )
                 resolved_agent_policies[agent_name] = dict(validated_agent_policy_presets[raw_policy])
                 validated["agent_policy_bindings"].append(f"{agent_name}={raw_policy}")
+                validated["agent_policy_binding_map"][agent_name] = str(raw_policy)
                 continue
             if isinstance(raw_policy, dict):
                 resolved_agent_policies[agent_name] = _validate_policy_object(
@@ -904,11 +1220,13 @@ def validate_registry(
                     mcp_presets=presets,
                 )
                 validated["agent_policy_bindings"].append(f"{agent_name}=inline")
+                validated["agent_policy_binding_map"][agent_name] = "inline"
                 continue
             raise ValueError(
                 f"repos[{idx}].agent_policies.{agent_name} must be a preset name or object"
             )
         validated["agent_policy_agents"] = sorted(resolved_agent_policies.keys())
+        validated["resolved_agent_policies"] = resolved_agent_policies
         validated["repo_agents"] = _resolve_repo_agent_names(
             validated["custom_agents"], resolved_agent_policies
         )
@@ -976,6 +1294,15 @@ def main() -> int:
     generate_agent_registry_base(views_dir)
     generate_agent_registry_items(
         views_dir, global_terminal_agents, global_xcode_agents, agent_presets, repos
+    )
+    generate_agent_capabilities_base(views_dir)
+    generate_agent_capabilities_items(
+        views_dir,
+        global_terminal_agents,
+        global_xcode_agents,
+        agent_presets,
+        repos,
+        presets,
     )
     print(f"Generated repo bootstrap Base artifacts in {views_dir}")
     return 0

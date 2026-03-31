@@ -55,7 +55,7 @@ Canonical personal Codex control-plane assets live here.
 - The current managed role setup is:
   - built-in `explorer` remains available for local repo and runtime exploration
   - managed `external_researcher` handles information outside the local repo and runtime
-  - managed `writer` is available globally for writing, copy, and tone-sensitive drafting work
+  - managed `writer` is repo-bootstrapped where writing-specific policy is needed, rather than declared globally
 - The current per-repo control surface is:
   - `mcp_presets`
   - `custom_agents`
@@ -74,6 +74,7 @@ Canonical personal Codex control-plane assets live here.
   - `agent_policy_presets`
     - reusable repo-local policy overlays such as MCP allow-lists or deny-all posture
 - `agent_presets` can back both repo-scoped custom agents and repo-local overrides for global agents such as `writer`.
+- The current main use of `agent_presets` is repo-scoped materialization of agents such as `writer` and `visual_reviewer` into selected repos.
 - `agent_policy_presets` let the repo sync render repo-local `agents/*.toml` from canonical role templates plus repo policy, so new MCP presets default safely instead of relying on hand-edited role files.
 - The registry `defaults` block is rendered into every managed repo-local `.codex/config.toml` unless a repo entry overrides those keys explicitly.
 - `defaults.features` is merged with per-repo `features`, so baseline feature flags can be enabled globally while still allowing repo overrides.

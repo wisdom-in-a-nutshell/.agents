@@ -16,4 +16,6 @@ Generated views:
   - per-repo Codex bootstrap view, including MCP presets plus effective skill availability derived from [`skills/registry.json`](/Users/dobby/.agents/skills/registry.json)
 - [`agent-registry.base`](/Users/dobby/.agents/docs/references/registry/agent-registry.base)
   - role-centric Codex agent scope view, including global vs repo scope plus core role config such as model, reasoning, and sandbox
+- [`agent-capabilities.base`](/Users/dobby/.agents/docs/references/registry/agent-capabilities.base)
+  - effective capability view for each global or repo-local agent runtime, including MCP exposure, tool disables, web search, and `js_repl`
 - [`mcp-registry.base`](/Users/dobby/.agents/docs/references/registry/mcp-registry.base)

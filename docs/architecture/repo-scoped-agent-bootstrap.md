@@ -188,6 +188,13 @@ And there is now a separate agent-scope registry:
 - `agent-registry.base`
 - `agent-registry-items/`
 
+There is also an effective capability registry:
+
+- `agent-capabilities.base`
+- `agent-capabilities-items/`
+
+That view is the quickest way to inspect which MCPs, tools, and feature flags are actually enabled for each repo-local agent runtime.
+
 That keeps the control plane auditable in Obsidian the same way MCPs and skills already are.
 
 ## Figure 2: Repo-Level Flow
