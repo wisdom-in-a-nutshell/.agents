@@ -4,6 +4,8 @@ model = "claude-4.6-sonnet"
 model_provider = "litellm"
 model_reasoning_effort = "medium"
 web_search = "disabled"
+sandbox_mode = "read-only"
+web_search = "disabled"
 
 [tools]
 web_search = false
