@@ -54,7 +54,7 @@ Canonical personal Codex control-plane assets live here.
 - The current managed role setup is:
   - built-in `explorer` remains available for local repo and runtime exploration
   - managed `external_researcher` handles information outside the local repo and runtime
-  - repo-scoped custom `writer` is available in opted-in repos for writing, copy, and tone-sensitive drafting work
+  - managed `writer` is available globally for writing, copy, and tone-sensitive drafting work
 - The current per-repo control surface is:
   - `mcp_presets`
   - `custom_agents`

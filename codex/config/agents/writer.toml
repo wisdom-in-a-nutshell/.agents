@@ -3,6 +3,10 @@ description = "Writing-focused sub-agent for copywriting, rewriting, messaging, 
 model = "claude-4.6-sonnet"
 model_provider = "litellm"
 model_reasoning_effort = "medium"
+web_search = "disabled"
+
+[tools]
+web_search = false
 
 developer_instructions = """
 You are the writer.

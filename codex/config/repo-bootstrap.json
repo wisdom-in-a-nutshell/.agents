@@ -30,15 +30,6 @@
     }
   },
   "agent_presets": {
-    "writer": {
-      "description": "Writing-focused sub-agent. Highly encouraged for copywriting, rewriting, and tone-sensitive drafting.",
-      "config_file": "writer.toml",
-      "nickname_candidates": [
-        "Quill",
-        "Scribe",
-        "Muse"
-      ]
-    },
     "visual_reviewer": {
       "description": "Read-only reviewer for visual work such as screenshots, layouts, hierarchy, and clarity.",
       "config_file": "visual_reviewer.toml",
@@ -64,6 +55,7 @@
       "model": "gpt-5.4",
       "model_reasoning_effort": "high",
       "model_verbosity": "low",
+      "web_search": "disabled",
       "personality": "pragmatic",
       "service_tier": "fast",
       "model_instructions_file": "../soul.md",
@@ -73,8 +65,7 @@
         "paper"
       ],
       "custom_agents": [
-        "visual_reviewer",
-        "writer"
+        "visual_reviewer"
       ]
     },
     {
@@ -104,9 +95,7 @@
     },
     {
       "path": "~/GitHub/blog-personal",
-      "custom_agents": [
-        "writer"
-      ],
+      "web_search": "disabled",
       "mcp_presets": [
         "paper"
       ]

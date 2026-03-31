@@ -4,9 +4,9 @@ path: "~/GitHub/codexclaw"
 mcp_count: 2
 skill_count: 13
 repo_local_skill_count: 1
-global_agent_count: 1
+global_agent_count: 2
 custom_agent_count: 0
-agent_count: 1
+agent_count: 2
 model: "gpt-5.4"
 reasoning: "high"
 fast_mode: "true"
@@ -16,9 +16,11 @@ mcps:
   - "openaiDeveloperDocs"
 global_agents:
   - "external_researcher"
+  - "writer"
 custom_agents: []
 agents:
   - "external_researcher"
+  - "writer"
 global_skills:
   - "agent-browser"
   - "architecture-docs"

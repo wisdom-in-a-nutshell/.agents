@@ -29,6 +29,11 @@ supports_websockets = false
 description = "Read-only researcher for information outside the local codebase and runtime."
 config_file = "agents/external_researcher.toml"
 
+[agents.writer]
+description = "Writing-focused sub-agent. Highly encouraged for copywriting, rewriting, and tone-sensitive drafting."
+config_file = "agents/writer.toml"
+nickname_candidates = ["Quill", "Scribe", "Muse"]
+
 [sandbox_workspace_write]
 exclude_slash_tmp = false
 exclude_tmpdir_env_var = false

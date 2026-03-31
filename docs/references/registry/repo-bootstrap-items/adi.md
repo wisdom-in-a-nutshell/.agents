@@ -4,8 +4,8 @@ path: "~/GitHub/adi"
 mcp_count: 2
 skill_count: 21
 repo_local_skill_count: 0
-global_agent_count: 1
-custom_agent_count: 2
+global_agent_count: 2
+custom_agent_count: 1
 agent_count: 3
 model: "gpt-5.4"
 reasoning: "high"
@@ -16,9 +16,9 @@ mcps:
   - "paper"
 global_agents:
   - "external_researcher"
+  - "writer"
 custom_agents:
   - "visual_reviewer"
-  - "writer"
 agents:
   - "external_researcher"
   - "visual_reviewer"

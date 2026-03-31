@@ -29,6 +29,11 @@ supports_websockets = false
 description = "Read-only researcher for information outside the local codebase and runtime."
 config_file = "agents/external_researcher.toml"
 
+[agents.writer]
+description = "Writing-focused sub-agent. Highly encouraged for copywriting, rewriting, and tone-sensitive drafting."
+config_file = "agents/writer.toml"
+nickname_candidates = ["Quill", "Scribe", "Muse"]
+
 [tui]
 theme = "catppuccin-macchiato"
 status_line = ["model-with-reasoning", "context-remaining", "current-dir", "codex-version", "context-window-size", "session-id", "fast-mode"]
