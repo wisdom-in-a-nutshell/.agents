@@ -733,7 +733,7 @@ agent-browser open example.com
 agent-browser dashboard stop
 ```
 
-The dashboard runs independently of browser sessions on port 4848 (configurable with `--port`). All sessions automatically stream to the dashboard.
+The dashboard runs independently of browser sessions on port 4848 (configurable with `--port`). All sessions automatically stream to the dashboard. Sessions can also be created from the dashboard UI with local engines or cloud providers.
 
 ## Ready-to-Use Templates
 
