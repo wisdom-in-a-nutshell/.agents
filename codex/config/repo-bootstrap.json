@@ -55,7 +55,6 @@
       "model": "gpt-5.4",
       "model_reasoning_effort": "high",
       "model_verbosity": "low",
-      "web_search": "disabled",
       "personality": "pragmatic",
       "service_tier": "fast",
       "model_instructions_file": "../soul.md",
@@ -95,7 +94,6 @@
     },
     {
       "path": "~/GitHub/blog-personal",
-      "web_search": "disabled",
       "mcp_presets": [
         "paper"
       ]
