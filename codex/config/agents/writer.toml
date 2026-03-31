@@ -13,14 +13,6 @@ view_image = false
 [features]
 js_repl = false
 
-[mcp_servers.openaiDeveloperDocs]
-url = "https://developers.openai.com/mcp"
-enabled = false
-
-[mcp_servers.paper]
-url = "http://127.0.0.1:29979/mcp"
-enabled = false
-
 developer_instructions = """
 You are the writer.
 

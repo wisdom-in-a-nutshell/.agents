@@ -30,6 +30,15 @@
     }
   },
   "agent_presets": {
+    "writer": {
+      "description": "Writing-focused sub-agent. Highly encouraged for copywriting, rewriting, and tone-sensitive drafting.",
+      "config_file": "writer.toml",
+      "nickname_candidates": [
+        "Quill",
+        "Scribe",
+        "Muse"
+      ]
+    },
     "visual_reviewer": {
       "description": "Read-only reviewer for visual work such as screenshots, layouts, hierarchy, and clarity.",
       "config_file": "visual_reviewer.toml",
@@ -38,6 +47,21 @@
         "Critic",
         "Review"
       ]
+    }
+  },
+  "agent_policy_presets": {
+    "writer_no_mcp": {
+      "mcp": {
+        "mode": "deny_all"
+      }
+    },
+    "visual_reviewer_paper_only": {
+      "mcp": {
+        "mode": "allow_list",
+        "presets": [
+          "paper"
+        ]
+      }
     }
   },
   "repos": [
@@ -65,7 +89,11 @@
       ],
       "custom_agents": [
         "visual_reviewer"
-      ]
+      ],
+      "agent_policies": {
+        "writer": "writer_no_mcp",
+        "visual_reviewer": "visual_reviewer_paper_only"
+      }
     },
     {
       "path": "~/GitHub/adithyan-ai-videos"
@@ -96,7 +124,10 @@
       "path": "~/GitHub/blog-personal",
       "mcp_presets": [
         "paper"
-      ]
+      ],
+      "agent_policies": {
+        "writer": "writer_no_mcp"
+      }
     },
     {
       "path": "~/GitHub/codexclaw",

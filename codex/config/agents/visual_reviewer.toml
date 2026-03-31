@@ -6,14 +6,6 @@ sandbox_mode = "read-only"
 personality = "pragmatic"
 web_search = "disabled"
 
-[mcp_servers.openaiDeveloperDocs]
-url = "https://developers.openai.com/mcp"
-enabled = false
-
-[mcp_servers.paper]
-url = "http://127.0.0.1:29979/mcp"
-enabled = true
-
 developer_instructions = """
 Stay in visual review mode.
 
