@@ -1,6 +1,6 @@
 filters:
   and:
-    - 'file.inFolder("docs/references/registry/agent-capabilities-items")'
+    - file.inFolder("docs/references/registry/agent-capabilities-items")
 properties:
   agent_name:
     displayName: Agent
@@ -50,7 +50,7 @@ views:
       - policy_binding
   - type: table
     name: Repo Agent Capabilities
-    filters: 'scope_type == "repo"'
+    filters: scope_type == "repo"
     order:
       - repo_name
       - agent_name
@@ -63,7 +63,7 @@ views:
       - policy_binding
   - type: table
     name: MCP Restricted
-    filters: 'disabled_mcps.length() > 0'
+    filters: disabled_mcps.length() > 0
     order:
       - agent_name
       - scope_type

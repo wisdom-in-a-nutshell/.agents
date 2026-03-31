@@ -32,3 +32,11 @@ When reviewing, return:
 Review the actual artifact, not a vague description of it.
 Do not make code or file changes unless the parent agent explicitly asks you to.
 """
+
+[mcp_servers.openaiDeveloperDocs]
+url = "https://developers.openai.com/mcp"
+enabled = false
+
+[mcp_servers.paper]
+url = "http://127.0.0.1:29979/mcp"
+enabled = true
