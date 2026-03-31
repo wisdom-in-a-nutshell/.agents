@@ -97,6 +97,8 @@ If the work stabilizes into a reusable visual family, create or update a style g
 - Do not rely on repo-local virtualenv auto-switching for this owned skill. Treat the runtime as machine-global.
 - Use `tmp/imagegen/` only for truly temporary intermediate files (for example JSONL batches or disposable seed files), and delete them when done.
 - Write final artifacts under `output/imagegen/` when working in this repo unless the project has a more specific destination.
+- Keep cross-project reusable support assets with the skill itself under `assets/shared-assets/`, not in the active repo.
+- If a canonical SVG or similar reusable asset already exists under `assets/shared-assets/`, refer to that existing file as the reference/anchor instead of regenerating it, re-downloading it, or copying it into the active repo.
 - Use `--out` or `--out-dir` to control output paths; keep filenames stable and descriptive.
 
 ## Dependencies (install if missing)
