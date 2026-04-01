@@ -3,7 +3,7 @@ agent_name: "visual_reviewer"
 effective_scope: "repo"
 global_terminal: "false"
 global_xcode: "false"
-repos_csv: "adi"
+repos_csv: "adi,blog-personal"
 model: "gpt-5.4"
 reasoning: "medium"
 sandbox_mode: "read-only"
@@ -22,6 +22,7 @@ enabled_features:
 disabled_features: []
 repos:
   - "adi"
+  - "blog-personal"
 ---
 
 Generated from `codex/config/repo-bootstrap.json` plus the managed global Codex config templates. Do not edit manually.
