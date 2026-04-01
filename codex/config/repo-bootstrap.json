@@ -108,6 +108,7 @@
         "paper"
       ],
       "custom_agents": [
+        "visual_reviewer",
         "writer"
       ]
     },
