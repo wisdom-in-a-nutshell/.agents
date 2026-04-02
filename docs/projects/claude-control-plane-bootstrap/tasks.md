@@ -51,10 +51,12 @@ The repo already manages Codex as the primary control plane. Adding Claude as a 
 ## Decisions
 - `Codex` remains primary; Claude will be added as a sibling control plane under `claude/`.
 - Generic project compatibility will use `CLAUDE.md -> AGENTS.md`.
+- Nested `AGENTS.md` files should also receive sibling `CLAUDE.md -> AGENTS.md` links for Claude parity.
 - The first pass is local-only and intentionally ignores the `adi` `soul.md` special case.
 - `skipDangerousModePermissionPrompt` is managed only at user/global Claude settings scope.
 - The first pass manages instructions, MCP, settings, and skills; `.claude/agents/` is intentionally deferred.
 - Global Claude MCP is merged into `~/.claude.json` without overwriting unrelated runtime keys.
+- Special root repos with Codex `model_instructions_file` should render a real root `CLAUDE.md` that imports the resolved model-instructions file plus `@AGENTS.md`.
 
 ## Open Questions / Blockers
 - Anthropic’s published settings schema still lags at least one doc-backed key (`skipDangerousModePermissionPrompt`), so future schema patching remains an optional cleanup item.
@@ -89,3 +91,4 @@ The repo already manages Codex as the primary control plane. Adding Claude as a 
 - 2026-04-02: [DONE] Recorded official Anthropic settings/MCP and `CLAUDE.md`/skills/system prompt findings in project resource notes.
 - 2026-04-02: [DONE] Added `claude/` canonical config plus sync/check/bootstrap scripts for global settings, global MCP, repo config rendering, and skills.
 - 2026-04-02: [DONE] Applied the generic Claude bootstrap for `~/.agents`, including global `~/.claude` defaults and repo-local `CLAUDE.md`, `.claude/settings.json`, `.mcp.json`, and skill links.
+- 2026-04-02: [DONE] Extended repo bootstrap to support nested `CLAUDE.md -> AGENTS.md` mirroring and special root `CLAUDE.md` rendering for repos with `model_instructions_file`.

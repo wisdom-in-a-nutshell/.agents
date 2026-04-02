@@ -69,13 +69,17 @@ install_rendered_file() {
   local target="$2"
   local mode="600"
 
-  if [[ -f "$target" ]] && cmp -s "$target" "$rendered"; then
+  if [[ -f "$target" ]] && [[ ! -L "$target" ]] && cmp -s "$target" "$rendered"; then
     log "No change: $target"
     return 0
   fi
 
-  if [[ -f "$target" ]]; then
+  if [[ -f "$target" ]] && [[ ! -L "$target" ]]; then
     mode="$(stat -f "%Lp" "$target" 2>/dev/null || echo 600)"
+  fi
+
+  if [[ -L "$target" ]]; then
+    rm -f "$target"
   fi
 
   install -m "$mode" "$rendered" "$target"
@@ -109,6 +113,23 @@ sync_relative_symlink() {
   fi
   ln -s "$link_to" "$target"
   log "Linked $target -> $link_to"
+}
+
+remove_managed_file() {
+  local target="$1"
+
+  if [[ ! -e "$target" && ! -L "$target" ]]; then
+    log "No managed file to remove: $target"
+    return 0
+  fi
+
+  if (( APPLY == 0 )); then
+    log "Would remove file: $target"
+    return 0
+  fi
+
+  rm -f "$target"
+  log "Removed file: $target"
 }
 
 remove_managed_symlink() {
@@ -194,6 +215,55 @@ def deep_merge(base, override):
 
 def render_json(value: dict) -> str:
     return json.dumps(value, indent=2, sort_keys=True) + "\n"
+
+
+def should_skip_walk_dir(path: Path, repo_root: Path) -> bool:
+    if path == repo_root:
+        return False
+    skipped = {
+        ".git",
+        ".claude",
+        ".codex",
+        "node_modules",
+        "dist",
+        "build",
+        ".next",
+        ".turbo",
+        "coverage",
+        "__pycache__",
+        ".venv",
+        "venv",
+    }
+    return any(part in skipped for part in path.parts)
+
+
+def discover_agents_files(repo_root: Path) -> list[Path]:
+    discovered: list[Path] = []
+    stack = [repo_root]
+    while stack:
+        current = stack.pop()
+        if should_skip_walk_dir(current, repo_root):
+            continue
+        for child in sorted(current.iterdir(), key=lambda p: p.name):
+            if child.is_dir():
+                stack.append(child)
+                continue
+            if child.name == "AGENTS.md":
+                discovered.append(child)
+    return sorted(discovered)
+
+
+def render_root_claude_md(repo_root: Path, model_instructions_file: str) -> str:
+    codex_dir = repo_root / ".codex"
+    resolved_model_file = (codex_dir / model_instructions_file).resolve()
+    try:
+        model_relative = resolved_model_file.relative_to(repo_root)
+        model_import = model_relative.as_posix()
+    except ValueError:
+        model_import = resolved_model_file.as_posix()
+    if not model_import:
+        raise ValueError(f"Unable to derive root import path for {resolved_model_file}")
+    return f"@{model_import}\n@AGENTS.md\n"
 
 
 registry_path = Path(sys.argv[1]).expanduser().resolve()
@@ -284,6 +354,7 @@ for item in repos_raw:
     mcp_path.write_text(render_json({"mcpServers": mcp_servers}), encoding="utf-8")
     manifest_lines.append(f"{actual_repo}\tFILE\t{Path(actual_repo) / '.mcp.json'}\t{mcp_path}")
 
+    repo_root = Path(actual_repo)
     link_enabled = item.get(
         "link_claude_md_to_agents_md",
         defaults.get("link_claude_md_to_agents_md", False),
@@ -291,9 +362,34 @@ for item in repos_raw:
     if not isinstance(link_enabled, bool):
         raise TypeError(f"link_claude_md_to_agents_md for {actual_repo} must be a boolean")
 
-    claude_md_path = Path(actual_repo) / "CLAUDE.md"
-    if link_enabled:
-        agents_md_path = Path(actual_repo) / "AGENTS.md"
+    sync_nested = item.get(
+        "sync_nested_claude_md_to_agents_md",
+        defaults.get("sync_nested_claude_md_to_agents_md", False),
+    )
+    if not isinstance(sync_nested, bool):
+        raise TypeError(f"sync_nested_claude_md_to_agents_md for {actual_repo} must be a boolean")
+
+    model_instructions_file = item.get("model_instructions_file")
+    if model_instructions_file is not None and (
+        not isinstance(model_instructions_file, str) or not model_instructions_file.strip()
+    ):
+        raise TypeError(f"model_instructions_file for {actual_repo} must be a non-empty string")
+
+    root_agents_md_path = repo_root / "AGENTS.md"
+    claude_md_path = repo_root / "CLAUDE.md"
+    if model_instructions_file is not None:
+        if not root_agents_md_path.is_file():
+            print(
+                f"WARNING: skipping special root CLAUDE.md for {actual_repo}; missing AGENTS.md",
+                file=sys.stderr,
+            )
+        else:
+            rendered_root = render_root_claude_md(repo_root, model_instructions_file)
+            root_claude_path = tmp_dir / f"{hashlib.sha256((actual_repo + ':root-claude').encode()).hexdigest()}.md"
+            root_claude_path.write_text(rendered_root, encoding="utf-8")
+            manifest_lines.append(f"{actual_repo}\tFILE\t{claude_md_path}\t{root_claude_path}")
+    elif link_enabled:
+        agents_md_path = root_agents_md_path
         if not agents_md_path.is_file():
             print(
                 f"WARNING: skipping CLAUDE.md link for {actual_repo}; missing AGENTS.md",
@@ -303,6 +399,15 @@ for item in repos_raw:
             manifest_lines.append(f"{actual_repo}\tLINK\t{claude_md_path}\tAGENTS.md")
     else:
         manifest_lines.append(f"{actual_repo}\tCLEAN_LINK\t{claude_md_path}\tAGENTS.md")
+
+    nested_agents_files = discover_agents_files(repo_root) if sync_nested else []
+    for agents_md_path in nested_agents_files:
+        if agents_md_path == root_agents_md_path:
+            continue
+        nested_claude_md = agents_md_path.parent / "CLAUDE.md"
+        manifest_lines.append(
+            f"{actual_repo}\tLINK\t{nested_claude_md}\tAGENTS.md"
+        )
 
 for line in manifest_lines:
     print(line)
@@ -330,6 +435,9 @@ for entry in "${MANIFEST[@]}"; do
       ;;
     LINK)
       sync_relative_symlink "$target" "$data"
+      ;;
+    CLEAN_FILE)
+      remove_managed_file "$target"
       ;;
     CLEAN_LINK)
       remove_managed_symlink "$target" "$data"

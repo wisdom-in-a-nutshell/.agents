@@ -1,6 +1,7 @@
 {
   "defaults": {
     "link_claude_md_to_agents_md": true,
+    "sync_nested_claude_md_to_agents_md": true,
     "settings": {
       "$schema": "https://json.schemastore.org/claude-code-settings.json",
       "enableAllProjectMcpServers": true,
@@ -49,6 +50,7 @@
     },
     {
       "path": "~/GitHub/adi",
+      "model_instructions_file": "../soul.md",
       "mcp_presets": [
         "openaiDeveloperDocs",
         "paper"
@@ -68,6 +70,7 @@
     },
     {
       "path": "~/GitHub/angie",
+      "model_instructions_file": "../soul.md",
       "mcp_presets": [
         "openaiDeveloperDocs"
       ]

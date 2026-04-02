@@ -45,12 +45,17 @@ Owns the applied local runtime state:
 
 The generic project contract is:
 
-- `CLAUDE.md -> AGENTS.md`
+- root `CLAUDE.md -> AGENTS.md`
+- nested `CLAUDE.md -> AGENTS.md` wherever nested `AGENTS.md` exists
 - `.claude/settings.json`
 - `.mcp.json`
 - `.claude/skills/`
 
 `AGENTS.md` remains the shared repo instruction source. `CLAUDE.md` is only the compatibility entrypoint.
+
+Special root case:
+
+- if a repo already has a Codex `model_instructions_file`, root `CLAUDE.md` becomes a real file that imports the resolved model-instructions file and root `AGENTS.md`
 
 ## Layering
 
@@ -74,11 +79,12 @@ The first pass keeps the same permissive default posture at both scopes where An
 
 This baseline includes:
 
-- `CLAUDE.md -> AGENTS.md` for generic repo compatibility
+- root and nested `CLAUDE.md -> AGENTS.md` mirroring for generic repo compatibility
 - permissive Claude settings
 - project MCP via `.mcp.json`
 - global MCP via `~/.claude.json`
 - global and project skills
+- special root `CLAUDE.md` rendering for repos with `model_instructions_file`
 
 This baseline intentionally defers:
 
