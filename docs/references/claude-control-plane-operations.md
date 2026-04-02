@@ -31,8 +31,6 @@ Use [Claude Control Plane](/Users/adi/.agents/docs/architecture/claude-control-p
   - project MCP
 - repo `.claude/skills/`
   - project skills
-- repo `.claude/agents/`
-  - project agents
 
 ## First-Pass Commands
 
@@ -47,7 +45,7 @@ The Claude control plane is intended to follow the same sync/check pattern as Co
 - `sync-skills.sh`
   - materialize global and project Claude skills from `skills/registry.json`
 - `sync-repo-claude-configs.sh`
-  - render repo-local `CLAUDE.md -> AGENTS.md`, `.claude/settings.json`, `.mcp.json`, and repo-local Claude capability folders
+  - render repo-local `CLAUDE.md -> AGENTS.md`, `.claude/settings.json`, and `.mcp.json`
 - `bootstrap-machine-claude.sh`
   - run the full Claude apply batch
 - `check-claude-control-plane.sh`
@@ -67,11 +65,12 @@ The Claude control plane is intended to follow the same sync/check pattern as Co
 - Project Claude guidance lives in repo `CLAUDE.md`.
 - Global MCP lives in `~/.claude.json`.
 - Project MCP lives in `.mcp.json`.
-- Global skills and agents live under `~/.claude/`.
-- Project skills and agents live under repo `.claude/`.
+- Global skills live under `~/.claude/skills/`.
+- Project skills live under repo `.claude/skills/`.
 
 ## Deferred Rules
 
 - Do not treat `soul.md` as part of the generic baseline.
 - Do not require host-level `systemPrompt` parity for the first pass.
 - Do not assume VS Code cloud/remote exposes the same operator surface as the local Claude CLI or SDK.
+- Do not assume `.claude/agents/` is part of the first-pass bootstrap.

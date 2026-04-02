@@ -49,7 +49,6 @@ The generic project contract is:
 - `.claude/settings.json`
 - `.mcp.json`
 - `.claude/skills/`
-- `.claude/agents/`
 
 `AGENTS.md` remains the shared repo instruction source. `CLAUDE.md` is only the compatibility entrypoint.
 
@@ -64,7 +63,6 @@ Claude has both global and project layers:
 - project `.claude/settings.json`
 - project `.mcp.json`
 - project `.claude/skills/`
-- project `.claude/agents/`
 
 The first pass keeps the same permissive default posture at both scopes where Anthropic allows it:
 
@@ -81,13 +79,13 @@ This baseline includes:
 - project MCP via `.mcp.json`
 - global MCP via `~/.claude.json`
 - global and project skills
-- global and project agents
 
 This baseline intentionally defers:
 
 - the `adi` `soul.md` special case
 - host/runtime `systemPrompt` replacement parity
 - VS Code cloud/remote agent behavior
+- Claude subagent materialization under `.claude/agents/`
 - any repo-specific Claude prompt override that would fork the generic model
 
 ## Model

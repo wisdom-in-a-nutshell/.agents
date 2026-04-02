@@ -29,17 +29,17 @@ The repo already manages Codex as the primary control plane. Adding Claude as a 
 - User wants broad permissive Claude defaults analogous to Codex `approval_policy = "never"` and `sandbox_mode = "danger-full-access"`.
 
 ## Done When
-- [ ] A documented Claude bootstrap model exists in this repo with clear global/project layering.
-- [ ] A `claude/` control-plane subtree is added with canonical config and sync/check scripts for the first supported path.
-- [ ] Anthropic settings/schema/SDK assumptions used by the implementation are verified against official docs and recorded here.
-- [ ] The first local repo bootstrap output is rendered and validated for at least this repo.
-- [ ] Follow-up work needed for `adi` `soul.md` parity is captured separately instead of blocking the generic baseline.
+- [x] A documented Claude bootstrap model exists in this repo with clear global/project layering.
+- [x] A `claude/` control-plane subtree is added with canonical config and sync/check scripts for the first supported path.
+- [x] Anthropic settings/schema/SDK assumptions used by the implementation are verified against official docs and recorded here.
+- [x] The first local repo bootstrap output is rendered and validated for at least this repo.
+- [x] Follow-up work needed for `adi` `soul.md` parity is captured separately instead of blocking the generic baseline.
 
 ## Milestones
-- [ ] Milestone 1 — Freeze the Claude bootstrap contract and verify Anthropic surfaces. Acceptance: tracker records the intended global/project model and doc-backed settings/SDK limits. Validate: official Anthropic docs cited in tracker/resources.
-- [ ] Milestone 2 — Add canonical `claude/` control-plane files and scripts. Acceptance: repo contains the first managed Claude config sources plus sync/check entrypoints. Validate: scripts dry-run cleanly.
-- [ ] Milestone 3 — Render local Claude bootstrap outputs for this repo and verify permissive defaults. Acceptance: generated outputs land where expected and match the agreed contract. Validate: generated files inspect cleanly and any repo validation path needed for touched files passes.
-- [ ] Milestone 4 — Document architecture and operations. Acceptance: architecture/reference docs explain the Claude control plane and how it differs from Codex. Validate: docs cite real paths/commands and align with implemented files.
+- [x] Milestone 1 — Freeze the Claude bootstrap contract and verify Anthropic surfaces. Acceptance: tracker records the intended global/project model and doc-backed settings/SDK limits. Validate: official Anthropic docs cited in tracker/resources.
+- [x] Milestone 2 — Add canonical `claude/` control-plane files and scripts. Acceptance: repo contains the first managed Claude config sources plus sync/check entrypoints. Validate: scripts dry-run cleanly.
+- [x] Milestone 3 — Render local Claude bootstrap outputs for this repo and verify permissive defaults. Acceptance: generated outputs land where expected and match the agreed contract. Validate: generated files inspect cleanly and any repo validation path needed for touched files passes.
+- [x] Milestone 4 — Document architecture and operations. Acceptance: architecture/reference docs explain the Claude control plane and how it differs from Codex. Validate: docs cite real paths/commands and align with implemented files.
 
 ## Execution Rules
 - Keep the generic local-only Claude baseline first; do not let the `adi` special case derail the initial shape.
@@ -52,30 +52,30 @@ The repo already manages Codex as the primary control plane. Adding Claude as a 
 - `Codex` remains primary; Claude will be added as a sibling control plane under `claude/`.
 - Generic project compatibility will use `CLAUDE.md -> AGENTS.md`.
 - The first pass is local-only and intentionally ignores the `adi` `soul.md` special case.
+- `skipDangerousModePermissionPrompt` is managed only at user/global Claude settings scope.
+- The first pass manages instructions, MCP, settings, and skills; `.claude/agents/` is intentionally deferred.
+- Global Claude MCP is merged into `~/.claude.json` without overwriting unrelated runtime keys.
 
 ## Open Questions / Blockers
-- Does Anthropic’s published settings schema fully cover the doc-backed keys needed for permissive defaults, or do we need a patched local schema?
-- Which parts of the current shared skills registry should be materialized into Claude global/project skills in the first pass versus deferred?
-- How should Claude global MCP be represented canonically in this repo versus machine-local runtime state?
+- Anthropic’s published settings schema still lags at least one doc-backed key (`skipDangerousModePermissionPrompt`), so future schema patching remains an optional cleanup item.
+- `adi` still needs a separate follow-up design for `soul.md` / host-level system prompt parity.
+- Claude subagent materialization under `.claude/agents/` remains a follow-up if it proves useful in daily workflow.
 
 ## Current Batch
 | Status | Work Item | Role | Resource |
 | --- | --- | --- | --- |
-| in_progress | Create project tracker, freeze contract, and scaffold the parent plan for the Claude control plane. | parent |  |
-| delegated | Verify Anthropic official docs for permissions, sandbox, settings schema, and MCP surfaces needed for local bootstrap. | external_researcher | `docs/projects/claude-control-plane-bootstrap/resources/anthropic-settings-research.md` |
-| delegated | Verify Anthropic official docs for skills, agents, `CLAUDE.md`, and Agent SDK prompt surfaces relevant to parity decisions. | external_researcher | `docs/projects/claude-control-plane-bootstrap/resources/anthropic-agent-surfaces.md` |
-| todo | Inspect local repo patterns and scaffold the new `claude/` subtree in the same style as the existing `codex/` subtree. | parent |  |
+| completed | Create project tracker, freeze contract, and scaffold the parent plan for the Claude control plane. | parent | `docs/projects/claude-control-plane-bootstrap/tasks.md` |
+| completed | Verify Anthropic official docs for permissions, sandbox, settings schema, and MCP surfaces needed for local bootstrap. | external_researcher | `docs/projects/claude-control-plane-bootstrap/resources/anthropic-settings-research.md` |
+| completed | Verify Anthropic official docs for skills, agents, `CLAUDE.md`, and Agent SDK prompt surfaces relevant to parity decisions. | external_researcher | `docs/projects/claude-control-plane-bootstrap/resources/anthropic-agent-surfaces.md` |
+| completed | Inspect local repo patterns and scaffold the new `claude/` subtree in the same style as the existing `codex/` subtree. | parent | `claude/` |
+| completed | Implement the first sync/check/bootstrap scripts for Claude global settings, global MCP, repo configs, and skills. | parent | `claude/scripts/` |
+| completed | Apply and validate the first local-only bootstrap for `~/.agents`. | parent | `CLAUDE.md`, `.claude/settings.json`, `.mcp.json` |
 
 ## Backlog / Remaining Work
-- [ ] Decide the canonical file layout for `claude/config/`, `claude/scripts/`, and any generated views.
-- [ ] Add a managed global Claude settings source with permissive defaults.
-- [ ] Add a managed global Claude instruction source for `~/.claude/CLAUDE.md`.
-- [ ] Decide how global Claude skills should be materialized from `skills/registry.json`.
-- [ ] Decide how project Claude MCP should be rendered from a repo bootstrap registry.
-- [ ] Add sync/check scripts for Claude.
-- [ ] Dry-run and apply the first local bootstrap for this repo.
-- [ ] Update architecture docs for the Claude sibling control plane.
-- [ ] Update reference docs with exact commands/paths for Claude operations.
+- [ ] Add `.claude/agents/` materialization if Claude subagents become part of the control-plane baseline.
+- [ ] Design the `adi` `soul.md` parity layer as a separate runtime/launcher concern.
+- [ ] Decide whether to patch the published Claude settings schema locally for editor validation parity.
+- [ ] Expand apply/validation beyond `~/.agents` once the generic baseline has enough usage feedback.
 - [ ] Review and finalize `docs/projects/claude-control-plane-bootstrap/learnings/README.md`.
 - [ ] Close out and archive the project when the generic baseline is complete.
 
@@ -86,3 +86,6 @@ The repo already manages Codex as the primary control plane. Adding Claude as a 
 
 ## Progress Log
 - 2026-04-02: [IN-PROGRESS] Created project tracker and froze the first-pass contract around a local-only generic Claude control plane.
+- 2026-04-02: [DONE] Recorded official Anthropic settings/MCP and `CLAUDE.md`/skills/system prompt findings in project resource notes.
+- 2026-04-02: [DONE] Added `claude/` canonical config plus sync/check/bootstrap scripts for global settings, global MCP, repo config rendering, and skills.
+- 2026-04-02: [DONE] Applied the generic Claude bootstrap for `~/.agents`, including global `~/.claude` defaults and repo-local `CLAUDE.md`, `.claude/settings.json`, `.mcp.json`, and skill links.
