@@ -355,13 +355,6 @@ for item in repos_raw:
     manifest_lines.append(f"{actual_repo}\tFILE\t{Path(actual_repo) / '.mcp.json'}\t{mcp_path}")
 
     repo_root = Path(actual_repo)
-    link_enabled = item.get(
-        "link_claude_md_to_agents_md",
-        defaults.get("link_claude_md_to_agents_md", False),
-    )
-    if not isinstance(link_enabled, bool):
-        raise TypeError(f"link_claude_md_to_agents_md for {actual_repo} must be a boolean")
-
     sync_nested = item.get(
         "sync_nested_claude_md_to_agents_md",
         defaults.get("sync_nested_claude_md_to_agents_md", False),
@@ -388,17 +381,15 @@ for item in repos_raw:
             root_claude_path = tmp_dir / f"{hashlib.sha256((actual_repo + ':root-claude').encode()).hexdigest()}.md"
             root_claude_path.write_text(rendered_root, encoding="utf-8")
             manifest_lines.append(f"{actual_repo}\tFILE\t{claude_md_path}\t{root_claude_path}")
-    elif link_enabled:
+    else:
         agents_md_path = root_agents_md_path
         if not agents_md_path.is_file():
             print(
-                f"WARNING: skipping CLAUDE.md link for {actual_repo}; missing AGENTS.md",
+                f"WARNING: skipping root CLAUDE.md for {actual_repo}; missing AGENTS.md",
                 file=sys.stderr,
             )
         else:
             manifest_lines.append(f"{actual_repo}\tLINK\t{claude_md_path}\tAGENTS.md")
-    else:
-        manifest_lines.append(f"{actual_repo}\tCLEAN_LINK\t{claude_md_path}\tAGENTS.md")
 
     nested_agents_files = discover_agents_files(repo_root) if sync_nested else []
     for agents_md_path in nested_agents_files:
