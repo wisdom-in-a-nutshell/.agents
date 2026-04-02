@@ -104,15 +104,17 @@ Use [Codex Control Plane Ownership](/Users/dobby/.agents/docs/references/codex-c
   - copies canonical role behavior from [`codex/config/agents/*.toml`](/Users/dobby/.agents/codex/config/agents) into those repo-local agent files
   - validates repo-scoped custom-agent role files before writing them into managed repos
   - skips no-op rewrites instead of dirtying the git repos unnecessarily
-  - keeps the repo list and MCP/model preset definitions in [`repo-bootstrap.json`](/Users/dobby/.agents/codex/config/repo-bootstrap.json)
+  - keeps the repo list and repo-level MCP/model assignments in [`repo-bootstrap.json`](/Users/dobby/.agents/codex/config/repo-bootstrap.json)
+  - resolves MCP preset definitions through [`mcp/config/presets.json`](/Users/dobby/.agents/mcp/config/presets.json)
 - [`check-codex-control-plane.sh`](/Users/dobby/.agents/codex/scripts/check-codex-control-plane.sh)
-  - validates canonical `global.config.toml`, `xcode.config.toml`, and `repo-bootstrap.json`
+  - validates canonical `global.config.toml`, `xcode.config.toml`, `repo-bootstrap.json`, and `mcp/config/presets.json`
   - validates canonical role TOMLs and rendered runtime role TOMLs
   - catches missing or malformed `name` / `description` in role files
   - catches runtime `agents/` directories containing unreferenced role files
   - validates generated repo-local `.codex/config.toml` agent declarations for managed repos present on the machine
 - [`sync-repo-bootstrap-registry.sh`](/Users/dobby/.agents/codex/scripts/sync-repo-bootstrap-registry.sh)
   - regenerates the Obsidian Base artifacts from [`repo-bootstrap.json`](/Users/dobby/.agents/codex/config/repo-bootstrap.json)
+  - pulls MCP preset definitions from [`mcp/config/presets.json`](/Users/dobby/.agents/mcp/config/presets.json)
   - enriches the per-repo view with effective skills from [`skills/registry.json`](/Users/dobby/.agents/skills/registry.json)
   - now also exposes effective agents per repo:
     - `global_agents`
@@ -163,6 +165,7 @@ Use [Codex Control Plane Ownership](/Users/dobby/.agents/docs/references/codex-c
   - `notes`
 - Shared declaration metadata for repo-scoped custom agents lives in the same registry under:
   - `agent_presets`
+- Shared MCP preset definitions live separately in [`mcp/config/presets.json`](/Users/dobby/.agents/mcp/config/presets.json).
 - Agent behavior itself stays in [`codex/config/agents/*.toml`](/Users/dobby/.agents/codex/config/agents), including MCP posture, tool disables, feature disables, and sandbox level.
 - The global defaults block supplies fallback values for repos that do not override them.
 

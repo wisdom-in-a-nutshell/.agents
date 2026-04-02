@@ -21,4 +21,4 @@ repos:
   - "-"
 ---
 
-Generated from `codex/config/repo-bootstrap.json` plus the managed global Codex config templates. Do not edit manually.
+Generated from `codex/config/repo-bootstrap.json` and `mcp/config/presets.json`. Do not edit manually.

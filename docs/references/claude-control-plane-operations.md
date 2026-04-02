@@ -10,10 +10,12 @@ Use [Claude Control Plane](/Users/adi/.agents/docs/architecture/claude-control-p
   - canonical source for `~/.claude/CLAUDE.md`
 - `claude/config/settings.json`
   - canonical source for `~/.claude/settings.json`
-- `claude/config/mcp.json`
-  - canonical source for the managed global MCP entries
-- `claude/config/repo-bootstrap.json`
-  - canonical registry for per-repo Claude bootstrap
+- `claude/config/bootstrap.json`
+  - Claude-only bootstrap defaults and repo-specific overrides
+- `codex/config/repo-bootstrap.json`
+  - shared repo inventory plus per-repo assignment registry
+- `mcp/config/presets.json`
+  - shared MCP preset definitions and machine-wide global MCP defaults
 
 ## Runtime Targets
 
@@ -44,11 +46,11 @@ The Claude control plane is intended to follow the same sync/check pattern as Co
 - `sync-settings.sh`
   - install the permissive global `settings.json` into `~/.claude/settings.json`
 - `sync-global-mcp.sh`
-  - merge managed `mcpServers` entries into `~/.claude.json`
+  - merge global MCP entries from `mcp/config/presets.json` into `~/.claude.json`
 - `sync-skills.sh`
   - materialize global and project Claude skills from `skills/registry.json`
 - `sync-repo-claude-configs.sh`
-  - render root and nested `CLAUDE.md` compatibility files, `.claude/settings.json`, and `.mcp.json`
+  - render root and nested `CLAUDE.md` compatibility files, `.claude/settings.json`, and `.mcp.json` from the shared repo registry plus Claude bootstrap overlay
 - `bootstrap-machine-claude.sh`
   - run the full Claude apply batch
 - `check-claude-control-plane.sh`

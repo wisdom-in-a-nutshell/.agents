@@ -62,8 +62,8 @@ for repo in "${REPO_FILTERS[@]}"; do
   REPO_ARGS+=(--repo "$repo")
 done
 
-"${SCRIPT_DIR}/sync-global-claude-md.sh" "$MODE_FLAG"
-"${SCRIPT_DIR}/sync-settings.sh" "$MODE_FLAG"
-"${SCRIPT_DIR}/sync-global-mcp.sh" "$MODE_FLAG"
-"${SCRIPT_DIR}/sync-skills.sh" "$MODE_FLAG" "${REPO_ARGS[@]}"
-"${SCRIPT_DIR}/sync-repo-claude-configs.sh" "$MODE_FLAG" "${REPO_ARGS[@]}"
+bash "${SCRIPT_DIR}/sync-global-claude-md.sh" "$MODE_FLAG"
+bash "${SCRIPT_DIR}/sync-settings.sh" "$MODE_FLAG"
+bash "${SCRIPT_DIR}/sync-global-mcp.sh" "$MODE_FLAG"
+bash "${SCRIPT_DIR}/sync-skills.sh" "$MODE_FLAG" "${REPO_ARGS[@]}"
+bash "${SCRIPT_DIR}/sync-repo-claude-configs.sh" "$MODE_FLAG" "${REPO_ARGS[@]}"

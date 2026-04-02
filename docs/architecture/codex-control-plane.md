@@ -2,7 +2,7 @@
 
 This repo is becoming the canonical personal control plane for Codex across both machines. The core idea is simple: keep the durable source of truth in `~/.agents`, keep the live runtime home in `~/.codex`, and keep `~/GitHub/scripts` limited to generic machine bootstrap plus shared shell glue that is not Codex-owned.
 
-That split keeps Codex-specific policy, MCP presets, skills, docs, and managed scripts in one synced place without pretending that auth, sessions, logs, or runtime databases belong in git.
+That split keeps Codex-specific policy, repo assignment, shared MCP presets, skills, docs, and managed scripts in one synced place without pretending that auth, sessions, logs, or runtime databases belong in git.
 
 The newest part of that control plane is the repo bootstrap registry in `~/.agents/codex/config/repo-bootstrap.json`. It now acts as the canonical source for:
 
@@ -11,6 +11,8 @@ The newest part of that control plane is the repo bootstrap registry in `~/.agen
 - which repo-local MCP presets should be enabled
 - which repo-scoped custom agents should be enabled
 - which repo-local `.codex/config.toml` files should be generated
+
+Shared MCP preset definitions themselves now live in `~/.agents/mcp/config/presets.json`.
 
 ## Figure 1: Ownership Layout
 

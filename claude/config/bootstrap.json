@@ -1,0 +1,16 @@
+{
+  "defaults": {
+    "sync_nested_claude_md_to_agents_md": true,
+    "settings": {
+      "$schema": "https://json.schemastore.org/claude-code-settings.json",
+      "enableAllProjectMcpServers": true,
+      "permissions": {
+        "defaultMode": "bypassPermissions"
+      },
+      "sandbox": {
+        "enabled": false
+      }
+    }
+  },
+  "repo_overrides": {}
+}

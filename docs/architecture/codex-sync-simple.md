@@ -32,8 +32,10 @@ flowchart TD
   - canonical skill content
 - `codex/config/`
   - canonical Codex machine config and repo bootstrap inputs
+- `mcp/config/presets.json`
+  - source of truth for shared MCP preset definitions and machine-wide global MCP defaults
 - `codex/config/repo-bootstrap.json`
-  - source of truth for repo-local Codex behavior such as MCP presets, model, reasoning, and service tier
+  - source of truth for repo-local Codex behavior such as MCP assignment, model, reasoning, and service tier
 - `~/GitHub/scripts/sync/git-auto-sync.sh`
   - the launchd-driven 15-minute machine sync loop
 

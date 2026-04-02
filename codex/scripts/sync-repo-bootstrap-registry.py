@@ -321,22 +321,10 @@ def generate_registry_items(
         _write_if_changed(root / file_name, "\n".join(lines))
 
 
-def _load_global_mcp_names(config_path: Path) -> set[str]:
-    if not config_path.is_file():
-        return set()
-    with config_path.open("rb") as handle:
-        data = tomllib.load(handle)
-    mcp_servers = data.get("mcp_servers", {})
-    if not isinstance(mcp_servers, dict):
-        return set()
-    return {str(name) for name in mcp_servers.keys()}
-
-
 def _mcp_transport(preset: dict[str, Any]) -> str:
-    if "url" in preset:
-        return "url"
-    if "command" in preset:
-        return "command"
+    transport = preset.get("transport")
+    if isinstance(transport, str):
+        return transport
     return "-"
 
 
@@ -536,7 +524,7 @@ def generate_mcp_registry_items(
             [
                 "---",
                 "",
-                "Generated from `codex/config/repo-bootstrap.json` plus the managed global Codex config templates. Do not edit manually.",
+                "Generated from `codex/config/repo-bootstrap.json` and `mcp/config/presets.json`. Do not edit manually.",
                 "",
             ]
         )
@@ -768,16 +756,53 @@ def generate_agent_registry_items(
             [
                 "---",
                 "",
-                "Generated from `codex/config/repo-bootstrap.json` plus the managed global Codex config templates. Do not edit manually.",
+                "Generated from `codex/config/repo-bootstrap.json` and `mcp/config/presets.json`. Do not edit manually.",
                 "",
             ]
         )
         _write_if_changed(root / f"{_sanitize_file_name(agent_name)}.md", "\n".join(lines))
 
 
+def validate_mcp_registry(data: dict[str, Any]) -> tuple[dict[str, Any], list[str]]:
+    presets = data.get("presets", {})
+    if not isinstance(presets, dict):
+        raise ValueError("MCP registry presets must be an object")
+
+    global_presets = data.get("global_presets", [])
+    if not isinstance(global_presets, list):
+        raise ValueError("MCP registry global_presets must be an array")
+
+    validated_presets: dict[str, Any] = {}
+    for name, preset in presets.items():
+        if not isinstance(preset, dict):
+            raise ValueError(f"MCP preset `{name}` must be an object")
+        transport = preset.get("transport")
+        if transport not in {"http", "stdio"}:
+            raise ValueError(f"MCP preset `{name}` must define transport `http` or `stdio`")
+        if transport == "http":
+            url = preset.get("url")
+            if not isinstance(url, str) or not url.strip():
+                raise ValueError(f"MCP preset `{name}` with transport http must define a non-empty url")
+        if transport == "stdio":
+            command = preset.get("command")
+            if not isinstance(command, str) or not command.strip():
+                raise ValueError(f"MCP preset `{name}` with transport stdio must define a non-empty command")
+        if "args" in preset and not isinstance(preset["args"], list):
+            raise ValueError(f"MCP preset `{name}` args must be an array")
+        if "env" in preset and not isinstance(preset["env"], dict):
+            raise ValueError(f"MCP preset `{name}` env must be an object")
+        validated_presets[str(name)] = preset
+
+    for name in global_presets:
+        if name not in validated_presets:
+            raise ValueError(f"global_presets references unknown MCP preset `{name}`")
+
+    return validated_presets, [str(name) for name in global_presets]
+
+
 def validate_registry(
-    data: dict[str, Any], config_dir: Path, home: Path
-) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any], list[dict[str, Any]]]:
+    data: dict[str, Any], config_dir: Path, home: Path, mcp_presets_map: dict[str, Any]
+) -> tuple[dict[str, Any], dict[str, Any], list[dict[str, Any]]]:
     defaults = data.get("defaults", {})
     if not isinstance(defaults, dict):
         raise ValueError("defaults must be an object")
@@ -787,10 +812,6 @@ def validate_registry(
             raise ValueError(f"unsupported default key: {key}")
     if "features" in defaults and not isinstance(defaults["features"], dict):
         raise ValueError("defaults.features must be an object")
-
-    presets = data.get("mcp_presets", {})
-    if not isinstance(presets, dict):
-        raise ValueError("mcp_presets must be an object")
 
     agent_presets = data.get("agent_presets", {})
     if not isinstance(agent_presets, dict):
@@ -843,11 +864,11 @@ def validate_registry(
             print(f"WARNING: skipping non-git path: {path_str}", file=sys.stderr)
             continue
 
-        mcp_presets = item.get("mcp_presets", [])
-        if not isinstance(mcp_presets, list):
+        repo_mcp_presets = item.get("mcp_presets", [])
+        if not isinstance(repo_mcp_presets, list):
             raise ValueError(f"repos[{idx}].mcp_presets must be an array")
-        for preset_name in mcp_presets:
-            if preset_name not in presets:
+        for preset_name in repo_mcp_presets:
+            if preset_name not in mcp_presets_map:
                 raise ValueError(
                     f"repos[{idx}] references unknown MCP preset: {preset_name}"
                 )
@@ -856,8 +877,8 @@ def validate_registry(
             "path": _display_path(repo_root, home),
             "repo_name": _repo_name(str(repo_root)),
             "repo_root": repo_root,
-            "mcp_presets": [str(name) for name in mcp_presets],
-            "mcp_presets_csv": ",".join(mcp_presets) if mcp_presets else "-",
+            "mcp_presets": [str(name) for name in repo_mcp_presets],
+            "mcp_presets_csv": ",".join(repo_mcp_presets) if repo_mcp_presets else "-",
             "custom_agents": [],
         }
         custom_agents = item.get("custom_agents", [])
@@ -879,7 +900,7 @@ def validate_registry(
         repos.append(validated)
 
     repos.sort(key=lambda item: item["path"])
-    return defaults, presets, validated_agent_presets, repos
+    return defaults, validated_agent_presets, repos
 
 
 def parse_args() -> argparse.Namespace:
@@ -892,6 +913,11 @@ def parse_args() -> argparse.Namespace:
         default=str(Path.home() / ".agents" / "codex" / "config" / "repo-bootstrap.json"),
         help="Path to repo bootstrap registry JSON file.",
     )
+    parser.add_argument(
+        "--mcp-registry",
+        default=str(Path.home() / ".agents" / "mcp" / "config" / "presets.json"),
+        help="Path to shared MCP registry JSON file.",
+    )
     return parser.parse_args()
 
 
@@ -901,18 +927,28 @@ def main() -> int:
     if not registry_file.is_file():
         print(f"Registry not found: {registry_file}", file=sys.stderr)
         return 1
+    mcp_registry_file = Path(args.mcp_registry).expanduser().resolve()
+    if not mcp_registry_file.is_file():
+        print(f"MCP registry not found: {mcp_registry_file}", file=sys.stderr)
+        return 1
 
     try:
         data = json.loads(registry_file.read_text(encoding="utf-8"))
     except json.JSONDecodeError as exc:
         print(f"Invalid JSON in {registry_file}: {exc}", file=sys.stderr)
         return 1
+    try:
+        mcp_data = json.loads(mcp_registry_file.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as exc:
+        print(f"Invalid JSON in {mcp_registry_file}: {exc}", file=sys.stderr)
+        return 1
 
     config_dir = registry_file.parent
     root_dir = config_dir.parent.parent
     home = Path.home()
     try:
-        defaults, presets, agent_presets, repos = validate_registry(data, config_dir, home)
+        presets, global_presets = validate_mcp_registry(mcp_data)
+        defaults, agent_presets, repos = validate_registry(data, config_dir, home, presets)
     except ValueError as exc:
         print(f"Registry validation failed: {exc}", file=sys.stderr)
         return 1
@@ -924,8 +960,8 @@ def main() -> int:
     apply_agent_assignments(repos, global_terminal_agents, global_xcode_agents)
     generate_registry_base(views_dir)
     generate_registry_items(views_dir, defaults, repos)
-    global_terminal_mcp = _load_global_mcp_names(config_dir / "global.config.toml")
-    global_xcode_mcp = _load_global_mcp_names(config_dir / "xcode.config.toml")
+    global_terminal_mcp = set(global_presets)
+    global_xcode_mcp = set(global_presets)
     generate_mcp_registry_base(views_dir)
     generate_mcp_registry_items(
         views_dir, presets, repos, global_terminal_mcp, global_xcode_mcp

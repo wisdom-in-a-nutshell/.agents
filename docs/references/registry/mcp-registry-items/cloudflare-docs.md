@@ -4,10 +4,10 @@ effective_scope: "repo"
 global_terminal: "false"
 global_xcode: "false"
 repos_csv: "platform-ops"
-transport: "url"
+transport: "http"
 target: "https://docs.mcp.cloudflare.com/mcp"
 repos:
   - "platform-ops"
 ---
 
-Generated from `codex/config/repo-bootstrap.json` plus the managed global Codex config templates. Do not edit manually.
+Generated from `codex/config/repo-bootstrap.json` and `mcp/config/presets.json`. Do not edit manually.

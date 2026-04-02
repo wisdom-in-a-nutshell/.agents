@@ -3,6 +3,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 CONTROL_PLANE_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+ROOT_DIR="$(cd "$CONTROL_PLANE_DIR/.." && pwd)"
 
 GLOBAL_CONFIG="${HOME}/.codex/config.toml"
 GLOBAL_AGENTS_DIR="${HOME}/.codex/agents"
@@ -10,6 +11,7 @@ XCODE_CONFIG="${HOME}/Library/Developer/Xcode/CodingAssistant/codex/config.toml"
 XCODE_AGENTS_DIR="${HOME}/Library/Developer/Xcode/CodingAssistant/codex/agents"
 CANONICAL_DIR="${CONTROL_PLANE_DIR}/config"
 REGISTRY_FILE="${CANONICAL_DIR}/repo-bootstrap.json"
+MCP_REGISTRY_FILE="${ROOT_DIR}/mcp/config/presets.json"
 REPO_FILTERS=()
 
 usage() {
@@ -25,6 +27,7 @@ Options:
   --xcode-config <path>       Override Xcode runtime config path
   --xcode-agents-dir <path>   Override Xcode runtime agents dir
   --registry <path>           Override repo bootstrap registry path
+  --mcp-registry <path>       Override shared MCP registry path
   --repo <path>               Limit repo-local validation to one repo path (repeatable)
   -h, --help                  Show this help
 USAGE
@@ -57,6 +60,10 @@ while [[ $# -gt 0 ]]; do
       REGISTRY_FILE="${2:-}"
       shift 2
       ;;
+    --mcp-registry)
+      MCP_REGISTRY_FILE="${2:-}"
+      shift 2
+      ;;
     --repo)
       REPO_FILTERS+=("${2:-}")
       shift 2
@@ -72,7 +79,7 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-python3 - "$CANONICAL_DIR" "$GLOBAL_CONFIG" "$GLOBAL_AGENTS_DIR" "$XCODE_CONFIG" "$XCODE_AGENTS_DIR" "$REGISTRY_FILE" "${REPO_FILTERS[@]}" <<'PY'
+python3 - "$CANONICAL_DIR" "$GLOBAL_CONFIG" "$GLOBAL_AGENTS_DIR" "$XCODE_CONFIG" "$XCODE_AGENTS_DIR" "$REGISTRY_FILE" "$MCP_REGISTRY_FILE" "${REPO_FILTERS[@]}" <<'PY'
 from __future__ import annotations
 
 import json
@@ -181,7 +188,8 @@ global_agents_dir = Path(sys.argv[3]).expanduser().resolve()
 xcode_config = Path(sys.argv[4]).expanduser().resolve()
 xcode_agents_dir = Path(sys.argv[5]).expanduser().resolve()
 registry_path = Path(sys.argv[6]).expanduser().resolve()
-repo_filters = {str(Path(p).expanduser().resolve()) for p in sys.argv[7:] if p.strip()}
+mcp_registry_path = Path(sys.argv[7]).expanduser().resolve()
+repo_filters = {str(Path(p).expanduser().resolve()) for p in sys.argv[8:] if p.strip()}
 
 canonical_agents_dir = canonical_dir / "agents"
 global_template = canonical_dir / "global.config.toml"
@@ -218,10 +226,16 @@ if xcode_config.exists():
 
 if not registry_path.is_file():
     fail(f"missing registry file: {registry_path}")
+if not mcp_registry_path.is_file():
+    fail(f"missing MCP registry file: {mcp_registry_path}")
 try:
     registry = json.loads(registry_path.read_text(encoding="utf-8"))
 except Exception as exc:
     fail(f"invalid JSON in {registry_path}: {exc}")
+try:
+    mcp_registry = json.loads(mcp_registry_path.read_text(encoding="utf-8"))
+except Exception as exc:
+    fail(f"invalid JSON in {mcp_registry_path}: {exc}")
 
 agent_presets = registry.get("agent_presets", {})
 if agent_presets is None:
@@ -229,11 +243,31 @@ if agent_presets is None:
 if not isinstance(agent_presets, dict):
     fail(f"agent_presets must be an object in {registry_path}")
 
-mcp_presets = registry.get("mcp_presets", {})
-if mcp_presets is None:
-    mcp_presets = {}
+if not isinstance(mcp_registry, dict):
+    fail(f"MCP registry root must be an object in {mcp_registry_path}")
+mcp_presets = mcp_registry.get("presets", {})
 if not isinstance(mcp_presets, dict):
-    fail(f"mcp_presets must be an object in {registry_path}")
+    fail(f"presets must be an object in {mcp_registry_path}")
+global_presets = mcp_registry.get("global_presets", [])
+if not isinstance(global_presets, list):
+    fail(f"global_presets must be an array in {mcp_registry_path}")
+for preset_name, preset in sorted(mcp_presets.items()):
+    if not isinstance(preset, dict):
+        fail(f"presets.{preset_name} must be an object in {mcp_registry_path}")
+    transport = preset.get("transport")
+    if transport not in {"http", "stdio"}:
+        fail(f"presets.{preset_name}.transport must be `http` or `stdio` in {mcp_registry_path}")
+    if transport == "http":
+        url = preset.get("url")
+        if not isinstance(url, str) or not url.strip():
+            fail(f"presets.{preset_name}.url must be a non-empty string in {mcp_registry_path}")
+    if transport == "stdio":
+        command = preset.get("command")
+        if not isinstance(command, str) or not command.strip():
+            fail(f"presets.{preset_name}.command must be a non-empty string in {mcp_registry_path}")
+for preset_name in global_presets:
+    if preset_name not in mcp_presets:
+        fail(f"global_presets references unknown MCP preset `{preset_name}` in {mcp_registry_path}")
 
 for agent_name, preset in sorted(agent_presets.items()):
     if not isinstance(preset, dict):

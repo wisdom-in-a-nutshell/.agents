@@ -16,7 +16,7 @@ The design rule is simple: keep **definitions** canonical in `~/.agents`, keep *
 flowchart TD
     A[skills/registry.json]
     B[codex/config/repo-bootstrap.json]
-    C[codex/config/global.config.toml + xcode.config.toml]
+    C[mcp/config/presets.json]
     D[codex/config/agents/*.toml]
     E[sync-skills-registry.sh]
     F[sync-repo-codex-configs.sh]
@@ -30,6 +30,7 @@ flowchart TD
     A --> H
     B --> F
     B --> H
+    C --> F
     C --> G
     C --> H
     D --> F
@@ -74,8 +75,8 @@ That is why the effective per-repo view matters more than a separate skill-scope
 
 ### Source of truth
 
-- global MCP declarations in `codex/config/global.config.toml` and `codex/config/xcode.config.toml`
-- repo MCP presets in `codex/config/repo-bootstrap.json`
+- shared MCP preset definitions in `mcp/config/presets.json`
+- repo MCP assignment in `codex/config/repo-bootstrap.json`
 
 ### Scope model
 
@@ -158,7 +159,7 @@ Repo bootstrap does not re-define per-agent MCP/tool policy.
 ### 1. Keep canonical behavior in one place
 
 - skill content stays in `skills-source/`
-- MCP preset definitions stay in canonical config/registry files
+- MCP preset definitions stay in `mcp/config/presets.json`
 - agent role behavior stays in `codex/config/agents/*.toml`
 
 ### 2. Put scope assignment in the narrowest correct registry

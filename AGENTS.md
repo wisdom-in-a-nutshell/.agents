@@ -11,9 +11,10 @@ Personal agent and Codex control plane.
 
 ## Source of Truth
 
-- `skills/registry.json` is the only canonical registry.
+- `skills/registry.json` is the canonical skill registry.
+- `mcp/config/presets.json` is the canonical shared MCP registry.
 - `codex/` holds canonical personal Codex control-plane inputs.
-- `codex/config/repo-bootstrap.json` is the canonical registry for managed repo-local Codex behavior.
+- `codex/config/repo-bootstrap.json` is the canonical shared repo registry for managed repo-local behavior.
   - Per repo it can define:
     - `mcp_presets`
     - `custom_agents`
@@ -56,6 +57,9 @@ Personal agent and Codex control plane.
 - Apply Codex trust sync: `./codex/scripts/sync-trusted-projects.sh --apply`
 - Rebuild Codex repo bootstrap Base artifacts: `./codex/scripts/sync-repo-bootstrap-registry.sh`
 - Apply managed repo-local Codex configs: `./codex/scripts/sync-repo-codex-configs.sh --apply`
+- Dry-run Claude bootstrap batch: `./claude/scripts/bootstrap-machine-claude.sh`
+- Apply Claude bootstrap batch: `./claude/scripts/bootstrap-machine-claude.sh --apply`
+- Validate Claude control-plane inputs + rendered runtimes: `./claude/scripts/check-claude-control-plane.sh`
 - Dry-run Codex bootstrap batch: `./codex/scripts/bootstrap-machine-codex.sh`
 - Apply Codex bootstrap batch: `./codex/scripts/bootstrap-machine-codex.sh --apply`
   - This applies the Codex control-plane outputs only; the shared shell links still live in `~/GitHub/scripts`.
@@ -81,4 +85,5 @@ Personal agent and Codex control plane.
 - If `skills/registry.json` changes, run sync/check in the same change.
 - Do not hand-edit generated repo-local `.codex/config.toml` files in managed repos; update `codex/config/repo-bootstrap.json` and re-run the sync scripts.
 - Do not hand-edit generated repo-local `.codex/agents/*.toml` files in managed repos; update `codex/config/repo-bootstrap.json` or `codex/config/agents/*.toml` and re-run the sync scripts.
+- If `mcp/config/presets.json` changes, run both Codex and Claude control-plane validation in the same change.
 - If `codex/config/agents/*.toml`, `codex/config/global.config.toml`, `codex/config/xcode.config.toml`, or `codex/config/repo-bootstrap.json` changes, run the Codex control-plane validation script in the same change.

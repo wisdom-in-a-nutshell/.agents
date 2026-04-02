@@ -3,11 +3,14 @@ set -euo pipefail
 
 APPLY=0
 REGISTRY_FILE=""
+MCP_REGISTRY_FILE=""
 REPO_FILTERS=()
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 CONTROL_PLANE_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+ROOT_DIR="$(cd "$CONTROL_PLANE_DIR/.." && pwd)"
 DEFAULT_REGISTRY_FILE="${CONTROL_PLANE_DIR}/config/repo-bootstrap.json"
+DEFAULT_MCP_REGISTRY_FILE="${ROOT_DIR}/mcp/config/presets.json"
 
 usage() {
   cat <<USAGE
@@ -21,6 +24,8 @@ Options:
   --dry-run              Show diffs only (default)
   --registry <path>      Override repo bootstrap registry
                          (default: codex/config/repo-bootstrap.json)
+  --mcp-registry <path>  Override shared MCP registry
+                         (default: mcp/config/presets.json)
   --repo <path>          Limit sync to an exact repo path (repeatable)
   -h, --help             Show this help
 
@@ -63,6 +68,10 @@ while [[ $# -gt 0 ]]; do
       REGISTRY_FILE="${2:-}"
       shift 2
       ;;
+    --mcp-registry)
+      MCP_REGISTRY_FILE="${2:-}"
+      shift 2
+      ;;
     --repo)
       REPO_FILTERS+=("${2:-}")
       shift 2
@@ -80,9 +89,14 @@ done
 if [[ -z "$REGISTRY_FILE" ]]; then
   REGISTRY_FILE="$DEFAULT_REGISTRY_FILE"
 fi
+if [[ -z "$MCP_REGISTRY_FILE" ]]; then
+  MCP_REGISTRY_FILE="$DEFAULT_MCP_REGISTRY_FILE"
+fi
 
 [[ -f "$REGISTRY_FILE" ]] || die "Missing registry file: $REGISTRY_FILE"
 [[ -r "$REGISTRY_FILE" ]] || die "Registry file is not readable: $REGISTRY_FILE"
+[[ -f "$MCP_REGISTRY_FILE" ]] || die "Missing MCP registry file: $MCP_REGISTRY_FILE"
+[[ -r "$MCP_REGISTRY_FILE" ]] || die "MCP registry file is not readable: $MCP_REGISTRY_FILE"
 
 ensure_parent_dir() {
   local file="$1"
@@ -118,7 +132,7 @@ install_rendered_file() {
 }
 
 mapfile -t MANIFEST < <(
-  python3 - "$REGISTRY_FILE" "$TMP_DIR" "${REPO_FILTERS[@]}" <<'PY'
+  python3 - "$REGISTRY_FILE" "$MCP_REGISTRY_FILE" "$TMP_DIR" "${REPO_FILTERS[@]}" <<'PY'
 from __future__ import annotations
 
 import hashlib
@@ -247,6 +261,56 @@ def render_role_file(role_data: dict) -> str:
     return "\n".join(lines) + "\n"
 
 
+def validate_mcp_registry(path: Path) -> tuple[dict, list[str]]:
+    data = json.loads(path.read_text(encoding="utf-8"))
+    if not isinstance(data, dict):
+        raise TypeError("MCP registry root must be an object")
+
+    presets = data.get("presets", {})
+    if not isinstance(presets, dict):
+        raise TypeError("MCP registry `presets` must be an object")
+
+    global_presets = data.get("global_presets", [])
+    if not isinstance(global_presets, list):
+        raise TypeError("MCP registry `global_presets` must be an array")
+
+    for name, preset in presets.items():
+        if not isinstance(preset, dict):
+            raise TypeError(f"MCP preset `{name}` must be an object")
+        transport = preset.get("transport")
+        if transport not in {"http", "stdio"}:
+            raise TypeError(f"MCP preset `{name}` must define transport `http` or `stdio`")
+        if transport == "http":
+            url = preset.get("url")
+            if not isinstance(url, str) or not url.strip():
+                raise TypeError(f"MCP preset `{name}` with transport http must define a non-empty url")
+        if transport == "stdio":
+            command = preset.get("command")
+            if not isinstance(command, str) or not command.strip():
+                raise TypeError(f"MCP preset `{name}` with transport stdio must define a non-empty command")
+        if "args" in preset and not isinstance(preset["args"], list):
+            raise TypeError(f"MCP preset `{name}` args must be an array")
+        if "env" in preset and not isinstance(preset["env"], dict):
+            raise TypeError(f"MCP preset `{name}` env must be an object")
+        if "cwd" in preset and not isinstance(preset["cwd"], str):
+            raise TypeError(f"MCP preset `{name}` cwd must be a string")
+
+    for name in global_presets:
+        if name not in presets:
+            raise KeyError(f"Unknown global MCP preset `{name}`")
+
+    return presets, [str(name) for name in global_presets]
+
+
+def codex_mcp_config(name: str, preset: dict) -> dict:
+    transport = preset.get("transport")
+    if transport == "http":
+        return {key: value for key, value in preset.items() if key != "transport"}
+    if transport == "stdio":
+        return {key: value for key, value in preset.items() if key != "transport"}
+    raise TypeError(f"Unsupported MCP transport for `{name}`: {transport}")
+
+
 def render_repo_config(repo: str, defaults: dict, override: dict, presets: dict, agent_presets: dict, custom_agent_names: list[str]) -> str:
     lines = [
         "# Managed by ~/.agents/codex/scripts/sync-repo-codex-configs.sh.",
@@ -288,13 +352,12 @@ def render_repo_config(repo: str, defaults: dict, override: dict, presets: dict,
         if preset_name not in presets:
             raise KeyError(f"Unknown MCP preset `{preset_name}` for {repo}")
         preset = presets[preset_name]
-        if not isinstance(preset, dict):
-            raise TypeError(f"MCP preset `{preset_name}` must be a table")
+        codex_config = codex_mcp_config(preset_name, preset)
         rendered_anything = True
         lines.append("")
         lines.append(f"[mcp_servers.{preset_name}]")
-        for key in sorted(preset):
-            lines.append(f"{key} = {toml_value(preset[key])}")
+        for key in sorted(codex_config):
+            lines.append(f"{key} = {toml_value(codex_config[key])}")
 
     if not isinstance(custom_agent_names, list):
         raise TypeError(f"custom_agents for {repo} must be an array")
@@ -321,19 +384,18 @@ def render_repo_config(repo: str, defaults: dict, override: dict, presets: dict,
 
 
 registry_path = Path(sys.argv[1]).expanduser().resolve()
-tmp_dir = Path(sys.argv[2]).resolve()
-filters = {normalize_path(path) for path in sys.argv[3:] if path}
+mcp_registry_path = Path(sys.argv[2]).expanduser().resolve()
+tmp_dir = Path(sys.argv[3]).resolve()
+filters = {normalize_path(path) for path in sys.argv[4:] if path}
 
 data = json.loads(registry_path.read_text(encoding="utf-8"))
 defaults = data.get("defaults", {})
-presets = data.get("mcp_presets", {})
 agent_presets = data.get("agent_presets", {})
 repos_raw = data.get("repos", [])
+presets, _global_presets = validate_mcp_registry(mcp_registry_path)
 
 if not isinstance(defaults, dict):
     raise TypeError("defaults must be an object")
-if not isinstance(presets, dict):
-    raise TypeError("mcp_presets must be an object")
 if not isinstance(agent_presets, dict):
     raise TypeError("agent_presets must be an object")
 if not isinstance(repos_raw, list):

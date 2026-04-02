@@ -81,7 +81,8 @@ Use [Codex Control Plane](/Users/dobby/.agents/docs/architecture/codex-control-p
 - [codex/scripts/auto-apply-codex-control-plane.sh](/Users/adi/.agents/codex/scripts/auto-apply-codex-control-plane.sh): canonical Codex-specific post-sync reconcile entrypoint used for automatic cross-machine apply.
 - [codex/scripts/sync-trusted-projects.sh](/Users/dobby/.agents/codex/scripts/sync-trusted-projects.sh): canonical trusted-repo sync for terminal + Xcode Codex configs.
 - [codex/scripts/sync-repo-codex-configs.sh](/Users/adi/.agents/codex/scripts/sync-repo-codex-configs.sh): canonical repo-local Codex config sync for managed repos.
-- [codex/config/repo-bootstrap.json](/Users/adi/.agents/codex/config/repo-bootstrap.json): canonical repo bootstrap registry for managed repos plus MCP/model overrides.
+- [codex/config/repo-bootstrap.json](/Users/adi/.agents/codex/config/repo-bootstrap.json): canonical repo bootstrap registry for managed repos plus repo-local model/agent/MCP assignment.
+- [mcp/config/presets.json](/Users/adi/.agents/mcp/config/presets.json): canonical shared MCP definitions plus machine-wide default MCP enablement.
 - [codex/scripts/install-sudoers-codex-ops.sh](/Users/dobby/.agents/codex/scripts/install-sudoers-codex-ops.sh): canonical Codex sudoers installer.
 
 ## Migration Intent

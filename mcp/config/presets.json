@@ -1,0 +1,32 @@
+{
+  "presets": {
+    "openaiDeveloperDocs": {
+      "transport": "http",
+      "url": "https://developers.openai.com/mcp"
+    },
+    "paper": {
+      "transport": "http",
+      "url": "http://127.0.0.1:29979/mcp"
+    },
+    "cloudflare-api": {
+      "transport": "http",
+      "url": "https://mcp.cloudflare.com/mcp"
+    },
+    "cloudflare-docs": {
+      "transport": "http",
+      "url": "https://docs.mcp.cloudflare.com/mcp"
+    },
+    "xcode": {
+      "transport": "stdio",
+      "command": "xcrun",
+      "args": [
+        "mcpbridge"
+      ],
+      "startup_timeout_sec": 180,
+      "tool_timeout_sec": 120
+    }
+  },
+  "global_presets": [
+    "openaiDeveloperDocs"
+  ]
+}

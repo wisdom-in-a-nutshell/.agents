@@ -72,12 +72,14 @@ The repo already manages Codex as the primary control plane. Adding Claude as a 
 | completed | Inspect local repo patterns and scaffold the new `claude/` subtree in the same style as the existing `codex/` subtree. | parent | `claude/` |
 | completed | Implement the first sync/check/bootstrap scripts for Claude global settings, global MCP, repo configs, and skills. | parent | `claude/scripts/` |
 | completed | Apply and validate the first local-only bootstrap for `~/.agents`. | parent | `CLAUDE.md`, `.claude/settings.json`, `.mcp.json` |
+| in-progress | Consolidate the Claude and Codex control planes onto one shared repo registry plus one shared MCP registry. | parent | `codex/config/repo-bootstrap.json`, `mcp/config/presets.json`, `claude/config/bootstrap.json` |
 
 ## Backlog / Remaining Work
 - [ ] Add `.claude/agents/` materialization if Claude subagents become part of the control-plane baseline.
 - [ ] Design the `adi` `soul.md` parity layer as a separate runtime/launcher concern.
 - [ ] Decide whether to patch the published Claude settings schema locally for editor validation parity.
 - [ ] Expand apply/validation beyond `~/.agents` once the generic baseline has enough usage feedback.
+- [ ] Decide whether Claude needs any durable per-repo overrides beyond `claude/config/bootstrap.json`.
 - [ ] Review and finalize `docs/projects/claude-control-plane-bootstrap/learnings/README.md`.
 - [ ] Close out and archive the project when the generic baseline is complete.
 
@@ -92,3 +94,4 @@ The repo already manages Codex as the primary control plane. Adding Claude as a 
 - 2026-04-02: [DONE] Added `claude/` canonical config plus sync/check/bootstrap scripts for global settings, global MCP, repo config rendering, and skills.
 - 2026-04-02: [DONE] Applied the generic Claude bootstrap for `~/.agents`, including global `~/.claude` defaults and repo-local `CLAUDE.md`, `.claude/settings.json`, `.mcp.json`, and skill links.
 - 2026-04-02: [DONE] Extended repo bootstrap to support nested `CLAUDE.md -> AGENTS.md` mirroring and special root `CLAUDE.md` rendering for repos with `model_instructions_file`.
+- 2026-04-03: [IN-PROGRESS] Refactoring to a single shared repo registry (`codex/config/repo-bootstrap.json`) plus a shared neutral MCP registry (`mcp/config/presets.json`), with Claude reduced to a bootstrap overlay.

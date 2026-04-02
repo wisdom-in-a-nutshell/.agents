@@ -39,7 +39,8 @@ Canonical personal Codex control-plane assets live here.
 - `scripts/auto-apply-codex-control-plane.sh` is the canonical post-sync Codex reconcile entrypoint for cross-machine convergence.
 - `config/global.config.toml` and `config/xcode.config.toml` are the canonical managed baselines.
 - `config/agents/*.toml` are the canonical managed role overrides for built-in and custom multi-agent roles.
-- `config/repo-bootstrap.json` is the canonical registry for repo-local Codex bootstrap and MCP presets.
+- `config/repo-bootstrap.json` is the canonical shared repo registry for managed repo-local Codex bootstrap.
+- `../mcp/config/presets.json` is the canonical shared MCP registry for both Codex and Claude.
 - `scripts/sync-repo-bootstrap-registry.sh` generates the Obsidian Base artifacts for that registry.
 - `config/global.agents.md` is the canonical machine-wide AGENTS content that bootstraps to `~/.codex/AGENTS.md`.
 - `scripts/notify.py` is the canonical notify automation source.
@@ -49,7 +50,7 @@ Canonical personal Codex control-plane assets live here.
 
 ## Repo Bootstrap Registry
 
-- `config/repo-bootstrap.json` is the one place to decide managed repo-local Codex behavior.
+- `config/repo-bootstrap.json` is the one place to decide managed repo-local Codex repo assignment and per-repo overrides.
 - Role identity belongs in `config/global.config.toml`, `config/xcode.config.toml`, and `config/agents/*.toml`.
 - Role capabilities also belong in `config/agents/*.toml`.
   - MCP exposure
@@ -75,6 +76,7 @@ Canonical personal Codex control-plane assets live here.
 - `repo-bootstrap.json` also carries:
   - `agent_presets`
     - reusable declaration metadata for managed repo-local agent entries
+- MCP preset definitions themselves live in `../mcp/config/presets.json`, not in `repo-bootstrap.json`.
 - `agent_presets` are only for repo-local declaration metadata such as description, source role file, and nicknames.
 - Canonical role TOMLs remain the single source of truth for agent behavior.
 - The registry `defaults` block is rendered into every managed repo-local `.codex/config.toml` unless a repo entry overrides those keys explicitly.
@@ -89,6 +91,7 @@ Canonical personal Codex control-plane assets live here.
   - `../docs/references/registry/mcp-registry.base`
   - `../docs/references/registry/mcp-registry-items/`
 - `scripts/sync-repo-codex-configs.sh --apply` renders the actual repo-local `.codex/config.toml` files from that JSON registry.
+- `scripts/sync-config.sh --apply` renders machine-wide global MCP servers from `../mcp/config/presets.json`.
 - The same sync also renders repo-local `.codex/agents/*.toml` for any repo-assigned custom agents by copying the canonical role TOMLs.
 - `scripts/sync-trusted-projects.sh --apply` ensures those repo-local configs are trusted and therefore loaded by Codex.
 - `scripts/check-codex-control-plane.sh` validates canonical role definitions, runtime role declarations, and repo-scoped custom-agent render output after sync.

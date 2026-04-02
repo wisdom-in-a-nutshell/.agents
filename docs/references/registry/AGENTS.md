@@ -8,6 +8,7 @@ Canonical sources:
 
 - [`skills/registry.json`](/Users/dobby/.agents/skills/registry.json)
 - [`codex/config/repo-bootstrap.json`](/Users/dobby/.agents/codex/config/repo-bootstrap.json)
+- [`mcp/config/presets.json`](/Users/dobby/.agents/mcp/config/presets.json)
 
 Generated views:
 

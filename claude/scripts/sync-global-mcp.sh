@@ -3,10 +3,11 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 CONTROL_PLANE_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+ROOT_DIR="$(cd "$CONTROL_PLANE_DIR/.." && pwd)"
 
 APPLY=0
 GLOBAL_CONFIG="${HOME}/.claude.json"
-CANONICAL_MCP="${CONTROL_PLANE_DIR}/config/mcp.json"
+MCP_REGISTRY="${ROOT_DIR}/mcp/config/presets.json"
 TMP_DIR=""
 
 usage() {
@@ -22,7 +23,7 @@ Options:
   --apply                Apply changes
   --dry-run              Show diffs only (default)
   --global-config <p>    Override ~/.claude.json target
-  --canonical-mcp <p>    Override canonical managed MCP source
+  --mcp-registry <p>     Override shared MCP registry source
   -h, --help             Show this help
 
 Examples:
@@ -94,8 +95,8 @@ while [[ $# -gt 0 ]]; do
       GLOBAL_CONFIG="${2:-}"
       shift 2
       ;;
-    --canonical-mcp)
-      CANONICAL_MCP="${2:-}"
+    --mcp-registry)
+      MCP_REGISTRY="${2:-}"
       shift 2
       ;;
     -h|--help)
@@ -109,22 +110,36 @@ while [[ $# -gt 0 ]]; do
 done
 
 [[ "$GLOBAL_CONFIG" = /* ]] || die "--global-config must be an absolute path"
-[[ "$CANONICAL_MCP" = /* ]] || die "--canonical-mcp must be an absolute path"
-[[ -f "$CANONICAL_MCP" ]] || die "Missing canonical MCP file: $CANONICAL_MCP"
-[[ -r "$CANONICAL_MCP" ]] || die "Canonical MCP file is not readable: $CANONICAL_MCP"
+[[ "$MCP_REGISTRY" = /* ]] || die "--mcp-registry must be an absolute path"
+[[ -f "$MCP_REGISTRY" ]] || die "Missing MCP registry file: $MCP_REGISTRY"
+[[ -r "$MCP_REGISTRY" ]] || die "MCP registry file is not readable: $MCP_REGISTRY"
 
 TMP_DIR="$(mktemp -d)"
 RENDERED_CONFIG="${TMP_DIR}/.claude.json"
 
-python3 - "$GLOBAL_CONFIG" "$CANONICAL_MCP" "$RENDERED_CONFIG" <<'PY'
+python3 - "$GLOBAL_CONFIG" "$MCP_REGISTRY" "$RENDERED_CONFIG" <<'PY'
 from __future__ import annotations
 
 import json
 import sys
 from pathlib import Path
 
+
+def render_claude_mcp_server(name: str, preset: dict) -> dict:
+    config = dict(preset)
+    transport = config.pop("transport", config.pop("type", None))
+    if transport not in {"http", "stdio"}:
+        raise SystemExit(f"ERROR: MCP preset `{name}` must declare transport `http` or `stdio`")
+    if transport == "http" and not isinstance(config.get("url"), str):
+        raise SystemExit(f"ERROR: MCP preset `{name}` must define a string url")
+    if transport == "stdio" and not isinstance(config.get("command"), str):
+        raise SystemExit(f"ERROR: MCP preset `{name}` must define a string command")
+    config["type"] = transport
+    return config
+
+
 runtime_path = Path(sys.argv[1]).expanduser().resolve()
-canonical_path = Path(sys.argv[2]).resolve()
+mcp_registry_path = Path(sys.argv[2]).resolve()
 rendered_path = Path(sys.argv[3]).resolve()
 
 if runtime_path.exists():
@@ -134,15 +149,28 @@ if runtime_path.exists():
 else:
     runtime = {}
 
-canonical = json.loads(canonical_path.read_text(encoding="utf-8"))
-if not isinstance(canonical, dict):
-    raise SystemExit(f"ERROR: canonical MCP root must be an object: {canonical_path}")
+mcp_registry = json.loads(mcp_registry_path.read_text(encoding="utf-8"))
+if not isinstance(mcp_registry, dict):
+    raise SystemExit(f"ERROR: shared MCP registry root must be an object: {mcp_registry_path}")
 
-managed_servers = canonical.get("mcpServers", {})
-if managed_servers is None:
-    managed_servers = {}
-if not isinstance(managed_servers, dict):
-    raise SystemExit(f"ERROR: canonical mcpServers must be an object: {canonical_path}")
+presets = mcp_registry.get("presets", {})
+if not isinstance(presets, dict):
+    raise SystemExit(f"ERROR: shared MCP presets must be an object: {mcp_registry_path}")
+
+global_presets = mcp_registry.get("global_presets", [])
+if global_presets is None:
+    global_presets = []
+if not isinstance(global_presets, list):
+    raise SystemExit(f"ERROR: global_presets must be an array: {mcp_registry_path}")
+
+managed_servers: dict[str, dict] = {}
+for preset_name in global_presets:
+    if preset_name not in presets:
+        raise SystemExit(f"ERROR: unknown global MCP preset `{preset_name}` in {mcp_registry_path}")
+    preset = presets[preset_name]
+    if not isinstance(preset, dict):
+        raise SystemExit(f"ERROR: preset `{preset_name}` must be an object in {mcp_registry_path}")
+    managed_servers[str(preset_name)] = render_claude_mcp_server(str(preset_name), preset)
 
 runtime_servers = runtime.get("mcpServers", {})
 if runtime_servers is None:
@@ -153,8 +181,6 @@ if not isinstance(runtime_servers, dict):
 merged = dict(runtime)
 merged_servers = dict(runtime_servers)
 for name, config in managed_servers.items():
-    if not isinstance(config, dict):
-        raise SystemExit(f"ERROR: mcpServers.{name} must be an object in {canonical_path}")
     merged_servers[name] = config
 merged["mcpServers"] = merged_servers
 

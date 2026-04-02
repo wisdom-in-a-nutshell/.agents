@@ -38,6 +38,3 @@ config_file = "agents/external_researcher.toml"
 [tui]
 theme = "catppuccin-macchiato"
 status_line = ["model-with-reasoning", "context-remaining", "current-dir", "codex-version", "context-window-size", "session-id", "fast-mode"]
-
-[mcp_servers.openaiDeveloperDocs]
-url = "https://developers.openai.com/mcp"

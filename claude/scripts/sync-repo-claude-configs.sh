@@ -2,27 +2,37 @@
 set -euo pipefail
 
 APPLY=0
-REGISTRY_FILE=""
+REPO_REGISTRY_FILE=""
+BOOTSTRAP_FILE=""
+MCP_REGISTRY_FILE=""
 REPO_FILTERS=()
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 CONTROL_PLANE_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
-DEFAULT_REGISTRY_FILE="${CONTROL_PLANE_DIR}/config/repo-bootstrap.json"
+ROOT_DIR="$(cd "$CONTROL_PLANE_DIR/.." && pwd)"
+DEFAULT_REPO_REGISTRY_FILE="${ROOT_DIR}/codex/config/repo-bootstrap.json"
+DEFAULT_BOOTSTRAP_FILE="${CONTROL_PLANE_DIR}/config/bootstrap.json"
+DEFAULT_MCP_REGISTRY_FILE="${ROOT_DIR}/mcp/config/presets.json"
 TMP_DIR=""
 
 usage() {
   cat <<USAGE
 Usage: $(basename "$0") [options]
 
-Render managed repo-local Claude config files from the canonical registry.
+Render managed repo-local Claude config files from the shared repo registry plus
+Claude-specific bootstrap defaults.
 
 Default mode is dry-run. Use --apply to write changes.
 
 Options:
   --apply                Apply changes in place
   --dry-run              Show diffs only (default)
-  --registry <path>      Override repo bootstrap registry
-                         (default: claude/config/repo-bootstrap.json)
+  --registry <path>      Override shared repo bootstrap registry
+                         (default: codex/config/repo-bootstrap.json)
+  --bootstrap <path>     Override Claude bootstrap defaults/overrides
+                         (default: claude/config/bootstrap.json)
+  --mcp-registry <path>  Override shared MCP registry
+                         (default: mcp/config/presets.json)
   --repo <path>          Limit sync to an exact repo path (repeatable)
   -h, --help             Show this help
 
@@ -160,7 +170,15 @@ while [[ $# -gt 0 ]]; do
       shift
       ;;
     --registry)
-      REGISTRY_FILE="${2:-}"
+      REPO_REGISTRY_FILE="${2:-}"
+      shift 2
+      ;;
+    --bootstrap)
+      BOOTSTRAP_FILE="${2:-}"
+      shift 2
+      ;;
+    --mcp-registry)
+      MCP_REGISTRY_FILE="${2:-}"
       shift 2
       ;;
     --repo)
@@ -177,17 +195,29 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-if [[ -z "$REGISTRY_FILE" ]]; then
-  REGISTRY_FILE="$DEFAULT_REGISTRY_FILE"
+if [[ -z "$REPO_REGISTRY_FILE" ]]; then
+  REPO_REGISTRY_FILE="$DEFAULT_REPO_REGISTRY_FILE"
 fi
 
-[[ -f "$REGISTRY_FILE" ]] || die "Missing registry file: $REGISTRY_FILE"
-[[ -r "$REGISTRY_FILE" ]] || die "Registry file is not readable: $REGISTRY_FILE"
+if [[ -z "$BOOTSTRAP_FILE" ]]; then
+  BOOTSTRAP_FILE="$DEFAULT_BOOTSTRAP_FILE"
+fi
+
+if [[ -z "$MCP_REGISTRY_FILE" ]]; then
+  MCP_REGISTRY_FILE="$DEFAULT_MCP_REGISTRY_FILE"
+fi
+
+[[ -f "$REPO_REGISTRY_FILE" ]] || die "Missing repo registry file: $REPO_REGISTRY_FILE"
+[[ -r "$REPO_REGISTRY_FILE" ]] || die "Repo registry file is not readable: $REPO_REGISTRY_FILE"
+[[ -f "$BOOTSTRAP_FILE" ]] || die "Missing Claude bootstrap file: $BOOTSTRAP_FILE"
+[[ -r "$BOOTSTRAP_FILE" ]] || die "Claude bootstrap file is not readable: $BOOTSTRAP_FILE"
+[[ -f "$MCP_REGISTRY_FILE" ]] || die "Missing MCP registry file: $MCP_REGISTRY_FILE"
+[[ -r "$MCP_REGISTRY_FILE" ]] || die "MCP registry file is not readable: $MCP_REGISTRY_FILE"
 
 TMP_DIR="$(mktemp -d)"
 
 mapfile -t MANIFEST < <(
-  python3 - "$REGISTRY_FILE" "$TMP_DIR" "${REPO_FILTERS[@]}" <<'PY'
+  python3 - "$REPO_REGISTRY_FILE" "$BOOTSTRAP_FILE" "$MCP_REGISTRY_FILE" "$TMP_DIR" "${REPO_FILTERS[@]}" <<'PY'
 from __future__ import annotations
 
 import hashlib
@@ -266,27 +296,64 @@ def render_root_claude_md(repo_root: Path, model_instructions_file: str) -> str:
     return f"@{model_import}\n@AGENTS.md\n"
 
 
-registry_path = Path(sys.argv[1]).expanduser().resolve()
-tmp_dir = Path(sys.argv[2]).resolve()
-filters = {normalize_path(path) for path in sys.argv[3:] if path}
+def render_claude_mcp_server(name: str, preset: dict) -> dict:
+    config = dict(preset)
+    transport = config.pop("transport", config.pop("type", None))
+    if transport not in {"http", "stdio"}:
+        raise TypeError(f"MCP preset `{name}` must declare transport `http` or `stdio`")
+    if transport == "http" and not isinstance(config.get("url"), str):
+        raise TypeError(f"MCP preset `{name}` must define a string url")
+    if transport == "stdio" and not isinstance(config.get("command"), str):
+        raise TypeError(f"MCP preset `{name}` must define a string command")
+    config["type"] = transport
+    return config
 
-data = json.loads(registry_path.read_text(encoding="utf-8"))
-defaults = data.get("defaults", {})
-presets = data.get("mcp_presets", {})
-repos_raw = data.get("repos", [])
 
-if not isinstance(defaults, dict):
-    raise TypeError("defaults must be an object")
-if not isinstance(presets, dict):
-    raise TypeError("mcp_presets must be an object")
+repo_registry_path = Path(sys.argv[1]).expanduser().resolve()
+bootstrap_path = Path(sys.argv[2]).expanduser().resolve()
+mcp_registry_path = Path(sys.argv[3]).expanduser().resolve()
+tmp_dir = Path(sys.argv[4]).resolve()
+filters = {normalize_path(path) for path in sys.argv[5:] if path}
+
+repo_data = json.loads(repo_registry_path.read_text(encoding="utf-8"))
+bootstrap_data = json.loads(bootstrap_path.read_text(encoding="utf-8"))
+mcp_data = json.loads(mcp_registry_path.read_text(encoding="utf-8"))
+
+repos_raw = repo_data.get("repos", [])
 if not isinstance(repos_raw, list):
     raise TypeError("repos must be an array")
 
-default_settings = defaults.get("settings", {})
+bootstrap_defaults = bootstrap_data.get("defaults", {})
+if bootstrap_defaults is None:
+    bootstrap_defaults = {}
+if not isinstance(bootstrap_defaults, dict):
+    raise TypeError("defaults must be an object in Claude bootstrap config")
+
+bootstrap_repo_overrides = bootstrap_data.get("repo_overrides", {})
+if bootstrap_repo_overrides is None:
+    bootstrap_repo_overrides = {}
+if not isinstance(bootstrap_repo_overrides, dict):
+    raise TypeError("repo_overrides must be an object in Claude bootstrap config")
+
+override_map = {}
+for raw_path, override in bootstrap_repo_overrides.items():
+    if not isinstance(raw_path, str) or not raw_path.strip():
+        raise TypeError("repo_overrides keys must be non-empty strings")
+    if override is None:
+        override = {}
+    if not isinstance(override, dict):
+        raise TypeError(f"repo_overrides.{raw_path} must be an object")
+    override_map[normalize_path(raw_path)] = override
+
+mcp_presets = mcp_data.get("presets", {})
+if not isinstance(mcp_presets, dict):
+    raise TypeError("presets must be an object in shared MCP registry")
+
+default_settings = bootstrap_defaults.get("settings", {})
 if default_settings is None:
     default_settings = {}
 if not isinstance(default_settings, dict):
-    raise TypeError("defaults.settings must be an object")
+    raise TypeError("defaults.settings must be an object in Claude bootstrap config")
 
 manifest_lines: list[str] = []
 for item in repos_raw:
@@ -296,23 +363,29 @@ for item in repos_raw:
     if not isinstance(raw_path, str) or not raw_path.strip():
         raise TypeError("repo.path must be a non-empty string")
 
-    repo_path = Path(normalize_path(raw_path))
+    declared_repo_path = Path(normalize_path(raw_path))
     try:
         actual_repo = subprocess.run(
-            ["git", "-C", str(repo_path), "rev-parse", "--show-toplevel"],
+            ["git", "-C", str(declared_repo_path), "rev-parse", "--show-toplevel"],
             check=True,
             capture_output=True,
             text=True,
         ).stdout.strip()
     except subprocess.CalledProcessError:
-        print(f"WARNING: skipping non-git path: {repo_path}", file=sys.stderr)
+        print(f"WARNING: skipping non-git path: {declared_repo_path}", file=sys.stderr)
         continue
 
     actual_repo = str(Path(actual_repo).resolve())
     if filters and actual_repo not in filters:
         continue
 
-    repo_settings = item.get("settings", {})
+    repo_override = {}
+    for key in (str(declared_repo_path), actual_repo):
+        override = override_map.get(key)
+        if override:
+            repo_override = deep_merge(repo_override, override)
+
+    repo_settings = repo_override.get("settings", {})
     if repo_settings is None:
         repo_settings = {}
     if not isinstance(repo_settings, dict):
@@ -331,23 +404,23 @@ for item in repos_raw:
     if not isinstance(preset_names, list):
         raise TypeError(f"mcp_presets for {actual_repo} must be an array")
 
-    repo_mcp_servers = item.get("mcp_servers", {})
+    repo_mcp_servers = repo_override.get("mcp_servers", {})
     if repo_mcp_servers is None:
         repo_mcp_servers = {}
     if not isinstance(repo_mcp_servers, dict):
-        raise TypeError(f"mcp_servers for {actual_repo} must be an object")
+        raise TypeError(f"repo_overrides.mcp_servers for {actual_repo} must be an object")
 
     mcp_servers: dict[str, dict] = {}
     for preset_name in preset_names:
-        if preset_name not in presets:
+        if preset_name not in mcp_presets:
             raise KeyError(f"Unknown MCP preset `{preset_name}` for {actual_repo}")
-        preset = presets[preset_name]
+        preset = mcp_presets[preset_name]
         if not isinstance(preset, dict):
             raise TypeError(f"MCP preset `{preset_name}` must be an object")
-        mcp_servers[preset_name] = preset
+        mcp_servers[preset_name] = render_claude_mcp_server(preset_name, preset)
     for server_name, config in repo_mcp_servers.items():
         if not isinstance(config, dict):
-            raise TypeError(f"mcp_servers.{server_name} for {actual_repo} must be an object")
+            raise TypeError(f"repo_overrides.mcp_servers.{server_name} for {actual_repo} must be an object")
         mcp_servers[server_name] = config
 
     mcp_path = tmp_dir / f"{hashlib.sha256((actual_repo + ':mcp').encode()).hexdigest()}.json"
@@ -355,9 +428,9 @@ for item in repos_raw:
     manifest_lines.append(f"{actual_repo}\tFILE\t{Path(actual_repo) / '.mcp.json'}\t{mcp_path}")
 
     repo_root = Path(actual_repo)
-    sync_nested = item.get(
+    sync_nested = repo_override.get(
         "sync_nested_claude_md_to_agents_md",
-        defaults.get("sync_nested_claude_md_to_agents_md", False),
+        bootstrap_defaults.get("sync_nested_claude_md_to_agents_md", False),
     )
     if not isinstance(sync_nested, bool):
         raise TypeError(f"sync_nested_claude_md_to_agents_md for {actual_repo} must be a boolean")
@@ -382,8 +455,7 @@ for item in repos_raw:
             root_claude_path.write_text(rendered_root, encoding="utf-8")
             manifest_lines.append(f"{actual_repo}\tFILE\t{claude_md_path}\t{root_claude_path}")
     else:
-        agents_md_path = root_agents_md_path
-        if not agents_md_path.is_file():
+        if not root_agents_md_path.is_file():
             print(
                 f"WARNING: skipping root CLAUDE.md for {actual_repo}; missing AGENTS.md",
                 file=sys.stderr,
@@ -396,9 +468,7 @@ for item in repos_raw:
         if agents_md_path == root_agents_md_path:
             continue
         nested_claude_md = agents_md_path.parent / "CLAUDE.md"
-        manifest_lines.append(
-            f"{actual_repo}\tLINK\t{nested_claude_md}\tAGENTS.md"
-        )
+        manifest_lines.append(f"{actual_repo}\tLINK\t{nested_claude_md}\tAGENTS.md")
 
 for line in manifest_lines:
     print(line)
@@ -409,7 +479,7 @@ if (( ${#MANIFEST[@]} == 0 )); then
   die "No managed repo configs were rendered."
 fi
 
-log "Rendered ${#MANIFEST[@]} managed Claude operations from ${REGISTRY_FILE}."
+log "Rendered ${#MANIFEST[@]} managed Claude operations from ${REPO_REGISTRY_FILE}."
 
 for entry in "${MANIFEST[@]}"; do
   IFS=$'\t' read -r repo kind target data <<<"$entry"

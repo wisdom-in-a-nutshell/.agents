@@ -9,7 +9,7 @@ custom_agent_count: 2
 agent_count: 3
 model: "gpt-5.4"
 reasoning: "high"
-fast_mode: "true"
+fast_mode: "false"
 service_tier: "fast"
 mcps:
   - "openaiDeveloperDocs"

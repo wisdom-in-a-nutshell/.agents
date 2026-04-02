@@ -11,20 +11,23 @@ flowchart TD
     A[~/.agents/codex/config/global.config.toml]
     B[~/.agents/codex/config/xcode.config.toml]
     C[~/.agents/codex/config/repo-bootstrap.json]
-    D[sync-config.sh]
+    D[~/.agents/mcp/config/presets.json]
     E[sync-trusted-projects.sh]
     F[sync-repo-codex-configs.sh]
+    K[sync-config.sh]
     G[~/.codex/config.toml]
     H[Xcode Codex config]
     I[Repo-local .codex/config.toml]
     J[Codex runtime]
 
-    A --> D
-    B --> D
+    A --> K
+    B --> K
     C --> E
     C --> F
-    D --> G
-    D --> H
+    D --> K
+    D --> F
+    K --> G
+    K --> H
     E --> G
     E --> H
     F --> I
@@ -38,6 +41,7 @@ flowchart TD
 
 - `global.config.toml` defines the managed baseline for terminal Codex.
 - `xcode.config.toml` defines the managed baseline for Xcode Codex.
+- `../mcp/config/presets.json` defines the shared MCP presets and machine-wide global MCP defaults.
 - `config/agents/*.toml` defines managed role-specific overrides for custom multi-agent roles such as `external_researcher`, plus the canonical role behavior files reused by repo-scoped roles.
   - built-in `explorer` remains available upstream for local repo and runtime exploration.
   - `external_researcher` is the managed custom role for information outside the local repo and runtime, using docs, MCP servers, skills, and web sources as needed.
@@ -54,7 +58,7 @@ These files are the source of truth.
 - `sync-config.sh` writes the managed baseline into `~/.codex/config.toml` and Xcode Codex config.
 - `sync-config.sh` also syncs managed role config files into `~/.codex/agents/` and the Xcode Codex runtime `agents/` folder so relative `config_file` paths resolve from the live runtime config.
 - It preserves machine-specific/runtime-specific state that should not live in git.
-- It also prunes stale managed keys when the canonical template no longer wants them, including global terminal MCP server sections that are no longer declared in the canonical template.
+- It also prunes stale managed keys when the canonical templates no longer want them, while preserving unrelated runtime MCP sections and only injecting the shared global MCP defaults.
 
 Example:
 - `service_tier = "fast"` used to be in the canonical templates.
@@ -89,6 +93,8 @@ Current per-repo fields in `repo-bootstrap.json`:
 
 Additional shared bootstrap metadata in `repo-bootstrap.json`:
 - `agent_presets`
+
+Shared MCP definitions live in `mcp/config/presets.json`.
 
 ## Main Flow
 

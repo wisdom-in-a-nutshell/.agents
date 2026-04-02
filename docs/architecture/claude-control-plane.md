@@ -26,9 +26,13 @@ Owns the canonical Claude bootstrap inputs:
 
 - `config/global.claude.md`
 - `config/settings.json`
-- `config/mcp.json`
-- `config/repo-bootstrap.json`
+- `config/bootstrap.json`
 - `scripts/` for sync and validation entrypoints
+
+Shared inputs Claude reads from outside `claude/`:
+
+- `../codex/config/repo-bootstrap.json`
+- `../mcp/config/presets.json`
 
 ### `~/.claude`
 

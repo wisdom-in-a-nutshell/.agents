@@ -3,6 +3,7 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 CONTROL_PLANE_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+ROOT_DIR="$(cd "$CONTROL_PLANE_DIR/.." && pwd)"
 
 APPLY=0
 SYNC_GLOBAL=1
@@ -14,6 +15,7 @@ XCODE_CONFIG="${HOME}/Library/Developer/Xcode/CodingAssistant/codex/config.toml"
 XCODE_AGENTS_DIR="${HOME}/Library/Developer/Xcode/CodingAssistant/codex/agents"
 XCODE_RULES="${HOME}/Library/Developer/Xcode/CodingAssistant/codex/rules/xcode.rules"
 CANONICAL_DIR="${CONTROL_PLANE_DIR}/config"
+MCP_REGISTRY="${ROOT_DIR}/mcp/config/presets.json"
 CANONICAL_GLOBAL_TEMPLATE="${CANONICAL_DIR}/global.config.toml"
 CANONICAL_AGENTS_DIR="${CANONICAL_DIR}/agents"
 CANONICAL_XCODE_TEMPLATE="${CANONICAL_DIR}/xcode.config.toml"
@@ -47,6 +49,8 @@ Options:
   --xcode-rules <path>       Override Xcode rules target
   --canonical-dir <path>     Directory containing canonical templates:
                              global.config.toml, xcode.config.toml, xcode.rules
+  --mcp-registry <path>      Shared MCP registry
+                             (default: mcp/config/presets.json)
   -h, --help                 Show this help
 
 Examples:
@@ -117,6 +121,10 @@ while [[ $# -gt 0 ]]; do
       CANONICAL_XCODE_RULES_TEMPLATE="${CANONICAL_DIR}/xcode.rules"
       shift 2
       ;;
+    --mcp-registry)
+      MCP_REGISTRY="${2:-}"
+      shift 2
+      ;;
     -h|--help)
       usage
       exit 0
@@ -151,6 +159,54 @@ require_readable_file() {
   local file="$1"
   [[ -f "$file" ]] || die "Missing required file: $file"
   [[ -r "$file" ]] || die "File is not readable: $file"
+}
+
+extract_global_mcp_entries() {
+  local registry_file="$1"
+  python3 - "$registry_file" <<'PY'
+from __future__ import annotations
+
+import json
+import sys
+from pathlib import Path
+
+
+def toml_value(value):
+    if isinstance(value, bool):
+        return "true" if value else "false"
+    if isinstance(value, int):
+        return str(value)
+    if isinstance(value, str):
+        escaped = value.replace("\\", "\\\\").replace('"', '\\"')
+        return f'"{escaped}"'
+    if isinstance(value, list):
+        return "[" + ", ".join(toml_value(item) for item in value) + "]"
+    raise TypeError(f"Unsupported TOML value: {value!r}")
+
+
+registry_path = Path(sys.argv[1]).expanduser().resolve()
+data = json.loads(registry_path.read_text(encoding="utf-8"))
+if not isinstance(data, dict):
+    raise SystemExit(f"{registry_path}: MCP registry root must be an object")
+
+presets = data.get("presets", {})
+global_presets = data.get("global_presets", [])
+if not isinstance(presets, dict):
+    raise SystemExit(f"{registry_path}: presets must be an object")
+if not isinstance(global_presets, list):
+    raise SystemExit(f"{registry_path}: global_presets must be an array")
+
+for name in global_presets:
+    preset = presets.get(name)
+    if not isinstance(preset, dict):
+        raise SystemExit(f"{registry_path}: unknown global MCP preset `{name}`")
+    transport = preset.get("transport")
+    if transport not in {"http", "stdio"}:
+        raise SystemExit(f"{registry_path}: preset `{name}` has invalid transport `{transport}`")
+    section = f"mcp_servers.{name}"
+    for key in sorted(k for k in preset.keys() if k != "transport"):
+        print(f"{section}\x1F{key}\x1F{toml_value(preset[key])}")
+PY
 }
 
 validate_agent_role_file() {
@@ -402,6 +458,7 @@ upsert_section_key() {
 render_global_config() {
   local target_file="$1"
   local template_file="$2"
+  local mcp_registry_file="$3"
   local section key value
   local notify_value
 
@@ -413,6 +470,11 @@ render_global_config() {
       upsert_section_key "$target_file" "$section" "$key" "$value"
     fi
   done < <(extract_toml_entries "$template_file")
+
+  while IFS=$'\x1f' read -r section key value; do
+    [[ -n "$key" ]] || continue
+    upsert_section_key "$target_file" "$section" "$key" "$value"
+  done < <(extract_global_mcp_entries "$mcp_registry_file")
 
   notify_value="[\"python3\", $(quote_toml_string "$NOTIFY_SCRIPT_PATH")]"
   upsert_top_level_key "$target_file" "notify" "$notify_value"
@@ -426,7 +488,6 @@ render_global_config() {
   prune_stale_agent_sections "$target_file" "$template_file"
   prune_stale_app_sections "$target_file" "$template_file"
   prune_stale_plugin_sections "$target_file" "$template_file"
-  prune_stale_mcp_sections "$target_file" "$template_file"
 }
 
 sanitize_machine_specific_entries() {
@@ -653,28 +714,27 @@ PY
 
 prune_stale_mcp_sections() {
   local target_file="$1"
-  local template_file="$2"
-  python3 - "$target_file" "$template_file" <<'PY'
+  local registry_file="$2"
+  python3 - "$target_file" "$registry_file" <<'PY'
 from __future__ import annotations
 
+import json
 import re
 import sys
 from pathlib import Path
 
 
 target = Path(sys.argv[1])
-template = Path(sys.argv[2])
+registry = Path(sys.argv[2])
 
 target_text = target.read_text(encoding="utf-8") if target.exists() else ""
-template_text = template.read_text(encoding="utf-8") if template.exists() else ""
+registry_data = json.loads(registry.read_text(encoding="utf-8")) if registry.exists() else {}
 
 mcp_header_re = re.compile(r'^\[mcp_servers\.([^\]]+)\]\s*$')
 
-allowed_servers: set[str] = set()
-for line in template_text.splitlines():
-    m = mcp_header_re.match(line.strip())
-    if m:
-        allowed_servers.add(m.group(1))
+presets = registry_data.get("presets", {}) if isinstance(registry_data, dict) else {}
+global_presets = registry_data.get("global_presets", []) if isinstance(registry_data, dict) else []
+allowed_servers = {str(name) for name in global_presets if isinstance(name, str) and name in presets}
 
 lines = target_text.splitlines(keepends=True)
 output: list[str] = []
@@ -816,6 +876,7 @@ PY
 render_xcode_config() {
   local target_file="$1"
   local template_file="$2"
+  local mcp_registry_file="$3"
   local writable_roots
   local project_section
   local section key value
@@ -826,10 +887,15 @@ render_xcode_config() {
     [[ -n "$key" ]] || continue
     if [[ -z "$section" ]]; then
       upsert_top_level_key "$target_file" "$key" "$value"
-    elif [[ "$section" == "features" || "$section" == "sandbox_workspace_write" || "$section" == "mcp_servers.openaiDeveloperDocs" || "$section" == "apps._default" || "$section" == apps.* || "$section" == plugins.* || "$section" == agents.* ]]; then
+    elif [[ "$section" == "features" || "$section" == "sandbox_workspace_write" || "$section" == "apps._default" || "$section" == apps.* || "$section" == plugins.* || "$section" == agents.* ]]; then
       upsert_section_key "$target_file" "$section" "$key" "$value"
     fi
   done < <(extract_toml_entries "$template_file")
+
+  while IFS=$'\x1f' read -r section key value; do
+    [[ -n "$key" ]] || continue
+    upsert_section_key "$target_file" "$section" "$key" "$value"
+  done < <(extract_global_mcp_entries "$mcp_registry_file")
 
   # Keep writable roots machine-specific via CLI/home path, regardless of template value.
   upsert_section_key "$target_file" "sandbox_workspace_write" "writable_roots" "$writable_roots"
@@ -884,10 +950,11 @@ sync_global() {
   local rendered="${TMP_DIR}/global.config.toml"
 
   require_readable_file "$CANONICAL_GLOBAL_TEMPLATE"
+  require_readable_file "$MCP_REGISTRY"
   ensure_parent_dir "$original"
   prepare_work_file "$original" "$rendered"
   sanitize_machine_specific_entries "$rendered"
-  render_global_config "$rendered" "$CANONICAL_GLOBAL_TEMPLATE"
+  render_global_config "$rendered" "$CANONICAL_GLOBAL_TEMPLATE" "$MCP_REGISTRY"
   ensure_system_skills_disabled "$rendered"
 
   log ""
@@ -909,12 +976,13 @@ sync_xcode() {
 
   require_readable_file "$CANONICAL_XCODE_TEMPLATE"
   require_readable_file "$CANONICAL_XCODE_RULES_TEMPLATE"
+  require_readable_file "$MCP_REGISTRY"
   ensure_parent_dir "$original_cfg"
   ensure_parent_dir "$original_rules"
 
   prepare_work_file "$original_cfg" "$rendered_cfg"
   sanitize_machine_specific_entries "$rendered_cfg"
-  render_xcode_config "$rendered_cfg" "$CANONICAL_XCODE_TEMPLATE"
+  render_xcode_config "$rendered_cfg" "$CANONICAL_XCODE_TEMPLATE" "$MCP_REGISTRY"
   render_xcode_rules "$rendered_rules" "$CANONICAL_XCODE_RULES_TEMPLATE"
 
   log ""

@@ -34,6 +34,3 @@ exclude_slash_tmp = false
 exclude_tmpdir_env_var = false
 network_access = true
 writable_roots = ["/Users/dobby/GitHub"]
-
-[mcp_servers.openaiDeveloperDocs]
-url = "https://developers.openai.com/mcp"

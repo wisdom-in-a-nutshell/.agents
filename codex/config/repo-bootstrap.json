@@ -3,31 +3,9 @@
     "model": "gpt-5.4",
     "model_reasoning_effort": "high",
     "features": {
-      "fast_mode": true
+      "fast_mode": false
     },
     "service_tier": null
-  },
-  "mcp_presets": {
-    "openaiDeveloperDocs": {
-      "url": "https://developers.openai.com/mcp"
-    },
-    "paper": {
-      "url": "http://127.0.0.1:29979/mcp"
-    },
-    "cloudflare-api": {
-      "url": "https://mcp.cloudflare.com/mcp"
-    },
-    "cloudflare-docs": {
-      "url": "https://docs.mcp.cloudflare.com/mcp"
-    },
-    "xcode": {
-      "command": "xcrun",
-      "args": [
-        "mcpbridge"
-      ],
-      "startup_timeout_sec": 180,
-      "tool_timeout_sec": 120
-    }
   },
   "agent_presets": {
     "writer": {

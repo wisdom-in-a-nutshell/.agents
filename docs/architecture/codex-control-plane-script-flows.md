@@ -24,6 +24,8 @@ flowchart TD
     A --> E[configure-ghostty-cwd.sh]
     R[repo-bootstrap.json] --> C
     R --> D
+    M[mcp/config/presets.json] --> B
+    M --> D
     B --> F[~/.codex/config.toml]
     B --> G[Xcode Codex config]
     C --> F
@@ -38,13 +40,15 @@ flowchart TD
   - orchestrates the main Codex-specific bootstrap batch
 - [`sync-config.sh`](/Users/dobby/.agents/codex/scripts/sync-config.sh)
   - writes the managed terminal and Xcode Codex config
+  - injects machine-wide global MCP servers from [`mcp/config/presets.json`](/Users/dobby/.agents/mcp/config/presets.json)
 - [`sync-trusted-projects.sh`](/Users/dobby/.agents/codex/scripts/sync-trusted-projects.sh)
   - writes exact trust entries for discovered Git repos
 - [`sync-repo-codex-configs.sh`](/Users/dobby/.agents/codex/scripts/sync-repo-codex-configs.sh)
   - renders managed repo-local `.codex/config.toml` files for all registered repos
   - also materializes repo-local `.codex/agents/*.toml` files for assigned repo-scoped custom agents
+  - resolves repo MCP presets through [`mcp/config/presets.json`](/Users/dobby/.agents/mcp/config/presets.json)
 - [`repo-bootstrap.json`](/Users/dobby/.agents/codex/config/repo-bootstrap.json)
-  - defines the managed repo set, repo MCP presets, repo-scoped custom agents, and per-repo model/service-tier/reasoning overrides
+  - defines the managed repo set, repo MCP assignment, repo-scoped custom agents, and per-repo model/service-tier/reasoning overrides
 - [`configure-ghostty-cwd.sh`](/Users/dobby/.agents/codex/scripts/configure-ghostty-cwd.sh)
   - rewrites Ghostty config so Codex startup and cwd handling stay consistent
 
