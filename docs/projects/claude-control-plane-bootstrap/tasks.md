@@ -57,6 +57,9 @@ The repo already manages Codex as the primary control plane. Adding Claude as a 
 - The first pass manages instructions, MCP, settings, and skills; `.claude/agents/` is intentionally deferred.
 - Global Claude MCP is merged into `~/.claude.json` without overwriting unrelated runtime keys.
 - Special root repos with Codex `model_instructions_file` should render a real root `CLAUDE.md` that imports the resolved model-instructions file plus `@AGENTS.md`.
+- `codex/config/repo-bootstrap.json` is the single shared repo registry for both Codex and Claude repo bootstrap.
+- `mcp/config/presets.json` is the single shared MCP registry, with neutral `transport`-based preset definitions plus `global_presets`.
+- `claude/config/bootstrap.json` is now only a Claude-specific defaults and per-repo override layer, not a second repo inventory.
 
 ## Open Questions / Blockers
 - Anthropic’s published settings schema still lags at least one doc-backed key (`skipDangerousModePermissionPrompt`), so future schema patching remains an optional cleanup item.
@@ -72,7 +75,7 @@ The repo already manages Codex as the primary control plane. Adding Claude as a 
 | completed | Inspect local repo patterns and scaffold the new `claude/` subtree in the same style as the existing `codex/` subtree. | parent | `claude/` |
 | completed | Implement the first sync/check/bootstrap scripts for Claude global settings, global MCP, repo configs, and skills. | parent | `claude/scripts/` |
 | completed | Apply and validate the first local-only bootstrap for `~/.agents`. | parent | `CLAUDE.md`, `.claude/settings.json`, `.mcp.json` |
-| in-progress | Consolidate the Claude and Codex control planes onto one shared repo registry plus one shared MCP registry. | parent | `codex/config/repo-bootstrap.json`, `mcp/config/presets.json`, `claude/config/bootstrap.json` |
+| completed | Consolidate the Claude and Codex control planes onto one shared repo registry plus one shared MCP registry. | parent | `codex/config/repo-bootstrap.json`, `mcp/config/presets.json`, `claude/config/bootstrap.json` |
 
 ## Backlog / Remaining Work
 - [ ] Add `.claude/agents/` materialization if Claude subagents become part of the control-plane baseline.
@@ -95,3 +98,4 @@ The repo already manages Codex as the primary control plane. Adding Claude as a 
 - 2026-04-02: [DONE] Applied the generic Claude bootstrap for `~/.agents`, including global `~/.claude` defaults and repo-local `CLAUDE.md`, `.claude/settings.json`, `.mcp.json`, and skill links.
 - 2026-04-02: [DONE] Extended repo bootstrap to support nested `CLAUDE.md -> AGENTS.md` mirroring and special root `CLAUDE.md` rendering for repos with `model_instructions_file`.
 - 2026-04-03: [IN-PROGRESS] Refactoring to a single shared repo registry (`codex/config/repo-bootstrap.json`) plus a shared neutral MCP registry (`mcp/config/presets.json`), with Claude reduced to a bootstrap overlay.
+- 2026-04-03: [DONE] Finished the shared-registry refactor: Codex and Claude now both read repo assignment from `codex/config/repo-bootstrap.json`, both resolve MCP definitions from `mcp/config/presets.json`, Claude keeps only `claude/config/bootstrap.json` for defaults/overrides, the generated registry views were regenerated, and both control-plane validators passed.
