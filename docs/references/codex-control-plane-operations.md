@@ -136,7 +136,10 @@ Use [Codex Control Plane Ownership](/Users/dobby/.agents/docs/references/codex-c
 - [`configure-ghostty-cwd.sh`](/Users/dobby/.agents/codex/scripts/configure-ghostty-cwd.sh)
   - ensures Ghostty uses the Codex startup wrapper
   - ensures shell integration stays on
-  - installs the `Cmd+Shift+G` current-terminal picker keybind
+  - removes legacy Ghostty-owned picker keybinds so Keyboard Maestro can own the optional shortcuts cleanly
+- [`open-ghostty-codex-picker-current.sh`](/Users/dobby/.agents/codex/scripts/open-ghostty-codex-picker-current.sh)
+  - inputs `codex_jump` into the focused Ghostty terminal
+  - is the tracked helper used by the optional manual Keyboard Maestro `Cmd+Shift+G` macro
 - [`codex-shell.zsh`](/Users/dobby/.agents/codex/shell/codex-shell.zsh)
   - `codex_jump` sets the Ghostty tab/surface title to the selected repo basename before launching Codex
   - `codex_jump` also reports the selected cwd back to Ghostty immediately so regular new tabs and splits inherit the active repo instead of falling back to `~`

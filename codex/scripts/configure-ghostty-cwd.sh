@@ -4,7 +4,6 @@ set -euo pipefail
 MODE="--dry-run"
 CONFIG_PATH="${HOME}/Library/Application Support/com.mitchellh.ghostty/config"
 WRAPPER_PATH="${HOME}/.agents/codex/scripts/ghostty-codex-then-shell.sh"
-PICKER_KEYBIND='keybind = super+shift+g=text:\x15\x03'
 TMP_DIR="$(mktemp -d)"
 
 cleanup() {
@@ -20,7 +19,7 @@ Configure Ghostty for CWD-safe Codex startup:
   - initial-command = direct:<wrapper>
   - shell-integration = zsh
   - remove command=direct:...ghostty-codex-then-shell.sh override
-  - add codex directory picker keybind
+  - remove legacy Ghostty-owned picker keybinds
 
 Default mode is dry-run. Use --apply to write changes.
 
@@ -29,7 +28,6 @@ Options:
   --dry-run              Show diff only (default)
   --config <path>        Ghostty config path
   --wrapper <path>       Wrapper script path
-  --picker-keybind <v>   Override picker keybind line
   -h, --help             Show this help
 
 Examples:
@@ -78,14 +76,6 @@ upsert_key() {
   mv "$tmp_file" "$file"
 }
 
-ensure_exact_line() {
-  local file="$1"
-  local line="$2"
-  if ! grep -Fqx "$line" "$file"; then
-    printf '%s\n' "$line" >> "$file"
-  fi
-}
-
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --apply|--dry-run)
@@ -98,10 +88,6 @@ while [[ $# -gt 0 ]]; do
       ;;
     --wrapper)
       WRAPPER_PATH="${2:-}"
-      shift 2
-      ;;
-    --picker-keybind)
-      PICKER_KEYBIND="${2:-}"
       shift 2
       ;;
     -h|--help)
@@ -130,13 +116,15 @@ awk '
 ' "$RENDERED" > "${RENDERED}.filtered"
 mv "${RENDERED}.filtered" "$RENDERED"
 
-# Remove legacy picker keybind variants so only the managed line remains.
+# Remove legacy Ghostty-owned picker keybind variants. Keyboard Maestro owns
+# the optional shortcuts now, so Ghostty config should not carry them.
 awk '
-  !($0 ~ /^[[:space:]]*keybind[[:space:]]*=[[:space:]]*super\+shift\+g=text:/ && $0 ~ /codex_jump/)
+  !($0 ~ /^[[:space:]]*keybind[[:space:]]*=[[:space:]]*super\+shift\+g=/)
 ' "$RENDERED" > "${RENDERED}.filtered"
 mv "${RENDERED}.filtered" "$RENDERED"
 
-# Remove any previously managed picker-tab shortcut variants.
+# Remove any previously managed picker helper variants that used to live in
+# Ghostty config instead of Keyboard Maestro.
 awk '
   !($0 ~ /^[[:space:]]*keybind[[:space:]]*=[[:space:]]*super\+shift\+t=/) &&
   !($0 ~ /^[[:space:]]*keybind[[:space:]]*=[[:space:]]*chain=text:codex_jump\\n[[:space:]]*$/)
@@ -145,7 +133,6 @@ mv "${RENDERED}.filtered" "$RENDERED"
 
 upsert_key "$RENDERED" "initial-command" "direct:${WRAPPER_PATH}"
 upsert_key "$RENDERED" "shell-integration" "zsh"
-ensure_exact_line "$RENDERED" "$PICKER_KEYBIND"
 
 if diff -u "$CONFIG_PATH" "$RENDERED" >/dev/null 2>&1; then
   log "No change: $CONFIG_PATH already matches desired Ghostty CWD-safe config."

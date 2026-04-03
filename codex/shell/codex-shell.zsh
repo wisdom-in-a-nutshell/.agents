@@ -41,8 +41,8 @@ _codex_set_surface_title() {
 }
 
 # Pick a directory, cd there, and launch Codex.
-# Intended to be triggered by a Ghostty keybind via:
-#   text:\x15\x03
+# Typically triggered either directly from the shell or by the tracked
+# Ghostty/Keyboard Maestro picker helper script.
 codex_jump() {
   emulate -L zsh
   setopt local_options pipefail no_aliases
@@ -286,7 +286,7 @@ codex_jump() {
 
   if command -v codex >/dev/null 2>&1; then
     # When launched from Ghostty, keep the interrupt-to-picker loop so
-    # Cmd+Shift+G / Ctrl+C can reopen the repo picker in this tab.
+    # Ctrl+C can reopen the repo picker in this tab.
     if [[ -n "${GHOSTTY_RESOURCES_DIR:-}" ]] && (( $+functions[_codex_autostart_loop] )); then
       _codex_autostart_loop
     else

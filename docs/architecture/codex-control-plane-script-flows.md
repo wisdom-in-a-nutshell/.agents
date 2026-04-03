@@ -82,7 +82,7 @@ flowchart TD
     A2[zprofile.shared] --> G[Codex CLI]
     C[Ghostty initial-command] --> D[ghostty-codex-then-shell.sh]
     B --> E[codex_jump]
-    H[Optional Ghostty helpers] --> I[open-ghostty-codex-tab.sh / open-ghostty-codex-picker-tab.sh]
+    H[Optional Ghostty helpers] --> I[open-ghostty-codex-picker-current.sh / open-ghostty-codex-tab.sh / open-ghostty-codex-picker-tab.sh]
     D --> G[Codex CLI]
     I --> G
 ```
