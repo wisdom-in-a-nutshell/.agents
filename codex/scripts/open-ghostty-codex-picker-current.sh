@@ -13,7 +13,8 @@ tell application "Ghostty"
     new window with configuration launchConfig
   else
     set currentTerm to focused terminal of selected tab of front window
-    input text "codex_jump\n" to currentTerm
+    input text "codex_jump" to currentTerm
+    send key "enter" to currentTerm
   end if
 end tell
 APPLESCRIPT
