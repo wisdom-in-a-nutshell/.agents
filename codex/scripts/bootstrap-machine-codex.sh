@@ -98,6 +98,7 @@ SYNC_CONFIG_SCRIPT="${SCRIPT_DIR}/sync-config.sh"
 SYNC_GLOBAL_AGENTS_SCRIPT="${SCRIPT_DIR}/sync-global-agents-md.sh"
 SYNC_TRUSTED_SCRIPT="${SCRIPT_DIR}/sync-trusted-projects.sh"
 SYNC_REPO_CONFIGS_SCRIPT="${SCRIPT_DIR}/sync-repo-codex-configs.sh"
+PDF_DEPS_SCRIPT="${SCRIPT_DIR}/install-pdf-skill-deps.sh"
 GHOSTTY_SCRIPT="${SCRIPT_DIR}/configure-ghostty-cwd.sh"
 CHECK_CONTROL_PLANE_SCRIPT="${SCRIPT_DIR}/check-codex-control-plane.sh"
 
@@ -105,6 +106,7 @@ CHECK_CONTROL_PLANE_SCRIPT="${SCRIPT_DIR}/check-codex-control-plane.sh"
 [[ -x "$SYNC_GLOBAL_AGENTS_SCRIPT" ]] || die "Missing executable: $SYNC_GLOBAL_AGENTS_SCRIPT"
 [[ -x "$SYNC_TRUSTED_SCRIPT" ]] || die "Missing executable: $SYNC_TRUSTED_SCRIPT"
 [[ -x "$SYNC_REPO_CONFIGS_SCRIPT" ]] || die "Missing executable: $SYNC_REPO_CONFIGS_SCRIPT"
+[[ -x "$PDF_DEPS_SCRIPT" ]] || die "Missing executable: $PDF_DEPS_SCRIPT"
 [[ -x "$GHOSTTY_SCRIPT" ]] || die "Missing executable: $GHOSTTY_SCRIPT"
 [[ -x "$CHECK_CONTROL_PLANE_SCRIPT" ]] || die "Missing executable: $CHECK_CONTROL_PLANE_SCRIPT"
 
@@ -143,6 +145,13 @@ sync_repo_configs_cmd=(
 )
 log "+ ${sync_repo_configs_cmd[*]}"
 "${sync_repo_configs_cmd[@]}"
+
+pdf_deps_cmd=(
+  "$PDF_DEPS_SCRIPT"
+  "$MODE_FLAG"
+)
+log "+ ${pdf_deps_cmd[*]}"
+"${pdf_deps_cmd[@]}"
 
 ghostty_cmd=(
   "$GHOSTTY_SCRIPT"

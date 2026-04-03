@@ -1,11 +1,11 @@
 ---
 registry_kind: managed
 skill: "pdf"
-origin: "external"
+origin: "owned"
 scope: "global"
 repos_csv: "*"
-source_path: "skills-source/external/pdf"
-upstream_ref: "openai/skills:skills/.curated/pdf@main"
+source_path: "skills-source/owned/pdf"
+upstream_ref: "-"
 repos:
   - "*"
 ---

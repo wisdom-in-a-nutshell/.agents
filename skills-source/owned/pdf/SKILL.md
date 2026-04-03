@@ -24,28 +24,6 @@ description: "Use when tasks involve reading, creating, or reviewing PDF files w
 - Write final artifacts under `output/pdf/` when working in this repo.
 - Keep filenames stable and descriptive.
 
-## Dependencies (install if missing)
-Prefer `uv` for dependency management.
-
-Python packages:
-```
-uv pip install reportlab pdfplumber pypdf
-```
-If `uv` is unavailable:
-```
-python3 -m pip install reportlab pdfplumber pypdf
-```
-System tools (for rendering):
-```
-# macOS (Homebrew)
-brew install poppler
-
-# Ubuntu/Debian
-sudo apt-get install -y poppler-utils
-```
-
-If installation isn't possible in this environment, tell the user which dependency is missing and how to install it locally.
-
 ## Environment
 No required environment variables.
 

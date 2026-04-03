@@ -286,11 +286,11 @@
     },
     {
       "skill": "pdf",
-      "origin": "external",
+      "origin": "owned",
       "scope": "global",
       "repos": [],
-      "source_path": "skills-source/external/pdf",
-      "upstream_ref": "openai/skills:skills/.curated/pdf@main"
+      "source_path": "skills-source/owned/pdf",
+      "upstream_ref": "-"
     },
     {
       "skill": "imagegen",
