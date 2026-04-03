@@ -150,6 +150,9 @@ Use [Codex Control Plane Ownership](/Users/dobby/.agents/docs/references/codex-c
 - [`open-ghostty-codex-tab.sh`](/Users/dobby/.agents/codex/scripts/open-ghostty-codex-tab.sh)
   - opens a new Ghostty tab with a custom surface configuration and immediately runs `codex`
   - is the tracked helper used by the optional manual Keyboard Maestro `Cmd+Opt+T` macro
+- [`open-ghostty-codex-split.sh`](/Users/dobby/.agents/codex/scripts/open-ghostty-codex-split.sh)
+  - opens a Ghostty split with a custom surface configuration and immediately runs `codex`
+  - is the tracked helper used by the optional manual Keyboard Maestro `Cmd+Opt+D` macro
 - [`open-ghostty-codex-picker-tab.sh`](/Users/dobby/.agents/codex/scripts/open-ghostty-codex-picker-tab.sh)
   - opens a new Ghostty tab with a custom surface configuration and immediately runs `codex_jump`
   - is the one tracked helper used by both the Stadia controller `Share` action and the optional manual Keyboard Maestro `Cmd+Shift+T` macro
@@ -158,7 +161,7 @@ Use [Codex Control Plane Ownership](/Users/dobby/.agents/docs/references/codex-c
   - is the tracked helper used by the Stadia controller `leftThumbstickButton` split-picker action
 - [`open-ghostty-plain-shell-split.sh`](/Users/dobby/.agents/codex/scripts/open-ghostty-plain-shell-split.sh)
   - opens a Ghostty split with `CODEX_DISABLE_AUTOSTART=1` so the new pane stays a plain shell in the inherited cwd even if autostart is re-enabled for a session
-  - is intended for an optional Keyboard Maestro plain-shell split shortcut such as `Cmd+Opt+D`
+  - remains available as a helper when you explicitly need a plain-shell split override beyond Ghostty's default `Cmd+D`
 
 ## Repo Bootstrap Registry Fields
 
