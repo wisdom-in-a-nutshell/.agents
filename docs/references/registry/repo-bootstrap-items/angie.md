@@ -2,7 +2,7 @@
 repo_name: "angie"
 path: "~/GitHub/angie"
 mcp_count: 1
-skill_count: 12
+skill_count: 13
 repo_local_skill_count: 0
 global_agent_count: 1
 custom_agent_count: 0
@@ -23,6 +23,7 @@ global_skills:
   - "architecture-docs"
   - "defuddle"
   - "find-skills"
+  - "pdf"
   - "project"
   - "secret-management"
   - "skill-creator"
@@ -43,6 +44,7 @@ skills:
   - "imagegen"
   - "journal-checkin"
   - "openai-docs"
+  - "pdf"
   - "project"
   - "secret-management"
   - "skill-creator"

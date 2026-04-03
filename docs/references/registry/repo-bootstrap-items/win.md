@@ -2,7 +2,7 @@
 repo_name: "win"
 path: "~/GitHub/win"
 mcp_count: 1
-skill_count: 21
+skill_count: 22
 repo_local_skill_count: 6
 global_agent_count: 1
 custom_agent_count: 0
@@ -23,6 +23,7 @@ global_skills:
   - "architecture-docs"
   - "defuddle"
   - "find-skills"
+  - "pdf"
   - "project"
   - "secret-management"
   - "skill-creator"
@@ -59,6 +60,7 @@ skills:
   - "log-investigation"
   - "modal-function-sync"
   - "openai-docs"
+  - "pdf"
   - "project"
   - "scheduled-jobs"
   - "secret-management"

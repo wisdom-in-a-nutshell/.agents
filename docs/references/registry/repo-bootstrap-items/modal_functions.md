@@ -2,7 +2,7 @@
 repo_name: "modal_functions"
 path: "~/GitHub/modal_functions"
 mcp_count: 0
-skill_count: 11
+skill_count: 12
 repo_local_skill_count: 1
 global_agent_count: 1
 custom_agent_count: 0
@@ -22,6 +22,7 @@ global_skills:
   - "architecture-docs"
   - "defuddle"
   - "find-skills"
+  - "pdf"
   - "project"
   - "secret-management"
   - "skill-creator"
@@ -40,6 +41,7 @@ skills:
   - "find-skills"
   - "modal-function-intake"
   - "modal-function-sync"
+  - "pdf"
   - "project"
   - "secret-management"
   - "skill-creator"

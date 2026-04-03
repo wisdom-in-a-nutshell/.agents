@@ -2,7 +2,7 @@
 repo_name: "codexclaw"
 path: "~/GitHub/codexclaw"
 mcp_count: 2
-skill_count: 13
+skill_count: 14
 repo_local_skill_count: 1
 global_agent_count: 1
 custom_agent_count: 0
@@ -24,6 +24,7 @@ global_skills:
   - "architecture-docs"
   - "defuddle"
   - "find-skills"
+  - "pdf"
   - "project"
   - "secret-management"
   - "skill-creator"
@@ -46,6 +47,7 @@ skills:
   - "find-skills"
   - "ios-mobile-gateway-workflow"
   - "openai-docs"
+  - "pdf"
   - "project"
   - "secret-management"
   - "skill-creator"

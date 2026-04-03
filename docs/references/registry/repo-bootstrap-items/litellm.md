@@ -2,7 +2,7 @@
 repo_name: "litellm"
 path: "~/GitHub/litellm"
 mcp_count: 0
-skill_count: 9
+skill_count: 10
 repo_local_skill_count: 0
 global_agent_count: 1
 custom_agent_count: 0
@@ -22,6 +22,7 @@ global_skills:
   - "architecture-docs"
   - "defuddle"
   - "find-skills"
+  - "pdf"
   - "project"
   - "secret-management"
   - "skill-creator"
@@ -36,6 +37,7 @@ skills:
   - "client-interface-guidelines"
   - "defuddle"
   - "find-skills"
+  - "pdf"
   - "project"
   - "secret-management"
   - "skill-creator"

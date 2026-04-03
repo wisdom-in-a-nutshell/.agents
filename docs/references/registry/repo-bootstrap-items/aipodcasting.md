@@ -2,7 +2,7 @@
 repo_name: "aipodcasting"
 path: "~/GitHub/aipodcasting"
 mcp_count: 0
-skill_count: 17
+skill_count: 18
 repo_local_skill_count: 0
 global_agent_count: 1
 custom_agent_count: 0
@@ -22,6 +22,7 @@ global_skills:
   - "architecture-docs"
   - "defuddle"
   - "find-skills"
+  - "pdf"
   - "project"
   - "secret-management"
   - "skill-creator"
@@ -49,6 +50,7 @@ skills:
   - "defuddle"
   - "find-skills"
   - "modal-function-sync"
+  - "pdf"
   - "project"
   - "secret-management"
   - "show-password-setup"

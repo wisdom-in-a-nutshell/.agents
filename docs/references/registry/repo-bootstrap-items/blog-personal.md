@@ -2,7 +2,7 @@
 repo_name: "blog-personal"
 path: "~/GitHub/blog-personal"
 mcp_count: 1
-skill_count: 17
+skill_count: 18
 repo_local_skill_count: 1
 global_agent_count: 1
 custom_agent_count: 2
@@ -27,6 +27,7 @@ global_skills:
   - "architecture-docs"
   - "defuddle"
   - "find-skills"
+  - "pdf"
   - "project"
   - "secret-management"
   - "skill-creator"
@@ -55,6 +56,7 @@ skills:
   - "frontend-skill"
   - "imagegen"
   - "paper-design"
+  - "pdf"
   - "project"
   - "secret-management"
   - "skill-creator"

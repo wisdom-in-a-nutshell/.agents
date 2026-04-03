@@ -285,6 +285,14 @@
       "upstream_ref": "openai/skills:skills/.curated/openai-docs@main"
     },
     {
+      "skill": "pdf",
+      "origin": "external",
+      "scope": "global",
+      "repos": [],
+      "source_path": "skills-source/external/pdf",
+      "upstream_ref": "openai/skills:skills/.curated/pdf@main"
+    },
+    {
       "skill": "imagegen",
       "origin": "owned",
       "scope": "repo",

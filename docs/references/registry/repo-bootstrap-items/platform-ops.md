@@ -2,7 +2,7 @@
 repo_name: "platform-ops"
 path: "~/GitHub/platform-ops"
 mcp_count: 2
-skill_count: 9
+skill_count: 10
 repo_local_skill_count: 0
 global_agent_count: 1
 custom_agent_count: 0
@@ -24,6 +24,7 @@ global_skills:
   - "architecture-docs"
   - "defuddle"
   - "find-skills"
+  - "pdf"
   - "project"
   - "secret-management"
   - "skill-creator"
@@ -38,6 +39,7 @@ skills:
   - "client-interface-guidelines"
   - "defuddle"
   - "find-skills"
+  - "pdf"
   - "project"
   - "secret-management"
   - "skill-creator"
