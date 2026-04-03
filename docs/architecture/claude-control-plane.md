@@ -49,8 +49,8 @@ Owns the applied local runtime state:
 
 The generic project contract is:
 
-- root `CLAUDE.md -> AGENTS.md`
-- nested `CLAUDE.md -> AGENTS.md` wherever nested `AGENTS.md` exists
+- root `CLAUDE.md` containing `@AGENTS.md`
+- nested `CLAUDE.md` containing `@AGENTS.md` wherever nested `AGENTS.md` exists
 - `.claude/settings.json`
 - `.mcp.json`
 - `.claude/skills/`
@@ -83,7 +83,7 @@ The first pass keeps the same permissive default posture at both scopes where An
 
 This baseline includes:
 
-- root and nested `CLAUDE.md -> AGENTS.md` mirroring for generic repo compatibility
+- root and nested `CLAUDE.md` import files for generic repo compatibility
 - permissive Claude settings
 - project MCP via `.mcp.json`
 - global MCP via `~/.claude.json`

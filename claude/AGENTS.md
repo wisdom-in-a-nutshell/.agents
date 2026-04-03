@@ -19,7 +19,7 @@ Canonical personal Claude control-plane assets live here.
 ## Rules
 
 - Do not store auth, session history, caches, runtime databases, or secrets here.
-- Prefer project `AGENTS.md` as the shared repo instruction source; generic Claude compatibility should come from `CLAUDE.md -> AGENTS.md`.
+- Prefer project `AGENTS.md` as the shared repo instruction source; generic Claude compatibility should come from a tiny `CLAUDE.md` that imports `@AGENTS.md`.
 - Keep the first-pass Claude bootstrap local-first and generic; treat repo-specific prompt overrides such as `adi` `soul.md` as explicit follow-up work.
 - Keep machine-local runtime state under `~/.claude/`, not in this repo.
 - Treat `codex/config/repo-bootstrap.json` as the shared repo inventory and repo-assignment registry.

@@ -26,7 +26,7 @@ Use [Claude Control Plane](/Users/adi/.agents/docs/architecture/claude-control-p
 - `~/.claude.json`
   - user runtime state and global MCP store
 - repo `CLAUDE.md`
-  - usually a symlink to `AGENTS.md`
+  - usually a tiny file containing only `@AGENTS.md`
   - special root case: rendered file importing the resolved `model_instructions_file` plus `@AGENTS.md`
 - repo `.claude/settings.json`
   - project settings
@@ -35,7 +35,7 @@ Use [Claude Control Plane](/Users/adi/.agents/docs/architecture/claude-control-p
 - repo `.claude/skills/`
   - project skills
 - nested repo `CLAUDE.md`
-  - symlink to sibling `AGENTS.md` wherever nested `AGENTS.md` exists
+  - tiny file containing only `@AGENTS.md` wherever nested `AGENTS.md` exists
 
 ## First-Pass Commands
 
@@ -58,8 +58,8 @@ The Claude control plane is intended to follow the same sync/check pattern as Co
 
 ## Supported Manual Rules
 
-- `CLAUDE.md` should be a symlink to `AGENTS.md` for the generic case.
-- Nested `AGENTS.md` files should also get sibling `CLAUDE.md -> AGENTS.md` symlinks.
+- `CLAUDE.md` should contain only `@AGENTS.md` for the generic case.
+- Nested `AGENTS.md` files should also get sibling `CLAUDE.md` files containing only `@AGENTS.md`.
 - If a repo has a Codex `model_instructions_file`, root `CLAUDE.md` should contain only `@<resolved-model-file>` and `@AGENTS.md`.
 - `AGENTS.md` remains the shared repo instruction source.
 - `skipDangerousModePermissionPrompt` belongs in user/global Claude settings, not project settings.

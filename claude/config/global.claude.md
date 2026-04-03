@@ -5,7 +5,7 @@ This file is the canonical source for `~/.claude/CLAUDE.md`.
 ## Global Defaults
 
 - Prefer `AGENTS.md` as the repo-local source of truth for shared instructions.
-- If a repo uses `CLAUDE.md -> AGENTS.md`, treat that as the shared project guidance contract.
+- If a repo uses `CLAUDE.md` with `@AGENTS.md`, treat that as the shared project guidance contract.
 - Keep durable repo behavior, routing, and operating rules in versioned repo files instead of chat memory.
 - Update the nearest `AGENTS.md` when a new repeatable local rule appears.
 - Prefer automation over manual repetition.

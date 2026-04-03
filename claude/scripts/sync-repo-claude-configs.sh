@@ -67,7 +67,7 @@ ensure_parent_dir() {
 show_diff() {
   local original="$1"
   local rendered="$2"
-  if [[ -f "$original" ]]; then
+  if [[ -L "$original" || -f "$original" ]]; then
     diff -u "$original" "$rendered" || true
   else
     diff -u /dev/null "$rendered" || true
@@ -283,6 +283,15 @@ def discover_agents_files(repo_root: Path) -> list[Path]:
     return sorted(discovered)
 
 
+def render_import_claude_md(*imports: str) -> str:
+    lines = []
+    for import_path in imports:
+        if not isinstance(import_path, str) or not import_path.strip():
+            raise ValueError("CLAUDE.md imports must be non-empty strings")
+        lines.append(f"@{import_path}")
+    return "\n".join(lines) + "\n"
+
+
 def render_root_claude_md(repo_root: Path, model_instructions_file: str) -> str:
     codex_dir = repo_root / ".codex"
     resolved_model_file = (codex_dir / model_instructions_file).resolve()
@@ -293,7 +302,7 @@ def render_root_claude_md(repo_root: Path, model_instructions_file: str) -> str:
         model_import = resolved_model_file.as_posix()
     if not model_import:
         raise ValueError(f"Unable to derive root import path for {resolved_model_file}")
-    return f"@{model_import}\n@AGENTS.md\n"
+    return render_import_claude_md(model_import, "AGENTS.md")
 
 
 def render_claude_mcp_server(name: str, preset: dict) -> dict:
@@ -461,14 +470,20 @@ for item in repos_raw:
                 file=sys.stderr,
             )
         else:
-            manifest_lines.append(f"{actual_repo}\tLINK\t{claude_md_path}\tAGENTS.md")
+            root_claude_path = tmp_dir / f"{hashlib.sha256((actual_repo + ':root-claude').encode()).hexdigest()}.md"
+            root_claude_path.write_text(render_import_claude_md("AGENTS.md"), encoding="utf-8")
+            manifest_lines.append(f"{actual_repo}\tFILE\t{claude_md_path}\t{root_claude_path}")
 
     nested_agents_files = discover_agents_files(repo_root) if sync_nested else []
     for agents_md_path in nested_agents_files:
         if agents_md_path == root_agents_md_path:
             continue
         nested_claude_md = agents_md_path.parent / "CLAUDE.md"
-        manifest_lines.append(f"{actual_repo}\tLINK\t{nested_claude_md}\tAGENTS.md")
+        nested_claude_path = tmp_dir / (
+            f"{hashlib.sha256((actual_repo + ':nested-claude:' + str(nested_claude_md)).encode()).hexdigest()}.md"
+        )
+        nested_claude_path.write_text(render_import_claude_md("AGENTS.md"), encoding="utf-8")
+        manifest_lines.append(f"{actual_repo}\tFILE\t{nested_claude_md}\t{nested_claude_path}")
 
 for line in manifest_lines:
     print(line)

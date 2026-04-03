@@ -18,7 +18,7 @@ Official Anthropic docs split Claude behavior across repo files, skills, agents,
 
 ## Bootstrap Consequences
 
-- Use `CLAUDE.md -> AGENTS.md` for the generic repo case.
+- Use `CLAUDE.md` with `@AGENTS.md` for the generic repo case.
 - Keep prompt-replacement parity out of the first generic pass.
 - Treat skills and agents as first-class Claude surfaces, but keep them registry-driven and repo-local where needed.
 - Defer the `adi` `soul.md` override until the generic baseline is stable.
