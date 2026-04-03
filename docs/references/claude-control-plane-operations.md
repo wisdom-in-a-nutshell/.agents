@@ -27,7 +27,6 @@ Use [Claude Control Plane](/Users/adi/.agents/docs/architecture/claude-control-p
   - user runtime state and global MCP store
 - repo `CLAUDE.md`
   - usually a tiny file containing only `@AGENTS.md`
-  - special root case: rendered file importing the resolved `model_instructions_file` plus `@AGENTS.md`
 - repo `.claude/settings.json`
   - project settings
 - repo `.mcp.json`
@@ -60,7 +59,6 @@ The Claude control plane is intended to follow the same sync/check pattern as Co
 
 - `CLAUDE.md` should contain only `@AGENTS.md` for the generic case.
 - Nested `AGENTS.md` files should also get sibling `CLAUDE.md` files containing only `@AGENTS.md`.
-- If a repo has a Codex `model_instructions_file`, root `CLAUDE.md` should contain only `@<resolved-model-file>` and `@AGENTS.md`.
 - `AGENTS.md` remains the shared repo instruction source.
 - `skipDangerousModePermissionPrompt` belongs in user/global Claude settings, not project settings.
 - `enableAllProjectMcpServers` is part of the permissive global baseline.

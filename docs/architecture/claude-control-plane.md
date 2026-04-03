@@ -57,10 +57,6 @@ The generic project contract is:
 
 `AGENTS.md` remains the shared repo instruction source. `CLAUDE.md` is only the compatibility entrypoint.
 
-Special root case:
-
-- if a repo already has a Codex `model_instructions_file`, root `CLAUDE.md` becomes a real file that imports the resolved model-instructions file and root `AGENTS.md`
-
 ## Layering
 
 Claude has both global and project layers:
@@ -88,11 +84,9 @@ This baseline includes:
 - project MCP via `.mcp.json`
 - global MCP via `~/.claude.json`
 - global and project skills
-- special root `CLAUDE.md` rendering for repos with `model_instructions_file`
 
 This baseline intentionally defers:
 
-- the `adi` `soul.md` special case
 - host/runtime `systemPrompt` replacement parity
 - VS Code cloud/remote agent behavior
 - Claude subagent materialization under `.claude/agents/`

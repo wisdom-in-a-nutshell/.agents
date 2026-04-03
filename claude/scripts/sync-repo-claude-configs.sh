@@ -292,19 +292,6 @@ def render_import_claude_md(*imports: str) -> str:
     return "\n".join(lines) + "\n"
 
 
-def render_root_claude_md(repo_root: Path, model_instructions_file: str) -> str:
-    codex_dir = repo_root / ".codex"
-    resolved_model_file = (codex_dir / model_instructions_file).resolve()
-    try:
-        model_relative = resolved_model_file.relative_to(repo_root)
-        model_import = model_relative.as_posix()
-    except ValueError:
-        model_import = resolved_model_file.as_posix()
-    if not model_import:
-        raise ValueError(f"Unable to derive root import path for {resolved_model_file}")
-    return render_import_claude_md(model_import, "AGENTS.md")
-
-
 def render_claude_mcp_server(name: str, preset: dict) -> dict:
     config = dict(preset)
     transport = config.pop("transport", config.pop("type", None))
@@ -444,35 +431,17 @@ for item in repos_raw:
     if not isinstance(sync_nested, bool):
         raise TypeError(f"sync_nested_claude_md_to_agents_md for {actual_repo} must be a boolean")
 
-    model_instructions_file = item.get("model_instructions_file")
-    if model_instructions_file is not None and (
-        not isinstance(model_instructions_file, str) or not model_instructions_file.strip()
-    ):
-        raise TypeError(f"model_instructions_file for {actual_repo} must be a non-empty string")
-
     root_agents_md_path = repo_root / "AGENTS.md"
     claude_md_path = repo_root / "CLAUDE.md"
-    if model_instructions_file is not None:
-        if not root_agents_md_path.is_file():
-            print(
-                f"WARNING: skipping special root CLAUDE.md for {actual_repo}; missing AGENTS.md",
-                file=sys.stderr,
-            )
-        else:
-            rendered_root = render_root_claude_md(repo_root, model_instructions_file)
-            root_claude_path = tmp_dir / f"{hashlib.sha256((actual_repo + ':root-claude').encode()).hexdigest()}.md"
-            root_claude_path.write_text(rendered_root, encoding="utf-8")
-            manifest_lines.append(f"{actual_repo}\tFILE\t{claude_md_path}\t{root_claude_path}")
+    if not root_agents_md_path.is_file():
+        print(
+            f"WARNING: skipping root CLAUDE.md for {actual_repo}; missing AGENTS.md",
+            file=sys.stderr,
+        )
     else:
-        if not root_agents_md_path.is_file():
-            print(
-                f"WARNING: skipping root CLAUDE.md for {actual_repo}; missing AGENTS.md",
-                file=sys.stderr,
-            )
-        else:
-            root_claude_path = tmp_dir / f"{hashlib.sha256((actual_repo + ':root-claude').encode()).hexdigest()}.md"
-            root_claude_path.write_text(render_import_claude_md("AGENTS.md"), encoding="utf-8")
-            manifest_lines.append(f"{actual_repo}\tFILE\t{claude_md_path}\t{root_claude_path}")
+        root_claude_path = tmp_dir / f"{hashlib.sha256((actual_repo + ':root-claude').encode()).hexdigest()}.md"
+        root_claude_path.write_text(render_import_claude_md("AGENTS.md"), encoding="utf-8")
+        manifest_lines.append(f"{actual_repo}\tFILE\t{claude_md_path}\t{root_claude_path}")
 
     nested_agents_files = discover_agents_files(repo_root) if sync_nested else []
     for agents_md_path in nested_agents_files:

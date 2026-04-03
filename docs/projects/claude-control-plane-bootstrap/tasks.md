@@ -56,14 +56,14 @@ The repo already manages Codex as the primary control plane. Adding Claude as a 
 - `skipDangerousModePermissionPrompt` is managed only at user/global Claude settings scope.
 - The first pass manages instructions, MCP, settings, and skills; `.claude/agents/` is intentionally deferred.
 - Global Claude MCP is merged into `~/.claude.json` without overwriting unrelated runtime keys.
-- Special root repos with Codex `model_instructions_file` should render a real root `CLAUDE.md` that imports the resolved model-instructions file plus `@AGENTS.md`.
+- Claude repo bootstrap should ignore Codex `model_instructions_file`; prompt replacement is a separate runtime choice.
 - `codex/config/repo-bootstrap.json` is the single shared repo registry for both Codex and Claude repo bootstrap.
 - `mcp/config/presets.json` is the single shared MCP registry, with neutral `transport`-based preset definitions plus `global_presets`.
 - `claude/config/bootstrap.json` is now only a Claude-specific defaults and per-repo override layer, not a second repo inventory.
 
 ## Open Questions / Blockers
 - Anthropic’s published settings schema still lags at least one doc-backed key (`skipDangerousModePermissionPrompt`), so future schema patching remains an optional cleanup item.
-- `adi` still needs a separate follow-up design for `soul.md` / host-level system prompt parity.
+- `adi` still needs a separate operator/runtime choice for `soul.md` / host-level system prompt parity if desired.
 - Claude subagent materialization under `.claude/agents/` remains a follow-up if it proves useful in daily workflow.
 
 ## Current Batch
@@ -96,7 +96,7 @@ The repo already manages Codex as the primary control plane. Adding Claude as a 
 - 2026-04-02: [DONE] Recorded official Anthropic settings/MCP and `CLAUDE.md`/skills/system prompt findings in project resource notes.
 - 2026-04-02: [DONE] Added `claude/` canonical config plus sync/check/bootstrap scripts for global settings, global MCP, repo config rendering, and skills.
 - 2026-04-02: [DONE] Applied the generic Claude bootstrap for `~/.agents`, including global `~/.claude` defaults and repo-local `CLAUDE.md`, `.claude/settings.json`, `.mcp.json`, and skill links.
-- 2026-04-02: [DONE] Extended repo bootstrap to support nested `CLAUDE.md` import files for `@AGENTS.md` and special root `CLAUDE.md` rendering for repos with `model_instructions_file`.
+- 2026-04-02: [DONE] Extended repo bootstrap to support nested `CLAUDE.md` import files for `@AGENTS.md`.
 - 2026-04-03: [IN-PROGRESS] Refactoring to a single shared repo registry (`codex/config/repo-bootstrap.json`) plus a shared neutral MCP registry (`mcp/config/presets.json`), with Claude reduced to a bootstrap overlay.
 - 2026-04-03: [DONE] Finished the shared-registry refactor: Codex and Claude now both read repo assignment from `codex/config/repo-bootstrap.json`, both resolve MCP definitions from `mcp/config/presets.json`, Claude keeps only `claude/config/bootstrap.json` for defaults/overrides, the generated registry views were regenerated, and both control-plane validators passed.
 - 2026-04-03: [DONE] Moved Claude Code AWS Bedrock model selection into `claude/config/settings.json`, documented the runtime ownership boundary, and reapplied the Claude bootstrap so `~/.claude/settings.json` is control-plane rendered instead of hand-edited.
