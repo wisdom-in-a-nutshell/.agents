@@ -80,6 +80,7 @@ Personal agent and Codex control plane.
 - Distribution policy is link-only.
 - Treat global skills as a minimal default kit; prefer repo scope or repo-local unless a skill is broadly useful across unrelated repos.
 - Do not edit managed skills through repo symlink destinations; edit canonical source paths.
+- If the external global `pdf` skill remains enabled, keep its machine dependencies installed on managed Macs: `pdftoppm` from Poppler plus Python user-site packages `reportlab`, `pdfplumber`, and `pypdf`.
 - Keep repo-local skills listed in `skills/registry.json` under `unmanaged_repo_local_skills`.
 - Do not add additional manifest files for skill mapping; update `skills/registry.json`.
 - If `skills/registry.json` changes, run sync/check in the same change.
