@@ -320,8 +320,8 @@ _codex_autostart_loop() {
   return "$ec"
 }
 
-# Auto-start Codex for interactive Ghostty shells (new tabs/splits/windows).
-# Disable for a shell session with: export CODEX_DISABLE_AUTOSTART=1
+# Keep normal Ghostty tabs/splits as plain shells by default.
+# Re-enable per shell session with: export CODEX_ENABLE_AUTOSTART=1
 if [[ -o interactive ]] && [[ -n "${GHOSTTY_RESOURCES_DIR:-}" ]]; then
   _codex_record_last_dir
   if (( ${chpwd_functions[(I)_codex_record_last_dir]} == 0 )); then
@@ -336,7 +336,7 @@ if [[ -o interactive ]] && [[ -n "${GHOSTTY_RESOURCES_DIR:-}" ]]; then
 
   if [[ "${CODEX_AUTOSTART_SKIP_ONCE:-0}" == "1" ]]; then
     unset CODEX_AUTOSTART_SKIP_ONCE
-  elif [[ "${CODEX_DISABLE_AUTOSTART:-0}" != "1" ]] && command -v codex >/dev/null 2>&1; then
+  elif [[ "${CODEX_ENABLE_AUTOSTART:-0}" == "1" ]] && [[ "${CODEX_DISABLE_AUTOSTART:-0}" != "1" ]] && command -v codex >/dev/null 2>&1; then
     _codex_autostart_loop
   fi
 fi

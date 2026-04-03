@@ -82,9 +82,9 @@ flowchart TD
     A2[zprofile.shared] --> G[Codex CLI]
     C[Ghostty initial-command] --> D[ghostty-codex-then-shell.sh]
     B --> E[codex_jump]
-    B --> F[Ghostty auto-start loop]
+    H[Optional Ghostty helpers] --> I[open-ghostty-codex-tab.sh / open-ghostty-codex-picker-tab.sh]
     D --> G[Codex CLI]
-    F --> G
+    I --> G
 ```
 
 ### What This Group Does
