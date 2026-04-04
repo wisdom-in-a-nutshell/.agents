@@ -56,6 +56,9 @@ views:
       - reasoning
       - fast_mode
       - service_tier
+    columnSize:
+      note.repo_name: 202
+      note.skill_count: 82
   - type: table
     name: MCP Enabled
     filters: mcp_count > 0
