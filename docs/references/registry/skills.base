@@ -38,8 +38,6 @@ views:
       - repos
       - upstream_ref
     sort:
-      - property: formula.origin_badge
-        direction: ASC
       - property: scope
         direction: ASC
       - property: origin
