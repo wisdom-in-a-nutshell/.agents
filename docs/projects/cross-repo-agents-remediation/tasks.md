@@ -78,7 +78,7 @@ We need to remove the mistaken nested-AGENTS model from all repos and replace it
 Required repo contract:
 - Root AGENTS.md is the only AGENTS.md file in the repo.
 - There should be no nested AGENTS.md files.
-- There should be no nested `CLAUDE.md` files mirroring removed nested `AGENTS.md` scopes.
+- `CLAUDE.md` files should be removed for now; Claude compatibility can be bootstrapped later once the root-only contract is stable.
 - docs/architecture/ explains how the system is supposed to work.
 - docs/references/ stores exact facts needed to change or operate the repo safely.
 - docs/projects/<project>/tasks.md is used for active long-running work when needed.
@@ -91,7 +91,7 @@ Before deleting a nested AGENTS.md, capture its useful content in the right dest
 - root AGENTS.md for short repo-wide operational guidance
 - docs/architecture/ for subsystem design, boundaries, and flows
 - docs/references/ for rules, commands, contracts, file maps, and exact implementation notes
-- When nested `CLAUDE.md` files exist only as compatibility mirrors for removed nested `AGENTS.md` scopes, delete them as part of the same cleanup.
+- Delete `CLAUDE.md` files as part of this cleanup. Root-only Claude compatibility can be re-bootstrapped later if needed.
 
 Execution tools:
 - Use $agent-native-repo-playbook when deciding the repo-wide AGENTS/docs contract.
@@ -134,7 +134,7 @@ Remediate AGENTS.md usage in this repo so the repo ends with exactly one root AG
 Repo contract:
 - Root AGENTS.md is the only AGENTS.md file in the repo.
 - There should be no nested AGENTS.md files.
-- There should be no nested `CLAUDE.md` files mirroring removed nested `AGENTS.md` scopes.
+- Remove `CLAUDE.md` files in this repo as part of the cleanup. Root-only Claude compatibility can be re-bootstrapped later if needed.
 - Preserve useful information from nested AGENTS.md files by migrating it before deletion.
 - Move subsystem shape, boundaries, responsibilities, and flows into docs/architecture/.
 - Move commands, rules, file maps, contracts, and exact implementation notes into docs/references/.
@@ -150,7 +150,7 @@ Required steps:
 2. Find every nested AGENTS.md in the repo.
 3. Migrate useful content into root AGENTS.md, docs/architecture/, or docs/references/.
 4. Delete all nested AGENTS.md files.
-5. Delete any nested `CLAUDE.md` files that only mirrored the removed nested `AGENTS.md` scopes.
+5. Delete `CLAUDE.md` files in the repo as part of this cleanup.
 6. Keep edits concise and durable.
 7. Run repo-native validation where practical.
 8. Ship the repo cleanly and verify git state.
@@ -185,7 +185,7 @@ Return:
 ## Execution Rules
 - Keep the root-only `AGENTS.md` contract fixed while delegating; do not let sub-agents redefine the model.
 - Do not delete nested `AGENTS.md` before capturing useful information elsewhere.
-- Delete nested `CLAUDE.md` alongside the removed nested `AGENTS.md` scopes so the repo does not keep stale Claude-specific mirrors of deleted local contracts.
+- Delete `CLAUDE.md` files during this remediation so the repo does not keep stale Claude-specific guidance while the root-only AGENTS contract is being stabilized.
 - Keep root `AGENTS.md` files short and repo-wide; do not absorb subsystem encyclopedias into the root file.
 - Prefer `docs/architecture/` for system shape and `docs/references/` for exact facts when migrating content.
 - Use `$agent-native-repo-playbook` for repo-contract choices and `$architecture-docs` for architecture doc work when those skills exist in the target repo.
@@ -224,8 +224,9 @@ Return:
 | delegated | `Jason`: repo-local worker for `aipodcasting`. | worker | `docs/projects/cross-repo-agents-remediation/tasks.md` |
 | delegated | `Lagrange`: repo-local worker for `scripts`. | worker | `docs/projects/cross-repo-agents-remediation/tasks.md` |
 | delegated | `Sartre`: repo-local worker for `adi`. | worker | `docs/projects/cross-repo-agents-remediation/tasks.md` |
-| delegated | `Socrates`: repo-local worker for `angie`. | worker | `docs/projects/cross-repo-agents-remediation/tasks.md` |
+| done | `Socrates`: completed `angie` remediation after parent review and local cleanup of remaining `CLAUDE.md`. | worker | `docs/projects/cross-repo-agents-remediation/tasks.md` |
 | delegated | `Carson`: repo-local worker for `codexclaw`. | worker | `docs/projects/cross-repo-agents-remediation/tasks.md` |
+| delegated | Next freed-slot worker: `modal_functions`. | worker | `docs/projects/cross-repo-agents-remediation/tasks.md` |
 | in_progress | Parent orchestrator reviews each completed repo, patches ambiguous migrations if needed, verifies shipping/cleanliness, and immediately fills the next slot in the rolling queue. | parent | `docs/projects/cross-repo-agents-remediation/tasks.md` |
 
 ## Backlog / Remaining Work
@@ -264,3 +265,4 @@ Return:
 - 2026-04-05: [BLOCKED] Stopped the relaunched workers after discovering the prompt shape was wrong: workers were reflecting the parent control-plane setup instead of executing repo-local remediation. Next relaunch must use the simplified repo-local worker prompt.
 - 2026-04-05: [IN-PROGRESS] Received 5 confirmed worker launches (`win`, `aipodcasting`, `scripts`, `adi`, `angie`). Queue `codexclaw` into the first freed slot and continue repo-by-repo from there.
 - 2026-04-05: [DELEGATED] Relaunched the first six repos with the simplified self-contained repo-local worker prompt: `win`, `aipodcasting`, `scripts`, `adi`, `angie`, and `codexclaw`.
+- 2026-04-05: [DONE] Reviewed `angie`, removed the remaining root `CLAUDE.md`, and verified the repo now contains only one root `AGENTS.md` and no `CLAUDE.md` files.
