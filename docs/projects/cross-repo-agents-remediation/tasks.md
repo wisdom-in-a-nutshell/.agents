@@ -222,11 +222,14 @@ Return:
 | done | Hold execution after the canceled first-wave launch and wait for the user-approved repo-to-agent delegation plan before relaunching sub-agents. | parent | `docs/projects/cross-repo-agents-remediation/tasks.md` |
 | delegated | `Anscombe`: repo-local worker for `win`. | worker | `docs/projects/cross-repo-agents-remediation/tasks.md` |
 | delegated | `Jason`: repo-local worker for `aipodcasting`. | worker | `docs/projects/cross-repo-agents-remediation/tasks.md` |
-| delegated | `Lagrange`: repo-local worker for `scripts`. | worker | `docs/projects/cross-repo-agents-remediation/tasks.md` |
-| delegated | `Sartre`: repo-local worker for `adi`. | worker | `docs/projects/cross-repo-agents-remediation/tasks.md` |
+| done | `Lagrange`: completed `scripts` remediation and parent verified the repo contract locally. | worker | `docs/projects/cross-repo-agents-remediation/tasks.md` |
+| done | `Sartre`: completed `adi` remediation and parent verified the repo contract locally. | worker | `docs/projects/cross-repo-agents-remediation/tasks.md` |
 | done | `Socrates`: completed `angie` remediation after parent review and local cleanup of remaining `CLAUDE.md`. | worker | `docs/projects/cross-repo-agents-remediation/tasks.md` |
-| delegated | `Carson`: repo-local worker for `codexclaw`. | worker | `docs/projects/cross-repo-agents-remediation/tasks.md` |
-| delegated | Next freed-slot worker: `modal_functions`. | worker | `docs/projects/cross-repo-agents-remediation/tasks.md` |
+| done | `Carson`: completed `codexclaw` remediation and parent verified the repo contract locally. | worker | `docs/projects/cross-repo-agents-remediation/tasks.md` |
+| delegated | `Locke`: repo-local worker for `modal_functions`. | worker | `docs/projects/cross-repo-agents-remediation/tasks.md` |
+| delegated | `Newton`: repo-local worker for `aipodcasting-public-website`. | worker | `docs/projects/cross-repo-agents-remediation/tasks.md` |
+| delegated | `Turing`: repo-local worker for `focus`. | worker | `docs/projects/cross-repo-agents-remediation/tasks.md` |
+| delegated | `Nietzsche`: repo-local worker for `blog-personal`. | worker | `docs/projects/cross-repo-agents-remediation/tasks.md` |
 | in_progress | Parent orchestrator reviews each completed repo, patches ambiguous migrations if needed, verifies shipping/cleanliness, and immediately fills the next slot in the rolling queue. | parent | `docs/projects/cross-repo-agents-remediation/tasks.md` |
 
 ## Backlog / Remaining Work
@@ -267,3 +270,7 @@ Return:
 - 2026-04-05: [DELEGATED] Relaunched the first six repos with the simplified self-contained repo-local worker prompt: `win`, `aipodcasting`, `scripts`, `adi`, `angie`, and `codexclaw`.
 - 2026-04-05: [DONE] Ran a parent-owned mechanical sweep deleting `CLAUDE.md` files in non-active repos: `aipodcasting-public-website`, `focus`, `blog-personal`, `platform-ops`, `litellm`, `stadia-macos-controller`, `thoughtforms-life-theme`, `future-of-life-institute-podcast-aipodcast-ing-theme`, `aip-cognitive-revolution`, and `adithyan-ai-videos`.
 - 2026-04-05: [DONE] Reviewed `angie`, removed the remaining root `CLAUDE.md`, and verified the repo now contains only one root `AGENTS.md` and no `CLAUDE.md` files.
+- 2026-04-05: [DONE] Reviewed `adi` and verified the repo now contains only one root `AGENTS.md` and no `CLAUDE.md` files; left the unrelated untracked journal entry untouched.
+- 2026-04-05: [DONE] Reviewed `codexclaw` and verified the repo now contains only one root `AGENTS.md` and no `CLAUDE.md` files, with green local validation from the worker.
+- 2026-04-05: [DONE] Reviewed `scripts` and verified the repo now contains only one root `AGENTS.md` and no `CLAUDE.md` files, with passing `ops/check-fast.sh`.
+- 2026-04-05: [DELEGATED] Reused freed slots for `aipodcasting-public-website`, `focus`, and `blog-personal` while `win`, `aipodcasting`, and `modal_functions` continue running.
