@@ -306,6 +306,16 @@
       "upstream_ref": "-"
     },
     {
+      "skill": "managed-skill-bootstrap",
+      "origin": "owned",
+      "scope": "repo",
+      "repos": [
+        "~/.agents"
+      ],
+      "source_path": "skills-source/owned/managed-skill-bootstrap",
+      "upstream_ref": "-"
+    },
+    {
       "skill": "health",
       "origin": "owned",
       "scope": "repo",

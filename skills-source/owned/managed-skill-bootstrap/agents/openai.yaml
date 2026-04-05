@@ -1,0 +1,4 @@
+interface:
+  display_name: "Managed Skill Bootstrap"
+  short_description: "Import upstream skills into the managed registry and repos."
+  default_prompt: "Use $managed-skill-bootstrap to import this upstream skill into the ~/.agents managed registry and wire it into the requested repo."
