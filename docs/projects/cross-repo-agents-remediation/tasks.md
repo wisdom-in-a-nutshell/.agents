@@ -170,17 +170,17 @@ Return:
 ```
 
 ## Done When
-- [ ] Every in-scope repo has exactly one root `AGENTS.md` and no nested `AGENTS.md`.
-- [ ] Useful nested guidance has been migrated into root `AGENTS.md`, `docs/architecture/`, or `docs/references/` before deletion.
-- [ ] Root `AGENTS.md` files no longer imply dynamic nested loading or “auto-attach” behavior.
-- [ ] Repos end in a shipped, clean state with no unreviewed AGENTS/docs remediation leftovers.
-- [ ] Cross-repo learnings are captured and finalized for future agent work.
+- [x] Every in-scope repo has exactly one root `AGENTS.md` and no nested `AGENTS.md`.
+- [x] Useful nested guidance has been migrated into root `AGENTS.md`, `docs/architecture/`, or `docs/references/` before deletion.
+- [x] Root `AGENTS.md` files no longer imply dynamic nested loading or “auto-attach” behavior.
+- [x] Repos end in a shipped, clean state with no unreviewed AGENTS/docs remediation leftovers.
+- [x] Cross-repo learnings are captured and finalized for future agent work.
 
 ## Milestones
 - [x] Milestone 1 — Freeze the cross-repo contract, prompts, and target inventory. Acceptance: tracker contains the approved remediation model, orchestrator prompt, sub-agent prompt, and repo inventory. Validate: review `docs/projects/cross-repo-agents-remediation/tasks.md`.
 - [x] Milestone 2 — Audit and remediate the highest-risk repos (`win`, `aipodcasting`, `scripts`, `adi`, `codexclaw`, `modal_functions`, `angie`). Acceptance: those repos have root-only `AGENTS.md` plus migrated docs and no nested `AGENTS.md`. Validate: per repo `rg --files <repo> -g 'AGENTS.md'`, repo-native checks, `git status --short`.
-- [ ] Milestone 3 — Remediate the remaining bootstrapped repos with `AGENTS.md` files. Acceptance: all remaining in-scope repos match the root-only contract. Validate: per repo `rg --files <repo> -g 'AGENTS.md'`, repo-native checks, `git status --short`.
-- [ ] Milestone 4 — Run the portfolio-wide verification pass and close out. Acceptance: inventory is clean, learnings are finalized, and no repo still depends on nested `AGENTS.md`. Validate: portfolio inventory scan plus spot verification of migrated docs.
+- [x] Milestone 3 — Remediate the remaining bootstrapped repos with `AGENTS.md` files. Acceptance: all remaining in-scope repos match the root-only contract. Validate: per repo `rg --files <repo> -g 'AGENTS.md'`, repo-native checks, `git status --short`.
+- [x] Milestone 4 — Run the portfolio-wide verification pass and close out. Acceptance: inventory is clean, learnings are finalized, and no repo still depends on nested `AGENTS.md`. Validate: portfolio inventory scan plus spot verification of migrated docs.
 
 ## Execution Rules
 - Keep the root-only `AGENTS.md` contract fixed while delegating; do not let sub-agents redefine the model.
@@ -234,10 +234,10 @@ Return:
 | done | `Euler`: completed `litellm` remediation and parent verified the repo contract locally. | worker | `docs/projects/cross-repo-agents-remediation/tasks.md` |
 | done | `Noether`: completed `stadia-macos-controller` remediation and parent verified the repo contract locally. | worker | `docs/projects/cross-repo-agents-remediation/tasks.md` |
 | done | `Beauvoir`: completed `thoughtforms-life-theme` remediation and parent verified the repo contract locally, including the validation-driven removal of tracked local skill symlinks. | worker | `docs/projects/cross-repo-agents-remediation/tasks.md` |
-| delegated | `Heisenberg`: repo-local worker for `future-of-life-institute-podcast-aipodcast-ing-theme`. | worker | `docs/projects/cross-repo-agents-remediation/tasks.md` |
-| delegated | `Descartes`: repo-local worker for `aip-cognitive-revolution`. | worker | `docs/projects/cross-repo-agents-remediation/tasks.md` |
+| done | `Heisenberg`: completed `future-of-life-institute-podcast-aipodcast-ing-theme` remediation and parent verified the repo contract locally. | worker | `docs/projects/cross-repo-agents-remediation/tasks.md` |
+| done | `Descartes`: completed `aip-cognitive-revolution` remediation and parent verified the repo contract locally, including the validation-driven theme fixes. | worker | `docs/projects/cross-repo-agents-remediation/tasks.md` |
 | done | `Lovelace`: completed `adithyan-ai-videos` remediation and parent verified the repo contract locally. | worker | `docs/projects/cross-repo-agents-remediation/tasks.md` |
-| in_progress | Parent orchestrator reviews each completed repo, patches ambiguous migrations if needed, verifies shipping/cleanliness, and immediately fills the next slot in the rolling queue. | parent | `docs/projects/cross-repo-agents-remediation/tasks.md` |
+| done | Parent orchestrator reviewed each completed repo, patched ambiguous migrations when needed, verified shipping/cleanliness, committed and pushed the remediation, and closed the portfolio-wide pass. | parent | `docs/projects/cross-repo-agents-remediation/tasks.md` |
 
 ## Backlog / Remaining Work
 - [x] Define the initial repo-slice delegation plan and ownership boundaries for the first audit wave.
@@ -248,10 +248,10 @@ Return:
 - [x] Audit `codexclaw` and migrate/delete its nested `AGENTS.md` files.
 - [x] Audit `modal_functions` and migrate/delete its nested `AGENTS.md` files.
 - [x] Audit `angie` and migrate/delete its nested `AGENTS.md` files.
-- [ ] Audit the remaining repos with `AGENTS.md` files and remediate them under the same contract.
-- [ ] Rolling queue order after the current first six: `modal_functions`, `aipodcasting-public-website`, `focus`, `blog-personal`, `platform-ops`, `litellm`, `stadia-macos-controller`, `thoughtforms-life-theme`, `future-of-life-institute-podcast-aipodcast-ing-theme`, `aip-cognitive-revolution`, `adithyan-ai-videos`. All explicitly queued repos have now been launched.
-- [ ] Run the portfolio-wide post-remediation inventory scan and record results.
-- [ ] Review and finalize `docs/projects/cross-repo-agents-remediation/learnings/README.md`.
+- [x] Audit the remaining repos with `AGENTS.md` files and remediate them under the same contract.
+- [x] Rolling queue order after the current first six: `modal_functions`, `aipodcasting-public-website`, `focus`, `blog-personal`, `platform-ops`, `litellm`, `stadia-macos-controller`, `thoughtforms-life-theme`, `future-of-life-institute-podcast-aipodcast-ing-theme`, `aip-cognitive-revolution`, `adithyan-ai-videos`. All explicitly queued repos have now been launched.
+- [x] Run the portfolio-wide post-remediation inventory scan and record results.
+- [x] Review and finalize `docs/projects/cross-repo-agents-remediation/learnings/README.md`.
 - [ ] Close out and archive the project once the portfolio-wide cleanup is complete.
 
 ## Validation / Test Plan
@@ -292,3 +292,7 @@ Return:
 - 2026-04-05: [DONE] Reviewed `stadia-macos-controller` and verified the repo now contains only one root `AGENTS.md` and no `CLAUDE.md` files, with passing `./scripts/check-fast.sh` and `swift build`.
 - 2026-04-05: [DONE] Reviewed `thoughtforms-life-theme` and verified the repo now contains only one root `AGENTS.md` and no `CLAUDE.md` files; `npm run build` and `npm test` passed after removing tracked local skill symlinks that were breaking Ghost validation.
 - 2026-04-05: [DONE] Reviewed `adithyan-ai-videos` and verified the repo now contains only one root `AGENTS.md` and no `CLAUDE.md` files, with passing `npm run doctor` and `npx remotion compositions src/index.js`.
+- 2026-04-05: [DONE] Reviewed `aip-cognitive-revolution` and verified the repo now contains only one root `AGENTS.md` and no `CLAUDE.md` files; `npm run build` and `gscan` passed after removing tracked control-plane artifacts from the shippable theme tree.
+- 2026-04-05: [DONE] Reviewed `future-of-life-institute-podcast-aipodcast-ing-theme` and verified the repo now contains only one root `AGENTS.md` and no `CLAUDE.md` files; `npm run zip` and `npm test` passed after aligning validation and deploy packaging to the filtered theme artifact.
+- 2026-04-05: [DONE] Committed and pushed the remediation across all 17 touched repos with the message `Refactor repo guidance to root-only AGENTS`.
+- 2026-04-05: [DONE] Final portfolio scan confirmed every touched repo now has exactly one root `AGENTS.md` and zero `CLAUDE.md` files. All touched repos are clean after push except `adi`, which still has the unrelated untracked path `journal/entries/2026-04-05/` that was intentionally left untouched.
