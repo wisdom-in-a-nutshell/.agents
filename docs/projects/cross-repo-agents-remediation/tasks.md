@@ -178,7 +178,7 @@ Return:
 
 ## Milestones
 - [x] Milestone 1 — Freeze the cross-repo contract, prompts, and target inventory. Acceptance: tracker contains the approved remediation model, orchestrator prompt, sub-agent prompt, and repo inventory. Validate: review `docs/projects/cross-repo-agents-remediation/tasks.md`.
-- [ ] Milestone 2 — Audit and remediate the highest-risk repos (`win`, `aipodcasting`, `scripts`, `adi`, `codexclaw`, `modal_functions`, `angie`). Acceptance: those repos have root-only `AGENTS.md` plus migrated docs and no nested `AGENTS.md`. Validate: per repo `rg --files <repo> -g 'AGENTS.md'`, repo-native checks, `git status --short`.
+- [x] Milestone 2 — Audit and remediate the highest-risk repos (`win`, `aipodcasting`, `scripts`, `adi`, `codexclaw`, `modal_functions`, `angie`). Acceptance: those repos have root-only `AGENTS.md` plus migrated docs and no nested `AGENTS.md`. Validate: per repo `rg --files <repo> -g 'AGENTS.md'`, repo-native checks, `git status --short`.
 - [ ] Milestone 3 — Remediate the remaining bootstrapped repos with `AGENTS.md` files. Acceptance: all remaining in-scope repos match the root-only contract. Validate: per repo `rg --files <repo> -g 'AGENTS.md'`, repo-native checks, `git status --short`.
 - [ ] Milestone 4 — Run the portfolio-wide verification pass and close out. Acceptance: inventory is clean, learnings are finalized, and no repo still depends on nested `AGENTS.md`. Validate: portfolio inventory scan plus spot verification of migrated docs.
 
@@ -221,7 +221,7 @@ Return:
 | done | Review the frozen prompts and tracker with the user before launching the first parallel repo-slice wave. | parent | `docs/projects/cross-repo-agents-remediation/tasks.md` |
 | done | Hold execution after the canceled first-wave launch and wait for the user-approved repo-to-agent delegation plan before relaunching sub-agents. | parent | `docs/projects/cross-repo-agents-remediation/tasks.md` |
 | done | `Anscombe`: completed `win` remediation and parent verified the repo contract locally. | worker | `docs/projects/cross-repo-agents-remediation/tasks.md` |
-| delegated | `Jason`: repo-local worker for `aipodcasting`. | worker | `docs/projects/cross-repo-agents-remediation/tasks.md` |
+| done | `Jason`: completed `aipodcasting` remediation and parent verified the repo contract locally. | worker | `docs/projects/cross-repo-agents-remediation/tasks.md` |
 | done | `Lagrange`: completed `scripts` remediation and parent verified the repo contract locally. | worker | `docs/projects/cross-repo-agents-remediation/tasks.md` |
 | done | `Sartre`: completed `adi` remediation and parent verified the repo contract locally. | worker | `docs/projects/cross-repo-agents-remediation/tasks.md` |
 | done | `Socrates`: completed `angie` remediation after parent review and local cleanup of remaining `CLAUDE.md`. | worker | `docs/projects/cross-repo-agents-remediation/tasks.md` |
@@ -230,24 +230,26 @@ Return:
 | done | `Newton`: completed `aipodcasting-public-website` remediation and parent verified the repo contract locally. | worker | `docs/projects/cross-repo-agents-remediation/tasks.md` |
 | done | `Turing`: completed `focus` remediation and parent verified the repo contract locally. | worker | `docs/projects/cross-repo-agents-remediation/tasks.md` |
 | done | `Nietzsche`: completed `blog-personal` remediation and parent verified the repo contract locally. | worker | `docs/projects/cross-repo-agents-remediation/tasks.md` |
-| delegated | `Bernoulli`: repo-local worker for `platform-ops`. | worker | `docs/projects/cross-repo-agents-remediation/tasks.md` |
-| delegated | `Euler`: repo-local worker for `litellm`. | worker | `docs/projects/cross-repo-agents-remediation/tasks.md` |
+| done | `Bernoulli`: completed `platform-ops` remediation and parent verified the repo contract locally. | worker | `docs/projects/cross-repo-agents-remediation/tasks.md` |
+| done | `Euler`: completed `litellm` remediation and parent verified the repo contract locally. | worker | `docs/projects/cross-repo-agents-remediation/tasks.md` |
 | delegated | `Noether`: repo-local worker for `stadia-macos-controller`. | worker | `docs/projects/cross-repo-agents-remediation/tasks.md` |
 | delegated | `Beauvoir`: repo-local worker for `thoughtforms-life-theme`. | worker | `docs/projects/cross-repo-agents-remediation/tasks.md` |
 | delegated | `Heisenberg`: repo-local worker for `future-of-life-institute-podcast-aipodcast-ing-theme`. | worker | `docs/projects/cross-repo-agents-remediation/tasks.md` |
+| delegated | `Descartes`: repo-local worker for `aip-cognitive-revolution`. | worker | `docs/projects/cross-repo-agents-remediation/tasks.md` |
+| delegated | `Lovelace`: repo-local worker for `adithyan-ai-videos`. | worker | `docs/projects/cross-repo-agents-remediation/tasks.md` |
 | in_progress | Parent orchestrator reviews each completed repo, patches ambiguous migrations if needed, verifies shipping/cleanliness, and immediately fills the next slot in the rolling queue. | parent | `docs/projects/cross-repo-agents-remediation/tasks.md` |
 
 ## Backlog / Remaining Work
 - [x] Define the initial repo-slice delegation plan and ownership boundaries for the first audit wave.
 - [x] Audit `win` and migrate/delete its nested `AGENTS.md` files.
-- [ ] Audit `aipodcasting` and migrate/delete its nested `AGENTS.md` files.
+- [x] Audit `aipodcasting` and migrate/delete its nested `AGENTS.md` files.
 - [x] Audit `scripts` and migrate/delete its nested `AGENTS.md` files.
 - [x] Audit `adi` and migrate/delete its nested `AGENTS.md` files.
 - [x] Audit `codexclaw` and migrate/delete its nested `AGENTS.md` files.
 - [x] Audit `modal_functions` and migrate/delete its nested `AGENTS.md` files.
 - [x] Audit `angie` and migrate/delete its nested `AGENTS.md` files.
 - [ ] Audit the remaining repos with `AGENTS.md` files and remediate them under the same contract.
-- [ ] Rolling queue order after the current first six: `modal_functions`, `aipodcasting-public-website`, `focus`, `blog-personal`, `platform-ops`, `litellm`, `stadia-macos-controller`, `thoughtforms-life-theme`, `future-of-life-institute-podcast-aipodcast-ing-theme`, `aip-cognitive-revolution`, `adithyan-ai-videos`.
+- [ ] Rolling queue order after the current first six: `modal_functions`, `aipodcasting-public-website`, `focus`, `blog-personal`, `platform-ops`, `litellm`, `stadia-macos-controller`, `thoughtforms-life-theme`, `future-of-life-institute-podcast-aipodcast-ing-theme`, `aip-cognitive-revolution`, `adithyan-ai-videos`. All explicitly queued repos have now been launched.
 - [ ] Run the portfolio-wide post-remediation inventory scan and record results.
 - [ ] Review and finalize `docs/projects/cross-repo-agents-remediation/learnings/README.md`.
 - [ ] Close out and archive the project once the portfolio-wide cleanup is complete.
@@ -282,3 +284,8 @@ Return:
 - 2026-04-05: [DONE] Reviewed `aipodcasting-public-website`, `focus`, and `blog-personal` and verified each repo now contains only one root `AGENTS.md` and no `CLAUDE.md` files.
 - 2026-04-05: [DONE] Reviewed `modal_functions` and `win` and verified each repo now contains only one root `AGENTS.md`, no `CLAUDE.md` files, and clean patch formatting; `modal_functions` also has green local validation from the worker.
 - 2026-04-05: [DELEGATED] Reused the next three freed slots for `stadia-macos-controller`, `thoughtforms-life-theme`, and `future-of-life-institute-podcast-aipodcast-ing-theme` while `aipodcasting`, `platform-ops`, and `litellm` continue running.
+- 2026-04-05: [DONE] Reviewed `platform-ops` and verified the repo now contains only one root `AGENTS.md` and no `CLAUDE.md` files.
+- 2026-04-05: [DELEGATED] Reused the freed slot from `platform-ops` for `aip-cognitive-revolution`; `adithyan-ai-videos` remains queued behind the current active set.
+- 2026-04-05: [DONE] Reviewed `litellm` and `aipodcasting` and verified each repo now contains only one root `AGENTS.md` and no `CLAUDE.md` files; `litellm` passed `./scripts/check-fast.sh`, and `aipodcasting` passed `./node_modules/.bin/tsc --noEmit`.
+- 2026-04-05: [DONE] Milestone 2 is complete: `win`, `aipodcasting`, `scripts`, `adi`, `codexclaw`, `modal_functions`, and `angie` all now satisfy the root-only `AGENTS.md` / no-`CLAUDE.md` contract.
+- 2026-04-05: [DELEGATED] Reused a freed slot for `adithyan-ai-videos`; all explicitly queued remaining repos are now in flight.
