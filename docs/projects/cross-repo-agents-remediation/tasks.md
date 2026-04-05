@@ -1,0 +1,236 @@
+# Cross-Repo AGENTS.md Remediation
+
+## Goal
+Replace the mistaken nested `AGENTS.md` operating model across bootstrapped repos with a root-only `AGENTS.md` contract plus migrated `docs/architecture/` and `docs/references/` content, then ship each repo cleanly.
+
+## Why / Impact
+The repos were structured around a false assumption: that Codex would load nested `AGENTS.md` files dynamically later in a session whenever it navigated into a subtree or touched code there. In practice Codex builds the instruction chain when the session starts. Because the working habit is to start from repo root, most nested `AGENTS.md` files do not match the real execution model and create drift, duplication, and maintenance overhead. If this stays unfixed, future agent work will keep relying on the wrong abstraction.
+
+## Scope / Non-Goals
+### In Scope
+- Rewrite root `AGENTS.md` files so they describe the real startup-scope loading model.
+- Remove nested `AGENTS.md` files from target repos.
+- Preserve useful nested guidance by migrating it into root `AGENTS.md`, `docs/architecture/`, or `docs/references/` before deletion.
+- Standardize the default repo docs contract:
+  - `AGENTS.md`
+  - `docs/architecture/`
+  - `docs/references/`
+  - `docs/projects/<project>/tasks.md` when active project tracking is needed
+- Use `$agent-native-repo-playbook` for repo-contract decisions and `$architecture-docs` for architecture doc migrations when available in the target repo.
+- Ship repo changes directly and verify repos end clean.
+
+### Out of Scope
+- Introducing `README.md` as a replacement for agent routing.
+- Requiring `docs/AGENTS.md` in every repo.
+- Introducing `docs/decisions/` or `docs/security/` by default.
+- Large unrelated code or product refactors outside the AGENTS/docs remediation.
+
+## Context / Constraints
+- Date started: 2026-04-05
+- The triggering misunderstanding is explicit: nested `AGENTS.md` files were created with the expectation that Codex would load them dynamically later in a session when code in that subtree was touched. That is not how Codex instruction discovery works.
+- Working assumption for this portfolio: Codex almost always starts at repo root, not inside internal subdirectories. Therefore the desired steady state is one root `AGENTS.md` per repo and no nested `AGENTS.md`.
+- Useful information in nested `AGENTS.md` files must be migrated before deletion; do not lose durable guidance.
+- Default migration targets:
+  - root `AGENTS.md` for short repo-wide operational guidance
+  - `docs/architecture/` for subsystem shape, responsibilities, and flows
+  - `docs/references/` for commands, rules, file maps, contracts, and exact implementation facts
+- User asked for direct shipping. In this environment a notify hook normally auto-stages, commits, and pushes after each agent turn; the orchestrator still needs to babysit repo cleanliness and use manual git commands only if the normal automation is insufficient.
+- Initial repo inventory under `/Users/dobby/GitHub` with current `AGENTS.md` counts:
+  - `win` = 87
+  - `adi` = 18
+  - `scripts` = 12
+  - `codexclaw` = 11
+  - `modal_functions` = 10
+  - `aipodcasting` = 10
+  - `angie` = 9
+  - `aipodcasting-public-website` = 4
+  - `focus` = 3
+  - `blog-personal` = 3
+  - `thoughtforms-life-theme` = 2
+  - `stadia-macos-controller` = 2
+  - `platform-ops` = 2
+  - `litellm` = 2
+  - `future-of-life-institute-podcast-aipodcast-ing-theme` = 2
+  - `aip-cognitive-revolution` = 2
+  - `adithyan-ai-videos` = 2
+- Highest-risk repos by scale and importance: `win`, `aipodcasting`, `scripts`, `adi`, `codexclaw`, `modal_functions`, `angie`.
+
+## Orchestrator Prompt
+```text
+You are the orchestrator for a cross-repo AGENTS.md remediation project across my GitHub repositories.
+
+What we misunderstood:
+We previously created many nested AGENTS.md files based on the assumption that Codex would load them dynamically whenever it later navigated into a folder, opened a file in that subtree, or touched code there during the session.
+
+That assumption was wrong.
+
+Codex builds its instruction chain when the session starts, from the project root down to the starting working directory. It does not later auto-load deeper AGENTS.md files just because it moved into that part of the repo afterward.
+
+Why this matters in our workflow:
+We almost always start Codex at the repo root, not inside deep subdirectories. So nested AGENTS.md files do not match how Codex actually loads instructions or how we actually work.
+
+The changed problem:
+This is a structural remediation project.
+
+We need to remove the mistaken nested-AGENTS model from all repos and replace it with a root-only AGENTS.md model.
+
+Required repo contract:
+- Root AGENTS.md is the only AGENTS.md file in the repo.
+- There should be no nested AGENTS.md files.
+- docs/architecture/ explains how the system is supposed to work.
+- docs/references/ stores exact facts needed to change or operate the repo safely.
+- docs/projects/<project>/tasks.md is used for active long-running work when needed.
+- Do not introduce README.md as a replacement for agent routing.
+- Do not require docs/AGENTS.md.
+
+Information preservation rule:
+Do not throw away useful information from nested AGENTS.md files.
+Before deleting a nested AGENTS.md, capture its useful content in the right destination:
+- root AGENTS.md for short repo-wide operational guidance
+- docs/architecture/ for subsystem design, boundaries, and flows
+- docs/references/ for rules, commands, contracts, file maps, and exact implementation notes
+
+Execution tools:
+- Use $agent-native-repo-playbook when deciding the repo-wide AGENTS/docs contract.
+- Use $architecture-docs when migrating subsystem explanations into docs/architecture/.
+- Use the project tracker as the durable coordination artifact.
+
+Cleanup rules:
+- Rewrite root AGENTS.md so it does not imply nested files auto-load, auto-attach, or apply when code is later touched.
+- Remove all nested AGENTS.md files.
+- Migrate useful content out of nested AGENTS.md files before deleting them.
+- Keep root AGENTS.md short, durable, and operational.
+- Prefer one consistent docs contract across repos.
+
+Execution order:
+1. Audit the repo.
+2. Fix root AGENTS.md wording first.
+3. Review every nested AGENTS.md.
+4. Migrate useful content into root AGENTS.md, docs/architecture/, or docs/references/.
+5. Delete the nested AGENTS.md files.
+6. Run repo-native validation where practical.
+7. Ship changes directly and verify the repo ends clean.
+8. Report what changed, what was migrated, what was deleted, and any blockers.
+
+Expected output per repo:
+- root AGENTS.md changes
+- docs files created or updated
+- nested AGENTS.md files removed
+- any ambiguous content that needed judgment
+- validation status
+- repo cleanliness / shipping status
+```
+
+## Sub-Agent Prompt Template
+```text
+You own this repo slice only: <REPO_OR_GROUP>.
+
+Task:
+Apply the approved AGENTS.md remediation contract to your assigned repo(s).
+
+Contract:
+- Root AGENTS.md is the only AGENTS.md file in the repo.
+- There should be no nested AGENTS.md files.
+- Preserve useful information from nested AGENTS.md files by migrating it before deletion.
+- docs/architecture/ is for subsystem shape, boundaries, and flows.
+- docs/references/ is for exact facts, commands, rules, file maps, and implementation notes.
+- Do not introduce README.md as a replacement for agent routing.
+- Do not require docs/AGENTS.md.
+
+Required tools:
+- Use $agent-native-repo-playbook for repo-contract decisions.
+- Use $architecture-docs when moving subsystem explanations into docs/architecture/.
+
+Required steps:
+1. Find and fix incorrect wording in root AGENTS.md.
+2. Review every nested AGENTS.md.
+3. Migrate useful content into root AGENTS.md, docs/architecture/, or docs/references/.
+4. Delete all nested AGENTS.md files.
+5. Keep edits concise and durable.
+6. Do not edit repos outside your assigned slice.
+7. Do not touch the shared cross-repo tracker files in ~/.agents.
+8. Do not revert unrelated user changes.
+9. When satisfied, ship the repo cleanly and verify git state.
+
+Deliver back:
+- files changed
+- nested AGENTS.md files removed
+- docs created or updated
+- blockers or ambiguous cases
+- validation run, if any
+- repo cleanliness / shipping status
+```
+
+## Done When
+- [ ] Every in-scope repo has exactly one root `AGENTS.md` and no nested `AGENTS.md`.
+- [ ] Useful nested guidance has been migrated into root `AGENTS.md`, `docs/architecture/`, or `docs/references/` before deletion.
+- [ ] Root `AGENTS.md` files no longer imply dynamic nested loading or “auto-attach” behavior.
+- [ ] Repos end in a shipped, clean state with no unreviewed AGENTS/docs remediation leftovers.
+- [ ] Cross-repo learnings are captured and finalized for future agent work.
+
+## Milestones
+- [x] Milestone 1 — Freeze the cross-repo contract, prompts, and target inventory. Acceptance: tracker contains the approved remediation model, orchestrator prompt, sub-agent prompt, and repo inventory. Validate: review `docs/projects/cross-repo-agents-remediation/tasks.md`.
+- [ ] Milestone 2 — Audit and remediate the highest-risk repos (`win`, `aipodcasting`, `scripts`, `adi`, `codexclaw`, `modal_functions`, `angie`). Acceptance: those repos have root-only `AGENTS.md` plus migrated docs and no nested `AGENTS.md`. Validate: per repo `rg --files <repo> -g 'AGENTS.md'`, repo-native checks, `git status --short`.
+- [ ] Milestone 3 — Remediate the remaining bootstrapped repos with `AGENTS.md` files. Acceptance: all remaining in-scope repos match the root-only contract. Validate: per repo `rg --files <repo> -g 'AGENTS.md'`, repo-native checks, `git status --short`.
+- [ ] Milestone 4 — Run the portfolio-wide verification pass and close out. Acceptance: inventory is clean, learnings are finalized, and no repo still depends on nested `AGENTS.md`. Validate: portfolio inventory scan plus spot verification of migrated docs.
+
+## Execution Rules
+- Keep the root-only `AGENTS.md` contract fixed while delegating; do not let sub-agents redefine the model.
+- Do not delete nested `AGENTS.md` before capturing useful information elsewhere.
+- Keep root `AGENTS.md` files short and repo-wide; do not absorb subsystem encyclopedias into the root file.
+- Prefer `docs/architecture/` for system shape and `docs/references/` for exact facts when migrating content.
+- Use `$agent-native-repo-playbook` for repo-contract choices and `$architecture-docs` for architecture doc work when those skills exist in the target repo.
+- Run validation after each meaningful repo batch and fix forward before advancing.
+- Continue until the scoped project is done or a real blocker requires human input; do not stop after one repo if more actionable repo slices remain.
+- Use `Current Batch` as the live execution board and keep it current before delegating work.
+- Keep this tracker single-writer; delegated agents may read it, but only the parent updates it.
+- For this project, “ship directly” means changes should land without a branch-heavy holding pattern. Use normal repo automation first, then manually intervene only if a repo does not end clean.
+- Update this tracker whenever the plan or findings change materially or before ending the run.
+- Final closeout must include a review of `docs/projects/cross-repo-agents-remediation/learnings/README.md`.
+
+## Decisions
+- Use a root-only `AGENTS.md` model across this portfolio by default.
+- Remove nested `AGENTS.md` files rather than keeping exceptions as the normal pattern.
+- Preserve information by migration, not by retaining nested `AGENTS.md`.
+- Do not introduce `README.md` as an agent-routing replacement.
+- Do not require `docs/AGENTS.md`; repo docs placement guidance is optional.
+- Use `docs/architecture/` and `docs/references/` as the default durable knowledge split.
+- Use direct-to-main style shipping and verify repos end clean.
+
+## Open Questions / Blockers
+- None yet. Ambiguous content migrations discovered during repo work should be recorded here immediately.
+
+## Current Batch
+| Status | Work Item | Role | Resource |
+| --- | --- | --- | --- |
+| done | Create the durable cross-repo tracker, freeze the orchestrator/sub-agent prompts, and capture the initial repo inventory. | parent | `docs/projects/cross-repo-agents-remediation/tasks.md` |
+| in_progress | Review the frozen prompts and tracker with the user before launching the first parallel repo-slice wave. | parent | `docs/projects/cross-repo-agents-remediation/tasks.md` |
+
+## Backlog / Remaining Work
+- [ ] Define the initial repo-slice delegation plan and ownership boundaries for the first audit wave.
+- [ ] Audit `win` and migrate/delete its nested `AGENTS.md` files.
+- [ ] Audit `aipodcasting` and migrate/delete its nested `AGENTS.md` files.
+- [ ] Audit `scripts` and migrate/delete its nested `AGENTS.md` files.
+- [ ] Audit `adi` and migrate/delete its nested `AGENTS.md` files.
+- [ ] Audit `codexclaw` and migrate/delete its nested `AGENTS.md` files.
+- [ ] Audit `modal_functions` and migrate/delete its nested `AGENTS.md` files.
+- [ ] Audit `angie` and migrate/delete its nested `AGENTS.md` files.
+- [ ] Audit the remaining repos with `AGENTS.md` files and remediate them under the same contract.
+- [ ] Run the portfolio-wide post-remediation inventory scan and record results.
+- [ ] Review and finalize `docs/projects/cross-repo-agents-remediation/learnings/README.md`.
+- [ ] Close out and archive the project once the portfolio-wide cleanup is complete.
+
+## Validation / Test Plan
+- Tracker validation:
+  - Review `docs/projects/cross-repo-agents-remediation/tasks.md` for contract accuracy and prompt completeness.
+- Portfolio inventory validation:
+  - `for d in /Users/dobby/GitHub/*; do [ -d "$d" ] || continue; c=$(rg --files "$d" -g 'AGENTS.md' | wc -l | tr -d ' '); printf '%4s %s\n' "$c" "$(basename "$d")"; done | sort -nr`
+- Per repo AGENTS validation:
+  - `rg --files <repo> -g 'AGENTS.md'`
+  - expected final state: one root `AGENTS.md` only
+- Per repo shipping/cleanliness validation:
+  - `git -C <repo> status --short`
+  - repo-native checks documented in that repo
+
+## Progress Log
+- 2026-04-05: [DONE] Created the cross-repo remediation tracker, froze the orchestrator/sub-agent prompts, and captured the initial repo inventory.
