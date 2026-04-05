@@ -220,27 +220,32 @@ Return:
 | done | Create the durable cross-repo tracker, freeze the orchestrator/sub-agent prompts, and capture the initial repo inventory. | parent | `docs/projects/cross-repo-agents-remediation/tasks.md` |
 | done | Review the frozen prompts and tracker with the user before launching the first parallel repo-slice wave. | parent | `docs/projects/cross-repo-agents-remediation/tasks.md` |
 | done | Hold execution after the canceled first-wave launch and wait for the user-approved repo-to-agent delegation plan before relaunching sub-agents. | parent | `docs/projects/cross-repo-agents-remediation/tasks.md` |
-| delegated | `Anscombe`: repo-local worker for `win`. | worker | `docs/projects/cross-repo-agents-remediation/tasks.md` |
+| done | `Anscombe`: completed `win` remediation and parent verified the repo contract locally. | worker | `docs/projects/cross-repo-agents-remediation/tasks.md` |
 | delegated | `Jason`: repo-local worker for `aipodcasting`. | worker | `docs/projects/cross-repo-agents-remediation/tasks.md` |
 | done | `Lagrange`: completed `scripts` remediation and parent verified the repo contract locally. | worker | `docs/projects/cross-repo-agents-remediation/tasks.md` |
 | done | `Sartre`: completed `adi` remediation and parent verified the repo contract locally. | worker | `docs/projects/cross-repo-agents-remediation/tasks.md` |
 | done | `Socrates`: completed `angie` remediation after parent review and local cleanup of remaining `CLAUDE.md`. | worker | `docs/projects/cross-repo-agents-remediation/tasks.md` |
 | done | `Carson`: completed `codexclaw` remediation and parent verified the repo contract locally. | worker | `docs/projects/cross-repo-agents-remediation/tasks.md` |
-| delegated | `Locke`: repo-local worker for `modal_functions`. | worker | `docs/projects/cross-repo-agents-remediation/tasks.md` |
-| delegated | `Newton`: repo-local worker for `aipodcasting-public-website`. | worker | `docs/projects/cross-repo-agents-remediation/tasks.md` |
-| delegated | `Turing`: repo-local worker for `focus`. | worker | `docs/projects/cross-repo-agents-remediation/tasks.md` |
-| delegated | `Nietzsche`: repo-local worker for `blog-personal`. | worker | `docs/projects/cross-repo-agents-remediation/tasks.md` |
+| done | `Locke`: completed `modal_functions` remediation and parent verified the repo contract locally. | worker | `docs/projects/cross-repo-agents-remediation/tasks.md` |
+| done | `Newton`: completed `aipodcasting-public-website` remediation and parent verified the repo contract locally. | worker | `docs/projects/cross-repo-agents-remediation/tasks.md` |
+| done | `Turing`: completed `focus` remediation and parent verified the repo contract locally. | worker | `docs/projects/cross-repo-agents-remediation/tasks.md` |
+| done | `Nietzsche`: completed `blog-personal` remediation and parent verified the repo contract locally. | worker | `docs/projects/cross-repo-agents-remediation/tasks.md` |
+| delegated | `Bernoulli`: repo-local worker for `platform-ops`. | worker | `docs/projects/cross-repo-agents-remediation/tasks.md` |
+| delegated | `Euler`: repo-local worker for `litellm`. | worker | `docs/projects/cross-repo-agents-remediation/tasks.md` |
+| delegated | `Noether`: repo-local worker for `stadia-macos-controller`. | worker | `docs/projects/cross-repo-agents-remediation/tasks.md` |
+| delegated | `Beauvoir`: repo-local worker for `thoughtforms-life-theme`. | worker | `docs/projects/cross-repo-agents-remediation/tasks.md` |
+| delegated | `Heisenberg`: repo-local worker for `future-of-life-institute-podcast-aipodcast-ing-theme`. | worker | `docs/projects/cross-repo-agents-remediation/tasks.md` |
 | in_progress | Parent orchestrator reviews each completed repo, patches ambiguous migrations if needed, verifies shipping/cleanliness, and immediately fills the next slot in the rolling queue. | parent | `docs/projects/cross-repo-agents-remediation/tasks.md` |
 
 ## Backlog / Remaining Work
-- [ ] Define the initial repo-slice delegation plan and ownership boundaries for the first audit wave.
-- [ ] Audit `win` and migrate/delete its nested `AGENTS.md` files.
+- [x] Define the initial repo-slice delegation plan and ownership boundaries for the first audit wave.
+- [x] Audit `win` and migrate/delete its nested `AGENTS.md` files.
 - [ ] Audit `aipodcasting` and migrate/delete its nested `AGENTS.md` files.
-- [ ] Audit `scripts` and migrate/delete its nested `AGENTS.md` files.
-- [ ] Audit `adi` and migrate/delete its nested `AGENTS.md` files.
-- [ ] Audit `codexclaw` and migrate/delete its nested `AGENTS.md` files.
-- [ ] Audit `modal_functions` and migrate/delete its nested `AGENTS.md` files.
-- [ ] Audit `angie` and migrate/delete its nested `AGENTS.md` files.
+- [x] Audit `scripts` and migrate/delete its nested `AGENTS.md` files.
+- [x] Audit `adi` and migrate/delete its nested `AGENTS.md` files.
+- [x] Audit `codexclaw` and migrate/delete its nested `AGENTS.md` files.
+- [x] Audit `modal_functions` and migrate/delete its nested `AGENTS.md` files.
+- [x] Audit `angie` and migrate/delete its nested `AGENTS.md` files.
 - [ ] Audit the remaining repos with `AGENTS.md` files and remediate them under the same contract.
 - [ ] Rolling queue order after the current first six: `modal_functions`, `aipodcasting-public-website`, `focus`, `blog-personal`, `platform-ops`, `litellm`, `stadia-macos-controller`, `thoughtforms-life-theme`, `future-of-life-institute-podcast-aipodcast-ing-theme`, `aip-cognitive-revolution`, `adithyan-ai-videos`.
 - [ ] Run the portfolio-wide post-remediation inventory scan and record results.
@@ -274,3 +279,6 @@ Return:
 - 2026-04-05: [DONE] Reviewed `codexclaw` and verified the repo now contains only one root `AGENTS.md` and no `CLAUDE.md` files, with green local validation from the worker.
 - 2026-04-05: [DONE] Reviewed `scripts` and verified the repo now contains only one root `AGENTS.md` and no `CLAUDE.md` files, with passing `ops/check-fast.sh`.
 - 2026-04-05: [DELEGATED] Reused freed slots for `aipodcasting-public-website`, `focus`, and `blog-personal` while `win`, `aipodcasting`, and `modal_functions` continue running.
+- 2026-04-05: [DONE] Reviewed `aipodcasting-public-website`, `focus`, and `blog-personal` and verified each repo now contains only one root `AGENTS.md` and no `CLAUDE.md` files.
+- 2026-04-05: [DONE] Reviewed `modal_functions` and `win` and verified each repo now contains only one root `AGENTS.md`, no `CLAUDE.md` files, and clean patch formatting; `modal_functions` also has green local validation from the worker.
+- 2026-04-05: [DELEGATED] Reused the next three freed slots for `stadia-macos-controller`, `thoughtforms-life-theme`, and `future-of-life-institute-podcast-aipodcast-ing-theme` while `aipodcasting`, `platform-ops`, and `litellm` continue running.
