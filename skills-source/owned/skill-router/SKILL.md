@@ -39,6 +39,42 @@ Use this skill to decide where a skill should live in the `.agents` system and e
 3. Apply placement workflow below.
 4. If `skills/registry.json` changed, run sync/check in same change.
 
+## Bootstrap Shortcut (When User Gives a `skills.sh` URL)
+
+Use the canonical bootstrap script instead of hand-editing the registry when the request is:
+
+- "install this upstream skill"
+- "bootstrap this skill into repo X"
+- "take this `skills.sh` URL and wire it into a repo"
+
+Command:
+
+```bash
+cd ~/.agents
+./scripts/bootstrap-skill.sh <skills.sh-url-or-upstream-ref> --repo <repo> --apply
+```
+
+Examples:
+
+```bash
+./scripts/bootstrap-skill.sh https://skills.sh/microsoft/skills/copilot-sdk --repo codexclaw --apply
+./scripts/bootstrap-skill.sh openai/skills:skills/.curated/openai-docs@main --repo win --apply
+```
+
+Behavior:
+
+1. Parses the upstream skill reference.
+2. Adds or updates the managed external entry in `skills/registry.json`.
+3. Runs `refresh-external-skills` for that skill.
+4. Runs `sync-skills-registry --apply`.
+5. Regenerates repo bootstrap registry artifacts.
+
+Defaults:
+
+- Prefer `scope: repo` when the user names a target repo.
+- Prefer `scope: global` only when the skill clearly belongs in the small cross-repo default kit.
+- If the skill already exists as `global`, do not create a redundant repo-scoped duplicate just to target one repo.
+
 ## Placement Workflows
 
 ### A) Create New Owned Global Skill
@@ -83,6 +119,7 @@ cd ~/.agents
 ./scripts/check-skills-registry.sh
 ```
 5. Treat direct installer-based global installs as non-canonical in this repo. Prefer registry + refresh so external skills remain reproducible and refreshable.
+6. If the input is a `skills.sh` URL or upstream ref and no special handling is needed, prefer the bootstrap shortcut above instead of doing these steps manually.
 
 ### C) Keep Skill Repo-Local
 

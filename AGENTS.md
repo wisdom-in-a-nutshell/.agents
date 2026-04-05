@@ -42,6 +42,9 @@ Personal agent and Codex control plane.
 
 ## Operations
 
+- Dry-run skill bootstrap: `./scripts/bootstrap-skill.sh <skills.sh-url-or-upstream-ref> --repo <repo>`
+- Apply skill bootstrap: `./scripts/bootstrap-skill.sh <skills.sh-url-or-upstream-ref> --repo <repo> --apply`
+  - Bootstraps a managed external skill by updating `skills/registry.json`, importing upstream source, syncing links, and regenerating derived registry artifacts.
 - Dry-run sync: `./scripts/sync-skills-registry.sh`
 - Apply sync: `./scripts/sync-skills-registry.sh --apply`
   - Sync applies desired managed links and prunes obsolete managed global runtime links.
@@ -79,6 +82,7 @@ Personal agent and Codex control plane.
 
 - Distribution policy is link-only.
 - Treat global skills as a minimal default kit; prefer repo scope or repo-local unless a skill is broadly useful across unrelated repos.
+- When a user provides a `skills.sh` URL or upstream skill reference and wants it installed into a repo, prefer `./scripts/bootstrap-skill.sh` over manual registry edits.
 - Do not edit managed skills through repo symlink destinations; edit canonical source paths.
 - Keep repo-local skills listed in `skills/registry.json` under `unmanaged_repo_local_skills`.
 - Do not add additional manifest files for skill mapping; update `skills/registry.json`.

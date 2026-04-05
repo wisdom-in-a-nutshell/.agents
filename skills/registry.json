@@ -389,6 +389,16 @@
       ],
       "source_path": "skills-source/external/web-design-guidelines",
       "upstream_ref": "vercel-labs/agent-skills:skills/web-design-guidelines@main"
+    },
+    {
+      "skill": "copilot-sdk",
+      "origin": "external",
+      "scope": "repo",
+      "repos": [
+        "codexclaw"
+      ],
+      "source_path": "skills-source/external/copilot-sdk",
+      "upstream_ref": "microsoft/skills:.github/skills/copilot-sdk@main"
     }
   ],
   "unmanaged_repo_local_skills": [

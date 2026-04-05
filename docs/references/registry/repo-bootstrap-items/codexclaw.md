@@ -2,7 +2,7 @@
 repo_name: "codexclaw"
 path: "~/GitHub/codexclaw"
 mcp_count: 2
-skill_count: 14
+skill_count: 15
 repo_local_skill_count: 1
 global_agent_count: 1
 custom_agent_count: 0
@@ -33,6 +33,7 @@ repo_skills:
   - "client-interface-guidelines"
   - "codex-agent-loop"
   - "codex-app-server"
+  - "copilot-sdk"
   - "openai-docs"
 repo_local_skills:
   - "ios-mobile-gateway-workflow"
@@ -43,6 +44,7 @@ skills:
   - "client-interface-guidelines"
   - "codex-agent-loop"
   - "codex-app-server"
+  - "copilot-sdk"
   - "defuddle"
   - "find-skills"
   - "ios-mobile-gateway-workflow"
