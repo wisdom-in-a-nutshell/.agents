@@ -198,13 +198,14 @@ Deliver back:
 - Use direct-to-main style shipping and verify repos end clean.
 
 ## Open Questions / Blockers
-- None yet. Ambiguous content migrations discovered during repo work should be recorded here immediately.
+- Delegation is paused after the initial first-wave launch was canceled by the user. Relaunch should use the user-approved repo-to-agent granularity before any new sub-agents start.
 
 ## Current Batch
 | Status | Work Item | Role | Resource |
 | --- | --- | --- | --- |
 | done | Create the durable cross-repo tracker, freeze the orchestrator/sub-agent prompts, and capture the initial repo inventory. | parent | `docs/projects/cross-repo-agents-remediation/tasks.md` |
-| in_progress | Review the frozen prompts and tracker with the user before launching the first parallel repo-slice wave. | parent | `docs/projects/cross-repo-agents-remediation/tasks.md` |
+| done | Review the frozen prompts and tracker with the user before launching the first parallel repo-slice wave. | parent | `docs/projects/cross-repo-agents-remediation/tasks.md` |
+| in_progress | Hold execution after the canceled first-wave launch and wait for the user-approved repo-to-agent delegation plan before relaunching sub-agents. | parent | `docs/projects/cross-repo-agents-remediation/tasks.md` |
 
 ## Backlog / Remaining Work
 - [ ] Define the initial repo-slice delegation plan and ownership boundaries for the first audit wave.
@@ -234,3 +235,5 @@ Deliver back:
 
 ## Progress Log
 - 2026-04-05: [DONE] Created the cross-repo remediation tracker, froze the orchestrator/sub-agent prompts, and captured the initial repo inventory.
+- 2026-04-05: [DELEGATED] Launched the first repo-slice wave plan covering `win`, `aipodcasting` plus related frontend/content repos, the tooling cluster, `adi`, `angie`, and the `codexclaw`/`modal_functions` cluster.
+- 2026-04-05: [BLOCKED] Stopped all six sub-agents at user request before the first wave completed; no delegated repo work should be treated as active until a new launch plan is approved.
