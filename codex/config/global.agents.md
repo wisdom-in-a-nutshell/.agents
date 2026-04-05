@@ -5,17 +5,20 @@
 This file is machine-wide baseline guidance. Keep it generic and avoid portfolio-specific policy here.
 
 ## Scope Routing
-- For repo best-practice recommendations, use [$agent-native-repo-playbook](/Users/adi/.agents/skills/agent-native-repo-playbook/SKILL.md).
+- For repo best-practice recommendations, use [$agent-native-repo-playbook](/Users/dobby/.agents/skills-source/owned/agent-native-repo-playbook/SKILL.md).
 
 ## Global Defaults
 - Prefer automation over manual repetition.
 - Keep instructions concise, operational, and durable.
-- Update the nearest `AGENTS.md` when a new repeatable pattern appears.
-- Prefer `AGENTS.md` over `README.md` for folder-level routing, defaults, and agent-facing guidance.
-- In agent-native repositories, default to `AGENTS.md` for folder-level guidance unless the user explicitly asks for a human-facing `README.md`.
-- Use `README.md` only when the file is intentionally a human-facing landing page and agents do not need to rely on it as the local contract.
+- Keep machine-wide guidance generic; let each repo define its own local docs contract.
+- Treat repo-local `AGENTS.md` files and repo docs as the source of truth for repo structure and workflow.
+- Do not assume nested `AGENTS.md` files load dynamically as you navigate later in a session; they apply when Codex starts in that subtree.
+- When a new repeatable pattern belongs to one repo, update that repo's local guidance or docs instead of expanding this global file.
+- Put durable knowledge in repo docs rather than relying on prompt-only memory.
+- If a repo defines a docs contract, follow it. If not, use `docs/architecture/` for system shape and `docs/references/` for exact implementation facts.
+- Do not convert agent guidance into `README.md` by default. Use `README.md` only when a repo explicitly wants a human-facing landing page.
 - When a change clearly introduces durable behavior, architecture boundaries, or operational workflow that future work will rely on, update the relevant repo docs in the same change.
-- Follow the repo's docs routing guidance (typically `docs/AGENTS.md`) to decide whether the update belongs in architecture docs, reference docs, or project tracking docs. If placement is still unclear, make the best-fit update and call it out briefly.
+- Follow the repo's local docs routing guidance when deciding whether the update belongs in architecture docs, reference docs, or project tracking docs. If placement is still unclear, make the best-fit update and call it out briefly.
 
 ## Git Automation (Codex Notify)
 - This environment runs a notify hook after each agent turn that auto-stages, commits, and pushes.
