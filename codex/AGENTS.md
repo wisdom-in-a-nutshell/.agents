@@ -71,6 +71,7 @@ Canonical personal Codex control-plane assets live here.
   - `model_verbosity`
   - `personality`
   - `model_instructions_file`
+  - `developer_instructions`
   - `project_root_markers`
   - `features`
   - `service_tier`

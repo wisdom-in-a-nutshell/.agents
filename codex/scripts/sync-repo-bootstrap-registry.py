@@ -23,6 +23,7 @@ ALLOWED_SCALAR_KEYS = {
     "model_reasoning_summary",
     "model_verbosity",
     "model_instructions_file",
+    "developer_instructions",
     "project_root_markers",
     "web_search",
     "approval_policy",

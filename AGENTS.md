@@ -23,6 +23,7 @@ Personal agent and Codex control plane.
     - `model_verbosity`
     - `personality`
     - `model_instructions_file`
+    - `developer_instructions`
     - `project_root_markers`
     - `features`
     - `service_tier`
