@@ -232,7 +232,7 @@ Return:
 | done | `Nietzsche`: completed `blog-personal` remediation and parent verified the repo contract locally. | worker | `docs/projects/cross-repo-agents-remediation/tasks.md` |
 | done | `Bernoulli`: completed `platform-ops` remediation and parent verified the repo contract locally. | worker | `docs/projects/cross-repo-agents-remediation/tasks.md` |
 | done | `Euler`: completed `litellm` remediation and parent verified the repo contract locally. | worker | `docs/projects/cross-repo-agents-remediation/tasks.md` |
-| delegated | `Noether`: repo-local worker for `stadia-macos-controller`. | worker | `docs/projects/cross-repo-agents-remediation/tasks.md` |
+| done | `Noether`: completed `stadia-macos-controller` remediation and parent verified the repo contract locally. | worker | `docs/projects/cross-repo-agents-remediation/tasks.md` |
 | delegated | `Beauvoir`: repo-local worker for `thoughtforms-life-theme`. | worker | `docs/projects/cross-repo-agents-remediation/tasks.md` |
 | delegated | `Heisenberg`: repo-local worker for `future-of-life-institute-podcast-aipodcast-ing-theme`. | worker | `docs/projects/cross-repo-agents-remediation/tasks.md` |
 | delegated | `Descartes`: repo-local worker for `aip-cognitive-revolution`. | worker | `docs/projects/cross-repo-agents-remediation/tasks.md` |
@@ -289,3 +289,4 @@ Return:
 - 2026-04-05: [DONE] Reviewed `litellm` and `aipodcasting` and verified each repo now contains only one root `AGENTS.md` and no `CLAUDE.md` files; `litellm` passed `./scripts/check-fast.sh`, and `aipodcasting` passed `./node_modules/.bin/tsc --noEmit`.
 - 2026-04-05: [DONE] Milestone 2 is complete: `win`, `aipodcasting`, `scripts`, `adi`, `codexclaw`, `modal_functions`, and `angie` all now satisfy the root-only `AGENTS.md` / no-`CLAUDE.md` contract.
 - 2026-04-05: [DELEGATED] Reused a freed slot for `adithyan-ai-videos`; all explicitly queued remaining repos are now in flight.
+- 2026-04-05: [DONE] Reviewed `stadia-macos-controller` and verified the repo now contains only one root `AGENTS.md` and no `CLAUDE.md` files, with passing `./scripts/check-fast.sh` and `swift build`.
