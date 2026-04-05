@@ -15,10 +15,10 @@ This file is machine-wide baseline guidance. Keep it generic and avoid portfolio
 - Do not assume nested `AGENTS.md` files load dynamically as you navigate later in a session; they apply when Codex starts in that subtree.
 - When a new repeatable pattern belongs to one repo, update that repo's local guidance or docs instead of expanding this global file.
 - Put durable knowledge in repo docs rather than relying on prompt-only memory.
-- If a repo defines a docs contract, follow it. If not, use `docs/architecture/` for system shape and `docs/references/` for exact implementation facts.
+- If a repo defines local docs placement guidance, follow it. If not, use `docs/architecture/` for system shape and `docs/references/` for exact implementation facts.
 - Do not convert agent guidance into `README.md` by default. Use `README.md` only when a repo explicitly wants a human-facing landing page.
 - When a change clearly introduces durable behavior, architecture boundaries, or operational workflow that future work will rely on, update the relevant repo docs in the same change.
-- Follow the repo's local docs routing guidance when deciding whether the update belongs in architecture docs, reference docs, or project tracking docs. If placement is still unclear, make the best-fit update and call it out briefly.
+- When choosing where docs belong inside a repo, prefer the repo's own guidance when it exists. Otherwise use `docs/architecture/` for system shape, `docs/references/` for durable facts, and project tracking docs only for active execution state. If placement is still unclear, make the best-fit update and call it out briefly.
 
 ## Git Automation (Codex Notify)
 - This environment runs a notify hook after each agent turn that auto-stages, commits, and pushes.

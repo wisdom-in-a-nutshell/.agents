@@ -51,7 +51,7 @@ Operating model:
   - `docs/architecture/` as quick human-overview and visual-first (Mermaid in Markdown + short helper text),
   - `docs/references/` as durable implementation facts, command snippets, and operational lookup material for humans and agents.
 - Prefer plain-English wording over complex prose for architecture-facing docs so a solo human can scan and understand quickly.
-- Keep docs policy lightweight: use repo-local `docs/AGENTS.md` as the source of truth for that repo.
+- Keep docs policy lightweight: if a repo has local docs placement guidance, use it. Otherwise default to `docs/architecture/` for system shape and `docs/references/` for exact facts.
 - Do not introduce centralized policy layers or audit scripts unless the user explicitly asks.
 - Prioritize feedback loops that agents can run autonomously.
 - Avoid heavy process designed for large teams unless explicitly requested.
