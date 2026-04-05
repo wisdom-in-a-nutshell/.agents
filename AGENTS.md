@@ -2,10 +2,6 @@
 
 Personal agent and Codex control plane.
 
-## Scope Routing
-
-- For upstream skill import/bootstrap work driven by a `skills.sh` URL or upstream ref, use `$managed-skill-bootstrap`.
-
 ## Purpose
 
 - Keep global skill sources and runtime links reproducible across MacBook + MacMini.
