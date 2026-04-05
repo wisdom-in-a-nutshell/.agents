@@ -35,6 +35,7 @@ The repos were structured around a false assumption: that Codex would load neste
   - `docs/architecture/` for subsystem shape, responsibilities, and flows
   - `docs/references/` for commands, rules, file maps, contracts, and exact implementation facts
 - User asked for direct shipping. In this environment a notify hook normally auto-stages, commits, and pushes after each agent turn; the orchestrator still needs to babysit repo cleanliness and use manual git commands only if the normal automation is insufficient.
+- On 2026-04-05 the user explicitly authorized uninterrupted execution without waiting for further approval, including a multi-hour run while they are away. The orchestrator should keep nudging itself via this tracker and continue until a real blocker requires human judgment.
 - Initial repo inventory under `/Users/dobby/GitHub` with current `AGENTS.md` counts:
   - `win` = 87
   - `adi` = 18
@@ -185,6 +186,8 @@ Deliver back:
 - Use `Current Batch` as the live execution board and keep it current before delegating work.
 - Keep this tracker single-writer; delegated agents may read it, but only the parent updates it.
 - For this project, “ship directly” means changes should land without a branch-heavy holding pattern. Use normal repo automation first, then manually intervene only if a repo does not end clean.
+- Do not wait for further user approval between repo batches. Continue executing, reviewing, delegating, shipping, and launching the next repo unless a real blocker requires human judgment.
+- Use one repo per sub-agent, with rolling waves of up to 6 active repo-owned agents at a time. As soon as one repo finishes and is reviewed, reuse that slot for the next repo.
 - Update this tracker whenever the plan or findings change materially or before ending the run.
 - Final closeout must include a review of `docs/projects/cross-repo-agents-remediation/learnings/README.md`.
 
@@ -196,16 +199,24 @@ Deliver back:
 - Do not require `docs/AGENTS.md`; repo docs placement guidance is optional.
 - Use `docs/architecture/` and `docs/references/` as the default durable knowledge split.
 - Use direct-to-main style shipping and verify repos end clean.
+- The user explicitly authorized the orchestrator to continue for hours without pausing for intermediate approval, using this tracker as the durable self-nudging coordination artifact.
+- Repo delegation should be one repo per agent, not grouped multi-repo slices.
 
 ## Open Questions / Blockers
-- Delegation is paused after the initial first-wave launch was canceled by the user. Relaunch should use the user-approved repo-to-agent granularity before any new sub-agents start.
+- None currently. Relaunch should use one repo per agent in rolling waves of up to 6 concurrent repo-owned workers.
 
 ## Current Batch
 | Status | Work Item | Role | Resource |
 | --- | --- | --- | --- |
 | done | Create the durable cross-repo tracker, freeze the orchestrator/sub-agent prompts, and capture the initial repo inventory. | parent | `docs/projects/cross-repo-agents-remediation/tasks.md` |
 | done | Review the frozen prompts and tracker with the user before launching the first parallel repo-slice wave. | parent | `docs/projects/cross-repo-agents-remediation/tasks.md` |
-| in_progress | Hold execution after the canceled first-wave launch and wait for the user-approved repo-to-agent delegation plan before relaunching sub-agents. | parent | `docs/projects/cross-repo-agents-remediation/tasks.md` |
+| done | Hold execution after the canceled first-wave launch and wait for the user-approved repo-to-agent delegation plan before relaunching sub-agents. | parent | `docs/projects/cross-repo-agents-remediation/tasks.md` |
+| delegated | `Pasteur`: first-wave repo worker for `win`. | worker | `docs/projects/cross-repo-agents-remediation/tasks.md` |
+| delegated | `Archimedes`: first-wave repo worker for `aipodcasting`. | worker | `docs/projects/cross-repo-agents-remediation/tasks.md` |
+| delegated | `Halley`: first-wave repo worker for `scripts`. | worker | `docs/projects/cross-repo-agents-remediation/tasks.md` |
+| delegated | `Zeno`: first-wave repo worker for `adi`. | worker | `docs/projects/cross-repo-agents-remediation/tasks.md` |
+| delegated | `Herschel`: first-wave repo worker for `angie`. | worker | `docs/projects/cross-repo-agents-remediation/tasks.md` |
+| in_progress | Parent orchestrator reviews each completed repo, patches ambiguous migrations if needed, verifies shipping/cleanliness, and launches `codexclaw` into the first freed slot before continuing the rolling queue. | parent | `docs/projects/cross-repo-agents-remediation/tasks.md` |
 
 ## Backlog / Remaining Work
 - [ ] Define the initial repo-slice delegation plan and ownership boundaries for the first audit wave.
@@ -237,3 +248,6 @@ Deliver back:
 - 2026-04-05: [DONE] Created the cross-repo remediation tracker, froze the orchestrator/sub-agent prompts, and captured the initial repo inventory.
 - 2026-04-05: [DELEGATED] Launched the first repo-slice wave plan covering `win`, `aipodcasting` plus related frontend/content repos, the tooling cluster, `adi`, `angie`, and the `codexclaw`/`modal_functions` cluster.
 - 2026-04-05: [BLOCKED] Stopped all six sub-agents at user request before the first wave completed; no delegated repo work should be treated as active until a new launch plan is approved.
+- 2026-04-05: [DONE] User approved uninterrupted execution without further approval and selected one-repo-per-agent rolling waves as the relaunch model.
+- 2026-04-05: [DELEGATED] Relaunched the first overnight wave as one-repo-per-agent workers for `win`, `aipodcasting`, `scripts`, `adi`, `angie`, and `codexclaw`.
+- 2026-04-05: [IN-PROGRESS] Received 5 confirmed worker launches (`win`, `aipodcasting`, `scripts`, `adi`, `angie`). Queue `codexclaw` into the first freed slot and continue repo-by-repo from there.
