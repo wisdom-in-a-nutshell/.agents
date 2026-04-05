@@ -78,6 +78,7 @@ We need to remove the mistaken nested-AGENTS model from all repos and replace it
 Required repo contract:
 - Root AGENTS.md is the only AGENTS.md file in the repo.
 - There should be no nested AGENTS.md files.
+- There should be no nested `CLAUDE.md` files mirroring removed nested `AGENTS.md` scopes.
 - docs/architecture/ explains how the system is supposed to work.
 - docs/references/ stores exact facts needed to change or operate the repo safely.
 - docs/projects/<project>/tasks.md is used for active long-running work when needed.
@@ -90,6 +91,7 @@ Before deleting a nested AGENTS.md, capture its useful content in the right dest
 - root AGENTS.md for short repo-wide operational guidance
 - docs/architecture/ for subsystem design, boundaries, and flows
 - docs/references/ for rules, commands, contracts, file maps, and exact implementation notes
+- When nested `CLAUDE.md` files exist only as compatibility mirrors for removed nested `AGENTS.md` scopes, delete them as part of the same cleanup.
 
 Execution tools:
 - Use $agent-native-repo-playbook when deciding the repo-wide AGENTS/docs contract.
@@ -124,17 +126,18 @@ Expected output per repo:
 
 ## Sub-Agent Prompt Template
 ```text
-You own this repo slice only: <REPO_OR_GROUP>.
+You own only this repo: <REPO_PATH>.
 
 Task:
-Apply the approved AGENTS.md remediation contract to your assigned repo(s).
+Remediate AGENTS.md usage in this repo so the repo ends with exactly one root AGENTS.md and no nested AGENTS.md files.
 
-Contract:
+Repo contract:
 - Root AGENTS.md is the only AGENTS.md file in the repo.
 - There should be no nested AGENTS.md files.
+- There should be no nested `CLAUDE.md` files mirroring removed nested `AGENTS.md` scopes.
 - Preserve useful information from nested AGENTS.md files by migrating it before deletion.
-- docs/architecture/ is for subsystem shape, boundaries, and flows.
-- docs/references/ is for exact facts, commands, rules, file maps, and implementation notes.
+- Move subsystem shape, boundaries, responsibilities, and flows into docs/architecture/.
+- Move commands, rules, file maps, contracts, and exact implementation notes into docs/references/.
 - Do not introduce README.md as a replacement for agent routing.
 - Do not require docs/AGENTS.md.
 
@@ -143,23 +146,27 @@ Required tools:
 - Use $architecture-docs when moving subsystem explanations into docs/architecture/.
 
 Required steps:
-1. Find and fix incorrect wording in root AGENTS.md.
-2. Review every nested AGENTS.md.
+1. Inspect the root AGENTS.md and fix any wording that implies nested files auto-load, auto-attach, or apply later when code is touched.
+2. Find every nested AGENTS.md in the repo.
 3. Migrate useful content into root AGENTS.md, docs/architecture/, or docs/references/.
 4. Delete all nested AGENTS.md files.
-5. Keep edits concise and durable.
-6. Do not edit repos outside your assigned slice.
-7. Do not touch the shared cross-repo tracker files in ~/.agents.
-8. Do not revert unrelated user changes.
-9. When satisfied, ship the repo cleanly and verify git state.
+5. Delete any nested `CLAUDE.md` files that only mirrored the removed nested `AGENTS.md` scopes.
+6. Keep edits concise and durable.
+7. Run repo-native validation where practical.
+8. Ship the repo cleanly and verify git state.
 
-Deliver back:
+Rules:
+- Do not edit anything outside <REPO_PATH>.
+- Do not revert unrelated user changes.
+- Do not stop at analysis; carry the repo through migration, cleanup, validation, and shipping unless a real blocker appears.
+
+Return:
 - files changed
 - nested AGENTS.md files removed
 - docs created or updated
 - blockers or ambiguous cases
 - validation run, if any
-- repo cleanliness / shipping status
+- final git cleanliness / shipping status
 ```
 
 ## Done When
@@ -178,9 +185,11 @@ Deliver back:
 ## Execution Rules
 - Keep the root-only `AGENTS.md` contract fixed while delegating; do not let sub-agents redefine the model.
 - Do not delete nested `AGENTS.md` before capturing useful information elsewhere.
+- Delete nested `CLAUDE.md` alongside the removed nested `AGENTS.md` scopes so the repo does not keep stale Claude-specific mirrors of deleted local contracts.
 - Keep root `AGENTS.md` files short and repo-wide; do not absorb subsystem encyclopedias into the root file.
 - Prefer `docs/architecture/` for system shape and `docs/references/` for exact facts when migrating content.
 - Use `$agent-native-repo-playbook` for repo-contract choices and `$architecture-docs` for architecture doc work when those skills exist in the target repo.
+- Repo workers should receive self-contained repo-local prompts. The parent/orchestrator owns the cross-repo tracker; workers should not spend time reflecting the control-plane setup back to the parent.
 - Run validation after each meaningful repo batch and fix forward before advancing.
 - Continue until the scoped project is done or a real blocker requires human input; do not stop after one repo if more actionable repo slices remain.
 - Use `Current Batch` as the live execution board and keep it current before delegating work.
@@ -203,7 +212,7 @@ Deliver back:
 - Repo delegation should be one repo per agent, not grouped multi-repo slices.
 
 ## Open Questions / Blockers
-- None currently. Relaunch should use one repo per agent in rolling waves of up to 6 concurrent repo-owned workers.
+- Prompt-shape bug found: prior worker prompts overemphasized the control-plane tracker and caused multiple workers to reply with meta status instead of doing repo work. Relaunch must use the self-contained repo-local worker prompt above.
 
 ## Current Batch
 | Status | Work Item | Role | Resource |
@@ -211,12 +220,13 @@ Deliver back:
 | done | Create the durable cross-repo tracker, freeze the orchestrator/sub-agent prompts, and capture the initial repo inventory. | parent | `docs/projects/cross-repo-agents-remediation/tasks.md` |
 | done | Review the frozen prompts and tracker with the user before launching the first parallel repo-slice wave. | parent | `docs/projects/cross-repo-agents-remediation/tasks.md` |
 | done | Hold execution after the canceled first-wave launch and wait for the user-approved repo-to-agent delegation plan before relaunching sub-agents. | parent | `docs/projects/cross-repo-agents-remediation/tasks.md` |
-| delegated | `Pasteur`: first-wave repo worker for `win`. | worker | `docs/projects/cross-repo-agents-remediation/tasks.md` |
-| delegated | `Archimedes`: first-wave repo worker for `aipodcasting`. | worker | `docs/projects/cross-repo-agents-remediation/tasks.md` |
-| delegated | `Halley`: first-wave repo worker for `scripts`. | worker | `docs/projects/cross-repo-agents-remediation/tasks.md` |
-| delegated | `Zeno`: first-wave repo worker for `adi`. | worker | `docs/projects/cross-repo-agents-remediation/tasks.md` |
-| delegated | `Herschel`: first-wave repo worker for `angie`. | worker | `docs/projects/cross-repo-agents-remediation/tasks.md` |
-| in_progress | Parent orchestrator reviews each completed repo, patches ambiguous migrations if needed, verifies shipping/cleanliness, and launches `codexclaw` into the first freed slot before continuing the rolling queue. | parent | `docs/projects/cross-repo-agents-remediation/tasks.md` |
+| delegated | `Anscombe`: repo-local worker for `win`. | worker | `docs/projects/cross-repo-agents-remediation/tasks.md` |
+| delegated | `Jason`: repo-local worker for `aipodcasting`. | worker | `docs/projects/cross-repo-agents-remediation/tasks.md` |
+| delegated | `Lagrange`: repo-local worker for `scripts`. | worker | `docs/projects/cross-repo-agents-remediation/tasks.md` |
+| delegated | `Sartre`: repo-local worker for `adi`. | worker | `docs/projects/cross-repo-agents-remediation/tasks.md` |
+| delegated | `Socrates`: repo-local worker for `angie`. | worker | `docs/projects/cross-repo-agents-remediation/tasks.md` |
+| delegated | `Carson`: repo-local worker for `codexclaw`. | worker | `docs/projects/cross-repo-agents-remediation/tasks.md` |
+| in_progress | Parent orchestrator reviews each completed repo, patches ambiguous migrations if needed, verifies shipping/cleanliness, and immediately fills the next slot in the rolling queue. | parent | `docs/projects/cross-repo-agents-remediation/tasks.md` |
 
 ## Backlog / Remaining Work
 - [ ] Define the initial repo-slice delegation plan and ownership boundaries for the first audit wave.
@@ -228,6 +238,7 @@ Deliver back:
 - [ ] Audit `modal_functions` and migrate/delete its nested `AGENTS.md` files.
 - [ ] Audit `angie` and migrate/delete its nested `AGENTS.md` files.
 - [ ] Audit the remaining repos with `AGENTS.md` files and remediate them under the same contract.
+- [ ] Rolling queue order after the current first six: `modal_functions`, `aipodcasting-public-website`, `focus`, `blog-personal`, `platform-ops`, `litellm`, `stadia-macos-controller`, `thoughtforms-life-theme`, `future-of-life-institute-podcast-aipodcast-ing-theme`, `aip-cognitive-revolution`, `adithyan-ai-videos`.
 - [ ] Run the portfolio-wide post-remediation inventory scan and record results.
 - [ ] Review and finalize `docs/projects/cross-repo-agents-remediation/learnings/README.md`.
 - [ ] Close out and archive the project once the portfolio-wide cleanup is complete.
@@ -250,4 +261,6 @@ Deliver back:
 - 2026-04-05: [BLOCKED] Stopped all six sub-agents at user request before the first wave completed; no delegated repo work should be treated as active until a new launch plan is approved.
 - 2026-04-05: [DONE] User approved uninterrupted execution without further approval and selected one-repo-per-agent rolling waves as the relaunch model.
 - 2026-04-05: [DELEGATED] Relaunched the first overnight wave as one-repo-per-agent workers for `win`, `aipodcasting`, `scripts`, `adi`, `angie`, and `codexclaw`.
+- 2026-04-05: [BLOCKED] Stopped the relaunched workers after discovering the prompt shape was wrong: workers were reflecting the parent control-plane setup instead of executing repo-local remediation. Next relaunch must use the simplified repo-local worker prompt.
 - 2026-04-05: [IN-PROGRESS] Received 5 confirmed worker launches (`win`, `aipodcasting`, `scripts`, `adi`, `angie`). Queue `codexclaw` into the first freed slot and continue repo-by-repo from there.
+- 2026-04-05: [DELEGATED] Relaunched the first six repos with the simplified self-contained repo-local worker prompt: `win`, `aipodcasting`, `scripts`, `adi`, `angie`, and `codexclaw`.
