@@ -1,14 +1,34 @@
 ---
 name: journal-checkin
-description: Run a structured journaling and check-in workflow and store results under `journal/entries/`. Use when the user wants to journal, wants to check in, sends a morning/evening/night reflection, sends a voice note or speech-to-text journal dump, asks to save a reflection, or when Codex needs to read/query recent journal entries for continuity or synthesis.
+description: Run a structured journaling and check-in workflow and store results under `journal/entries/`. Use when the user wants to journal, wants to check in, sends a morning/evening/night reflection, sends a voice note or speech-to-text journal dump, asks to save a reflection, or when the agent needs to read/query recent journal entries for continuity or synthesis.
 ---
 
 # Journal Check-In
 
 This skill has two jobs:
 
-- run a short, mode-specific check-in
-- save the result in a durable format in the journal tree: JSON for structured morning/night check-ins, Markdown for flexible general journaling
+- **Write**: run a short, mode-specific check-in and save it
+- **Read**: retrieve and format past entries for agent consumption or synthesis
+
+## Data Layout
+
+Entries live under `journal/entries/YYYY-MM-DD/` relative to the workspace root.
+
+Each day directory can contain:
+
+| File | Format | Contents |
+|---|---|---|
+| `morning.json` | JSON object | Structured morning check-in: sleep, energy, mood (each with `score_10` and optional `notes`), `grateful` (array), `one_thing_that_matters`, `show_up_as`, `raw_input` |
+| `night.json` | JSON object | Structured night check-in: mood, energy (each with `score_10` and optional `notes`), `went_well`, `could_have_been_improved`, `actions_to_improve_tomorrow`, `raw_input` |
+| `general.md` | Markdown | Timestamped freeform journal sections, each with summary, tags, and optional mood/energy/raw-input |
+
+All JSON entries also carry metadata: `agent`, `date`, `kind`, `tz`, `captured_at`, `source`.
+
+Monthly synthesis files may exist in `journal/monthly/`.
+
+## Writing
+
+### Mode references
 
 Read only the mode file you need:
 
@@ -16,9 +36,7 @@ Read only the mode file you need:
 - [night.md](./references/night.md)
 - [general.md](./references/general.md)
 
-Use [write_journal_entry.py](./scripts/write_journal_entry.py) to write or update structured entries instead of hand-editing JSON.
-
-## Workflow
+### Workflow
 
 1. Determine the mode.
 2. Ask only the prompt set for that mode.
@@ -28,7 +46,7 @@ Use [write_journal_entry.py](./scripts/write_journal_entry.py) to write or updat
 6. Write the entry with the helper script.
 7. Confirm what was saved and where.
 
-## Mode Selection
+### Mode Selection
 
 - Use the explicitly named mode if the user gives one.
 - If they just say "journal", "check in", or similar, infer from local time:
@@ -37,7 +55,7 @@ Use [write_journal_entry.py](./scripts/write_journal_entry.py) to write or updat
   - `17:00` or later: `night`
 - State the inferred mode briefly when you had to infer it.
 
-## Prompting Rules
+### Prompting Rules
 
 - Keep prompts short.
 - Prefer one compact block over a long reflective questionnaire.
@@ -48,7 +66,7 @@ Use [write_journal_entry.py](./scripts/write_journal_entry.py) to write or updat
 - Treat `morning` and `night` as complete check-ins by default.
 - Treat `general` as a flexible capture mode.
 
-## Storage Rules
+### Storage Rules
 
 - Store entries under `journal/entries/YYYY-MM-DD/` relative to the active workspace root.
 - Use one stable file per day for:
@@ -59,7 +77,7 @@ Use [write_journal_entry.py](./scripts/write_journal_entry.py) to write or updat
 - Keep `raw_input` when the source text was dictated, messy, or useful for later reinterpretation.
 - Preserve continuity by glancing at nearby entries when the user asks follow-up questions or wants synthesis.
 
-## Writing
+### Write script
 
 Use the helper script like this:
 
@@ -77,7 +95,44 @@ Use `--allow-partial` only when the user explicitly wants a rough capture saved 
 
 ## Querying And Synthesis
 
+Use the read script to retrieve past entries. It outputs **markdown by default** (best for agent context windows) or structured JSON.
+
+### Read script
+
+```bash
+# Last 7 days, all kinds, markdown output
+python3 .agents/skills/journal-checkin/scripts/read_journal_entries.py --last 7
+
+# Specific date range, only morning entries, as JSON
+python3 .agents/skills/journal-checkin/scripts/read_journal_entries.py \
+  --from 2026-03-01 --to 2026-03-15 --kind morning --format json
+
+# Last 3 days, night entries only
+python3 .agents/skills/journal-checkin/scripts/read_journal_entries.py --last 3 --kind night
+```
+
+**Flags:**
+
+| Flag | Description |
+|---|---|
+| `--from YYYY-MM-DD` | Start date (inclusive) |
+| `--to YYYY-MM-DD` | End date (inclusive), defaults to today |
+| `--last N` | Shorthand for "last N days" (alternative to --from/--to) |
+| `--kind morning\|night\|general\|all` | Filter by entry type, default `all` |
+| `--format markdown\|json` | Output format, default `markdown` |
+| `--workspace-root` | Optional, auto-detects like the write script |
+
+**Exit codes:** 0 = success, 1 = error, 2 = no entries found.
+
+**Output contracts:**
+- `--format markdown`: readable markdown to stdout with dates as `# Journal: YYYY-MM-DD` headers, entry types as `##` sub-headers, scores and fields as list items.
+- `--format json`: a JSON array of entry objects to stdout, each with `date`, `kind`, and the full entry data.
+- Errors go to stderr; stdout stays clean on failure.
+
+### When to use
+
 - Use this skill when later work needs recent journal context.
+- Prefer the read script over manual file reading — it handles format normalization and date filtering.
 - Read only the relevant recent entries, not the whole journal tree.
 - Use monthly files in `journal/monthly/` for broader synthesis when they exist.
 
@@ -87,3 +142,4 @@ Use `--allow-partial` only when the user explicitly wants a rough capture saved 
 - [night.md](./references/night.md)
 - [general.md](./references/general.md)
 - [write_journal_entry.py](./scripts/write_journal_entry.py)
+- [read_journal_entries.py](./scripts/read_journal_entries.py)
