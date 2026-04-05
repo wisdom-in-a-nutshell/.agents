@@ -34,7 +34,12 @@
   - no `CLAUDE.md` remains
   - `git diff --check` passes
   - repo-native validation runs where practical
+- The final verification pass has to scan the whole repo tree, not just the files a worker touched mentally. `aipodcasting` and `modal_functions` each still had `.github/workflows/AGENTS.md` and `.github/workflows/CLAUDE.md` after earlier parent review, so the true closeout check needs an explicit full-tree count before the project is declared finished.
 - Broken local tool shims are a recurring failure mode. Some repos could not run `pnpm` via the configured shim even though direct binaries inside `node_modules/.bin` still worked; future runs should prefer the repo-local binary when available.
+- Post-push CI review matters. Repo-local validation caught most issues, but a few failures only appeared on GitHub-hosted runners:
+  - `codexclaw` had hidden `rg` assumptions in shell checks that did not survive CI.
+  - Ghost-theme repos exposed tracked local control-plane artifacts only when `gscan` validated the packaged theme tree.
+  - `win` showed that GitHub's default CodeQL setup can keep running independently of repo workflows, so CI follow-up needs to treat managed/default workflows as first-class signals.
 
 ### Delegation / Subagents
 - Worker prompts must be self-contained and repo-local. They should not mention the parent tracker except to say "do not edit it."
@@ -48,3 +53,4 @@
 ## Notes For Future Runs
 - Root-only `AGENTS.md` plus `docs/architecture/` and `docs/references/` should be treated as the portfolio default unless the workflow itself changes.
 - Mid-run snapshot on 2026-04-05: the final five repos in flight had already eliminated all `CLAUDE.md` files, and two of them had already collapsed to one root `AGENTS.md` before their workers formally completed. This made the inventory scan a useful early signal that the rollout pattern was working.
+- CI closeout note: if a repo depends on GitHub-managed default CodeQL, do not assume a repo-owned CodeQL workflow can replace it. In `win`, the custom workflow failed because SARIF upload requires Code Security permissions that the managed default setup already handled internally. The practical repo-side fix was to stabilize the default run, not to fight the permission boundary.
