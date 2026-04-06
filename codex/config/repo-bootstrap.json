@@ -8,15 +8,6 @@
     "service_tier": null
   },
   "agent_presets": {
-    "writer": {
-      "description": "Writing-focused sub-agent. Highly encouraged for copywriting, rewriting, and tone-sensitive drafting.",
-      "config_file": "writer.toml",
-      "nickname_candidates": [
-        "Quill",
-        "Scribe",
-        "Muse"
-      ]
-    },
     "visual_reviewer": {
       "description": "Read-only reviewer for visual work such as screenshots, layouts, hierarchy, and clarity.",
       "config_file": "visual_reviewer.toml",
@@ -52,8 +43,7 @@
         "paper"
       ],
       "custom_agents": [
-        "visual_reviewer",
-        "writer"
+        "visual_reviewer"
       ]
     },
     {
@@ -87,8 +77,7 @@
         "paper"
       ],
       "custom_agents": [
-        "visual_reviewer",
-        "writer"
+        "visual_reviewer"
       ]
     },
     {

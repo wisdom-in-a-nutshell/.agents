@@ -56,23 +56,30 @@ flowchart TD
 
 ```mermaid
 flowchart TD
-    A[git-auto-sync.sh] --> B[auto-apply-codex-control-plane.sh]
-    B --> C{Did ~/.agents/codex change?}
-    C -->|No| D[Skip]
-    C -->|Yes| E[bootstrap-machine-codex.sh --apply]
-    E --> F[reapply shared shell links]
-    F --> G[Update machine-local reconcile stamp]
+    A[git-auto-sync.sh] --> B[auto-apply-agent-control-planes.sh]
+    B --> C{What changed in ~/.agents?}
+    C -->|skills| D[sync-skills-registry.sh]
+    C -->|skills, codex, or mcp| E[bootstrap-machine-codex.sh --apply]
+    C -->|skills, claude, or shared inputs| F[bootstrap-machine-claude.sh --apply]
+    D --> G[Update shared runtime links]
+    E --> H[Codex runtime updated]
+    F --> I[Claude runtime updated]
+    G --> J[Update machine-local reconcile stamp]
+    H --> J
+    I --> J
 ```
 
 ### What This Group Does
 
 - [`git-auto-sync.sh`](/Users/dobby/GitHub/scripts/sync/git-auto-sync.sh)
   - remains the launchd-driven machine sync loop in the generic `scripts` repo
+- [`auto-apply-agent-control-planes.sh`](/Users/dobby/.agents/scripts/auto-apply-agent-control-planes.sh)
+  - checks whether the current `~/.agents` revision contains new runtime-relevant shared control-plane changes since the last successful reconcile on that machine
+  - runs the minimum shared apply steps needed for skills, Codex, and Claude
+  - keeps a machine-local stamp under `~/.local/state/agents-control-plane/`
+  - the surrounding `~/GitHub/scripts/sync/git-auto-sync.sh` loop also reapplies the shared `~/.zshrc` and `~/.zprofile` links after the shared agent reconcile step
 - [`auto-apply-codex-control-plane.sh`](/Users/dobby/.agents/codex/scripts/auto-apply-codex-control-plane.sh)
-  - checks whether the current `~/.agents` revision contains new Codex control-plane changes since the last successful reconcile on that machine
-  - runs the full Codex bootstrap only when needed
-  - keeps a machine-local stamp under `~/.local/state/codex-control-plane/`
-  - the surrounding `~/GitHub/scripts/sync/git-auto-sync.sh` loop also reapplies the shared `~/.zshrc` and `~/.zprofile` links after the Codex auto-apply step
+  - remains the lower-level Codex-only reconcile helper for targeted Codex-only troubleshooting or component-scoped automation
 
 ## Figure 3: Shell And Startup Scripts
 

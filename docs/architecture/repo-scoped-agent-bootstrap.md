@@ -38,8 +38,8 @@ This is simpler to reason about than repo-level overlays.
 
 The mental model becomes:
 
-- if you want to change what `writer` can do, edit [`writer.toml`](/Users/dobby/.agents/codex/config/agents/writer.toml)
-- if you want `writer` to appear in a repo, add it to that repo’s `custom_agents`
+- if you want to change what `visual_reviewer` can do, edit [`visual_reviewer.toml`](/Users/dobby/.agents/codex/config/agents/visual_reviewer.toml)
+- if you want `visual_reviewer` to appear in a repo, add it to that repo’s `custom_agents`
 
 That keeps behavior stable and avoids a second layer of sub-agent policy hidden in the repo registry.
 
@@ -101,9 +101,6 @@ Examples in the current control plane:
 - `visual_reviewer`
   - repo-scoped
   - only exposed where visual review is useful
-- `writer`
-  - repo-scoped right now
-  - capability restrictions still live in the canonical role file
 
 Good candidates for global declaration:
 

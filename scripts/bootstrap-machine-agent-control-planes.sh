@@ -77,6 +77,11 @@ if (( APPLY == 1 )); then
   MODE_FLAG="--apply"
 fi
 
+SKILLS_ARGS=()
+if (( APPLY == 1 )); then
+  SKILLS_ARGS+=(--apply)
+fi
+
 [[ -x "$SYNC_SKILLS_SCRIPT" ]] || die "Missing executable: $SYNC_SKILLS_SCRIPT"
 [[ -x "$CODEX_BOOTSTRAP_SCRIPT" ]] || die "Missing executable: $CODEX_BOOTSTRAP_SCRIPT"
 [[ -x "$CLAUDE_BOOTSTRAP_SCRIPT" ]] || die "Missing executable: $CLAUDE_BOOTSTRAP_SCRIPT"
@@ -87,7 +92,7 @@ done
 
 sync_skills_cmd=(
   "$SYNC_SKILLS_SCRIPT"
-  "$MODE_FLAG"
+  "${SKILLS_ARGS[@]}"
 )
 log "+ ${sync_skills_cmd[*]}"
 "${sync_skills_cmd[@]}"

@@ -488,6 +488,7 @@ render_global_config() {
   prune_stale_agent_sections "$target_file" "$template_file"
   prune_stale_app_sections "$target_file" "$template_file"
   prune_stale_plugin_sections "$target_file" "$template_file"
+  prune_stale_model_provider_sections "$target_file" "$template_file"
 }
 
 sanitize_machine_specific_entries() {
@@ -873,6 +874,60 @@ target.write_text("".join(output), encoding="utf-8")
 PY
 }
 
+prune_stale_model_provider_sections() {
+  local target_file="$1"
+  local template_file="$2"
+  python3 - "$target_file" "$template_file" <<'PY'
+from __future__ import annotations
+
+import re
+import sys
+from pathlib import Path
+
+
+target = Path(sys.argv[1])
+template = Path(sys.argv[2])
+
+target_text = target.read_text(encoding="utf-8") if target.exists() else ""
+template_text = template.read_text(encoding="utf-8") if template.exists() else ""
+
+provider_header_re = re.compile(r'^\[model_providers\.([^\]]+)\]\s*$')
+
+allowed_providers: set[str] = set()
+for line in template_text.splitlines():
+    m = provider_header_re.match(line.strip())
+    if m:
+        allowed_providers.add(m.group(1))
+
+lines = target_text.splitlines(keepends=True)
+output: list[str] = []
+i = 0
+while i < len(lines):
+    line = lines[i]
+    stripped = line.strip()
+    if stripped.startswith("[") and stripped.endswith("]"):
+        j = i + 1
+        while j < len(lines):
+            s = lines[j].strip()
+            if s == "[[skills.config]]" or (s.startswith("[") and s.endswith("]")):
+                break
+            j += 1
+        block = lines[i:j]
+        m = provider_header_re.match(stripped)
+        if m and m.group(1) not in allowed_providers:
+            i = j
+            continue
+        output.extend(block)
+        i = j
+        continue
+
+    output.append(line)
+    i += 1
+
+target.write_text("".join(output), encoding="utf-8")
+PY
+}
+
 render_xcode_config() {
   local target_file="$1"
   local template_file="$2"
@@ -909,6 +964,7 @@ render_xcode_config() {
   prune_stale_agent_sections "$target_file" "$template_file"
   prune_stale_app_sections "$target_file" "$template_file"
   prune_stale_plugin_sections "$target_file" "$template_file"
+  prune_stale_model_provider_sections "$target_file" "$template_file"
 }
 
 render_xcode_rules() {

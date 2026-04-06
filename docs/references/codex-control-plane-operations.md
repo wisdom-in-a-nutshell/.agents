@@ -46,6 +46,7 @@ Use [Codex Control Plane Ownership](/Users/dobby/.agents/docs/references/codex-c
 - Auto-apply the Codex control plane after `~/.agents` sync when `codex/` changed:
   - [`auto-apply-codex-control-plane.sh`](/Users/dobby/.agents/codex/scripts/auto-apply-codex-control-plane.sh)
   - `~/.agents/codex/scripts/auto-apply-codex-control-plane.sh --apply`
+  - use this for targeted Codex-only troubleshooting or component-scoped automation, not as the machine-facing shared reconcile entrypoint
 - Apply only the managed Codex config:
   - [`sync-config.sh`](/Users/dobby/.agents/codex/scripts/sync-config.sh)
   - `~/.agents/codex/scripts/sync-config.sh --apply`
@@ -144,6 +145,7 @@ Use [Codex Control Plane Ownership](/Users/dobby/.agents/docs/references/codex-c
   - checks whether `~/.agents/codex/` changed since the last successful reconcile on that machine
   - runs [`bootstrap-machine-codex.sh`](/Users/dobby/.agents/codex/scripts/bootstrap-machine-codex.sh) only when a new Codex control-plane revision needs to be applied
   - stores a machine-local reconcile stamp under `~/.local/state/codex-control-plane/`
+  - remains available when you intentionally want a Codex-only reconcile outside the shared machine-facing wrapper
 - [`configure-ghostty-cwd.sh`](/Users/dobby/.agents/codex/scripts/configure-ghostty-cwd.sh)
   - ensures Ghostty uses the Codex startup wrapper
   - ensures shell integration stays on
@@ -193,7 +195,8 @@ Use [Codex Control Plane Ownership](/Users/dobby/.agents/docs/references/codex-c
 
 - Launchd still lives in [`~/GitHub/scripts/sync/git-auto-sync.sh`](/Users/dobby/GitHub/scripts/sync/git-auto-sync.sh), because scheduler ownership is part of the generic machine-ops repo.
 - Machine-facing multi-surface apply now lives in [`auto-apply-agent-control-planes.sh`](/Users/dobby/.agents/scripts/auto-apply-agent-control-planes.sh), which calls the Codex and Claude entrypoints as needed after `~/.agents` sync.
-- Codex-specific post-sync apply logic still lives in [`auto-apply-codex-control-plane.sh`](/Users/dobby/.agents/codex/scripts/auto-apply-codex-control-plane.sh) as the lower-level Codex-only reconcile helper.
+- When shared skill inputs change, that wrapper also reruns the Codex bootstrap so machine-side dependencies for managed skills such as `pdf` stay converged.
+- Codex-specific post-sync apply logic still lives in [`auto-apply-codex-control-plane.sh`](/Users/dobby/.agents/codex/scripts/auto-apply-codex-control-plane.sh) as an optional lower-level Codex-only reconcile helper.
 - Practical flow:
   1. one machine pushes a change in `~/.agents`
   2. the other machine pulls it on the next git auto-sync cycle

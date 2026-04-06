@@ -49,6 +49,12 @@ stamp_current_sha() {
   log "Stamped reconcile state: $STAMP_FILE -> $sha"
 }
 
+skills_mode_args() {
+  if [[ "$MODE" == "--apply" ]]; then
+    printf '%s\n' "--apply"
+  fi
+}
+
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --apply)
@@ -167,14 +173,28 @@ for path in "${changed_paths[@]}"; do
   fi
 done
 
-actions=()
+need_sync_skills=0
+need_bootstrap_codex=0
+need_bootstrap_claude=0
+
 if (( skills_changed == 1 )); then
-  actions+=("sync_skills_registry")
+  need_sync_skills=1
 fi
-if (( codex_changed == 1 || shared_mcp_changed == 1 )); then
-  actions+=("bootstrap_codex")
+if (( skills_changed == 1 || codex_changed == 1 || shared_mcp_changed == 1 )); then
+  need_bootstrap_codex=1
 fi
 if (( claude_changed == 1 || shared_mcp_changed == 1 || skills_changed == 1 || repo_registry_changed == 1 )); then
+  need_bootstrap_claude=1
+fi
+
+actions=()
+if (( need_sync_skills == 1 )); then
+  actions+=("sync_skills_registry")
+fi
+if (( need_bootstrap_codex == 1 )); then
+  actions+=("bootstrap_codex")
+fi
+if (( need_bootstrap_claude == 1 )); then
   actions+=("bootstrap_claude")
 fi
 
@@ -188,7 +208,8 @@ log "APPLY: detected shared agent control-plane changes since ${last_sha}"
 for action in "${actions[@]}"; do
   case "$action" in
     sync_skills_registry)
-      cmd=("$SYNC_SKILLS_SCRIPT" "$MODE")
+      mapfile -t skill_args < <(skills_mode_args)
+      cmd=("$SYNC_SKILLS_SCRIPT" "${skill_args[@]}")
       ;;
     bootstrap_codex)
       cmd=("$CODEX_BOOTSTRAP_SCRIPT" "$MODE" --github-root "$GITHUB_ROOT")

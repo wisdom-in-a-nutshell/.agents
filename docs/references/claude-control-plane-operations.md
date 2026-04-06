@@ -16,6 +16,8 @@ Use [Claude Control Plane](/Users/adi/.agents/docs/architecture/claude-control-p
   - shared repo inventory plus per-repo assignment registry
 - `mcp/config/presets.json`
   - shared MCP preset definitions and machine-wide global MCP defaults
+- `skills/registry.json`
+  - shared skill registry used to materialize `~/.claude/skills/` and repo `.claude/skills/`
 - `scripts/bootstrap-machine-agent-control-planes.sh`
   - shared machine-facing bootstrap batch used by external bootstrap repos
 - `scripts/auto-apply-agent-control-planes.sh`
@@ -63,7 +65,7 @@ The Claude control plane is intended to follow the same sync/check pattern as Co
 - `sync-repo-claude-configs.sh`
   - render root and nested `CLAUDE.md` compatibility files, `.claude/settings.json`, and `.mcp.json` from the shared repo registry plus Claude bootstrap overlay
 - `bootstrap-machine-claude.sh`
-  - run the full Claude apply batch
+  - run the full Claude apply batch and validate rendered outputs at the end
 - `check-claude-control-plane.sh`
   - validate canonical inputs and rendered outputs
 

@@ -65,7 +65,6 @@ Canonical personal Codex control-plane assets live here.
 - The current managed role setup is:
   - built-in `explorer` remains available for local repo and runtime exploration
   - managed `external_researcher` handles information outside the local repo and runtime
-  - managed `writer` is repo-bootstrapped where writing support is needed, rather than declared globally
 - The current per-repo control surface is:
   - `mcp_presets`
   - `custom_agents`
@@ -100,4 +99,4 @@ Canonical personal Codex control-plane assets live here.
 - The same sync also renders repo-local `.codex/agents/*.toml` for any repo-assigned custom agents by copying the canonical role TOMLs.
 - `scripts/sync-trusted-projects.sh --apply` ensures those repo-local configs are trusted and therefore loaded by Codex.
 - `scripts/check-codex-control-plane.sh` validates canonical role definitions, runtime role declarations, and repo-scoped custom-agent render output after sync.
-- `scripts/auto-apply-codex-control-plane.sh --apply` is the machine-local post-sync reconcile hook that runs `bootstrap-machine-codex.sh --apply` when `~/.agents/codex/` changed since the last successful reconcile.
+- `scripts/auto-apply-codex-control-plane.sh --apply` is the low-level Codex-only reconcile hook available for Codex-specific troubleshooting or component-scoped automation.

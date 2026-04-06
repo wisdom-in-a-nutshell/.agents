@@ -33,6 +33,7 @@ Current apply rules:
 
 - `skills/` or `skills-source/` changes:
   - run `scripts/sync-skills-registry.sh`
+  - run `codex/scripts/bootstrap-machine-codex.sh`
   - run `claude/scripts/bootstrap-machine-claude.sh`
 - `mcp/` changes:
   - run both Codex and Claude bootstrap batches
