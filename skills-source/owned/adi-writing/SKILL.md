@@ -16,8 +16,8 @@ description: Write or edit external-facing content in Adi's voice. Use when draf
 4. If the current repo has relevant examples of Adi's writing, inspect a small representative sample and adapt to them.
 5. Match the format and keep the writing direct, human, and specific.
 6. Preserve the real point; do not sand it down into bland professionalism.
-7. When the runtime exposes a `writer` sub-agent, prefer using it for first drafts, rewrites, summaries, and tone-sensitive passes instead of local helper scripts.
-8. Do not treat the `writer` sub-agent like a dumb helper. It can read the relevant skill references, inspect local examples, and pull the context it needs.
+7. If you delegate writing work, keep the delegation narrow: first drafts, rewrites, summaries, and tone-sensitive passes are good handoff candidates.
+8. Do not treat a delegated writing helper like a dumb typist. It should be able to read the relevant skill references, inspect local examples, and pull the context it needs.
 9. Only pass the key framing it would not reliably infer on its own: the exact task, target format, constraints, audience, and anything important to preserve or avoid.
 10. Keep fact-checking, source verification, and final editorial judgment with the parent agent unless the task is explicitly pure writing.
 
@@ -45,18 +45,16 @@ description: Write or edit external-facing content in Adi's voice. Use when draf
 - `references/tweet.md`: tweet mode
 - `references/short-post.md`: short-post / LinkedIn / public-note mode
 
-## Writer sub-agent usage
-
-When available, the preferred drafting helper for this skill is the `writer` sub-agent.
+## Delegated drafting usage
 
 Practical rule:
 - use the parent agent for structure, research, factual verification, and deciding the final shape
-- use the `writer` sub-agent for wording, rewriting, tightening, and voice-sensitive drafting passes
+- use a delegated writing helper for wording, rewriting, tightening, and voice-sensitive drafting passes
 
-Do not over-coordinate the `writer` sub-agent.
+Do not over-coordinate delegated drafting work.
 It can read this skill, inspect references, and use local context on its own.
 
-When handing work to the `writer` sub-agent, give it only the load-bearing context:
+When handing off drafting work, give it only the load-bearing context:
 - the exact task
 - the target format
 - the current draft or raw notes when relevant

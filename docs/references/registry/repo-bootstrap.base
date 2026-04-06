@@ -38,8 +38,6 @@ properties:
     displayName: Model
   reasoning:
     displayName: Reasoning
-  fast_mode:
-    displayName: Fast Mode
   service_tier:
     displayName: Service Tier
 views:
@@ -54,7 +52,6 @@ views:
       - agents
       - model
       - reasoning
-      - fast_mode
       - service_tier
   - type: table
     name: MCP Enabled
@@ -65,7 +62,6 @@ views:
       - agents
       - model
       - reasoning
-      - fast_mode
       - service_tier
   - type: table
     name: Custom Agents
@@ -79,7 +75,6 @@ views:
       - mcps
       - model
       - reasoning
-      - fast_mode
       - service_tier
   - type: table
     name: Skill Detail

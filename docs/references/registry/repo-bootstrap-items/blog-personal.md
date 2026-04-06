@@ -9,7 +9,6 @@ custom_agent_count: 1
 agent_count: 2
 model: "gpt-5.4"
 reasoning: "high"
-fast_mode: "-"
 service_tier: "-"
 mcps:
   - "paper"

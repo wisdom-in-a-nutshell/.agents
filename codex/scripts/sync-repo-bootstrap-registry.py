@@ -95,20 +95,6 @@ def _effective_value(defaults: dict[str, Any], item: dict[str, Any], key: str) -
     return str(value)
 
 
-def _effective_fast_mode(defaults: dict[str, Any], item: dict[str, Any]) -> str:
-    default_features = defaults.get("features", {})
-    item_features = item.get("features", {})
-    if default_features and not isinstance(default_features, dict):
-        return "-"
-    if item_features and not isinstance(item_features, dict):
-        return "-"
-    merged = dict(default_features)
-    merged.update(item_features)
-    if "fast_mode" not in merged:
-        return "-"
-    return str(merged["fast_mode"]).lower()
-
-
 def _effective_scope(global_terminal: bool, global_xcode: bool, repos: list[str]) -> str:
     has_global = global_terminal or global_xcode
     has_repos = bool(repos)
@@ -220,8 +206,6 @@ properties:
     displayName: Model
   reasoning:
     displayName: Reasoning
-  fast_mode:
-    displayName: Fast Mode
   service_tier:
     displayName: Service Tier
 views:
@@ -236,7 +220,6 @@ views:
       - agents
       - model
       - reasoning
-      - fast_mode
       - service_tier
   - type: table
     name: MCP Enabled
@@ -247,7 +230,6 @@ views:
       - agents
       - model
       - reasoning
-      - fast_mode
       - service_tier
   - type: table
     name: Custom Agents
@@ -261,7 +243,6 @@ views:
       - mcps
       - model
       - reasoning
-      - fast_mode
       - service_tier
   - type: table
     name: Skill Detail
@@ -300,7 +281,6 @@ def generate_registry_items(
             f"agent_count: {len(item['agents'])}",
             f"model: {_yaml_str(_effective_value(defaults, item, 'model'))}",
             f"reasoning: {_yaml_str(_effective_value(defaults, item, 'model_reasoning_effort'))}",
-            f"fast_mode: {_yaml_str(_effective_fast_mode(defaults, item))}",
             f"service_tier: {_yaml_str(_effective_value(defaults, item, 'service_tier'))}",
         ]
         _append_yaml_list(lines, "mcps", item["mcp_presets"])
