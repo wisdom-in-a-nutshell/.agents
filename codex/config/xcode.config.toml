@@ -14,7 +14,6 @@ personality = "pragmatic"
 suppress_unstable_features_warning = true
 
 [features]
-fast_mode = true
 apps = false
 
 [agents.external_researcher]

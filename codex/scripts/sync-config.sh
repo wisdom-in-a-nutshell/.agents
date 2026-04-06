@@ -455,6 +455,38 @@ upsert_section_key() {
   mv "$tmp_file" "$file"
 }
 
+remove_section_key() {
+  local file="$1"
+  local section="$2"
+  local key="$3"
+  local tmp_file="$file.tmp"
+
+  awk -v section="$section" -v key="$key" '
+    BEGIN {
+      in_target = 0
+      key_regex = "^[[:space:]]*" key "[[:space:]]*="
+      section_regex = "^[[:space:]]*\\[" section "\\][[:space:]]*$"
+      any_section_regex = "^[[:space:]]*\\["
+    }
+    {
+      if ($0 ~ any_section_regex) {
+        if ($0 ~ section_regex) {
+          in_target = 1
+        } else {
+          in_target = 0
+        }
+        print
+        next
+      }
+      if (in_target && $0 ~ key_regex) {
+        next
+      }
+      print
+    }
+  ' "$file" > "$tmp_file"
+  mv "$tmp_file" "$file"
+}
+
 render_global_config() {
   local target_file="$1"
   local template_file="$2"
@@ -483,6 +515,9 @@ render_global_config() {
   # prune stale copies from older live configs.
   if ! rg -n '^[[:space:]]*service_tier[[:space:]]*=' "$template_file" >/dev/null 2>&1; then
     remove_top_level_key "$target_file" "service_tier"
+  fi
+  if ! rg -n '^[[:space:]]*fast_mode[[:space:]]*=' "$template_file" >/dev/null 2>&1; then
+    remove_section_key "$target_file" "features" "fast_mode"
   fi
 
   prune_stale_agent_sections "$target_file" "$template_file"
@@ -959,6 +994,9 @@ render_xcode_config() {
 
   if ! rg -n '^[[:space:]]*service_tier[[:space:]]*=' "$template_file" >/dev/null 2>&1; then
     remove_top_level_key "$target_file" "service_tier"
+  fi
+  if ! rg -n '^[[:space:]]*fast_mode[[:space:]]*=' "$template_file" >/dev/null 2>&1; then
+    remove_section_key "$target_file" "features" "fast_mode"
   fi
 
   prune_stale_agent_sections "$target_file" "$template_file"
