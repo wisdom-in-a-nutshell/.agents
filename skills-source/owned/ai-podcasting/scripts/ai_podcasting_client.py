@@ -28,6 +28,7 @@ FIXED_SHOW = "TCR"
 TEXT_PREVIEW_LIMIT = 280
 HTML_TAG_RE = re.compile(r"<[^>]+>")
 WHITESPACE_RE = re.compile(r"\s+")
+PUBLICATION_STATE_VALUES = ("all", "published", "unpublished")
 INTRO_COPY_FIELDS = {
   "recordingLink",
   "transcript",
@@ -1134,6 +1135,33 @@ def normalize_episode_item(item: dict[str, Any], include_raw: bool = False) -> d
   return normalized
 
 
+def is_published_episode(item: dict[str, Any]) -> bool:
+  publishing = item.get("publishing")
+  if not isinstance(publishing, dict):
+    return False
+
+  status = normalize_optional_string(publishing.get("status"))
+  return (status or "").lower() == "published"
+
+
+def filter_episode_items(
+  items: list[dict[str, Any]],
+  publication_state: str,
+) -> list[dict[str, Any]]:
+  if publication_state == "all":
+    return items
+
+  filtered: list[dict[str, Any]] = []
+  for item in items:
+    published = is_published_episode(item)
+    if publication_state == "published" and published:
+      filtered.append(item)
+    elif publication_state == "unpublished" and not published:
+      filtered.append(item)
+
+  return filtered
+
+
 def extract_episode_items(body: Any) -> list[dict[str, Any]]:
   if isinstance(body, list):
     return [item for item in body if isinstance(item, dict)]
@@ -1156,30 +1184,48 @@ def extract_episode_items(body: Any) -> list[dict[str, Any]]:
   )
 
 
-def run_list_backlog_episodes(args: argparse.Namespace) -> dict[str, Any]:
+def build_list_filters(args: argparse.Namespace) -> dict[str, Any]:
+  return {
+    "show": FIXED_SHOW,
+    "publication_state": args.publication_state,
+    "start_date": args.start_date or None,
+    "end_date": args.end_date or None,
+    "limit": args.limit,
+    "include_raw": bool(args.include_raw),
+  }
+
+
+def run_list_episodes(args: argparse.Namespace) -> dict[str, Any]:
+  include_published = args.publication_state in ("all", "published")
   params = {
-    "includePublished": "false",
+    "includePublished": "true" if include_published else "false",
     "show": FIXED_SHOW,
     "startDate": args.start_date or "",
     "endDate": args.end_date or "",
   }
   url = build_url(FIXED_API_BASE_URL, "/api/episodes", params)
+  filters = build_list_filters(args)
 
   if args.dry_run:
     return {
       "dry_run": True,
+      "filters": filters,
       "request": {"method": "GET", "url": url},
     }
 
   body = request_json("GET", url, args.timeout_seconds)
-  items = [normalize_episode_item(item, include_raw=args.include_raw) for item in extract_episode_items(body)]
+  matched_items = filter_episode_items(extract_episode_items(body), args.publication_state)
+  matched_count = len(matched_items)
+  items = [normalize_episode_item(item, include_raw=args.include_raw) for item in matched_items]
 
   if args.limit is not None and args.limit >= 0:
     items = items[: args.limit]
 
   return {
     "count": len(items),
+    "matched_count": matched_count,
     "detail_level": "summary+raw" if args.include_raw else "summary",
+    "filters": filters,
     "items": items,
   }
 
@@ -1218,7 +1264,7 @@ def run_update_intro_copy(args: argparse.Namespace) -> dict[str, Any]:
       code="E_VALIDATION",
       message="--source-id is required.",
       retryable=False,
-      hint="Use list-backlog-episodes first, then pass its source_id.",
+      hint="Use list-episodes first, then pass its source_id.",
       exit_code=2,
     )
 
@@ -1280,13 +1326,16 @@ def resolve_output_mode(args: argparse.Namespace) -> str:
     return "human"
   if args.plain:
     return "plain"
-  return "human" if sys.stdout.isatty() else "json"
+  return "json"
 
 
 def print_human_success(command: str, data: dict[str, Any]) -> None:
-  if command == "list-backlog-episodes":
+  if command == "list-episodes":
     items = data.get("items", [])
-    print(f"Found {data.get('count', len(items))} backlog episode(s).")
+    matched_count = data.get("matched_count", len(items))
+    filters = data.get("filters", {})
+    publication_state = filters.get("publication_state", "all")
+    print(f"Found {data.get('count', len(items))} of {matched_count} {publication_state} episode(s).")
     for item in items:
       print(
         f"- {item.get('source_id', '')} | {item.get('show', '')} | {item.get('status', '')} | {item.get('title', '')}"
@@ -1308,7 +1357,7 @@ def print_human_success(command: str, data: dict[str, Any]) -> None:
 
 
 def print_plain_success(command: str, data: dict[str, Any]) -> None:
-  if command == "list-backlog-episodes":
+  if command == "list-episodes":
     print("source_id\tshow\tstatus\ttitle")
     for item in data.get("items", []):
       print(
@@ -1353,8 +1402,14 @@ def build_parser() -> argparse.ArgumentParser:
   subparsers = parser.add_subparsers(dest="command", required=True)
 
   list_parser = subparsers.add_parser(
-    "list-backlog-episodes",
-    help=f"List non-published {FIXED_SHOW} episodes and return rich episode summaries.",
+    "list-episodes",
+    help=f"List {FIXED_SHOW} episodes with rich summaries and publication-state filters.",
+  )
+  list_parser.add_argument(
+    "--publication-state",
+    choices=PUBLICATION_STATE_VALUES,
+    default="all",
+    help="Which episode set to return: all, published, or unpublished (default: all).",
   )
   list_parser.add_argument("--start-date", default="", help="Optional start date YYYY-MM-DD.")
   list_parser.add_argument("--end-date", default="", help="Optional end date YYYY-MM-DD.")
@@ -1425,8 +1480,8 @@ def main() -> int:
   start = time.perf_counter()
 
   try:
-    if args.command == "list-backlog-episodes":
-      data = run_list_backlog_episodes(args)
+    if args.command == "list-episodes":
+      data = run_list_episodes(args)
     elif args.command == "submit-episode":
       data = run_submit_episode(args)
     elif args.command == "update-intro-copy":

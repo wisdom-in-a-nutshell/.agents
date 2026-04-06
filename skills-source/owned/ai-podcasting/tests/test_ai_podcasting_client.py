@@ -1,7 +1,9 @@
 import importlib.util
 import sys
 from pathlib import Path
+from types import SimpleNamespace
 import unittest
+from unittest import mock
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -25,6 +27,13 @@ class BuildTextPreviewTests(unittest.TestCase):
 
     self.assertEqual(preview["preview"], "Hello wor...")
     self.assertEqual(preview["length"], 17)
+
+
+class ResolveOutputModeTests(unittest.TestCase):
+  def test_resolve_output_mode_defaults_to_json(self) -> None:
+    args = SimpleNamespace(json=False, human=False, plain=False)
+
+    self.assertEqual(client.resolve_output_mode(args), "json")
 
 
 class NormalizeEpisodeItemTests(unittest.TestCase):
@@ -194,6 +203,97 @@ class NormalizeEpisodeItemTests(unittest.TestCase):
     self.assertEqual(normalized["source_id"], "ep-raw")
     self.assertEqual(normalized["raw_episode"]["source_id"], "ep-raw")
     self.assertNotIn("billing", normalized["raw_episode"])
+
+
+class RunListEpisodesTests(unittest.TestCase):
+  def test_run_list_episodes_filters_published_items(self) -> None:
+    args = SimpleNamespace(
+      publication_state="published",
+      start_date="2026-01-01",
+      end_date="2026-01-31",
+      limit=50,
+      include_raw=False,
+      dry_run=False,
+      timeout_seconds=30.0,
+    )
+    body = {
+      "items": [
+        {
+          "source_id": "ep-published",
+          "show": "TCR",
+          "title": "Published episode",
+          "submission": {},
+          "production": {},
+          "publishing": {"status": "Published"},
+          "files": {"main": {"raw": "https://example.com/published.mp3"}},
+        },
+        {
+          "source_id": "ep-unpublished",
+          "show": "TCR",
+          "title": "Unpublished episode",
+          "submission": {},
+          "production": {},
+          "publishing": {"status": "To Publish"},
+          "files": {"main": {"raw": "https://example.com/unpublished.mp3"}},
+        },
+      ]
+    }
+
+    with mock.patch.object(client, "request_json", return_value=body) as request_json:
+      data = client.run_list_episodes(args)
+
+    request_json.assert_called_once()
+    self.assertEqual(request_json.call_args.args[0], "GET")
+    self.assertIn("includePublished=true", request_json.call_args.args[1])
+    self.assertIn("startDate=2026-01-01", request_json.call_args.args[1])
+    self.assertIn("endDate=2026-01-31", request_json.call_args.args[1])
+    self.assertEqual(data["count"], 1)
+    self.assertEqual(data["matched_count"], 1)
+    self.assertEqual(data["filters"]["publication_state"], "published")
+    self.assertEqual(data["items"][0]["source_id"], "ep-published")
+
+  def test_run_list_episodes_filters_unpublished_items(self) -> None:
+    args = SimpleNamespace(
+      publication_state="unpublished",
+      start_date="",
+      end_date="",
+      limit=50,
+      include_raw=False,
+      dry_run=False,
+      timeout_seconds=30.0,
+    )
+    body = {
+      "items": [
+        {
+          "source_id": "ep-published",
+          "show": "TCR",
+          "title": "Published episode",
+          "submission": {},
+          "production": {},
+          "publishing": {"status": "Published"},
+          "files": {"main": {"raw": "https://example.com/published.mp3"}},
+        },
+        {
+          "source_id": "ep-backlog",
+          "show": "TCR",
+          "title": "Backlog episode",
+          "submission": {},
+          "production": {},
+          "publishing": {"status": "Backlog"},
+          "files": {"main": {"raw": "https://example.com/backlog.mp3"}},
+        },
+      ]
+    }
+
+    with mock.patch.object(client, "request_json", return_value=body) as request_json:
+      data = client.run_list_episodes(args)
+
+    request_json.assert_called_once()
+    self.assertIn("includePublished=false", request_json.call_args.args[1])
+    self.assertEqual(data["count"], 1)
+    self.assertEqual(data["matched_count"], 1)
+    self.assertEqual(data["filters"]["publication_state"], "unpublished")
+    self.assertEqual(data["items"][0]["source_id"], "ep-backlog")
 
 
 if __name__ == "__main__":
