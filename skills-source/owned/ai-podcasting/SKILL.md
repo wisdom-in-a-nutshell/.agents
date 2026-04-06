@@ -1,6 +1,6 @@
 ---
 name: ai-podcasting
-description: Submit AI Podcasting episodes and update intro/title/thumbnail copy through AIP frontend API routes. Use when clients want agent-driven episode operations without using the GUI, including listing non-published episodes to get source_id, submitting a new episode, patching intro copy for an existing episode, or clarifying whether an ambiguous "submit" request means main episode submission vs intro update.
+description: Submit AI Podcasting episodes and update intro/title/thumbnail copy through AIP frontend API routes. Use when clients want agent-driven episode operations without using the GUI, including listing non-published episodes with rich metadata, submitting a new episode, patching intro copy for an existing episode, or clarifying whether an ambiguous "submit" request means main episode submission vs intro update.
 ---
 
 # AI Podcasting
@@ -12,13 +12,14 @@ Use this skill for client-facing, agent-driven episode operations in this reposi
 Run the main CLI at `scripts/ai_podcasting_client.py` for episode operations:
 
 1. `list-backlog-episodes`:
-   Get non-published `TCR` episodes and return `source_id` values.
+   Get non-published `TCR` episodes and return rich per-episode summaries.
 2. `submit-episode`:
    Create a new episode via `/api/episodes/submit`.
 3. `update-intro-copy`:
    Patch intro/title/thumbnail/outro assets for an existing episode via `/api/episodes/{sourceId}/intro`.
 
-This skill calls backend API routes directly. Do not automate the browser UI for these flows.
+This skill calls the AIP frontend API routes at `https://app.aipodcast.ing/api/...`, which proxy the
+upstream episode APIs. Do not automate the browser UI for these flows.
 
 Use `scripts/aip_local_upload_helper.py` only when the user gives a local file path for a file-like
 field. The helper uploads the file and returns a public URL for the main CLI to use. Keep this
@@ -35,6 +36,14 @@ directory. When in doubt, use the absolute skill path shown by the harness.
 ```bash
 python3 scripts/ai_podcasting_client.py \
   --json list-backlog-episodes
+```
+
+To include the full upstream episode payload under each item:
+
+```bash
+python3 scripts/ai_podcasting_client.py \
+  --json list-backlog-episodes \
+  --include-raw
 ```
 
 2. Submit a new episode (creates a new episode; no `source_id` input needed):
@@ -67,6 +76,11 @@ python3 scripts/aip_local_upload_helper.py \
 - Fixed show: `TCR`
 - The CLI does not accept base-url overrides or env-based base URL changes.
 - The CLI does not accept show selection; all submit/list operations are locked to `TCR`.
+- `list-backlog-episodes` returns a rich summary by default in JSON mode. Each item now includes
+  fields such as `thumbnailText`, publishing metadata, preview text for long fields, normalized
+  file links, and other lightweight episode context.
+- Use `--include-raw` when the agent needs the full upstream episode object in addition to the
+  default summary.
 - JSON mode returns a stable envelope with:
   - `schema_version`
   - `command`
@@ -79,7 +93,14 @@ python3 scripts/aip_local_upload_helper.py \
 
 1. `list-backlog-episodes`:
    Required: none.
-   Optional: `--start-date`, `--end-date`, `--limit`.
+   Optional: `--start-date`, `--end-date`, `--limit`, `--include-raw`.
+   Default JSON output includes a rich per-episode summary with fields such as:
+   - `source_id`, `title`, `show`, `status`, `thumbnailText`
+   - `created_at`, `updated_at`, publishing metadata, and guest-review flags
+   - preview text plus lengths for long copy fields like show notes or editor notes
+   - normalized file links, artwork links, deliverable links, processed-asset links, ads, and
+     other lightweight metadata when present
+   With `--include-raw`, each item also includes `raw_episode` containing the full upstream payload.
 2. `submit-episode`:
    Required: `--payload-file` with at least one main episode file link.
    Show handling: always forced to `TCR` by the CLI.

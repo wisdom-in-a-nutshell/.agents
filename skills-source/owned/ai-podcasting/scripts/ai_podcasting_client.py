@@ -4,7 +4,9 @@
 from __future__ import annotations
 
 import argparse
+import html
 import json
+import re
 import socket
 import sys
 import time
@@ -23,6 +25,9 @@ from aip_local_upload_helper import (
 SCHEMA_VERSION = "1.0"
 FIXED_API_BASE_URL = "https://app.aipodcast.ing"
 FIXED_SHOW = "TCR"
+TEXT_PREVIEW_LIMIT = 280
+HTML_TAG_RE = re.compile(r"<[^>]+>")
+WHITESPACE_RE = re.compile(r"\s+")
 INTRO_COPY_FIELDS = {
   "recordingLink",
   "transcript",
@@ -639,26 +644,507 @@ def normalize_intro_copy_payload(
   return normalized, upload_records
 
 
-def normalize_episode_item(item: dict[str, Any]) -> dict[str, str]:
-  submission = item.get("submission")
-  publishing = item.get("publishing")
+def normalize_optional_string(value: Any) -> str | None:
+  if not isinstance(value, str):
+    return None
+
+  candidate = value.strip()
+  return candidate or None
+
+
+def first_non_empty_string(*values: Any) -> str | None:
+  for value in values:
+    candidate = normalize_optional_string(value)
+    if candidate is not None:
+      return candidate
+
+  return None
+
+
+def normalize_string_list(value: Any) -> list[str]:
+  if not isinstance(value, list):
+    return []
+
+  normalized: list[str] = []
+  for item in value:
+    candidate = normalize_optional_string(item)
+    if candidate is not None:
+      normalized.append(candidate)
+
+  return normalized
+
+
+def compact_mapping(value: dict[str, Any]) -> dict[str, Any]:
+  compacted: dict[str, Any] = {}
+  for key, item in value.items():
+    if item is None:
+      continue
+
+    if isinstance(item, str) and not item:
+      continue
+
+    if isinstance(item, list) and not item:
+      continue
+
+    if isinstance(item, dict):
+      nested = compact_mapping(item)
+      if not nested:
+        continue
+      compacted[key] = nested
+      continue
+
+    compacted[key] = item
+
+  return compacted
+
+
+def normalize_text_for_preview(value: Any) -> str:
+  candidate = normalize_optional_string(value)
+  if candidate is None:
+    return ""
+
+  normalized = html.unescape(candidate).replace("\xa0", " ")
+  without_tags = HTML_TAG_RE.sub(" ", normalized)
+  return WHITESPACE_RE.sub(" ", without_tags).strip()
+
+
+def build_text_preview(value: Any, limit: int = TEXT_PREVIEW_LIMIT) -> dict[str, Any]:
+  normalized = normalize_text_for_preview(value)
+  if not normalized:
+    return {"preview": None, "length": 0}
+
+  if len(normalized) <= limit:
+    return {"preview": normalized, "length": len(normalized)}
+
+  preview_length = max(0, limit - 3)
+  preview = normalized[:preview_length].rstrip()
+  return {"preview": f"{preview}...", "length": len(normalized)}
+
+
+def normalize_guests(value: Any) -> list[dict[str, Any]]:
+  if not isinstance(value, list):
+    return []
+
+  guests: list[dict[str, Any]] = []
+  for item in value:
+    if not isinstance(item, dict):
+      continue
+
+    name = normalize_optional_string(item.get("name"))
+    if name is None:
+      continue
+
+    guests.append(
+      compact_mapping(
+        {
+          "name": name,
+          "email": normalize_optional_string(item.get("email")),
+          "title": normalize_optional_string(item.get("title")),
+          "company": normalize_optional_string(item.get("company")),
+        }
+      )
+    )
+
+  return guests
+
+
+def normalize_file_urls(value: Any) -> dict[str, Any] | None:
+  if not isinstance(value, dict):
+    return None
+
+  normalized = compact_mapping(
+    {
+      "raw": normalize_optional_string(value.get("raw")),
+      "edited": normalize_optional_string(value.get("edited")),
+      "descript": normalize_optional_string(value.get("descript")),
+    }
+  )
+  return normalized or None
+
+
+def normalize_episode_files(value: Any) -> dict[str, Any]:
+  files = value if isinstance(value, dict) else {}
+  return compact_mapping(
+    {
+      "main": normalize_file_urls(files.get("main")),
+      "intro": normalize_file_urls(files.get("intro")),
+      "teaser": normalize_file_urls(files.get("teaser")),
+      "special_sponsor": normalize_file_urls(files.get("special_sponsor")),
+      "episode_outro": normalize_file_urls(files.get("episode_outro")),
+    }
+  )
+
+
+def normalize_platforms(value: Any) -> list[dict[str, Any]]:
+  if not isinstance(value, list):
+    return []
+
+  platforms: list[dict[str, Any]] = []
+  for item in value:
+    if not isinstance(item, dict):
+      continue
+
+    name = normalize_optional_string(item.get("name"))
+    if name is None:
+      continue
+
+    platforms.append(
+      compact_mapping(
+        {
+          "name": name,
+          "url": normalize_optional_string(item.get("url")),
+          "status": normalize_optional_string(item.get("status")),
+          "publishedAt": normalize_optional_string(item.get("publishedAt")),
+        }
+      )
+    )
+
+  return platforms
+
+
+def normalize_deliverable_asset(value: Any) -> dict[str, Any] | None:
+  if not isinstance(value, dict):
+    return None
+
+  normalized = compact_mapping(
+    {
+      "url": normalize_optional_string(value.get("url")),
+      "source_id": normalize_optional_string(value.get("source_id")),
+      "created_at": normalize_optional_string(value.get("created_at")),
+    }
+  )
+  return normalized or None
+
+
+def normalize_deliverable_variants(value: Any) -> list[dict[str, Any]]:
+  if not isinstance(value, list):
+    return []
+
+  variants: list[dict[str, Any]] = []
+  for item in value:
+    if not isinstance(item, dict):
+      continue
+
+    url = normalize_optional_string(item.get("url"))
+    if url is None:
+      continue
+
+    variants.append(
+      compact_mapping(
+        {
+          "url": url,
+          "design_source_url": normalize_optional_string(item.get("design_source_url")),
+          "source": normalize_optional_string(item.get("source")),
+          "title_text": normalize_optional_string(item.get("title_text")),
+          "template": normalize_optional_string(item.get("template")),
+          "created_at": normalize_optional_string(item.get("created_at")),
+        }
+      )
+    )
+
+  return variants
+
+
+def normalize_artwork(value: Any, deliverables_value: Any) -> dict[str, Any]:
+  artwork = value if isinstance(value, dict) else {}
+  deliverables = deliverables_value if isinstance(deliverables_value, dict) else {}
+  thumbnails = deliverables.get("thumbnails")
+  thumbnails_dict = thumbnails if isinstance(thumbnails, dict) else {}
+  video = thumbnails_dict.get("video")
+  video_dict = video if isinstance(video, dict) else {}
+  audio = thumbnails_dict.get("audio")
+  audio_dict = audio if isinstance(audio, dict) else {}
+
+  return compact_mapping(
+    {
+      "videoThumbnailUrl": first_non_empty_string(
+        artwork.get("videoThumbnailUrl"),
+        video_dict.get("url"),
+      ),
+      "videoThumbnailDesignSourceUrl": first_non_empty_string(
+        artwork.get("videoThumbnailDesignSourceUrl"),
+        video_dict.get("design_source_url"),
+      ),
+      "audioThumbnailUrl": first_non_empty_string(
+        artwork.get("audioThumbnailUrl"),
+        audio_dict.get("url"),
+      ),
+      "videoThumbnailVariants": normalize_deliverable_variants(video_dict.get("variants")),
+    }
+  )
+
+
+def normalize_deliverables(value: Any) -> dict[str, Any]:
+  if not isinstance(value, dict):
+    return {}
+
+  media = value.get("media")
+  media_dict = media if isinstance(media, dict) else {}
+  media_video = media_dict.get("video")
+  media_video_dict = media_video if isinstance(media_video, dict) else {}
+  media_audio = media_dict.get("audio")
+  media_audio_dict = media_audio if isinstance(media_audio, dict) else {}
+
+  text = value.get("text")
+  text_dict = text if isinstance(text, dict) else {}
+  transcript = text_dict.get("transcript")
+  transcript_dict = transcript if isinstance(transcript, dict) else {}
+  chapters = text_dict.get("chapters")
+  chapters_dict = chapters if isinstance(chapters, dict) else {}
+  references = text_dict.get("references")
+  references_dict = references if isinstance(references, dict) else {}
+  show_notes = text_dict.get("show_notes")
+  show_notes_dict = show_notes if isinstance(show_notes, dict) else {}
+
+  links = value.get("links")
+  links_dict = links if isinstance(links, dict) else {}
+  social = value.get("social")
+  social_dict = social if isinstance(social, dict) else {}
+
+  return compact_mapping(
+    {
+      "video": compact_mapping(
+        {
+          "main": normalize_deliverable_asset(media_video_dict.get("main")),
+          "main_4k": normalize_deliverable_asset(media_video_dict.get("main_4k")),
+          "main_1080p": normalize_deliverable_asset(media_video_dict.get("main_1080p")),
+          "trailer": normalize_deliverable_asset(media_video_dict.get("trailer")),
+        }
+      ),
+      "audio": compact_mapping(
+        {
+          "main": normalize_deliverable_asset(media_audio_dict.get("main")),
+          "enhanced": normalize_deliverable_asset(media_audio_dict.get("enhanced")),
+        }
+      ),
+      "text": compact_mapping(
+        {
+          "transcriptHtml": normalize_deliverable_asset(transcript_dict.get("html")),
+          "transcriptTxt": normalize_deliverable_asset(transcript_dict.get("txt")),
+          "transcriptVtt": normalize_deliverable_asset(transcript_dict.get("vtt")),
+          "transcriptSrt": normalize_deliverable_asset(transcript_dict.get("srt")),
+          "chaptersTxt": normalize_deliverable_asset(chapters_dict.get("txt")),
+          "chaptersJson": normalize_deliverable_asset(chapters_dict.get("json")),
+          "referencesTxt": normalize_deliverable_asset(references_dict.get("txt")),
+          "referencesJson": normalize_deliverable_asset(references_dict.get("json")),
+          "showNotesTxt": normalize_deliverable_asset(show_notes_dict.get("txt")),
+          "showNotesHtml": normalize_deliverable_asset(show_notes_dict.get("html")),
+        }
+      ),
+      "links": compact_mapping(
+        {
+          "newsletter": normalize_optional_string(links_dict.get("newsletter")),
+          "review": normalize_optional_string(links_dict.get("review")),
+        }
+      ),
+      "social": compact_mapping(
+        {
+          "clip_ids": normalize_string_list(social_dict.get("clip_ids")),
+          "clip_urls": normalize_string_list(social_dict.get("clip_urls")),
+        }
+      ),
+    }
+  )
+
+
+def normalize_processed_assets(value: Any) -> dict[str, Any]:
+  if not isinstance(value, dict):
+    return {}
+
+  episode = value.get("episode")
+  episode_dict = episode if isinstance(episode, dict) else {}
+
+  return compact_mapping(
+    {
+      "clips": normalize_string_list(value.get("clips")),
+      "reviewUrl": normalize_optional_string(episode_dict.get("review")),
+      "transcriptHtmlUrl": normalize_optional_string(value.get("transcript_html_url")),
+      "newsletterUrl": normalize_optional_string(value.get("newsletter_url")),
+      "packagedVideoUrl": normalize_optional_string(value.get("packaged_video_url")),
+      "packagedVideo4kUrl": normalize_optional_string(value.get("packaged_video_4k_url")),
+      "packagedAudioUrl": normalize_optional_string(value.get("packaged_audio_url")),
+      "packagedTrailerUrl": normalize_optional_string(value.get("packaged_trailer_url")),
+      "transcriptTextUrl": normalize_optional_string(value.get("transcript_text_url")),
+      "chapterTextUrl": normalize_optional_string(value.get("chapter_text_url")),
+      "referencesTextUrl": normalize_optional_string(value.get("references_text_url")),
+      "showNotesTextUrl": normalize_optional_string(value.get("show_notes_text_url")),
+    }
+  )
+
+
+def normalize_billing(value: Any) -> dict[str, Any]:
+  if not isinstance(value, dict):
+    return {}
+
+  consumed_hours = value.get("consumed_hours")
+  return compact_mapping(
+    {
+      "consumed_hours": (
+        consumed_hours
+        if isinstance(consumed_hours, (int, float)) and not isinstance(consumed_hours, bool)
+        else None
+      ),
+      "is_cross_post": (
+        value.get("is_cross_post") if isinstance(value.get("is_cross_post"), bool) else None
+      ),
+    }
+  )
+
+
+def normalize_ads(value: Any) -> dict[str, Any]:
+  if not isinstance(value, dict):
+    return {}
+
+  return compact_mapping({"midRollTimes": normalize_string_list(value.get("midRollTimes"))})
+
+
+def normalize_shownotes(value: Any) -> dict[str, Any]:
+  if not isinstance(value, dict):
+    return {}
+
+  main_description = build_text_preview(value.get("mainDescriptionHtml"))
+  extracted_links = build_text_preview(value.get("extractedLinksHtml"))
+  display_main_description = build_text_preview(value.get("displayMainDescriptionHtml"))
+  display_extracted_links = build_text_preview(value.get("displayExtractedLinksHtml"))
+
+  return compact_mapping(
+    {
+      "mainDescriptionPreview": main_description["preview"],
+      "mainDescriptionLength": (
+        main_description["length"] if main_description["length"] > 0 else None
+      ),
+      "extractedLinksPreview": extracted_links["preview"],
+      "extractedLinksLength": (
+        extracted_links["length"] if extracted_links["length"] > 0 else None
+      ),
+      "displayMainDescriptionPreview": display_main_description["preview"],
+      "displayMainDescriptionLength": (
+        display_main_description["length"] if display_main_description["length"] > 0 else None
+      ),
+      "displayExtractedLinksPreview": display_extracted_links["preview"],
+      "displayExtractedLinksLength": (
+        display_extracted_links["length"] if display_extracted_links["length"] > 0 else None
+      ),
+    }
+  )
+
+
+def normalize_episode_item(item: dict[str, Any], include_raw: bool = False) -> dict[str, Any]:
+  submission = item.get("submission") if isinstance(item.get("submission"), dict) else {}
+  production = item.get("production") if isinstance(item.get("production"), dict) else {}
+  publishing = item.get("publishing") if isinstance(item.get("publishing"), dict) else {}
+  deliverables = item.get("deliverables")
+  processed_assets = item.get("processed_assets")
 
   title = ""
   if isinstance(item.get("title"), str):
     title = item["title"].strip()
-  elif isinstance(submission, dict) and isinstance(submission.get("title"), str):
+  elif isinstance(submission.get("title"), str):
     title = submission["title"].strip()
 
   status = ""
-  if isinstance(publishing, dict) and isinstance(publishing.get("status"), str):
+  if isinstance(publishing.get("status"), str):
     status = publishing["status"].strip()
 
-  return {
-    "source_id": str(item.get("source_id") or "").strip(),
-    "title": title,
-    "show": str(item.get("show") or "").strip(),
-    "status": status,
-  }
+  show_notes_preview = build_text_preview(submission.get("showNotes"))
+  intro_transcript_preview = build_text_preview(submission.get("introTranscript"))
+  editor_instructions_preview = build_text_preview(submission.get("editorInstructions"))
+  title_inspiration_preview = build_text_preview(submission.get("titleInspiration"))
+  editor_notes_preview = build_text_preview(production.get("editorNotes"))
+  current_job = publishing.get("currentJob") if isinstance(publishing.get("currentJob"), dict) else {}
+  duration = production.get("duration")
+
+  normalized = compact_mapping(
+    {
+      "source_id": str(item.get("source_id") or "").strip(),
+      "title": title,
+      "show": str(item.get("show") or "").strip(),
+      "status": status,
+      "thumbnailText": first_non_empty_string(
+        item.get("thumbnailText"),
+        submission.get("thumbnailText"),
+      ),
+      "submissionTitle": normalize_optional_string(submission.get("title")),
+      "submissionThumbnailText": normalize_optional_string(submission.get("thumbnailText")),
+      "created_at": normalize_optional_string(item.get("created_at")),
+      "updated_at": normalize_optional_string(item.get("updated_at")),
+      "needsGuestReview": (
+        item.get("needsGuestReview")
+        if isinstance(item.get("needsGuestReview"), bool)
+        else None
+      ),
+      "guests": normalize_guests(submission.get("guests")),
+      "assetUrls": normalize_string_list(submission.get("assetUrls")),
+      "publishing": compact_mapping(
+        {
+          "status": status,
+          "scheduledDate": normalize_optional_string(publishing.get("scheduledDate")),
+          "publishedDate": normalize_optional_string(publishing.get("publishedDate")),
+          "platforms": normalize_platforms(publishing.get("platforms")),
+          "currentJob": compact_mapping(
+            {
+              "jobId": normalize_optional_string(current_job.get("jobId")),
+              "startedAt": normalize_optional_string(current_job.get("startedAt")),
+            }
+          ),
+        }
+      ),
+      "production": compact_mapping(
+        {
+          "priority": normalize_optional_string(production.get("priority")),
+          "editorName": normalize_optional_string(production.get("editorName")),
+          "duration": (
+            duration
+            if isinstance(duration, (int, float)) and not isinstance(duration, bool)
+            else None
+          ),
+          "tags": normalize_string_list(production.get("tags")),
+        }
+      ),
+      "copy": compact_mapping(
+        {
+          "showNotesPreview": show_notes_preview["preview"],
+          "showNotesLength": (
+            show_notes_preview["length"] if show_notes_preview["length"] > 0 else None
+          ),
+          "introTranscriptPreview": intro_transcript_preview["preview"],
+          "introTranscriptLength": (
+            intro_transcript_preview["length"]
+            if intro_transcript_preview["length"] > 0
+            else None
+          ),
+          "editorInstructionsPreview": editor_instructions_preview["preview"],
+          "editorInstructionsLength": (
+            editor_instructions_preview["length"]
+            if editor_instructions_preview["length"] > 0
+            else None
+          ),
+          "titleInspirationPreview": title_inspiration_preview["preview"],
+          "titleInspirationLength": (
+            title_inspiration_preview["length"]
+            if title_inspiration_preview["length"] > 0
+            else None
+          ),
+          "editorNotesPreview": editor_notes_preview["preview"],
+          "editorNotesLength": (
+            editor_notes_preview["length"] if editor_notes_preview["length"] > 0 else None
+          ),
+        }
+      ),
+      "files": normalize_episode_files(item.get("files")),
+      "artwork": normalize_artwork(item.get("artwork"), deliverables),
+      "deliverables": normalize_deliverables(deliverables),
+      "processedAssets": normalize_processed_assets(processed_assets),
+      "billing": normalize_billing(item.get("billing")),
+      "ads": normalize_ads(item.get("ads")),
+      "shownotes": normalize_shownotes(item.get("shownotes")),
+    }
+  )
+
+  if include_raw:
+    normalized["raw_episode"] = item
+
+  return normalized
 
 
 def extract_episode_items(body: Any) -> list[dict[str, Any]]:
@@ -699,13 +1185,14 @@ def run_list_backlog_episodes(args: argparse.Namespace) -> dict[str, Any]:
     }
 
   body = request_json("GET", url, args.timeout_seconds)
-  items = [normalize_episode_item(item) for item in extract_episode_items(body)]
+  items = [normalize_episode_item(item, include_raw=args.include_raw) for item in extract_episode_items(body)]
 
   if args.limit is not None and args.limit >= 0:
     items = items[: args.limit]
 
   return {
     "count": len(items),
+    "detail_level": "summary+raw" if args.include_raw else "summary",
     "items": items,
   }
 
@@ -814,7 +1301,12 @@ def print_human_success(command: str, data: dict[str, Any]) -> None:
     items = data.get("items", [])
     print(f"Found {data.get('count', len(items))} backlog episode(s).")
     for item in items:
-      print(f"- {item.get('source_id', '')} | {item.get('show', '')} | {item.get('title', '')}")
+      print(
+        f"- {item.get('source_id', '')} | {item.get('show', '')} | {item.get('status', '')} | {item.get('title', '')}"
+      )
+      thumbnail_text = item.get("thumbnailText")
+      if thumbnail_text:
+        print(f"  thumbnailText: {thumbnail_text}")
     return
 
   if command in ("submit-episode", "update-intro-copy"):
@@ -875,11 +1367,16 @@ def build_parser() -> argparse.ArgumentParser:
 
   list_parser = subparsers.add_parser(
     "list-backlog-episodes",
-    help=f"List non-published {FIXED_SHOW} episodes and return source_id values.",
+    help=f"List non-published {FIXED_SHOW} episodes and return rich episode summaries.",
   )
   list_parser.add_argument("--start-date", default="", help="Optional start date YYYY-MM-DD.")
   list_parser.add_argument("--end-date", default="", help="Optional end date YYYY-MM-DD.")
   list_parser.add_argument("--limit", type=int, default=200, help="Max episodes to return.")
+  list_parser.add_argument(
+    "--include-raw",
+    action="store_true",
+    help="Include the full upstream episode payload under each item as raw_episode.",
+  )
   list_parser.add_argument(
     "--dry-run",
     action="store_true",
