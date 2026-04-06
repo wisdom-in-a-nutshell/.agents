@@ -17,7 +17,8 @@ Run the main CLI at `scripts/ai_podcasting_client.py` for episode operations:
 2. `submit-episode`:
    Create a new episode via `/api/episodes/submit`.
 3. `update-intro-copy`:
-   Patch intro/title/thumbnail/outro assets for an existing episode via `/api/episodes/{sourceId}/intro`.
+   Patch intro/title/thumbnail/outro assets for an existing unpublished episode via
+   `/api/episodes/{sourceId}/intro`.
 
 This skill calls the AIP frontend API routes at `https://app.aipodcast.ing/api/...`, which proxy the
 upstream episode APIs. Do not automate the browser UI for these flows.
@@ -92,8 +93,11 @@ python3 scripts/aip_local_upload_helper.py \
 - `list-episodes` returns a rich summary by default in JSON mode. Each item now includes
   fields such as `thumbnailText`, publishing metadata, preview text for long fields, normalized
   file links, and other lightweight episode context.
+- `list-episodes` defaults to `--publication-state all`.
 - `list-episodes` supports `--publication-state all|published|unpublished`, plus optional
   `--start-date` and `--end-date` filters.
+- Results are sorted newest-first before `--limit` is applied, so `--limit 5` returns the latest
+  five matching episodes.
 - Use `--include-raw` when the agent needs the sanitized upstream episode object in addition to the
   default summary.
 - JSON mode returns a stable envelope with:
@@ -119,6 +123,7 @@ python3 scripts/aip_local_upload_helper.py \
    - preview text plus lengths for long copy fields like show notes or editor notes
    - normalized file links, artwork links, deliverable links, processed-asset links, ads, and
      other lightweight metadata when present
+   Items are sorted newest-first before `limit` is applied.
    The `data` payload also echoes the applied `filters` object and `matched_count`.
    With `--include-raw`, each item also includes `raw_episode` containing the sanitized upstream
    payload.
@@ -134,6 +139,7 @@ python3 scripts/aip_local_upload_helper.py \
    Optional: any additional backend-supported episode fields. The client preserves richer payloads such as `deliverables.thumbnails.options`, `deliverables.thumbnails.video.variants`, and `files.episode_outro`.
 3. `update-intro-copy`:
    Required (command): `--source-id`, `--payload-file`.
+   Intended target: an existing unpublished episode.
    The client supports the current app intro payload directly.
    For conversation-driven usage, prefer these user-facing fields:
    There are no required patch fields beyond `source_id`.
@@ -163,38 +169,52 @@ When values are missing in chat context, follow this flow:
 
    Reply with 1 or 2."
    Only continue into submit or intro-specific prompts after the user picks one.
-3. For submit flow, ask only for missing required submit values.
+3. For submit flow, ask for the missing required submit value, but in that same first reply also
+   surface the common optional fields the user may want to set up front.
    Required submit value:
    1. main episode file link as either a public HTTP/HTTPS URL or a local file path.
-   Optional submit values:
-   1. showNotes
-   2. assetUrls
-   3. editorNotes
-   4. title
+   Common optional submit values to mention in the same first prompt:
+   1. title
+   2. showNotes
+   3. assetUrls
+   4. editorNotes
    5. thumbnailText
    6. priority
    7. scheduledDate
    8. needsGuestReview
    9. guests
-4. For intro updates without `source_id`, first ask which episode scope to search:
-   - `published`
-   - `unpublished`
-   - `all`
-   Also allow optional `startDate` and `endDate` in `YYYY-MM-DD`.
-5. After the user provides scope and any date filters, run `list-episodes` with those filters.
-6. Ask the user which episode to target using an enumerated list, not raw ids only.
+4. Use this default submit prompt shape when the file is missing:
+   "Send the main episode file as either a public HTTP/HTTPS URL or a local absolute file path.
+
+   You can also include any of these optional fields now if you want them set on creation:
+   1. title
+   2. showNotes
+   3. assetUrls
+   4. editorNotes
+   5. thumbnailText
+   6. priority
+   7. scheduledDate
+   8. needsGuestReview
+   9. guests
+
+   If you send them together, I can submit the episode in one pass."
+5. Intro updates are only for unpublished episodes.
+6. For intro updates without `source_id`, immediately run `list-episodes` with
+   `--publication-state unpublished`.
+   If the user already provided `startDate` and `endDate`, include them.
+   Do not ask the user for publication scope first.
+7. Ask the user which episode to target using an enumerated list, not raw ids only.
    Render exactly:
    `1. <short title> — <source_id>`
    `2. <short title> — <source_id>`
    `...`
    Then ask: `Reply with the episode number or source_id.`
    If the user replies with a number (for example `4`), map that number to the corresponding `source_id` and continue without asking them to repeat the full id.
-7. Ask only for the fields the user wants to change.
-8. Enforce a strict three-step prompt sequence for intro updates when `source_id` is missing:
-   - Step 1 message: ask for episode scope (`published`, `unpublished`, or `all`) and optional dates
-   - Step 2 message: episode list + `Reply with the episode number or source_id.`
-   - Step 3 message (only after episode is selected): required/optional field collection.
-9. For intro updates, use one prompt shape by default:
+8. Ask only for the fields the user wants to change.
+9. Enforce a strict two-step prompt sequence for intro updates when `source_id` is missing:
+   - Step 1 message: episode list + `Reply with the episode number or source_id.`
+   - Step 2 message (only after episode is selected): required/optional field collection.
+10. For intro updates, use one prompt shape by default:
    "Episode selected: <source_id>.
    Provide any fields you want to update.
 
@@ -209,11 +229,11 @@ When values are missing in chat context, follow this flow:
    8. outroMusicLink
 
    You only need to send the fields you want to change, and I will patch just those."
-   Never ask the user to pick an episode id again after the list-selection step is completed.
-10. If optional values are unclear, omit them instead of guessing.
-11. Use `--dry-run` only if the user explicitly wants a preview before the write call.
+   Never ask the user to pick an episode id again after step 1 is completed.
+11. If optional values are unclear, omit them instead of guessing.
+12. Use `--dry-run` only if the user explicitly wants a preview before the write call.
     It is an internal preview/debug tool, not a normal client-facing step.
-12. For file-type fields (`recordingLink`, `videoThumbnails`, `audioThumbnailLink`, `outroMusicLink`, submit main file link, and submit `assetUrls` entries):
+13. For file-type fields (`recordingLink`, `videoThumbnails`, `audioThumbnailLink`, `outroMusicLink`, submit main file link, and submit `assetUrls` entries):
    - The client accepts either public HTTP/HTTPS URLs or local file paths.
    - If the user provides a local file path, run `scripts/aip_local_upload_helper.py` first and use its returned public URL.
    - Do not pass unresolved local filesystem paths to the episode API payload.

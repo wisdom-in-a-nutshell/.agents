@@ -1144,6 +1144,64 @@ def is_published_episode(item: dict[str, Any]) -> bool:
   return (status or "").lower() == "published"
 
 
+def parse_optional_iso_datetime(value: Any) -> datetime | None:
+  candidate = normalize_optional_string(value)
+  if candidate is None:
+    return None
+
+  normalized = f"{candidate[:-1]}+00:00" if candidate.endswith("Z") else candidate
+
+  try:
+    parsed = datetime.fromisoformat(normalized)
+  except ValueError:
+    return None
+
+  if parsed.tzinfo is None:
+    return parsed.replace(tzinfo=timezone.utc)
+
+  return parsed.astimezone(timezone.utc)
+
+
+def get_episode_sort_datetime(item: dict[str, Any], publication_state: str) -> datetime:
+  publishing = item.get("publishing") if isinstance(item.get("publishing"), dict) else {}
+
+  if publication_state == "unpublished":
+    candidate_values = [
+      publishing.get("scheduledDate"),
+      item.get("updated_at"),
+      item.get("created_at"),
+      publishing.get("publishedDate"),
+    ]
+  else:
+    candidate_values = [
+      publishing.get("publishedDate"),
+      publishing.get("scheduledDate"),
+      item.get("updated_at"),
+      item.get("created_at"),
+    ]
+
+  for value in candidate_values:
+    parsed = parse_optional_iso_datetime(value)
+    if parsed is not None:
+      return parsed
+
+  return datetime.min.replace(tzinfo=timezone.utc)
+
+
+def sort_episode_items(
+  items: list[dict[str, Any]],
+  publication_state: str,
+) -> list[dict[str, Any]]:
+  return sorted(
+    items,
+    key=lambda item: (
+      get_episode_sort_datetime(item, publication_state),
+      normalize_optional_string(item.get("source_id")) or "",
+    ),
+    reverse=True,
+  )
+
+
 def filter_episode_items(
   items: list[dict[str, Any]],
   publication_state: str,
@@ -1215,6 +1273,7 @@ def run_list_episodes(args: argparse.Namespace) -> dict[str, Any]:
 
   body = request_json("GET", url, args.timeout_seconds)
   matched_items = filter_episode_items(extract_episode_items(body), args.publication_state)
+  matched_items = sort_episode_items(matched_items, args.publication_state)
   matched_count = len(matched_items)
   items = [normalize_episode_item(item, include_raw=args.include_raw) for item in matched_items]
 
@@ -1413,7 +1472,12 @@ def build_parser() -> argparse.ArgumentParser:
   )
   list_parser.add_argument("--start-date", default="", help="Optional start date YYYY-MM-DD.")
   list_parser.add_argument("--end-date", default="", help="Optional end date YYYY-MM-DD.")
-  list_parser.add_argument("--limit", type=int, default=200, help="Max episodes to return.")
+  list_parser.add_argument(
+    "--limit",
+    type=int,
+    default=200,
+    help="Max episodes to return after newest-first sorting.",
+  )
   list_parser.add_argument(
     "--include-raw",
     action="store_true",

@@ -206,6 +206,46 @@ class NormalizeEpisodeItemTests(unittest.TestCase):
 
 
 class RunListEpisodesTests(unittest.TestCase):
+  def test_run_list_episodes_sorts_newest_first_before_limit(self) -> None:
+    args = SimpleNamespace(
+      publication_state="published",
+      start_date="",
+      end_date="",
+      limit=1,
+      include_raw=False,
+      dry_run=False,
+      timeout_seconds=30.0,
+    )
+    body = {
+      "items": [
+        {
+          "source_id": "ep-older",
+          "show": "TCR",
+          "title": "Older published episode",
+          "submission": {},
+          "production": {},
+          "publishing": {"status": "Published", "publishedDate": "2025-01-01T10:00:00"},
+          "files": {"main": {"raw": "https://example.com/older.mp3"}},
+        },
+        {
+          "source_id": "ep-newer",
+          "show": "TCR",
+          "title": "Newer published episode",
+          "submission": {},
+          "production": {},
+          "publishing": {"status": "Published", "publishedDate": "2025-02-01T10:00:00"},
+          "files": {"main": {"raw": "https://example.com/newer.mp3"}},
+        },
+      ]
+    }
+
+    with mock.patch.object(client, "request_json", return_value=body):
+      data = client.run_list_episodes(args)
+
+    self.assertEqual(data["count"], 1)
+    self.assertEqual(data["matched_count"], 2)
+    self.assertEqual(data["items"][0]["source_id"], "ep-newer")
+
   def test_run_list_episodes_filters_published_items(self) -> None:
     args = SimpleNamespace(
       publication_state="published",
@@ -294,6 +334,60 @@ class RunListEpisodesTests(unittest.TestCase):
     self.assertEqual(data["matched_count"], 1)
     self.assertEqual(data["filters"]["publication_state"], "unpublished")
     self.assertEqual(data["items"][0]["source_id"], "ep-backlog")
+
+
+class SubmitAndIntroDryRunTests(unittest.TestCase):
+  def test_run_submit_episode_dry_run_uses_expected_request_shape(self) -> None:
+    args = SimpleNamespace(
+      payload_file=str(ROOT / "references" / "submit-episode.example.json"),
+      dry_run=True,
+      timeout_seconds=30.0,
+    )
+
+    data = client.run_submit_episode(args)
+
+    self.assertTrue(data["dry_run"])
+    self.assertEqual(data["request"]["method"], "POST")
+    self.assertEqual(data["request"]["url"], "https://app.aipodcast.ing/api/episodes/submit")
+    self.assertEqual(data["request"]["payload"]["show"], "TCR")
+    self.assertEqual(
+      data["request"]["payload"]["files"]["main"]["raw"],
+      "https://example.com/path/to/main-episode-file.mp4",
+    )
+    self.assertNotIn("mainEpisodeFile", data["request"]["payload"])
+    self.assertEqual(
+      len(data["request"]["payload"]["deliverables"]["thumbnails"]["options"]),
+      2,
+    )
+
+  def test_run_update_intro_copy_dry_run_uses_expected_request_shape(self) -> None:
+    args = SimpleNamespace(
+      source_id="ep-123",
+      payload_file=str(ROOT / "references" / "update-intro-copy-tcr.example.json"),
+      dry_run=True,
+      timeout_seconds=30.0,
+    )
+
+    data = client.run_update_intro_copy(args)
+
+    self.assertTrue(data["dry_run"])
+    self.assertEqual(data["request"]["method"], "PATCH")
+    self.assertEqual(
+      data["request"]["url"],
+      "https://app.aipodcast.ing/api/episodes/ep-123/intro",
+    )
+    self.assertEqual(
+      data["request"]["payload"]["title"],
+      "Final publish-ready episode title",
+    )
+    self.assertEqual(
+      data["request"]["payload"]["deliverables"]["thumbnails"]["video"]["url"],
+      "https://example.com/path/to/video-thumbnail-16x9-primary.png",
+    )
+    self.assertEqual(
+      data["request"]["payload"]["files"]["episode_outro"]["edited"],
+      "https://example.com/path/to/outro-music.mp3",
+    )
 
 
 if __name__ == "__main__":
