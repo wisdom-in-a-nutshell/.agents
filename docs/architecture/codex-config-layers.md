@@ -61,8 +61,7 @@ These files are the source of truth.
 - It also prunes stale managed keys when the canonical templates no longer want them, while preserving unrelated runtime MCP sections and only injecting the shared global MCP defaults.
 
 Example:
-- `service_tier = "fast"` used to be in the canonical templates.
-- After removing it from the templates, `sync-config.sh` now removes stale top-level copies from the live configs.
+- If a top-level key is removed from the canonical templates, `sync-config.sh` removes stale managed copies from the live configs.
 
 ### Trusted Repo Config
 
