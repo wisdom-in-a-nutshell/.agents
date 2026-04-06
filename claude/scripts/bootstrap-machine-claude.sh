@@ -62,8 +62,15 @@ for repo in "${REPO_FILTERS[@]}"; do
   REPO_ARGS+=(--repo "$repo")
 done
 
+CHECK_CONTROL_PLANE_SCRIPT="${SCRIPT_DIR}/check-claude-control-plane.sh"
+[[ -x "$CHECK_CONTROL_PLANE_SCRIPT" ]] || {
+  printf 'ERROR: Missing executable: %s\n' "$CHECK_CONTROL_PLANE_SCRIPT" >&2
+  exit 1
+}
+
 bash "${SCRIPT_DIR}/sync-global-claude-md.sh" "$MODE_FLAG"
 bash "${SCRIPT_DIR}/sync-settings.sh" "$MODE_FLAG"
 bash "${SCRIPT_DIR}/sync-global-mcp.sh" "$MODE_FLAG"
 bash "${SCRIPT_DIR}/sync-skills.sh" "$MODE_FLAG" "${REPO_ARGS[@]}"
 bash "${SCRIPT_DIR}/sync-repo-claude-configs.sh" "$MODE_FLAG" "${REPO_ARGS[@]}"
+bash "${CHECK_CONTROL_PLANE_SCRIPT}" "${REPO_ARGS[@]}"

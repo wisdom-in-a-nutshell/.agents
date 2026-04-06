@@ -28,6 +28,17 @@ Use [Codex Control Plane Ownership](/Users/dobby/.agents/docs/references/codex-c
 
 ## Canonical Commands
 
+- Apply the shared machine-facing agent bootstrap batch:
+  - [`bootstrap-machine-agent-control-planes.sh`](/Users/dobby/.agents/scripts/bootstrap-machine-agent-control-planes.sh)
+  - `~/.agents/scripts/bootstrap-machine-agent-control-planes.sh --apply`
+  - this syncs managed skill links plus the Codex and Claude runtime control planes from one stable root entrypoint
+- Auto-apply the shared agent control plane after `~/.agents` sync when runtime-relevant files changed:
+  - [`auto-apply-agent-control-planes.sh`](/Users/dobby/.agents/scripts/auto-apply-agent-control-planes.sh)
+  - `~/.agents/scripts/auto-apply-agent-control-planes.sh --apply`
+  - this is the machine-facing post-sync entrypoint that external bootstrap repos should call
+- Validate shared skills plus Codex and Claude rendered runtime state:
+  - [`check-agent-control-planes.sh`](/Users/dobby/.agents/scripts/check-agent-control-planes.sh)
+  - `~/.agents/scripts/check-agent-control-planes.sh`
 - Apply the full Codex bootstrap batch:
   - [`bootstrap-machine-codex.sh`](/Users/dobby/.agents/codex/scripts/bootstrap-machine-codex.sh)
   - `~/.agents/codex/scripts/bootstrap-machine-codex.sh --apply`
@@ -181,12 +192,13 @@ Use [Codex Control Plane Ownership](/Users/dobby/.agents/docs/references/codex-c
 ## Automatic Cross-Machine Apply
 
 - Launchd still lives in [`~/GitHub/scripts/sync/git-auto-sync.sh`](/Users/dobby/GitHub/scripts/sync/git-auto-sync.sh), because scheduler ownership is part of the generic machine-ops repo.
-- Codex-specific post-sync apply logic lives in [`auto-apply-codex-control-plane.sh`](/Users/dobby/.agents/codex/scripts/auto-apply-codex-control-plane.sh), because the apply contract is Codex-specific policy.
+- Machine-facing multi-surface apply now lives in [`auto-apply-agent-control-planes.sh`](/Users/dobby/.agents/scripts/auto-apply-agent-control-planes.sh), which calls the Codex and Claude entrypoints as needed after `~/.agents` sync.
+- Codex-specific post-sync apply logic still lives in [`auto-apply-codex-control-plane.sh`](/Users/dobby/.agents/codex/scripts/auto-apply-codex-control-plane.sh) as the lower-level Codex-only reconcile helper.
 - Practical flow:
   1. one machine pushes a change in `~/.agents`
   2. the other machine pulls it on the next git auto-sync cycle
-  3. `git-auto-sync.sh` calls `auto-apply-codex-control-plane.sh`
-  4. that script runs `bootstrap-machine-codex.sh --apply` only when `~/.agents/codex/` changed
+  3. `git-auto-sync.sh` calls `auto-apply-agent-control-planes.sh`
+  4. that script runs the required shared skills, Codex, and Claude apply steps based on what changed
 - Result:
   - no daily manual Codex bootstrap is needed on healthy machines
   - offline machines catch up on the next successful sync after they come online

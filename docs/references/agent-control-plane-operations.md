@@ -1,0 +1,69 @@
+# Agent Control-Plane Operations
+
+Use this page for the shared machine-facing apply and validation entrypoints that live at the root of `~/.agents`.
+
+These wrappers exist so external machine bootstrap repos such as `~/GitHub/scripts` can call one stable `.agents` surface instead of reaching into Codex- or Claude-specific internals directly.
+
+## Canonical Shared Entry Points
+
+- `scripts/bootstrap-machine-agent-control-planes.sh`
+  - machine-facing full bootstrap batch
+  - syncs managed skill links from `skills/registry.json`
+  - applies the Codex runtime via `codex/scripts/bootstrap-machine-codex.sh`
+  - applies the Claude runtime via `claude/scripts/bootstrap-machine-claude.sh`
+- `scripts/auto-apply-agent-control-planes.sh`
+  - machine-facing post-sync reconcile entrypoint
+  - checks the current `~/.agents` commit against a machine-local stamp
+  - runs the minimum shared apply steps needed for runtime-relevant changes
+- `scripts/check-agent-control-planes.sh`
+  - shared validation entrypoint
+  - validates skills registry artifacts plus Codex and Claude rendered runtime state
+
+## Runtime-Relevant Change Model
+
+`scripts/auto-apply-agent-control-planes.sh` currently watches:
+
+- `skills/`
+- `skills-source/`
+- `mcp/`
+- `codex/`
+- `claude/`
+
+Current apply rules:
+
+- `skills/` or `skills-source/` changes:
+  - run `scripts/sync-skills-registry.sh`
+  - run `claude/scripts/bootstrap-machine-claude.sh`
+- `mcp/` changes:
+  - run both Codex and Claude bootstrap batches
+- `codex/` changes:
+  - run Codex bootstrap
+  - if the change is `codex/config/repo-bootstrap.json`, also run Claude bootstrap
+- `claude/` changes:
+  - run Claude bootstrap
+- first reconcile or missing prior stamp:
+  - fall back to the full shared bootstrap batch
+
+## Commands
+
+```bash
+cd ~/.agents
+./scripts/bootstrap-machine-agent-control-planes.sh
+./scripts/bootstrap-machine-agent-control-planes.sh --apply
+./scripts/auto-apply-agent-control-planes.sh --dry-run
+./scripts/auto-apply-agent-control-planes.sh --apply
+./scripts/check-agent-control-planes.sh
+```
+
+Optional scoped Claude validation/bootstrap:
+
+```bash
+./scripts/bootstrap-machine-agent-control-planes.sh --apply --repo ~/.agents
+./scripts/check-agent-control-planes.sh --repo ~/.agents
+```
+
+## Boundary Rule
+
+- Machine repos such as `~/GitHub/scripts` should call these root wrappers.
+- Codex- and Claude-specific scripts remain the low-level component entrypoints owned by `codex/` and `claude/`.
+- Update this page and the component docs together when the shared machine-facing flow changes.

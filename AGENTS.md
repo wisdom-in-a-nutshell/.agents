@@ -1,6 +1,6 @@
 # .agents repo
 
-Personal agent and Codex control plane.
+Personal agent, Codex, and Claude control plane.
 
 ## Purpose
 
@@ -43,6 +43,13 @@ Personal agent and Codex control plane.
 
 ## Operations
 
+- Dry-run machine-facing agent bootstrap batch: `./scripts/bootstrap-machine-agent-control-planes.sh`
+- Apply machine-facing agent bootstrap batch: `./scripts/bootstrap-machine-agent-control-planes.sh --apply`
+  - Syncs managed skill links plus the Codex and Claude control-plane runtimes from one stable `~/.agents` entrypoint.
+- Dry-run post-sync agent control-plane reconcile: `./scripts/auto-apply-agent-control-planes.sh --dry-run`
+- Apply post-sync agent control-plane reconcile: `./scripts/auto-apply-agent-control-planes.sh --apply`
+  - Detects runtime-relevant changes in `skills/`, `skills-source/`, `mcp/`, `codex/`, and `claude/`, then runs the necessary shared apply steps.
+- Validate shared skills + Codex + Claude rendered state: `./scripts/check-agent-control-planes.sh`
 - Dry-run skill bootstrap: `./scripts/bootstrap-skill.sh <skills.sh-url-or-upstream-ref> --repo <repo>`
 - Apply skill bootstrap: `./scripts/bootstrap-skill.sh <skills.sh-url-or-upstream-ref> --repo <repo> --apply`
   - Bootstraps a managed external skill by updating `skills/registry.json`, importing upstream source, syncing links, and regenerating derived registry artifacts.
@@ -63,6 +70,7 @@ Personal agent and Codex control plane.
 - Apply managed repo-local Codex configs: `./codex/scripts/sync-repo-codex-configs.sh --apply`
 - Dry-run Claude bootstrap batch: `./claude/scripts/bootstrap-machine-claude.sh`
 - Apply Claude bootstrap batch: `./claude/scripts/bootstrap-machine-claude.sh --apply`
+- Claude bootstrap now validates rendered state at the end of the batch.
 - Validate Claude control-plane inputs + rendered runtimes: `./claude/scripts/check-claude-control-plane.sh`
 - Dry-run Codex bootstrap batch: `./codex/scripts/bootstrap-machine-codex.sh`
 - Apply Codex bootstrap batch: `./codex/scripts/bootstrap-machine-codex.sh --apply`
@@ -76,8 +84,8 @@ Personal agent and Codex control plane.
 - Scheduler entrypoint lives in `~/GitHub/scripts/sync/git-auto-sync.sh` (launchd every 15 minutes).
 - External upstream refresh runs through that job with a once-per-day gate:
   - `~/.agents/scripts/refresh-external-skills.sh --apply`
-- Managed link regeneration runs every auto-sync cycle:
-  - `~/.agents/scripts/sync-skills-registry.sh --apply`
+- Shared agent control-plane reconcile runs every auto-sync cycle:
+  - `~/.agents/scripts/auto-apply-agent-control-planes.sh --apply`
 
 ## Rules
 

@@ -33,6 +33,8 @@ Shared inputs Claude reads from outside `claude/`:
 
 - `../codex/config/repo-bootstrap.json`
 - `../mcp/config/presets.json`
+- `../skills/registry.json`
+- shared machine-facing wrappers in `../scripts/`
 
 ### `~/.claude`
 
@@ -99,7 +101,8 @@ The mental model is:
 1. `AGENTS.md` stays the shared repo contract.
 2. Claude compatibility is added on top of it.
 3. `~/.agents/claude/` defines the managed canonical inputs.
-4. `~/.claude/` is the applied machine state.
+4. Shared machine-facing apply enters through `~/.agents/scripts/bootstrap-machine-agent-control-planes.sh` or `~/.agents/scripts/auto-apply-agent-control-planes.sh`.
+5. `~/.claude/` is the applied machine state.
 
 That keeps Claude as a sibling control plane, not a replacement for the existing Codex bootstrap.
 

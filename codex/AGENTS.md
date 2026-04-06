@@ -30,14 +30,17 @@ Canonical personal Codex control-plane assets live here.
 
 ## Current Scope
 
+- `../scripts/bootstrap-machine-agent-control-planes.sh` is the canonical machine-facing bootstrap batch for shared skills plus Codex and Claude.
+- `../scripts/auto-apply-agent-control-planes.sh` is the canonical machine-facing post-sync reconcile entrypoint used by external bootstrap repos such as `~/GitHub/scripts`.
+- `../scripts/check-agent-control-planes.sh` is the canonical shared validation entrypoint for skills plus Codex and Claude.
 - `scripts/sync-config.sh` is the canonical sync/apply entrypoint for machine Codex config.
 - `scripts/sync-global-agents-md.sh` is the canonical sync/apply entrypoint for machine-wide `~/.codex/AGENTS.md`.
 - `scripts/sync-trusted-projects.sh` is the canonical trusted-repo sync entrypoint for Codex.
 - `scripts/sync-repo-codex-configs.sh` is the canonical repo-local Codex config sync/apply entrypoint.
-- `scripts/bootstrap-machine-codex.sh` is the canonical Codex-specific machine bootstrap batch.
+- `scripts/bootstrap-machine-codex.sh` is the canonical Codex-specific bootstrap batch used by the shared root wrappers.
 - `scripts/install-pdf-skill-deps.sh` is the canonical machine bootstrap helper for the managed global `pdf` skill runtime.
 - `scripts/check-codex-control-plane.sh` is the canonical Codex control-plane validation entrypoint.
-- `scripts/auto-apply-codex-control-plane.sh` is the canonical post-sync Codex reconcile entrypoint for cross-machine convergence.
+- `scripts/auto-apply-codex-control-plane.sh` is the canonical low-level Codex-specific post-sync reconcile entrypoint.
 - `config/global.config.toml` and `config/xcode.config.toml` are the canonical managed baselines.
 - `config/agents/*.toml` are the canonical managed role overrides for built-in and custom multi-agent roles.
 - `config/repo-bootstrap.json` is the canonical shared repo registry for managed repo-local Codex bootstrap.

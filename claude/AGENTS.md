@@ -16,6 +16,15 @@ Canonical personal Claude control-plane assets live here.
   - `config/bootstrap.json`: Claude-only bootstrap defaults and per-repo overrides.
 - `scripts/`: canonical Claude-specific automation scripts.
 
+## Current Scope
+
+- `../scripts/bootstrap-machine-agent-control-planes.sh` is the canonical machine-facing bootstrap batch for shared skills plus Codex and Claude.
+- `../scripts/auto-apply-agent-control-planes.sh` is the canonical machine-facing post-sync reconcile entrypoint used by external bootstrap repos such as `~/GitHub/scripts`.
+- `../scripts/check-agent-control-planes.sh` is the canonical shared validation entrypoint for skills plus Codex and Claude.
+- `scripts/bootstrap-machine-claude.sh` is the canonical Claude-specific bootstrap batch used by the shared root wrappers.
+- `scripts/check-claude-control-plane.sh` is the canonical Claude control-plane validation entrypoint.
+- `scripts/sync-skills.sh` is the canonical Claude skill materialization entrypoint for `~/.claude/skills/` and repo `.claude/skills/`.
+
 ## Rules
 
 - Do not store auth, session history, caches, runtime databases, or secrets here.

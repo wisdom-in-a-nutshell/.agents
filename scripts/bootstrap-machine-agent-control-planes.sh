@@ -1,0 +1,109 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+APPLY=0
+GITHUB_ROOT="${HOME}/GitHub"
+REPO_FILTERS=()
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ROOT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
+SYNC_SKILLS_SCRIPT="${SCRIPT_DIR}/sync-skills-registry.sh"
+CODEX_BOOTSTRAP_SCRIPT="${ROOT_DIR}/codex/scripts/bootstrap-machine-codex.sh"
+CLAUDE_BOOTSTRAP_SCRIPT="${ROOT_DIR}/claude/scripts/bootstrap-machine-claude.sh"
+
+usage() {
+  cat <<USAGE
+Usage: $(basename "$0") [options]
+
+Run the machine-facing agent control-plane bootstrap batch from ~/.agents.
+
+Default mode is dry-run. Use --apply to write changes.
+
+Options:
+  --apply          Apply changes
+  --dry-run        Show actions only (default)
+  --github-root <path>
+                    Override ~/GitHub root for Codex bootstrap
+  --repo <path>    Limit Claude repo-local sync/check to an exact repo path
+                   (repeatable)
+  -h, --help       Show this help
+
+Examples:
+  ~/.agents/scripts/bootstrap-machine-agent-control-planes.sh
+  ~/.agents/scripts/bootstrap-machine-agent-control-planes.sh --apply
+  ~/.agents/scripts/bootstrap-machine-agent-control-planes.sh --apply --repo ~/.agents
+USAGE
+}
+
+log() {
+  printf '%s\n' "$*"
+}
+
+die() {
+  printf 'ERROR: %s\n' "$*" >&2
+  exit 1
+}
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --apply)
+      APPLY=1
+      shift
+      ;;
+    --dry-run)
+      APPLY=0
+      shift
+      ;;
+    --github-root)
+      GITHUB_ROOT="${2:-}"
+      shift 2
+      ;;
+    --repo)
+      REPO_FILTERS+=("${2:-}")
+      shift 2
+      ;;
+    -h|--help)
+      usage
+      exit 0
+      ;;
+    *)
+      die "Unknown option: $1"
+      ;;
+  esac
+done
+
+MODE_FLAG="--dry-run"
+if (( APPLY == 1 )); then
+  MODE_FLAG="--apply"
+fi
+
+[[ -x "$SYNC_SKILLS_SCRIPT" ]] || die "Missing executable: $SYNC_SKILLS_SCRIPT"
+[[ -x "$CODEX_BOOTSTRAP_SCRIPT" ]] || die "Missing executable: $CODEX_BOOTSTRAP_SCRIPT"
+[[ -x "$CLAUDE_BOOTSTRAP_SCRIPT" ]] || die "Missing executable: $CLAUDE_BOOTSTRAP_SCRIPT"
+REPO_ARGS=()
+for repo in "${REPO_FILTERS[@]}"; do
+  REPO_ARGS+=(--repo "$repo")
+done
+
+sync_skills_cmd=(
+  "$SYNC_SKILLS_SCRIPT"
+  "$MODE_FLAG"
+)
+log "+ ${sync_skills_cmd[*]}"
+"${sync_skills_cmd[@]}"
+
+codex_cmd=(
+  "$CODEX_BOOTSTRAP_SCRIPT"
+  "$MODE_FLAG"
+  --github-root "$GITHUB_ROOT"
+)
+log "+ ${codex_cmd[*]}"
+"${codex_cmd[@]}"
+
+claude_cmd=(
+  "$CLAUDE_BOOTSTRAP_SCRIPT"
+  "$MODE_FLAG"
+  "${REPO_ARGS[@]}"
+)
+log "+ ${claude_cmd[*]}"
+"${claude_cmd[@]}"

@@ -14,6 +14,8 @@ The newest part of that control plane is the repo bootstrap registry in `~/.agen
 
 Shared MCP preset definitions themselves now live in `~/.agents/mcp/config/presets.json`.
 
+At the machine boundary, external repos such as `~/GitHub/scripts` should call the shared root wrappers in `~/.agents/scripts/` rather than reaching into Codex internals directly. The low-level Codex scripts still live in `codex/scripts/`, but machine-facing orchestration now happens one layer up.
+
 ## Figure 1: Ownership Layout
 
 ```mermaid
@@ -112,10 +114,11 @@ These settings stay close to the repo because they describe how Codex should beh
 ## Main Flow
 
 1. Canonical Codex policy and assets are edited in `~/.agents`.
-2. The global templates drive machine config in `~/.codex` and Xcode Codex config.
-3. The repo bootstrap registry drives both trusted repo discovery and managed repo-local `.codex/config.toml` generation.
-4. Codex starts from `~/.codex/config.toml` and any trusted repo-local `.codex/config.toml` in real project repos.
-5. Repo-local overrides refine behavior for one project without changing the global control plane.
+2. Shared machine-facing apply enters through `~/.agents/scripts/bootstrap-machine-agent-control-planes.sh` or `~/.agents/scripts/auto-apply-agent-control-planes.sh`.
+3. The global templates drive machine config in `~/.codex` and Xcode Codex config.
+4. The repo bootstrap registry drives both trusted repo discovery and managed repo-local `.codex/config.toml` generation.
+5. Codex starts from `~/.codex/config.toml` and any trusted repo-local `.codex/config.toml` in real project repos.
+6. Repo-local overrides refine behavior for one project without changing the global control plane.
 
 ## Key Boundaries
 
