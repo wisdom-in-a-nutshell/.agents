@@ -1006,7 +1006,10 @@ sync_agent_role_configs() {
   local target_dir="$3"
   local declaring_config="$4"
   local source_file target_file rendered_file basename target_existing role_name
+  local existing_index found idx
   local -a source_basenames=()
+  local -a referenced_role_basenames=()
+  local -a referenced_role_names=()
 
   if [[ ! -d "$source_dir" ]]; then
     return
@@ -1014,20 +1017,32 @@ sync_agent_role_configs() {
 
   require_readable_file "$declaring_config"
 
-  declare -A referenced_role_basenames=()
   while IFS=$'\t' read -r role_name basename; do
     [[ -n "$role_name" && -n "$basename" ]] || continue
-    referenced_role_basenames["$basename"]="$role_name"
+    found=0
+    for existing_index in "${!referenced_role_basenames[@]}"; do
+      if [[ "${referenced_role_basenames[$existing_index]}" == "$basename" ]]; then
+        referenced_role_names[$existing_index]="$role_name"
+        found=1
+        break
+      fi
+    done
+    if (( found == 0 )); then
+      referenced_role_basenames+=("$basename")
+      referenced_role_names+=("$role_name")
+    fi
   done < <(extract_referenced_agent_role_files "$declaring_config")
 
   shopt -s nullglob
-  for basename in "${!referenced_role_basenames[@]}"; do
+  for idx in "${!referenced_role_basenames[@]}"; do
+    basename="${referenced_role_basenames[$idx]}"
+    role_name="${referenced_role_names[$idx]}"
     source_file="${source_dir}/${basename}"
     target_file="${target_dir}/${basename}"
     rendered_file="${TMP_DIR}/${label// /_}-${basename}"
 
     require_readable_file "$source_file"
-    validate_agent_role_file "$source_file" "${referenced_role_basenames[$basename]}"
+    validate_agent_role_file "$source_file" "$role_name"
     ensure_parent_dir "$target_file"
     cp "$source_file" "$rendered_file"
     source_basenames+=("$basename")

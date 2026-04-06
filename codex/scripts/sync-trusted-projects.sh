@@ -246,8 +246,8 @@ PY
 }
 
 collect_all_repo_roots() {
-  local root repo
-  declare -A seen=()
+  local root repo existing_repo already_seen
+  local -a seen=()
 
   for root in "${ROOTS[@]}"; do
     if [[ -z "$root" ]]; then
@@ -268,13 +268,22 @@ collect_all_repo_roots() {
     esac
     while IFS= read -r repo; do
       [[ -n "$repo" ]] || continue
-      seen["$repo"]=1
+      already_seen=0
+      for existing_repo in "${seen[@]:-}"; do
+        if [[ "$existing_repo" == "$repo" ]]; then
+          already_seen=1
+          break
+        fi
+      done
+      if (( already_seen == 0 )); then
+        seen+=("$repo")
+      fi
     done < <(discover_repo_roots "$root")
   done
 
-  for repo in "${!seen[@]}"; do
-    printf '%s\n' "$repo"
-  done | sort
+  if (( ${#seen[@]} > 0 )); then
+    printf '%s\n' "${seen[@]}" | sort
+  fi
 }
 
 collect_registry_repos() {
