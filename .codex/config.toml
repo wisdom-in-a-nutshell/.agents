@@ -4,8 +4,5 @@
 model = "gpt-5.4"
 model_reasoning_effort = "high"
 
-[features]
-fast_mode = false
-
 [mcp_servers.openaiDeveloperDocs]
 url = "https://developers.openai.com/mcp"
