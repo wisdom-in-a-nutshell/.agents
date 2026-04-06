@@ -170,12 +170,12 @@ class NormalizeEpisodeItemTests(unittest.TestCase):
         }
       ],
     )
-    self.assertEqual(normalized["billing"], {"consumed_hours": 2.5, "is_cross_post": False})
     self.assertEqual(normalized["ads"], {"midRollTimes": ["00:10:00"]})
     self.assertEqual(
       normalized["shownotes"],
       {"mainDescriptionPreview": "Main description", "mainDescriptionLength": 16},
     )
+    self.assertNotIn("billing", normalized)
     self.assertNotIn("raw_episode", normalized)
 
   def test_normalize_episode_item_include_raw_preserves_upstream_payload(self) -> None:
@@ -192,7 +192,8 @@ class NormalizeEpisodeItemTests(unittest.TestCase):
     normalized = client.normalize_episode_item(item, include_raw=True)
 
     self.assertEqual(normalized["source_id"], "ep-raw")
-    self.assertIs(normalized["raw_episode"], item)
+    self.assertEqual(normalized["raw_episode"]["source_id"], "ep-raw")
+    self.assertNotIn("billing", normalized["raw_episode"])
 
 
 if __name__ == "__main__":

@@ -972,25 +972,6 @@ def normalize_processed_assets(value: Any) -> dict[str, Any]:
   )
 
 
-def normalize_billing(value: Any) -> dict[str, Any]:
-  if not isinstance(value, dict):
-    return {}
-
-  consumed_hours = value.get("consumed_hours")
-  return compact_mapping(
-    {
-      "consumed_hours": (
-        consumed_hours
-        if isinstance(consumed_hours, (int, float)) and not isinstance(consumed_hours, bool)
-        else None
-      ),
-      "is_cross_post": (
-        value.get("is_cross_post") if isinstance(value.get("is_cross_post"), bool) else None
-      ),
-    }
-  )
-
-
 def normalize_ads(value: Any) -> dict[str, Any]:
   if not isinstance(value, dict):
     return {}
@@ -1027,6 +1008,13 @@ def normalize_shownotes(value: Any) -> dict[str, Any]:
       ),
     }
   )
+
+
+def sanitize_raw_episode(item: dict[str, Any]) -> dict[str, Any]:
+  sanitized = json.loads(json.dumps(item))
+  if isinstance(sanitized, dict):
+    sanitized.pop("billing", None)
+  return sanitized
 
 
 def normalize_episode_item(item: dict[str, Any], include_raw: bool = False) -> dict[str, Any]:
@@ -1135,14 +1123,13 @@ def normalize_episode_item(item: dict[str, Any], include_raw: bool = False) -> d
       "artwork": normalize_artwork(item.get("artwork"), deliverables),
       "deliverables": normalize_deliverables(deliverables),
       "processedAssets": normalize_processed_assets(processed_assets),
-      "billing": normalize_billing(item.get("billing")),
       "ads": normalize_ads(item.get("ads")),
       "shownotes": normalize_shownotes(item.get("shownotes")),
     }
   )
 
   if include_raw:
-    normalized["raw_episode"] = item
+    normalized["raw_episode"] = sanitize_raw_episode(item)
 
   return normalized
 
@@ -1375,7 +1362,7 @@ def build_parser() -> argparse.ArgumentParser:
   list_parser.add_argument(
     "--include-raw",
     action="store_true",
-    help="Include the full upstream episode payload under each item as raw_episode.",
+    help="Include a sanitized upstream episode payload under each item as raw_episode.",
   )
   list_parser.add_argument(
     "--dry-run",
