@@ -11,6 +11,7 @@
     "ANTHROPIC_DEFAULT_SONNET_MODEL_DESCRIPTION": "Pinned AWS Bedrock Sonnet model",
     "ANTHROPIC_DEFAULT_SONNET_MODEL_NAME": "Sonnet 4.6 (Bedrock)",
     "AWS_REGION": "us-east-1",
+    "CLAUDE_CODE_DISABLE_AUTO_MEMORY": "1",
     "CLAUDE_CODE_USE_BEDROCK": "1"
   },
   "enableAllProjectMcpServers": true,
