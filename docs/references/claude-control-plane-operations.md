@@ -97,6 +97,17 @@ The Claude control plane is intended to follow the same sync/check pattern as Co
 - Global skills live under `~/.claude/skills/`.
 - Project skills live under repo `.claude/skills/`.
 
+## Expected Repo Diffs
+
+- The first successful Claude bootstrap on a machine may create or update repo-local compatibility files in managed repos.
+- Common examples are:
+  - repo `CLAUDE.md`
+  - repo `.claude/settings.json`
+  - repo `.mcp.json`
+  - repo `.claude/skills/*`
+- Those are normal generated outputs from `sync-repo-claude-configs.sh` and `sync-skills.sh`, not evidence that the bootstrap misfired.
+- If a managed repo tracks those paths in git, they will appear as ordinary worktree changes until committed.
+
 ## Deferred Rules
 
 - Do not treat `soul.md` as part of the generic baseline.
