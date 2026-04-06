@@ -79,7 +79,6 @@ python3 scripts/aip_local_upload_helper.py \
 - `list-backlog-episodes` returns a rich summary by default in JSON mode. Each item now includes
   fields such as `thumbnailText`, publishing metadata, preview text for long fields, normalized
   file links, and other lightweight episode context.
-- Billing is intentionally excluded from the client-facing list response.
 - Use `--include-raw` when the agent needs the sanitized upstream episode object in addition to the
   default summary.
 - JSON mode returns a stable envelope with:
@@ -101,9 +100,8 @@ python3 scripts/aip_local_upload_helper.py \
    - preview text plus lengths for long copy fields like show notes or editor notes
    - normalized file links, artwork links, deliverable links, processed-asset links, ads, and
      other lightweight metadata when present
-   Billing is excluded from this response.
    With `--include-raw`, each item also includes `raw_episode` containing the sanitized upstream
-   payload with billing removed.
+   payload.
 2. `submit-episode`:
    Required: `--payload-file` with at least one main episode file link.
    Show handling: always forced to `TCR` by the CLI.
