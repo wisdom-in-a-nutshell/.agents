@@ -53,8 +53,12 @@ Use it when an agent needs one command surface for:
 - `status --wait` polls until the job reaches a terminal state.
 - Local files are uploaded to R2 before submission and then passed to the API as `media_url`.
 - `segment video` accepts optional SAM 3.1 initialization controls:
-  - `--init-timestamp-seconds`
-  - `--init-frame-index`
+  - `--anchor-seconds`
+  - `--anchor-frame-index`
+  - `--window-start-seconds`
+  - `--window-start-frame-index`
+  - `--window-end-seconds`
+  - `--window-end-frame-index`
   - `--propagation-direction`
   - `--max-frame-num-to-track`
 - `--output` writes the final JSON envelope to disk for later steps.

@@ -80,7 +80,9 @@ Segment a video:
 .agents/skills/media-toolkit/scripts/media_toolkit.sh \
   segment video --file $HOME/media/video.mp4 \
   --prompt "black ball" \
-  --init-timestamp-seconds 14 \
+  --anchor-seconds 14 \
+  --window-start-seconds 12 \
+  --window-end-seconds 64 \
   --output /tmp/segment-video.json
 ```
 

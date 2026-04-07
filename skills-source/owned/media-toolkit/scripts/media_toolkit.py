@@ -49,7 +49,7 @@ def build_parser() -> CliArgumentParser:
             "  media-toolkit upload --file $HOME/media/video.mp4 --output /tmp/upload.json\n"
             "  media-toolkit transcribe --file $HOME/media/audio.mp3 --output /tmp/transcribe.json\n"
             "  media-toolkit segment image --file $HOME/media/image.png --prompt \"black ball\" --output /tmp/segment-image.json\n"
-            "  media-toolkit segment video --url https://example.com/video.mp4 --prompt \"black ball\" --init-timestamp-seconds 14 --output /tmp/segment-video.json\n"
+            "  media-toolkit segment video --url https://example.com/video.mp4 --prompt \"black ball\" --anchor-seconds 14 --window-start-seconds 12 --window-end-seconds 64 --output /tmp/segment-video.json\n"
             "  media-toolkit transform --url https://example.com/video.mp4 "
             "--scale-width 1280 --scale-height 720 --output /tmp/transform.json\n"
             "  media-toolkit matte --file $HOME/media/video.mp4 --output /tmp/matte.json\n"
@@ -148,7 +148,7 @@ def _build_segment_parser(subparsers: argparse._SubParsersAction[Any]) -> None:
         epilog=(
             "Examples:\n"
             "  media-toolkit segment image --file $HOME/media/image.png --prompt \"black ball\"\n"
-            "  media-toolkit segment video --file $HOME/media/video.mp4 --prompt \"black ball\" --init-timestamp-seconds 14\n"
+            "  media-toolkit segment video --file $HOME/media/video.mp4 --prompt \"black ball\" --anchor-seconds 14 --window-start-seconds 12 --window-end-seconds 64\n"
         ),
         formatter_class=argparse.RawTextHelpFormatter,
     )
@@ -198,8 +198,8 @@ def _build_segment_video_parser(subparsers: argparse._SubParsersAction[Any]) -> 
         ),
         epilog=(
             "Examples:\n"
-            "  media-toolkit segment video --file $HOME/media/video.mp4 --prompt \"black ball\" --init-timestamp-seconds 14\n"
-            "  media-toolkit segment video --url https://example.com/video.mp4 --init-frame-index 240 --propagation-direction both --output /tmp/segment-video.json\n"
+            "  media-toolkit segment video --file $HOME/media/video.mp4 --prompt \"black ball\" --anchor-seconds 14 --window-start-seconds 12 --window-end-seconds 64\n"
+            "  media-toolkit segment video --url https://example.com/video.mp4 --anchor-frame-index 240 --propagation-direction both --output /tmp/segment-video.json\n"
         ),
         formatter_class=argparse.RawTextHelpFormatter,
     )
@@ -213,16 +213,40 @@ def _build_segment_video_parser(subparsers: argparse._SubParsersAction[Any]) -> 
         help="Segmentation prompt used to identify the target object or region.",
     )
     parser.add_argument(
-        "--init-timestamp-seconds",
+        "--anchor-seconds",
         type=float,
         default=None,
-        help="Optional timestamp where the target first appears.",
+        help="Approximate timestamp where tracking should initialize.",
     )
     parser.add_argument(
-        "--init-frame-index",
+        "--anchor-frame-index",
         type=int,
         default=None,
-        help="Optional explicit initialization frame index.",
+        help="Explicit frame index where tracking should initialize.",
+    )
+    parser.add_argument(
+        "--window-start-seconds",
+        type=float,
+        default=None,
+        help="Optional lower tracking bound in seconds on the original timeline.",
+    )
+    parser.add_argument(
+        "--window-start-frame-index",
+        type=int,
+        default=None,
+        help="Optional lower tracking bound as an explicit frame index.",
+    )
+    parser.add_argument(
+        "--window-end-seconds",
+        type=float,
+        default=None,
+        help="Optional upper tracking bound in seconds on the original timeline.",
+    )
+    parser.add_argument(
+        "--window-end-frame-index",
+        type=int,
+        default=None,
+        help="Optional upper tracking bound as an explicit frame index.",
     )
     parser.add_argument(
         "--propagation-direction",
@@ -647,10 +671,23 @@ def _build_command_payload(
             return "/media/segment/image", _drop_none_values(payload), input_meta
 
         if args.segment_kind == "video":
+            anchor = _build_frame_reference(
+                seconds=args.anchor_seconds,
+                frame_index=args.anchor_frame_index,
+            )
+            window_start = _build_frame_reference(
+                seconds=args.window_start_seconds,
+                frame_index=args.window_start_frame_index,
+            )
+            window_end = _build_frame_reference(
+                seconds=args.window_end_seconds,
+                frame_index=args.window_end_frame_index,
+            )
+            window = _build_tracking_window(start=window_start, end=window_end)
             payload.update(
                 {
-                    "init_timestamp_seconds": args.init_timestamp_seconds,
-                    "init_frame_index": args.init_frame_index,
+                    "anchor": anchor,
+                    "window": window,
                     "propagation_direction": args.propagation_direction,
                     "max_frame_num_to_track": args.max_frame_num_to_track,
                 }
@@ -807,33 +844,28 @@ def _build_api_client(args: argparse.Namespace) -> Any | None:
 def _validate_args(args: argparse.Namespace) -> None:
     if args.subcommand != "segment" or args.segment_kind != "video":
         return
-    if args.init_timestamp_seconds is not None and args.init_timestamp_seconds < 0:
-        raise CliError(
-            code="E_VALIDATION",
-            message="--init-timestamp-seconds must be >= 0.",
-            exit_code=2,
-            retryable=False,
-            hint="Provide a non-negative timestamp or omit the flag.",
-        )
-    if args.init_frame_index is not None and args.init_frame_index < 0:
-        raise CliError(
-            code="E_VALIDATION",
-            message="--init-frame-index must be >= 0.",
-            exit_code=2,
-            retryable=False,
-            hint="Provide a non-negative frame index or omit the flag.",
-        )
-    if (
-        args.init_timestamp_seconds is not None
-        and args.init_frame_index is not None
-    ):
-        raise CliError(
-            code="E_VALIDATION",
-            message="Provide at most one of --init-timestamp-seconds or --init-frame-index.",
-            exit_code=2,
-            retryable=False,
-            hint="Choose either a timestamp-based start or an explicit frame index.",
-        )
+    _validate_frame_reference_args(
+        seconds=args.anchor_seconds,
+        frame_index=args.anchor_frame_index,
+        seconds_flag="--anchor-seconds",
+        frame_flag="--anchor-frame-index",
+        label="anchor",
+    )
+    _validate_frame_reference_args(
+        seconds=args.window_start_seconds,
+        frame_index=args.window_start_frame_index,
+        seconds_flag="--window-start-seconds",
+        frame_flag="--window-start-frame-index",
+        label="window.start",
+    )
+    _validate_frame_reference_args(
+        seconds=args.window_end_seconds,
+        frame_index=args.window_end_frame_index,
+        seconds_flag="--window-end-seconds",
+        frame_flag="--window-end-frame-index",
+        label="window.end",
+    )
+    _validate_window_order(args)
     if (
         args.max_frame_num_to_track is not None
         and args.max_frame_num_to_track < 1
@@ -849,6 +881,97 @@ def _validate_args(args: argparse.Namespace) -> None:
 
 def _drop_none_values(payload: dict[str, Any]) -> dict[str, Any]:
     return {key: value for key, value in payload.items() if value is not None}
+
+
+def _build_frame_reference(
+    *,
+    seconds: float | None,
+    frame_index: int | None,
+) -> dict[str, Any] | None:
+    if seconds is None and frame_index is None:
+        return None
+    reference: dict[str, Any] = {}
+    if seconds is not None:
+        reference["seconds"] = seconds
+    if frame_index is not None:
+        reference["frame_index"] = frame_index
+    return reference
+
+
+def _build_tracking_window(
+    *,
+    start: dict[str, Any] | None,
+    end: dict[str, Any] | None,
+) -> dict[str, Any] | None:
+    if start is None and end is None:
+        return None
+    window: dict[str, Any] = {}
+    if start is not None:
+        window["start"] = start
+    if end is not None:
+        window["end"] = end
+    return window
+
+
+def _validate_frame_reference_args(
+    *,
+    seconds: float | None,
+    frame_index: int | None,
+    seconds_flag: str,
+    frame_flag: str,
+    label: str,
+) -> None:
+    if seconds is not None and seconds < 0:
+        raise CliError(
+            code="E_VALIDATION",
+            message=f"{seconds_flag} must be >= 0.",
+            exit_code=2,
+            retryable=False,
+            hint=f"Provide a non-negative {label} timestamp or omit the flag.",
+        )
+    if frame_index is not None and frame_index < 0:
+        raise CliError(
+            code="E_VALIDATION",
+            message=f"{frame_flag} must be >= 0.",
+            exit_code=2,
+            retryable=False,
+            hint=f"Provide a non-negative {label} frame index or omit the flag.",
+        )
+    if seconds is not None and frame_index is not None:
+        raise CliError(
+            code="E_VALIDATION",
+            message=f"Provide at most one of {seconds_flag} or {frame_flag}.",
+            exit_code=2,
+            retryable=False,
+            hint=f"Choose either a seconds-based or frame-based reference for {label}.",
+        )
+
+
+def _validate_window_order(args: argparse.Namespace) -> None:
+    if (
+        args.window_start_seconds is not None
+        and args.window_end_seconds is not None
+        and args.window_start_seconds >= args.window_end_seconds
+    ):
+        raise CliError(
+            code="E_VALIDATION",
+            message="--window-start-seconds must be earlier than --window-end-seconds.",
+            exit_code=2,
+            retryable=False,
+            hint="Provide a strictly increasing window in seconds or use frame indexes instead.",
+        )
+    if (
+        args.window_start_frame_index is not None
+        and args.window_end_frame_index is not None
+        and args.window_start_frame_index >= args.window_end_frame_index
+    ):
+        raise CliError(
+            code="E_VALIDATION",
+            message="--window-start-frame-index must be earlier than --window-end-frame-index.",
+            exit_code=2,
+            retryable=False,
+            hint="Provide a strictly increasing window in frame indexes or use seconds instead.",
+        )
 
 
 def _configure_logging(*, debug: bool) -> None:
