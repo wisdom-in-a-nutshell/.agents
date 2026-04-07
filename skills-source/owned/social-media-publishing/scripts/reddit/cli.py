@@ -51,6 +51,13 @@ to_jsonable = _support.to_jsonable
 RUNTIME_DEPENDENCIES = ["pydantic", "httpx", "praw"]
 
 
+class AgentArgumentParser(argparse.ArgumentParser):
+    """ArgumentParser that maps usage errors into structured CLI failures."""
+
+    def error(self, message: str) -> None:
+        raise CliError(message, code="E_INVALID_INPUT", exit_code=2)
+
+
 def build_parser() -> argparse.ArgumentParser:
     common = argparse.ArgumentParser(add_help=False)
     common.add_argument("--env-file", default=str(DEFAULT_ENV_PATH), help="Path to machine-local Reddit credentials env file.")
@@ -59,8 +66,8 @@ def build_parser() -> argparse.ArgumentParser:
     mode.add_argument("--plain", action="store_true", help="Emit stable plain text for shell pipelines or quick operator inspection.")
     common.add_argument("--no-input", action="store_true", help="Disable any future interactive behavior.")
 
-    parser = argparse.ArgumentParser(description="Reddit publishing CLI for the social-media-publishing skill.", parents=[common])
-    subparsers = parser.add_subparsers(dest="command", required=True)
+    parser = AgentArgumentParser(description="Reddit publishing CLI for the social-media-publishing skill.", parents=[common])
+    subparsers = parser.add_subparsers(dest="command", required=True, parser_class=AgentArgumentParser)
 
     status = subparsers.add_parser("status", help="Inspect Reddit runtime/auth state.", parents=[common])
     status.set_defaults(func=command_status, command_path="reddit status")
@@ -513,15 +520,29 @@ def main(argv: list[str] | None = None) -> int:
     start_time = time.time()
     request_id = make_request_id()
     parser = build_parser()
-    args = parser.parse_args(argv)
-    command = getattr(args, "command_path", f"reddit {args.command}")
     try:
+        args = parser.parse_args(argv)
+        command = getattr(args, "command_path", f"reddit {args.command}")
         data = args.func(args)
         return emit_success(args, command, data, start_time=start_time, request_id=request_id)
     except CliError as exc:
-        return emit_error(args, command, exc, start_time=start_time, request_id=request_id)
+        parsed_args = locals().get("args")
+        command = locals().get("command", "reddit")
+        if parsed_args is None:
+            class _Args:
+                plain = False
+                json = True
+            parsed_args = _Args()
+        return emit_error(parsed_args, command, exc, start_time=start_time, request_id=request_id)
     except KeyboardInterrupt:
-        return emit_error(args, command, CliError("Interrupted.", code="E_TIMEOUT", exit_code=5, retryable=True), start_time=start_time, request_id=request_id)
+        parsed_args = locals().get("args")
+        command = locals().get("command", "reddit")
+        if parsed_args is None:
+            class _Args:
+                plain = False
+                json = True
+            parsed_args = _Args()
+        return emit_error(parsed_args, command, CliError("Interrupted.", code="E_TIMEOUT", exit_code=5, retryable=True), start_time=start_time, request_id=request_id)
 
 
 if __name__ == "__main__":
