@@ -3,7 +3,7 @@ repo_name: "win"
 path: "~/GitHub/win"
 mcp_count: 1
 skill_count: 23
-repo_local_skill_count: 7
+repo_local_skill_count: 6
 global_agent_count: 1
 custom_agent_count: 0
 agent_count: 1
@@ -32,6 +32,7 @@ repo_skills:
   - "aip-frontend-contract-apply"
   - "azure-webapp-config"
   - "client-interface-guidelines"
+  - "media-toolkit"
   - "modal-function-sync"
   - "openai-docs"
   - "show-password-setup"
@@ -41,7 +42,6 @@ repo_local_skills:
   - "contact-form-automation"
   - "descript-api-docs-sync"
   - "log-investigation"
-  - "media-toolkit"
   - "scheduled-jobs"
 skills:
   - "add-env-var"

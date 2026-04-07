@@ -2,7 +2,7 @@
 
 ## Purpose
 
-`media_toolkit.sh` is the portable entrypoint and `media_toolkit.py` is the machine-primary implementation for the canonical WIN media job endpoints.
+`media_toolkit.py` is the repo-local machine-primary toolkit for the canonical WIN media job endpoints.
 
 Use it when an agent needs one command surface for:
 - local file upload
@@ -13,6 +13,10 @@ Use it when an agent needs one command surface for:
 
 ## Commands
 
+- `upload`
+  - Backend: shared local `~/GitHub/scripts/bin/upload-media` wrapper
+  - Inputs: `--file`
+  - Optional file output: `--output`
 - `transcribe`
   - Endpoint: `POST /media/transcribe`
   - Inputs: exactly one of `--file` or `--url`
@@ -34,6 +38,7 @@ Use it when an agent needs one command surface for:
 
 - JSON is the default output contract.
 - `--plain` is only for quick operator inspection.
+- `upload` writes a local file through the shared local uploader and returns upload metadata including the public URL.
 - Submit commands wait for terminal state by default.
 - `--no-wait` returns the submitted `job_id` without polling.
 - `status --wait` polls until the job reaches a terminal state.
@@ -53,6 +58,7 @@ Each execution returns one JSON object on stdout:
 
 Success:
 - `status = "ok"`
+- `data.upload` contains upload metadata for the `upload` command
 - `data.job` contains submitted or fetched job information
 - `data.input` contains input metadata for submit commands
 - `data.result` contains the terminal job result when available

@@ -410,16 +410,22 @@
       ],
       "source_path": "skills-source/external/copilot-sdk",
       "upstream_ref": "microsoft/skills:.github/skills/copilot-sdk@main"
+    },
+    {
+      "skill": "remotion",
+      "origin": "external",
+      "scope": "repo",
+      "repos": [
+        "adithyan-ai-videos"
+      ],
+      "source_path": "skills-source/external/remotion",
+      "upstream_ref": "remotion-dev/remotion:packages/skills/skills/remotion@main"
     }
   ],
   "unmanaged_repo_local_skills": [
     {
       "repo": "adithyan-ai-videos",
       "skill": "creating-video"
-    },
-    {
-      "repo": "adithyan-ai-videos",
-      "skill": "remotion"
     },
     {
       "repo": "aipodcasting-public-website",
@@ -464,7 +470,6 @@
     {
       "repo": "win",
       "skill": "scheduled-jobs"
-    },
-    
+    }
   ]
 }

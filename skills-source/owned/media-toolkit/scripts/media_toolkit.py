@@ -16,14 +16,9 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Optional
 
-WIN_REPO_ROOT = Path(
-    os.getenv("WIN_REPO_ROOT", "/Users/dobby/GitHub/win")
-).expanduser().resolve()
 SCRIPT_DIR = Path(__file__).resolve().parent
 if str(SCRIPT_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPT_DIR))
-if str(WIN_REPO_ROOT) not in sys.path:
-    sys.path.insert(0, str(WIN_REPO_ROOT))
 
 from media_toolkit_lib.api import MediaToolkitApiClient
 from media_toolkit_lib.errors import CliArgumentParser, CliError, ParserExit
@@ -47,28 +42,64 @@ def build_parser() -> CliArgumentParser:
         prog=COMMAND_NAME,
         description=(
             "Run WIN media tools from a local file or URL. "
-            "Use this for transcription, transform, matting, and job inspection. "
+            "Use this for upload, transcription, transform, matting, and job inspection. "
             "Results are returned as JSON by default."
         ),
         epilog=(
             "Examples:\n"
-            "  media-toolkit transcribe --file /abs/path/audio.mp3 --output /tmp/transcribe.json\n"
+            "  media-toolkit upload --file $HOME/media/video.mp4 --output /tmp/upload.json\n"
+            "  media-toolkit transcribe --file $HOME/media/audio.mp3 --output /tmp/transcribe.json\n"
             "  media-toolkit transform --url https://example.com/video.mp4 "
             "--scale-width 1280 --scale-height 720 --output /tmp/transform.json\n"
-            "  media-toolkit matte --file /abs/path/video.mp4 --output /tmp/matte.json\n"
+            "  media-toolkit matte --file $HOME/media/video.mp4 --output /tmp/matte.json\n"
             "  media-toolkit status --job-id VIDEO_TRANSFORM_123 --wait"
         ),
         formatter_class=argparse.RawTextHelpFormatter,
     )
-    _add_runtime_arguments(parser)
+    _add_common_runtime_arguments(parser)
 
     subparsers = parser.add_subparsers(dest="subcommand", required=True)
 
+    _build_upload_parser(subparsers)
     _build_transcribe_parser(subparsers)
     _build_transform_parser(subparsers)
     _build_matte_parser(subparsers)
     _build_status_parser(subparsers)
     return parser
+
+
+def _build_upload_parser(subparsers: argparse._SubParsersAction[Any]) -> None:
+    parser = subparsers.add_parser(
+        "upload",
+        help="Upload a local media file through the shared local uploader and return the uploaded URL.",
+        description=(
+            "Upload a local media file through the shared local uploader and return "
+            "the upload metadata as a JSON envelope."
+        ),
+        epilog=(
+            "Examples:\n"
+            "  media-toolkit upload --file $HOME/media/video.mp4\n"
+            "  media-toolkit upload --file $HOME/media/audio.mp3 --output /tmp/upload.json\n"
+            "  media-toolkit upload --file $HOME/media/video.mp4 --storage-prefix share"
+        ),
+        formatter_class=argparse.RawTextHelpFormatter,
+    )
+    _add_common_runtime_arguments(parser)
+    parser.add_argument(
+        "--file",
+        required=True,
+        help="Local media file to upload.",
+    )
+    parser.add_argument(
+        "--storage-prefix",
+        default="share",
+        help="Top-level storage prefix for the uploaded object.",
+    )
+    parser.add_argument(
+        "--destination-prefix",
+        default="agent-media-toolkit",
+        help="Object path prefix under the storage prefix.",
+    )
 
 
 def _build_transcribe_parser(subparsers: argparse._SubParsersAction[Any]) -> None:
@@ -82,13 +113,14 @@ def _build_transcribe_parser(subparsers: argparse._SubParsersAction[Any]) -> Non
         ),
         epilog=(
             "Examples:\n"
-            "  media-toolkit transcribe --file /abs/path/audio.mp3\n"
+            "  media-toolkit transcribe --file $HOME/media/audio.mp3\n"
             "  media-toolkit transcribe --url https://example.com/audio.mp3 --output /tmp/transcribe.json\n"
-            "  media-toolkit transcribe --file /abs/path/audio.mp3 --no-wait"
+            "  media-toolkit transcribe --file $HOME/media/audio.mp3 --no-wait"
         ),
         formatter_class=argparse.RawTextHelpFormatter,
     )
-    _add_runtime_arguments(parser)
+    _add_common_runtime_arguments(parser)
+    _add_api_runtime_arguments(parser)
     _add_input_arguments(parser)
     _add_submission_arguments(parser)
     parser.add_argument(
@@ -114,13 +146,14 @@ def _build_transform_parser(subparsers: argparse._SubParsersAction[Any]) -> None
         ),
         epilog=(
             "Examples:\n"
-            "  media-toolkit transform --file /abs/path/video.mp4 --scale-width 1280 --scale-height 720\n"
+            "  media-toolkit transform --file $HOME/media/video.mp4 --scale-width 1280 --scale-height 720\n"
             "  media-toolkit transform --url https://example.com/video.mp4 --trim-start-seconds 5 --trim-end-seconds 30 --output /tmp/transform.json\n"
-            "  media-toolkit transform --file /abs/path/video.mp4 --no-wait"
+            "  media-toolkit transform --file $HOME/media/video.mp4 --no-wait"
         ),
         formatter_class=argparse.RawTextHelpFormatter,
     )
-    _add_runtime_arguments(parser)
+    _add_common_runtime_arguments(parser)
+    _add_api_runtime_arguments(parser)
     _add_input_arguments(parser)
     _add_submission_arguments(parser)
     parser.add_argument("--trim-start-seconds", type=float)
@@ -161,13 +194,14 @@ def _build_matte_parser(subparsers: argparse._SubParsersAction[Any]) -> None:
         ),
         epilog=(
             "Examples:\n"
-            "  media-toolkit matte --file /abs/path/video.mp4\n"
+            "  media-toolkit matte --file $HOME/media/video.mp4\n"
             "  media-toolkit matte --url https://example.com/video.mp4 --output /tmp/matte.json\n"
-            "  media-toolkit matte --file /abs/path/video.mp4 --no-wait"
+            "  media-toolkit matte --file $HOME/media/video.mp4 --no-wait"
         ),
         formatter_class=argparse.RawTextHelpFormatter,
     )
-    _add_runtime_arguments(parser)
+    _add_common_runtime_arguments(parser)
+    _add_api_runtime_arguments(parser)
     _add_input_arguments(parser)
     _add_submission_arguments(parser)
     parser.add_argument(
@@ -204,7 +238,8 @@ def _build_status_parser(subparsers: argparse._SubParsersAction[Any]) -> None:
         ),
         formatter_class=argparse.RawTextHelpFormatter,
     )
-    _add_runtime_arguments(parser)
+    _add_common_runtime_arguments(parser)
+    _add_api_runtime_arguments(parser)
     parser.add_argument(
         "--job-id",
         required=True,
@@ -217,7 +252,7 @@ def _build_status_parser(subparsers: argparse._SubParsersAction[Any]) -> None:
     )
 
 
-def _add_runtime_arguments(parser: argparse.ArgumentParser) -> None:
+def _add_common_runtime_arguments(parser: argparse.ArgumentParser) -> None:
     output_group = parser.add_mutually_exclusive_group()
     output_group.add_argument(
         "--json",
@@ -234,6 +269,25 @@ def _add_runtime_arguments(parser: argparse.ArgumentParser) -> None:
         help="Emit concise plain-text output for inspection.",
     )
     parser.set_defaults(output_mode="json")
+    parser.add_argument(
+        "-o",
+        "--output",
+        help="Optional file path for the final JSON result envelope.",
+    )
+    parser.add_argument(
+        "--no-input",
+        action="store_true",
+        help="Disable prompts. This client is non-interactive regardless.",
+    )
+    parser.add_argument(
+        "-d",
+        "--debug",
+        action="store_true",
+        help="Emit debug diagnostics to stderr.",
+    )
+
+
+def _add_api_runtime_arguments(parser: argparse.ArgumentParser) -> None:
     parser.add_argument(
         "--api-base-url",
         default=os.getenv("WIN_MEDIA_API_BASE_URL")
@@ -258,22 +312,6 @@ def _add_runtime_arguments(parser: argparse.ArgumentParser) -> None:
         type=float,
         default=5.0,
         help="Polling interval while waiting for a job.",
-    )
-    parser.add_argument(
-        "-o",
-        "--output",
-        help="Optional file path for the final JSON result envelope.",
-    )
-    parser.add_argument(
-        "--no-input",
-        action="store_true",
-        help="Disable prompts. This client is non-interactive regardless.",
-    )
-    parser.add_argument(
-        "-d",
-        "--debug",
-        action="store_true",
-        help="Emit debug diagnostics to stderr.",
     )
 
 
@@ -326,12 +364,14 @@ def run(argv: list[str]) -> tuple[int, str]:
     try:
         args = parser.parse_args(argv)
         _configure_logging(debug=args.debug)
-        api_client = MediaToolkitApiClient(
-            api_base_url=args.api_base_url,
-            request_timeout_seconds=args.request_timeout_seconds,
-            poll_interval_seconds=args.poll_interval_seconds,
-            poll_timeout_seconds=args.poll_timeout_seconds,
-        )
+        api_client = None
+        if args.subcommand != "upload":
+            api_client = MediaToolkitApiClient(
+                api_base_url=args.api_base_url,
+                request_timeout_seconds=args.request_timeout_seconds,
+                poll_interval_seconds=args.poll_interval_seconds,
+                poll_timeout_seconds=args.poll_timeout_seconds,
+            )
         data = _execute_command(api_client, args)
         envelope = _build_envelope(
             command=f"{COMMAND_NAME} {args.subcommand}",
@@ -396,9 +436,33 @@ def main(argv: Optional[list[str]] = None) -> int:
 
 
 def _execute_command(
-    api_client: MediaToolkitApiClient,
+    api_client: MediaToolkitApiClient | None,
     args: argparse.Namespace,
 ) -> dict[str, Any]:
+    if args.subcommand == "upload":
+        upload = upload_local_file(
+            args.file,
+            storage_prefix=args.storage_prefix,
+            destination_prefix=args.destination_prefix,
+        )
+        return {
+            "upload": upload,
+            "input": {
+                "file_path": upload["file_path"],
+                "used_upload": True,
+            },
+            "result": None,
+        }
+
+    if api_client is None:
+        raise CliError(
+            code="E_API",
+            message=f"API client missing for subcommand: {args.subcommand}",
+            exit_code=1,
+            retryable=False,
+            hint="Retry the command or inspect the toolkit configuration.",
+        )
+
     if args.subcommand == "status":
         job_doc = (
             api_client.wait_for_job(args.job_id)
@@ -496,12 +560,16 @@ def _resolve_input_payload(
         return {"media_url": args.url}, {"media_url": args.url, "used_upload": False}
 
     if args.file:
-        uploaded_url = upload_local_file(args.file)
+        upload = upload_local_file(args.file)
         return (
-            {"media_url": uploaded_url},
+            {"media_url": upload["url"]},
             {
-                "file_path": str(Path(args.file).resolve()),
-                "uploaded_url": uploaded_url,
+                "file_path": upload["file_path"],
+                "uploaded_url": upload["url"],
+                "storage_prefix": upload["storage_prefix"],
+                "destination_path": upload["destination_path"],
+                "content_sha256": upload.get("content_sha256"),
+                "cached": bool(upload.get("cached", False)),
                 "used_upload": True,
             },
         )

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Remotion Best Practices"
+  short_description: "Apply Remotion patterns for React-based video creation."
+  default_prompt: "Implement this Remotion change using best practices from the skill rules, and explain key composition, timing, and asset decisions."

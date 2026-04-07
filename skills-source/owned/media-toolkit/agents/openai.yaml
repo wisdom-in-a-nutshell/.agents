@@ -1,4 +1,4 @@
 interface:
   display_name: "Media Toolkit"
-  short_description: "Run WIN media tools through API"
-  default_prompt: "Use $media-toolkit to run WIN transcription, transform, matting, or job status checks from a local file, media URL, or job_id."
+  short_description: "Process media from local files or URLs"
+  default_prompt: "Use $media-toolkit for media processing from a local file or media URL and return structured results."
