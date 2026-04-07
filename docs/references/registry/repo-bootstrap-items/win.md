@@ -2,8 +2,8 @@
 repo_name: "win"
 path: "~/GitHub/win"
 mcp_count: 1
-skill_count: 22
-repo_local_skill_count: 6
+skill_count: 23
+repo_local_skill_count: 7
 global_agent_count: 1
 custom_agent_count: 0
 agent_count: 1
@@ -41,6 +41,7 @@ repo_local_skills:
   - "contact-form-automation"
   - "descript-api-docs-sync"
   - "log-investigation"
+  - "media-toolkit"
   - "scheduled-jobs"
 skills:
   - "add-env-var"
@@ -57,6 +58,7 @@ skills:
   - "descript-api-docs-sync"
   - "find-skills"
   - "log-investigation"
+  - "media-toolkit"
   - "modal-function-sync"
   - "openai-docs"
   - "pdf"
