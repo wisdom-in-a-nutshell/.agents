@@ -41,13 +41,15 @@ def build_parser() -> CliArgumentParser:
         prog=COMMAND_NAME,
         description=(
             "Run WIN media tools from a local file or URL. "
-            "Use this for upload, transcription, transform, matting, and job inspection. "
+            "Use this for upload, transcription, segmentation, transform, matting, and job inspection. "
             "Results are returned as JSON by default."
         ),
         epilog=(
             "Examples:\n"
             "  media-toolkit upload --file $HOME/media/video.mp4 --output /tmp/upload.json\n"
             "  media-toolkit transcribe --file $HOME/media/audio.mp3 --output /tmp/transcribe.json\n"
+            "  media-toolkit segment image --file $HOME/media/image.png --prompt \"black ball\" --output /tmp/segment-image.json\n"
+            "  media-toolkit segment video --url https://example.com/video.mp4 --prompt \"black ball\" --init-timestamp-seconds 14 --output /tmp/segment-video.json\n"
             "  media-toolkit transform --url https://example.com/video.mp4 "
             "--scale-width 1280 --scale-height 720 --output /tmp/transform.json\n"
             "  media-toolkit matte --file $HOME/media/video.mp4 --output /tmp/matte.json\n"
@@ -61,6 +63,7 @@ def build_parser() -> CliArgumentParser:
 
     _build_upload_parser(subparsers)
     _build_transcribe_parser(subparsers)
+    _build_segment_parser(subparsers)
     _build_transform_parser(subparsers)
     _build_matte_parser(subparsers)
     _build_status_parser(subparsers)
@@ -131,6 +134,112 @@ def _build_transcribe_parser(subparsers: argparse._SubParsersAction[Any]) -> Non
         "--diarize",
         action="store_true",
         help="Enable speaker diarization.",
+    )
+
+
+def _build_segment_parser(subparsers: argparse._SubParsersAction[Any]) -> None:
+    parser = subparsers.add_parser(
+        "segment",
+        help="Segment image or video media and return SAM 3.1 mask/alpha artifacts.",
+        description=(
+            "Run direct SAM 3.1 segmentation on image or video media. "
+            "Choose the media kind first, then pass either --file or --url."
+        ),
+        epilog=(
+            "Examples:\n"
+            "  media-toolkit segment image --file $HOME/media/image.png --prompt \"black ball\"\n"
+            "  media-toolkit segment video --file $HOME/media/video.mp4 --prompt \"black ball\" --init-timestamp-seconds 14\n"
+        ),
+        formatter_class=argparse.RawTextHelpFormatter,
+    )
+    nested = parser.add_subparsers(dest="segment_kind", required=True)
+    _build_segment_image_parser(nested)
+    _build_segment_video_parser(nested)
+
+
+def _build_segment_image_parser(subparsers: argparse._SubParsersAction[Any]) -> None:
+    parser = subparsers.add_parser(
+        "image",
+        help="Submit an image segmentation job and return the completed mask/alpha result by default.",
+        description=(
+            "Submit a SAM 3.1 image segmentation job from a local file or URL. "
+            "The command waits by default and returns the final JSON result envelope."
+        ),
+        epilog=(
+            "Examples:\n"
+            "  media-toolkit segment image --file $HOME/media/image.png --prompt \"black ball\"\n"
+            "  media-toolkit segment image --url https://example.com/image.png --output /tmp/segment-image.json\n"
+        ),
+        formatter_class=argparse.RawTextHelpFormatter,
+    )
+    _add_common_runtime_arguments(parser)
+    _add_api_runtime_arguments(parser)
+    _add_input_arguments(parser)
+    _add_submission_arguments(parser)
+    parser.add_argument(
+        "--prompt",
+        default="person",
+        help="Segmentation prompt used to identify the target object or region.",
+    )
+    parser.add_argument(
+        "--storage-prefix",
+        default="cache",
+        help="Storage prefix for segmentation artifacts.",
+    )
+
+
+def _build_segment_video_parser(subparsers: argparse._SubParsersAction[Any]) -> None:
+    parser = subparsers.add_parser(
+        "video",
+        help="Submit a video segmentation job and return the completed mask/alpha result by default.",
+        description=(
+            "Submit a SAM 3.1 video segmentation job from a local file or URL. "
+            "The command waits by default and returns the final JSON result envelope."
+        ),
+        epilog=(
+            "Examples:\n"
+            "  media-toolkit segment video --file $HOME/media/video.mp4 --prompt \"black ball\" --init-timestamp-seconds 14\n"
+            "  media-toolkit segment video --url https://example.com/video.mp4 --init-frame-index 240 --propagation-direction both --output /tmp/segment-video.json\n"
+        ),
+        formatter_class=argparse.RawTextHelpFormatter,
+    )
+    _add_common_runtime_arguments(parser)
+    _add_api_runtime_arguments(parser)
+    _add_input_arguments(parser)
+    _add_submission_arguments(parser)
+    parser.add_argument(
+        "--prompt",
+        default="person",
+        help="Segmentation prompt used to identify the target object or region.",
+    )
+    parser.add_argument(
+        "--init-timestamp-seconds",
+        type=float,
+        default=None,
+        help="Optional timestamp where the target first appears.",
+    )
+    parser.add_argument(
+        "--init-frame-index",
+        type=int,
+        default=None,
+        help="Optional explicit initialization frame index.",
+    )
+    parser.add_argument(
+        "--propagation-direction",
+        default="forward",
+        choices=["forward", "backward", "both"],
+        help='Propagation direction for the SAM 3.1 video predictor.',
+    )
+    parser.add_argument(
+        "--max-frame-num-to-track",
+        type=int,
+        default=None,
+        help="Optional bound on how many frames to track.",
+    )
+    parser.add_argument(
+        "--storage-prefix",
+        default="cache",
+        help="Storage prefix for segmentation artifacts.",
     )
 
 
@@ -362,20 +471,12 @@ def run(argv: list[str]) -> tuple[int, str]:
 
     try:
         args = parser.parse_args(argv)
+        _validate_args(args)
         _configure_logging(debug=args.debug)
-        api_client = None
-        if args.subcommand != "upload":
-            from media_toolkit_lib.api import MediaToolkitApiClient
-
-            api_client = MediaToolkitApiClient(
-                api_base_url=args.api_base_url,
-                request_timeout_seconds=args.request_timeout_seconds,
-                poll_interval_seconds=args.poll_interval_seconds,
-                poll_timeout_seconds=args.poll_timeout_seconds,
-            )
+        api_client = _build_api_client(args)
         data = _execute_command(api_client, args)
         envelope = _build_envelope(
-            command=f"{COMMAND_NAME} {args.subcommand}",
+            command=_command_label(args),
             status="ok",
             data=data,
             error=None,
@@ -437,7 +538,7 @@ def main(argv: Optional[list[str]] = None) -> int:
 
 
 def _execute_command(
-    api_client: MediaToolkitApiClient | None,
+    api_client: Any | None,
     args: argparse.Namespace,
 ) -> dict[str, Any]:
     if args.subcommand == "upload":
@@ -535,6 +636,27 @@ def _build_command_payload(
         )
         return "/media/transform", _drop_none_values(payload), input_meta
 
+    if args.subcommand == "segment":
+        payload.update(
+            {
+                "prompt": args.prompt,
+                "storage_prefix": args.storage_prefix,
+            }
+        )
+        if args.segment_kind == "image":
+            return "/media/segment/image", _drop_none_values(payload), input_meta
+
+        if args.segment_kind == "video":
+            payload.update(
+                {
+                    "init_timestamp_seconds": args.init_timestamp_seconds,
+                    "init_frame_index": args.init_frame_index,
+                    "propagation_direction": args.propagation_direction,
+                    "max_frame_num_to_track": args.max_frame_num_to_track,
+                }
+            )
+            return "/media/segment/video", _drop_none_values(payload), input_meta
+
     if args.subcommand == "matte":
         payload.update(
             {
@@ -550,7 +672,7 @@ def _build_command_payload(
         message=f"Unsupported subcommand: {args.subcommand}",
         exit_code=2,
         retryable=False,
-        hint="Choose one of: transcribe, transform, matte, status.",
+        hint="Choose one of: upload, transcribe, segment, transform, matte, status.",
     )
 
 
@@ -649,10 +771,80 @@ def _safe_output_mode(argv: list[str]) -> str:
 
 
 def _safe_subcommand(argv: list[str]) -> str:
+    found_top_level = None
     for item in argv:
-        if item in {"transcribe", "transform", "matte", "status"}:
-            return item
+        if item in {"upload", "transcribe", "segment", "transform", "matte", "status"}:
+            found_top_level = item
+            break
+    if found_top_level != "segment":
+        return found_top_level or "unknown"
+    for item in argv:
+        if item in {"image", "video"}:
+            return f"segment {item}"
     return "unknown"
+
+
+def _command_label(args: argparse.Namespace) -> str:
+    if args.subcommand == "segment":
+        return f"{COMMAND_NAME} segment {args.segment_kind}"
+    return f"{COMMAND_NAME} {args.subcommand}"
+
+
+def _build_api_client(args: argparse.Namespace) -> Any | None:
+    if args.subcommand == "upload":
+        return None
+
+    from media_toolkit_lib.api import MediaToolkitApiClient
+
+    return MediaToolkitApiClient(
+        api_base_url=args.api_base_url,
+        request_timeout_seconds=args.request_timeout_seconds,
+        poll_interval_seconds=args.poll_interval_seconds,
+        poll_timeout_seconds=args.poll_timeout_seconds,
+    )
+
+
+def _validate_args(args: argparse.Namespace) -> None:
+    if args.subcommand != "segment" or args.segment_kind != "video":
+        return
+    if args.init_timestamp_seconds is not None and args.init_timestamp_seconds < 0:
+        raise CliError(
+            code="E_VALIDATION",
+            message="--init-timestamp-seconds must be >= 0.",
+            exit_code=2,
+            retryable=False,
+            hint="Provide a non-negative timestamp or omit the flag.",
+        )
+    if args.init_frame_index is not None and args.init_frame_index < 0:
+        raise CliError(
+            code="E_VALIDATION",
+            message="--init-frame-index must be >= 0.",
+            exit_code=2,
+            retryable=False,
+            hint="Provide a non-negative frame index or omit the flag.",
+        )
+    if (
+        args.init_timestamp_seconds is not None
+        and args.init_frame_index is not None
+    ):
+        raise CliError(
+            code="E_VALIDATION",
+            message="Provide at most one of --init-timestamp-seconds or --init-frame-index.",
+            exit_code=2,
+            retryable=False,
+            hint="Choose either a timestamp-based start or an explicit frame index.",
+        )
+    if (
+        args.max_frame_num_to_track is not None
+        and args.max_frame_num_to_track < 1
+    ):
+        raise CliError(
+            code="E_VALIDATION",
+            message="--max-frame-num-to-track must be >= 1.",
+            exit_code=2,
+            retryable=False,
+            hint="Provide a positive frame count or omit the flag.",
+        )
 
 
 def _drop_none_values(payload: dict[str, Any]) -> dict[str, Any]:

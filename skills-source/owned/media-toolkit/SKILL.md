@@ -11,7 +11,7 @@ Use this skill when the goal is to run media processing from either a local file
 
 ## When To Use
 
-- The user wants a transcript, foreground matte, or transformed video from a local file or URL.
+- The user wants a transcript, segmentation result, foreground matte, or transformed video from a local file or URL.
 - The user needs an uploaded media URL from a local file.
 - Another skill or repo-local workflow needs a machine-primary media client instead of direct Python imports.
 - You need the final job result, not manual queue or worker inspection.
@@ -22,11 +22,12 @@ Use this skill when the goal is to run media processing from either a local file
 1. Use the client script:
 
 ```bash
-venv/bin/python .agents/skills/media-toolkit/scripts/media_toolkit.py ...
+.agents/skills/media-toolkit/scripts/media_toolkit.sh ...
 ```
 
 2. Prefer the canonical subcommands:
 - `transcribe`
+- `segment`
 - `transform`
 - `matte`
 - `upload`
@@ -51,7 +52,7 @@ venv/bin/python .agents/skills/media-toolkit/scripts/media_toolkit.py ...
 Upload a local file and return the uploaded media URL:
 
 ```bash
-venv/bin/python .agents/skills/media-toolkit/scripts/media_toolkit.py \
+.agents/skills/media-toolkit/scripts/media_toolkit.sh \
   upload --file $HOME/media/video.mp4 \
   --output /tmp/upload.json
 ```
@@ -59,15 +60,34 @@ venv/bin/python .agents/skills/media-toolkit/scripts/media_toolkit.py \
 Transcribe a local file:
 
 ```bash
-venv/bin/python .agents/skills/media-toolkit/scripts/media_toolkit.py \
+.agents/skills/media-toolkit/scripts/media_toolkit.sh \
   transcribe --file $HOME/media/audio.mp3 \
   --output /tmp/transcribe.json
+```
+
+Segment an image:
+
+```bash
+.agents/skills/media-toolkit/scripts/media_toolkit.sh \
+  segment image --file $HOME/media/image.png \
+  --prompt "black ball" \
+  --output /tmp/segment-image.json
+```
+
+Segment a video:
+
+```bash
+.agents/skills/media-toolkit/scripts/media_toolkit.sh \
+  segment video --file $HOME/media/video.mp4 \
+  --prompt "black ball" \
+  --init-timestamp-seconds 14 \
+  --output /tmp/segment-video.json
 ```
 
 Transform a remote video:
 
 ```bash
-venv/bin/python .agents/skills/media-toolkit/scripts/media_toolkit.py \
+.agents/skills/media-toolkit/scripts/media_toolkit.sh \
   transform --url https://example.com/video.mp4 \
   --scale-width 1280 \
   --scale-height 720
@@ -76,7 +96,7 @@ venv/bin/python .agents/skills/media-toolkit/scripts/media_toolkit.py \
 Create a foreground matte and dump the manifest:
 
 ```bash
-venv/bin/python .agents/skills/media-toolkit/scripts/media_toolkit.py \
+.agents/skills/media-toolkit/scripts/media_toolkit.sh \
   matte --file $HOME/media/video.mp4 \
   --output /tmp/matte-result.json
 ```
@@ -84,7 +104,7 @@ venv/bin/python .agents/skills/media-toolkit/scripts/media_toolkit.py \
 Inspect a job:
 
 ```bash
-venv/bin/python .agents/skills/media-toolkit/scripts/media_toolkit.py \
+.agents/skills/media-toolkit/scripts/media_toolkit.sh \
   status --job-id VIDEO_TRANSFORM_123 --wait
 ```
 

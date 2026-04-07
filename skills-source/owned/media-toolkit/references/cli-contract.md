@@ -7,6 +7,7 @@
 Use it when an agent needs one command surface for:
 - local file upload
 - media URL submission
+- image and video segmentation
 - job polling
 - job status inspection
 - JSON result-file writing for later agent steps
@@ -19,6 +20,14 @@ Use it when an agent needs one command surface for:
   - Optional file output: `--output`
 - `transcribe`
   - Endpoint: `POST /media/transcribe`
+  - Inputs: exactly one of `--file` or `--url`
+  - Optional file output: `--output`
+- `segment image`
+  - Endpoint: `POST /media/segment/image`
+  - Inputs: exactly one of `--file` or `--url`
+  - Optional file output: `--output`
+- `segment video`
+  - Endpoint: `POST /media/segment/video`
   - Inputs: exactly one of `--file` or `--url`
   - Optional file output: `--output`
 - `transform`
@@ -43,6 +52,11 @@ Use it when an agent needs one command surface for:
 - `--no-wait` returns the submitted `job_id` without polling.
 - `status --wait` polls until the job reaches a terminal state.
 - Local files are uploaded to R2 before submission and then passed to the API as `media_url`.
+- `segment video` accepts optional SAM 3.1 initialization controls:
+  - `--init-timestamp-seconds`
+  - `--init-frame-index`
+  - `--propagation-direction`
+  - `--max-frame-num-to-track`
 - `--output` writes the final JSON envelope to disk for later steps.
 
 ## Output Contract
