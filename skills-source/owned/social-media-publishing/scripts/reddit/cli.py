@@ -76,6 +76,16 @@ def build_parser() -> argparse.ArgumentParser:
     list_submissions.add_argument("--include-hidden", action="store_true")
     list_submissions.set_defaults(func=command_list_submissions, command_path="reddit list-submissions")
 
+    comment = subparsers.add_parser("comment", help="Reply to an existing Reddit post.", parents=[common])
+    target = comment.add_mutually_exclusive_group(required=True)
+    target.add_argument("--post-url")
+    target.add_argument("--post-id")
+    body = comment.add_mutually_exclusive_group(required=True)
+    body.add_argument("--text")
+    body.add_argument("--text-file")
+    comment.add_argument("--dry-run", action="store_true")
+    comment.set_defaults(func=command_comment, command_path="reddit comment")
+
     submit_plan = subparsers.add_parser("submit-plan", help="Submit a plan file and optionally add a first comment.", parents=[common])
     submit_plan.add_argument("--plan", required=True)
     submit_plan.add_argument("--dry-run", action="store_true")
@@ -134,6 +144,7 @@ def command_status(args: argparse.Namespace) -> dict[str, Any]:
             "status",
             "list-flairs",
             "list-submissions",
+            "comment",
             "submit-plan",
             "submit-self",
             "submit-link",
@@ -181,6 +192,36 @@ def command_list_submissions(args: argparse.Namespace) -> dict[str, Any]:
         }
     except Exception as exc:
         raise _classify_runtime_error(exc, hint="Verify Reddit credentials and the authenticated account.") from exc
+
+
+def command_comment(args: argparse.Namespace) -> dict[str, Any]:
+    payload = {
+        "post_url": args.post_url,
+        "post_id": args.post_id,
+        "text": args.text,
+        "text_file": args.text_file,
+    }
+    resolved = _resolved_comment_payload(payload, base_dir=Path.cwd())
+    if args.dry_run:
+        return {"dry_run": True, "payload": resolved}
+
+    seed_env_from_file(Path(args.env_file).expanduser())
+    require_runtime_dependencies(RUNTIME_DEPENDENCIES)
+    PrawClient = _load_praw_client()
+    try:
+        client = PrawClient()
+        comment_url = client.add_comment(
+            text=resolved["text"],
+            post_url=resolved.get("post_url"),
+            post_id=resolved.get("post_id"),
+        )
+        return {
+            "post_id": resolved.get("post_id"),
+            "post_url": resolved.get("post_url"),
+            "comment": {"url": comment_url},
+        }
+    except Exception as exc:
+        raise _classify_runtime_error(exc, hint="Verify Reddit credentials, post access, and comment text.") from exc
 
 
 def command_submit_plan(args: argparse.Namespace) -> dict[str, Any]:
@@ -396,6 +437,19 @@ def _resolved_payload(plan: dict[str, Any], base_dir: Path) -> dict[str, Any]:
             for image in payload["images"]
         ]
     return payload
+
+
+def _resolved_comment_payload(payload: dict[str, Any], *, base_dir: Path) -> dict[str, Any]:
+    resolved = dict(payload)
+    if resolved.get("text_file"):
+        resolved["text"] = read_text_file(resolved["text_file"], base_dir=base_dir)
+    text = resolved.get("text")
+    if not isinstance(text, str) or not text.strip():
+        raise CliError("Comment requires non-empty text or text_file.", code="E_INVALID_INPUT", exit_code=2)
+    if not resolved.get("post_url") and not resolved.get("post_id"):
+        raise CliError("Comment requires post_url or post_id.", code="E_INVALID_INPUT", exit_code=2)
+    resolved["text"] = text
+    return resolved
 
 
 def _load_gallery_images(path: Path, base_dir: Path) -> list[dict[str, Any]]:

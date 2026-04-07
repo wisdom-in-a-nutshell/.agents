@@ -5,6 +5,7 @@
 - Subreddit flair discovery.
 - Reddit gallery, image, link, and self-post submission.
 - Optional first-comment posting without browser automation.
+- Standalone commenting on existing Reddit posts.
 - Authenticated profile-submission fetches for lightweight analytics.
 - Native Reddit video posting.
 - A portable JSON plan format that can live in any repo.
@@ -101,6 +102,13 @@ List recent submissions:
 
 ```bash
 python3 ~/.agents/skills-source/owned/social-media-publishing/scripts/reddit/cli.py list-submissions --max-items 20 --days 7
+```
+
+Add a comment to an existing post:
+
+```bash
+python3 ~/.agents/skills-source/owned/social-media-publishing/scripts/reddit/cli.py comment --post-url https://reddit.com/r/OpenAI/comments/abc123/example/ --text-file /abs/path/comment.md --dry-run
+python3 ~/.agents/skills-source/owned/social-media-publishing/scripts/reddit/cli.py comment --post-id abc123 --text "Short follow-up"
 ```
 
 Submit a plan:

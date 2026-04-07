@@ -46,6 +46,7 @@ Core commands:
 python3 ~/.agents/skills-source/owned/social-media-publishing/scripts/reddit/cli.py status
 python3 ~/.agents/skills-source/owned/social-media-publishing/scripts/reddit/cli.py list-flairs --subreddit OpenAI
 python3 ~/.agents/skills-source/owned/social-media-publishing/scripts/reddit/cli.py list-submissions --max-items 20 --days 7
+python3 ~/.agents/skills-source/owned/social-media-publishing/scripts/reddit/cli.py comment --post-url https://reddit.com/r/OpenAI/comments/abc123/example/ --text-file /abs/path/comment.md --dry-run
 python3 ~/.agents/skills-source/owned/social-media-publishing/scripts/reddit/cli.py submit-plan --plan /abs/path/post-plan.json --dry-run
 python3 ~/.agents/skills-source/owned/social-media-publishing/scripts/reddit/cli.py submit-plan --plan /abs/path/post-plan.json
 ```
@@ -57,6 +58,7 @@ The CLI supports:
 - link submission
 - self-post submission
 - optional first-comment posting
+- standalone commenting on existing posts
 - authenticated submission history lookup
 
 ## LinkedIn
