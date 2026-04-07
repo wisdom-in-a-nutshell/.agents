@@ -8,7 +8,6 @@ from __future__ import annotations
 import argparse
 import json
 import logging
-import os
 import sys
 import time
 import uuid
@@ -421,14 +420,6 @@ def _add_common_runtime_arguments(parser: argparse.ArgumentParser) -> None:
 
 def _add_api_runtime_arguments(parser: argparse.ArgumentParser) -> None:
     parser.add_argument(
-        "--api-base-url",
-        default=os.getenv("MEDIA_TOOLKIT_API_BASE_URL")
-        or os.getenv("WIN_MEDIA_API_BASE_URL")
-        or os.getenv("WIN_API_BASE_URL")
-        or DEFAULT_API_BASE_URL,
-        help="Base URL for the backend media API.",
-    )
-    parser.add_argument(
         "--request-timeout-seconds",
         type=float,
         default=60.0,
@@ -835,7 +826,7 @@ def _build_api_client(args: argparse.Namespace) -> Any | None:
     from media_toolkit_lib.api import MediaToolkitApiClient
 
     return MediaToolkitApiClient(
-        api_base_url=args.api_base_url,
+        api_base_url=DEFAULT_API_BASE_URL,
         request_timeout_seconds=args.request_timeout_seconds,
         poll_interval_seconds=args.poll_interval_seconds,
         poll_timeout_seconds=args.poll_timeout_seconds,

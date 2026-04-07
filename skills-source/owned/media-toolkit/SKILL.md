@@ -116,5 +116,5 @@ Inspect a job:
 - Do not call the media-processing Python internals directly when the job API is the appropriate contract.
 - Use JSON output as the default contract.
 - Keep file output simple: `--output` writes the same JSON envelope returned on stdout.
-- Keep secrets out of flags and stdout. API base URL configuration is allowed; credentials must stay in repo/runtime config.
+- Keep secrets out of flags and stdout. Credentials must stay in repo/runtime config.
 - Read [references/cli-contract.md](references/cli-contract.md) when you need the command map or output contract details.
