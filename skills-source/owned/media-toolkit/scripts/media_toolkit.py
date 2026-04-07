@@ -20,7 +20,6 @@ SCRIPT_DIR = Path(__file__).resolve().parent
 if str(SCRIPT_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPT_DIR))
 
-from media_toolkit_lib.api import MediaToolkitApiClient
 from media_toolkit_lib.errors import CliArgumentParser, CliError, ParserExit
 from media_toolkit_lib.io import (
     upload_local_file,
@@ -366,6 +365,8 @@ def run(argv: list[str]) -> tuple[int, str]:
         _configure_logging(debug=args.debug)
         api_client = None
         if args.subcommand != "upload":
+            from media_toolkit_lib.api import MediaToolkitApiClient
+
             api_client = MediaToolkitApiClient(
                 api_base_url=args.api_base_url,
                 request_timeout_seconds=args.request_timeout_seconds,
