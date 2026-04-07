@@ -20,6 +20,14 @@ This file is machine-wide baseline guidance. Keep it generic and avoid portfolio
 - When a change clearly introduces durable behavior, architecture boundaries, or operational workflow that future work will rely on, update the relevant repo docs in the same change.
 - When choosing where docs belong inside a repo, prefer the repo's own guidance when it exists. Otherwise use `docs/architecture/` for system shape, `docs/references/` for durable facts, and project tracking docs only for active execution state. If placement is still unclear, make the best-fit update and call it out briefly.
 
+## Subagent Defaults
+- Use your best judgment on when subagents are helpful.
+- Prefer subagents when work can be split into bounded, independent tasks.
+- Subagents are often useful for exploration, tests, triage, read-heavy review, or other parallelizable side work.
+- Keep the main agent responsible for planning, shared contracts, final synthesis, and user-facing decisions.
+- Avoid subagents when the task is small, tightly coupled, or likely to create conflicts through parallel edits.
+- Favor a small number of focused subagents over many broad ones.
+
 ## Git Automation (Codex Notify)
 - This environment runs a notify hook after each agent turn that auto-stages, commits, and pushes.
 - Do not run `git commit` or `git push` unless the user explicitly asks.
