@@ -1,4 +1,4 @@
-"""HTTP client for WIN media endpoints."""
+"""HTTP client for backend media endpoints."""
 
 from __future__ import annotations
 
@@ -13,7 +13,7 @@ TERMINAL_JOB_STATUSES = {"completed", "failed", "canceled"}
 
 
 class MediaToolkitApiClient:
-    """Thin HTTP client for WIN media endpoints."""
+    """Thin HTTP client for backend media endpoints."""
 
     def __init__(
         self,

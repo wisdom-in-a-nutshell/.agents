@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Machine-primary media toolkit for WIN media endpoints.
+Machine-primary media toolkit for media processing endpoints.
 """
 
 from __future__ import annotations
@@ -40,7 +40,7 @@ def build_parser() -> CliArgumentParser:
     parser = CliArgumentParser(
         prog=COMMAND_NAME,
         description=(
-            "Run WIN media tools from a local file or URL. "
+            "Run media operations from a local file or URL. "
             "Use this for upload, transcription, segmentation, transform, matting, and job inspection. "
             "Results are returned as JSON by default."
         ),
@@ -375,7 +375,7 @@ def _build_status_parser(subparsers: argparse._SubParsersAction[Any]) -> None:
     parser.add_argument(
         "--job-id",
         required=True,
-        help="WIN job identifier to inspect.",
+        help="Backend job identifier to inspect.",
     )
     parser.add_argument(
         "--wait",
@@ -422,10 +422,11 @@ def _add_common_runtime_arguments(parser: argparse.ArgumentParser) -> None:
 def _add_api_runtime_arguments(parser: argparse.ArgumentParser) -> None:
     parser.add_argument(
         "--api-base-url",
-        default=os.getenv("WIN_MEDIA_API_BASE_URL")
+        default=os.getenv("MEDIA_TOOLKIT_API_BASE_URL")
+        or os.getenv("WIN_MEDIA_API_BASE_URL")
         or os.getenv("WIN_API_BASE_URL")
         or DEFAULT_API_BASE_URL,
-        help="Base URL for the WIN API.",
+        help="Base URL for the backend media API.",
     )
     parser.add_argument(
         "--request-timeout-seconds",

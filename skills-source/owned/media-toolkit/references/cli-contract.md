@@ -2,7 +2,7 @@
 
 ## Purpose
 
-`media_toolkit.py` is the repo-local machine-primary toolkit for the canonical WIN media job endpoints.
+`media_toolkit.py` is the machine-primary toolkit for the canonical media job endpoints.
 
 Use it when an agent needs one command surface for:
 - local file upload
