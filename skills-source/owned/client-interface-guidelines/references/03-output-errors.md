@@ -20,6 +20,17 @@ For example:
 
 Do not overload the primary execution path with decorative or TTY-adaptive output.
 
+**For long-running operations, progress belongs on `stderr`, not `stdout`.**
+Progress can be extremely useful for agents and operators, but it must not corrupt the primary result channel.
+Prefer compact, stable progress events rather than decorative UI.
+When progress needs an interface, use an explicit control such as:
+- `--progress off`
+- `--progress plain`
+- `--progress jsonl`
+- `--progress auto`
+
+`auto` is usually the right default for long-running remote work.
+
 **Display output as JSON by default, or at minimum whenever `--json` is passed.**
 JSON makes structure explicit, stable, and testable.
 It is the right default for agent callers.
@@ -54,6 +65,7 @@ If a piece of output serves only to help the tool author debug internals, it sho
 
 **Don’t treat `stderr` like a log file, at least not by default.**
 Do not print log level labels or extraneous context unless debug mode is explicitly requested.
+Progress on `stderr` should be concise, low-noise, and stable enough for inspection tooling.
 
 ### Errors
 

@@ -82,6 +82,10 @@ Minimum mapping:
 - Prefer dedicated inspection commands such as `status`, `get`, `list`, `inspect`, and `validate`.
 - Use `--plain` only as an operator convenience when JSON is too heavy for quick shell inspection.
 - Do not invent a large parallel “human mode” surface unless the tool is genuinely used interactively by humans as a primary workflow.
+- For long-running commands, emit progress on `stderr` only.
+- Keep progress additive and non-semantic: the final machine result still belongs on `stdout`.
+- Prefer a stable flag such as `--progress auto|off|plain|jsonl` when progress behavior needs control.
+- Default progress should be concise and should start before long waits look broken.
 
 ## Anti-Patterns
 

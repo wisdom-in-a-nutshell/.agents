@@ -40,12 +40,14 @@ Use this skill when the goal is to run media processing from either a local file
 - `--url https://...`
 
 4. Default to JSON output. Use `--plain` only for quick shell inspection.
+   For long waits, prefer the default `--progress auto` behavior so progress appears on `stderr` while the final result stays on `stdout`.
 
 5. Let the toolkit wait unless the caller specifically wants async handling:
 - default: wait for terminal job state and return final result
 - `--no-wait`: return the submitted `job_id`
 - `status --job-id ... [--wait]`: inspect or poll an existing job
 - `--output /path/result.json`: write the final JSON envelope to a file
+- `--progress off|plain|jsonl`: control wait progress on `stderr`
 
 ## Common Commands
 

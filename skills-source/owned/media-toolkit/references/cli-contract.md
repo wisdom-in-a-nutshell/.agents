@@ -47,6 +47,8 @@ Use it when an agent needs one command surface for:
 
 - JSON is the default output contract.
 - `--plain` is only for quick operator inspection.
+- Progress belongs on `stderr`, never on `stdout`.
+- Long waits can be controlled with `--progress auto|off|plain|jsonl`.
 - `upload` writes a local file through the shared local uploader and returns upload metadata including the public URL.
 - Submit commands wait for terminal state by default.
 - `--no-wait` returns the submitted `job_id` without polling.
@@ -88,6 +90,15 @@ Failure:
 - `error.message` is concise
 - `error.retryable` indicates whether a retry is sensible
 - `error.hint` gives the next useful action
+
+## Progress Contract
+
+- Progress is emitted to `stderr` only.
+- `--progress off` disables progress output.
+- `--progress plain` emits compact key-value progress lines.
+- `--progress jsonl` emits one JSON progress object per line.
+- `--progress auto` currently behaves like compact plain progress for waiting commands.
+- Progress is additive inspection output and does not change the final `stdout` result envelope.
 
 ## Stable Exit Codes
 

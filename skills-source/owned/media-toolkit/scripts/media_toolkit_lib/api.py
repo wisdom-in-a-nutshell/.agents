@@ -3,13 +3,14 @@
 from __future__ import annotations
 
 import time
-from typing import Any, Optional
+from typing import Any, Callable, Optional
 
 import requests
 
 from media_toolkit_lib.errors import CliError
 
 TERMINAL_JOB_STATUSES = {"completed", "failed", "canceled"}
+DEFAULT_PROGRESS_HEARTBEAT_SECONDS = 15.0
 
 
 class MediaToolkitApiClient:
@@ -22,12 +23,14 @@ class MediaToolkitApiClient:
         request_timeout_seconds: float,
         poll_interval_seconds: float,
         poll_timeout_seconds: float,
+        progress_heartbeat_seconds: float = DEFAULT_PROGRESS_HEARTBEAT_SECONDS,
         session: Optional[requests.Session] = None,
     ) -> None:
         self.api_base_url = api_base_url.rstrip("/")
         self.request_timeout_seconds = request_timeout_seconds
         self.poll_interval_seconds = poll_interval_seconds
         self.poll_timeout_seconds = poll_timeout_seconds
+        self.progress_heartbeat_seconds = progress_heartbeat_seconds
         self.session = session or requests.Session()
 
     def submit_job(self, endpoint: str, payload: dict[str, Any]) -> dict[str, Any]:
@@ -36,12 +39,34 @@ class MediaToolkitApiClient:
     def get_job(self, job_id: str) -> dict[str, Any]:
         return self._request_json("GET", f"/jobs/{job_id}")
 
-    def wait_for_job(self, job_id: str) -> dict[str, Any]:
+    def wait_for_job(
+        self,
+        job_id: str,
+        *,
+        progress_callback: Optional[Callable[[dict[str, Any]], None]] = None,
+    ) -> dict[str, Any]:
         deadline = time.monotonic() + self.poll_timeout_seconds
+        started_at = time.monotonic()
+        last_status: str | None = None
+        last_emit_at = 0.0
+        heartbeat_seconds = max(self.progress_heartbeat_seconds, self.poll_interval_seconds)
         while True:
             job = self.get_job(job_id)
+            now = time.monotonic()
+            elapsed_seconds = now - started_at
             job_status = str(job.get("status", "")).strip().lower()
             if job_status in TERMINAL_JOB_STATUSES:
+                if progress_callback is not None:
+                    progress_callback(
+                        {
+                            "event": job_status,
+                            "job_id": job_id,
+                            "status": job_status,
+                            "elapsed_seconds": elapsed_seconds,
+                            "updated_at": job.get("updated_at"),
+                            "queue_dequeue_count": job.get("queue_dequeue_count"),
+                        }
+                    )
                 if job_status == "completed":
                     return job
 
@@ -55,6 +80,23 @@ class MediaToolkitApiClient:
                     hint="Inspect the job payload or job events for failure details.",
                     detail=job,
                 )
+
+            should_emit_progress = last_status != job_status or (
+                now - last_emit_at >= heartbeat_seconds
+            )
+            if progress_callback is not None and should_emit_progress:
+                progress_callback(
+                    {
+                        "event": "wait",
+                        "job_id": job_id,
+                        "status": job_status or "unknown",
+                        "elapsed_seconds": elapsed_seconds,
+                        "updated_at": job.get("updated_at"),
+                        "queue_dequeue_count": job.get("queue_dequeue_count"),
+                    }
+                )
+                last_emit_at = now
+            last_status = job_status
 
             if time.monotonic() >= deadline:
                 raise CliError(

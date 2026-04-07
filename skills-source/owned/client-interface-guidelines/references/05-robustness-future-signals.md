@@ -7,6 +7,7 @@ Check early and bail out before anything bad happens, and make the errors unders
 **Responsive is more important than fast.**
 Print something to the user in <100ms.
 If you’re making a network request, print something before you do it so it doesn’t hang and look broken.
+For agent-native CLIs, prefer concise progress on `stderr` over decorative terminal UI.
 
 **Show progress if something takes a long time.**
 If your program displays no output for a while, it will look broken.
@@ -44,6 +45,13 @@ b0efebc74f25: Downloading [===========================================>       ] 
 
 One thing to be aware of: hiding logs behind progress bars when things go _well_ makes it much easier for the user to understand what’s going on, but if there is an error, make sure you print out the logs.
 Otherwise, it will be very hard to debug.
+
+For machine-primary CLIs, prefer:
+- a compact `stderr` heartbeat
+- state-change notifications
+- optional JSONL progress events
+
+Avoid progress mechanisms that rewrite terminal lines or make logs hard to capture.
 
 **Make things time out.**
 Allow network timeouts to be configured, and have a reasonable default so it doesn’t hang forever.
@@ -127,4 +135,3 @@ $  docker-compose up
 
 Your program should expect to be started in a situation where clean-up has not been run.
 (See Crash-only software: More than meets the eye.)
-

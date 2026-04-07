@@ -27,6 +27,8 @@ Use this checklist for agent-native CLI quality gates.
 - [ ] Includes command suggestions on recoverable user errors.
 - [ ] Includes dry-run for destructive or high-impact operations.
 - [ ] Prints progress for operations that exceed short latency without corrupting stdout.
+- [ ] Sends progress to `stderr` only and keeps the final machine result on `stdout`.
+- [ ] Uses a stable progress control such as `--progress auto|off|plain|jsonl` when long waits are normal.
 - [ ] Provides clear post-action state summary.
 - [ ] Keeps help examples focused on common tasks first.
 - [ ] Includes compact terminal docs plus richer web docs.

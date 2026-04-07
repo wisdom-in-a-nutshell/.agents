@@ -31,6 +31,7 @@ DEFAULT_API_BASE_URL = (
 SCHEMA_VERSION = "1.0"
 COMMAND_NAME = "media-toolkit"
 LOGGER = logging.getLogger("media_toolkit")
+DEFAULT_PROGRESS_MODE = "auto"
 
 
 def build_parser() -> CliArgumentParser:
@@ -420,6 +421,15 @@ def _add_common_runtime_arguments(parser: argparse.ArgumentParser) -> None:
 
 def _add_api_runtime_arguments(parser: argparse.ArgumentParser) -> None:
     parser.add_argument(
+        "--progress",
+        default=DEFAULT_PROGRESS_MODE,
+        choices=["auto", "off", "plain", "jsonl"],
+        help=(
+            "Progress mode for long waits. Progress is emitted to stderr only and "
+            "never changes the final stdout result."
+        ),
+    )
+    parser.add_argument(
         "--request-timeout-seconds",
         type=float,
         default=60.0,
@@ -583,7 +593,10 @@ def _execute_command(
 
     if args.subcommand == "status":
         job_doc = (
-            api_client.wait_for_job(args.job_id)
+            api_client.wait_for_job(
+                args.job_id,
+                progress_callback=_build_progress_callback(args),
+            )
             if args.wait
             else api_client.get_job(args.job_id)
         )
@@ -594,12 +607,38 @@ def _execute_command(
         }
 
     endpoint, payload, input_meta = _build_command_payload(args)
+    progress_callback = _build_progress_callback(args)
+    emit_submit_progress = (not args.no_wait) or (
+        getattr(args, "progress", DEFAULT_PROGRESS_MODE) != DEFAULT_PROGRESS_MODE
+    )
+    if emit_submit_progress:
+        _emit_progress(
+            args,
+            {
+                "event": "submitting",
+                "endpoint": endpoint,
+                "wait": not args.no_wait,
+            },
+        )
     submission = api_client.submit_job(endpoint, payload)
+    if emit_submit_progress:
+        _emit_progress(
+            args,
+            {
+                "event": "submitted",
+                "endpoint": endpoint,
+                "job_id": submission["job_id"],
+                "cached": bool(submission.get("cached", False)),
+            },
+        )
 
     result_payload: dict[str, Any] | None = None
     final_job_status = "submitted"
     if not args.no_wait:
-        job_doc = api_client.wait_for_job(submission["job_id"])
+        job_doc = api_client.wait_for_job(
+            submission["job_id"],
+            progress_callback=progress_callback,
+        )
         final_job_status = str(job_doc.get("status", "completed"))
         result_payload = job_doc.get("result")
 
@@ -831,6 +870,61 @@ def _build_api_client(args: argparse.Namespace) -> Any | None:
         poll_interval_seconds=args.poll_interval_seconds,
         poll_timeout_seconds=args.poll_timeout_seconds,
     )
+
+
+def _build_progress_callback(args: argparse.Namespace):
+    if getattr(args, "progress", DEFAULT_PROGRESS_MODE) == "off":
+        return None
+
+    def _callback(event: dict[str, Any]) -> None:
+        _emit_progress(args, event)
+
+    return _callback
+
+
+def _emit_progress(args: argparse.Namespace, event: dict[str, Any]) -> None:
+    progress_mode = getattr(args, "progress", DEFAULT_PROGRESS_MODE)
+    if progress_mode == "off":
+        return
+
+    if progress_mode == "jsonl":
+        payload = {
+            "type": "progress",
+            "timestamp_utc": datetime.now(timezone.utc).isoformat(),
+            **event,
+        }
+        sys.stderr.write(json.dumps(payload, sort_keys=True) + "\n")
+        sys.stderr.flush()
+        return
+
+    line = _format_progress_plain(event)
+    if not line:
+        return
+    sys.stderr.write(line + "\n")
+    sys.stderr.flush()
+
+
+def _format_progress_plain(event: dict[str, Any]) -> str:
+    ordered_keys = [
+        "event",
+        "job_id",
+        "endpoint",
+        "status",
+        "elapsed_seconds",
+        "updated_at",
+        "queue_dequeue_count",
+        "cached",
+        "wait",
+    ]
+    parts = ["progress"]
+    for key in ordered_keys:
+        value = event.get(key)
+        if value is None:
+            continue
+        if key == "elapsed_seconds":
+            value = round(float(value), 1)
+        parts.append(f"{key}={value}")
+    return " ".join(parts)
 
 
 def _validate_args(args: argparse.Namespace) -> None:
