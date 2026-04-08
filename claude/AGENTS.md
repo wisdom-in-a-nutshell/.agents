@@ -28,7 +28,7 @@ Canonical personal Claude control-plane assets live here.
 ## Rules
 
 - Do not store auth, session history, caches, runtime databases, or secrets here.
-- Keep durable Claude provider selection such as AWS Bedrock model env in `config/settings.json`; do not hand-edit `~/.claude/settings.json`.
+- Keep durable Claude machine defaults in `config/settings.json`; use explicit shell wrappers for provider-specific opt-ins such as AWS Bedrock instead of forcing every machine onto one provider.
 - Prefer project `AGENTS.md` as the shared repo instruction source; generic Claude compatibility should come from a tiny `CLAUDE.md` that imports `@AGENTS.md`.
 - Keep the first-pass Claude bootstrap local-first and generic; treat repo-specific prompt overrides such as `adi` `soul.md` as explicit follow-up work.
 - Keep machine-local runtime state under `~/.claude/`, not in this repo.
