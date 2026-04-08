@@ -201,10 +201,33 @@ for repo in "${REPO_FILTERS[@]}"; do
   REPO_ARGS+=(--repo "$repo")
 done
 
-bash "${SCRIPT_DIR}/sync-global-claude-md.sh" --dry-run --global-claude-md "$GLOBAL_CLAUDE_MD"
-bash "${SCRIPT_DIR}/sync-settings.sh" --dry-run --global-settings "$GLOBAL_SETTINGS"
-bash "${SCRIPT_DIR}/sync-global-mcp.sh" --dry-run --global-config "$GLOBAL_CONFIG" --mcp-registry "$MCP_REGISTRY"
-bash "${SCRIPT_DIR}/sync-skills.sh" --dry-run --registry "$SKILLS_REGISTRY" "${REPO_ARGS[@]}"
-bash "${SCRIPT_DIR}/sync-repo-claude-configs.sh" --dry-run --registry "$REPO_REGISTRY" --bootstrap "$BOOTSTRAP_FILE" --mcp-registry "$MCP_REGISTRY" "${REPO_ARGS[@]}"
+run_and_require_clean() {
+  local label="$1"
+  shift
+
+  local output
+  if ! output="$("$@" 2>&1)"; then
+    printf '%s\n' "$output"
+    exit 1
+  fi
+
+  printf '%s\n' "$output"
+
+  if grep -Eq '^(SYNC |PRUNE |Would |Linked |Updated: |Removed file: |Removed managed symlink:|\+\+\+ |--- /dev/null|diff -u )' <<<"$output"; then
+    printf 'ERROR: %s is out of sync. Re-run the corresponding apply step.\n' "$label" >&2
+    exit 1
+  fi
+}
+
+run_and_require_clean "global Claude guidance" \
+  bash "${SCRIPT_DIR}/sync-global-claude-md.sh" --dry-run --global-claude-md "$GLOBAL_CLAUDE_MD"
+run_and_require_clean "global Claude settings" \
+  bash "${SCRIPT_DIR}/sync-settings.sh" --dry-run --global-settings "$GLOBAL_SETTINGS"
+run_and_require_clean "global Claude MCP" \
+  bash "${SCRIPT_DIR}/sync-global-mcp.sh" --dry-run --global-config "$GLOBAL_CONFIG" --mcp-registry "$MCP_REGISTRY"
+run_and_require_clean "Claude skills sync" \
+  bash "${SCRIPT_DIR}/sync-skills.sh" --dry-run --registry "$SKILLS_REGISTRY" "${REPO_ARGS[@]}"
+run_and_require_clean "repo Claude config sync" \
+  bash "${SCRIPT_DIR}/sync-repo-claude-configs.sh" --dry-run --registry "$REPO_REGISTRY" --bootstrap "$BOOTSTRAP_FILE" --mcp-registry "$MCP_REGISTRY" "${REPO_ARGS[@]}"
 
 printf 'Claude control plane validation passed.\n'
