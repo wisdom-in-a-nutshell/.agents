@@ -529,7 +529,7 @@ def run(argv: list[str]) -> tuple[int, str]:
         envelope = _build_envelope(
             command=f"{COMMAND_NAME} {_safe_subcommand(argv)}",
             status="error",
-            data=None,
+            data=_cli_error_data(exc),
             error={
                 "code": exc.code,
                 "message": exc.message,
@@ -541,6 +541,7 @@ def run(argv: list[str]) -> tuple[int, str]:
             started_at=started_at,
             timestamp_utc=timestamp_utc,
         )
+        _write_side_effect_outputs(envelope, args)
         output = _format_output(_safe_output_mode(argv), envelope)
         return exc.exit_code, output
     except KeyboardInterrupt:
@@ -559,6 +560,7 @@ def run(argv: list[str]) -> tuple[int, str]:
             started_at=started_at,
             timestamp_utc=timestamp_utc,
         )
+        _write_side_effect_outputs(envelope, args)
         output = _format_output(_safe_output_mode(argv), envelope)
         return 5, output
 
@@ -645,10 +647,23 @@ def _execute_command(
     result_payload: dict[str, Any] | None = None
     final_job_status = "submitted"
     if not args.no_wait:
-        job_doc = api_client.wait_for_job(
-            submission["job_id"],
-            progress_callback=progress_callback,
-        )
+        try:
+            job_doc = api_client.wait_for_job(
+                submission["job_id"],
+                progress_callback=progress_callback,
+            )
+        except CliError as exc:
+            recovered_job = _recover_after_wait_failure(
+                api_client=api_client,
+                submission=submission,
+                endpoint=endpoint,
+                input_meta=input_meta,
+                progress_callback=progress_callback,
+                exc=exc,
+            )
+            if recovered_job is None:
+                raise
+            job_doc = recovered_job
         final_job_status = str(job_doc.get("status", "completed"))
         result_payload = job_doc.get("result")
 
@@ -793,6 +808,72 @@ def _write_side_effect_outputs(
         output_path = str(Path(args.output).expanduser().resolve())
         envelope["meta"]["output_path"] = output_path
         write_json_file(args.output, envelope)
+
+
+def _cli_error_data(exc: CliError) -> dict[str, Any] | None:
+    if isinstance(exc.detail, dict):
+        data = exc.detail.get("data")
+        if isinstance(data, dict):
+            return data
+    return None
+
+
+def _recover_after_wait_failure(
+    *,
+    api_client: Any,
+    submission: dict[str, Any],
+    endpoint: str,
+    input_meta: dict[str, Any],
+    progress_callback: Any,
+    exc: CliError,
+) -> dict[str, Any] | None:
+    partial_data = {
+        "job": {
+            "job_id": submission["job_id"],
+            "cached": bool(submission.get("cached", False)),
+            "status": "submitted",
+            "endpoint": endpoint,
+        },
+        "input": input_meta,
+        "result": None,
+    }
+
+    try:
+        job_doc = api_client.get_job(submission["job_id"])
+    except CliError:
+        exc.detail = {
+            "job_id": submission["job_id"],
+            "endpoint": endpoint,
+            "data": partial_data,
+            "last_error": exc.detail,
+        }
+        return None
+
+    job_status = str(job_doc.get("status", "")).strip().lower()
+    if job_status == "completed":
+        if progress_callback is not None:
+            progress_callback(
+                {
+                    "event": "completed",
+                    "job_id": submission["job_id"],
+                    "status": job_status,
+                    "updated_at": job_doc.get("updated_at"),
+                    "queue_dequeue_count": job_doc.get("queue_dequeue_count"),
+                    "recovered": True,
+                }
+            )
+        return job_doc
+
+    partial_data["job"]["status"] = job_doc.get("status", "submitted")
+    partial_data["result"] = job_doc.get("result")
+    exc.detail = {
+        "job_id": submission["job_id"],
+        "endpoint": endpoint,
+        "job": job_doc,
+        "data": partial_data,
+        "last_error": exc.detail,
+    }
+    return None
 
 
 def _build_envelope(

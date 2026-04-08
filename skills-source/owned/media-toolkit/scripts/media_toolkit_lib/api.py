@@ -53,9 +53,42 @@ class MediaToolkitApiClient:
         last_emit_at = 0.0
         heartbeat_seconds = max(self.progress_heartbeat_seconds, self.poll_interval_seconds)
         while True:
-            job = self.get_job(job_id)
             now = time.monotonic()
             elapsed_seconds = now - started_at
+            try:
+                job = self.get_job(job_id)
+            except CliError as exc:
+                if not exc.retryable:
+                    raise
+
+                heartbeat_due = now - last_emit_at >= heartbeat_seconds
+                if progress_callback is not None and heartbeat_due:
+                    progress_callback(
+                        {
+                            "event": "poll_retry",
+                            "job_id": job_id,
+                            "status": last_status or "unknown",
+                            "elapsed_seconds": elapsed_seconds,
+                            "updated_at": last_updated_at,
+                            "queue_dequeue_count": last_queue_dequeue_count,
+                            "error_code": exc.code,
+                        }
+                    )
+                    last_emit_at = now
+
+                if now >= deadline:
+                    raise CliError(
+                        code=exc.code,
+                        message=f"Timed out while waiting for job {job_id} after repeated poll errors.",
+                        exit_code=5,
+                        retryable=True,
+                        hint="Retry the command or inspect the job directly with status --job-id.",
+                        detail={"job_id": job_id, "last_error": exc.detail},
+                    ) from exc
+
+                time.sleep(self.poll_interval_seconds)
+                continue
+
             job_status = str(job.get("status", "")).strip().lower()
             if job_status in TERMINAL_JOB_STATUSES:
                 if progress_callback is not None:
