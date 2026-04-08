@@ -10,7 +10,7 @@ import requests
 from media_toolkit_lib.errors import CliError
 
 TERMINAL_JOB_STATUSES = {"completed", "failed", "canceled"}
-DEFAULT_PROGRESS_HEARTBEAT_SECONDS = 15.0
+DEFAULT_PROGRESS_HEARTBEAT_SECONDS = 60.0
 
 
 class MediaToolkitApiClient:
@@ -48,6 +48,8 @@ class MediaToolkitApiClient:
         deadline = time.monotonic() + self.poll_timeout_seconds
         started_at = time.monotonic()
         last_status: str | None = None
+        last_updated_at: str | None = None
+        last_queue_dequeue_count: int | None = None
         last_emit_at = 0.0
         heartbeat_seconds = max(self.progress_heartbeat_seconds, self.poll_interval_seconds)
         while True:
@@ -81,8 +83,12 @@ class MediaToolkitApiClient:
                     detail=job,
                 )
 
-            should_emit_progress = last_status != job_status or (
-                now - last_emit_at >= heartbeat_seconds
+            updated_at = job.get("updated_at")
+            queue_dequeue_count = job.get("queue_dequeue_count")
+            should_emit_progress = (
+                last_status != job_status
+                or last_updated_at != updated_at
+                or last_queue_dequeue_count != queue_dequeue_count
             )
             if progress_callback is not None and should_emit_progress:
                 progress_callback(
@@ -91,12 +97,14 @@ class MediaToolkitApiClient:
                         "job_id": job_id,
                         "status": job_status or "unknown",
                         "elapsed_seconds": elapsed_seconds,
-                        "updated_at": job.get("updated_at"),
-                        "queue_dequeue_count": job.get("queue_dequeue_count"),
+                        "updated_at": updated_at,
+                        "queue_dequeue_count": queue_dequeue_count,
                     }
                 )
                 last_emit_at = now
             last_status = job_status
+            last_updated_at = updated_at
+            last_queue_dequeue_count = queue_dequeue_count
 
             if time.monotonic() >= deadline:
                 raise CliError(

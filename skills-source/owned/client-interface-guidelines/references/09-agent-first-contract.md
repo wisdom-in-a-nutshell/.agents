@@ -86,6 +86,8 @@ Minimum mapping:
 - Keep progress additive and non-semantic: the final machine result still belongs on `stdout`.
 - Prefer a stable flag such as `--progress auto|off|plain|jsonl` when progress behavior needs control.
 - Default progress should be concise and should start before long waits look broken.
+- For wait-heavy commands, a sparse heartbeat cadence around `60s` is a good default unless the tool has richer state transitions to report.
+- Suppress duplicate heartbeat lines when the observable state has not changed; repeated progress with identical `status` and `updated_at` is noise.
 
 ## Anti-Patterns
 

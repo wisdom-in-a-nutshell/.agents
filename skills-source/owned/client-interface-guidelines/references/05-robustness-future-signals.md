@@ -50,6 +50,8 @@ For machine-primary CLIs, prefer:
 - a compact `stderr` heartbeat
 - state-change notifications
 - optional JSONL progress events
+- a sparse default cadence for long waits, around `60s`
+- suppression of duplicate heartbeat lines when `status` and last-known update markers have not changed
 
 Avoid progress mechanisms that rewrite terminal lines or make logs hard to capture.
 
