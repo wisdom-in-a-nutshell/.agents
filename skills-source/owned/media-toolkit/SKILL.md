@@ -76,6 +76,8 @@ Segment an image:
   --output /tmp/segment-image.json
 ```
 
+Add `--with-alpha` only when you specifically need a precomposited transparent asset. For Remotion-style workflows, the mask is usually enough.
+
 Segment a video:
 
 ```bash
@@ -87,6 +89,8 @@ Segment a video:
   --window-end-seconds 64 \
   --output /tmp/segment-video.json
 ```
+
+`segment image` and `segment video` generate the mask by default. Use `--with-alpha` only when you explicitly need the extra alpha artifact.
 
 Transform a remote video:
 

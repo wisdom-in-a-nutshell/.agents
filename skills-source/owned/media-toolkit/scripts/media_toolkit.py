@@ -168,7 +168,7 @@ def _build_segment_image_parser(subparsers: argparse._SubParsersAction[Any]) -> 
         epilog=(
             "Examples:\n"
             "  media-toolkit segment image --file $HOME/media/image.png --prompt \"black ball\"\n"
-            "  media-toolkit segment image --url https://example.com/image.png --output /tmp/segment-image.json\n"
+            "  media-toolkit segment image --url https://example.com/image.png --with-alpha --output /tmp/segment-image.json\n"
         ),
         formatter_class=argparse.RawTextHelpFormatter,
     )
@@ -186,6 +186,11 @@ def _build_segment_image_parser(subparsers: argparse._SubParsersAction[Any]) -> 
         default="cache",
         help="Storage prefix for segmentation artifacts.",
     )
+    parser.add_argument(
+        "--with-alpha",
+        action="store_true",
+        help="Also generate an alpha-matted output artifact. Mask output is always generated.",
+    )
 
 
 def _build_segment_video_parser(subparsers: argparse._SubParsersAction[Any]) -> None:
@@ -199,7 +204,7 @@ def _build_segment_video_parser(subparsers: argparse._SubParsersAction[Any]) -> 
         epilog=(
             "Examples:\n"
             "  media-toolkit segment video --file $HOME/media/video.mp4 --prompt \"black ball\" --anchor-seconds 14 --window-start-seconds 12 --window-end-seconds 64\n"
-            "  media-toolkit segment video --url https://example.com/video.mp4 --anchor-frame-index 240 --propagation-direction both --output /tmp/segment-video.json\n"
+            "  media-toolkit segment video --url https://example.com/video.mp4 --anchor-frame-index 240 --propagation-direction both --with-alpha --output /tmp/segment-video.json\n"
         ),
         formatter_class=argparse.RawTextHelpFormatter,
     )
@@ -264,6 +269,11 @@ def _build_segment_video_parser(subparsers: argparse._SubParsersAction[Any]) -> 
         "--storage-prefix",
         default="cache",
         help="Storage prefix for segmentation artifacts.",
+    )
+    parser.add_argument(
+        "--with-alpha",
+        action="store_true",
+        help="Also generate an alpha-matted output artifact. Mask output is always generated.",
     )
 
 
@@ -696,6 +706,7 @@ def _build_command_payload(
             {
                 "prompt": args.prompt,
                 "storage_prefix": args.storage_prefix,
+                "generate_alpha": bool(getattr(args, "with_alpha", False)),
             }
         )
         if args.segment_kind == "image":

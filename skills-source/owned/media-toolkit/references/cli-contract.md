@@ -25,10 +25,12 @@ Use it when an agent needs one command surface for:
 - `segment image`
   - Endpoint: `POST /media/segment/image`
   - Inputs: exactly one of `--file` or `--url`
+  - Optional alpha generation: `--with-alpha`
   - Optional file output: `--output`
 - `segment video`
   - Endpoint: `POST /media/segment/video`
   - Inputs: exactly one of `--file` or `--url`
+  - Optional alpha generation: `--with-alpha`
   - Optional file output: `--output`
 - `transform`
   - Endpoint: `POST /media/transform`
@@ -63,6 +65,8 @@ Use it when an agent needs one command surface for:
   - `--window-end-frame-index`
   - `--propagation-direction`
   - `--max-frame-num-to-track`
+- Segmentation commands generate `mask_url` by default.
+- `alpha_url` is optional and is only requested when `--with-alpha` is passed.
 - `--output` writes the final JSON envelope to disk for later steps.
 
 ## Output Contract
