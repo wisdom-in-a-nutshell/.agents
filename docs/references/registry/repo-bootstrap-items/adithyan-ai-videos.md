@@ -1,7 +1,7 @@
 ---
 repo_name: "adithyan-ai-videos"
 path: "~/GitHub/adithyan-ai-videos"
-mcp_count: 0
+mcp_count: 1
 skill_count: 15
 repo_local_skill_count: 1
 global_agent_count: 1
@@ -10,7 +10,8 @@ agent_count: 2
 model: "gpt-5.4"
 reasoning: "high"
 service_tier: "-"
-mcps: []
+mcps:
+  - "paper"
 global_agents:
   - "external_researcher"
 custom_agents:

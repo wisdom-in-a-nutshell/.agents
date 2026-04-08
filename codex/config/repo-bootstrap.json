@@ -44,6 +44,9 @@
     },
     {
       "path": "~/GitHub/adithyan-ai-videos",
+      "mcp_presets": [
+        "paper"
+      ],
       "custom_agents": [
         "visual_reviewer"
       ]
