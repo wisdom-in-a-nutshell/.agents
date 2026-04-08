@@ -30,7 +30,7 @@ Use this checklist for agent-native CLI quality gates.
 - [ ] Sends progress to `stderr` only and keeps the final machine result on `stdout`.
 - [ ] Uses a stable progress control such as `--progress auto|off|plain|jsonl` when long waits are normal.
 - [ ] Uses a sparse default heartbeat for long waits, around `60s` unless richer state-change events are available.
-- [ ] Suppresses duplicate progress lines when the observable state has not changed.
+- [ ] Suppresses per-poll duplicate progress lines when the observable state has not changed, while still emitting sparse long-wait heartbeats.
 - [ ] Provides clear post-action state summary.
 - [ ] Keeps help examples focused on common tasks first.
 - [ ] Includes compact terminal docs plus richer web docs.

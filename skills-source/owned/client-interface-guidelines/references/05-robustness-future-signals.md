@@ -51,7 +51,8 @@ For machine-primary CLIs, prefer:
 - state-change notifications
 - optional JSONL progress events
 - a sparse default cadence for long waits, around `60s`
-- suppression of duplicate heartbeat lines when `status` and last-known update markers have not changed
+- suppression of per-poll duplicate progress lines when `status` and last-known update markers have not changed
+- continued sparse heartbeats during long waits so the tool does not look hung
 
 Avoid progress mechanisms that rewrite terminal lines or make logs hard to capture.
 

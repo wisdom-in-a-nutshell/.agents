@@ -85,15 +85,16 @@ class MediaToolkitApiClient:
 
             updated_at = job.get("updated_at")
             queue_dequeue_count = job.get("queue_dequeue_count")
-            should_emit_progress = (
+            state_changed = (
                 last_status != job_status
-                or last_updated_at != updated_at
                 or last_queue_dequeue_count != queue_dequeue_count
             )
+            heartbeat_due = now - last_emit_at >= heartbeat_seconds
+            should_emit_progress = state_changed or heartbeat_due
             if progress_callback is not None and should_emit_progress:
                 progress_callback(
                     {
-                        "event": "wait",
+                        "event": "wait" if state_changed else "heartbeat",
                         "job_id": job_id,
                         "status": job_status or "unknown",
                         "elapsed_seconds": elapsed_seconds,
