@@ -81,12 +81,8 @@ The Claude control plane is intended to follow the same sync/check pattern as Co
 ## Current Global Settings Baseline
 
 - `claude/config/settings.json` is the source of truth for `~/.claude/settings.json`.
-- AWS Bedrock enablement is intentionally hard-coded in the canonical global settings, not patched manually into runtime state.
-- The current global baseline pins:
-  - `Sonnet 4.6 (Bedrock)` -> `us.anthropic.claude-sonnet-4-6`
-  - `Opus 4.6 (Bedrock)` -> `us.anthropic.claude-opus-4-6-v1`
-  - `Haiku 4.5 (Bedrock)` -> `us.anthropic.claude-haiku-4-5-20251001-v1:0`
-- `CLAUDE_CODE_USE_BEDROCK=1` and `AWS_REGION=us-east-1` are part of that managed baseline.
+- The canonical global baseline is provider-neutral by default.
+- Provider-specific opt-ins such as AWS Bedrock should live in explicit shell wrappers, not in the machine-wide Claude settings baseline.
 
 ## Scope Rules
 
