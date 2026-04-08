@@ -178,8 +178,15 @@ if runtime_servers is None:
 if not isinstance(runtime_servers, dict):
     raise SystemExit(f"ERROR: runtime mcpServers must be an object: {runtime_path}")
 
+managed_names = {str(name) for name in presets}
+active_global_names = set(managed_servers)
+
 merged = dict(runtime)
-merged_servers = dict(runtime_servers)
+merged_servers = {
+    name: config
+    for name, config in runtime_servers.items()
+    if name not in managed_names or name in active_global_names
+}
 for name, config in managed_servers.items():
     merged_servers[name] = config
 merged["mcpServers"] = merged_servers
