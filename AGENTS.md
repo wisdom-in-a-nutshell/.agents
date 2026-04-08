@@ -98,5 +98,6 @@ Personal agent, Codex, and Claude control plane.
 - If `skills/registry.json` changes, run sync/check in the same change.
 - Do not hand-edit generated repo-local `.codex/config.toml` files in managed repos; update `codex/config/repo-bootstrap.json` and re-run the sync scripts.
 - Do not hand-edit generated repo-local `.codex/agents/*.toml` files in managed repos; update `codex/config/repo-bootstrap.json` or `codex/config/agents/*.toml` and re-run the sync scripts.
+- When changing shared bootstrap inputs such as `mcp/config/presets.json`, `codex/config/repo-bootstrap.json`, or repo MCP assignment, prefer `./scripts/bootstrap-machine-agent-control-planes.sh --apply --repo <repo>` so Codex and Claude repo-local state are both re-rendered together. Use component-only Codex or Claude scripts only for intentional single-surface troubleshooting.
 - If `mcp/config/presets.json` changes, run both Codex and Claude control-plane validation in the same change.
 - If `codex/config/agents/*.toml`, `codex/config/global.config.toml`, `codex/config/xcode.config.toml`, or `codex/config/repo-bootstrap.json` changes, run the Codex control-plane validation script in the same change.

@@ -63,6 +63,12 @@ Optional scoped Claude validation/bootstrap:
 ./scripts/check-agent-control-planes.sh --repo ~/.agents
 ```
 
+Preferred rule for repo bootstrap or MCP changes:
+
+- if a change touches `mcp/config/presets.json`, `codex/config/repo-bootstrap.json`, or repo MCP assignment, use the shared root bootstrap wrapper first:
+  - `./scripts/bootstrap-machine-agent-control-planes.sh --apply --repo <repo>`
+- use component-only `codex/scripts/*` or `claude/scripts/*` entrypoints only when you intentionally want to troubleshoot or re-render one surface without touching the other
+
 ## Boundary Rule
 
 - Machine repos such as `~/GitHub/scripts` should call these root wrappers.
