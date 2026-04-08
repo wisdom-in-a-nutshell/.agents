@@ -160,7 +160,7 @@ def _build_segment_parser(subparsers: argparse._SubParsersAction[Any]) -> None:
 def _build_segment_image_parser(subparsers: argparse._SubParsersAction[Any]) -> None:
     parser = subparsers.add_parser(
         "image",
-        help="Submit an image segmentation job and return the completed mask/alpha result by default.",
+        help="Submit an image segmentation job and return the completed segmentation result by default.",
         description=(
             "Submit a SAM 3.1 image segmentation job from a local file or URL. "
             "The command waits by default and returns the final JSON result envelope."
@@ -196,7 +196,7 @@ def _build_segment_image_parser(subparsers: argparse._SubParsersAction[Any]) -> 
 def _build_segment_video_parser(subparsers: argparse._SubParsersAction[Any]) -> None:
     parser = subparsers.add_parser(
         "video",
-        help="Submit a video segmentation job and return the completed mask/alpha result by default.",
+        help="Submit a video segmentation job and return the completed segmentation result by default.",
         description=(
             "Submit a SAM 3.1 video segmentation job from a local file or URL. "
             "The command waits by default and returns the final JSON result envelope."
