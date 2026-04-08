@@ -43,7 +43,10 @@
       ]
     },
     {
-      "path": "~/GitHub/adithyan-ai-videos"
+      "path": "~/GitHub/adithyan-ai-videos",
+      "custom_agents": [
+        "visual_reviewer"
+      ]
     },
     {
       "path": "~/GitHub/aip-cognitive-revolution"
