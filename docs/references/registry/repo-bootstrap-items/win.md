@@ -1,8 +1,8 @@
 ---
 repo_name: "win"
 path: "~/GitHub/win"
-mcp_count: 1
-skill_count: 23
+mcp_count: 0
+skill_count: 22
 repo_local_skill_count: 6
 global_agent_count: 1
 custom_agent_count: 0
@@ -10,8 +10,7 @@ agent_count: 1
 model: "gpt-5.4"
 reasoning: "high"
 service_tier: "-"
-mcps:
-  - "openaiDeveloperDocs"
+mcps: []
 global_agents:
   - "external_researcher"
 custom_agents: []
@@ -34,7 +33,6 @@ repo_skills:
   - "client-interface-guidelines"
   - "media-toolkit"
   - "modal-function-sync"
-  - "openai-docs"
   - "show-password-setup"
 repo_local_skills:
   - "add-env-var"
@@ -60,7 +58,6 @@ skills:
   - "log-investigation"
   - "media-toolkit"
   - "modal-function-sync"
-  - "openai-docs"
   - "pdf"
   - "project"
   - "scheduled-jobs"

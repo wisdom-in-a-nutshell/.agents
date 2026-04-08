@@ -26,7 +26,5 @@
       "tool_timeout_sec": 120
     }
   },
-  "global_presets": [
-    "openaiDeveloperDocs"
-  ]
+  "global_presets": []
 }

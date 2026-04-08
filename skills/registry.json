@@ -275,11 +275,7 @@
       "origin": "external",
       "scope": "repo",
       "repos": [
-        "~/.agents",
-        "adi",
-        "angie",
-        "codexclaw",
-        "win"
+        "~/.agents"
       ],
       "source_path": "skills-source/external/openai-docs",
       "upstream_ref": "openai/skills:skills/.curated/openai-docs@main"
