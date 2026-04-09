@@ -27,12 +27,17 @@ TOKEN_URL = "https://www.linkedin.com/oauth/v2/accessToken"
 USERINFO_URL = "https://api.linkedin.com/v2/userinfo"
 UGC_POSTS_URL = "https://api.linkedin.com/v2/ugcPosts"
 REST_POSTS_URL = "https://api.linkedin.com/rest/posts"
+REST_VIDEOS_URL = "https://api.linkedin.com/rest/videos"
 INITIALIZE_IMAGE_UPLOAD_URL = "https://api.linkedin.com/rest/images?action=initializeUpload"
+INITIALIZE_VIDEO_UPLOAD_URL = f"{REST_VIDEOS_URL}?action=initializeUpload"
+FINALIZE_VIDEO_UPLOAD_URL = f"{REST_VIDEOS_URL}?action=finalizeUpload"
 SOCIAL_ACTIONS_URL = "https://api.linkedin.com/rest/socialActions"
 DEFAULT_SCOPE = "openid profile w_member_social"
 DEFAULT_REDIRECT_URI = "http://127.0.0.1:8765/callback"
 DEFAULT_LINKEDIN_VERSION = "202603"
 DEFAULT_REQUEST_TIMEOUT_SECONDS = 30.0
+DEFAULT_VIDEO_POLL_INTERVAL_SECONDS = 2.0
+DEFAULT_VIDEO_PROCESSING_TIMEOUT_SECONDS = 900.0
 
 
 class CliError(RuntimeError):
@@ -485,6 +490,21 @@ def build_image_post_payload(*, author: str, text: str, visibility: str, image_e
     }
 
 
+def build_video_post_payload(*, author: str, text: str, visibility: str, video_urn: str, title: str | None) -> dict[str, Any]:
+    media: dict[str, Any] = {"id": video_urn}
+    if title:
+        media["title"] = title
+    return {
+        "author": author,
+        "commentary": text,
+        "visibility": visibility,
+        "distribution": build_rest_distribution_payload(),
+        "content": {"media": media},
+        "lifecycleState": "PUBLISHED",
+        "isReshareDisabledByAuthor": False,
+    }
+
+
 def load_image_paths(raw_paths: list[str]) -> list[Path]:
     paths = [Path(raw).expanduser() for raw in raw_paths]
     missing = [str(path) for path in paths if not path.exists()]
@@ -523,6 +543,119 @@ def build_image_entries(image_paths: list[Path], alt_texts: list[str], image_urn
             entry["title"] = path.stem.replace("-", " ").replace("_", " ")
         entries.append(entry)
     return entries
+
+
+def load_video_path(raw_path: str) -> Path:
+    path = Path(raw_path).expanduser()
+    if not path.exists():
+        raise CliError(
+            f"Video file not found: {path}",
+            code="E_INVALID_INPUT",
+            exit_code=2,
+            hint="Check the --video path and try again.",
+        )
+    if not path.is_file():
+        raise CliError(
+            f"Video path is not a file: {path}",
+            code="E_INVALID_INPUT",
+            exit_code=2,
+        )
+    size_bytes = path.stat().st_size
+    if size_bytes <= 0:
+        raise CliError(
+            f"Video file is empty: {path}",
+            code="E_INVALID_INPUT",
+            exit_code=2,
+        )
+    return path
+
+
+def initialize_video_upload(config: Config, access_token: str, *, owner: str, video_path: Path, version: str) -> dict[str, Any]:
+    payload = {
+        "initializeUploadRequest": {
+            "owner": owner,
+            "fileSizeBytes": video_path.stat().st_size,
+        }
+    }
+    _, _, body = post_rest_json(config, access_token, INITIALIZE_VIDEO_UPLOAD_URL, payload, version=version)
+    response = json.loads(body.decode("utf-8"))
+    value = response.get("value") or {}
+    video_urn = value.get("video")
+    upload_token = value.get("uploadToken", "")
+    upload_instructions = value.get("uploadInstructions") or []
+    if not video_urn or not upload_instructions:
+        raise CliError(
+            "LinkedIn video initializeUpload response was missing video or uploadInstructions.",
+            code="E_API",
+            exit_code=1,
+            details=response,
+        )
+    return {
+        "video": str(video_urn),
+        "upload_token": str(upload_token),
+        "upload_instructions": upload_instructions,
+        "raw": response,
+    }
+
+
+def upload_video_part(config: Config, *, upload_url: str, content: bytes) -> str:
+    headers = {
+        "Content-Type": "application/octet-stream",
+        "Content-Length": str(len(content)),
+    }
+    request = urllib.request.Request(upload_url, method="PUT", headers=headers, data=content)
+    try:
+        with urllib.request.urlopen(request, timeout=config.request_timeout_seconds) as response:
+            etag = response.headers.get("etag") or response.headers.get("ETag")
+            if not etag:
+                raise CliError(
+                    "LinkedIn video upload response was missing ETag.",
+                    code="E_API",
+                    exit_code=1,
+                    hint="Retry the upload. If this persists, LinkedIn may have changed the upload contract.",
+                )
+            return str(etag)
+    except urllib.error.HTTPError as exc:
+        body = exc.read().decode("utf-8", errors="replace")
+        raise classify_http_error(upload_url, exc.code, body) from exc
+    except TimeoutError as exc:
+        raise CliError(
+            "Timed out while uploading the LinkedIn video.",
+            code="E_TIMEOUT",
+            exit_code=5,
+            retryable=True,
+            hint="Retry with a larger --request-timeout-seconds if the upload is slow.",
+        ) from exc
+    except urllib.error.URLError as exc:
+        raise CliError(
+            f"Video upload failed: {exc.reason}",
+            code="E_NETWORK",
+            exit_code=4,
+            retryable=True,
+            hint="Check network connectivity and retry.",
+        ) from exc
+
+
+def finalize_video_upload(config: Config, access_token: str, *, video_urn: str, upload_token: str, uploaded_part_ids: list[str], version: str) -> dict[str, Any]:
+    payload = {
+        "finalizeUploadRequest": {
+            "video": video_urn,
+            "uploadToken": upload_token,
+            "uploadedPartIds": uploaded_part_ids,
+        }
+    }
+    _, _, body = post_rest_json(config, access_token, FINALIZE_VIDEO_UPLOAD_URL, payload, version=version)
+    return json.loads(body.decode("utf-8")) if body else {}
+
+
+def get_video(config: Config, access_token: str, *, video_urn: str, version: str) -> dict[str, Any]:
+    return get_rest_json(
+        config,
+        access_token,
+        f"{REST_VIDEOS_URL}/{encode_urn(video_urn)}",
+        version=version,
+    )
+
 
 
 class CallbackHandler(BaseHTTPRequestHandler):
@@ -678,6 +811,20 @@ def determine_output_mode(args: argparse.Namespace) -> str:
     return "json"
 
 
+def should_emit_progress(args: argparse.Namespace) -> bool:
+    progress = getattr(args, "progress", "auto")
+    if progress == "off":
+        return False
+    if progress == "plain":
+        return True
+    return sys.stderr.isatty()
+
+
+def emit_progress(args: argparse.Namespace, message: str) -> None:
+    if should_emit_progress(args):
+        print(message, file=sys.stderr, flush=True)
+
+
 def emit_success(args: argparse.Namespace, command: str, data: dict[str, Any], *, start_time: float, request_id: str) -> int:
     mode = determine_output_mode(args)
     envelope = {
@@ -802,6 +949,7 @@ def command_status(args: argparse.Namespace) -> dict[str, Any]:
                 "whoami",
                 "post",
                 "post-image",
+                "post-video",
                 "post-images",
                 "comment",
                 "get-post",
@@ -985,6 +1133,146 @@ def publish_images(config: Config, tokens: dict[str, Any], *, text: str, visibil
     }
 
 
+def publish_video(
+    args: argparse.Namespace,
+    config: Config,
+    tokens: dict[str, Any],
+    *,
+    text: str,
+    visibility: str,
+    video_path: Path,
+    title: str | None,
+    dry_run: bool,
+) -> dict[str, Any]:
+    author_urn = build_author_urn(tokens)
+    resolved_title = (title or video_path.stem.replace("-", " ").replace("_", " ")).strip() or None
+    if dry_run:
+        payload = build_video_post_payload(
+            author=author_urn,
+            text=text,
+            visibility=visibility,
+            video_urn="urn:li:video:<pending-upload>",
+            title=resolved_title,
+        )
+        return {
+            "dry_run": True,
+            "upload_plan": {
+                "local_path": str(video_path),
+                "file_size_bytes": video_path.stat().st_size,
+                "wait_for_processing": not args.no_wait_for_video,
+                "poll_interval_seconds": args.video_poll_interval_seconds,
+                "processing_timeout_seconds": args.video_processing_timeout_seconds,
+            },
+            "payload": payload,
+        }
+
+    emit_progress(args, f"[linkedin] initializing video upload for {video_path.name}")
+    initialized = initialize_video_upload(
+        config,
+        tokens["access_token"],
+        owner=author_urn,
+        video_path=video_path,
+        version=config.linkedin_version,
+    )
+    instructions = initialized["upload_instructions"]
+    uploaded_part_ids: list[str] = []
+    with video_path.open("rb") as handle:
+        for index, instruction in enumerate(instructions, start=1):
+            upload_url = instruction.get("uploadUrl")
+            first_byte = instruction.get("firstByte")
+            last_byte = instruction.get("lastByte")
+            if not upload_url or first_byte is None or last_byte is None:
+                raise CliError(
+                    "LinkedIn video upload instruction was missing uploadUrl or byte range.",
+                    code="E_API",
+                    exit_code=1,
+                    details=instruction,
+                )
+            first = int(first_byte)
+            last = int(last_byte)
+            handle.seek(first)
+            content = handle.read(last - first + 1)
+            emit_progress(
+                args,
+                f"[linkedin] uploading video part {index}/{len(instructions)} ({first}-{last})",
+            )
+            uploaded_part_ids.append(upload_video_part(config, upload_url=str(upload_url), content=content))
+
+    emit_progress(args, f"[linkedin] finalizing upload for {video_path.name}")
+    finalize_response = finalize_video_upload(
+        config,
+        tokens["access_token"],
+        video_urn=initialized["video"],
+        upload_token=initialized["upload_token"],
+        uploaded_part_ids=uploaded_part_ids,
+        version=config.linkedin_version,
+    )
+
+    video_status = None
+    video_data: dict[str, Any] | None = None
+    if args.no_wait_for_video:
+        emit_progress(args, "[linkedin] skipping video readiness wait because --no-wait-for-video was set")
+        video_status = "SKIPPED_WAIT"
+    else:
+        deadline = time.time() + args.video_processing_timeout_seconds
+        while True:
+            video_data = get_video(
+                config,
+                tokens["access_token"],
+                video_urn=initialized["video"],
+                version=config.linkedin_version,
+            )
+            video_status = str(video_data.get("status") or "")
+            if video_status == "AVAILABLE":
+                emit_progress(args, f"[linkedin] video is AVAILABLE: {initialized['video']}")
+                break
+            if video_status in {"PROCESSING_FAILED", "CLIENT_ERROR", "SERVER_ERROR"}:
+                raise CliError(
+                    f"LinkedIn video processing failed with status {video_status}.",
+                    code="E_API",
+                    exit_code=1,
+                    hint="Check the source file format and retry with a standard MP4/H.264 export.",
+                    details={"video_urn": initialized["video"], "video_status": video_status, "video": video_data},
+                )
+            if time.time() >= deadline:
+                raise CliError(
+                    f"Timed out waiting for LinkedIn to process the video (last status: {video_status or 'unknown'}).",
+                    code="E_TIMEOUT",
+                    exit_code=5,
+                    retryable=True,
+                    hint="Retry with a larger --video-processing-timeout-seconds if LinkedIn is still processing the upload.",
+                    details={"video_urn": initialized["video"], "video_status": video_status, "video": video_data},
+                )
+            emit_progress(
+                args,
+                f"[linkedin] waiting for video processing: status={video_status or 'unknown'}; next poll in {args.video_poll_interval_seconds:.1f}s",
+            )
+            time.sleep(args.video_poll_interval_seconds)
+
+    payload = build_video_post_payload(
+        author=author_urn,
+        text=text,
+        visibility=visibility,
+        video_urn=initialized["video"],
+        title=resolved_title,
+    )
+    emit_progress(args, "[linkedin] creating post")
+    status, headers, body = post_rest_json(config, tokens["access_token"], REST_POSTS_URL, payload, version=config.linkedin_version)
+    restli_id = headers.get("X-RestLi-Id") or headers.get("x-restli-id")
+    return {
+        "dry_run": False,
+        "http_status": status,
+        "post_urn": restli_id,
+        "uploaded_video": initialized["video"],
+        "video_status": video_status,
+        "video_title": resolved_title,
+        "uploaded_parts": len(uploaded_part_ids),
+        "finalize_response": finalize_response,
+        "video": video_data,
+        "response_body": body.decode("utf-8", errors="replace") if body else None,
+    }
+
+
 def command_post_image(args: argparse.Namespace) -> dict[str, Any]:
     config = build_config(args)
     tokens = ensure_member_context(config, load_tokens(config.tokens_path))
@@ -998,6 +1286,22 @@ def command_post_image(args: argparse.Namespace) -> dict[str, Any]:
         image_paths=image_paths,
         alt_texts=alt_texts,
         settle_seconds=args.upload_settle_seconds,
+        dry_run=args.dry_run,
+    )
+
+
+def command_post_video(args: argparse.Namespace) -> dict[str, Any]:
+    config = build_config(args)
+    tokens = ensure_member_context(config, load_tokens(config.tokens_path))
+    video_path = load_video_path(args.video)
+    return publish_video(
+        args,
+        config,
+        tokens,
+        text=load_post_text(args),
+        visibility=args.visibility,
+        video_path=video_path,
+        title=args.title,
         dry_run=args.dry_run,
     )
 
@@ -1110,6 +1414,12 @@ def build_parser() -> argparse.ArgumentParser:
     mode.add_argument("--json", action="store_true", help="Emit machine-readable JSON output. This is also the default.")
     mode.add_argument("--plain", action="store_true", help="Emit stable plain text for shell pipelines or quick operator inspection.")
     parser.add_argument("--no-input", action="store_true", help="Disable browser auto-open and any interactive input.")
+    parser.add_argument(
+        "--progress",
+        choices=["auto", "off", "plain"],
+        default="auto",
+        help="Progress reporting mode for long-running commands. Emits progress on stderr only.",
+    )
 
     subparsers = parser.add_subparsers(dest="command", required=True)
 
@@ -1144,6 +1454,32 @@ def build_parser() -> argparse.ArgumentParser:
     post_image.add_argument("--upload-settle-seconds", type=float, default=0.75, help="Small pause after upload before creating the post.")
     post_image.add_argument("--dry-run", action="store_true", help="Print the planned payload without uploading or publishing.")
     post_image.set_defaults(func=command_post_image, command_path="linkedin post-image")
+
+    post_video = subparsers.add_parser("post-video", help="Publish a LinkedIn video post with commentary text.")
+    post_video.add_argument("--text", help="Inline post text.")
+    post_video.add_argument("--text-file", help="Path to a file containing post text.")
+    post_video.add_argument("--video", required=True, help="Video file path.")
+    post_video.add_argument("--title", help="Optional video title. Defaults to the video filename stem.")
+    post_video.add_argument("--visibility", choices=["PUBLIC", "CONNECTIONS"], default="PUBLIC")
+    post_video.add_argument(
+        "--video-poll-interval-seconds",
+        type=float,
+        default=DEFAULT_VIDEO_POLL_INTERVAL_SECONDS,
+        help="Seconds between LinkedIn video processing polls.",
+    )
+    post_video.add_argument(
+        "--video-processing-timeout-seconds",
+        type=float,
+        default=DEFAULT_VIDEO_PROCESSING_TIMEOUT_SECONDS,
+        help="Total time to wait for LinkedIn to process the uploaded video before failing.",
+    )
+    post_video.add_argument(
+        "--no-wait-for-video",
+        action="store_true",
+        help="Skip waiting for the uploaded video to reach AVAILABLE before creating the post.",
+    )
+    post_video.add_argument("--dry-run", action="store_true", help="Print the planned payload without uploading or publishing.")
+    post_video.set_defaults(func=command_post_video, command_path="linkedin post-video")
 
     post_images = subparsers.add_parser("post-images", help="Publish a LinkedIn multi-image post with commentary text.")
     post_images.add_argument("--text", help="Inline post text.")

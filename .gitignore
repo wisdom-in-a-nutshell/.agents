@@ -28,3 +28,8 @@ __pycache__/
 # Obsidian runtime UI state (local/session-specific)
 .obsidian/workspace*.json
 skills/.obsidian/workspace*.json
+
+# Local temp artifacts
+/tmp/
+/.tmp/
+/temp/
