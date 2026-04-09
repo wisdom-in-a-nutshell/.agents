@@ -32,6 +32,7 @@ Owns the canonical Claude bootstrap inputs:
 Shared inputs Claude reads from outside `claude/`:
 
 - `../codex/config/repo-bootstrap.json`
+- `../agents/registry.json`
 - `../mcp/config/presets.json`
 - `../skills/registry.json`
 - shared machine-facing wrappers in `../scripts/`
@@ -56,6 +57,7 @@ The generic project contract is:
 - `.claude/settings.json`
 - `.mcp.json`
 - `.claude/skills/`
+- `.claude/agents/`
 
 `AGENTS.md` remains the shared repo instruction source. `CLAUDE.md` is only the compatibility entrypoint.
 
@@ -70,6 +72,8 @@ Claude has both global and project layers:
 - project `.claude/settings.json`
 - project `.mcp.json`
 - project `.claude/skills/`
+- global `~/.claude/agents/`
+- project `.claude/agents/`
 
 The first pass keeps the same permissive default posture at both scopes where Anthropic allows it:
 
@@ -86,12 +90,12 @@ This baseline includes:
 - project MCP via `.mcp.json`
 - global MCP via `~/.claude.json`
 - global and project skills
+- global and project subagents rendered from the shared agent registry
 
 This baseline intentionally defers:
 
 - host/runtime `systemPrompt` replacement parity
 - VS Code cloud/remote agent behavior
-- Claude subagent materialization under `.claude/agents/`
 - any repo-specific Claude prompt override that would fork the generic model
 
 ## Model
@@ -101,13 +105,14 @@ The mental model is:
 1. `AGENTS.md` stays the shared repo contract.
 2. Claude compatibility is added on top of it.
 3. `~/.agents/claude/` defines the managed canonical inputs.
-4. Shared machine-facing apply enters through `~/.agents/scripts/bootstrap-machine-agent-control-planes.sh` or `~/.agents/scripts/auto-apply-agent-control-planes.sh`.
-5. `~/.claude/` is the applied machine state.
+4. `~/.agents/agents/registry.json` defines which shared agents should materialize in Claude.
+5. Shared machine-facing apply enters through `~/.agents/scripts/bootstrap-machine-agent-control-planes.sh` or `~/.agents/scripts/auto-apply-agent-control-planes.sh`.
+6. `~/.claude/` is the applied machine state.
 
 That keeps Claude as a sibling control plane, not a replacement for the existing Codex bootstrap.
 
 ## Related Docs
 
-- [Claude Control Plane Operations](/Users/adi/.agents/docs/references/claude-control-plane-operations.md)
-- [Anthropic Settings Research](/Users/adi/.agents/docs/projects/claude-control-plane-bootstrap/resources/anthropic-settings-research.md)
-- [Anthropic Agent Surfaces Research](/Users/adi/.agents/docs/projects/claude-control-plane-bootstrap/resources/anthropic-agent-surfaces.md)
+- [Claude Control Plane Operations](/Users/dobby/.agents/docs/references/claude-control-plane-operations.md)
+- [Anthropic Settings Research](/Users/dobby/.agents/docs/projects/claude-control-plane-bootstrap/resources/anthropic-settings-research.md)
+- [Anthropic Agent Surfaces Research](/Users/dobby/.agents/docs/projects/claude-control-plane-bootstrap/resources/anthropic-agent-surfaces.md)

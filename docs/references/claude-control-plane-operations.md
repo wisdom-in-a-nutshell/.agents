@@ -2,7 +2,7 @@
 
 Use this page for the exact operator-facing facts of the local Claude control plane.
 
-Use [Claude Control Plane](/Users/adi/.agents/docs/architecture/claude-control-plane.md) for the high-level shape.
+Use [Claude Control Plane](/Users/dobby/.agents/docs/architecture/claude-control-plane.md) for the high-level shape.
 
 ## Canonical Inputs
 
@@ -13,7 +13,11 @@ Use [Claude Control Plane](/Users/adi/.agents/docs/architecture/claude-control-p
 - `claude/config/bootstrap.json`
   - Claude-only bootstrap defaults and repo-specific overrides
 - `codex/config/repo-bootstrap.json`
-  - shared repo inventory plus per-repo assignment registry
+  - shared repo inventory plus per-repo settings/MCP assignment
+- `agents/registry.json`
+  - shared agent exposure registry for Codex and Claude
+- `claude/config/agents/*.md`
+  - canonical Claude prompt bodies for managed subagents
 - `mcp/config/presets.json`
   - shared MCP preset definitions and machine-wide global MCP defaults
 - `skills/registry.json`
@@ -33,6 +37,8 @@ Use [Claude Control Plane](/Users/adi/.agents/docs/architecture/claude-control-p
   - permissive user/global defaults
 - `~/.claude.json`
   - user runtime state and global MCP store
+- `~/.claude/agents/*.md`
+  - global Claude subagents rendered from the shared agent registry
 - repo `CLAUDE.md`
   - usually a tiny file containing only `@AGENTS.md`
 - repo `.claude/settings.json`
@@ -41,6 +47,8 @@ Use [Claude Control Plane](/Users/adi/.agents/docs/architecture/claude-control-p
   - project MCP
 - repo `.claude/skills/`
   - project skills
+- repo `.claude/agents/*.md`
+  - repo-scoped Claude subagents rendered from the shared agent registry
 - nested repo `CLAUDE.md`
   - tiny file containing only `@AGENTS.md` wherever nested `AGENTS.md` exists
 
@@ -60,6 +68,8 @@ The Claude control plane is intended to follow the same sync/check pattern as Co
   - install the permissive global `settings.json` into `~/.claude/settings.json`
 - `sync-global-mcp.sh`
   - merge global MCP entries from `mcp/config/presets.json` into `~/.claude.json`
+- `sync-subagents.sh`
+  - materialize global and project Claude subagents from `agents/registry.json`
 - `sync-skills.sh`
   - materialize global and project Claude skills from `skills/registry.json`
 - `sync-repo-claude-configs.sh`
@@ -92,6 +102,8 @@ The Claude control plane is intended to follow the same sync/check pattern as Co
 - Project MCP lives in `.mcp.json`.
 - Global skills live under `~/.claude/skills/`.
 - Project skills live under repo `.claude/skills/`.
+- Global Claude subagents live under `~/.claude/agents/`.
+- Project Claude subagents live under repo `.claude/agents/`.
 
 ## Expected Repo Diffs
 
@@ -101,7 +113,9 @@ The Claude control plane is intended to follow the same sync/check pattern as Co
   - repo `.claude/settings.json`
   - repo `.mcp.json`
   - repo `.claude/skills/*`
+  - repo `.claude/agents/*`
 - Those are normal generated outputs from `sync-repo-claude-configs.sh` and `sync-skills.sh`, not evidence that the bootstrap misfired.
+- Repo `.claude/agents/.managed-subagents.json` is also a normal generated manifest used to prune stale managed subagent files without touching hand-written ones.
 - If a managed repo tracks those paths in git, they will appear as ordinary worktree changes until committed.
 
 ## Deferred Rules
@@ -109,4 +123,3 @@ The Claude control plane is intended to follow the same sync/check pattern as Co
 - Do not treat `soul.md` as part of the generic baseline.
 - Do not require host-level `systemPrompt` parity for the first pass.
 - Do not assume VS Code cloud/remote exposes the same operator surface as the local Claude CLI or SDK.
-- Do not assume `.claude/agents/` is part of the first-pass bootstrap.

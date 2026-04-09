@@ -50,6 +50,19 @@ def _ordered_unique_strings(values: list[Any], *, label: str) -> list[str]:
     return ordered
 
 
+def _optional_string_list(
+    mapping: dict[str, Any], key: str, *, label: str
+) -> list[str] | None:
+    if key not in mapping:
+        return None
+    values = mapping.get(key)
+    if values is None:
+        return []
+    if not isinstance(values, list):
+        raise ValueError(f"{label}.{key} must be an array of strings")
+    return _ordered_unique_strings(values, label=f"{label}.{key}")
+
+
 def load_agent_registry(
     registry_path: Path,
     *,
@@ -117,6 +130,8 @@ def load_agent_registry(
         if codex_raw is not None:
             if not isinstance(codex_raw, dict):
                 raise ValueError(f"managed_agents[{idx}].codex must be an object")
+            if "materialize" in codex_raw and not isinstance(codex_raw["materialize"], bool):
+                raise ValueError(f"managed_agents[{idx}].codex.materialize must be a boolean")
             materialize = bool(codex_raw.get("materialize", True))
             if materialize:
                 config_file = str(codex_raw.get("config_file", "")).strip()
@@ -154,6 +169,8 @@ def load_agent_registry(
                 raise ValueError(
                     f"managed_agents[{idx}].claude contains unsupported keys: {', '.join(unknown_keys)}"
                 )
+            if "materialize" in claude_raw and not isinstance(claude_raw["materialize"], bool):
+                raise ValueError(f"managed_agents[{idx}].claude.materialize must be a boolean")
             materialize = bool(claude_raw.get("materialize", True))
             if materialize:
                 prompt_file = str(claude_raw.get("prompt_file", "")).strip()
@@ -162,6 +179,39 @@ def load_agent_registry(
                 claude_name = str(claude_raw.get("name", agent_id)).strip()
                 if not claude_name:
                     raise ValueError(f"managed_agents[{idx}].claude.name must be a non-empty string")
+                tools = _optional_string_list(
+                    claude_raw, "tools", label=f"managed_agents[{idx}].claude"
+                )
+                disallowed_tools = _optional_string_list(
+                    claude_raw, "disallowed_tools", label=f"managed_agents[{idx}].claude"
+                )
+                skills = _optional_string_list(
+                    claude_raw, "skills", label=f"managed_agents[{idx}].claude"
+                )
+                mcp_servers = _optional_string_list(
+                    claude_raw, "mcp_servers", label=f"managed_agents[{idx}].claude"
+                )
+                for string_key in (
+                    "color",
+                    "description",
+                    "effort",
+                    "initial_prompt",
+                    "model",
+                    "permission_mode",
+                ):
+                    if string_key in claude_raw and not isinstance(claude_raw[string_key], str):
+                        raise ValueError(
+                            f"managed_agents[{idx}].claude.{string_key} must be a string"
+                        )
+                if "max_turns" in claude_raw and not isinstance(claude_raw["max_turns"], int):
+                    raise ValueError(f"managed_agents[{idx}].claude.max_turns must be an integer")
+                if "background" in claude_raw and not isinstance(claude_raw["background"], bool):
+                    raise ValueError(f"managed_agents[{idx}].claude.background must be a boolean")
+                for object_key in ("hooks", "isolation", "memory"):
+                    if object_key in claude_raw and not isinstance(claude_raw[object_key], dict):
+                        raise ValueError(
+                            f"managed_agents[{idx}].claude.{object_key} must be an object"
+                        )
                 claude = {
                     "materialize": True,
                     "name": claude_name,
@@ -169,7 +219,17 @@ def load_agent_registry(
                     "prompt_file": prompt_file,
                     "source_path": root_dir / "claude" / "config" / "agents" / prompt_file,
                 }
+                if tools is not None:
+                    claude["tools"] = tools
+                if disallowed_tools is not None:
+                    claude["disallowed_tools"] = disallowed_tools
+                if skills is not None:
+                    claude["skills"] = skills
+                if mcp_servers is not None:
+                    claude["mcp_servers"] = mcp_servers
                 for key in sorted(CLAUDE_OPTIONAL_KEYS - {"description", "name", "prompt_file"}):
+                    if key in {"tools", "disallowed_tools", "skills", "mcp_servers"}:
+                        continue
                     if key in claude_raw:
                         claude[key] = claude_raw[key]
             else:
@@ -191,4 +251,3 @@ def load_agent_registry(
         )
 
     return normalized
-

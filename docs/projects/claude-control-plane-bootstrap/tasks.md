@@ -54,7 +54,7 @@ The repo already manages Codex as the primary control plane. Adding Claude as a 
 - Nested `AGENTS.md` files should also receive sibling `CLAUDE.md` files that import `@AGENTS.md` for Claude parity.
 - The first pass is local-only and intentionally ignores the `adi` `soul.md` special case.
 - `skipDangerousModePermissionPrompt` is managed only at user/global Claude settings scope.
-- The first pass manages instructions, MCP, settings, and skills; `.claude/agents/` is intentionally deferred.
+- The baseline now manages instructions, MCP, settings, skills, and `.claude/agents/` from the shared agent registry.
 - Global Claude MCP is merged into `~/.claude.json` without overwriting unrelated runtime keys.
 - Claude repo bootstrap should ignore Codex `model_instructions_file`; prompt replacement is a separate runtime choice.
 - `codex/config/repo-bootstrap.json` is the single shared repo registry for both Codex and Claude repo bootstrap.
@@ -64,7 +64,7 @@ The repo already manages Codex as the primary control plane. Adding Claude as a 
 ## Open Questions / Blockers
 - Anthropic’s published settings schema still lags at least one doc-backed key (`skipDangerousModePermissionPrompt`), so future schema patching remains an optional cleanup item.
 - `adi` still needs a separate operator/runtime choice for `soul.md` / host-level system prompt parity if desired.
-- Claude subagent materialization under `.claude/agents/` remains a follow-up if it proves useful in daily workflow.
+- Claude subagent materialization now ships as part of the control-plane baseline through `agents/registry.json` plus `claude/config/agents/*.md`.
 
 ## Current Batch
 | Status | Work Item | Role | Resource |
@@ -78,7 +78,6 @@ The repo already manages Codex as the primary control plane. Adding Claude as a 
 | completed | Consolidate the Claude and Codex control planes onto one shared repo registry plus one shared MCP registry. | parent | `codex/config/repo-bootstrap.json`, `mcp/config/presets.json`, `claude/config/bootstrap.json` |
 
 ## Backlog / Remaining Work
-- [ ] Add `.claude/agents/` materialization if Claude subagents become part of the control-plane baseline.
 - [ ] Design the `adi` `soul.md` parity layer as a separate runtime/launcher concern.
 - [ ] Decide whether to patch the published Claude settings schema locally for editor validation parity.
 - [ ] Expand apply/validation beyond `~/.agents` once the generic baseline has enough usage feedback.
@@ -100,3 +99,4 @@ The repo already manages Codex as the primary control plane. Adding Claude as a 
 - 2026-04-03: [IN-PROGRESS] Refactoring to a single shared repo registry (`codex/config/repo-bootstrap.json`) plus a shared neutral MCP registry (`mcp/config/presets.json`), with Claude reduced to a bootstrap overlay.
 - 2026-04-03: [DONE] Finished the shared-registry refactor: Codex and Claude now both read repo assignment from `codex/config/repo-bootstrap.json`, both resolve MCP definitions from `mcp/config/presets.json`, Claude keeps only `claude/config/bootstrap.json` for defaults/overrides, the generated registry views were regenerated, and both control-plane validators passed.
 - 2026-04-03: [DONE] Moved Claude Code AWS Bedrock model selection into `claude/config/settings.json`, documented the runtime ownership boundary, and reapplied the Claude bootstrap so `~/.claude/settings.json` is control-plane rendered instead of hand-edited.
+- 2026-04-09: [DONE] Added shared agent exposure in `agents/registry.json`, moved Codex repo agent assignment off `repo-bootstrap.json`, added Claude `.claude/agents/` materialization from `claude/config/agents/*.md`, regenerated the registry views, and wired both runtimes into the shared sync/check path.

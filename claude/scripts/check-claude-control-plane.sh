@@ -9,10 +9,12 @@ CANONICAL_DIR="${CONTROL_PLANE_DIR}/config"
 GLOBAL_CLAUDE_MD="${HOME}/.claude/CLAUDE.md"
 GLOBAL_SETTINGS="${HOME}/.claude/settings.json"
 GLOBAL_CONFIG="${HOME}/.claude.json"
+GLOBAL_AGENTS_DIR="${HOME}/.claude/agents"
 REPO_REGISTRY="${ROOT_DIR}/codex/config/repo-bootstrap.json"
 BOOTSTRAP_FILE="${CANONICAL_DIR}/bootstrap.json"
 MCP_REGISTRY="${ROOT_DIR}/mcp/config/presets.json"
 SKILLS_REGISTRY="${ROOT_DIR}/skills/registry.json"
+AGENT_REGISTRY="${ROOT_DIR}/agents/registry.json"
 REPO_FILTERS=()
 
 usage() {
@@ -26,10 +28,12 @@ Options:
   --global-claude-md <path> Override runtime ~/.claude/CLAUDE.md path
   --global-settings <path>  Override runtime ~/.claude/settings.json path
   --global-config <path>    Override runtime ~/.claude.json path
+  --global-agents-dir <p>   Override runtime ~/.claude/agents path
   --registry <path>         Override shared repo bootstrap registry path
   --bootstrap <path>        Override Claude bootstrap defaults/overrides path
   --mcp-registry <path>     Override shared MCP registry path
   --skills-registry <path>  Override shared skills registry path
+  --agent-registry <path>   Override shared agent registry path
   --repo <path>             Limit repo-local validation to one repo path (repeatable)
   -h, --help                Show this help
 USAGE
@@ -54,6 +58,10 @@ while [[ $# -gt 0 ]]; do
       GLOBAL_CONFIG="${2:-}"
       shift 2
       ;;
+    --global-agents-dir)
+      GLOBAL_AGENTS_DIR="${2:-}"
+      shift 2
+      ;;
     --registry)
       REPO_REGISTRY="${2:-}"
       shift 2
@@ -68,6 +76,10 @@ while [[ $# -gt 0 ]]; do
       ;;
     --skills-registry)
       SKILLS_REGISTRY="${2:-}"
+      shift 2
+      ;;
+    --agent-registry)
+      AGENT_REGISTRY="${2:-}"
       shift 2
       ;;
     --repo)
@@ -85,7 +97,7 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-python3 - "$CANONICAL_DIR" "$REPO_REGISTRY" "$BOOTSTRAP_FILE" "$MCP_REGISTRY" "$SKILLS_REGISTRY" <<'PY'
+python3 - "$CANONICAL_DIR" "$REPO_REGISTRY" "$BOOTSTRAP_FILE" "$MCP_REGISTRY" "$SKILLS_REGISTRY" "$AGENT_REGISTRY" <<'PY'
 from __future__ import annotations
 
 import json
@@ -97,11 +109,12 @@ repo_registry = Path(sys.argv[2]).expanduser().resolve()
 bootstrap_file = Path(sys.argv[3]).expanduser().resolve()
 mcp_registry = Path(sys.argv[4]).expanduser().resolve()
 skills_registry = Path(sys.argv[5]).expanduser().resolve()
+agent_registry = Path(sys.argv[6]).expanduser().resolve()
 
 global_claude = canonical_dir / "global.claude.md"
 settings_json = canonical_dir / "settings.json"
 
-for path in (global_claude, settings_json, repo_registry, bootstrap_file, mcp_registry, skills_registry):
+for path in (global_claude, settings_json, repo_registry, bootstrap_file, mcp_registry, skills_registry, agent_registry):
     if not path.is_file():
         raise SystemExit(f"ERROR: missing required file: {path}")
 
@@ -194,6 +207,13 @@ if not isinstance(managed, list):
     raise SystemExit(f"ERROR: managed_skills must be an array in {skills_registry}")
 if not isinstance(unmanaged, list):
     raise SystemExit(f"ERROR: unmanaged_repo_local_skills must be an array in {skills_registry}")
+
+agent_data = json.loads(agent_registry.read_text(encoding="utf-8"))
+if not isinstance(agent_data, dict):
+    raise SystemExit(f"ERROR: agent registry root must be an object: {agent_registry}")
+managed_agents = agent_data.get("managed_agents", [])
+if not isinstance(managed_agents, list):
+    raise SystemExit(f"ERROR: managed_agents must be an array in {agent_registry}")
 PY
 
 REPO_ARGS=()
@@ -225,6 +245,8 @@ run_and_require_clean "global Claude settings" \
   bash "${SCRIPT_DIR}/sync-settings.sh" --dry-run --global-settings "$GLOBAL_SETTINGS"
 run_and_require_clean "global Claude MCP" \
   bash "${SCRIPT_DIR}/sync-global-mcp.sh" --dry-run --global-config "$GLOBAL_CONFIG" --mcp-registry "$MCP_REGISTRY"
+run_and_require_clean "Claude subagent sync" \
+  bash "${SCRIPT_DIR}/sync-subagents.sh" --dry-run --global-agents-dir "$GLOBAL_AGENTS_DIR" --registry "$REPO_REGISTRY" --agent-registry "$AGENT_REGISTRY" "${REPO_ARGS[@]}"
 run_and_require_clean "Claude skills sync" \
   bash "${SCRIPT_DIR}/sync-skills.sh" --dry-run --registry "$SKILLS_REGISTRY" "${REPO_ARGS[@]}"
 run_and_require_clean "repo Claude config sync" \

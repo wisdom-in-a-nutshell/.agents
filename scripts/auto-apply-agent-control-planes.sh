@@ -128,6 +128,7 @@ fi
 
 mapfile -t changed_paths < <(
   git -C "$AGENTS_REPO" diff --name-only "$last_sha" "$current_sha" -- \
+    agents \
     claude \
     codex \
     mcp \
@@ -146,8 +147,14 @@ codex_changed=0
 claude_changed=0
 shared_mcp_changed=0
 repo_registry_changed=0
+agent_registry_changed=0
 
 for path in "${changed_paths[@]}"; do
+  case "$path" in
+    agents/*)
+      agent_registry_changed=1
+      ;;
+  esac
   case "$path" in
     skills/*|skills-source/*)
       skills_changed=1
@@ -180,10 +187,10 @@ need_bootstrap_claude=0
 if (( skills_changed == 1 )); then
   need_sync_skills=1
 fi
-if (( skills_changed == 1 || codex_changed == 1 || shared_mcp_changed == 1 )); then
+if (( skills_changed == 1 || codex_changed == 1 || shared_mcp_changed == 1 || agent_registry_changed == 1 )); then
   need_bootstrap_codex=1
 fi
-if (( claude_changed == 1 || shared_mcp_changed == 1 || skills_changed == 1 || repo_registry_changed == 1 )); then
+if (( claude_changed == 1 || shared_mcp_changed == 1 || skills_changed == 1 || repo_registry_changed == 1 || agent_registry_changed == 1 )); then
   need_bootstrap_claude=1
 fi
 

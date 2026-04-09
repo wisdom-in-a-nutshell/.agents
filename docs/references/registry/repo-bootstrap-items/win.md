@@ -66,4 +66,4 @@ skills:
   - "skill-creator"
 ---
 
-Generated from `codex/config/repo-bootstrap.json` and `skills/registry.json`. Do not edit manually.
+Generated from `codex/config/repo-bootstrap.json`, `skills/registry.json`, and `agents/registry.json`. Do not edit manually.

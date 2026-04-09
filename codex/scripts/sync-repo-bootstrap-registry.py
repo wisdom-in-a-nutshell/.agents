@@ -299,7 +299,7 @@ def generate_registry_items(
             [
                 "---",
                 "",
-                "Generated from `codex/config/repo-bootstrap.json` and `skills/registry.json`. Do not edit manually.",
+                "Generated from `codex/config/repo-bootstrap.json`, `skills/registry.json`, and `agents/registry.json`. Do not edit manually.",
                 "",
             ]
         )
@@ -521,7 +521,7 @@ def generate_agent_registry_base(views_dir: Path) -> None:
   and:
     - 'file.inFolder("docs/references/registry/agent-registry-items")'
 formulas:
-  scope_badge: 'if(effective_scope == "global", "🌍 global", if(effective_scope == "repo", "📦 repo", if(effective_scope == "mixed", "🧩 mixed", effective_scope)))'
+  scope_badge: 'if(effective_scope == "global", "🌍 global", if(effective_scope == "repo", "📦 repo", effective_scope))'
 properties:
   agent_name:
     displayName: Agent
@@ -529,38 +529,62 @@ properties:
     displayName: Scope
   formula.scope_badge:
     displayName: Scope
+  access_profile:
+    displayName: Access
+  runtimes:
+    displayName: Runtimes
   global_terminal:
-    displayName: Global Terminal
+    displayName: Codex Global
   global_xcode:
-    displayName: Global Xcode
+    displayName: Codex Xcode
+  global_claude:
+    displayName: Claude Global
   repos:
     displayName: Repos
   repos_csv:
     displayName: Repos CSV
-  config_file:
-    displayName: Config File
-  model:
-    displayName: Model
-  reasoning:
-    displayName: Reasoning
-  sandbox_mode:
-    displayName: Sandbox
-  web_search:
-    displayName: Web Search
-  js_repl:
-    displayName: JS REPL
-  enabled_mcps:
-    displayName: Enabled MCPs
-  disabled_mcps:
-    displayName: Disabled MCPs
-  disabled_tools:
-    displayName: Disabled Tools
-  enabled_tools:
-    displayName: Enabled Tools
-  disabled_features:
-    displayName: Disabled Features
-  enabled_features:
-    displayName: Enabled Features
+  codex_name:
+    displayName: Codex Name
+  codex_config_file:
+    displayName: Codex Config
+  codex_model:
+    displayName: Codex Model
+  codex_reasoning:
+    displayName: Codex Reasoning
+  codex_sandbox_mode:
+    displayName: Codex Sandbox
+  codex_web_search:
+    displayName: Codex Web
+  codex_js_repl:
+    displayName: Codex JS REPL
+  codex_enabled_mcps:
+    displayName: Codex MCPs
+  codex_disabled_mcps:
+    displayName: Codex Disabled MCPs
+  codex_enabled_tools:
+    displayName: Codex Tools
+  codex_disabled_tools:
+    displayName: Codex Disabled Tools
+  codex_enabled_features:
+    displayName: Codex Features
+  codex_disabled_features:
+    displayName: Codex Disabled Features
+  claude_name:
+    displayName: Claude Name
+  claude_prompt_file:
+    displayName: Claude Prompt
+  claude_model:
+    displayName: Claude Model
+  claude_permission_mode:
+    displayName: Claude Mode
+  claude_tools:
+    displayName: Claude Tools
+  claude_disallowed_tools:
+    displayName: Claude Disabled Tools
+  claude_skills:
+    displayName: Claude Skills
+  claude_mcp_servers:
+    displayName: Claude MCPs
   description:
     displayName: Description
 views:
@@ -569,37 +593,57 @@ views:
     order:
       - agent_name
       - formula.scope_badge
+      - access_profile
+      - runtimes
       - global_terminal
       - global_xcode
+      - global_claude
       - repos
-      - model
-      - reasoning
-      - sandbox_mode
-      - web_search
-      - js_repl
-      - enabled_mcps
-      - disabled_mcps
-      - disabled_tools
-      - config_file
+      - codex_name
+      - codex_model
+      - codex_reasoning
+      - codex_sandbox_mode
+      - codex_web_search
+      - codex_js_repl
+      - codex_enabled_mcps
+      - codex_disabled_mcps
+      - codex_enabled_tools
+      - codex_config_file
+      - claude_name
+      - claude_model
+      - claude_permission_mode
+      - claude_tools
+      - claude_skills
+      - claude_prompt_file
       - description
   - type: table
     name: Global Agents
-    filters: 'global_terminal == "true" || global_xcode == "true"'
+    filters: 'global_terminal == "true" || global_xcode == "true" || global_claude == "true"'
     order:
       - agent_name
       - formula.scope_badge
+      - access_profile
+      - runtimes
       - global_terminal
       - global_xcode
+      - global_claude
       - repos
-      - model
-      - reasoning
-      - sandbox_mode
-      - web_search
-      - js_repl
-      - enabled_mcps
-      - disabled_mcps
-      - disabled_tools
-      - config_file
+      - codex_name
+      - codex_model
+      - codex_reasoning
+      - codex_sandbox_mode
+      - codex_web_search
+      - codex_js_repl
+      - codex_enabled_mcps
+      - codex_disabled_mcps
+      - codex_enabled_tools
+      - codex_config_file
+      - claude_name
+      - claude_model
+      - claude_permission_mode
+      - claude_tools
+      - claude_skills
+      - claude_prompt_file
       - description
   - type: table
     name: Repo Agents
@@ -607,103 +651,97 @@ views:
     order:
       - agent_name
       - formula.scope_badge
+      - access_profile
+      - runtimes
       - repos
-      - model
-      - reasoning
-      - sandbox_mode
-      - web_search
-      - js_repl
-      - enabled_mcps
-      - disabled_mcps
-      - disabled_tools
-      - config_file
+      - codex_name
+      - codex_model
+      - codex_reasoning
+      - codex_sandbox_mode
+      - codex_web_search
+      - codex_js_repl
+      - codex_enabled_mcps
+      - codex_disabled_mcps
+      - codex_enabled_tools
+      - codex_config_file
+      - claude_name
+      - claude_model
+      - claude_permission_mode
+      - claude_tools
+      - claude_skills
+      - claude_prompt_file
       - description
 """
     _write_if_changed(views_dir / "agent-registry.base", content)
 
 
-def _load_global_agent_declarations(config_path: Path) -> dict[str, dict[str, Any]]:
-    if not config_path.is_file():
-        return {}
-    with config_path.open("rb") as handle:
-        data = tomllib.load(handle)
-    agents = data.get("agents", {})
-    if not isinstance(agents, dict):
-        return {}
-    declarations: dict[str, dict[str, str]] = {}
-    for name, agent in agents.items():
-        if not isinstance(agent, dict):
-            continue
-        description = str(agent.get("description", "")).strip() or "-"
-        config_file = str(agent.get("config_file", "")).strip() or "-"
-        role_path = (config_path.parent / config_file).resolve() if config_file != "-" else None
-        role_meta = _load_agent_role_config(role_path) if role_path else {
-            "model": "-",
-            "reasoning": "-",
-            "sandbox_mode": "-",
-        }
-        role_data = _load_agent_role_data(role_path) if role_path else {}
-        declarations[str(name)] = {
-            "description": description,
-            "config_file": config_file,
-            "model": role_meta["model"],
-            "reasoning": role_meta["reasoning"],
-            "sandbox_mode": role_meta["sandbox_mode"],
-            "role_data": role_data,
-        }
-    return declarations
-
-
 def apply_agent_assignments(
     repos: list[dict[str, Any]],
-    global_terminal_agents: dict[str, dict[str, Any]],
-    global_xcode_agents: dict[str, dict[str, Any]],
+    managed_agents: list[dict[str, Any]],
 ) -> None:
-    global_agents = sorted(set(global_terminal_agents) | set(global_xcode_agents))
+    global_agents: list[str] = []
+    repo_agents: dict[str, list[str]] = {}
+    for agent in managed_agents:
+        codex = agent.get("codex")
+        if not isinstance(codex, dict) or not codex.get("materialize"):
+            continue
+        codex_name = str(codex["name"])
+        if agent["scope"] == "global":
+            if codex_name not in global_agents:
+                global_agents.append(codex_name)
+            continue
+        for repo_name in agent["repos"]:
+            repo_agents.setdefault(str(repo_name), [])
+            if codex_name not in repo_agents[str(repo_name)]:
+                repo_agents[str(repo_name)].append(codex_name)
+
+    global_agents = sorted(global_agents)
     global_agent_set = set(global_agents)
     for item in repos:
         item["global_agents"] = global_agents
+        item["custom_agents"] = sorted(repo_agents.get(item["repo_name"], []))
         item["agents"] = sorted(global_agent_set | set(item["custom_agents"]))
+
+
+def _claude_effective_permission_mode(agent: dict[str, Any], claude: dict[str, Any]) -> str:
+    if "permission_mode" in claude:
+        return str(claude["permission_mode"])
+    if agent.get("access_profile") == "full_access":
+        return "bypassPermissions"
+    return "-"
 
 
 def generate_agent_registry_items(
     views_dir: Path,
-    global_terminal_agents: dict[str, dict[str, Any]],
-    global_xcode_agents: dict[str, dict[str, Any]],
-    agent_presets: dict[str, Any],
-    repos: list[dict[str, Any]],
+    managed_agents: list[dict[str, Any]],
 ) -> None:
     root = views_dir / "agent-registry-items"
     shutil.rmtree(root, ignore_errors=True)
     root.mkdir(parents=True, exist_ok=True)
 
-    repo_usage: dict[str, list[str]] = {}
-    for item in repos:
-        for agent_name in item["custom_agents"]:
-            repo_usage.setdefault(agent_name, []).append(item["repo_name"])
+    for agent in sorted(managed_agents, key=lambda item: item["agent"]):
+        agent_name = str(agent["agent"])
+        description = str(agent["description"])
+        repos_for_agent = sorted(str(repo_name) for repo_name in agent.get("repos", []))
+        codex = agent.get("codex") if isinstance(agent.get("codex"), dict) else None
+        claude = agent.get("claude") if isinstance(agent.get("claude"), dict) else None
+        codex_materialized = bool(codex and codex.get("materialize"))
+        claude_materialized = bool(claude and claude.get("materialize"))
+        global_terminal = codex_materialized and agent["scope"] == "global"
+        global_xcode = codex_materialized and agent["scope"] == "global"
+        global_claude = claude_materialized and agent["scope"] == "global"
 
-    all_agent_names = sorted(
-        set(global_terminal_agents)
-        | set(global_xcode_agents)
-        | set(agent_presets)
-        | set(repo_usage)
-    )
-
-    for agent_name in all_agent_names:
-        global_terminal = agent_name in global_terminal_agents
-        global_xcode = agent_name in global_xcode_agents
-        repos_for_agent = sorted(repo_usage.get(agent_name, []))
-        source = global_terminal_agents.get(agent_name) or global_xcode_agents.get(agent_name) or {}
-        if agent_name in agent_presets:
-            preset = agent_presets[agent_name]
-            description = str(preset["description"])
-            config_file = f"agents/{preset['config_file']}"
-            role_data = preset.get("role_data", {}) if isinstance(preset.get("role_data"), dict) else {}
-        else:
-            description = str(source.get("description", "-"))
-            config_file = str(source.get("config_file", "-"))
-            role_data = source.get("role_data", {}) if isinstance(source.get("role_data"), dict) else {}
-
+        role_data = {}
+        codex_config_file = "-"
+        codex_name = "-"
+        if codex_materialized and codex is not None:
+            codex_name = str(codex["name"])
+            codex_config_file = f"agents/{codex['config_file']}"
+            role_data = (
+                _load_agent_role_data(Path(codex["source_path"]))
+                if Path(codex["source_path"]).is_file()
+                else {}
+            )
         enabled_tools, disabled_tools = _tool_state_lists(role_data)
         enabled_features, disabled_features = _feature_state_lists(role_data)
         enabled_mcps, disabled_mcps = _mcp_state_lists(role_data)
@@ -711,27 +749,63 @@ def generate_agent_registry_items(
         features = role_data.get("features", {})
         if isinstance(features, dict) and "js_repl" in features:
             js_repl = str(features["js_repl"]).lower()
+        runtimes = []
+        if codex_materialized:
+            runtimes.append("codex")
+        if claude_materialized:
+            runtimes.append("claude")
+        claude_tools = []
+        claude_disallowed_tools = []
+        claude_skills = []
+        claude_mcp_servers = []
+        claude_name = "-"
+        claude_prompt_file = "-"
+        claude_model = "-"
+        claude_permission_mode = "-"
+        if claude_materialized and claude is not None:
+            claude_name = str(claude.get("name", "-"))
+            claude_prompt_file = str(claude.get("prompt_file", "-"))
+            claude_model = str(claude.get("model", "inherit"))
+            claude_permission_mode = _claude_effective_permission_mode(agent, claude)
+            claude_tools = sorted(str(value) for value in claude.get("tools", []))
+            claude_disallowed_tools = sorted(
+                str(value) for value in claude.get("disallowed_tools", [])
+            )
+            claude_skills = sorted(str(value) for value in claude.get("skills", []))
+            claude_mcp_servers = sorted(str(value) for value in claude.get("mcp_servers", []))
         lines = [
             "---",
             f"agent_name: {_yaml_str(agent_name)}",
-            f"effective_scope: {_yaml_str(_effective_scope(global_terminal, global_xcode, repos_for_agent))}",
+            f"effective_scope: {_yaml_str(str(agent['scope']))}",
+            f"access_profile: {_yaml_str(str(agent['access_profile']))}",
+            f"runtimes: {_yaml_str(', '.join(runtimes) if runtimes else '-')}",
             f"global_terminal: {_yaml_str(str(global_terminal).lower())}",
             f"global_xcode: {_yaml_str(str(global_xcode).lower())}",
+            f"global_claude: {_yaml_str(str(global_claude).lower())}",
             f"repos_csv: {_yaml_str(','.join(repos_for_agent) if repos_for_agent else '-')}",
-            f"model: {_yaml_str(str(role_data.get('model', source.get('model', '-'))))}",
-            f"reasoning: {_yaml_str(str(role_data.get('model_reasoning_effort', source.get('reasoning', '-'))))}",
-            f"sandbox_mode: {_yaml_str(str(role_data.get('sandbox_mode', source.get('sandbox_mode', '-'))))}",
-            f"web_search: {_yaml_str(str(role_data.get('web_search', '-')))}",
-            f"js_repl: {_yaml_str(js_repl)}",
-            f"config_file: {_yaml_str(config_file)}",
+            f"codex_name: {_yaml_str(codex_name)}",
+            f"codex_config_file: {_yaml_str(codex_config_file)}",
+            f"codex_model: {_yaml_str(str(role_data.get('model', '-')))}",
+            f"codex_reasoning: {_yaml_str(str(role_data.get('model_reasoning_effort', '-')))}",
+            f"codex_sandbox_mode: {_yaml_str(str(role_data.get('sandbox_mode', '-')))}",
+            f"codex_web_search: {_yaml_str(str(role_data.get('web_search', '-')))}",
+            f"codex_js_repl: {_yaml_str(js_repl)}",
+            f"claude_name: {_yaml_str(claude_name)}",
+            f"claude_prompt_file: {_yaml_str(claude_prompt_file)}",
+            f"claude_model: {_yaml_str(claude_model)}",
+            f"claude_permission_mode: {_yaml_str(claude_permission_mode)}",
             f"description: {_yaml_str(description)}",
         ]
-        _append_yaml_list(lines, "enabled_mcps", enabled_mcps)
-        _append_yaml_list(lines, "disabled_mcps", disabled_mcps)
-        _append_yaml_list(lines, "enabled_tools", enabled_tools)
-        _append_yaml_list(lines, "disabled_tools", disabled_tools)
-        _append_yaml_list(lines, "enabled_features", enabled_features)
-        _append_yaml_list(lines, "disabled_features", disabled_features)
+        _append_yaml_list(lines, "codex_enabled_mcps", enabled_mcps)
+        _append_yaml_list(lines, "codex_disabled_mcps", disabled_mcps)
+        _append_yaml_list(lines, "codex_enabled_tools", enabled_tools)
+        _append_yaml_list(lines, "codex_disabled_tools", disabled_tools)
+        _append_yaml_list(lines, "codex_enabled_features", enabled_features)
+        _append_yaml_list(lines, "codex_disabled_features", disabled_features)
+        _append_yaml_list(lines, "claude_tools", claude_tools)
+        _append_yaml_list(lines, "claude_disallowed_tools", claude_disallowed_tools)
+        _append_yaml_list(lines, "claude_skills", claude_skills)
+        _append_yaml_list(lines, "claude_mcp_servers", claude_mcp_servers)
         lines.append("repos:")
         if repos_for_agent:
             lines.extend([f"  - {_yaml_str(repo_name)}" for repo_name in repos_for_agent])
@@ -741,7 +815,7 @@ def generate_agent_registry_items(
             [
                 "---",
                 "",
-                "Generated from `codex/config/repo-bootstrap.json` and `mcp/config/presets.json`. Do not edit manually.",
+                "Generated from `agents/registry.json`, `codex/config/agents/*.toml`, and `claude/config/agents/*.md`. Do not edit manually.",
                 "",
             ]
         )
@@ -866,6 +940,11 @@ def parse_args() -> argparse.Namespace:
         default=str(Path.home() / ".agents" / "mcp" / "config" / "presets.json"),
         help="Path to shared MCP registry JSON file.",
     )
+    parser.add_argument(
+        "--agent-registry",
+        default=str(Path.home() / ".agents" / "agents" / "registry.json"),
+        help="Path to shared agent registry JSON file.",
+    )
     return parser.parse_args()
 
 
@@ -878,6 +957,10 @@ def main() -> int:
     mcp_registry_file = Path(args.mcp_registry).expanduser().resolve()
     if not mcp_registry_file.is_file():
         print(f"MCP registry not found: {mcp_registry_file}", file=sys.stderr)
+        return 1
+    agent_registry_file = Path(args.agent_registry).expanduser().resolve()
+    if not agent_registry_file.is_file():
+        print(f"Agent registry not found: {agent_registry_file}", file=sys.stderr)
         return 1
 
     try:
@@ -896,16 +979,19 @@ def main() -> int:
     home = Path.home()
     try:
         presets, global_presets = validate_mcp_registry(mcp_data)
-        defaults, agent_presets, repos = validate_registry(data, config_dir, home, presets)
+        defaults, repos = validate_registry(data, config_dir, home, presets)
+        managed_agents = load_agent_registry(
+            agent_registry_file,
+            root_dir=root_dir,
+            valid_repo_names={str(item["repo_name"]) for item in repos},
+        )
     except ValueError as exc:
         print(f"Registry validation failed: {exc}", file=sys.stderr)
         return 1
 
     views_dir = generated_views_dir(root_dir)
     _load_skill_assignments(root_dir, home, repos)
-    global_terminal_agents = _load_global_agent_declarations(config_dir / "global.config.toml")
-    global_xcode_agents = _load_global_agent_declarations(config_dir / "xcode.config.toml")
-    apply_agent_assignments(repos, global_terminal_agents, global_xcode_agents)
+    apply_agent_assignments(repos, managed_agents)
     generate_registry_base(views_dir)
     generate_registry_items(views_dir, defaults, repos)
     global_terminal_mcp = set(global_presets)
@@ -915,9 +1001,7 @@ def main() -> int:
         views_dir, presets, repos, global_terminal_mcp, global_xcode_mcp
     )
     generate_agent_registry_base(views_dir)
-    generate_agent_registry_items(
-        views_dir, global_terminal_agents, global_xcode_agents, agent_presets, repos
-    )
+    generate_agent_registry_items(views_dir, managed_agents)
     legacy_agent_capabilities_base = views_dir / "agent-capabilities.base"
     if legacy_agent_capabilities_base.exists():
         legacy_agent_capabilities_base.unlink()

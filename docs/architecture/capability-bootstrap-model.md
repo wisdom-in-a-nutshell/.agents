@@ -108,27 +108,27 @@ That is why MCPs need a separate scope-aware registry.
 
 ### Source of truth
 
-- durable global agent declarations in:
-  - `codex/config/global.config.toml`
-  - `codex/config/xcode.config.toml`
+- shared agent exposure in:
+  - `agents/registry.json`
 - canonical role behavior in:
   - `codex/config/agents/*.toml`
-- repo-scoped agent assignment in:
+- canonical Claude prompt bodies in:
+  - `claude/config/agents/*.md`
+- repo inventory in:
   - `codex/config/repo-bootstrap.json`
-    - `custom_agents`
-    - `agent_presets`
 
 ### Scope model
 
 - global terminal
 - global Xcode
-- repo-scoped custom agent
-- mixed
+- global Claude
+- repo-scoped agent
 
 ### Apply path
 
 - `codex/scripts/sync-config.sh` for global runtime role declarations and role files
 - `codex/scripts/sync-repo-codex-configs.sh` for repo-local role declarations and repo-local `.codex/agents/*.toml`
+- `claude/scripts/sync-subagents.sh` for global and repo Claude `.claude/agents/*.md`
 
 ### Generated views
 
@@ -148,8 +148,9 @@ Agents have two different concerns:
 So the model separates:
 
 - canonical role definition in `codex/config/agents/*.toml`
-- global declaration in the managed global config templates
-- repo-scoped exposure in `repo-bootstrap.json`
+- canonical Claude prompt definition in `claude/config/agents/*.md`
+- shared exposure in `agents/registry.json`
+- repo inventory in `repo-bootstrap.json`
 
 The important simplification is that agent capabilities stay on the role itself.
 Repo bootstrap does not re-define per-agent MCP/tool policy.
@@ -166,13 +167,13 @@ Repo bootstrap does not re-define per-agent MCP/tool policy.
 
 - skills: `skills/registry.json`
 - MCP repo assignment: `repo-bootstrap.json`
-- agent repo assignment: `repo-bootstrap.json`
+- agent repo assignment: `agents/registry.json`
 
 ### 3. Do not promote repo-specific roles globally too early
 
 Global agents should stay minimal.
 
-Use repo-scoped `custom_agents` when a role is:
+Use repo-scoped managed agents when a role is:
 
 - experimental
 - workflow-specific

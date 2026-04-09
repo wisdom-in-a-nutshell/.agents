@@ -2,7 +2,7 @@ filters:
   and:
     - 'file.inFolder("docs/references/registry/agent-registry-items")'
 formulas:
-  scope_badge: 'if(effective_scope == "global", "🌍 global", if(effective_scope == "repo", "📦 repo", if(effective_scope == "mixed", "🧩 mixed", effective_scope)))'
+  scope_badge: 'if(effective_scope == "global", "🌍 global", if(effective_scope == "repo", "📦 repo", effective_scope))'
 properties:
   agent_name:
     displayName: Agent
@@ -10,38 +10,62 @@ properties:
     displayName: Scope
   formula.scope_badge:
     displayName: Scope
+  access_profile:
+    displayName: Access
+  runtimes:
+    displayName: Runtimes
   global_terminal:
-    displayName: Global Terminal
+    displayName: Codex Global
   global_xcode:
-    displayName: Global Xcode
+    displayName: Codex Xcode
+  global_claude:
+    displayName: Claude Global
   repos:
     displayName: Repos
   repos_csv:
     displayName: Repos CSV
-  config_file:
-    displayName: Config File
-  model:
-    displayName: Model
-  reasoning:
-    displayName: Reasoning
-  sandbox_mode:
-    displayName: Sandbox
-  web_search:
-    displayName: Web Search
-  js_repl:
-    displayName: JS REPL
-  enabled_mcps:
-    displayName: Enabled MCPs
-  disabled_mcps:
-    displayName: Disabled MCPs
-  disabled_tools:
-    displayName: Disabled Tools
-  enabled_tools:
-    displayName: Enabled Tools
-  disabled_features:
-    displayName: Disabled Features
-  enabled_features:
-    displayName: Enabled Features
+  codex_name:
+    displayName: Codex Name
+  codex_config_file:
+    displayName: Codex Config
+  codex_model:
+    displayName: Codex Model
+  codex_reasoning:
+    displayName: Codex Reasoning
+  codex_sandbox_mode:
+    displayName: Codex Sandbox
+  codex_web_search:
+    displayName: Codex Web
+  codex_js_repl:
+    displayName: Codex JS REPL
+  codex_enabled_mcps:
+    displayName: Codex MCPs
+  codex_disabled_mcps:
+    displayName: Codex Disabled MCPs
+  codex_enabled_tools:
+    displayName: Codex Tools
+  codex_disabled_tools:
+    displayName: Codex Disabled Tools
+  codex_enabled_features:
+    displayName: Codex Features
+  codex_disabled_features:
+    displayName: Codex Disabled Features
+  claude_name:
+    displayName: Claude Name
+  claude_prompt_file:
+    displayName: Claude Prompt
+  claude_model:
+    displayName: Claude Model
+  claude_permission_mode:
+    displayName: Claude Mode
+  claude_tools:
+    displayName: Claude Tools
+  claude_disallowed_tools:
+    displayName: Claude Disabled Tools
+  claude_skills:
+    displayName: Claude Skills
+  claude_mcp_servers:
+    displayName: Claude MCPs
   description:
     displayName: Description
 views:
@@ -50,37 +74,57 @@ views:
     order:
       - agent_name
       - formula.scope_badge
+      - access_profile
+      - runtimes
       - global_terminal
       - global_xcode
+      - global_claude
       - repos
-      - model
-      - reasoning
-      - sandbox_mode
-      - web_search
-      - js_repl
-      - enabled_mcps
-      - disabled_mcps
-      - disabled_tools
-      - config_file
+      - codex_name
+      - codex_model
+      - codex_reasoning
+      - codex_sandbox_mode
+      - codex_web_search
+      - codex_js_repl
+      - codex_enabled_mcps
+      - codex_disabled_mcps
+      - codex_enabled_tools
+      - codex_config_file
+      - claude_name
+      - claude_model
+      - claude_permission_mode
+      - claude_tools
+      - claude_skills
+      - claude_prompt_file
       - description
   - type: table
     name: Global Agents
-    filters: 'global_terminal == "true" || global_xcode == "true"'
+    filters: 'global_terminal == "true" || global_xcode == "true" || global_claude == "true"'
     order:
       - agent_name
       - formula.scope_badge
+      - access_profile
+      - runtimes
       - global_terminal
       - global_xcode
+      - global_claude
       - repos
-      - model
-      - reasoning
-      - sandbox_mode
-      - web_search
-      - js_repl
-      - enabled_mcps
-      - disabled_mcps
-      - disabled_tools
-      - config_file
+      - codex_name
+      - codex_model
+      - codex_reasoning
+      - codex_sandbox_mode
+      - codex_web_search
+      - codex_js_repl
+      - codex_enabled_mcps
+      - codex_disabled_mcps
+      - codex_enabled_tools
+      - codex_config_file
+      - claude_name
+      - claude_model
+      - claude_permission_mode
+      - claude_tools
+      - claude_skills
+      - claude_prompt_file
       - description
   - type: table
     name: Repo Agents
@@ -88,14 +132,23 @@ views:
     order:
       - agent_name
       - formula.scope_badge
+      - access_profile
+      - runtimes
       - repos
-      - model
-      - reasoning
-      - sandbox_mode
-      - web_search
-      - js_repl
-      - enabled_mcps
-      - disabled_mcps
-      - disabled_tools
-      - config_file
+      - codex_name
+      - codex_model
+      - codex_reasoning
+      - codex_sandbox_mode
+      - codex_web_search
+      - codex_js_repl
+      - codex_enabled_mcps
+      - codex_disabled_mcps
+      - codex_enabled_tools
+      - codex_config_file
+      - claude_name
+      - claude_model
+      - claude_permission_mode
+      - claude_tools
+      - claude_skills
+      - claude_prompt_file
       - description
