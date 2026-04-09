@@ -64,6 +64,10 @@ def copy_repo_file(relative_path: str, destination_root: Path, *, destination: s
     return target
 
 
+def copy_repo_files(relative_paths: list[str], destination_root: Path) -> list[Path]:
+    return [copy_repo_file(relative_path, destination_root) for relative_path in relative_paths]
+
+
 def init_git_repo(path: Path, *, with_initial_commit: bool = False) -> Path:
     path.mkdir(parents=True, exist_ok=True)
     run_command(["git", "init", "-q", str(path)])
@@ -86,8 +90,14 @@ def make_control_plane_root(base_dir: Path) -> Path:
         "agents/__init__.py",
         "agents/registry.py",
         "codex/config/agents/external_researcher.toml",
+        "codex/config/global.agents.md",
+        "codex/config/global.config.toml",
         "codex/config/agents/visual_reviewer.toml",
+        "codex/config/xcode.config.toml",
+        "claude/config/bootstrap.json",
         "claude/config/agents/external-researcher.md",
+        "claude/config/global.claude.md",
+        "claude/config/settings.json",
         "claude/config/agents/visual-reviewer.md",
     ):
         copy_repo_file(relative_path, root)
@@ -97,6 +107,27 @@ def make_control_plane_root(base_dir: Path) -> Path:
     (root / "skills").mkdir(parents=True, exist_ok=True)
     (root / "docs/references/registry").mkdir(parents=True, exist_ok=True)
     return root
+
+
+def make_skill_source(path: Path, skill_name: str, *, description: str | None = None) -> Path:
+    title = description or f"{skill_name} skill"
+    write_text(
+        path / "SKILL.md",
+        "\n".join(
+            [
+                "---",
+                f"name: {skill_name}",
+                f"description: {title}",
+                "---",
+                "",
+                f"# {skill_name}",
+                "",
+                "Fixture skill for control-plane tests.",
+                "",
+            ]
+        ),
+    )
+    return path
 
 
 def default_mcp_registry() -> dict[str, Any]:

@@ -240,9 +240,9 @@ run_and_require_clean() {
 }
 
 run_and_require_clean "global Claude guidance" \
-  bash "${SCRIPT_DIR}/sync-global-claude-md.sh" --dry-run --global-claude-md "$GLOBAL_CLAUDE_MD"
+  bash "${SCRIPT_DIR}/sync-global-claude-md.sh" --dry-run --global-claude-md "$GLOBAL_CLAUDE_MD" --canonical-claude "${CANONICAL_DIR}/global.claude.md"
 run_and_require_clean "global Claude settings" \
-  bash "${SCRIPT_DIR}/sync-settings.sh" --dry-run --global-settings "$GLOBAL_SETTINGS"
+  bash "${SCRIPT_DIR}/sync-settings.sh" --dry-run --global-settings "$GLOBAL_SETTINGS" --canonical-settings "${CANONICAL_DIR}/settings.json"
 run_and_require_clean "global Claude MCP" \
   bash "${SCRIPT_DIR}/sync-global-mcp.sh" --dry-run --global-config "$GLOBAL_CONFIG" --mcp-registry "$MCP_REGISTRY"
 run_and_require_clean "Claude subagent sync" \

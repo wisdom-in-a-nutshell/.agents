@@ -206,7 +206,7 @@ if not isinstance(paths, dict):
     raise SystemExit("ERROR: paths must be an object")
 
 root_dir = registry_path.parent.parent
-home = Path.home()
+home = Path.home().resolve()
 github_root = expand_path(str(paths.get("github_root", "~/GitHub")), home).resolve()
 managed_source_root = (root_dir / "skills-source").resolve()
 global_skills_dir = home / ".claude" / "skills"

@@ -18,11 +18,15 @@ These wrappers exist so external machine bootstrap repos such as `~/GitHub/scrip
 - `scripts/check-agent-control-planes.sh`
   - shared validation entrypoint
   - validates skills registry artifacts plus Codex and Claude rendered runtime state
+  - runs the hermetic control-plane regression suite in `tests/control_plane/`
+- `scripts/test-control-plane.sh`
+  - hermetic regression test entrypoint for shared skills, MCPs, Codex config rendering, Claude subagent rendering, and shared registry views
 
 ## Runtime-Relevant Change Model
 
 `scripts/auto-apply-agent-control-planes.sh` currently watches:
 
+- `agents/`
 - `skills/`
 - `skills-source/`
 - `mcp/`
@@ -36,6 +40,8 @@ Current apply rules:
   - run `codex/scripts/bootstrap-machine-codex.sh`
   - run `claude/scripts/bootstrap-machine-claude.sh`
 - `mcp/` changes:
+  - run both Codex and Claude bootstrap batches
+- `agents/` changes:
   - run both Codex and Claude bootstrap batches
 - `codex/` changes:
   - run Codex bootstrap
@@ -54,6 +60,7 @@ cd ~/.agents
 ./scripts/auto-apply-agent-control-planes.sh --dry-run
 ./scripts/auto-apply-agent-control-planes.sh --apply
 ./scripts/check-agent-control-planes.sh
+./scripts/test-control-plane.sh
 ```
 
 Optional scoped Claude validation/bootstrap:

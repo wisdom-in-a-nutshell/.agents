@@ -6,6 +6,7 @@ ROOT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
 CHECK_SKILLS_SCRIPT="${SCRIPT_DIR}/check-skills-registry.sh"
 CHECK_CODEX_SCRIPT="${ROOT_DIR}/codex/scripts/check-codex-control-plane.sh"
 CHECK_CLAUDE_SCRIPT="${ROOT_DIR}/claude/scripts/check-claude-control-plane.sh"
+TEST_CONTROL_PLANE_SCRIPT="${SCRIPT_DIR}/test-control-plane.sh"
 REPO_FILTERS=()
 
 usage() {
@@ -52,6 +53,7 @@ done
 [[ -x "$CHECK_SKILLS_SCRIPT" ]] || die "Missing executable: $CHECK_SKILLS_SCRIPT"
 [[ -x "$CHECK_CODEX_SCRIPT" ]] || die "Missing executable: $CHECK_CODEX_SCRIPT"
 [[ -x "$CHECK_CLAUDE_SCRIPT" ]] || die "Missing executable: $CHECK_CLAUDE_SCRIPT"
+[[ -x "$TEST_CONTROL_PLANE_SCRIPT" ]] || die "Missing executable: $TEST_CONTROL_PLANE_SCRIPT"
 
 REPO_ARGS=()
 for repo in "${REPO_FILTERS[@]}"; do
@@ -72,3 +74,7 @@ claude_cmd=(
 )
 log "+ ${claude_cmd[*]}"
 "${claude_cmd[@]}"
+
+test_cmd=("$TEST_CONTROL_PLANE_SCRIPT")
+log "+ ${test_cmd[*]}"
+"${test_cmd[@]}"

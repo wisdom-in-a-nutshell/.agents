@@ -13,11 +13,11 @@ Personal agent, Codex, and Claude control plane.
 
 - `skills/registry.json` is the canonical skill registry.
 - `mcp/config/presets.json` is the canonical shared MCP registry.
+- `agents/registry.json` is the canonical shared agent registry for Codex agents and Claude subagents.
 - `codex/` holds canonical personal Codex control-plane inputs.
 - `codex/config/repo-bootstrap.json` is the canonical shared repo registry for managed repo-local behavior.
   - Per repo it can define:
     - `mcp_presets`
-    - `custom_agents`
     - `model`
     - `model_reasoning_effort`
     - `model_verbosity`
@@ -50,6 +50,7 @@ Personal agent, Codex, and Claude control plane.
 - Apply post-sync agent control-plane reconcile: `./scripts/auto-apply-agent-control-planes.sh --apply`
   - Detects runtime-relevant changes in `skills/`, `skills-source/`, `mcp/`, `codex/`, and `claude/`, then runs the necessary shared apply steps.
 - Validate shared skills + Codex + Claude rendered state: `./scripts/check-agent-control-planes.sh`
+- Run hermetic control-plane regression tests: `./scripts/test-control-plane.sh`
 - Dry-run skill bootstrap: `./scripts/bootstrap-skill.sh <skills.sh-url-or-upstream-ref> --repo <repo>`
 - Apply skill bootstrap: `./scripts/bootstrap-skill.sh <skills.sh-url-or-upstream-ref> --repo <repo> --apply`
   - Bootstraps a managed external skill by updating `skills/registry.json`, importing upstream source, syncing links, and regenerating derived registry artifacts.
@@ -100,4 +101,5 @@ Personal agent, Codex, and Claude control plane.
 - Do not hand-edit generated repo-local `.codex/agents/*.toml` files in managed repos; update `codex/config/repo-bootstrap.json` or `codex/config/agents/*.toml` and re-run the sync scripts.
 - When changing shared bootstrap inputs such as `mcp/config/presets.json`, `codex/config/repo-bootstrap.json`, or repo MCP assignment, prefer `./scripts/bootstrap-machine-agent-control-planes.sh --apply --repo <repo>` so Codex and Claude repo-local state are both re-rendered together. Use component-only Codex or Claude scripts only for intentional single-surface troubleshooting.
 - If `mcp/config/presets.json` changes, run both Codex and Claude control-plane validation in the same change.
+- If `agents/registry.json` changes, run both Codex and Claude control-plane validation plus `./scripts/test-control-plane.sh` in the same change.
 - If `codex/config/agents/*.toml`, `codex/config/global.config.toml`, `codex/config/xcode.config.toml`, or `codex/config/repo-bootstrap.json` changes, run the Codex control-plane validation script in the same change.
