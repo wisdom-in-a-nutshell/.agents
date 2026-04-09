@@ -319,6 +319,7 @@
       "repos": [
         "~/.agents",
         "adi",
+        "adithyan-ai-videos",
         "blog-personal"
       ],
       "source_path": "skills-source/owned/paper-design",
