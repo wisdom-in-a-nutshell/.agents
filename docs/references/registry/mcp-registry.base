@@ -1,8 +1,8 @@
 filters:
   and:
-    - 'file.inFolder("docs/references/registry/mcp-registry-items")'
+    - file.inFolder("docs/references/registry/mcp-registry-items")
 formulas:
-  scope_badge: 'if(effective_scope == "global", "🌍 global", if(effective_scope == "repo", "📦 repo", if(effective_scope == "mixed", "🧩 mixed", effective_scope)))'
+  scope_badge: if(effective_scope == "global", "🌍 global", if(effective_scope == "repo", "📦 repo", if(effective_scope == "mixed", "🧩 mixed", effective_scope)))
 properties:
   mcp_name:
     displayName: MCP
@@ -35,7 +35,7 @@ views:
       - target
   - type: table
     name: Global MCPs
-    filters: 'global_terminal == "true" || global_xcode == "true"'
+    filters: global_terminal == "true" || global_xcode == "true"
     order:
       - mcp_name
       - formula.scope_badge
@@ -46,7 +46,7 @@ views:
       - target
   - type: table
     name: Repo MCPs
-    filters: 'repos_csv != "-"'
+    filters: repos_csv != "-"
     order:
       - mcp_name
       - formula.scope_badge
