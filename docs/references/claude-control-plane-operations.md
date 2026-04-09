@@ -10,6 +10,8 @@ Use [Claude Control Plane](/Users/dobby/.agents/docs/architecture/claude-control
   - canonical source for `~/.claude/CLAUDE.md`
 - `claude/config/settings.json`
   - canonical source for `~/.claude/settings.json`
+- `claude/control_plane/*.py`
+  - importable Python implementation for the Claude sync/render/validation entrypoints
 - `claude/config/bootstrap.json`
   - Claude-only bootstrap defaults and repo-specific overrides
 - `codex/config/repo-bootstrap.json`
@@ -55,6 +57,10 @@ Use [Claude Control Plane](/Users/dobby/.agents/docs/architecture/claude-control
 ## First-Pass Commands
 
 The Claude control plane is intended to follow the same sync/check pattern as Codex, with scripts living under `claude/scripts/`:
+
+- `claude/scripts/*.sh` are thin shell entrypoints
+  - they delegate to `python3 -m claude.control_plane.<module>`
+  - keep renderer and validation logic in the Python module layer rather than reintroducing large embedded heredocs
 
 - `~/.agents/scripts/bootstrap-machine-agent-control-planes.sh`
   - machine-facing shared bootstrap batch for skills plus Codex and Claude

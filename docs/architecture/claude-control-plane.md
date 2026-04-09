@@ -27,7 +27,8 @@ Owns the canonical Claude bootstrap inputs:
 - `config/global.claude.md`
 - `config/settings.json`
 - `config/bootstrap.json`
-- `scripts/` for sync and validation entrypoints
+- `scripts/` for stable shell entrypoints
+- `control_plane/` for the importable Python renderer and validation modules behind those entrypoints
 
 Shared inputs Claude reads from outside `claude/`:
 

@@ -97,124 +97,14 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-python3 - "$CANONICAL_DIR" "$REPO_REGISTRY" "$BOOTSTRAP_FILE" "$MCP_REGISTRY" "$SKILLS_REGISTRY" "$AGENT_REGISTRY" <<'PY'
-from __future__ import annotations
-
-import json
-import sys
-from pathlib import Path
-
-canonical_dir = Path(sys.argv[1]).expanduser().resolve()
-repo_registry = Path(sys.argv[2]).expanduser().resolve()
-bootstrap_file = Path(sys.argv[3]).expanduser().resolve()
-mcp_registry = Path(sys.argv[4]).expanduser().resolve()
-skills_registry = Path(sys.argv[5]).expanduser().resolve()
-agent_registry = Path(sys.argv[6]).expanduser().resolve()
-
-global_claude = canonical_dir / "global.claude.md"
-settings_json = canonical_dir / "settings.json"
-
-for path in (global_claude, settings_json, repo_registry, bootstrap_file, mcp_registry, skills_registry, agent_registry):
-    if not path.is_file():
-        raise SystemExit(f"ERROR: missing required file: {path}")
-
-settings = json.loads(settings_json.read_text(encoding="utf-8"))
-if not isinstance(settings, dict):
-    raise SystemExit(f"ERROR: settings root must be an object: {settings_json}")
-
-repo_data = json.loads(repo_registry.read_text(encoding="utf-8"))
-if not isinstance(repo_data, dict):
-    raise SystemExit(f"ERROR: repo bootstrap root must be an object: {repo_registry}")
-
-repos = repo_data.get("repos", [])
-if not isinstance(repos, list):
-    raise SystemExit(f"ERROR: repos must be an array in {repo_registry}")
-
-bootstrap_data = json.loads(bootstrap_file.read_text(encoding="utf-8"))
-if not isinstance(bootstrap_data, dict):
-    raise SystemExit(f"ERROR: Claude bootstrap root must be an object: {bootstrap_file}")
-
-defaults = bootstrap_data.get("defaults", {})
-if defaults is None:
-    defaults = {}
-if not isinstance(defaults, dict):
-    raise SystemExit(f"ERROR: defaults must be an object in {bootstrap_file}")
-
-default_settings = defaults.get("settings", {})
-if default_settings is not None and not isinstance(default_settings, dict):
-    raise SystemExit(f"ERROR: defaults.settings must be an object in {bootstrap_file}")
-
-repo_overrides = bootstrap_data.get("repo_overrides", {})
-if repo_overrides is None:
-    repo_overrides = {}
-if not isinstance(repo_overrides, dict):
-    raise SystemExit(f"ERROR: repo_overrides must be an object in {bootstrap_file}")
-for repo_key, override in repo_overrides.items():
-    if not isinstance(repo_key, str) or not repo_key.strip():
-        raise SystemExit(f"ERROR: repo_overrides keys must be non-empty strings in {bootstrap_file}")
-    if override is None:
-        continue
-    if not isinstance(override, dict):
-        raise SystemExit(f"ERROR: repo_overrides.{repo_key} must be an object in {bootstrap_file}")
-
-mcp_data = json.loads(mcp_registry.read_text(encoding="utf-8"))
-if not isinstance(mcp_data, dict):
-    raise SystemExit(f"ERROR: MCP registry root must be an object: {mcp_registry}")
-
-presets = mcp_data.get("presets", {})
-global_presets = mcp_data.get("global_presets", [])
-if not isinstance(presets, dict):
-    raise SystemExit(f"ERROR: presets must be an object in {mcp_registry}")
-if global_presets is None:
-    global_presets = []
-if not isinstance(global_presets, list):
-    raise SystemExit(f"ERROR: global_presets must be an array in {mcp_registry}")
-for preset_name, preset in presets.items():
-    if not isinstance(preset, dict):
-        raise SystemExit(f"ERROR: presets.{preset_name} must be an object in {mcp_registry}")
-    transport = preset.get("transport", preset.get("type"))
-    if transport not in {"http", "stdio"}:
-        raise SystemExit(f"ERROR: presets.{preset_name} must declare transport `http` or `stdio`")
-    if transport == "http" and not isinstance(preset.get("url"), str):
-        raise SystemExit(f"ERROR: presets.{preset_name} must define a string url")
-    if transport == "stdio" and not isinstance(preset.get("command"), str):
-        raise SystemExit(f"ERROR: presets.{preset_name} must define a string command")
-for preset_name in global_presets:
-    if preset_name not in presets:
-        raise SystemExit(f"ERROR: unknown global MCP preset `{preset_name}` in {mcp_registry}")
-
-for idx, repo in enumerate(repos):
-    if not isinstance(repo, dict):
-        raise SystemExit(f"ERROR: repos[{idx}] must be an object")
-    raw_path = repo.get("path")
-    if not isinstance(raw_path, str) or not raw_path.strip():
-        raise SystemExit(f"ERROR: repos[{idx}].path must be a non-empty string")
-    preset_names = repo.get("mcp_presets", [])
-    if preset_names is None:
-        preset_names = []
-    if not isinstance(preset_names, list):
-        raise SystemExit(f"ERROR: repos[{idx}].mcp_presets must be an array")
-    for preset_name in preset_names:
-        if preset_name not in presets:
-            raise SystemExit(f"ERROR: unknown MCP preset `{preset_name}` in repos[{idx}]")
-
-skills_data = json.loads(skills_registry.read_text(encoding="utf-8"))
-if not isinstance(skills_data, dict):
-    raise SystemExit(f"ERROR: skills registry root must be an object: {skills_registry}")
-managed = skills_data.get("managed_skills", [])
-unmanaged = skills_data.get("unmanaged_repo_local_skills", [])
-if not isinstance(managed, list):
-    raise SystemExit(f"ERROR: managed_skills must be an array in {skills_registry}")
-if not isinstance(unmanaged, list):
-    raise SystemExit(f"ERROR: unmanaged_repo_local_skills must be an array in {skills_registry}")
-
-agent_data = json.loads(agent_registry.read_text(encoding="utf-8"))
-if not isinstance(agent_data, dict):
-    raise SystemExit(f"ERROR: agent registry root must be an object: {agent_registry}")
-managed_agents = agent_data.get("managed_agents", [])
-if not isinstance(managed_agents, list):
-    raise SystemExit(f"ERROR: managed_agents must be an array in {agent_registry}")
-PY
+cd "$ROOT_DIR"
+python3 -m claude.control_plane.validate_inputs \
+  --canonical-dir "$CANONICAL_DIR" \
+  --registry "$REPO_REGISTRY" \
+  --bootstrap "$BOOTSTRAP_FILE" \
+  --mcp-registry "$MCP_REGISTRY" \
+  --skills-registry "$SKILLS_REGISTRY" \
+  --agent-registry "$AGENT_REGISTRY"
 
 REPO_ARGS=()
 for repo in "${REPO_FILTERS[@]}"; do
