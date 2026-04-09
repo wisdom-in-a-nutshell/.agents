@@ -36,6 +36,7 @@ Only skip this when the user explicitly wants rough live iteration.
 - Place each new canonical panel directly below the previous canonical panel.
 - Do not treat Paper auto-placement as intended story order.
 - Keep the main story readable in one vertical lane.
+- `create_artboard` auto-places and ignores position; after creating a story-sequence panel, immediately `update_styles` to set its `top`/`left` so it sits below the previous canonical panel in the same column.
 
 ## Presentation gate
 
