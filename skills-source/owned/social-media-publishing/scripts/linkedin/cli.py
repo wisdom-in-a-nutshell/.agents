@@ -41,6 +41,11 @@ DEFAULT_LINKEDIN_VERSION = "202603"
 DEFAULT_REQUEST_TIMEOUT_SECONDS = 30.0
 DEFAULT_VIDEO_POLL_INTERVAL_SECONDS = 2.0
 DEFAULT_VIDEO_PROCESSING_TIMEOUT_SECONDS = 900.0
+DEFAULT_VIDEO_SOURCE_USER_AGENT = (
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
+    "AppleWebKit/537.36 (KHTML, like Gecko) "
+    "Chrome/128.0.0.0 Safari/537.36"
+)
 
 
 class CliError(RuntimeError):
@@ -183,6 +188,48 @@ def classify_http_error(url: str, status: int, body_text: str) -> CliError:
         exit_code=2 if code == "E_INVALID_INPUT" else 1,
         retryable=False,
         hint=hint,
+        details={"url": url, "status": status, "body": body_text},
+    )
+
+
+def classify_source_download_http_error(url: str, status: int, body_text: str) -> CliError:
+    lowered = body_text.lower()
+    if status in {401, 403}:
+        hint = "The source host denied automated access. Retry with a direct public URL, or download the file locally and use --video."
+        if "error code: 1010" in lowered:
+            hint = "The source host blocked this client signature (for example Cloudflare 1010). Retry with --video after downloading locally, or use a less restrictive public file URL."
+        return CliError(
+            f"Source host rejected the video download with HTTP {status}.",
+            code="E_SOURCE_ACCESS",
+            exit_code=4,
+            retryable=False,
+            hint=hint,
+            details={"url": url, "status": status, "body": body_text},
+        )
+    if status == 429:
+        return CliError(
+            "Source host rate-limited the video download.",
+            code="E_RATE_LIMIT",
+            exit_code=4,
+            retryable=True,
+            hint="Wait and retry, or download the file locally and use --video.",
+            details={"url": url, "status": status, "body": body_text},
+        )
+    if status >= 500:
+        return CliError(
+            f"Source host returned HTTP {status} while downloading the video.",
+            code="E_NETWORK",
+            exit_code=4,
+            retryable=True,
+            hint="Retry later, or download the file locally and use --video.",
+            details={"url": url, "status": status, "body": body_text},
+        )
+    return CliError(
+        f"Source host returned HTTP {status} while downloading the video.",
+        code="E_INVALID_INPUT" if status in {400, 404, 409, 422} else "E_GENERIC",
+        exit_code=2 if status in {400, 404, 409, 422} else 1,
+        retryable=False,
+        hint="Check that --video-url points directly to a downloadable video file, or use --video with a local file.",
         details={"url": url, "status": status, "body": body_text},
     )
 
@@ -586,14 +633,25 @@ def download_video_url_to_tempfile(config: Config, video_url: str) -> tuple[Path
     temp_dir = Path(tempfile.mkdtemp(prefix="linkedin-video-"))
     local_path = temp_dir / f"source{suffix}"
     try:
-        with urllib.request.urlopen(video_url, timeout=config.request_timeout_seconds) as response:
+        request = urllib.request.Request(
+            video_url,
+            method="GET",
+            headers={
+                "User-Agent": DEFAULT_VIDEO_SOURCE_USER_AGENT,
+                "Accept": "*/*",
+                "Accept-Language": "en-US,en;q=0.9",
+                "Cache-Control": "no-cache",
+                "Pragma": "no-cache",
+            },
+        )
+        with urllib.request.urlopen(request, timeout=config.request_timeout_seconds) as response:
             content_type = response.headers.get("Content-Type", "")
             content_length = response.headers.get("Content-Length")
             with local_path.open("wb") as handle:
                 shutil.copyfileobj(response, handle)
     except urllib.error.HTTPError as exc:
         body = exc.read().decode("utf-8", errors="replace")
-        raise classify_http_error(video_url, exc.code, body) from exc
+        raise classify_source_download_http_error(video_url, exc.code, body) from exc
     except TimeoutError as exc:
         raise CliError(
             f"Timed out downloading {video_url}.",

@@ -164,6 +164,11 @@ Important distinction:
 - `post-video --video-url ...` still becomes a native LinkedIn video upload
 - `post --url ...` is only a link share, not a native LinkedIn video post
 
+Operational note:
+- `--video-url` now sends browser-like download headers to reduce false blocks from source hosts
+- if the source host still rejects the download, the CLI reports a source-download error rather than a misleading LinkedIn auth error
+- when in doubt, download the file locally and use `--video`
+
 Useful knobs:
 - `--video-poll-interval-seconds 2`
 - `--video-processing-timeout-seconds 900`
