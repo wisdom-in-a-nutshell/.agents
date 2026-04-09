@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import json
+
 from tests.control_plane.support import (
     REPO_ROOT,
     TempDirTestCase,
@@ -143,6 +145,15 @@ class ClaudeControlPlaneCheckTests(TempDirTestCase):
                 str(root / "mcp/config/presets.json"),
             ],
             env=env,
+        )
+
+        (home / ".claude.json").write_text(
+            json.dumps(read_json(home / ".claude.json"), ensure_ascii=False),
+            encoding="utf-8",
+        )
+        (adi / ".mcp.json").write_text(
+            json.dumps(read_json(adi / ".mcp.json"), ensure_ascii=False),
+            encoding="utf-8",
         )
 
         result = run_command(

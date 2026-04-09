@@ -53,9 +53,35 @@ ensure_parent_dir() {
   mkdir -p "$(dirname "$file")"
 }
 
+json_files_equal() {
+  local left="$1"
+  local right="$2"
+  python3 - "$left" "$right" <<'PY'
+from __future__ import annotations
+
+import json
+import sys
+from pathlib import Path
+
+left = Path(sys.argv[1])
+right = Path(sys.argv[2])
+
+try:
+    left_data = json.loads(left.read_text(encoding="utf-8"))
+    right_data = json.loads(right.read_text(encoding="utf-8"))
+except Exception:
+    raise SystemExit(1)
+
+raise SystemExit(0 if left_data == right_data else 1)
+PY
+}
+
 show_diff() {
   local original="$1"
   local rendered="$2"
+  if [[ -f "$original" ]] && [[ "$original" == *.json ]] && json_files_equal "$original" "$rendered"; then
+    return 0
+  fi
   if [[ -f "$original" ]]; then
     diff -u "$original" "$rendered" || true
   else
@@ -69,6 +95,11 @@ install_rendered_file() {
   local mode="600"
 
   if [[ -f "$target" ]] && cmp -s "$target" "$rendered"; then
+    log "No change: $target"
+    return 0
+  fi
+
+  if [[ -f "$target" ]] && [[ "$target" == *.json ]] && json_files_equal "$target" "$rendered"; then
     log "No change: $target"
     return 0
   fi
