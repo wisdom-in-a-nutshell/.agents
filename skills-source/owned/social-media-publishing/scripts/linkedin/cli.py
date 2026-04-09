@@ -2,11 +2,14 @@
 from __future__ import annotations
 
 import argparse
+import contextlib
 import json
 import mimetypes
 import os
 import secrets
+import shutil
 import sys
+import tempfile
 import time
 import urllib.error
 import urllib.parse
@@ -568,6 +571,54 @@ def load_video_path(raw_path: str) -> Path:
             exit_code=2,
         )
     return path
+
+
+def download_video_url_to_tempfile(config: Config, video_url: str) -> tuple[Path, dict[str, Any]]:
+    parsed = urllib.parse.urlparse(video_url)
+    if parsed.scheme not in {"http", "https"}:
+        raise CliError(
+            "Video URL must start with http:// or https://.",
+            code="E_INVALID_INPUT",
+            exit_code=2,
+            hint="Pass a direct public MP4 URL, or use --video for a local file.",
+        )
+    suffix = Path(parsed.path).suffix or ".mp4"
+    temp_dir = Path(tempfile.mkdtemp(prefix="linkedin-video-"))
+    local_path = temp_dir / f"source{suffix}"
+    try:
+        with urllib.request.urlopen(video_url, timeout=config.request_timeout_seconds) as response:
+            content_type = response.headers.get("Content-Type", "")
+            content_length = response.headers.get("Content-Length")
+            with local_path.open("wb") as handle:
+                shutil.copyfileobj(response, handle)
+    except urllib.error.HTTPError as exc:
+        body = exc.read().decode("utf-8", errors="replace")
+        raise classify_http_error(video_url, exc.code, body) from exc
+    except TimeoutError as exc:
+        raise CliError(
+            f"Timed out downloading {video_url}.",
+            code="E_TIMEOUT",
+            exit_code=5,
+            retryable=True,
+            hint="Retry with a larger --request-timeout-seconds if the source host is slow.",
+        ) from exc
+    except urllib.error.URLError as exc:
+        raise CliError(
+            f"Failed to download {video_url}: {exc.reason}",
+            code="E_NETWORK",
+            exit_code=4,
+            retryable=True,
+            hint="Check the URL and retry. The source must be publicly reachable from this machine.",
+        ) from exc
+    downloaded_path = load_video_path(str(local_path))
+    metadata = {
+        "source_url": video_url,
+        "downloaded_path": str(downloaded_path),
+        "content_type": content_type,
+        "content_length_header": content_length,
+        "file_size_bytes": downloaded_path.stat().st_size,
+    }
+    return downloaded_path, metadata
 
 
 def initialize_video_upload(config: Config, access_token: str, *, owner: str, video_path: Path, version: str) -> dict[str, Any]:
@@ -1303,10 +1354,65 @@ def command_post_video(args: argparse.Namespace) -> dict[str, Any]:
             code="E_INVALID_INPUT",
             exit_code=2,
         )
+    if bool(args.video) == bool(args.video_url):
+        raise CliError(
+            "Provide exactly one of --video or --video-url.",
+            code="E_INVALID_INPUT",
+            exit_code=2,
+            hint="Use --video for a local file, or --video-url for a direct public URL.",
+        )
     config = build_config(args)
     tokens = ensure_member_context(config, load_tokens(config.tokens_path))
+    if args.video_url:
+        if args.dry_run:
+            return {
+                "dry_run": True,
+                "upload_plan": {
+                    "source_type": "video_url",
+                    "source_url": args.video_url,
+                    "wait_for_processing": not args.no_wait_for_video,
+                    "poll_interval_seconds": args.video_poll_interval_seconds,
+                    "processing_timeout_seconds": args.video_processing_timeout_seconds,
+                },
+                "payload": {
+                    "author": build_author_urn(tokens),
+                    "commentary": load_post_text(args),
+                    "content": {
+                        "media": {
+                            "id": "urn:li:video:<pending-upload>",
+                            **({"title": args.title} if args.title else {}),
+                        }
+                    },
+                    "distribution": build_rest_distribution_payload(),
+                    "isReshareDisabledByAuthor": False,
+                    "lifecycleState": "PUBLISHED",
+                    "visibility": args.visibility,
+                },
+            }
+        emit_progress(args, f"[linkedin] downloading video from {args.video_url}")
+        video_path, download_meta = download_video_url_to_tempfile(config, args.video_url)
+        try:
+            result = publish_video(
+                args,
+                config,
+                tokens,
+                text=load_post_text(args),
+                visibility=args.visibility,
+                video_path=video_path,
+                title=args.title,
+                dry_run=False,
+            )
+            result["video_source"] = {
+                "type": "video_url",
+                **download_meta,
+            }
+            return result
+        finally:
+            with contextlib.suppress(Exception):
+                shutil.rmtree(video_path.parent)
+
     video_path = load_video_path(args.video)
-    return publish_video(
+    result = publish_video(
         args,
         config,
         tokens,
@@ -1316,6 +1422,13 @@ def command_post_video(args: argparse.Namespace) -> dict[str, Any]:
         title=args.title,
         dry_run=args.dry_run,
     )
+    if not args.dry_run:
+        result["video_source"] = {
+            "type": "local_file",
+            "local_path": str(video_path),
+            "file_size_bytes": video_path.stat().st_size,
+        }
+    return result
 
 
 def command_post_images(args: argparse.Namespace) -> dict[str, Any]:
@@ -1470,8 +1583,10 @@ def build_parser() -> argparse.ArgumentParser:
     post_video = subparsers.add_parser("post-video", help="Publish a LinkedIn video post with commentary text.")
     post_video.add_argument("--text", help="Inline post text.")
     post_video.add_argument("--text-file", help="Path to a file containing post text.")
-    post_video.add_argument("--video", required=True, help="Video file path.")
-    post_video.add_argument("--title", help="Optional video title. Defaults to the video filename stem.")
+    post_video_source = post_video.add_mutually_exclusive_group(required=True)
+    post_video_source.add_argument("--video", help="Local video file path.")
+    post_video_source.add_argument("--video-url", help="Direct public video URL. The client downloads it first, then uploads it to LinkedIn.")
+    post_video.add_argument("--title", help="Optional video title.")
     post_video.add_argument("--visibility", choices=["PUBLIC", "CONNECTIONS"], default="PUBLIC")
     post_video.add_argument(
         "--video-poll-interval-seconds",

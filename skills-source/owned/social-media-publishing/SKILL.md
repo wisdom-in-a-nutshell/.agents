@@ -1,6 +1,6 @@
 ---
 name: social-media-publishing
-description: Reddit-first social publishing workflow plus blog-post publication prep and LinkedIn/X posting support. Use when Codex needs to publish or distribute a blog post, video, launch, or visual explainer; prepare blog assets; decide between gallery, image, self, or link format; post to Reddit; publish the source post before distribution; or authenticate and publish LinkedIn or X posts through the channel CLI.
+description: Multi-channel social publishing workflow plus blog-post publication prep and channel CLIs for Reddit, LinkedIn, and X. Use when Codex needs to publish or distribute a blog post, video, launch, or visual explainer; prepare blog assets; decide between gallery, image, self, link, or native video format; publish the source post before distribution; post to Reddit; publish LinkedIn text/link/image/video posts; or publish X text posts through the channel CLI.
 ---
 
 # Social Media Publishing
@@ -9,7 +9,7 @@ description: Reddit-first social publishing workflow plus blog-post publication 
 
 Use this skill to package publishing and distribution work as a reusable workflow instead of repo-specific one-offs.
 
-Keep campaign assets in the active project. Keep durable repo-specific publishing conventions in the owning repo. Use the bundled Reddit helpers as the first supported automated channel.
+Keep campaign assets in the active project. Keep durable repo-specific publishing conventions in the owning repo. The current bundled channel helpers cover Reddit, LinkedIn, and X.
 
 ## Workflow
 
@@ -94,6 +94,7 @@ python3 ~/.agents/skills-source/owned/social-media-publishing/scripts/linkedin/c
 python3 ~/.agents/skills-source/owned/social-media-publishing/scripts/linkedin/cli.py post --text-file /abs/path/body.txt --url https://example.com/post --title "Post title" --description "Short description" --dry-run
 python3 ~/.agents/skills-source/owned/social-media-publishing/scripts/linkedin/cli.py post-image --text-file /abs/path/body.txt --image /abs/path/cover.jpg --dry-run
 python3 ~/.agents/skills-source/owned/social-media-publishing/scripts/linkedin/cli.py post-video --text-file /abs/path/body.txt --video /abs/path/video.mp4 --dry-run
+python3 ~/.agents/skills-source/owned/social-media-publishing/scripts/linkedin/cli.py post-video --text-file /abs/path/body.txt --video-url https://example.com/video.mp4 --dry-run
 python3 ~/.agents/skills-source/owned/social-media-publishing/scripts/linkedin/cli.py post-images --text-file /abs/path/body.txt --image /abs/path/slide-1.jpg --image /abs/path/slide-2.jpg --dry-run
 python3 ~/.agents/skills-source/owned/social-media-publishing/scripts/linkedin/cli.py comment --post-urn urn:li:ugcPost:... --text-file /abs/path/comment.txt --dry-run
 python3 ~/.agents/skills-source/owned/social-media-publishing/scripts/linkedin/cli.py --json list-posts --count 5

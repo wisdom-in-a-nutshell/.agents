@@ -130,7 +130,15 @@ python3 ~/.agents/skills-source/owned/social-media-publishing/scripts/linkedin/c
 python3 ~/.agents/skills-source/owned/social-media-publishing/scripts/linkedin/cli.py post-video \
   --text-file /abs/path/body.txt \
   --video /abs/path/video.mp4 \
-  --title "Short optional title" \
+  --dry-run
+```
+
+### Dry-run a video post from a public direct URL
+
+```bash
+python3 ~/.agents/skills-source/owned/social-media-publishing/scripts/linkedin/cli.py post-video \
+  --text-file /abs/path/body.txt \
+  --video-url https://example.com/video.mp4 \
   --dry-run
 ```
 
@@ -139,8 +147,7 @@ python3 ~/.agents/skills-source/owned/social-media-publishing/scripts/linkedin/c
 ```bash
 python3 ~/.agents/skills-source/owned/social-media-publishing/scripts/linkedin/cli.py --progress plain post-video \
   --text-file /abs/path/body.txt \
-  --video /abs/path/video.mp4 \
-  --title "Short optional title"
+  --video /abs/path/video.mp4
 ```
 
 By default the client:
@@ -148,6 +155,14 @@ By default the client:
 - finalizes the upload
 - waits for LinkedIn to report the asset as `AVAILABLE`
 - creates the post only after the video is ready
+
+The post body is the main text input. `--title` is optional and can be omitted if you want a body-plus-video post only.
+
+If you use `--video-url`, the client first downloads the public direct file to a temporary local path, then performs the same native LinkedIn upload flow.
+
+Important distinction:
+- `post-video --video-url ...` still becomes a native LinkedIn video upload
+- `post --url ...` is only a link share, not a native LinkedIn video post
 
 Useful knobs:
 - `--video-poll-interval-seconds 2`
@@ -235,6 +250,9 @@ Video posts use LinkedIn's `/rest/videos` plus `/rest/posts` endpoints:
 - finalize the upload with the returned part IDs
 - poll `/rest/videos/{videoUrn}` until the status is `AVAILABLE`
 - create one organic `media` post that references the returned video URN
+
+When `--video-url` is used, the current client adds one convenience step before that flow:
+- download the public direct video URL to a temporary local file
 
 Comments use LinkedIn's `/rest/socialActions/{postUrn}/comments` endpoint.
 
