@@ -126,6 +126,7 @@ python3 ~/.agents/skills-source/owned/social-media-publishing/scripts/x/cli.py p
 ## Packaging Rules
 
 - Keep the skill reusable and the campaign local.
+- Draft assets go in `<repo>/tmp/social/<channel>/<slug>/` (gitignored, throwaway). Do not put drafts in `capture/` or other tracked folders.
 - Keep credentials in environment variables or the user's authenticated tools, not in project files.
 - Use absolute paths in ad hoc commands when possible.
 - Use relative paths inside plan files when the plan lives next to the assets.
