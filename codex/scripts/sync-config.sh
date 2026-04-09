@@ -16,6 +16,7 @@ XCODE_AGENTS_DIR="${HOME}/Library/Developer/Xcode/CodingAssistant/codex/agents"
 XCODE_RULES="${HOME}/Library/Developer/Xcode/CodingAssistant/codex/rules/xcode.rules"
 CANONICAL_DIR="${CONTROL_PLANE_DIR}/config"
 MCP_REGISTRY="${ROOT_DIR}/mcp/config/presets.json"
+AGENT_REGISTRY="${ROOT_DIR}/agents/registry.json"
 CANONICAL_GLOBAL_TEMPLATE="${CANONICAL_DIR}/global.config.toml"
 CANONICAL_AGENTS_DIR="${CANONICAL_DIR}/agents"
 CANONICAL_XCODE_TEMPLATE="${CANONICAL_DIR}/xcode.config.toml"
@@ -51,6 +52,8 @@ Options:
                              global.config.toml, xcode.config.toml, xcode.rules
   --mcp-registry <path>      Shared MCP registry
                              (default: mcp/config/presets.json)
+  --agent-registry <path>    Shared agent registry
+                             (default: agents/registry.json)
   -h, --help                 Show this help
 
 Examples:
@@ -123,6 +126,10 @@ while [[ $# -gt 0 ]]; do
       ;;
     --mcp-registry)
       MCP_REGISTRY="${2:-}"
+      shift 2
+      ;;
+    --agent-registry)
+      AGENT_REGISTRY="${2:-}"
       shift 2
       ;;
     -h|--help)
@@ -206,6 +213,55 @@ for name in global_presets:
     section = f"mcp_servers.{name}"
     for key in sorted(k for k in preset.keys() if k != "transport"):
         print(f"{section}\x1F{key}\x1F{toml_value(preset[key])}")
+PY
+}
+
+extract_global_agent_entries() {
+  local registry_file="$1"
+  local runtime="$2"
+  python3 - "$registry_file" "$runtime" "$ROOT_DIR" <<'PY'
+from __future__ import annotations
+
+import sys
+from pathlib import Path
+
+root_dir = Path(sys.argv[3]).resolve()
+sys.path.insert(0, str(root_dir))
+
+from agents.registry import load_agent_registry
+
+
+def toml_value(value):
+    if isinstance(value, bool):
+        return "true" if value else "false"
+    if isinstance(value, int):
+        return str(value)
+    if isinstance(value, str):
+        escaped = value.replace("\\", "\\\\").replace('"', '\\"')
+        return f'"{escaped}"'
+    if isinstance(value, list):
+        return "[" + ", ".join(toml_value(item) for item in value) + "]"
+    raise TypeError(f"Unsupported TOML value: {value!r}")
+
+
+registry_path = Path(sys.argv[1]).expanduser().resolve()
+runtime = sys.argv[2].strip()
+agents = load_agent_registry(registry_path, root_dir=root_dir)
+
+for agent in sorted(agents, key=lambda item: item["agent"]):
+    runtime_data = agent.get(runtime)
+    if not isinstance(runtime_data, dict) or not runtime_data.get("materialize"):
+        continue
+    if agent.get("scope") != "global":
+        continue
+    if runtime != "codex":
+        continue
+    section = f"agents.{runtime_data['name']}"
+    print(f"{section}\x1Fdescription\x1F{toml_value(runtime_data['description'])}")
+    print(f"{section}\x1Fconfig_file\x1F{toml_value('agents/' + runtime_data['config_file'])}")
+    nickname_candidates = runtime_data.get("nickname_candidates", [])
+    if nickname_candidates:
+        print(f"{section}\x1Fnickname_candidates\x1F{toml_value(nickname_candidates)}")
 PY
 }
 
@@ -491,6 +547,7 @@ render_global_config() {
   local target_file="$1"
   local template_file="$2"
   local mcp_registry_file="$3"
+  local agent_registry_file="$4"
   local section key value
   local notify_value
 
@@ -521,6 +578,10 @@ render_global_config() {
   fi
 
   prune_stale_agent_sections "$target_file" "$template_file"
+  while IFS=$'\x1f' read -r section key value; do
+    [[ -n "$key" ]] || continue
+    upsert_section_key "$target_file" "$section" "$key" "$value"
+  done < <(extract_global_agent_entries "$agent_registry_file" "codex")
   prune_stale_app_sections "$target_file" "$template_file"
   prune_stale_plugin_sections "$target_file" "$template_file"
   prune_stale_model_provider_sections "$target_file" "$template_file"
@@ -967,6 +1028,7 @@ render_xcode_config() {
   local target_file="$1"
   local template_file="$2"
   local mcp_registry_file="$3"
+  local agent_registry_file="$4"
   local writable_roots
   local project_section
   local section key value
@@ -1000,6 +1062,10 @@ render_xcode_config() {
   fi
 
   prune_stale_agent_sections "$target_file" "$template_file"
+  while IFS=$'\x1f' read -r section key value; do
+    [[ -n "$key" ]] || continue
+    upsert_section_key "$target_file" "$section" "$key" "$value"
+  done < <(extract_global_agent_entries "$agent_registry_file" "codex")
   prune_stale_app_sections "$target_file" "$template_file"
   prune_stale_plugin_sections "$target_file" "$template_file"
   prune_stale_model_provider_sections "$target_file" "$template_file"
@@ -1045,10 +1111,11 @@ sync_global() {
 
   require_readable_file "$CANONICAL_GLOBAL_TEMPLATE"
   require_readable_file "$MCP_REGISTRY"
+  require_readable_file "$AGENT_REGISTRY"
   ensure_parent_dir "$original"
   prepare_work_file "$original" "$rendered"
   sanitize_machine_specific_entries "$rendered"
-  render_global_config "$rendered" "$CANONICAL_GLOBAL_TEMPLATE" "$MCP_REGISTRY"
+  render_global_config "$rendered" "$CANONICAL_GLOBAL_TEMPLATE" "$MCP_REGISTRY" "$AGENT_REGISTRY"
   ensure_system_skills_disabled "$rendered"
 
   log ""
@@ -1059,7 +1126,7 @@ sync_global() {
     install_rendered_file "$rendered" "$original"
   fi
 
-  sync_agent_role_configs "Global Agent Roles" "$CANONICAL_AGENTS_DIR" "$GLOBAL_AGENTS_DIR" "$CANONICAL_GLOBAL_TEMPLATE"
+  sync_agent_role_configs "Global Agent Roles" "$CANONICAL_AGENTS_DIR" "$GLOBAL_AGENTS_DIR" "$rendered"
 }
 
 sync_xcode() {
@@ -1071,12 +1138,13 @@ sync_xcode() {
   require_readable_file "$CANONICAL_XCODE_TEMPLATE"
   require_readable_file "$CANONICAL_XCODE_RULES_TEMPLATE"
   require_readable_file "$MCP_REGISTRY"
+  require_readable_file "$AGENT_REGISTRY"
   ensure_parent_dir "$original_cfg"
   ensure_parent_dir "$original_rules"
 
   prepare_work_file "$original_cfg" "$rendered_cfg"
   sanitize_machine_specific_entries "$rendered_cfg"
-  render_xcode_config "$rendered_cfg" "$CANONICAL_XCODE_TEMPLATE" "$MCP_REGISTRY"
+  render_xcode_config "$rendered_cfg" "$CANONICAL_XCODE_TEMPLATE" "$MCP_REGISTRY" "$AGENT_REGISTRY"
   render_xcode_rules "$rendered_rules" "$CANONICAL_XCODE_RULES_TEMPLATE"
 
   log ""
@@ -1091,7 +1159,7 @@ sync_xcode() {
     install_rendered_file "$rendered_rules" "$original_rules"
   fi
 
-  sync_agent_role_configs "Xcode Agent Roles" "$CANONICAL_AGENTS_DIR" "$XCODE_AGENTS_DIR" "$CANONICAL_XCODE_TEMPLATE"
+  sync_agent_role_configs "Xcode Agent Roles" "$CANONICAL_AGENTS_DIR" "$XCODE_AGENTS_DIR" "$rendered_cfg"
 }
 
 sync_agent_role_configs() {

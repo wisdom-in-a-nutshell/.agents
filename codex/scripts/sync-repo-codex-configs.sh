@@ -4,6 +4,7 @@ set -euo pipefail
 APPLY=0
 REGISTRY_FILE=""
 MCP_REGISTRY_FILE=""
+AGENT_REGISTRY_FILE=""
 REPO_FILTERS=()
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -11,6 +12,7 @@ CONTROL_PLANE_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 ROOT_DIR="$(cd "$CONTROL_PLANE_DIR/.." && pwd)"
 DEFAULT_REGISTRY_FILE="${CONTROL_PLANE_DIR}/config/repo-bootstrap.json"
 DEFAULT_MCP_REGISTRY_FILE="${ROOT_DIR}/mcp/config/presets.json"
+DEFAULT_AGENT_REGISTRY_FILE="${ROOT_DIR}/agents/registry.json"
 
 usage() {
   cat <<USAGE
@@ -26,6 +28,9 @@ Options:
                          (default: codex/config/repo-bootstrap.json)
   --mcp-registry <path>  Override shared MCP registry
                          (default: mcp/config/presets.json)
+  --agent-registry <path>
+                         Override shared agent registry
+                         (default: agents/registry.json)
   --repo <path>          Limit sync to an exact repo path (repeatable)
   -h, --help             Show this help
 
@@ -72,6 +77,10 @@ while [[ $# -gt 0 ]]; do
       MCP_REGISTRY_FILE="${2:-}"
       shift 2
       ;;
+    --agent-registry)
+      AGENT_REGISTRY_FILE="${2:-}"
+      shift 2
+      ;;
     --repo)
       REPO_FILTERS+=("${2:-}")
       shift 2
@@ -92,11 +101,16 @@ fi
 if [[ -z "$MCP_REGISTRY_FILE" ]]; then
   MCP_REGISTRY_FILE="$DEFAULT_MCP_REGISTRY_FILE"
 fi
+if [[ -z "$AGENT_REGISTRY_FILE" ]]; then
+  AGENT_REGISTRY_FILE="$DEFAULT_AGENT_REGISTRY_FILE"
+fi
 
 [[ -f "$REGISTRY_FILE" ]] || die "Missing registry file: $REGISTRY_FILE"
 [[ -r "$REGISTRY_FILE" ]] || die "Registry file is not readable: $REGISTRY_FILE"
 [[ -f "$MCP_REGISTRY_FILE" ]] || die "Missing MCP registry file: $MCP_REGISTRY_FILE"
 [[ -r "$MCP_REGISTRY_FILE" ]] || die "MCP registry file is not readable: $MCP_REGISTRY_FILE"
+[[ -f "$AGENT_REGISTRY_FILE" ]] || die "Missing agent registry file: $AGENT_REGISTRY_FILE"
+[[ -r "$AGENT_REGISTRY_FILE" ]] || die "Agent registry file is not readable: $AGENT_REGISTRY_FILE"
 
 ensure_parent_dir() {
   local file="$1"
@@ -132,7 +146,7 @@ install_rendered_file() {
 }
 
 mapfile -t MANIFEST < <(
-  python3 - "$REGISTRY_FILE" "$MCP_REGISTRY_FILE" "$TMP_DIR" "${REPO_FILTERS[@]}" <<'PY'
+  python3 - "$REGISTRY_FILE" "$MCP_REGISTRY_FILE" "$AGENT_REGISTRY_FILE" "$TMP_DIR" "${REPO_FILTERS[@]}" <<'PY'
 from __future__ import annotations
 
 import hashlib
@@ -235,7 +249,7 @@ def load_role_file(path: Path, expected_name: str) -> dict:
 def render_role_file(role_data: dict) -> str:
     lines = [
         "# Managed by ~/.agents/codex/scripts/sync-repo-codex-configs.sh.",
-        "# Edit ~/.agents/codex/config/repo-bootstrap.json or ~/.agents/codex/config/agents/*.toml and re-run the sync script.",
+        "# Edit ~/.agents/agents/registry.json or ~/.agents/codex/config/agents/*.toml and re-run the sync script.",
     ]
 
     for key in ROLE_RENDER_ORDER:
@@ -315,7 +329,7 @@ def codex_mcp_config(name: str, preset: dict) -> dict:
 def render_repo_config(repo: str, defaults: dict, override: dict, presets: dict, agent_presets: dict, custom_agent_names: list[str]) -> str:
     lines = [
         "# Managed by ~/.agents/codex/scripts/sync-repo-codex-configs.sh.",
-        "# Edit ~/.agents/codex/config/repo-bootstrap.json and re-run the sync script.",
+        "# Edit ~/.agents/codex/config/repo-bootstrap.json or ~/.agents/agents/registry.json and re-run the sync script.",
     ]
     rendered_anything = False
 
@@ -383,27 +397,30 @@ def render_repo_config(repo: str, defaults: dict, override: dict, presets: dict,
 
     return "\n".join(lines) + "\n"
 
-
 registry_path = Path(sys.argv[1]).expanduser().resolve()
 mcp_registry_path = Path(sys.argv[2]).expanduser().resolve()
-tmp_dir = Path(sys.argv[3]).resolve()
-filters = {normalize_path(path) for path in sys.argv[4:] if path}
+agent_registry_path = Path(sys.argv[3]).expanduser().resolve()
+tmp_dir = Path(sys.argv[4]).resolve()
+filters = {normalize_path(path) for path in sys.argv[5:] if path}
+
+root_dir = agent_registry_path.parent.parent.resolve()
+sys.path.insert(0, str(root_dir))
+
+from agents.registry import load_agent_registry
+
 
 data = json.loads(registry_path.read_text(encoding="utf-8"))
 defaults = data.get("defaults", {})
-agent_presets = data.get("agent_presets", {})
 repos_raw = data.get("repos", [])
 presets, _global_presets = validate_mcp_registry(mcp_registry_path)
 
 if not isinstance(defaults, dict):
     raise TypeError("defaults must be an object")
-if not isinstance(agent_presets, dict):
-    raise TypeError("agent_presets must be an object")
 if not isinstance(repos_raw, list):
     raise TypeError("repos must be an array")
 
-manifest_lines: list[str] = []
-agents_dir = registry_path.parent / "agents"
+repo_items_all: list[dict] = []
+valid_repo_names: set[str] = set()
 for item in repos_raw:
     if not isinstance(item, dict):
         raise TypeError("each repo entry must be an object")
@@ -423,15 +440,43 @@ for item in repos_raw:
         continue
 
     actual_repo = str(Path(actual_repo).resolve())
+    repo_name = Path(actual_repo).name or actual_repo
+    repo_copy = dict(item)
+    repo_copy["_actual_repo"] = actual_repo
+    repo_copy["_repo_name"] = repo_name
+    repo_items_all.append(repo_copy)
+    valid_repo_names.add(repo_name)
+
+managed_agents = load_agent_registry(
+    agent_registry_path,
+    root_dir=root_dir,
+    valid_repo_names=valid_repo_names,
+)
+
+agent_presets: dict[str, dict] = {}
+repo_agent_assignments: dict[str, list[str]] = {}
+for agent in managed_agents:
+    codex = agent.get("codex")
+    if not isinstance(codex, dict) or not codex.get("materialize"):
+        continue
+    codex_name = str(codex["name"])
+    agent_presets[codex_name] = {
+        "description": str(codex["description"]),
+        "config_file": str(codex["config_file"]),
+        "nickname_candidates": [str(value) for value in codex.get("nickname_candidates", [])],
+        "source_path": Path(codex["source_path"]),
+    }
+    if agent["scope"] == "repo":
+        for repo_name in agent["repos"]:
+            repo_agent_assignments.setdefault(str(repo_name), []).append(codex_name)
+
+manifest_lines: list[str] = []
+for item in repo_items_all:
+    actual_repo = item["_actual_repo"]
     if filters and actual_repo not in filters:
         continue
 
-    custom_agent_names = item.get("custom_agents", [])
-    if custom_agent_names is None:
-        custom_agent_names = []
-    if not isinstance(custom_agent_names, list):
-        raise TypeError(f"custom_agents for {actual_repo} must be an array")
-    repo_agent_names = ordered_unique([str(agent_name) for agent_name in custom_agent_names])
+    repo_agent_names = ordered_unique(repo_agent_assignments.get(item["_repo_name"], []))
 
     rendered = render_repo_config(actual_repo, defaults, item, presets, agent_presets, repo_agent_names)
     rendered_path = tmp_dir / f"{hashlib.sha256(actual_repo.encode()).hexdigest()}.toml"
@@ -443,20 +488,14 @@ for item in repos_raw:
         preset = agent_presets.get(agent_name)
         if not isinstance(preset, dict):
             raise KeyError(f"Unknown repo agent `{agent_name}` for {actual_repo}")
-        config_file = preset.get("config_file")
-        description = preset.get("description")
-        if not isinstance(config_file, str) or not config_file.strip():
-            raise TypeError(f"repo agent `{agent_name}` must define config_file")
-        if not isinstance(description, str) or not description.strip():
-            raise TypeError(f"repo agent `{agent_name}` must define a non-empty description")
-        source_path = agents_dir / config_file
+        source_path = Path(preset["source_path"])
         if not source_path.is_file():
             raise FileNotFoundError(f"Missing agent role file for `{agent_name}`: {source_path}")
         role_data = load_role_file(source_path, agent_name)
         rendered_role = render_role_file(role_data)
-        rendered_role_path = tmp_dir / f"{hashlib.sha256((actual_repo + ':' + agent_name).encode()).hexdigest()}-{Path(config_file).name}"
+        rendered_role_path = tmp_dir / f"{hashlib.sha256((actual_repo + ':' + agent_name).encode()).hexdigest()}-{Path(preset['config_file']).name}"
         rendered_role_path.write_text(rendered_role, encoding="utf-8")
-        target_role_path = Path(actual_repo) / ".codex" / "agents" / Path(config_file).name
+        target_role_path = Path(actual_repo) / ".codex" / "agents" / Path(preset["config_file"]).name
         manifest_lines.append(f"{actual_repo}\t{target_role_path}\t{rendered_role_path}")
 
 for line in manifest_lines:

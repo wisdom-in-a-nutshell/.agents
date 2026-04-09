@@ -9,6 +9,10 @@ import sys
 from pathlib import Path
 from typing import Any
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+
+from agents.registry import load_agent_registry
+
 try:
     import tomllib
 except ModuleNotFoundError:  # pragma: no cover
@@ -783,7 +787,7 @@ def validate_mcp_registry(data: dict[str, Any]) -> tuple[dict[str, Any], list[st
 
 def validate_registry(
     data: dict[str, Any], config_dir: Path, home: Path, mcp_presets_map: dict[str, Any]
-) -> tuple[dict[str, Any], dict[str, Any], list[dict[str, Any]]]:
+) -> tuple[dict[str, Any], list[dict[str, Any]]]:
     defaults = data.get("defaults", {})
     if not isinstance(defaults, dict):
         raise ValueError("defaults must be an object")
@@ -793,34 +797,6 @@ def validate_registry(
             raise ValueError(f"unsupported default key: {key}")
     if "features" in defaults and not isinstance(defaults["features"], dict):
         raise ValueError("defaults.features must be an object")
-
-    agent_presets = data.get("agent_presets", {})
-    if not isinstance(agent_presets, dict):
-        raise ValueError("agent_presets must be an object")
-    agents_dir = config_dir / "agents"
-    validated_agent_presets: dict[str, Any] = {}
-    for name, preset in agent_presets.items():
-        if not isinstance(preset, dict):
-            raise ValueError(f"agent_presets.{name} must be an object")
-        description = preset.get("description")
-        config_file = preset.get("config_file")
-        nickname_candidates = preset.get("nickname_candidates", [])
-        if not isinstance(description, str) or not description.strip():
-            raise ValueError(f"agent_presets.{name}.description must be a non-empty string")
-        if not isinstance(config_file, str) or not config_file.strip():
-            raise ValueError(f"agent_presets.{name}.config_file must be a non-empty string")
-        if not isinstance(nickname_candidates, list) or any(not isinstance(item, str) for item in nickname_candidates):
-            raise ValueError(f"agent_presets.{name}.nickname_candidates must be an array of strings")
-        config_path = agents_dir / config_file
-        if not config_path.is_file():
-            raise ValueError(f"agent_presets.{name}.config_file points to missing file: {config_path}")
-        validated_agent_presets[str(name)] = {
-            "description": description,
-            "config_file": config_file,
-            "nickname_candidates": nickname_candidates,
-            "role_data": _load_agent_role_data(config_path),
-            **_load_agent_role_config(config_path),
-        }
 
     repos_raw = data.get("repos")
     if not isinstance(repos_raw, list) or not repos_raw:
@@ -862,15 +838,6 @@ def validate_registry(
             "mcp_presets_csv": ",".join(repo_mcp_presets) if repo_mcp_presets else "-",
             "custom_agents": [],
         }
-        custom_agents = item.get("custom_agents", [])
-        if not isinstance(custom_agents, list):
-            raise ValueError(f"repos[{idx}].custom_agents must be an array")
-        for agent_name in custom_agents:
-            agent_name = str(agent_name)
-            if agent_name not in validated_agent_presets:
-                raise ValueError(f"repos[{idx}] references unknown custom agent: {agent_name}")
-            if agent_name not in validated["custom_agents"]:
-                validated["custom_agents"].append(agent_name)
         for key in ALLOWED_SCALAR_KEYS:
             if key in item:
                 validated[key] = item[key]
@@ -881,7 +848,7 @@ def validate_registry(
         repos.append(validated)
 
     repos.sort(key=lambda item: item["path"])
-    return defaults, validated_agent_presets, repos
+    return defaults, repos
 
 
 def parse_args() -> argparse.Namespace:

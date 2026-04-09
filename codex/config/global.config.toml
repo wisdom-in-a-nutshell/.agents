@@ -21,10 +21,6 @@ enabled = false
 [plugins."google-calendar@openai-curated"]
 enabled = false
 
-[agents.external_researcher]
-description = "Read-only researcher for information outside the local codebase and runtime."
-config_file = "agents/external_researcher.toml"
-
 [tui]
 theme = "catppuccin-macchiato"
 status_line = ["model-with-reasoning", "context-remaining", "current-dir", "codex-version", "context-window-size", "session-id", "fast-mode"]

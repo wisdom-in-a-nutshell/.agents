@@ -12,6 +12,7 @@ XCODE_AGENTS_DIR="${HOME}/Library/Developer/Xcode/CodingAssistant/codex/agents"
 CANONICAL_DIR="${CONTROL_PLANE_DIR}/config"
 REGISTRY_FILE="${CANONICAL_DIR}/repo-bootstrap.json"
 MCP_REGISTRY_FILE="${ROOT_DIR}/mcp/config/presets.json"
+AGENT_REGISTRY_FILE="${ROOT_DIR}/agents/registry.json"
 REPO_FILTERS=()
 
 usage() {
@@ -28,6 +29,7 @@ Options:
   --xcode-agents-dir <path>   Override Xcode runtime agents dir
   --registry <path>           Override repo bootstrap registry path
   --mcp-registry <path>       Override shared MCP registry path
+  --agent-registry <path>     Override shared agent registry path
   --repo <path>               Limit repo-local validation to one repo path (repeatable)
   -h, --help                  Show this help
 USAGE
@@ -64,6 +66,10 @@ while [[ $# -gt 0 ]]; do
       MCP_REGISTRY_FILE="${2:-}"
       shift 2
       ;;
+    --agent-registry)
+      AGENT_REGISTRY_FILE="${2:-}"
+      shift 2
+      ;;
     --repo)
       REPO_FILTERS+=("${2:-}")
       shift 2
@@ -79,7 +85,7 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-python3 - "$CANONICAL_DIR" "$GLOBAL_CONFIG" "$GLOBAL_AGENTS_DIR" "$XCODE_CONFIG" "$XCODE_AGENTS_DIR" "$REGISTRY_FILE" "$MCP_REGISTRY_FILE" "${REPO_FILTERS[@]}" <<'PY'
+python3 - "$CANONICAL_DIR" "$GLOBAL_CONFIG" "$GLOBAL_AGENTS_DIR" "$XCODE_CONFIG" "$XCODE_AGENTS_DIR" "$REGISTRY_FILE" "$MCP_REGISTRY_FILE" "$AGENT_REGISTRY_FILE" "${REPO_FILTERS[@]}" <<'PY'
 from __future__ import annotations
 
 import json
@@ -189,7 +195,13 @@ xcode_config = Path(sys.argv[4]).expanduser().resolve()
 xcode_agents_dir = Path(sys.argv[5]).expanduser().resolve()
 registry_path = Path(sys.argv[6]).expanduser().resolve()
 mcp_registry_path = Path(sys.argv[7]).expanduser().resolve()
-repo_filters = {str(Path(p).expanduser().resolve()) for p in sys.argv[8:] if p.strip()}
+agent_registry_path = Path(sys.argv[8]).expanduser().resolve()
+repo_filters = {str(Path(p).expanduser().resolve()) for p in sys.argv[9:] if p.strip()}
+
+root_dir = agent_registry_path.parent.parent.resolve()
+sys.path.insert(0, str(root_dir))
+
+from agents.registry import load_agent_registry
 
 canonical_agents_dir = canonical_dir / "agents"
 global_template = canonical_dir / "global.config.toml"
@@ -228,6 +240,8 @@ if not registry_path.is_file():
     fail(f"missing registry file: {registry_path}")
 if not mcp_registry_path.is_file():
     fail(f"missing MCP registry file: {mcp_registry_path}")
+if not agent_registry_path.is_file():
+    fail(f"missing agent registry file: {agent_registry_path}")
 try:
     registry = json.loads(registry_path.read_text(encoding="utf-8"))
 except Exception as exc:
@@ -236,12 +250,6 @@ try:
     mcp_registry = json.loads(mcp_registry_path.read_text(encoding="utf-8"))
 except Exception as exc:
     fail(f"invalid JSON in {mcp_registry_path}: {exc}")
-
-agent_presets = registry.get("agent_presets", {})
-if agent_presets is None:
-    agent_presets = {}
-if not isinstance(agent_presets, dict):
-    fail(f"agent_presets must be an object in {registry_path}")
 
 if not isinstance(mcp_registry, dict):
     fail(f"MCP registry root must be an object in {mcp_registry_path}")
@@ -269,23 +277,12 @@ for preset_name in global_presets:
     if preset_name not in mcp_presets:
         fail(f"global_presets references unknown MCP preset `{preset_name}` in {mcp_registry_path}")
 
-for agent_name, preset in sorted(agent_presets.items()):
-    if not isinstance(preset, dict):
-        fail(f"agent_presets.{agent_name} must be an object")
-    description = preset.get("description")
-    config_file = preset.get("config_file")
-    if not isinstance(description, str) or not description.strip():
-        fail(f"agent_presets.{agent_name} must define a non-empty description")
-    if not isinstance(config_file, str) or not config_file.strip():
-        fail(f"agent_presets.{agent_name} must define a non-empty config_file")
-    role_path = (registry_path.parent / "agents" / config_file).resolve()
-    validate_role_file(role_path, agent_name)
-
 repos = registry.get("repos", [])
 if not isinstance(repos, list):
     fail(f"repos must be an array in {registry_path}")
 
-validated_repo_count = 0
+resolved_repo_names: set[str] = set()
+resolved_repos: list[dict[str, str]] = []
 for item in repos:
     if not isinstance(item, dict):
         fail("each repo entry must be an object")
@@ -293,21 +290,65 @@ for item in repos:
     if not isinstance(raw_path, str) or not raw_path.strip():
         fail("repo.path must be a non-empty string")
     repo_path = Path(raw_path).expanduser().resolve()
+    repo_name = repo_path.name or str(repo_path)
+    resolved_repo_names.add(repo_name)
+    resolved_repos.append({"path": str(repo_path), "repo_name": repo_name})
+
+managed_agents = load_agent_registry(
+    agent_registry_path,
+    root_dir=root_dir,
+    valid_repo_names=resolved_repo_names,
+)
+
+expected_global_agents: list[str] = []
+expected_repo_agents: dict[str, list[str]] = {}
+for agent in managed_agents:
+    codex = agent.get("codex")
+    if not isinstance(codex, dict) or not codex.get("materialize"):
+        continue
+    role_path = Path(codex["source_path"])
+    validate_role_file(role_path, str(codex["name"]))
+    if agent["scope"] == "global":
+        expected_global_agents.append(str(codex["name"]))
+    else:
+        for repo_name in agent["repos"]:
+            expected_repo_agents.setdefault(str(repo_name), []).append(str(codex["name"]))
+
+expected_global_agents = normalize_repo_agent_names(expected_global_agents)
+for repo_name, names in list(expected_repo_agents.items()):
+    expected_repo_agents[repo_name] = normalize_repo_agent_names(names)
+
+if global_config.exists():
+    declared_global_agents = validate_agent_declarations(
+        global_config,
+        agent_files_base=global_agents_dir,
+        require_runtime_files=True,
+        check_runtime_extras=True,
+    )
+    if sorted(declared_global_agents) != sorted(expected_global_agents):
+        fail(
+            f"global runtime declares agents {sorted(declared_global_agents)} but registry expects {sorted(expected_global_agents)}"
+        )
+
+if xcode_config.exists():
+    declared_xcode_agents = validate_agent_declarations(
+        xcode_config,
+        agent_files_base=xcode_agents_dir,
+        require_runtime_files=True,
+        check_runtime_extras=True,
+    )
+    if sorted(declared_xcode_agents) != sorted(expected_global_agents):
+        fail(
+            f"xcode runtime declares agents {sorted(declared_xcode_agents)} but registry expects {sorted(expected_global_agents)}"
+        )
+
+validated_repo_count = 0
+for item in resolved_repos:
+    repo_path = Path(item["path"]).resolve()
     if repo_filters and str(repo_path) not in repo_filters:
         continue
-
-    custom_agents = item.get("custom_agents", [])
-    if custom_agents is None:
-        custom_agents = []
-    if not isinstance(custom_agents, list):
-        fail(f"custom_agents for {repo_path} must be an array")
-    for agent_name in custom_agents:
-        if agent_name not in agent_presets:
-            fail(f"repo {repo_path} references unknown custom agent `{agent_name}`")
-
-    expected_repo_agents = normalize_repo_agent_names(
-        [str(agent_name) for agent_name in custom_agents]
-    )
+    repo_name = item["repo_name"]
+    expected_repo_agent_names = expected_repo_agents.get(repo_name, [])
 
     if not repo_path.exists() or not is_git_repo(repo_path):
         continue
@@ -322,9 +363,9 @@ for item in repos:
         require_runtime_files=True,
         check_runtime_extras=False,
     )
-    if sorted(declared_repo_agents) != sorted(expected_repo_agents):
+    if sorted(declared_repo_agents) != sorted(expected_repo_agent_names):
         fail(
-            f"repo {repo_path} declares agents {sorted(declared_repo_agents)} but registry expects {sorted(expected_repo_agents)}"
+            f"repo {repo_path} declares agents {sorted(declared_repo_agents)} but registry expects {sorted(expected_repo_agent_names)}"
         )
     validated_repo_count += 1
 

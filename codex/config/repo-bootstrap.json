@@ -4,17 +4,6 @@
     "model_reasoning_effort": "high",
     "service_tier": null
   },
-  "agent_presets": {
-    "visual_reviewer": {
-      "description": "Read-only reviewer for visual work such as screenshots, layouts, hierarchy, and clarity.",
-      "config_file": "visual_reviewer.toml",
-      "nickname_candidates": [
-        "Lens",
-        "Critic",
-        "Review"
-      ]
-    }
-  },
   "repos": [
     {
       "path": "~/.agents",
@@ -37,18 +26,12 @@
       "project_root_markers": [],
       "mcp_presets": [
         "paper"
-      ],
-      "custom_agents": [
-        "visual_reviewer"
       ]
     },
     {
       "path": "~/GitHub/adithyan-ai-videos",
       "mcp_presets": [
         "paper"
-      ],
-      "custom_agents": [
-        "visual_reviewer"
       ]
     },
     {
@@ -74,9 +57,6 @@
       "path": "~/GitHub/blog-personal",
       "mcp_presets": [
         "paper"
-      ],
-      "custom_agents": [
-        "visual_reviewer"
       ]
     },
     {
