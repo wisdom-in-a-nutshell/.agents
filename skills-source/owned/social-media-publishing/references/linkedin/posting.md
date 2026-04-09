@@ -14,13 +14,14 @@ This is the simplest useful local workflow for day-to-day LinkedIn posting:
 - text posts
 - article or URL shares, which is the main case for blog posts
 - single-image posts
+- single-video posts
 - multi-image organic posts for personal profile publishing
 - comments on posts
 - machine-readable CLI output for agent use
 
 It assumes auth is already in place.
 
-It does not yet cover video, company pages, or multi-user auth.
+It does not yet cover company pages or multi-user auth.
 
 ## Why this shape
 
@@ -38,7 +39,8 @@ That keeps it:
 - Share on LinkedIn: https://learn.microsoft.com/en-us/linkedin/consumer/integrations/self-serve/share-on-linkedin
 - Programmatic refresh tokens: https://learn.microsoft.com/en-us/linkedin/shared/authentication/programmatic-refresh-tokens
 - Sign In with LinkedIn using OpenID Connect: https://learn.microsoft.com/en-us/linkedin/consumer/integrations/self-serve/sign-in-with-linkedin-v2
-- Posts API: https://learn.microsoft.com/en-us/linkedin/marketing/community-management/shares/posts-api?view=li-lms-2025-11
+- Posts API: https://learn.microsoft.com/en-us/linkedin/marketing/community-management/shares/posts-api?view=li-lms-2026-03
+- Videos API: https://learn.microsoft.com/en-us/linkedin/marketing/community-management/shares/videos-api?view=li-lms-2025-07
 - Images API: https://learn.microsoft.com/en-us/linkedin/marketing/community-management/shares/images-api?view=li-lms-2026-02
 - MultiImage API: https://learn.microsoft.com/en-us/linkedin/marketing/community-management/shares/multiimage-post-api?view=li-lms-2026-03
 
@@ -56,9 +58,11 @@ The LinkedIn CLI now follows a more agent-first contract:
 - `--json` returns one structured JSON object
 - `--plain` returns stable plain text for shell pipelines
 - `--no-input` disables browser auto-open and any interactive input assumptions
+- `--progress auto|off|plain` controls stderr-only progress for long-running commands such as video upload
 - non-zero exit codes are classified by failure type
 
 Default behavior is JSON. Use `--plain` only when you explicitly want a lighter inspection view.
+Global flags such as `--json`, `--plain`, and `--progress` should be passed before the subcommand.
 
 ### First command on a fresh boot
 
@@ -119,6 +123,36 @@ python3 ~/.agents/skills-source/owned/social-media-publishing/scripts/linkedin/c
   --image /abs/path/cover.jpg \
   --dry-run
 ```
+
+### Dry-run a video post
+
+```bash
+python3 ~/.agents/skills-source/owned/social-media-publishing/scripts/linkedin/cli.py post-video \
+  --text-file /abs/path/body.txt \
+  --video /abs/path/video.mp4 \
+  --title "Short optional title" \
+  --dry-run
+```
+
+### Publish a video post for real
+
+```bash
+python3 ~/.agents/skills-source/owned/social-media-publishing/scripts/linkedin/cli.py --progress plain post-video \
+  --text-file /abs/path/body.txt \
+  --video /abs/path/video.mp4 \
+  --title "Short optional title"
+```
+
+By default the client:
+- uploads the local video
+- finalizes the upload
+- waits for LinkedIn to report the asset as `AVAILABLE`
+- creates the post only after the video is ready
+
+Useful knobs:
+- `--video-poll-interval-seconds 2`
+- `--video-processing-timeout-seconds 900`
+- `--no-wait-for-video` if you explicitly want to skip the readiness wait
 
 ### Dry-run a multi-image post
 
@@ -195,6 +229,13 @@ Multi-image posts use LinkedIn's newer `/rest/images` and `/rest/posts` endpoint
 - upload each binary file
 - create one organic `multiImage` post that references the returned image URNs
 
+Video posts use LinkedIn's `/rest/videos` plus `/rest/posts` endpoints:
+- initialize upload with the local file size
+- upload each byte range returned by LinkedIn
+- finalize the upload with the returned part IDs
+- poll `/rest/videos/{videoUrn}` until the status is `AVAILABLE`
+- create one organic `media` post that references the returned video URN
+
 Comments use LinkedIn's `/rest/socialActions/{postUrn}/comments` endpoint.
 
 Single-image posts use the same image upload path as multi-image posts, but publish a `media` payload instead of `multiImage`.
@@ -210,7 +251,7 @@ If auth stops working, re-run the setup in `references/linkedin/auth.md`.
 With the current LinkedIn app used in this workspace, posting works, but read-back endpoints may still return `403 ACCESS_DENIED`.
 
 That means:
-- `post`, `post-image`, `post-images`, and likely `comment` are the most reliable day-to-day commands
+- `post`, `post-image`, `post-video`, `post-images`, and likely `comment` are the most reliable day-to-day commands
 - `get-post` and `list-posts` may require additional LinkedIn access that this app does not currently have
 
 Treat the read-back commands as best-effort until LinkedIn confirms the right product/scope path for this app.

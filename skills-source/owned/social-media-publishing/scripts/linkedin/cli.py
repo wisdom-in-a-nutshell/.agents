@@ -1291,6 +1291,18 @@ def command_post_image(args: argparse.Namespace) -> dict[str, Any]:
 
 
 def command_post_video(args: argparse.Namespace) -> dict[str, Any]:
+    if args.video_poll_interval_seconds <= 0:
+        raise CliError(
+            "--video-poll-interval-seconds must be greater than 0.",
+            code="E_INVALID_INPUT",
+            exit_code=2,
+        )
+    if args.video_processing_timeout_seconds <= 0:
+        raise CliError(
+            "--video-processing-timeout-seconds must be greater than 0.",
+            code="E_INVALID_INPUT",
+            exit_code=2,
+        )
     config = build_config(args)
     tokens = ensure_member_context(config, load_tokens(config.tokens_path))
     video_path = load_video_path(args.video)

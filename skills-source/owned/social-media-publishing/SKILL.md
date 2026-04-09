@@ -79,9 +79,11 @@ Current supported flow:
 - text posts
 - article or URL shares
 - single-image posts
+- single-video posts
 - multi-image posts
 - comments on posts
 - machine-readable JSON output by default, plus optional `--plain` inspection mode
+- stderr-only progress for long-running video uploads via `--progress`
 
 Core commands:
 
@@ -91,6 +93,7 @@ python3 ~/.agents/skills-source/owned/social-media-publishing/scripts/linkedin/c
 python3 ~/.agents/skills-source/owned/social-media-publishing/scripts/linkedin/cli.py whoami
 python3 ~/.agents/skills-source/owned/social-media-publishing/scripts/linkedin/cli.py post --text-file /abs/path/body.txt --url https://example.com/post --title "Post title" --description "Short description" --dry-run
 python3 ~/.agents/skills-source/owned/social-media-publishing/scripts/linkedin/cli.py post-image --text-file /abs/path/body.txt --image /abs/path/cover.jpg --dry-run
+python3 ~/.agents/skills-source/owned/social-media-publishing/scripts/linkedin/cli.py post-video --text-file /abs/path/body.txt --video /abs/path/video.mp4 --dry-run
 python3 ~/.agents/skills-source/owned/social-media-publishing/scripts/linkedin/cli.py post-images --text-file /abs/path/body.txt --image /abs/path/slide-1.jpg --image /abs/path/slide-2.jpg --dry-run
 python3 ~/.agents/skills-source/owned/social-media-publishing/scripts/linkedin/cli.py comment --post-urn urn:li:ugcPost:... --text-file /abs/path/comment.txt --dry-run
 python3 ~/.agents/skills-source/owned/social-media-publishing/scripts/linkedin/cli.py --json list-posts --count 5
