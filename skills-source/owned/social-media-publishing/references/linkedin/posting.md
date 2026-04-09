@@ -168,10 +168,12 @@ Operational note:
 - `--video-url` now sends browser-like download headers to reduce false blocks from source hosts
 - if the source host still rejects the download, the CLI reports a source-download error rather than a misleading LinkedIn auth error
 - when in doubt, download the file locally and use `--video`
+- transfer operations use adaptive retries and can increase per-attempt timeout on retry, while keeping the normal base request timeout short
+- LinkedIn processing wait now defaults to an adaptive value based on video size unless you explicitly pass `--video-processing-timeout-seconds`
 
 Useful knobs:
 - `--video-poll-interval-seconds 2`
-- `--video-processing-timeout-seconds 900`
+- `--video-processing-timeout-seconds 900` to override the adaptive default explicitly
 - `--no-wait-for-video` if you explicitly want to skip the readiness wait
 
 ### Dry-run a multi-image post

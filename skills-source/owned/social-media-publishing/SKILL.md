@@ -1,6 +1,6 @@
 ---
 name: social-media-publishing
-description: Multi-channel social publishing workflow plus blog-post publication prep and channel CLIs for Reddit, LinkedIn, and X. Use when Codex needs to publish or distribute a blog post, video, launch, or visual explainer; prepare blog assets; decide between gallery, image, self, link, or native video format; publish the source post before distribution; post to Reddit; publish LinkedIn text/link/image/video posts; or publish X text posts through the channel CLI.
+description: Multi-channel social publishing workflow plus blog-post publication prep and channel CLIs for Reddit, LinkedIn, and X. Use when Codex needs to publish or distribute a blog post, video, launch, or visual explainer; prepare blog assets; decide between gallery, image, self, link, or native video format; publish the source post before distribution; post to Reddit; publish LinkedIn text/link/image/video posts; or publish X text/video posts through the channel CLI.
 ---
 
 # Social Media Publishing
@@ -117,13 +117,17 @@ Only if setup is still missing:
 Current supported flow:
 - runtime/auth inspection via `status`
 - text posts
+- native video posts from a local file or public direct video URL
 - machine-readable JSON output by default, plus optional `--plain` inspection mode
+- stderr-only progress for long-running video uploads via `--progress`
 
 Core commands:
 
 ```bash
 python3 ~/.agents/skills-source/owned/social-media-publishing/scripts/x/cli.py status
 python3 ~/.agents/skills-source/owned/social-media-publishing/scripts/x/cli.py post --text-file /abs/path/body.txt --dry-run
+python3 ~/.agents/skills-source/owned/social-media-publishing/scripts/x/cli.py post-video --text-file /abs/path/body.txt --video /abs/path/video.mp4 --dry-run
+python3 ~/.agents/skills-source/owned/social-media-publishing/scripts/x/cli.py post-video --text-file /abs/path/body.txt --video-url https://example.com/video.mp4 --dry-run
 python3 ~/.agents/skills-source/owned/social-media-publishing/scripts/x/cli.py post --text-file /abs/path/body.txt
 ```
 

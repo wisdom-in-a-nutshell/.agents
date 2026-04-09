@@ -19,7 +19,7 @@ from dataclasses import dataclass
 from datetime import datetime, UTC
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
 SCHEMA_VERSION = "1.0"
 DEFAULT_ENV_PATH = Path.home() / ".secrets/linkedin/env"
@@ -41,6 +41,9 @@ DEFAULT_LINKEDIN_VERSION = "202603"
 DEFAULT_REQUEST_TIMEOUT_SECONDS = 30.0
 DEFAULT_VIDEO_POLL_INTERVAL_SECONDS = 2.0
 DEFAULT_VIDEO_PROCESSING_TIMEOUT_SECONDS = 900.0
+MAX_VIDEO_PROCESSING_TIMEOUT_SECONDS = 2700.0
+DEFAULT_VIDEO_TRANSFER_MAX_ATTEMPTS = 4
+MAX_VIDEO_TRANSFER_REQUEST_TIMEOUT_SECONDS = 120.0
 DEFAULT_VIDEO_SOURCE_USER_AGENT = (
     "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
     "AppleWebKit/537.36 (KHTML, like Gecko) "
@@ -620,7 +623,23 @@ def load_video_path(raw_path: str) -> Path:
     return path
 
 
-def download_video_url_to_tempfile(config: Config, video_url: str) -> tuple[Path, dict[str, Any]]:
+def compute_adaptive_video_processing_timeout_seconds(file_size_bytes: int) -> float:
+    size_mb = file_size_bytes / (1024 * 1024)
+    extra_seconds = max(0.0, size_mb - 100.0) * 2.4
+    return min(MAX_VIDEO_PROCESSING_TIMEOUT_SECONDS, max(DEFAULT_VIDEO_PROCESSING_TIMEOUT_SECONDS, round(DEFAULT_VIDEO_PROCESSING_TIMEOUT_SECONDS + extra_seconds)))
+
+
+def resolve_video_processing_timeout_seconds(explicit_timeout_seconds: float | None, *, file_size_bytes: int) -> tuple[float, str]:
+    if explicit_timeout_seconds is not None:
+        return float(explicit_timeout_seconds), "explicit"
+    return compute_adaptive_video_processing_timeout_seconds(file_size_bytes), "auto"
+
+
+def compute_transfer_attempt_timeout_seconds(config: Config, attempt_index: int) -> float:
+    return min(MAX_VIDEO_TRANSFER_REQUEST_TIMEOUT_SECONDS, config.request_timeout_seconds * (2**attempt_index))
+
+
+def download_video_url_to_tempfile(config: Config, video_url: str, *, progress_callback: Callable[[str], None] | None = None) -> tuple[Path, dict[str, Any]]:
     parsed = urllib.parse.urlparse(video_url)
     if parsed.scheme not in {"http", "https"}:
         raise CliError(
@@ -632,42 +651,64 @@ def download_video_url_to_tempfile(config: Config, video_url: str) -> tuple[Path
     suffix = Path(parsed.path).suffix or ".mp4"
     temp_dir = Path(tempfile.mkdtemp(prefix="linkedin-video-"))
     local_path = temp_dir / f"source{suffix}"
-    try:
-        request = urllib.request.Request(
-            video_url,
-            method="GET",
-            headers={
-                "User-Agent": DEFAULT_VIDEO_SOURCE_USER_AGENT,
-                "Accept": "*/*",
-                "Accept-Language": "en-US,en;q=0.9",
-                "Cache-Control": "no-cache",
-                "Pragma": "no-cache",
-            },
-        )
-        with urllib.request.urlopen(request, timeout=config.request_timeout_seconds) as response:
-            content_type = response.headers.get("Content-Type", "")
-            content_length = response.headers.get("Content-Length")
-            with local_path.open("wb") as handle:
-                shutil.copyfileobj(response, handle)
-    except urllib.error.HTTPError as exc:
-        body = exc.read().decode("utf-8", errors="replace")
-        raise classify_source_download_http_error(video_url, exc.code, body) from exc
-    except TimeoutError as exc:
-        raise CliError(
-            f"Timed out downloading {video_url}.",
-            code="E_TIMEOUT",
-            exit_code=5,
-            retryable=True,
-            hint="Retry with a larger --request-timeout-seconds if the source host is slow.",
-        ) from exc
-    except urllib.error.URLError as exc:
-        raise CliError(
-            f"Failed to download {video_url}: {exc.reason}",
-            code="E_NETWORK",
-            exit_code=4,
-            retryable=True,
-            hint="Check the URL and retry. The source must be publicly reachable from this machine.",
-        ) from exc
+    content_type = ""
+    content_length = None
+    last_error: CliError | None = None
+    for attempt_index in range(DEFAULT_VIDEO_TRANSFER_MAX_ATTEMPTS):
+        timeout_seconds = compute_transfer_attempt_timeout_seconds(config, attempt_index)
+        try:
+            request = urllib.request.Request(
+                video_url,
+                method="GET",
+                headers={
+                    "User-Agent": DEFAULT_VIDEO_SOURCE_USER_AGENT,
+                    "Accept": "*/*",
+                    "Accept-Language": "en-US,en;q=0.9",
+                    "Cache-Control": "no-cache",
+                    "Pragma": "no-cache",
+                },
+            )
+            with urllib.request.urlopen(request, timeout=timeout_seconds) as response:
+                content_type = response.headers.get("Content-Type", "")
+                content_length = response.headers.get("Content-Length")
+                with local_path.open("wb") as handle:
+                    shutil.copyfileobj(response, handle)
+            break
+        except urllib.error.HTTPError as exc:
+            body = exc.read().decode("utf-8", errors="replace")
+            last_error = classify_source_download_http_error(video_url, exc.code, body)
+        except TimeoutError as exc:
+            last_error = CliError(
+                f"Timed out downloading {video_url}.",
+                code="E_TIMEOUT",
+                exit_code=5,
+                retryable=True,
+                hint="Retry with a larger --request-timeout-seconds if the source host is slow.",
+            )
+        except urllib.error.URLError as exc:
+            last_error = CliError(
+                f"Failed to download {video_url}: {exc.reason}",
+                code="E_NETWORK",
+                exit_code=4,
+                retryable=True,
+                hint="Check the URL and retry. The source must be publicly reachable from this machine.",
+            )
+        if last_error is None:
+            continue
+        if local_path.exists():
+            with contextlib.suppress(Exception):
+                local_path.unlink()
+        if not last_error.retryable or attempt_index + 1 >= DEFAULT_VIDEO_TRANSFER_MAX_ATTEMPTS:
+            raise last_error
+        if progress_callback:
+            next_timeout_seconds = compute_transfer_attempt_timeout_seconds(config, attempt_index + 1)
+            progress_callback(
+                f"[linkedin] retrying source video download (attempt {attempt_index + 2}/{DEFAULT_VIDEO_TRANSFER_MAX_ATTEMPTS}, timeout {int(next_timeout_seconds)}s)"
+            )
+        time.sleep(min(2**attempt_index, 8))
+    else:
+        assert last_error is not None
+        raise last_error
     downloaded_path = load_video_path(str(local_path))
     metadata = {
         "source_url": video_url,
@@ -707,42 +748,56 @@ def initialize_video_upload(config: Config, access_token: str, *, owner: str, vi
     }
 
 
-def upload_video_part(config: Config, *, upload_url: str, content: bytes) -> str:
+def upload_video_part(config: Config, *, upload_url: str, content: bytes, progress_callback: Callable[[str], None] | None = None) -> str:
     headers = {
         "Content-Type": "application/octet-stream",
         "Content-Length": str(len(content)),
     }
-    request = urllib.request.Request(upload_url, method="PUT", headers=headers, data=content)
-    try:
-        with urllib.request.urlopen(request, timeout=config.request_timeout_seconds) as response:
-            etag = response.headers.get("etag") or response.headers.get("ETag")
-            if not etag:
-                raise CliError(
-                    "LinkedIn video upload response was missing ETag.",
-                    code="E_API",
-                    exit_code=1,
-                    hint="Retry the upload. If this persists, LinkedIn may have changed the upload contract.",
-                )
-            return str(etag)
-    except urllib.error.HTTPError as exc:
-        body = exc.read().decode("utf-8", errors="replace")
-        raise classify_http_error(upload_url, exc.code, body) from exc
-    except TimeoutError as exc:
-        raise CliError(
-            "Timed out while uploading the LinkedIn video.",
-            code="E_TIMEOUT",
-            exit_code=5,
-            retryable=True,
-            hint="Retry with a larger --request-timeout-seconds if the upload is slow.",
-        ) from exc
-    except urllib.error.URLError as exc:
-        raise CliError(
-            f"Video upload failed: {exc.reason}",
-            code="E_NETWORK",
-            exit_code=4,
-            retryable=True,
-            hint="Check network connectivity and retry.",
-        ) from exc
+    last_error: CliError | None = None
+    for attempt_index in range(DEFAULT_VIDEO_TRANSFER_MAX_ATTEMPTS):
+        timeout_seconds = compute_transfer_attempt_timeout_seconds(config, attempt_index)
+        request = urllib.request.Request(upload_url, method="PUT", headers=headers, data=content)
+        try:
+            with urllib.request.urlopen(request, timeout=timeout_seconds) as response:
+                etag = response.headers.get("etag") or response.headers.get("ETag")
+                if not etag:
+                    raise CliError(
+                        "LinkedIn video upload response was missing ETag.",
+                        code="E_API",
+                        exit_code=1,
+                        hint="Retry the upload. If this persists, LinkedIn may have changed the upload contract.",
+                    )
+                return str(etag)
+        except urllib.error.HTTPError as exc:
+            body = exc.read().decode("utf-8", errors="replace")
+            last_error = classify_http_error(upload_url, exc.code, body)
+        except TimeoutError as exc:
+            last_error = CliError(
+                "Timed out while uploading the LinkedIn video.",
+                code="E_TIMEOUT",
+                exit_code=5,
+                retryable=True,
+                hint="Retry with a larger --request-timeout-seconds if the upload is slow.",
+            )
+        except urllib.error.URLError as exc:
+            last_error = CliError(
+                f"Video upload failed: {exc.reason}",
+                code="E_NETWORK",
+                exit_code=4,
+                retryable=True,
+                hint="Check network connectivity and retry.",
+            )
+        if last_error is None:
+            continue
+        if not last_error.retryable or attempt_index + 1 >= DEFAULT_VIDEO_TRANSFER_MAX_ATTEMPTS:
+            raise last_error
+        if progress_callback:
+            progress_callback(
+                f"[linkedin] retrying upload part after {last_error.code} (attempt {attempt_index + 2}/{DEFAULT_VIDEO_TRANSFER_MAX_ATTEMPTS}, timeout {int(compute_transfer_attempt_timeout_seconds(config, attempt_index + 1))}s)"
+            )
+        time.sleep(min(2**attempt_index, 8))
+    assert last_error is not None
+    raise last_error
 
 
 def finalize_video_upload(config: Config, access_token: str, *, video_urn: str, upload_token: str, uploaded_part_ids: list[str], version: str) -> dict[str, Any]:
@@ -1255,6 +1310,10 @@ def publish_video(
 ) -> dict[str, Any]:
     author_urn = build_author_urn(tokens)
     resolved_title = (title or video_path.stem.replace("-", " ").replace("_", " ")).strip() or None
+    processing_timeout_seconds, processing_timeout_mode = resolve_video_processing_timeout_seconds(
+        args.video_processing_timeout_seconds,
+        file_size_bytes=video_path.stat().st_size,
+    )
     if dry_run:
         payload = build_video_post_payload(
             author=author_urn,
@@ -1270,7 +1329,10 @@ def publish_video(
                 "file_size_bytes": video_path.stat().st_size,
                 "wait_for_processing": not args.no_wait_for_video,
                 "poll_interval_seconds": args.video_poll_interval_seconds,
-                "processing_timeout_seconds": args.video_processing_timeout_seconds,
+                "processing_timeout_seconds": processing_timeout_seconds,
+                "processing_timeout_mode": processing_timeout_mode,
+                "request_timeout_seconds": config.request_timeout_seconds,
+                "transfer_max_attempts": DEFAULT_VIDEO_TRANSFER_MAX_ATTEMPTS,
             },
             "payload": payload,
         }
@@ -1305,7 +1367,14 @@ def publish_video(
                 args,
                 f"[linkedin] uploading video part {index}/{len(instructions)} ({first}-{last})",
             )
-            uploaded_part_ids.append(upload_video_part(config, upload_url=str(upload_url), content=content))
+            uploaded_part_ids.append(
+                upload_video_part(
+                    config,
+                    upload_url=str(upload_url),
+                    content=content,
+                    progress_callback=lambda message: emit_progress(args, message),
+                )
+            )
 
     emit_progress(args, f"[linkedin] finalizing upload for {video_path.name}")
     finalize_response = finalize_video_upload(
@@ -1323,7 +1392,7 @@ def publish_video(
         emit_progress(args, "[linkedin] skipping video readiness wait because --no-wait-for-video was set")
         video_status = "SKIPPED_WAIT"
     else:
-        deadline = time.time() + args.video_processing_timeout_seconds
+        deadline = time.time() + processing_timeout_seconds
         while True:
             video_data = get_video(
                 config,
@@ -1375,6 +1444,8 @@ def publish_video(
         "uploaded_video": initialized["video"],
         "video_status": video_status,
         "video_title": resolved_title,
+        "processing_timeout_seconds": processing_timeout_seconds,
+        "processing_timeout_mode": processing_timeout_mode,
         "uploaded_parts": len(uploaded_part_ids),
         "finalize_response": finalize_response,
         "video": video_data,
@@ -1406,7 +1477,7 @@ def command_post_video(args: argparse.Namespace) -> dict[str, Any]:
             code="E_INVALID_INPUT",
             exit_code=2,
         )
-    if args.video_processing_timeout_seconds <= 0:
+    if args.video_processing_timeout_seconds is not None and args.video_processing_timeout_seconds <= 0:
         raise CliError(
             "--video-processing-timeout-seconds must be greater than 0.",
             code="E_INVALID_INPUT",
@@ -1431,6 +1502,9 @@ def command_post_video(args: argparse.Namespace) -> dict[str, Any]:
                     "wait_for_processing": not args.no_wait_for_video,
                     "poll_interval_seconds": args.video_poll_interval_seconds,
                     "processing_timeout_seconds": args.video_processing_timeout_seconds,
+                    "processing_timeout_mode": "explicit" if args.video_processing_timeout_seconds is not None else "auto_after_download",
+                    "request_timeout_seconds": config.request_timeout_seconds,
+                    "transfer_max_attempts": DEFAULT_VIDEO_TRANSFER_MAX_ATTEMPTS,
                 },
                 "payload": {
                     "author": build_author_urn(tokens),
@@ -1448,7 +1522,11 @@ def command_post_video(args: argparse.Namespace) -> dict[str, Any]:
                 },
             }
         emit_progress(args, f"[linkedin] downloading video from {args.video_url}")
-        video_path, download_meta = download_video_url_to_tempfile(config, args.video_url)
+        video_path, download_meta = download_video_url_to_tempfile(
+            config,
+            args.video_url,
+            progress_callback=lambda message: emit_progress(args, message),
+        )
         try:
             result = publish_video(
                 args,
@@ -1655,8 +1733,8 @@ def build_parser() -> argparse.ArgumentParser:
     post_video.add_argument(
         "--video-processing-timeout-seconds",
         type=float,
-        default=DEFAULT_VIDEO_PROCESSING_TIMEOUT_SECONDS,
-        help="Total time to wait for LinkedIn to process the uploaded video before failing.",
+        default=None,
+        help="Total time to wait for LinkedIn to process the uploaded video before failing. Defaults to an adaptive value based on video size.",
     )
     post_video.add_argument(
         "--no-wait-for-video",
