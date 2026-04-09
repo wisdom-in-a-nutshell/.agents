@@ -28,6 +28,9 @@ DEFAULT_REQUEST_TIMEOUT_SECONDS = 30.0
 API_BASE = "https://api.x.com"
 DEFAULT_USER_FIELDS = "created_at,description,verified,public_metrics,profile_image_url"
 MEDIA_UPLOAD_PATH = "/2/media/upload"
+MEDIA_UPLOAD_INITIALIZE_PATH = "/2/media/upload/initialize"
+MEDIA_UPLOAD_APPEND_PATH_TEMPLATE = "/2/media/upload/{media_id}/append"
+MEDIA_UPLOAD_FINALIZE_PATH_TEMPLATE = "/2/media/upload/{media_id}/finalize"
 DEFAULT_VIDEO_POLL_INTERVAL_SECONDS = 2.0
 DEFAULT_VIDEO_PROCESSING_TIMEOUT_SECONDS = 900.0
 MAX_VIDEO_PROCESSING_TIMEOUT_SECONDS = 2700.0
@@ -603,22 +606,25 @@ def x_multipart_request(config: Config, method: str, path: str, *, query_params:
 
 
 def initialize_x_video_upload(config: Config, *, media_type: str, total_bytes: int) -> dict[str, Any]:
-    response = x_multipart_request(
+    # v2 chunked upload: POST /2/media/upload/initialize with a JSON body.
+    # Replaces the deprecated /2/media/upload?command=INIT form shape, which
+    # the API now rejects because /2/media/upload only accepts image/subtitle
+    # categories. See https://docs.x.com/x-api/media and xdevplatform/xdk-*.
+    response = x_json_request(
         config,
         "POST",
-        MEDIA_UPLOAD_PATH,
-        fields={
-            "command": "INIT",
+        MEDIA_UPLOAD_INITIALIZE_PATH,
+        json_body={
             "media_type": media_type,
-            "total_bytes": total_bytes,
             "media_category": "tweet_video",
+            "total_bytes": total_bytes,
         },
     )
     data = response.get("data") or {}
     media_id = data.get("id")
     if not media_id:
         raise CliError(
-            "X media INIT response was missing media id.",
+            "X media initialize response was missing media id.",
             code="E_API",
             exit_code=1,
             details=response,
@@ -626,7 +632,14 @@ def initialize_x_video_upload(config: Config, *, media_type: str, total_bytes: i
     return data
 
 
-def append_x_video_chunk(config: Config, *, media_id: str, segment_index: int, chunk: bytes, progress_callback: Callable[[str], None] | None = None) -> None:
+def append_x_video_chunk(config: Config, *, media_id: str, segment_index: int, chunk: bytes, chunk_media_type: str, progress_callback: Callable[[str], None] | None = None) -> None:
+    # v2 chunked upload: POST /2/media/upload/{media_id}/append with a
+    # multipart/form-data body that has `segment_index` as a text form field
+    # and `media` as a binary file part. The old /2/media/upload?command=APPEND
+    # shape is no longer accepted.
+    append_path = MEDIA_UPLOAD_APPEND_PATH_TEMPLATE.format(
+        media_id=urllib.parse.quote(media_id, safe="")
+    )
     last_error: CliError | None = None
     for attempt_index in range(DEFAULT_VIDEO_TRANSFER_MAX_ATTEMPTS):
         timeout_seconds = compute_transfer_attempt_timeout_seconds(config, attempt_index)
@@ -634,13 +647,9 @@ def append_x_video_chunk(config: Config, *, media_id: str, segment_index: int, c
             x_multipart_request(
                 config,
                 "POST",
-                MEDIA_UPLOAD_PATH,
-                fields={
-                    "command": "APPEND",
-                    "media_id": media_id,
-                    "segment_index": segment_index,
-                },
-                files=[("media", f"segment-{segment_index}.bin", chunk, "application/octet-stream")],
+                append_path,
+                fields={"segment_index": segment_index},
+                files=[("media", f"chunk-{segment_index}.bin", chunk, chunk_media_type)],
                 timeout_seconds=timeout_seconds,
             )
             return
@@ -659,12 +668,19 @@ def append_x_video_chunk(config: Config, *, media_id: str, segment_index: int, c
 
 
 def finalize_x_video_upload(config: Config, *, media_id: str) -> dict[str, Any]:
-    response = x_multipart_request(
+    # v2 chunked upload: POST /2/media/upload/{media_id}/finalize with no body.
+    # Replaces the deprecated /2/media/upload?command=FINALIZE form shape.
+    finalize_path = MEDIA_UPLOAD_FINALIZE_PATH_TEMPLATE.format(
+        media_id=urllib.parse.quote(media_id, safe="")
+    )
+    _, _, response_body = x_request(
         config,
         "POST",
-        MEDIA_UPLOAD_PATH,
-        fields={"command": "FINALIZE", "media_id": media_id},
+        finalize_path,
     )
+    if not response_body:
+        return {}
+    response = json.loads(response_body.decode("utf-8"))
     return response.get("data") or {}
 
 
@@ -809,6 +825,7 @@ def publish_x_video(
                 media_id=media_id,
                 segment_index=segment_index,
                 chunk=chunk,
+                chunk_media_type=media_type,
                 progress_callback=lambda message: emit_progress(args, message),
             )
             uploaded_segments += 1
