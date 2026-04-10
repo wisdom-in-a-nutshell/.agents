@@ -83,6 +83,7 @@ Use [Codex Control Plane Ownership](/Users/dobby/.agents/docs/references/codex-c
   - `initial-command = direct:$HOME/.agents/codex/scripts/ghostty-codex-then-shell.sh`
 - `~/.codex/config.toml` uses the local machine notify path:
   - `notify = ["python3", "$HOME/.agents/codex/scripts/notify.py"]`
+  - successful notify runs clear stale repo-local auto-fix state under `<repo>/.codex/auto_fix/` so old `last_failure.json` reports do not keep healthy repos looking failed
 - `~/.codex/config.toml` and Xcode Codex config contain exact trusted repo entries for local repos such as `focus`
 - `~/.codex/config.toml` contains no Git conflict markers
 - `~/.codex/vendor_imports/skills` is a valid Git checkout:
