@@ -414,6 +414,26 @@ def autofix_state_path(cwd: str) -> Path | None:
     return base / "last_attempt.json"
 
 
+def autofix_failure_report_path(cwd: str) -> Path | None:
+    """Return path to the last auto-fix failure report."""
+    base = auto_fix_dir(cwd)
+    if not base:
+        return None
+    return base / "last_failure.json"
+
+
+def clear_autofix_state(cwd: str) -> None:
+    """Remove stale auto-fix state after a successful notify run."""
+    for path_getter in (autofix_state_path, autofix_failure_report_path):
+        path = path_getter(cwd)
+        if not path or not path.exists():
+            continue
+        try:
+            path.unlink()
+        except Exception as exc:
+            log(f"failed to clear auto-fix state in {cwd}: {path} ({exc})")
+
+
 def failure_fingerprint(reason: str, command: list[str], result: subprocess.CompletedProcess) -> str:
     # Stable fingerprint to suppress repeating the exact same failure too quickly.
     data = {
@@ -459,11 +479,11 @@ def write_autofix_state(cwd: str, fingerprint: str, reason: str) -> None:
 
 def write_failure_report(cwd: str, command: list[str], result: subprocess.CompletedProcess) -> Path | None:
     # Save context for the auto-fix agent to read.
-    base = auto_fix_dir(cwd)
-    if not base:
+    report_path = autofix_failure_report_path(cwd)
+    if not report_path:
         return None
+    base = report_path.parent
     base.mkdir(parents=True, exist_ok=True)
-    report_path = base / "last_failure.json"
     status = run(["git", "status", "--porcelain"], cwd, timeout=GIT_STATUS_TIMEOUT_SEC)
     diff = run(["git", "diff"], cwd, timeout=GIT_DIFF_TIMEOUT_SEC)
     diff_staged = run(["git", "diff", "--staged"], cwd, timeout=GIT_DIFF_TIMEOUT_SEC)
@@ -812,6 +832,8 @@ def process_repo(cwd: str, payload: dict) -> None:
             notify_git_failure(cwd, "git push", push_cmd, push)
             trigger_autofix(cwd, "git push", push_cmd, push)
             return
+
+        clear_autofix_state(cwd)
     except subprocess.TimeoutExpired as exc:
         cmd = " ".join(exc.cmd) if isinstance(exc.cmd, (list, tuple)) else str(exc.cmd)
         timeout = exc.timeout if exc.timeout is not None else "unknown"
