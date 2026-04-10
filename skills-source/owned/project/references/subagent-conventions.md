@@ -35,10 +35,35 @@ Keep the work local when:
 - coordination cost is likely higher than the speedup
 - the delegated ownership, validation path, or handoff expectations cannot be made clear with low overhead
 
+## Delegation Decision Ladder
+
+Use this order by default:
+
+1. Keep the work local long enough to freeze the shared boundary.
+2. Delegate read-heavy analysis first:
+   - local file or runtime exploration
+   - external verification
+   - log triage
+   - isolated test investigation
+3. Delegate write-heavy implementation only after:
+   - file ownership is clear
+   - success criteria are concrete
+   - validation is named
+   - the parent thread is not blocked on a moving contract
+4. Collapse back to the parent thread when:
+   - integration across delegated slices becomes the main task
+   - the parent thread is mostly repairing tests or docs after worker output
+   - runtime smoke, device verification, or rollout validation becomes the main risk
+   - repeated redirects mean the delegated boundary was not clean enough
+
+This keeps delegation as a force multiplier for bounded work instead of turning it into orchestration overhead.
+
 ## Project Rules
 
 - `tasks.md` is the canonical project tracker and remains single-writer.
 - The parent thread owns `Current Batch`, milestone state, backlog state, blockers, and closeout.
+- The parent thread owns shared-boundary decisions by default.
+- The parent thread should usually own final integration, docs sync, validation orchestration, and runtime or device smokes.
 - The parent thread should freeze shared contracts before sending multiple workers to implement against them.
 - Subagents may read `tasks.md` for context.
 - Subagents may write topic-based notes or artifacts under `docs/projects/<project>/resources/` when durable working memory is useful.
@@ -79,6 +104,10 @@ Keep `resources/` simple by default.
 
 ## Recommended Split Patterns
 
+- read-heavy first, write-heavy second
+  - use when the code path or contract is still being mapped
+- analysis workers, then parent integration
+  - use when the useful parallelism is mainly discovery rather than final code merge
 - `explorer` + `external_researcher`
   - use when you need local code understanding plus outside verification
 - multiple `explorer` runs
@@ -93,7 +122,9 @@ Keep `resources/` simple by default.
 - letting multiple agents edit `tasks.md`
 - sending multiple workers against a moving shared contract or interface
 - splitting work that touches the same contract or file cluster without clear ownership
+- delegating implementation before the parent thread has named the acceptance rule
 - delegating tiny tasks that the parent thread could finish immediately
+- keeping delegated workers alive once the main task is really integration, docs repair, validation, or smoke testing
 - keeping weak or repeatedly redirected delegated work alive when the parent thread should take it back
 - filling `Current Batch` with backlog items instead of active work
 - turning `resources/` into an unstructured dump of raw output

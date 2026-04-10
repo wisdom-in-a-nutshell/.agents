@@ -42,6 +42,11 @@ Use one project tracker file as the durable source of truth for long-running wor
    - Treat `Current Batch` as the live execution board and primary resume point. Keep it bounded and concrete instead of growing it into the full backlog.
    - Each `Current Batch` row should represent one active parent-owned or delegated work item.
    - Keep shared-file or shared-contract work sequential.
+   - Default delegation ladder:
+     - start with bounded read-heavy delegation such as local exploration, external verification, log triage, or isolated test analysis
+     - freeze any moving shared contract or acceptance rule in the parent thread
+     - only then delegate isolated implementation slices with disjoint ownership
+     - when integration, tracker repair, validation orchestration, or end-to-end smoke work becomes dominant, pull the work back into the parent thread
    - Before delegating implementation across multiple agents, first freeze any shared contract, interface, schema, migration shape, rollout order, or acceptance rule in the parent thread. Do not send multiple workers to implement against a moving shared boundary.
    - If the current batch contains independent side work, multiple independent questions, or clearly separable implementation slices, you are encouraged to use subagents when that is likely faster or cleaner than staying single-threaded.
    - Let the model decide whether delegation helps; do not force subagents when local execution is faster or when the work is tightly coupled.
@@ -52,6 +57,7 @@ Use one project tracker file as the durable source of truth for long-running wor
    - Before spawning a delegated work item, add or update its row in `Current Batch` so the tracker reflects planned ownership and any `resources/` file path.
    - Treat `tasks.md` as the durable batch checkpoint: note what the parent thread is doing, what can be delegated, and what durable results need to be written into the tracker before the next batch.
    - Keep one orchestrator responsible for the tracker and final synthesis.
+   - Read `references/subagent-conventions.md` when delegation is likely, when the current batch needs to be split, or when the parent thread needs to decide whether to collapse delegated work back local.
 6. **Execute**
    - Implement the next milestone or task batch directly.
    - Run validation from `Validation / Test Plan` or milestone-specific commands at logical checkpoints.
@@ -104,6 +110,7 @@ Use one project tracker file as the durable source of truth for long-running wor
 - When a project is archived, prefer moving it into a dedicated archive path rather than only marking it archived in place, unless repo guidance explicitly prefers in-place archives.
 - Do not introduce a `ready-to-archive` holding state by default.
 - If subagents appear likely to improve speed or context hygiene, the top-level run is encouraged to use them for bounded, independent work.
+- Bias the first delegated pass toward analysis, discovery, external verification, or isolated tests; treat worker-based implementation as a second step after the parent thread freezes the shared boundary.
 - Freeze moving shared boundaries in the parent thread before delegating implementation across multiple agents.
 - Subagents may read `tasks.md` for context, but the current top-level run remains the only writer.
 - Do not let multiple agents edit `tasks.md` concurrently; treat it like a small coordination database that the parent thread updates at checkpoints.
@@ -112,6 +119,7 @@ Use one project tracker file as the durable source of truth for long-running wor
 - Keep `resources/` simple by default. Use topic-based filenames, not agent-based or batch-based names.
 - The current top-level run is the orchestrator; delegated agents return summaries, evidence, and next actions, and the parent thread records the durable outcome in `tasks.md`.
 - Favor clear delegation over verbose delegation: worker expectations may be stated directly or satisfied by pointing to the tracker and repo-local guidance that already defines them.
+- When the run becomes integration-heavy, validation-heavy, or device/runtime-smoke-heavy, prefer collapsing back to the parent thread instead of keeping delegated implementation alive out of habit.
 
 ## Closeout confidence test
 
@@ -126,7 +134,7 @@ Use one project tracker file as the durable source of truth for long-running wor
 
 - Use `references/tasks-template.md` when creating or normalizing `tasks.md`.
 - Use `references/learnings-template.md` when bootstrapping a project-specific `docs/projects/<project>/learnings/README.md` file.
-- Use `references/subagent-conventions.md` for the current role split, project-specific delegation rules, and subagent best practices in this control plane.
+- Use `references/subagent-conventions.md` for the current role split, a delegation decision ladder, parent-owned defaults, split patterns, and anti-patterns. Keep detailed subagent policy there instead of bloating `SKILL.md`.
 - The template defines the standard single-file long-horizon structure for goals, scope, milestones, validation, decisions, blockers, progress, the current batch, and the remaining backlog.
 - Create `docs/projects/<project>/resources/` when the project produces reusable artifacts that help execution or verification, or when delegated work benefits from durable notes, logs, or outputs worth keeping.
 - Create `docs/projects/<project>/learnings/` when the project is long-running enough to justify a durable retrospective or process-improvement log.
