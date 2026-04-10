@@ -694,12 +694,14 @@ def get_x_media_upload_status(config: Config, *, media_id: str) -> dict[str, Any
     return response.get("data") or {}
 
 
-def build_x_post_payload(*, text: str, media_ids: list[str] | None = None) -> dict[str, Any]:
+def build_x_post_payload(*, text: str, media_ids: list[str] | None = None, reply_to: str | None = None) -> dict[str, Any]:
     payload: dict[str, Any] = {}
     if text:
         payload["text"] = text
     if media_ids:
         payload["media"] = {"media_ids": media_ids}
+    if reply_to:
+        payload["reply"] = {"in_reply_to_tweet_id": reply_to}
     return payload
 
 def command_status(args: argparse.Namespace) -> dict[str, Any]:
@@ -764,7 +766,8 @@ def command_status(args: argparse.Namespace) -> dict[str, Any]:
 def command_post(args: argparse.Namespace) -> dict[str, Any]:
     config = build_config(args)
     require_config(config)
-    payload = {"text": load_post_text(args)}
+    reply_to = getattr(args, "reply_to", None)
+    payload = build_x_post_payload(text=load_post_text(args), reply_to=reply_to)
     if args.dry_run:
         return {"dry_run": True, "payload": payload}
     response = x_json_request(config, "POST", "/2/tweets", json_body=payload)
@@ -972,6 +975,7 @@ def build_parser() -> argparse.ArgumentParser:
     post = subparsers.add_parser("post", help="Publish a text post to X.", parents=[common])
     post.add_argument("--text", help="Inline post text.")
     post.add_argument("--text-file", help="Path to a file containing post text.")
+    post.add_argument("--reply-to", help="Tweet ID to reply to. Creates a threaded reply instead of a standalone post.")
     post.add_argument("--dry-run", action="store_true", help="Print the request payload without publishing.")
     post.set_defaults(func=command_post, command_path="x post")
 
