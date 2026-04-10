@@ -9,6 +9,24 @@ metadata:
 
 Use this skills whenever you are dealing with Remotion code to obtain the domain-specific knowledge.
 
+## New project setup
+
+When in an empty folder or workspace with no existing Remotion project, scaffold one using:
+
+```bash
+npx create-video@latest --yes --blank --no-tailwind my-video
+```
+
+Replace `my-video` with a suitable project name.
+
+## Starting preview
+
+Stsrt the Remotion Studio to preview a video:
+
+```bash
+npx remotion studio
+```
+
 ## Optional: one-frame render check
 
 You can render a single frame with the CLI to sanity-check layout, colors, or timing.  
