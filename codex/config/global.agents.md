@@ -12,6 +12,7 @@ This file is machine-wide baseline guidance. Keep it generic and avoid portfolio
 - Keep instructions concise, operational, and durable.
 - Keep machine-wide guidance generic; let each repo define its own local docs contract.
 - Treat repo-local `AGENTS.md` files and repo docs as the source of truth for repo structure and workflow.
+- Unless the user or repo-local guidance explicitly asks for backward compatibility, prefer the clean target structure and migrate directly rather than adding dual reads, compatibility shims, or legacy-schema support.
 - When working inside a repo, put temporary artifacts under that repo's `tmp/` directory unless the repo defines a different location. Do not scatter scratch files across the repo or home directory.
 - Remove disposable temporary artifacts when finished. Keep only durable outputs in documented repo locations.
 - Do not assume nested `AGENTS.md` files load dynamically as you navigate later in a session; they apply when Codex starts in that subtree.
