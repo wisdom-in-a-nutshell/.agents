@@ -84,6 +84,8 @@ Use [Codex Control Plane Ownership](/Users/dobby/.agents/docs/references/codex-c
 - `~/.codex/config.toml` uses the local machine notify path:
   - `notify = ["python3", "$HOME/.agents/codex/scripts/notify.py"]`
   - successful notify runs clear stale repo-local auto-fix state under `<repo>/.codex/auto_fix/` so old `last_failure.json` reports do not keep healthy repos looking failed
+  - tracked branches use the normal `commit -> pull --rebase -> push` path
+  - brand-new branches without upstream tracking use an initial `git push -u <remote> HEAD`, so notify can publish the branch before future tracked-branch pulls
 - `~/.codex/config.toml` and Xcode Codex config contain exact trusted repo entries for local repos such as `focus`
 - `~/.codex/config.toml` contains no Git conflict markers
 - `~/.codex/vendor_imports/skills` is a valid Git checkout:

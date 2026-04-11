@@ -114,7 +114,8 @@ flowchart TD
 ```mermaid
 flowchart TD
     A[Codex turn completes] --> B[notify.py]
-    B --> C[git add / commit / pull --rebase / push]
+    B --> C[git add / commit / tracked branch: pull --rebase + push]
+    B --> D1[new branch without upstream: push -u]
     B --> D[auto-fix guard]
     D --> E[codex exec -p autofix]
 ```
@@ -123,6 +124,8 @@ flowchart TD
 
 - [`notify.py`](/Users/dobby/.agents/codex/scripts/notify.py)
   - runs after a Codex turn and automates the git loop
+  - for tracked branches, it commits then runs `git pull --rebase` followed by push
+  - for brand-new local branches without upstream tracking, it skips the ambiguous pull and uses `git push -u <remote> HEAD` to establish upstream automatically
 - [`notify-wrapper.sh`](/Users/dobby/.agents/codex/scripts/notify-wrapper.sh)
   - thin shell entrypoint that logs and calls `notify.py`
 

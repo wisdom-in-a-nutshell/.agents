@@ -569,6 +569,16 @@ def resolve_push_remote(cwd: str) -> str | None:
     return None
 
 
+def has_tracking_upstream(cwd: str) -> bool:
+    """Return True when the current branch has an upstream configured."""
+    result = run(
+        ["git", "rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{upstream}"],
+        cwd,
+        timeout=GIT_STATUS_TIMEOUT_SEC,
+    )
+    return result.returncode == 0 and bool(result.stdout.strip())
+
+
 def commit_with_retry(
     cwd: str,
     message: str,
@@ -818,14 +828,18 @@ def process_repo(cwd: str, payload: dict) -> None:
             log(f"skip: cannot resolve push remote in {cwd}")
             return
 
-        pull_cmd = ["git", "pull", "--rebase", remote]
-        pull = run(pull_cmd, cwd, timeout=GIT_PULL_TIMEOUT_SEC)
-        if pull.returncode != 0:
-            log(f"git pull --rebase failed in {cwd}: {pull.stderr.strip()}")
-            notify_git_failure(cwd, "git pull --rebase", pull_cmd, pull)
-            return
+        if has_tracking_upstream(cwd):
+            pull_cmd = ["git", "pull", "--rebase"]
+            pull = run(pull_cmd, cwd, timeout=GIT_PULL_TIMEOUT_SEC)
+            if pull.returncode != 0:
+                log(f"git pull --rebase failed in {cwd}: {pull.stderr.strip()}")
+                notify_git_failure(cwd, "git pull --rebase", pull_cmd, pull)
+                return
+            push_cmd = ["git", "push", remote, "HEAD"]
+        else:
+            log(f"no upstream configured in {cwd}; using initial push with -u")
+            push_cmd = ["git", "push", "-u", remote, "HEAD"]
 
-        push_cmd = ["git", "push", remote, "HEAD"]
         push = run(push_cmd, cwd, timeout=GIT_PUSH_TIMEOUT_SEC)
         if push.returncode != 0:
             log(f"git push failed in {cwd}: {push.stderr.strip()}")
