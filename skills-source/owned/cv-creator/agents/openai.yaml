@@ -1,0 +1,4 @@
+interface:
+  display_name: "CV Creator"
+  short_description: "Create, tailor, compile, and review repo-local LaTeX CVs."
+  default_prompt: "Set up or update the repo-local career/CV structure, tailor the CV for a target role if needed, compile the LaTeX source, and review the rendered output for formatting issues."
