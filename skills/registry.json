@@ -418,6 +418,16 @@
       ],
       "source_path": "skills-source/external/remotion",
       "upstream_ref": "remotion-dev/remotion:packages/skills/skills/remotion@main"
+    },
+    {
+      "skill": "web-typography",
+      "origin": "external",
+      "scope": "repo",
+      "repos": [
+        "blog-personal"
+      ],
+      "source_path": "skills-source/external/web-typography",
+      "upstream_ref": "wondelai/skills:web-typography@main"
     }
   ],
   "unmanaged_repo_local_skills": [

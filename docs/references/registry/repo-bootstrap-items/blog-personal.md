@@ -2,7 +2,7 @@
 repo_name: "blog-personal"
 path: "~/GitHub/blog-personal"
 mcp_count: 1
-skill_count: 18
+skill_count: 19
 repo_local_skill_count: 1
 global_agent_count: 1
 custom_agent_count: 1
@@ -38,6 +38,7 @@ repo_skills:
   - "paper-design"
   - "vercel-react-best-practices"
   - "web-design-guidelines"
+  - "web-typography"
 repo_local_skills:
   - "blog-posting"
 skills:
@@ -59,6 +60,7 @@ skills:
   - "skill-creator"
   - "vercel-react-best-practices"
   - "web-design-guidelines"
+  - "web-typography"
 ---
 
 Generated from `codex/config/repo-bootstrap.json`, `skills/registry.json`, and `agents/registry.json`. Do not edit manually.
