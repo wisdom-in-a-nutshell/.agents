@@ -5,6 +5,7 @@ Generic CV build/review helper for repo-local LaTeX career materials.
 
 import argparse
 import json
+import re
 import shutil
 import subprocess
 import sys
@@ -14,8 +15,20 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 SCHEMA_VERSION = "1.0"
-TOOL_VERSION = "0.1.0"
+TOOL_VERSION = "0.1.2"
 REVIEW_TMP_ROOT = Path("/tmp/cv-review")
+COMPANY_SLUG_RE = re.compile(r"^[A-Za-z0-9._-]+$")
+JOB_DESCRIPTION_PLACEHOLDER = """# Job Description
+
+- **Role:** 
+- **Company:** 
+- **Source:** 
+- **Captured:** 
+
+## Snapshot
+
+_Paste the exact job description used for this tailored packet here._
+"""
 
 
 class CLIUsageError(Exception):
@@ -90,6 +103,10 @@ def find_repo_root(start: Path) -> Path | None:
     return None
 
 
+def validate_company_slug(company: str) -> bool:
+    return bool(COMPANY_SLUG_RE.fullmatch(company))
+
+
 def source_for(repo_root: Path, kind: str, company: str | None) -> Path:
     latex_root = repo_root / "reference" / "career" / "cv" / "latex"
     if company:
@@ -97,15 +114,103 @@ def source_for(repo_root: Path, kind: str, company: str | None) -> Path:
     return latex_root / "base" / f"{kind}.tex"
 
 
+def job_description_for(repo_root: Path, company: str | None) -> Path | None:
+    if not company:
+        return None
+    latex_root = repo_root / "reference" / "career" / "cv" / "latex"
+    return latex_root / "tailored" / company / "job-description.md"
+
+
 def review_dir_for(company: str | None, kind: str) -> Path:
     label = company or "base"
     return REVIEW_TMP_ROOT / label / kind
+
+
+def run_init(repo_root: Path, company: str | None, plain: bool) -> int:
+    t0 = time.monotonic()
+    command = "cv.init"
+
+    if not company:
+        err = {
+            "code": "E_USAGE",
+            "message": "Missing required --company for init.",
+            "retryable": False,
+            "hint": "Run `cv.py init --company <slug>` to initialize a tailored packet.",
+        }
+        emit(result(command, "error", error=err, duration_ms=(time.monotonic() - t0) * 1000), plain)
+        return 2
+
+    base_resume = source_for(repo_root, "resume", None)
+    base_cover_letter = source_for(repo_root, "cover-letter", None)
+    tailored_dir = source_for(repo_root, "resume", company).parent
+    resume_target = source_for(repo_root, "resume", company)
+    cover_letter_target = source_for(repo_root, "cover-letter", company)
+    job_description = job_description_for(repo_root, company)
+
+    if not base_resume.exists():
+        err = {
+            "code": "E_FILE_NOT_FOUND",
+            "message": f"Base resume source not found: {base_resume}",
+            "retryable": False,
+            "hint": "Create `reference/career/cv/latex/base/resume.tex` before initializing a tailored packet.",
+        }
+        emit(result(command, "error", error=err, duration_ms=(time.monotonic() - t0) * 1000), plain)
+        return 2
+
+    directory_created = False
+    if not tailored_dir.exists():
+        tailored_dir.mkdir(parents=True, exist_ok=True)
+        directory_created = True
+
+    created = []
+    skipped = []
+    missing_optional = []
+
+    if resume_target.exists():
+        skipped.append(str(resume_target))
+    else:
+        shutil.copy2(base_resume, resume_target)
+        created.append(str(resume_target))
+
+    if base_cover_letter.exists():
+        if cover_letter_target.exists():
+            skipped.append(str(cover_letter_target))
+        else:
+            shutil.copy2(base_cover_letter, cover_letter_target)
+            created.append(str(cover_letter_target))
+    else:
+        missing_optional.append(str(base_cover_letter))
+
+    if job_description.exists():
+        skipped.append(str(job_description))
+    else:
+        job_description.write_text(JOB_DESCRIPTION_PLACEHOLDER, encoding="utf-8")
+        created.append(str(job_description))
+
+    action = "Initialized tailored packet"
+    if not created and skipped:
+        action = "Tailored packet already initialized"
+
+    data = {
+        "message": f"{action} → {tailored_dir}",
+        "company": company,
+        "directory": str(tailored_dir),
+        "directory_created": directory_created,
+        "created": created,
+        "skipped": skipped,
+        "missing_optional": missing_optional,
+        "job_description": str(job_description),
+        "job_description_exists": job_description.exists(),
+    }
+    emit(result(command, "ok", data=data, duration_ms=(time.monotonic() - t0) * 1000), plain)
+    return 0
 
 
 def run_build(repo_root: Path, kind: str, company: str | None, plain: bool) -> int:
     t0 = time.monotonic()
     command = "cv.build"
     source = source_for(repo_root, kind, company)
+    job_description = job_description_for(repo_root, company)
 
     if not source.exists():
         err = {
@@ -150,6 +255,9 @@ def run_build(repo_root: Path, kind: str, company: str | None, plain: bool) -> i
         "source": str(source),
         "pdf": str(pdf),
     }
+    if job_description:
+        data["job_description"] = str(job_description)
+        data["job_description_exists"] = job_description.exists()
     emit(result(command, "ok", data=data, duration_ms=duration_ms), plain)
     return 0
 
@@ -158,7 +266,9 @@ def run_review(repo_root: Path, kind: str, company: str | None, plain: bool) -> 
     t0 = time.monotonic()
     command = "cv.review"
     source = source_for(repo_root, kind, company)
+    job_description = job_description_for(repo_root, company)
     pdf = source.with_suffix(".pdf")
+    review_dir = review_dir_for(company, kind)
 
     if not pdf.exists():
         err = {
@@ -175,13 +285,12 @@ def run_review(repo_root: Path, kind: str, company: str | None, plain: bool) -> 
         emit(result(command, "error", error=dep_err, duration_ms=(time.monotonic() - t0) * 1000), plain)
         return 4
 
-    review_dir = review_dir_for(company, kind)
     if review_dir.exists():
         shutil.rmtree(review_dir)
     review_dir.mkdir(parents=True, exist_ok=True)
 
     proc = subprocess.run(
-        ["pdftoppm", "-png", str(pdf), str(review_dir / "page")],
+        ["pdftoppm", "-png", "-r", "150", str(pdf), str(review_dir / "page")],
         capture_output=True,
         text=True,
     )
@@ -202,10 +311,16 @@ def run_review(repo_root: Path, kind: str, company: str | None, plain: bool) -> 
     pages = sorted(str(p) for p in review_dir.glob("page-*.png"))
     data = {
         "message": f"Rendered {len(pages)} page(s) to {review_dir}",
+        "source": str(source),
         "pdf": str(pdf),
         "pages": pages,
+        "page_count": len(pages),
         "review_dir": str(review_dir),
+        "dpi": 150,
     }
+    if job_description:
+        data["job_description"] = str(job_description)
+        data["job_description_exists"] = job_description.exists()
     emit(result(command, "ok", data=data, duration_ms=duration_ms), plain)
     return 0
 
@@ -228,6 +343,7 @@ def run_clean(plain: bool) -> int:
 def main(argv=None) -> int:
     argv = list(sys.argv[1:] if argv is None else argv)
     plain_requested = "--plain" in argv
+    kind_flag_explicit = any(arg == "--kind" or arg.startswith("--kind=") for arg in argv)
 
     if "--version" in argv:
         data = {
@@ -237,13 +353,13 @@ def main(argv=None) -> int:
         emit(result("cv.version", "ok", data=data), plain_requested)
         return 0
 
-    parser = CVArgumentParser(description="Build and review repo-local LaTeX CV files.")
+    parser = CVArgumentParser(description="Initialize, build, review, and clean repo-local LaTeX CV files.")
     output_group = parser.add_mutually_exclusive_group()
     output_group.add_argument("--json", action="store_true", help="Emit JSON output (default).")
     output_group.add_argument("--plain", action="store_true", help="Emit plain text instead of JSON.")
     parser.add_argument("--no-input", action="store_true", help="Disable interactive input. This tool never prompts.")
     parser.add_argument("--version", action="store_true", help="Show tool version and exit.")
-    parser.add_argument("command", choices=["build", "review", "clean"], nargs="?")
+    parser.add_argument("command", choices=["init", "build", "review", "clean"], nargs="?")
     parser.add_argument("--kind", choices=["resume", "cover-letter"], default="resume")
     parser.add_argument("--company", help="Company slug under tailored/<company>/")
     parser.add_argument("--root", help="Repo root override. Defaults to the current repo.")
@@ -260,7 +376,20 @@ def main(argv=None) -> int:
     if args.command is None:
         return usage_error(
             "Missing required command.",
-            "Use one of: build, review, clean. Run `cv.py --help` for examples.",
+            "Use one of: init, build, review, clean. Run `cv.py --help` for examples.",
+            args.plain,
+        )
+
+    if args.company and not validate_company_slug(args.company):
+        return usage_error(
+            f"Invalid company slug: {args.company}",
+            "Use only letters, numbers, dots, underscores, and hyphens for --company.",
+            args.plain,
+        )
+    if args.command == "init" and kind_flag_explicit:
+        return usage_error(
+            "`init` does not accept --kind.",
+            "Run `cv.py init --company <slug>` to initialize the full tailored packet.",
             args.plain,
         )
 
@@ -275,6 +404,8 @@ def main(argv=None) -> int:
         emit(result(f"cv.{args.command}", "error", error=err), args.plain)
         return 2
 
+    if args.command == "init":
+        return run_init(repo_root, args.company, args.plain)
     if args.command == "build":
         return run_build(repo_root, args.kind, args.company, args.plain)
     if args.command == "review":
