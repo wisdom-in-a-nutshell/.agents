@@ -73,6 +73,7 @@ JSON is the default contract. Use `--plain` only for quick operator inspection. 
 - Keep cover letters alongside the tailored resume for the same company.
 - If the user has only raw notes, normalize them into `profile.md` before heavy tailoring.
 - Never invent experience, skills, tools, certifications, customers, or outcomes.
+- **Competitor awareness**: before compiling, audit the `.tex` files for prominent references to the target company's direct rivals. Do not send a resume that reads as a love letter to the target's competitor. See the repo-local `reference/career/tailoring-guide.md` "Competitor awareness" section for the current competitor map, rewrite strategies, and audit checklist. Reframe product-level name-drops (Codex, Claude, ChatGPT) into category-level language (agent harness, coding agent, LLM application engineering) when the target is a rival's rival.
 
 For the full structural and formatting rules, read `references/template-patterns.md`.
 
