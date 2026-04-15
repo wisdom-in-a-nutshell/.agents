@@ -149,6 +149,8 @@ def make_plugin_source(path: Path, plugin_name: str) -> Path:
 def default_mcp_registry() -> dict[str, Any]:
     return {
         "global_presets": ["openaiDeveloperDocs"],
+        "plugin_global_presets": [],
+        "plugin_presets": {},
         "presets": {
             "openaiDeveloperDocs": {
                 "transport": "http",
@@ -165,6 +167,7 @@ def default_mcp_registry() -> dict[str, Any]:
 def default_skills_registry() -> dict[str, Any]:
     return {
         "managed_skills": [],
+        "managed_plugin_skills": [],
         "paths": {
             "github_root": "~/GitHub",
         },

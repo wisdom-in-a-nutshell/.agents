@@ -202,7 +202,7 @@ class AutoApplyRoutingTests(TempDirTestCase):
             log_path.read_text(encoding="utf-8").splitlines(),
         )
 
-    def test_plugins_registry_change_triggers_plugin_sync_and_codex_bootstrap(self) -> None:
+    def test_plugins_registry_change_triggers_plugin_sync_and_both_runtimes(self) -> None:
         root, log_path, stamp_file = self._make_agents_repo()
         baseline_sha = run_command(
             ["git", "-C", str(root), "rev-parse", "HEAD"],
@@ -229,6 +229,7 @@ class AutoApplyRoutingTests(TempDirTestCase):
             [
                 "sync-plugins-registry.sh|--apply",
                 f"bootstrap-machine-codex.sh|--apply --github-root {self.temp_path / 'GitHub'}",
+                "bootstrap-machine-claude.sh|--apply",
             ],
             log_path.read_text(encoding="utf-8").splitlines(),
         )

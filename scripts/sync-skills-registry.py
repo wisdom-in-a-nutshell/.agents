@@ -219,9 +219,13 @@ def generate_registry_items(
 def validate_registry(
     data: dict[str, Any], root_dir: Path, home: Path
 ) -> tuple[list[dict[str, Any]], list[dict[str, Any]], Path]:
-    managed = data.get("managed_skills")
-    if not isinstance(managed, list) or not managed:
-        raise ValueError("managed_skills must be a non-empty array")
+    managed = data.get("managed_skills", [])
+    if not isinstance(managed, list):
+        raise ValueError("managed_skills must be an array")
+
+    managed_plugin_skills = data.get("managed_plugin_skills", [])
+    if not isinstance(managed_plugin_skills, list):
+        raise ValueError("managed_plugin_skills must be an array")
 
     unmanaged = data.get("unmanaged_repo_local_skills", [])
     if not isinstance(unmanaged, list):
@@ -229,40 +233,43 @@ def validate_registry(
 
     seen: set[tuple[str, str]] = set()
     validated_managed: list[dict[str, Any]] = []
-    for idx, item in enumerate(managed):
-        if not isinstance(item, dict):
-            raise ValueError(f"managed_skills[{idx}] must be an object")
-        skill = ensure_str(item.get("skill"), "skill", idx)
-        origin = ensure_str(item.get("origin"), "origin", idx)
-        scope = ensure_str(item.get("scope"), "scope", idx)
-        source_path = ensure_str(item.get("source_path"), "source_path", idx)
-        upstream_ref = item.get("upstream_ref", "-")
-        if origin not in ALLOWED_ORIGINS:
-            raise ValueError(f"managed_skills[{idx}] invalid origin: {origin}")
-        if scope not in ALLOWED_SCOPES:
-            raise ValueError(f"managed_skills[{idx}] invalid scope: {scope}")
+    for label, items in (
+        ("managed_skills", managed),
+        ("managed_plugin_skills", managed_plugin_skills),
+    ):
+        for idx, item in enumerate(items):
+            if not isinstance(item, dict):
+                raise ValueError(f"{label}[{idx}] must be an object")
+            skill = ensure_str(item.get("skill"), "skill", idx)
+            origin = ensure_str(item.get("origin"), "origin", idx)
+            scope = ensure_str(item.get("scope"), "scope", idx)
+            source_path = ensure_str(item.get("source_path"), "source_path", idx)
+            upstream_ref = item.get("upstream_ref", "-")
+            if origin not in ALLOWED_ORIGINS:
+                raise ValueError(f"{label}[{idx}] invalid origin: {origin}")
+            if scope not in ALLOWED_SCOPES:
+                raise ValueError(f"{label}[{idx}] invalid scope: {scope}")
 
-        if (skill, scope) in seen:
-            raise ValueError(f"duplicate skill+scope entry: {skill}/{scope}")
-        seen.add((skill, scope))
+            if (skill, scope) in seen:
+                raise ValueError(f"duplicate skill+scope entry: {skill}/{scope}")
+            seen.add((skill, scope))
 
-        repos_raw = item.get("repos", [])
-        if not isinstance(repos_raw, list):
-            raise ValueError(f"managed_skills[{idx}] repos must be an array")
-        repos = [str(repo).strip() for repo in repos_raw if str(repo).strip()]
-        if scope == "repo" and not repos:
-            raise ValueError(f"managed_skills[{idx}] repo scope needs repos")
-        if scope == "global":
-            repos = []
+            repos_raw = item.get("repos", [])
+            if not isinstance(repos_raw, list):
+                raise ValueError(f"{label}[{idx}] repos must be an array")
+            repos = [str(repo).strip() for repo in repos_raw if str(repo).strip()]
+            if scope == "repo" and not repos:
+                raise ValueError(f"{label}[{idx}] repo scope needs repos")
+            if scope == "global":
+                repos = []
 
-        src = Path(source_path)
-        if not src.is_absolute():
-            src = (root_dir / src).resolve()
-        if not (src / "SKILL.md").is_file():
-            raise ValueError(f"source missing SKILL.md for {skill}: {src}")
+            src = Path(source_path)
+            if not src.is_absolute():
+                src = (root_dir / src).resolve()
+            if not (src / "SKILL.md").is_file():
+                raise ValueError(f"source missing SKILL.md for {skill}: {src}")
 
-        validated_managed.append(
-            {
+            validated = {
                 "skill": skill,
                 "origin": origin,
                 "scope": scope,
@@ -271,7 +278,12 @@ def validate_registry(
                 "source_abs": src,
                 "upstream_ref": str(upstream_ref).strip() or "-",
             }
-        )
+            if label == "managed_plugin_skills":
+                validated["source_plugin"] = str(item.get("source_plugin", "")).strip()
+            validated_managed.append(validated)
+
+    if not validated_managed:
+        raise ValueError("managed_skills plus managed_plugin_skills must not both be empty")
 
     validated_unmanaged: list[dict[str, Any]] = []
     for idx, item in enumerate(unmanaged):
@@ -320,7 +332,10 @@ def prune_obsolete_global_links(
     desired_links: dict[Path, Path],
     apply: bool,
 ) -> None:
-    managed_source_root = (root_dir / "skills-source").resolve()
+    managed_source_roots = [
+        (root_dir / "skills-source").resolve(),
+        (root_dir / "plugins-source").resolve(),
+    ]
     skills_dir = root_dir / "skills"
     if not skills_dir.exists():
         return
@@ -328,7 +343,7 @@ def prune_obsolete_global_links(
         if not entry.is_symlink():
             continue
         target = resolved_target(entry)
-        if not is_relative_to(target, managed_source_root):
+        if not any(is_relative_to(target, root) for root in managed_source_roots):
             continue
         if entry in desired_links:
             continue

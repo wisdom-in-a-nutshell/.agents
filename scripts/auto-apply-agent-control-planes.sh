@@ -245,7 +245,7 @@ fi
 if (( skills_changed == 1 || plugins_changed == 1 || codex_changed == 1 || shared_mcp_changed == 1 || agent_registry_changed == 1 )); then
   need_bootstrap_codex=1
 fi
-if (( claude_changed == 1 || shared_mcp_changed == 1 || skills_changed == 1 || repo_registry_changed == 1 || agent_registry_changed == 1 )); then
+if (( claude_changed == 1 || shared_mcp_changed == 1 || skills_changed == 1 || plugins_changed == 1 || repo_registry_changed == 1 || agent_registry_changed == 1 )); then
   need_bootstrap_claude=1
 fi
 

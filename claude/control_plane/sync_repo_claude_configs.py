@@ -174,8 +174,18 @@ def build_actions(
         override_map[normalize_path(raw_path)] = override
 
     mcp_presets = mcp_data.get("presets", {})
+    plugin_mcp_presets = mcp_data.get("plugin_presets", {})
     if not isinstance(mcp_presets, dict):
         raise ControlPlaneError("presets must be an object in shared MCP registry")
+    if not isinstance(plugin_mcp_presets, dict):
+        raise ControlPlaneError("plugin_presets must be an object in shared MCP registry")
+    merged_mcp_presets = dict(mcp_presets)
+    for name, preset in plugin_mcp_presets.items():
+        if name in merged_mcp_presets and merged_mcp_presets[name] != preset:
+            raise ControlPlaneError(
+                f"plugin_presets conflicts with existing preset `{name}` in shared MCP registry"
+            )
+        merged_mcp_presets[str(name)] = preset
 
     default_settings = bootstrap_defaults.get("settings", {})
     if default_settings is None:
@@ -236,6 +246,19 @@ def build_actions(
             preset_names = []
         if not isinstance(preset_names, list):
             raise ControlPlaneError(f"mcp_presets for {actual_repo} must be an array")
+        plugin_preset_names = item.get("plugin_mcp_presets", [])
+        if plugin_preset_names is None:
+            plugin_preset_names = []
+        if not isinstance(plugin_preset_names, list):
+            raise ControlPlaneError(
+                f"plugin_mcp_presets for {actual_repo} must be an array"
+            )
+        effective_preset_names: list[str] = []
+        for raw_name in [*preset_names, *plugin_preset_names]:
+            name = str(raw_name).strip()
+            if not name or name in effective_preset_names:
+                continue
+            effective_preset_names.append(name)
 
         repo_mcp_servers = repo_override.get("mcp_servers", {})
         if repo_mcp_servers is None:
@@ -246,10 +269,10 @@ def build_actions(
             )
 
         mcp_servers: dict[str, dict[str, Any]] = {}
-        for preset_name in preset_names:
-            if preset_name not in mcp_presets:
+        for preset_name in effective_preset_names:
+            if preset_name not in merged_mcp_presets:
                 raise ControlPlaneError(f"Unknown MCP preset `{preset_name}` for {actual_repo}")
-            preset = mcp_presets[preset_name]
+            preset = merged_mcp_presets[preset_name]
             if not isinstance(preset, dict):
                 raise ControlPlaneError(f"MCP preset `{preset_name}` must be an object")
             mcp_servers[preset_name] = render_claude_mcp_server(preset_name, preset)

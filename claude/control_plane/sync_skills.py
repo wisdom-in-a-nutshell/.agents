@@ -46,7 +46,7 @@ def prune_dir(
     skills_dir: Path,
     desired: dict[Path, Path],
     *,
-    managed_source_root: Path,
+    managed_source_roots: tuple[Path, ...],
     repo_local_source_root: Path | None,
     apply: bool,
 ) -> None:
@@ -56,7 +56,7 @@ def prune_dir(
         if not entry.is_symlink():
             continue
         target = resolved_target(entry)
-        managed_target = is_relative_to(target, managed_source_root)
+        managed_target = any(is_relative_to(target, root) for root in managed_source_roots)
         repo_local_target = (
             repo_local_source_root is not None
             and is_relative_to(target, repo_local_source_root)
@@ -124,10 +124,13 @@ def main() -> int:
         raise ControlPlaneError(f"registry root must be an object: {registry_path}")
 
     managed = data.get("managed_skills", [])
+    managed_plugin_skills = data.get("managed_plugin_skills", [])
     unmanaged = data.get("unmanaged_repo_local_skills", [])
     paths = data.get("paths", {})
     if not isinstance(managed, list):
         raise ControlPlaneError("managed_skills must be an array")
+    if not isinstance(managed_plugin_skills, list):
+        raise ControlPlaneError("managed_plugin_skills must be an array")
     if not isinstance(unmanaged, list):
         raise ControlPlaneError("unmanaged_repo_local_skills must be an array")
     if not isinstance(paths, dict):
@@ -136,64 +139,71 @@ def main() -> int:
     root_dir = registry_path.parent.parent
     home = Path.home().resolve()
     github_root = expand_path(str(paths.get("github_root", "~/GitHub")), home).resolve()
-    managed_source_root = (root_dir / "skills-source").resolve()
+    managed_source_roots = (
+        (root_dir / "skills-source").resolve(),
+        (root_dir / "plugins-source").resolve(),
+    )
     global_skills_dir = home / ".claude" / "skills"
     filters = {normalize_repo(path) for path in args.repo if path.strip()}
 
     desired_links: dict[Path, Path] = {}
     repo_dirs_to_prune: dict[Path, dict[Path, Path]] = {}
 
-    for idx, item in enumerate(managed):
-        if not isinstance(item, dict):
-            raise ControlPlaneError(f"managed_skills[{idx}] must be an object")
+    for label, items in (
+        ("managed_skills", managed),
+        ("managed_plugin_skills", managed_plugin_skills),
+    ):
+        for idx, item in enumerate(items):
+            if not isinstance(item, dict):
+                raise ControlPlaneError(f"{label}[{idx}] must be an object")
 
-        skill = str(item.get("skill", "")).strip()
-        origin = str(item.get("origin", "")).strip()
-        scope = str(item.get("scope", "")).strip()
-        source_path = str(item.get("source_path", "")).strip()
-        repos = item.get("repos", [])
+            skill = str(item.get("skill", "")).strip()
+            origin = str(item.get("origin", "")).strip()
+            scope = str(item.get("scope", "")).strip()
+            source_path = str(item.get("source_path", "")).strip()
+            repos = item.get("repos", [])
 
-        if not skill:
-            raise ControlPlaneError(f"managed_skills[{idx}] missing skill")
-        if origin not in ALLOWED_ORIGINS:
-            raise ControlPlaneError(f"managed_skills[{idx}] invalid origin: {origin!r}")
-        if scope not in ALLOWED_SCOPES:
-            raise ControlPlaneError(f"managed_skills[{idx}] invalid scope: {scope!r}")
-        if not source_path:
-            raise ControlPlaneError(f"managed_skills[{idx}] missing source_path")
-        if not isinstance(repos, list):
-            raise ControlPlaneError(f"managed_skills[{idx}] repos must be an array")
+            if not skill:
+                raise ControlPlaneError(f"{label}[{idx}] missing skill")
+            if origin not in ALLOWED_ORIGINS:
+                raise ControlPlaneError(f"{label}[{idx}] invalid origin: {origin!r}")
+            if scope not in ALLOWED_SCOPES:
+                raise ControlPlaneError(f"{label}[{idx}] invalid scope: {scope!r}")
+            if not source_path:
+                raise ControlPlaneError(f"{label}[{idx}] missing source_path")
+            if not isinstance(repos, list):
+                raise ControlPlaneError(f"{label}[{idx}] repos must be an array")
 
-        src = Path(source_path)
-        if not src.is_absolute():
-            src = (root_dir / src).resolve()
-        if not ensure_skill_source(src, label=f"managed skill {skill}"):
-            continue
-
-        if scope == "global":
-            dst = global_skills_dir / skill
-            if dst in desired_links and desired_links[dst] != src:
-                raise ControlPlaneError(f"conflicting Claude skill targets for {dst}")
-            desired_links[dst] = src
-            sync_link(dst, src, apply=args.apply)
-            continue
-
-        for repo in repos:
-            repo_root_path = resolve_repo_root(str(repo), github_root, home)
-            actual_repo = git_repo_root(repo_root_path)
-            if actual_repo is None:
-                print(f"WARNING: skipping non-git path: {repo_root_path}", file=sys.stderr)
+            src = Path(source_path)
+            if not src.is_absolute():
+                src = (root_dir / src).resolve()
+            if not ensure_skill_source(src, label=f"managed skill {skill}"):
                 continue
-            actual_repo_str = str(actual_repo)
-            if filters and actual_repo_str not in filters:
+
+            if scope == "global":
+                dst = global_skills_dir / skill
+                if dst in desired_links and desired_links[dst] != src:
+                    raise ControlPlaneError(f"conflicting Claude skill targets for {dst}")
+                desired_links[dst] = src
+                sync_link(dst, src, apply=args.apply)
                 continue
-            skills_dir = actual_repo / ".claude" / "skills"
-            dst = skills_dir / skill
-            if dst in desired_links and desired_links[dst] != src:
-                raise ControlPlaneError(f"conflicting Claude skill targets for {dst}")
-            desired_links[dst] = src
-            repo_dirs_to_prune.setdefault(actual_repo, {})[dst] = src
-            sync_link(dst, src, apply=args.apply)
+
+            for repo in repos:
+                repo_root_path = resolve_repo_root(str(repo), github_root, home)
+                actual_repo = git_repo_root(repo_root_path)
+                if actual_repo is None:
+                    print(f"WARNING: skipping non-git path: {repo_root_path}", file=sys.stderr)
+                    continue
+                actual_repo_str = str(actual_repo)
+                if filters and actual_repo_str not in filters:
+                    continue
+                skills_dir = actual_repo / ".claude" / "skills"
+                dst = skills_dir / skill
+                if dst in desired_links and desired_links[dst] != src:
+                    raise ControlPlaneError(f"conflicting Claude skill targets for {dst}")
+                desired_links[dst] = src
+                repo_dirs_to_prune.setdefault(actual_repo, {})[dst] = src
+                sync_link(dst, src, apply=args.apply)
 
     for idx, item in enumerate(unmanaged):
         if not isinstance(item, dict):
@@ -229,7 +239,7 @@ def main() -> int:
     prune_dir(
         global_skills_dir,
         {path: src for path, src in desired_links.items() if path.parent == global_skills_dir},
-        managed_source_root=managed_source_root,
+        managed_source_roots=managed_source_roots,
         repo_local_source_root=None,
         apply=args.apply,
     )
@@ -238,7 +248,7 @@ def main() -> int:
         prune_dir(
             repo_root_path / ".claude" / "skills",
             repo_desired,
-            managed_source_root=managed_source_root,
+            managed_source_roots=managed_source_roots,
             repo_local_source_root=repo_root_path / ".agents" / "skills",
             apply=args.apply,
         )

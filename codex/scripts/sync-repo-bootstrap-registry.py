@@ -357,29 +357,36 @@ def _load_skill_assignments(
     repo_scoped: dict[Path, set[str]] = {item["repo_root"]: set() for item in repos}
     repo_local: dict[Path, set[str]] = {item["repo_root"]: set() for item in repos}
 
-    for raw_item in data.get("managed_skills", []):
-        if not isinstance(raw_item, dict):
+    managed_skill_groups = [
+        data.get("managed_skills", []),
+        data.get("managed_plugin_skills", []),
+    ]
+    for group in managed_skill_groups:
+        if not isinstance(group, list):
             continue
-        skill = str(raw_item.get("skill", "")).strip()
-        scope = str(raw_item.get("scope", "")).strip()
-        if not skill:
-            continue
-        if scope == "global":
-            global_skills.add(skill)
-            continue
-        if scope != "repo":
-            continue
-        repos_raw = raw_item.get("repos", [])
-        if not isinstance(repos_raw, list):
-            continue
-        for repo_ref in repos_raw:
-            repo_root = _resolve_repo_root(
-                expand_path(str(repo_ref), home)
-                if str(repo_ref).startswith(("~/", "/"))
-                else github_root / str(repo_ref)
-            )
-            if repo_root in repo_scoped:
-                repo_scoped[repo_root].add(skill)
+        for raw_item in group:
+            if not isinstance(raw_item, dict):
+                continue
+            skill = str(raw_item.get("skill", "")).strip()
+            scope = str(raw_item.get("scope", "")).strip()
+            if not skill:
+                continue
+            if scope == "global":
+                global_skills.add(skill)
+                continue
+            if scope != "repo":
+                continue
+            repos_raw = raw_item.get("repos", [])
+            if not isinstance(repos_raw, list):
+                continue
+            for repo_ref in repos_raw:
+                repo_root = _resolve_repo_root(
+                    expand_path(str(repo_ref), home)
+                    if str(repo_ref).startswith(("~/", "/"))
+                    else github_root / str(repo_ref)
+                )
+                if repo_root in repo_scoped:
+                    repo_scoped[repo_root].add(skill)
 
     for raw_item in data.get("unmanaged_repo_local_skills", []):
         if not isinstance(raw_item, dict):
@@ -826,37 +833,52 @@ def validate_mcp_registry(data: dict[str, Any]) -> tuple[dict[str, Any], list[st
     presets = data.get("presets", {})
     if not isinstance(presets, dict):
         raise ValueError("MCP registry presets must be an object")
+    plugin_presets = data.get("plugin_presets", {})
+    if not isinstance(plugin_presets, dict):
+        raise ValueError("MCP registry plugin_presets must be an object")
 
     global_presets = data.get("global_presets", [])
     if not isinstance(global_presets, list):
         raise ValueError("MCP registry global_presets must be an array")
+    plugin_global_presets = data.get("plugin_global_presets", [])
+    if not isinstance(plugin_global_presets, list):
+        raise ValueError("MCP registry plugin_global_presets must be an array")
 
     validated_presets: dict[str, Any] = {}
-    for name, preset in presets.items():
-        if not isinstance(preset, dict):
-            raise ValueError(f"MCP preset `{name}` must be an object")
-        transport = preset.get("transport")
-        if transport not in {"http", "stdio"}:
-            raise ValueError(f"MCP preset `{name}` must define transport `http` or `stdio`")
-        if transport == "http":
-            url = preset.get("url")
-            if not isinstance(url, str) or not url.strip():
-                raise ValueError(f"MCP preset `{name}` with transport http must define a non-empty url")
-        if transport == "stdio":
-            command = preset.get("command")
-            if not isinstance(command, str) or not command.strip():
-                raise ValueError(f"MCP preset `{name}` with transport stdio must define a non-empty command")
-        if "args" in preset and not isinstance(preset["args"], list):
-            raise ValueError(f"MCP preset `{name}` args must be an array")
-        if "env" in preset and not isinstance(preset["env"], dict):
-            raise ValueError(f"MCP preset `{name}` env must be an object")
-        validated_presets[str(name)] = preset
+    for group_name, preset_group in (
+        ("presets", presets),
+        ("plugin_presets", plugin_presets),
+    ):
+        for name, preset in preset_group.items():
+            if not isinstance(preset, dict):
+                raise ValueError(f"MCP preset `{name}` must be an object")
+            transport = preset.get("transport")
+            if transport not in {"http", "stdio"}:
+                raise ValueError(f"MCP preset `{name}` must define transport `http` or `stdio`")
+            if transport == "http":
+                url = preset.get("url")
+                if not isinstance(url, str) or not url.strip():
+                    raise ValueError(f"MCP preset `{name}` with transport http must define a non-empty url")
+            if transport == "stdio":
+                command = preset.get("command")
+                if not isinstance(command, str) or not command.strip():
+                    raise ValueError(f"MCP preset `{name}` with transport stdio must define a non-empty command")
+            if "args" in preset and not isinstance(preset["args"], list):
+                raise ValueError(f"MCP preset `{name}` args must be an array")
+            if "env" in preset and not isinstance(preset["env"], dict):
+                raise ValueError(f"MCP preset `{name}` env must be an object")
+            if name in validated_presets and validated_presets[name] != preset:
+                raise ValueError(f"{group_name} conflicts with existing MCP preset `{name}`")
+            validated_presets[str(name)] = preset
 
-    for name in global_presets:
+    combined_global_presets = [str(name) for name in global_presets] + [
+        str(name) for name in plugin_global_presets
+    ]
+    for name in combined_global_presets:
         if name not in validated_presets:
             raise ValueError(f"global_presets references unknown MCP preset `{name}`")
 
-    return validated_presets, [str(name) for name in global_presets]
+    return validated_presets, combined_global_presets
 
 
 def validate_registry(
@@ -898,7 +920,17 @@ def validate_registry(
         repo_mcp_presets = item.get("mcp_presets", [])
         if not isinstance(repo_mcp_presets, list):
             raise ValueError(f"repos[{idx}].mcp_presets must be an array")
-        for preset_name in repo_mcp_presets:
+        plugin_repo_mcp_presets = item.get("plugin_mcp_presets", [])
+        if not isinstance(plugin_repo_mcp_presets, list):
+            raise ValueError(f"repos[{idx}].plugin_mcp_presets must be an array")
+        combined_repo_mcp_presets = [
+            str(name) for name in repo_mcp_presets if str(name).strip()
+        ]
+        for name in plugin_repo_mcp_presets:
+            name_str = str(name).strip()
+            if name_str and name_str not in combined_repo_mcp_presets:
+                combined_repo_mcp_presets.append(name_str)
+        for preset_name in combined_repo_mcp_presets:
             if preset_name not in mcp_presets_map:
                 raise ValueError(
                     f"repos[{idx}] references unknown MCP preset: {preset_name}"
@@ -908,8 +940,10 @@ def validate_registry(
             "path": _display_path(repo_root, home),
             "repo_name": _repo_name(str(repo_root)),
             "repo_root": repo_root,
-            "mcp_presets": [str(name) for name in repo_mcp_presets],
-            "mcp_presets_csv": ",".join(repo_mcp_presets) if repo_mcp_presets else "-",
+            "mcp_presets": combined_repo_mcp_presets,
+            "mcp_presets_csv": ",".join(combined_repo_mcp_presets)
+            if combined_repo_mcp_presets
+            else "-",
             "custom_agents": [],
         }
         for key in ALLOWED_SCALAR_KEYS:

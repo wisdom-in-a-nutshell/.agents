@@ -91,14 +91,29 @@ def main() -> int:
             )
 
     presets = mcp_data.get("presets", {})
+    plugin_presets = mcp_data.get("plugin_presets", {})
     global_presets = mcp_data.get("global_presets", [])
+    plugin_global_presets = mcp_data.get("plugin_global_presets", [])
     if not isinstance(presets, dict):
         raise ControlPlaneError(f"presets must be an object in {mcp_registry}")
+    if not isinstance(plugin_presets, dict):
+        raise ControlPlaneError(f"plugin_presets must be an object in {mcp_registry}")
     if global_presets is None:
         global_presets = []
     if not isinstance(global_presets, list):
         raise ControlPlaneError(f"global_presets must be an array in {mcp_registry}")
-    for preset_name, preset in presets.items():
+    if plugin_global_presets is None:
+        plugin_global_presets = []
+    if not isinstance(plugin_global_presets, list):
+        raise ControlPlaneError(f"plugin_global_presets must be an array in {mcp_registry}")
+    merged_presets = dict(presets)
+    for name, preset in plugin_presets.items():
+        if name in merged_presets and merged_presets[name] != preset:
+            raise ControlPlaneError(
+                f"plugin_presets conflicts with existing preset `{name}` in {mcp_registry}"
+            )
+        merged_presets[str(name)] = preset
+    for preset_name, preset in merged_presets.items():
         if not isinstance(preset, dict):
             raise ControlPlaneError(
                 f"presets.{preset_name} must be an object in {mcp_registry}"
@@ -114,8 +129,10 @@ def main() -> int:
             raise ControlPlaneError(
                 f"presets.{preset_name} must define a string command"
             )
-    for preset_name in global_presets:
-        if preset_name not in presets:
+    for preset_name in [str(name) for name in global_presets] + [
+        str(name) for name in plugin_global_presets
+    ]:
+        if preset_name not in merged_presets:
             raise ControlPlaneError(
                 f"unknown global MCP preset `{preset_name}` in {mcp_registry}"
             )
@@ -131,16 +148,26 @@ def main() -> int:
             preset_names = []
         if not isinstance(preset_names, list):
             raise ControlPlaneError(f"repos[{idx}].mcp_presets must be an array")
-        for preset_name in preset_names:
-            if preset_name not in presets:
+        plugin_preset_names = repo.get("plugin_mcp_presets", [])
+        if plugin_preset_names is None:
+            plugin_preset_names = []
+        if not isinstance(plugin_preset_names, list):
+            raise ControlPlaneError(f"repos[{idx}].plugin_mcp_presets must be an array")
+        for preset_name in [*preset_names, *plugin_preset_names]:
+            if preset_name not in merged_presets:
                 raise ControlPlaneError(
                     f"unknown MCP preset `{preset_name}` in repos[{idx}]"
                 )
 
     managed = skills_data.get("managed_skills", [])
+    managed_plugin_skills = skills_data.get("managed_plugin_skills", [])
     unmanaged = skills_data.get("unmanaged_repo_local_skills", [])
     if not isinstance(managed, list):
         raise ControlPlaneError(f"managed_skills must be an array in {skills_registry}")
+    if not isinstance(managed_plugin_skills, list):
+        raise ControlPlaneError(
+            f"managed_plugin_skills must be an array in {skills_registry}"
+        )
     if not isinstance(unmanaged, list):
         raise ControlPlaneError(
             f"unmanaged_repo_local_skills must be an array in {skills_registry}"

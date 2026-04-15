@@ -34,22 +34,22 @@ class CodexRepoSyncTests(TempDirTestCase):
                 "repos": [
                     {
                         "mcp_presets": ["paper"],
+                        "plugin_mcp_presets": ["plugin-build-ios-apps-xcodebuildmcp"],
                         "path": str(adi),
                     }
                 ],
             },
         )
-        write_json(mcp_registry_path, default_mcp_registry())
-        plugin_registry = default_plugins_registry()
-        plugin_registry["managed_plugins"] = [
-            {
-                "plugin_id": "build-ios-apps@openai-curated",
-                "scope": "repo",
-                "repos": ["adi"],
-                "enabled": True,
-                "category": "Coding",
+        mcp_registry = default_mcp_registry()
+        mcp_registry["plugin_presets"] = {
+            "plugin-build-ios-apps-xcodebuildmcp": {
+                "transport": "stdio",
+                "command": "npx",
+                "args": ["-y", "xcodebuildmcp@latest", "mcp"],
             }
-        ]
+        }
+        write_json(mcp_registry_path, mcp_registry)
+        plugin_registry = default_plugins_registry()
         write_json(plugin_registry_path, plugin_registry)
         write_json(
             agent_registry_path,
@@ -83,8 +83,8 @@ class CodexRepoSyncTests(TempDirTestCase):
         self.assertIn('model_reasoning_effort = "high"', repo_config)
         self.assertIn("[mcp_servers.paper]", repo_config)
         self.assertIn('url = "http://127.0.0.1:29979/mcp"', repo_config)
-        self.assertIn('[plugins."build-ios-apps@openai-curated"]', repo_config)
-        self.assertIn("enabled = true", repo_config)
+        self.assertIn("[mcp_servers.plugin-build-ios-apps-xcodebuildmcp]", repo_config)
+        self.assertIn('command = "npx"', repo_config)
         self.assertIn("[agents.visual_reviewer]", repo_config)
         self.assertIn('config_file = "agents/visual_reviewer.toml"', repo_config)
         self.assertIn('nickname_candidates = ["Lens", "Critic", "Review"]', repo_config)

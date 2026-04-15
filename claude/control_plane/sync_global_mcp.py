@@ -77,21 +77,39 @@ def main() -> int:
         raise ControlPlaneError(f"shared MCP registry root must be an object: {mcp_registry_path}")
 
     presets = mcp_registry.get("presets", {})
+    plugin_presets = mcp_registry.get("plugin_presets", {})
     global_presets = mcp_registry.get("global_presets", [])
+    plugin_global_presets = mcp_registry.get("plugin_global_presets", [])
     if not isinstance(presets, dict):
         raise ControlPlaneError(f"shared MCP presets must be an object: {mcp_registry_path}")
+    if not isinstance(plugin_presets, dict):
+        raise ControlPlaneError(f"shared MCP plugin_presets must be an object: {mcp_registry_path}")
     if global_presets is None:
         global_presets = []
     if not isinstance(global_presets, list):
         raise ControlPlaneError(f"global_presets must be an array: {mcp_registry_path}")
+    if plugin_global_presets is None:
+        plugin_global_presets = []
+    if not isinstance(plugin_global_presets, list):
+        raise ControlPlaneError(f"plugin_global_presets must be an array: {mcp_registry_path}")
+
+    merged_presets = dict(presets)
+    for name, preset in plugin_presets.items():
+        if name in merged_presets and merged_presets[name] != preset:
+            raise ControlPlaneError(
+                f"plugin_presets conflicts with existing preset `{name}`: {mcp_registry_path}"
+            )
+        merged_presets[str(name)] = preset
 
     managed_servers: dict[str, dict[str, Any]] = {}
-    for preset_name in global_presets:
-        if preset_name not in presets:
+    for preset_name in [str(name) for name in global_presets] + [
+        str(name) for name in plugin_global_presets
+    ]:
+        if preset_name not in merged_presets:
             raise ControlPlaneError(
                 f"unknown global MCP preset `{preset_name}` in {mcp_registry_path}"
             )
-        preset = presets[preset_name]
+        preset = merged_presets[preset_name]
         if not isinstance(preset, dict):
             raise ControlPlaneError(
                 f"preset `{preset_name}` must be an object in {mcp_registry_path}"
@@ -104,7 +122,7 @@ def main() -> int:
     if not isinstance(runtime_servers, dict):
         raise ControlPlaneError(f"runtime mcpServers must be an object: {global_config}")
 
-    managed_names = {str(name) for name in presets}
+    managed_names = {str(name) for name in merged_presets}
     active_global_names = set(managed_servers)
     merged = dict(runtime)
     merged_servers = {

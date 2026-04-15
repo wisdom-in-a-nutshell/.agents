@@ -31,22 +31,22 @@ class CodexControlPlaneCheckTests(TempDirTestCase):
                 "repos": [
                     {
                         "mcp_presets": ["paper"],
+                        "plugin_mcp_presets": ["plugin-build-ios-apps-xcodebuildmcp"],
                         "path": str(adi),
                     }
                 ],
             },
         )
-        write_json(root / "mcp/config/presets.json", default_mcp_registry())
-        plugin_registry = default_plugins_registry()
-        plugin_registry["managed_plugins"] = [
-            {
-                "plugin_id": "build-ios-apps@openai-curated",
-                "scope": "repo",
-                "repos": ["adi"],
-                "enabled": True,
-                "category": "Coding",
+        mcp_registry = default_mcp_registry()
+        mcp_registry["plugin_presets"] = {
+            "plugin-build-ios-apps-xcodebuildmcp": {
+                "transport": "stdio",
+                "command": "npx",
+                "args": ["-y", "xcodebuildmcp@latest", "mcp"],
             }
-        ]
+        }
+        write_json(root / "mcp/config/presets.json", mcp_registry)
+        plugin_registry = default_plugins_registry()
         write_json(root / "plugins/registry.json", plugin_registry)
         write_json(
             root / "agents/registry.json",

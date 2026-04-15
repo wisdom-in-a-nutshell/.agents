@@ -256,10 +256,22 @@ if not isinstance(mcp_registry, dict):
 mcp_presets = mcp_registry.get("presets", {})
 if not isinstance(mcp_presets, dict):
     fail(f"presets must be an object in {mcp_registry_path}")
+plugin_mcp_presets = mcp_registry.get("plugin_presets", {})
+if not isinstance(plugin_mcp_presets, dict):
+    fail(f"plugin_presets must be an object in {mcp_registry_path}")
 global_presets = mcp_registry.get("global_presets", [])
 if not isinstance(global_presets, list):
     fail(f"global_presets must be an array in {mcp_registry_path}")
-for preset_name, preset in sorted(mcp_presets.items()):
+plugin_global_presets = mcp_registry.get("plugin_global_presets", [])
+if not isinstance(plugin_global_presets, list):
+    fail(f"plugin_global_presets must be an array in {mcp_registry_path}")
+merged_mcp_presets = dict(mcp_presets)
+for preset_name, preset in sorted(plugin_mcp_presets.items()):
+    existing = merged_mcp_presets.get(preset_name)
+    if existing is not None and existing != preset:
+        fail(f"plugin_presets conflicts with existing preset `{preset_name}` in {mcp_registry_path}")
+    merged_mcp_presets[str(preset_name)] = preset
+for preset_name, preset in sorted(merged_mcp_presets.items()):
     if not isinstance(preset, dict):
         fail(f"presets.{preset_name} must be an object in {mcp_registry_path}")
     transport = preset.get("transport")
@@ -273,8 +285,8 @@ for preset_name, preset in sorted(mcp_presets.items()):
         command = preset.get("command")
         if not isinstance(command, str) or not command.strip():
             fail(f"presets.{preset_name}.command must be a non-empty string in {mcp_registry_path}")
-for preset_name in global_presets:
-    if preset_name not in mcp_presets:
+for preset_name in [str(name) for name in global_presets] + [str(name) for name in plugin_global_presets]:
+    if preset_name not in merged_mcp_presets:
         fail(f"global_presets references unknown MCP preset `{preset_name}` in {mcp_registry_path}")
 
 repos = registry.get("repos", [])

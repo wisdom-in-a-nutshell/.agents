@@ -204,14 +204,26 @@ if not isinstance(data, dict):
     raise SystemExit(f"{registry_path}: MCP registry root must be an object")
 
 presets = data.get("presets", {})
+plugin_presets = data.get("plugin_presets", {})
 global_presets = data.get("global_presets", [])
+plugin_global_presets = data.get("plugin_global_presets", [])
 if not isinstance(presets, dict):
     raise SystemExit(f"{registry_path}: presets must be an object")
+if not isinstance(plugin_presets, dict):
+    raise SystemExit(f"{registry_path}: plugin_presets must be an object")
 if not isinstance(global_presets, list):
     raise SystemExit(f"{registry_path}: global_presets must be an array")
+if not isinstance(plugin_global_presets, list):
+    raise SystemExit(f"{registry_path}: plugin_global_presets must be an array")
 
-for name in global_presets:
-    preset = presets.get(name)
+merged_presets = dict(presets)
+for name, preset in plugin_presets.items():
+    if name in merged_presets and merged_presets[name] != preset:
+        raise SystemExit(f"{registry_path}: plugin_presets conflicts with existing preset `{name}`")
+    merged_presets[str(name)] = preset
+
+for name in [str(value) for value in global_presets] + [str(value) for value in plugin_global_presets]:
+    preset = merged_presets.get(name)
     if not isinstance(preset, dict):
         raise SystemExit(f"{registry_path}: unknown global MCP preset `{name}`")
     transport = preset.get("transport")
@@ -633,10 +645,6 @@ render_global_config() {
   done < <(extract_global_agent_entries "$agent_registry_file" "codex")
   prune_stale_app_sections "$target_file" "$template_file"
   prune_stale_plugin_sections "$target_file" "$template_file"
-  while IFS=$'\x1f' read -r section key value; do
-    [[ -n "$key" ]] || continue
-    upsert_section_key "$target_file" "$section" "$key" "$value"
-  done < <(extract_managed_global_plugin_entries "$plugin_registry_file")
   prune_stale_model_provider_sections "$target_file" "$template_file"
 }
 
