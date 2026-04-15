@@ -2,70 +2,69 @@
 
 Canonical source of truth: [`plugins/registry.json`](/Users/dobby/.agents/plugins/registry.json)
 
-## 1) What Lives Where
+## What Lives Where
 
-- Real plugin files live in `plugins-source/...`.
-- Runtime discovery paths are managed symlinks, not copied plugin folders.
-- Codex discovers plugins through marketplace files rendered from the registry.
-
-```mermaid
-flowchart LR
-    A[plugins/registry.json] --> B[Real plugin folder in plugins-source/...]
-    B --> C[Global symlink: ~/.codex/plugins/{plugin}]
-    B --> D[Repo symlink: ~/GitHub/{repo}/plugins/{plugin}]
-    A --> E[Optional global marketplace: ~/.agents/plugins/marketplace.json]
-    A --> F[Generated Obsidian views in docs/references/registry/]
-```
-
-## 2) Two Entry Types
-
-- `managed_plugins`: actively synced by this repo.
-- `unmanaged_repo_local_plugins`: tracked for visibility only.
+- `plugins/registry.json` is the canonical list of managed Codex plugins.
+- Managed official plugins install into Codex through the official marketplace and `codex app-server`.
+- Plugin enablement is rendered into:
+  - global `~/.codex/config.toml`
+  - repo-local `.codex/config.toml` for repo-scoped entries
+- Obsidian views are generated under `docs/references/registry/`.
+- `plugins-source/owned/` and `plugins-source/external/` remain reserved for future local/custom plugin source, but official OpenAI plugins are not mirrored there.
 
 ```mermaid
 flowchart LR
-    A[plugins/registry.json] --> B[managed_plugins]
-    A --> C[unmanaged_repo_local_plugins]
-    B --> D[Sync creates links and marketplace entries]
-    C --> E[Record only]
+    A[plugins/registry.json] --> B[Obsidian registry views]
+    A --> C[global ~/.codex/config.toml]
+    A --> D[repo .codex/config.toml]
+    A --> E[codex app-server plugin/install]
+    E --> F[~/.codex/plugins/cache/...]
 ```
 
-## 3) Normal Workflow
+## Current Model
+
+- A managed plugin entry means:
+  - Codex should know about this plugin in the control plane
+  - Codex bootstrap should ensure it is installed
+  - config sync should render its enabled/disabled state
+- `global` scope means:
+  - render `[plugins."<id>"] enabled = ...` in `~/.codex/config.toml`
+- `repo` scope means:
+  - render the plugin disabled globally
+  - render the repo-local override in the assigned repos' `.codex/config.toml`
+
+That is the selective-control pattern:
+
+```mermaid
+flowchart LR
+    A[repo-scoped plugin] --> B[global config: enabled = false]
+    A --> C[repo config: enabled = true]
+```
+
+## Normal Workflow
 
 - Edit `plugins/registry.json`.
 - Run `./scripts/sync-plugins-registry.sh --apply`.
+- Run `./codex/scripts/bootstrap-machine-codex.sh --apply`.
 - Run `./scripts/check-plugins-registry.sh`.
-- Restart Codex after plugin source or marketplace changes so the local install picks them up.
-- Managed plugins default to `policy.installation = INSTALLED_BY_DEFAULT` unless you override it explicitly.
-- If there are no global-scoped managed plugins, the personal marketplace file is removed instead of rendering an empty catalog.
 
-```mermaid
-flowchart LR
-    A[Edit registry.json] --> B[Run sync --apply]
-    B --> C[Run check]
-    C --> D[Restart Codex if plugin sources changed]
+If you only need to add one managed plugin, use:
+
+```bash
+./scripts/bootstrap-plugin.sh build-ios-apps --repo codexclaw --apply
 ```
 
-## 4) External Refresh
+That updates the registry, regenerates the Obsidian views, syncs Codex config, and ensures the plugin is installed in Codex.
 
-- Use only for external plugins that have `upstream_ref`.
-- Run `./scripts/refresh-external-plugins.sh --apply`.
-- Then run sync + check again.
+## External Refresh
 
-```mermaid
-flowchart LR
-    A[Run refresh-external-plugins --apply] --> B[Updates plugins-source/external/...]
-    B --> C[Run sync and check]
-```
+- `refresh-external-plugins.sh` is now only for future locally mirrored plugin source under `plugins-source/external/`.
+- Official OpenAI plugins do not need local source refresh because Codex installs them from the official marketplace.
 
 ## Field Quick Reference
 
-- `plugin`: plugin folder name and manifest name.
-- `origin`: `owned` or `external`.
-- `scope`: `global` or `repo`.
-- `repos`: target repos for repo-scoped plugin runtime links and repo marketplaces.
-- `source_path`: real source folder under `plugins-source/...`.
-- `upstream_ref`: upstream source for external plugins.
-- `category`: marketplace category shown in Codex.
-- `policy.installation`: Codex install policy for the marketplace entry. Managed plugins default to `INSTALLED_BY_DEFAULT`.
-- `policy.authentication`: when Codex should ask for auth for the marketplace entry.
+- `plugin_id`: canonical plugin id, e.g. `build-ios-apps@openai-curated`
+- `scope`: `global` or `repo`
+- `repos`: target repos for repo-scoped enablement
+- `enabled`: desired enabled state in that scope
+- `category`: Obsidian registry category only

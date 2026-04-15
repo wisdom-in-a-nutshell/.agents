@@ -5,6 +5,7 @@ APPLY=0
 REGISTRY_FILE=""
 MCP_REGISTRY_FILE=""
 AGENT_REGISTRY_FILE=""
+PLUGIN_REGISTRY_FILE=""
 REPO_FILTERS=()
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -13,6 +14,7 @@ ROOT_DIR="$(cd "$CONTROL_PLANE_DIR/.." && pwd)"
 DEFAULT_REGISTRY_FILE="${CONTROL_PLANE_DIR}/config/repo-bootstrap.json"
 DEFAULT_MCP_REGISTRY_FILE="${ROOT_DIR}/mcp/config/presets.json"
 DEFAULT_AGENT_REGISTRY_FILE="${ROOT_DIR}/agents/registry.json"
+DEFAULT_PLUGIN_REGISTRY_FILE="${ROOT_DIR}/plugins/registry.json"
 
 usage() {
   cat <<USAGE
@@ -31,6 +33,9 @@ Options:
   --agent-registry <path>
                          Override shared agent registry
                          (default: agents/registry.json)
+  --plugin-registry <path>
+                         Override managed plugins registry
+                         (default: plugins/registry.json)
   --repo <path>          Limit sync to an exact repo path (repeatable)
   -h, --help             Show this help
 
@@ -81,6 +86,10 @@ while [[ $# -gt 0 ]]; do
       AGENT_REGISTRY_FILE="${2:-}"
       shift 2
       ;;
+    --plugin-registry)
+      PLUGIN_REGISTRY_FILE="${2:-}"
+      shift 2
+      ;;
     --repo)
       REPO_FILTERS+=("${2:-}")
       shift 2
@@ -104,6 +113,9 @@ fi
 if [[ -z "$AGENT_REGISTRY_FILE" ]]; then
   AGENT_REGISTRY_FILE="$DEFAULT_AGENT_REGISTRY_FILE"
 fi
+if [[ -z "$PLUGIN_REGISTRY_FILE" ]]; then
+  PLUGIN_REGISTRY_FILE="$DEFAULT_PLUGIN_REGISTRY_FILE"
+fi
 
 [[ -f "$REGISTRY_FILE" ]] || die "Missing registry file: $REGISTRY_FILE"
 [[ -r "$REGISTRY_FILE" ]] || die "Registry file is not readable: $REGISTRY_FILE"
@@ -111,6 +123,8 @@ fi
 [[ -r "$MCP_REGISTRY_FILE" ]] || die "MCP registry file is not readable: $MCP_REGISTRY_FILE"
 [[ -f "$AGENT_REGISTRY_FILE" ]] || die "Missing agent registry file: $AGENT_REGISTRY_FILE"
 [[ -r "$AGENT_REGISTRY_FILE" ]] || die "Agent registry file is not readable: $AGENT_REGISTRY_FILE"
+[[ -f "$PLUGIN_REGISTRY_FILE" ]] || die "Missing plugin registry file: $PLUGIN_REGISTRY_FILE"
+[[ -r "$PLUGIN_REGISTRY_FILE" ]] || die "Plugin registry file is not readable: $PLUGIN_REGISTRY_FILE"
 
 ensure_parent_dir() {
   local file="$1"
@@ -146,7 +160,7 @@ install_rendered_file() {
 }
 
 mapfile -t MANIFEST < <(
-  python3 - "$REGISTRY_FILE" "$MCP_REGISTRY_FILE" "$AGENT_REGISTRY_FILE" "$TMP_DIR" "${REPO_FILTERS[@]}" <<'PY'
+  python3 - "$REGISTRY_FILE" "$MCP_REGISTRY_FILE" "$AGENT_REGISTRY_FILE" "$PLUGIN_REGISTRY_FILE" "$TMP_DIR" "${REPO_FILTERS[@]}" <<'PY'
 from __future__ import annotations
 
 import hashlib
@@ -203,6 +217,23 @@ def ordered_unique(values: list[str]) -> list[str]:
         if value not in ordered:
             ordered.append(value)
     return ordered
+
+
+def parse_plugin_id(plugin_id: str) -> tuple[str, str]:
+    if "@" not in plugin_id:
+        raise TypeError(f"plugin_id must look like <plugin-name>@<marketplace>: {plugin_id}")
+    plugin_name, marketplace = plugin_id.rsplit("@", 1)
+    plugin_name = plugin_name.strip()
+    marketplace = marketplace.strip()
+    if not plugin_name or not marketplace:
+        raise TypeError(f"invalid plugin_id: {plugin_id}")
+    return plugin_name, marketplace
+
+
+def normalize_plugin_repo_token(raw: str, github_root: Path) -> str:
+    if raw.startswith("~/") or raw.startswith("/"):
+        return normalize_path(raw)
+    return str((github_root / raw).resolve())
 
 
 def toml_value(value):
@@ -326,7 +357,15 @@ def codex_mcp_config(name: str, preset: dict) -> dict:
     raise TypeError(f"Unsupported MCP transport for `{name}`: {transport}")
 
 
-def render_repo_config(repo: str, defaults: dict, override: dict, presets: dict, agent_presets: dict, custom_agent_names: list[str]) -> str:
+def render_repo_config(
+    repo: str,
+    defaults: dict,
+    override: dict,
+    presets: dict,
+    agent_presets: dict,
+    custom_agent_names: list[str],
+    plugin_overrides: list[dict],
+) -> str:
     lines = [
         "# Managed by ~/.agents/codex/scripts/sync-repo-codex-configs.sh.",
         "# Edit ~/.agents/codex/config/repo-bootstrap.json or ~/.agents/agents/registry.json and re-run the sync script.",
@@ -358,6 +397,13 @@ def render_repo_config(repo: str, defaults: dict, override: dict, presets: dict,
         lines.append("[features]")
         for key in sorted(features):
             lines.append(f"{key} = {toml_value(features[key])}")
+
+    if plugin_overrides:
+        rendered_anything = True
+        for plugin in sorted(plugin_overrides, key=lambda item: item["plugin_id"]):
+            lines.append("")
+            lines.append(f"[plugins.{toml_value(plugin['plugin_id'])}]")
+            lines.append(f"enabled = {toml_value(plugin['enabled'])}")
 
     preset_names = override.get("mcp_presets", [])
     if not isinstance(preset_names, list):
@@ -400,8 +446,9 @@ def render_repo_config(repo: str, defaults: dict, override: dict, presets: dict,
 registry_path = Path(sys.argv[1]).expanduser().resolve()
 mcp_registry_path = Path(sys.argv[2]).expanduser().resolve()
 agent_registry_path = Path(sys.argv[3]).expanduser().resolve()
-tmp_dir = Path(sys.argv[4]).resolve()
-filters = {normalize_path(path) for path in sys.argv[5:] if path}
+plugin_registry_path = Path(sys.argv[4]).expanduser().resolve()
+tmp_dir = Path(sys.argv[5]).resolve()
+filters = {normalize_path(path) for path in sys.argv[6:] if path}
 
 root_dir = agent_registry_path.parent.parent.resolve()
 sys.path.insert(0, str(root_dir))
@@ -410,14 +457,25 @@ from agents.registry import load_agent_registry
 
 
 data = json.loads(registry_path.read_text(encoding="utf-8"))
+plugin_registry = json.loads(plugin_registry_path.read_text(encoding="utf-8"))
 defaults = data.get("defaults", {})
 repos_raw = data.get("repos", [])
 presets, _global_presets = validate_mcp_registry(mcp_registry_path)
+plugin_items_raw = plugin_registry.get("managed_plugins", [])
+plugin_paths = plugin_registry.get("paths", {})
 
 if not isinstance(defaults, dict):
     raise TypeError("defaults must be an object")
 if not isinstance(repos_raw, list):
     raise TypeError("repos must be an array")
+if not isinstance(plugin_items_raw, list):
+    raise TypeError("managed_plugins must be an array")
+if not isinstance(plugin_paths, dict):
+    raise TypeError("plugins.paths must be an object")
+
+github_root = Path(
+    normalize_path(str(plugin_paths.get("github_root", str(Path.home() / "GitHub"))))
+)
 
 repo_items_all: list[dict] = []
 valid_repo_names: set[str] = set()
@@ -470,6 +528,37 @@ for agent in managed_agents:
         for repo_name in agent["repos"]:
             repo_agent_assignments.setdefault(str(repo_name), []).append(codex_name)
 
+managed_plugin_items: list[dict] = []
+seen_plugin_ids: set[str] = set()
+for idx, item in enumerate(plugin_items_raw):
+    if not isinstance(item, dict):
+        raise TypeError(f"managed_plugins[{idx}] must be an object")
+    plugin_id = str(item.get("plugin_id", "")).strip()
+    if not plugin_id:
+        raise TypeError(f"managed_plugins[{idx}] missing plugin_id")
+    parse_plugin_id(plugin_id)
+    if plugin_id in seen_plugin_ids:
+        raise TypeError(f"duplicate managed plugin_id: {plugin_id}")
+    seen_plugin_ids.add(plugin_id)
+
+    scope = str(item.get("scope", "")).strip()
+    if scope not in {"global", "repo"}:
+        raise TypeError(f"managed_plugins[{idx}] invalid scope: {scope!r}")
+    enabled = item.get("enabled", True)
+    if not isinstance(enabled, bool):
+        raise TypeError(f"managed_plugins[{idx}] enabled must be a boolean")
+    repos = item.get("repos", [])
+    if not isinstance(repos, list):
+        raise TypeError(f"managed_plugins[{idx}] repos must be an array")
+    managed_plugin_items.append(
+        {
+            "plugin_id": plugin_id,
+            "scope": scope,
+            "enabled": enabled,
+            "repos": [str(repo).strip() for repo in repos if str(repo).strip()],
+        }
+    )
+
 manifest_lines: list[str] = []
 for item in repo_items_all:
     actual_repo = item["_actual_repo"]
@@ -477,8 +566,35 @@ for item in repo_items_all:
         continue
 
     repo_agent_names = ordered_unique(repo_agent_assignments.get(item["_repo_name"], []))
+    repo_plugin_overrides: list[dict] = []
+    for plugin in managed_plugin_items:
+        if plugin["scope"] != "repo":
+            continue
+        matched = False
+        for repo_token in plugin["repos"]:
+            if repo_token == item["_repo_name"]:
+                matched = True
+                break
+            if normalize_plugin_repo_token(repo_token, github_root) == actual_repo:
+                matched = True
+                break
+        if matched:
+            repo_plugin_overrides.append(
+                {
+                    "plugin_id": plugin["plugin_id"],
+                    "enabled": plugin["enabled"],
+                }
+            )
 
-    rendered = render_repo_config(actual_repo, defaults, item, presets, agent_presets, repo_agent_names)
+    rendered = render_repo_config(
+        actual_repo,
+        defaults,
+        item,
+        presets,
+        agent_presets,
+        repo_agent_names,
+        repo_plugin_overrides,
+    )
     rendered_path = tmp_dir / f"{hashlib.sha256(actual_repo.encode()).hexdigest()}.toml"
     rendered_path.write_text(rendered, encoding="utf-8")
     target_path = Path(actual_repo) / ".codex" / "config.toml"

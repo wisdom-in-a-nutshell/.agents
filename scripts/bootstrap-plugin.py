@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import subprocess
 import sys
 import time
@@ -20,9 +21,6 @@ EXIT_FAILURE = 1
 EXIT_USAGE = 2
 EXIT_DEPENDENCY = 4
 EXIT_TIMEOUT = 5
-
-ALLOWED_INSTALLATION_POLICIES = {"AVAILABLE", "INSTALLED_BY_DEFAULT", "NOT_AVAILABLE"}
-ALLOWED_AUTH_POLICIES = {"ON_INSTALL", "ON_USE"}
 
 
 def utc_timestamp() -> str:
@@ -45,7 +43,7 @@ def emit_plain(payload: dict[str, Any]) -> None:
     if payload["status"] == "ok":
         data = payload["data"]
         print(
-            f"ok plugin={data['plugin']} scope={data['scope']} "
+            f"ok plugin_id={data['plugin_id']} scope={data['scope']} "
             f"registry_changed={str(data['registry_changed']).lower()}"
         )
         for action in data["actions"]:
@@ -123,36 +121,40 @@ def resolve_repo_root(repo: str, github_root: Path, home: Path) -> Path:
 
 
 def parse_plugin_ref(raw: str) -> tuple[str, str]:
+    raw = raw.strip()
+    if not raw:
+        raise ValueError("plugin reference must not be empty")
+
     parsed = urlparse(raw)
     if parsed.scheme and parsed.netloc:
         if parsed.netloc != "github.com":
             raise ValueError(f"unsupported plugin URL host: {parsed.netloc}")
         parts = [part for part in parsed.path.split("/") if part]
-        if len(parts) < 5 or parts[2] != "tree":
+        if len(parts) < 5 or parts[0] != "openai" or parts[1] != "plugins" or parts[2] != "tree":
             raise ValueError(
-                "GitHub plugin URLs must look like https://github.com/<owner>/<repo>/tree/<branch>/<path>"
+                "GitHub plugin URLs must look like https://github.com/openai/plugins/tree/<branch>/plugins/<name>"
             )
-        owner, repo_name, _, branch = parts[:4]
         plugin_path = "/".join(parts[4:]).strip("/")
-        plugin = plugin_path.split("/")[-1]
-        if not plugin:
+        if not plugin_path.startswith("plugins/"):
+            raise ValueError("only official openai/plugins plugin URLs are supported")
+        plugin_name = plugin_path.split("/")[-1]
+        if not plugin_name:
             raise ValueError(f"invalid plugin path in URL: {raw}")
-        return plugin, f"{owner}/{repo_name}:{plugin_path}@{branch}"
+        return plugin_name, f"{plugin_name}@openai-curated"
 
-    if ":" in raw and "@" in raw:
-        try:
-            repo_and_path, branch = raw.rsplit("@", 1)
-            _repo, path = repo_and_path.split(":", 1)
-        except ValueError as exc:
-            raise ValueError(f"invalid upstream_ref: {raw}") from exc
-        plugin = path.rstrip("/").split("/")[-1]
-        if not plugin or not branch.strip():
-            raise ValueError(f"invalid upstream_ref: {raw}")
-        return plugin, raw
+    if "@" in raw:
+        plugin_name, marketplace = raw.rsplit("@", 1)
+        plugin_name = plugin_name.strip()
+        marketplace = marketplace.strip()
+        if not plugin_name or not marketplace:
+            raise ValueError(f"invalid plugin id: {raw}")
+        return plugin_name, f"{plugin_name}@{marketplace}"
 
-    raise ValueError(
-        "plugin reference must be a GitHub tree URL or an upstream_ref like owner/repo:path@branch"
-    )
+    if not re.fullmatch(r"[A-Za-z0-9._-]+", raw):
+        raise ValueError(
+            "plugin reference must be a plugin name, a plugin id like name@marketplace, or an official GitHub tree URL"
+        )
+    return raw, f"{raw}@openai-curated"
 
 
 def unique_repos(values: list[str]) -> list[str]:
@@ -187,13 +189,13 @@ def run(
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description=(
-            "Bootstrap an external plugin into ~/.agents canonical registry and "
-            "optionally sync it into one or more repos."
+            "Bootstrap an official Codex plugin into ~/.agents canonical registry and "
+            "optionally apply the managed Codex state."
         )
     )
     parser.add_argument(
         "plugin_ref",
-        help="GitHub tree URL or upstream_ref (owner/repo:path@branch)",
+        help="Plugin name, plugin id (name@marketplace), or official openai/plugins GitHub tree URL.",
     )
     parser.add_argument(
         "--repo",
@@ -205,24 +207,25 @@ def parse_args() -> argparse.Namespace:
         "--scope",
         choices=["repo", "global"],
         default="global",
-        help="Install scope for the managed plugin entry (default: global).",
+        help="Enablement scope for the managed plugin entry (default: global).",
     )
     parser.add_argument(
         "--category",
         default="Coding",
-        help="Marketplace category for the plugin entry (default: Coding).",
+        help="Category shown in the Obsidian registry view (default: Coding).",
     )
     parser.add_argument(
-        "--installation-policy",
-        choices=sorted(ALLOWED_INSTALLATION_POLICIES),
-        default="INSTALLED_BY_DEFAULT",
-        help="Codex marketplace installation policy (default: INSTALLED_BY_DEFAULT).",
+        "--enabled",
+        dest="enabled",
+        action="store_true",
+        default=True,
+        help="Enable the plugin in its managed scope (default).",
     )
     parser.add_argument(
-        "--authentication-policy",
-        choices=sorted(ALLOWED_AUTH_POLICIES),
-        default="ON_INSTALL",
-        help="Codex marketplace authentication policy (default: ON_INSTALL).",
+        "--disabled",
+        dest="enabled",
+        action="store_false",
+        help="Track the plugin but render it disabled in config.",
     )
     parser.add_argument(
         "--apply",
@@ -237,7 +240,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--timeout-sec",
         type=int,
-        default=180,
+        default=240,
         help="Timeout for each child command.",
     )
     parser.add_argument(
@@ -259,14 +262,14 @@ def main() -> int:
     started_at = time.time()
 
     try:
-        plugin, upstream_ref = parse_plugin_ref(args.plugin_ref)
+        plugin_name, plugin_id = parse_plugin_ref(args.plugin_ref)
     except ValueError as exc:
         return finish_error(
             request_id,
             started_at,
             code="E_INVALID_PLUGIN_REF",
             message=str(exc),
-            hint="Pass a GitHub tree URL or an upstream_ref like owner/repo:path@branch.",
+            hint="Pass a plugin name, a plugin id like build-ios-apps@openai-curated, or an official GitHub tree URL.",
             exit_code=EXIT_USAGE,
             plain=args.plain,
         )
@@ -294,16 +297,14 @@ def main() -> int:
             started_at,
             code="E_INVALID_REGISTRY_JSON",
             message=f"Invalid JSON in {registry_file}: {exc}",
-            hint="Repair plugins/registry.json before bootstrapping a new plugin.",
+            hint="Repair plugins/registry.json before bootstrapping a plugin.",
             exit_code=EXIT_USAGE,
             plain=args.plain,
         )
 
     paths = registry.get("paths", {})
-    github_root_raw = paths.get("github_root", "~/GitHub")
-    github_root = expand_path(str(github_root_raw), home).resolve()
-    codex_plugin_root_raw = paths.get("codex_plugin_root", "~/.codex/plugins")
-    codex_plugin_root = expand_path(str(codex_plugin_root_raw), home).resolve()
+    github_root_raw = str(paths.get("github_root", "~/GitHub"))
+    github_root = expand_path(github_root_raw, home).resolve()
 
     repos = unique_repos(args.repo)
     if args.scope == "repo" and not repos:
@@ -342,107 +343,77 @@ def main() -> int:
             started_at,
             code="E_INVALID_REGISTRY_SHAPE",
             message="managed_plugins must be an array",
-            hint="Repair plugins/registry.json before bootstrapping a new plugin.",
+            hint="Repair plugins/registry.json before bootstrapping a plugin.",
             exit_code=EXIT_USAGE,
             plain=args.plain,
         )
 
-    global_entry: dict[str, Any] | None = None
-    repo_entry: dict[str, Any] | None = None
+    existing_entry: dict[str, Any] | None = None
     for entry in managed:
-        if not isinstance(entry, dict) or entry.get("plugin") != plugin:
-            continue
-        if entry.get("scope") == "global":
-            global_entry = entry
-        elif entry.get("scope") == "repo":
-            repo_entry = entry
+        if isinstance(entry, dict) and entry.get("plugin_id") == plugin_id:
+            existing_entry = entry
+            break
 
-    source_path = f"plugins-source/external/{plugin}"
-    desired_policy = {
-        "installation": args.installation_policy,
-        "authentication": args.authentication_policy,
-    }
     registry_changed = False
     actions: list[str] = []
     effective_scope = args.scope
     effective_repos = repos
 
-    def ensure_external_entry_shape(entry: dict[str, Any]) -> None:
-        if entry.get("origin") != "external":
-            raise ValueError(f"plugin {plugin} already exists with origin={entry.get('origin')}")
-        if entry.get("source_path") != source_path:
-            raise ValueError(
-                f"plugin {plugin} already exists with source_path={entry.get('source_path')}"
-            )
-        if entry.get("upstream_ref") != upstream_ref:
-            raise ValueError(
-                f"plugin {plugin} already exists with upstream_ref={entry.get('upstream_ref')}"
-            )
+    if existing_entry is None:
+        managed.append(
+            {
+                "plugin_id": plugin_id,
+                "scope": args.scope,
+                "repos": repos if args.scope == "repo" else [],
+                "enabled": args.enabled,
+                "category": args.category,
+            }
+        )
+        registry_changed = True
+        actions.append(f"Registry add: managed plugin {plugin_id}.")
+    else:
+        existing_scope = str(existing_entry.get("scope", "")).strip()
+        existing_repos = existing_entry.get("repos", [])
+        if not isinstance(existing_repos, list):
+            existing_repos = []
 
-    try:
-        if global_entry is not None:
-            ensure_external_entry_shape(global_entry)
-            effective_scope = "global"
-            effective_repos = []
-            actions.append(f"Registry unchanged: global managed plugin already exists for {plugin}.")
-        elif args.scope == "global":
-            if repo_entry is not None:
-                ensure_external_entry_shape(repo_entry)
-            managed.append(
-                {
-                    "plugin": plugin,
-                    "origin": "external",
-                    "scope": "global",
-                    "repos": [],
-                    "source_path": source_path,
-                    "upstream_ref": upstream_ref,
-                    "category": args.category,
-                    "policy": desired_policy,
-                }
-            )
+        updated_repos = repos if args.scope == "repo" else []
+        if existing_scope != args.scope:
+            existing_entry["scope"] = args.scope
+            existing_entry["repos"] = updated_repos
             registry_changed = True
-            effective_repos = []
-            actions.append(f"Registry add: managed global external plugin {plugin}.")
-        elif repo_entry is not None:
-            ensure_external_entry_shape(repo_entry)
-            existing = unique_repos([*repo_entry.get("repos", []), *repos])
-            if existing != repo_entry.get("repos", []):
-                repo_entry["repos"] = existing
+            actions.append(f"Registry update: scope for {plugin_id} -> {args.scope}.")
+        elif args.scope == "repo":
+            merged_repos = unique_repos([*existing_repos, *repos])
+            if merged_repos != existing_repos:
+                existing_entry["repos"] = merged_repos
                 registry_changed = True
                 actions.append(
-                    f"Registry update: added repo targets to managed repo plugin {plugin}: "
-                    + ", ".join(repo for repo in existing if repo in repos)
+                    f"Registry update: added repo targets to {plugin_id}: " + ", ".join(repos)
                 )
-            else:
-                actions.append(f"Registry unchanged: repo managed plugin already covers {plugin}.")
-            effective_repos = existing
+            updated_repos = merged_repos
         else:
-            managed.append(
-                {
-                    "plugin": plugin,
-                    "origin": "external",
-                    "scope": "repo",
-                    "repos": repos,
-                    "source_path": source_path,
-                    "upstream_ref": upstream_ref,
-                    "category": args.category,
-                    "policy": desired_policy,
-                }
-            )
+            existing_entry["repos"] = []
+
+        if existing_entry.get("enabled", True) != args.enabled:
+            existing_entry["enabled"] = args.enabled
             registry_changed = True
             actions.append(
-                f"Registry add: managed repo external plugin {plugin} for " + ", ".join(repos) + "."
+                f"Registry update: enabled={str(args.enabled).lower()} for {plugin_id}."
             )
-    except ValueError as exc:
-        return finish_error(
-            request_id,
-            started_at,
-            code="E_CONFLICTING_PLUGIN_ENTRY",
-            message=str(exc),
-            hint="Resolve the existing registry entry manually before re-running bootstrap.",
-            exit_code=EXIT_USAGE,
-            plain=args.plain,
+        if str(existing_entry.get("category", "")).strip() != args.category:
+            existing_entry["category"] = args.category
+            registry_changed = True
+            actions.append(f"Registry update: category={args.category} for {plugin_id}.")
+
+        effective_scope = str(existing_entry.get("scope", args.scope))
+        effective_repos = (
+            unique_repos([str(repo).strip() for repo in existing_entry.get("repos", [])])
+            if effective_scope == "repo"
+            else []
         )
+        if not actions:
+            actions.append(f"Registry unchanged: managed plugin already exists for {plugin_id}.")
 
     commands_run: list[dict[str, Any]] = []
     if args.apply:
@@ -450,8 +421,8 @@ def main() -> int:
             registry_file.write_text(json.dumps(registry, indent=2) + "\n", encoding="utf-8")
 
         child_commands = [
-            [sys.executable, "scripts/refresh-external-plugins.py", "--apply", "--plugin", plugin],
             [sys.executable, "scripts/sync-plugins-registry.py", "--apply"],
+            [str(root_dir / "codex/scripts/bootstrap-machine-codex.sh"), "--apply"],
         ]
 
         for cmd in child_commands:
@@ -485,31 +456,22 @@ def main() -> int:
                     exit_code=EXIT_DEPENDENCY,
                     plain=args.plain,
                 )
-        actions.append(f"Imported upstream plugin into {source_path}.")
-        actions.append("Synced managed plugin links and regenerated marketplace/registry artifacts.")
+        actions.append("Regenerated plugin registry views.")
+        actions.append("Applied managed Codex plugin install/config state.")
     else:
-        actions.append(f"Would import upstream plugin into {source_path}.")
-        actions.append("Would run refresh-external-plugins and sync-plugins-registry.")
-
-    repo_links = []
-    if effective_scope == "repo":
-        for repo in effective_repos:
-            repo_root = resolve_repo_root(repo, github_root, home)
-            repo_links.append(str(repo_root / "plugins" / plugin))
-    elif effective_scope == "global":
-        repo_links.append(str(codex_plugin_root / plugin))
+        actions.append("Would regenerate plugin registry views.")
+        actions.append("Would apply managed Codex plugin install/config state.")
 
     data = {
-        "plugin": plugin,
-        "upstream_ref": upstream_ref,
+        "plugin_name": plugin_name,
+        "plugin_id": plugin_id,
         "scope": effective_scope,
         "repos": effective_repos,
-        "source_path": source_path,
+        "enabled": args.enabled,
         "registry_file": str(registry_file),
         "registry_changed": registry_changed,
         "apply": bool(args.apply),
         "repo_roots": resolved_repo_roots,
-        "expected_links": repo_links,
         "actions": actions,
         "commands_run": commands_run,
     }

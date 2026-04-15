@@ -174,17 +174,11 @@ def default_skills_registry() -> dict[str, Any]:
 
 def default_plugins_registry() -> dict[str, Any]:
     return {
-        "managed_plugins": [],
-        "marketplaces": {
-            "global": {
-                "name": "managed-plugins",
-                "display_name": "Managed Plugins",
-            }
-        },
+        "version": 1,
         "paths": {
             "github_root": "~/GitHub",
-            "codex_plugin_root": "~/.codex/plugins",
         },
+        "managed_plugins": [],
         "unmanaged_repo_local_plugins": [],
     }
 

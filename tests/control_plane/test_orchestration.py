@@ -202,7 +202,7 @@ class AutoApplyRoutingTests(TempDirTestCase):
             log_path.read_text(encoding="utf-8").splitlines(),
         )
 
-    def test_plugins_registry_change_triggers_plugin_sync_only(self) -> None:
+    def test_plugins_registry_change_triggers_plugin_sync_and_codex_bootstrap(self) -> None:
         root, log_path, stamp_file = self._make_agents_repo()
         baseline_sha = run_command(
             ["git", "-C", str(root), "rev-parse", "HEAD"],
@@ -212,17 +212,11 @@ class AutoApplyRoutingTests(TempDirTestCase):
         write_json(
             root / "plugins/registry.json",
             {
-                "managed_plugins": [],
-                "marketplaces": {
-                    "global": {
-                        "name": "managed-plugins",
-                        "display_name": "Managed Plugins",
-                    }
-                },
+                "version": 1,
                 "paths": {
                     "github_root": "~/GitHub",
-                    "codex_plugin_root": "~/.codex/plugins",
                 },
+                "managed_plugins": [],
                 "unmanaged_repo_local_plugins": [],
             },
         )
@@ -234,6 +228,7 @@ class AutoApplyRoutingTests(TempDirTestCase):
         self.assertEqual(
             [
                 "sync-plugins-registry.sh|--apply",
+                f"bootstrap-machine-codex.sh|--apply --github-root {self.temp_path / 'GitHub'}",
             ],
             log_path.read_text(encoding="utf-8").splitlines(),
         )

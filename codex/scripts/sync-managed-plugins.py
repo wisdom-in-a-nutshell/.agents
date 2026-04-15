@@ -165,6 +165,11 @@ def parse_args() -> argparse.Namespace:
         help="Install missing managed plugins. Default is dry-run.",
     )
     parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Show what would be installed without changing Codex.",
+    )
+    parser.add_argument(
         "--registry-file",
         default=str(Path.home() / ".agents" / "plugins" / "registry.json"),
         help="Path to plugins registry JSON.",
@@ -174,6 +179,9 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> int:
     args = parse_args()
+    if args.apply and args.dry_run:
+        print("Choose either --apply or --dry-run, not both.", file=sys.stderr)
+        return 1
     registry_file = Path(args.registry_file).expanduser().resolve()
     if not registry_file.is_file():
         print(f"Registry not found: {registry_file}", file=sys.stderr)

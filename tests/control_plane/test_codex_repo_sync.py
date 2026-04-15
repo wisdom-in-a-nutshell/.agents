@@ -4,6 +4,7 @@ from tests.control_plane.support import (
     REPO_ROOT,
     TempDirTestCase,
     default_mcp_registry,
+    default_plugins_registry,
     init_git_repo,
     make_control_plane_root,
     run_command,
@@ -20,6 +21,7 @@ class CodexRepoSyncTests(TempDirTestCase):
         repo_registry_path = root / "codex/config/repo-bootstrap.json"
         mcp_registry_path = root / "mcp/config/presets.json"
         agent_registry_path = root / "agents/registry.json"
+        plugin_registry_path = root / "plugins/registry.json"
 
         write_json(
             repo_registry_path,
@@ -38,6 +40,17 @@ class CodexRepoSyncTests(TempDirTestCase):
             },
         )
         write_json(mcp_registry_path, default_mcp_registry())
+        plugin_registry = default_plugins_registry()
+        plugin_registry["managed_plugins"] = [
+            {
+                "plugin_id": "build-ios-apps@openai-curated",
+                "scope": "repo",
+                "repos": ["adi"],
+                "enabled": True,
+                "category": "Coding",
+            }
+        ]
+        write_json(plugin_registry_path, plugin_registry)
         write_json(
             agent_registry_path,
             {
@@ -58,6 +71,8 @@ class CodexRepoSyncTests(TempDirTestCase):
                 str(mcp_registry_path),
                 "--agent-registry",
                 str(agent_registry_path),
+                "--plugin-registry",
+                str(plugin_registry_path),
             ]
         )
 
@@ -68,6 +83,8 @@ class CodexRepoSyncTests(TempDirTestCase):
         self.assertIn('model_reasoning_effort = "high"', repo_config)
         self.assertIn("[mcp_servers.paper]", repo_config)
         self.assertIn('url = "http://127.0.0.1:29979/mcp"', repo_config)
+        self.assertIn('[plugins."build-ios-apps@openai-curated"]', repo_config)
+        self.assertIn("enabled = true", repo_config)
         self.assertIn("[agents.visual_reviewer]", repo_config)
         self.assertIn('config_file = "agents/visual_reviewer.toml"', repo_config)
         self.assertIn('nickname_candidates = ["Lens", "Critic", "Review"]', repo_config)

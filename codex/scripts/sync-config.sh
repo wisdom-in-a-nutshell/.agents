@@ -259,7 +259,8 @@ for idx, item in enumerate(managed):
         raise SystemExit(f"managed_plugins[{idx}] enabled must be a boolean")
 
     desired_enabled = enabled if scope == "global" else False
-    print(f'plugins.{plugin_id}\x1fenabled\x1f{"true" if desired_enabled else "false"}')
+    quoted_plugin_id = json.dumps(plugin_id)
+    print(f'plugins.{quoted_plugin_id}\x1fenabled\x1f{"true" if desired_enabled else "false"}')
 PY
 }
 
@@ -986,6 +987,7 @@ target_text = target.read_text(encoding="utf-8") if target.exists() else ""
 template_text = template.read_text(encoding="utf-8") if template.exists() else ""
 
 plugin_header_re = re.compile(r'^\[plugins\."([^"]+)"\]\s*$')
+legacy_plugin_header_re = re.compile(r'^\[plugins\.([^\]"]+@[^\]"]+)\]\s*$')
 
 allowed_plugins: set[str] = set()
 for line in template_text.splitlines():
@@ -1008,6 +1010,10 @@ while i < len(lines):
             j += 1
         block = lines[i:j]
         m = plugin_header_re.match(stripped)
+        legacy = legacy_plugin_header_re.match(stripped)
+        if legacy:
+            i = j
+            continue
         if m and m.group(1) not in allowed_plugins:
             i = j
             continue

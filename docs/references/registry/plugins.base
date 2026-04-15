@@ -3,55 +3,47 @@ filters:
     - 'file.inFolder("docs/references/registry/plugins-items")'
 formulas:
   scope_badge: 'if(scope == "global", "🌍 global", if(scope == "repo", "📦 repo", scope))'
-  origin_badge: 'if(origin == "external", "↗ external", if(origin == "owned", "✳ owned", origin))'
+  enabled_badge: 'if(enabled, "✅ enabled", "⛔ disabled")'
 properties:
   registry_kind:
     displayName: Type
-  plugin:
+  plugin_id:
+    displayName: Plugin Id
+  plugin_name:
     displayName: Plugin
-  origin:
-    displayName: Origin
+  marketplace:
+    displayName: Marketplace
   scope:
     displayName: Scope
   formula.scope_badge:
     displayName: Scope
+  enabled:
+    displayName: Enabled
+  formula.enabled_badge:
+    displayName: Enabled
+  category:
+    displayName: Category
   repos:
     displayName: Repos
   repos_csv:
     displayName: Repos CSV
-  upstream_ref:
-    displayName: Upstream
-  formula.origin_badge:
-    displayName: Origin
   repo:
     displayName: Repo
-  source_path:
-    displayName: Source Path
-  category:
-    displayName: Category
-  installation_policy:
-    displayName: Install Policy
-  authentication_policy:
-    displayName: Auth Policy
 views:
   - type: table
     name: Managed Plugins
     filters: 'registry_kind == "managed"'
     order:
-      - plugin
-      - formula.origin_badge
+      - plugin_name
+      - marketplace
       - formula.scope_badge
+      - formula.enabled_badge
       - category
-      - installation_policy
-      - authentication_policy
       - repos
-      - upstream_ref
     sort:
       - property: scope
         direction: ASC
-      - property: origin
-        direction: ASC
-      - property: plugin
+      - property: plugin_name
         direction: ASC
   - type: table
     name: Repo-Local Plugins
