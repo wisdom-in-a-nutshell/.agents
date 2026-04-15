@@ -62,7 +62,7 @@
     {
       "path": "~/GitHub/codexclaw",
       "plugin_mcp_presets": [
-        "plugin-build-ios-apps-xcodebuildmcp"
+        "xcodebuildmcp"
       ]
     },
     {

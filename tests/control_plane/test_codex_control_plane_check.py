@@ -30,7 +30,7 @@ class CodexControlPlaneCheckTests(TempDirTestCase):
                 "repos": [
                     {
                         "mcp_presets": ["paper"],
-                        "plugin_mcp_presets": ["plugin-build-ios-apps-xcodebuildmcp"],
+                        "plugin_mcp_presets": ["xcodebuildmcp"],
                         "path": str(adi),
                     }
                 ],
@@ -38,7 +38,7 @@ class CodexControlPlaneCheckTests(TempDirTestCase):
         )
         mcp_registry = default_mcp_registry()
         mcp_registry["plugin_presets"] = {
-            "plugin-build-ios-apps-xcodebuildmcp": {
+            "xcodebuildmcp": {
                 "transport": "stdio",
                 "command": "npx",
                 "args": ["-y", "xcodebuildmcp@latest", "mcp"],

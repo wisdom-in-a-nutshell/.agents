@@ -31,7 +31,7 @@ class CodexRepoSyncTests(TempDirTestCase):
                 "repos": [
                     {
                         "mcp_presets": ["paper"],
-                        "plugin_mcp_presets": ["plugin-build-ios-apps-xcodebuildmcp"],
+                        "plugin_mcp_presets": ["xcodebuildmcp"],
                         "path": str(adi),
                     }
                 ],
@@ -39,7 +39,7 @@ class CodexRepoSyncTests(TempDirTestCase):
         )
         mcp_registry = default_mcp_registry()
         mcp_registry["plugin_presets"] = {
-            "plugin-build-ios-apps-xcodebuildmcp": {
+            "xcodebuildmcp": {
                 "transport": "stdio",
                 "command": "npx",
                 "args": ["-y", "xcodebuildmcp@latest", "mcp"],
@@ -76,7 +76,7 @@ class CodexRepoSyncTests(TempDirTestCase):
         self.assertIn('model_reasoning_effort = "high"', repo_config)
         self.assertIn("[mcp_servers.paper]", repo_config)
         self.assertIn('url = "http://127.0.0.1:29979/mcp"', repo_config)
-        self.assertIn("[mcp_servers.plugin-build-ios-apps-xcodebuildmcp]", repo_config)
+        self.assertIn("[mcp_servers.xcodebuildmcp]", repo_config)
         self.assertIn('command = "npx"', repo_config)
         self.assertIn("[agents.visual_reviewer]", repo_config)
         self.assertIn('config_file = "agents/visual_reviewer.toml"', repo_config)

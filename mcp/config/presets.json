@@ -28,7 +28,7 @@
   },
   "global_presets": [],
   "plugin_presets": {
-    "plugin-build-ios-apps-xcodebuildmcp": {
+    "xcodebuildmcp": {
       "command": "npx",
       "args": [
         "-y",

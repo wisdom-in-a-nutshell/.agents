@@ -129,7 +129,7 @@ class ManagedPluginsRegistrySyncTests(TempDirTestCase):
 
         mcp_registry = json.loads((root / "mcp/config/presets.json").read_text(encoding="utf-8"))
         self.assertIn(
-            "plugin-build-ios-apps-xcodebuildmcp",
+            "xcodebuildmcp",
             mcp_registry.get("plugin_presets", {}),
         )
 
@@ -137,7 +137,7 @@ class ManagedPluginsRegistrySyncTests(TempDirTestCase):
             (root / "codex/config/repo-bootstrap.json").read_text(encoding="utf-8")
         )
         self.assertEqual(
-            ["plugin-build-ios-apps-xcodebuildmcp"],
+            ["xcodebuildmcp"],
             repo_bootstrap["repos"][0]["plugin_mcp_presets"],
         )
 
