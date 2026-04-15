@@ -3,17 +3,13 @@ from __future__ import annotations
 
 import argparse
 import json
-import os
 import shutil
 import sys
 from pathlib import Path
 from typing import Any
 
 
-ALLOWED_ORIGINS = {"external", "owned"}
 ALLOWED_SCOPES = {"global", "repo"}
-ALLOWED_INSTALLATION_POLICIES = {"AVAILABLE", "INSTALLED_BY_DEFAULT", "NOT_AVAILABLE"}
-ALLOWED_AUTH_POLICIES = {"ON_INSTALL", "ON_USE"}
 
 
 def expand_path(raw: str, home: Path) -> Path:
@@ -28,51 +24,6 @@ def ensure_str(value: Any, field: str, idx: int) -> str:
     return value.strip()
 
 
-def rel_link(dst: Path, src: Path) -> str:
-    return os.path.relpath(str(src), str(dst.parent))
-
-
-def resolved_target(link_path: Path) -> Path:
-    cur = os.readlink(link_path)
-    if os.path.isabs(cur):
-        return Path(cur).resolve()
-    return (link_path.parent / cur).resolve()
-
-
-def is_relative_to(path: Path, parent: Path) -> bool:
-    try:
-        path.relative_to(parent)
-        return True
-    except ValueError:
-        return False
-
-
-def resolve_repo_root(repo: str, github_root: Path, home: Path) -> Path:
-    if repo.startswith("~/") or repo.startswith("/"):
-        return expand_path(repo, home).resolve()
-    return (github_root / repo).resolve()
-
-
-def sync_link(dst: Path, src: Path, apply: bool) -> None:
-    rel = rel_link(dst, src)
-    if dst.is_symlink() and resolved_target(dst) == src.resolve():
-        print(f"UNCHANGED {dst}")
-        return
-
-    print(f"SYNC {dst} -> {rel}")
-    if not apply:
-        return
-
-    dst.parent.mkdir(parents=True, exist_ok=True)
-    if dst.is_symlink() or dst.is_file():
-        dst.unlink()
-    elif dst.is_dir():
-        shutil.rmtree(dst)
-    elif dst.exists():
-        dst.unlink()
-    dst.symlink_to(rel)
-
-
 def _yaml_str(value: str) -> str:
     return json.dumps(value)
 
@@ -84,13 +35,95 @@ def _write_if_changed(path: Path, content: str) -> None:
         path.write_text(content, encoding="utf-8")
 
 
-def _delete_if_exists(path: Path) -> None:
-    if path.exists() or path.is_symlink():
-        path.unlink()
-
-
 def generated_views_dir(root_dir: Path) -> Path:
     return root_dir / "docs" / "references" / "registry"
+
+
+def parse_plugin_id(plugin_id: str, idx: int) -> tuple[str, str]:
+    if "@" not in plugin_id:
+        raise ValueError(
+            f"managed_plugins[{idx}] plugin_id must look like <plugin-name>@<marketplace>"
+        )
+    plugin_name, marketplace = plugin_id.rsplit("@", 1)
+    plugin_name = plugin_name.strip()
+    marketplace = marketplace.strip()
+    if not plugin_name or not marketplace:
+        raise ValueError(
+            f"managed_plugins[{idx}] invalid plugin_id: {plugin_id!r}"
+        )
+    return plugin_name, marketplace
+
+
+def validate_registry(
+    data: dict[str, Any], home: Path
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]], Path]:
+    managed = data.get("managed_plugins", [])
+    if not isinstance(managed, list):
+        raise ValueError("managed_plugins must be an array")
+
+    unmanaged = data.get("unmanaged_repo_local_plugins", [])
+    if not isinstance(unmanaged, list):
+        raise ValueError("unmanaged_repo_local_plugins must be an array")
+
+    paths = data.get("paths", {})
+    if not isinstance(paths, dict):
+        raise ValueError("paths must be an object")
+    github_root_raw = str(paths.get("github_root", "~/GitHub")).strip()
+    if not github_root_raw:
+        raise ValueError("paths.github_root must be a non-empty string")
+    github_root = expand_path(github_root_raw, home).resolve()
+
+    seen_plugin_ids: set[str] = set()
+    validated_managed: list[dict[str, Any]] = []
+    for idx, item in enumerate(managed):
+        if not isinstance(item, dict):
+            raise ValueError(f"managed_plugins[{idx}] must be an object")
+
+        plugin_id = ensure_str(item.get("plugin_id"), "plugin_id", idx)
+        plugin_name, marketplace = parse_plugin_id(plugin_id, idx)
+        scope = ensure_str(item.get("scope"), "scope", idx)
+        if scope not in ALLOWED_SCOPES:
+            raise ValueError(f"managed_plugins[{idx}] invalid scope: {scope}")
+        if plugin_id in seen_plugin_ids:
+            raise ValueError(f"duplicate managed plugin_id: {plugin_id}")
+        seen_plugin_ids.add(plugin_id)
+
+        repos_raw = item.get("repos", [])
+        if not isinstance(repos_raw, list):
+            raise ValueError(f"managed_plugins[{idx}] repos must be an array")
+        repos = [str(repo).strip() for repo in repos_raw if str(repo).strip()]
+        if scope == "repo" and not repos:
+            raise ValueError(f"managed_plugins[{idx}] repo scope needs repos")
+        if scope == "global":
+            repos = []
+
+        enabled_raw = item.get("enabled", True)
+        if not isinstance(enabled_raw, bool):
+            raise ValueError(f"managed_plugins[{idx}] enabled must be a boolean")
+
+        category = str(item.get("category", "")).strip() or "Productivity"
+
+        validated_managed.append(
+            {
+                "plugin_id": plugin_id,
+                "plugin_name": plugin_name,
+                "marketplace": marketplace,
+                "scope": scope,
+                "repos": repos,
+                "enabled": enabled_raw,
+                "category": category,
+            }
+        )
+
+    validated_unmanaged: list[dict[str, Any]] = []
+    for idx, item in enumerate(unmanaged):
+        if not isinstance(item, dict):
+            raise ValueError(f"unmanaged_repo_local_plugins[{idx}] must be an object")
+        repo = ensure_str(item.get("repo"), "repo", idx)
+        plugin = ensure_str(item.get("plugin"), "plugin", idx)
+        validated_unmanaged.append({"repo": repo, "plugin": plugin})
+
+    return validated_managed, validated_unmanaged, github_root
 
 
 def generate_registry_base(views_dir: Path) -> None:
@@ -99,55 +132,47 @@ def generate_registry_base(views_dir: Path) -> None:
     - 'file.inFolder("docs/references/registry/plugins-items")'
 formulas:
   scope_badge: 'if(scope == "global", "🌍 global", if(scope == "repo", "📦 repo", scope))'
-  origin_badge: 'if(origin == "external", "↗ external", if(origin == "owned", "✳ owned", origin))'
+  enabled_badge: 'if(enabled, "✅ enabled", "⛔ disabled")'
 properties:
   registry_kind:
     displayName: Type
-  plugin:
+  plugin_id:
+    displayName: Plugin Id
+  plugin_name:
     displayName: Plugin
-  origin:
-    displayName: Origin
+  marketplace:
+    displayName: Marketplace
   scope:
     displayName: Scope
   formula.scope_badge:
     displayName: Scope
+  enabled:
+    displayName: Enabled
+  formula.enabled_badge:
+    displayName: Enabled
+  category:
+    displayName: Category
   repos:
     displayName: Repos
   repos_csv:
     displayName: Repos CSV
-  upstream_ref:
-    displayName: Upstream
-  formula.origin_badge:
-    displayName: Origin
   repo:
     displayName: Repo
-  source_path:
-    displayName: Source Path
-  category:
-    displayName: Category
-  installation_policy:
-    displayName: Install Policy
-  authentication_policy:
-    displayName: Auth Policy
 views:
   - type: table
     name: Managed Plugins
     filters: 'registry_kind == "managed"'
     order:
-      - plugin
-      - formula.origin_badge
+      - plugin_name
+      - marketplace
       - formula.scope_badge
+      - formula.enabled_badge
       - category
-      - installation_policy
-      - authentication_policy
       - repos
-      - upstream_ref
     sort:
       - property: scope
         direction: ASC
-      - property: origin
-        direction: ASC
-      - property: plugin
+      - property: plugin_name
         direction: ASC
   - type: table
     name: Repo-Local Plugins
@@ -186,19 +211,16 @@ def generate_registry_items(
     for item in managed:
         repos = item.get("repos", [])
         repos_csv = ",".join(repos) if repos else "*"
-        policy = item["policy"]
         lines = [
             "---",
             "registry_kind: managed",
-            f"plugin: {_yaml_str(item['plugin'])}",
-            f"origin: {_yaml_str(item['origin'])}",
+            f"plugin_id: {_yaml_str(item['plugin_id'])}",
+            f"plugin_name: {_yaml_str(item['plugin_name'])}",
+            f"marketplace: {_yaml_str(item['marketplace'])}",
             f"scope: {_yaml_str(item['scope'])}",
+            f"enabled: {'true' if item['enabled'] else 'false'}",
             f"category: {_yaml_str(item['category'])}",
-            f"installation_policy: {_yaml_str(policy['installation'])}",
-            f"authentication_policy: {_yaml_str(policy['authentication'])}",
             f"repos_csv: {_yaml_str(repos_csv)}",
-            f"source_path: {_yaml_str(item['source_path'])}",
-            f"upstream_ref: {_yaml_str(item.get('upstream_ref', '-'))}",
             "repos:",
         ]
         if repos:
@@ -214,7 +236,7 @@ def generate_registry_items(
             ]
         )
         _write_if_changed(
-            managed_dir / f"{_sanitize_file_name(item['plugin'])}.md",
+            managed_dir / f"{_sanitize_file_name(item['plugin_id'])}.md",
             "\n".join(lines),
         )
 
@@ -236,303 +258,17 @@ def generate_registry_items(
         _write_if_changed(repo_local_dir / file_name, "\n".join(lines))
 
 
-def _load_plugin_manifest(plugin_root: Path) -> dict[str, Any]:
-    manifest_path = plugin_root / ".codex-plugin" / "plugin.json"
-    if not manifest_path.is_file():
-        raise ValueError(f"source missing .codex-plugin/plugin.json: {plugin_root}")
-    try:
-        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
-    except json.JSONDecodeError as exc:
-        raise ValueError(f"invalid plugin manifest JSON at {manifest_path}: {exc}") from exc
-    if not isinstance(manifest, dict):
-        raise ValueError(f"plugin manifest root must be an object: {manifest_path}")
-    return manifest
-
-
-def _normalize_policy(raw: Any, idx: int) -> dict[str, str]:
-    if raw is None:
-        return {
-            "installation": "INSTALLED_BY_DEFAULT",
-            "authentication": "ON_INSTALL",
-        }
-    if not isinstance(raw, dict):
-        raise ValueError(f"managed_plugins[{idx}] policy must be an object")
-    installation = str(raw.get("installation", "")).strip() or "INSTALLED_BY_DEFAULT"
-    authentication = str(raw.get("authentication", "")).strip() or "ON_INSTALL"
-    if installation not in ALLOWED_INSTALLATION_POLICIES:
-        raise ValueError(
-            f"managed_plugins[{idx}] invalid policy.installation: {installation}"
-        )
-    if authentication not in ALLOWED_AUTH_POLICIES:
-        raise ValueError(
-            f"managed_plugins[{idx}] invalid policy.authentication: {authentication}"
-        )
-    return {
-        "installation": installation,
-        "authentication": authentication,
-    }
-
-
-def _normalize_marketplace(data: dict[str, Any]) -> tuple[str, str]:
-    raw = data.get("marketplaces", {}).get("global", {})
-    if not isinstance(raw, dict):
-        raise ValueError("marketplaces.global must be an object")
-    name = str(raw.get("name", "")).strip() or "managed-plugins"
-    display_name = str(raw.get("display_name", "")).strip() or "Managed Plugins"
-    return name, display_name
-
-
-def validate_registry(
-    data: dict[str, Any], root_dir: Path, home: Path
-) -> tuple[
-    list[dict[str, Any]],
-    list[dict[str, Any]],
-    Path,
-    Path,
-    tuple[str, str],
-]:
-    managed = data.get("managed_plugins")
-    if not isinstance(managed, list) or not managed:
-        raise ValueError("managed_plugins must be a non-empty array")
-
-    unmanaged = data.get("unmanaged_repo_local_plugins", [])
-    if not isinstance(unmanaged, list):
-        raise ValueError("unmanaged_repo_local_plugins must be an array")
-
-    seen: set[tuple[str, str]] = set()
-    validated_managed: list[dict[str, Any]] = []
-    for idx, item in enumerate(managed):
-        if not isinstance(item, dict):
-            raise ValueError(f"managed_plugins[{idx}] must be an object")
-
-        plugin = ensure_str(item.get("plugin"), "plugin", idx)
-        origin = ensure_str(item.get("origin"), "origin", idx)
-        scope = ensure_str(item.get("scope"), "scope", idx)
-        source_path = ensure_str(item.get("source_path"), "source_path", idx)
-        upstream_ref = item.get("upstream_ref", "-")
-        category = str(item.get("category", "")).strip() or "Productivity"
-        policy = _normalize_policy(item.get("policy"), idx)
-
-        if origin not in ALLOWED_ORIGINS:
-            raise ValueError(f"managed_plugins[{idx}] invalid origin: {origin}")
-        if scope not in ALLOWED_SCOPES:
-            raise ValueError(f"managed_plugins[{idx}] invalid scope: {scope}")
-        if (plugin, scope) in seen:
-            raise ValueError(f"duplicate plugin+scope entry: {plugin}/{scope}")
-        seen.add((plugin, scope))
-
-        repos_raw = item.get("repos", [])
-        if not isinstance(repos_raw, list):
-            raise ValueError(f"managed_plugins[{idx}] repos must be an array")
-        repos = [str(repo).strip() for repo in repos_raw if str(repo).strip()]
-        if scope == "repo" and not repos:
-            raise ValueError(f"managed_plugins[{idx}] repo scope needs repos")
-        if scope == "global":
-            repos = []
-
-        src = Path(source_path)
-        if not src.is_absolute():
-            src = (root_dir / src).resolve()
-        manifest = _load_plugin_manifest(src)
-        manifest_name = str(manifest.get("name", "")).strip()
-        if manifest_name != plugin:
-            raise ValueError(
-                f"plugin manifest name mismatch for {plugin}: {manifest_name or '<missing>'}"
-            )
-
-        validated_managed.append(
-            {
-                "plugin": plugin,
-                "origin": origin,
-                "scope": scope,
-                "repos": repos,
-                "source_path": source_path,
-                "source_abs": src,
-                "upstream_ref": str(upstream_ref).strip() or "-",
-                "category": category,
-                "policy": policy,
-            }
-        )
-
-    validated_unmanaged: list[dict[str, Any]] = []
-    for idx, item in enumerate(unmanaged):
-        if not isinstance(item, dict):
-            raise ValueError(f"unmanaged_repo_local_plugins[{idx}] must be an object")
-        repo = ensure_str(item.get("repo"), "repo", idx)
-        plugin = ensure_str(item.get("plugin"), "plugin", idx)
-        validated_unmanaged.append({"repo": repo, "plugin": plugin})
-
-    paths = data.get("paths", {})
-    if not isinstance(paths, dict):
-        raise ValueError("paths must be an object")
-
-    github_root_raw = paths.get("github_root", "~/GitHub")
-    if not isinstance(github_root_raw, str) or not github_root_raw.strip():
-        raise ValueError("paths.github_root must be a non-empty string")
-    github_root = expand_path(github_root_raw.strip(), home).resolve()
-
-    codex_plugin_root_raw = paths.get("codex_plugin_root", "~/.codex/plugins")
-    if not isinstance(codex_plugin_root_raw, str) or not codex_plugin_root_raw.strip():
-        raise ValueError("paths.codex_plugin_root must be a non-empty string")
-    codex_plugin_root = expand_path(codex_plugin_root_raw.strip(), home).resolve()
-
-    return (
-        validated_managed,
-        validated_unmanaged,
-        github_root,
-        codex_plugin_root,
-        _normalize_marketplace(data),
-    )
-
-
-def prune_obsolete_global_links(
-    codex_plugin_root: Path,
-    managed_source_root: Path,
-    desired_links: dict[Path, Path],
-    apply: bool,
-) -> None:
-    if not codex_plugin_root.exists():
-        return
-    for entry in sorted(codex_plugin_root.iterdir()):
-        if not entry.is_symlink():
-            continue
-        target = resolved_target(entry)
-        if not is_relative_to(target, managed_source_root):
-            continue
-        if entry in desired_links:
-            continue
-        print(f"PRUNE {entry}")
-        if apply:
-            entry.unlink()
-
-
-def build_marketplace_payload(
-    marketplace_name: str,
-    display_name: str,
-    entries: list[dict[str, Any]],
-    *,
-    source_prefix: str,
-) -> dict[str, Any]:
-    plugins: list[dict[str, Any]] = []
-    for item in sorted(entries, key=lambda entry: entry["plugin"]):
-        plugins.append(
-            {
-                "name": item["plugin"],
-                "source": {
-                    "source": "local",
-                    "path": f"{source_prefix}/{item['plugin']}",
-                },
-                "policy": {
-                    "installation": item["policy"]["installation"],
-                    "authentication": item["policy"]["authentication"],
-                },
-                "category": item["category"],
-            }
-        )
-    return {
-        "name": marketplace_name,
-        "interface": {
-            "displayName": display_name,
-        },
-        "plugins": plugins,
-    }
-
-
-def _marketplace_content(payload: dict[str, Any]) -> str:
-    return json.dumps(payload, indent=2) + "\n"
-
-
-def sync_marketplace(path: Path, payload: dict[str, Any], apply: bool) -> None:
-    content = _marketplace_content(payload)
-    old = path.read_text(encoding="utf-8") if path.exists() else None
-    if old == content:
-        print(f"UNCHANGED {path}")
-        return
-    print(f"SYNC {path}")
-    if apply:
-        _write_if_changed(path, content)
-
-
-def repo_marketplace_metadata(repo_root: Path) -> tuple[str, str]:
-    repo_name = repo_root.name.lstrip(".") or "repo"
-    slug = _sanitize_file_name(repo_name).lower() or "repo"
-    display = f"{repo_name} Managed Plugins"
-    return f"{slug}-managed-plugins", display
-
-
-def run_sync(
-    managed: list[dict[str, Any]],
-    root_dir: Path,
-    github_root: Path,
-    codex_plugin_root: Path,
-    global_marketplace: tuple[str, str],
-    apply: bool,
-) -> None:
-    home = Path.home()
-    desired_global_links: dict[Path, Path] = {}
-    repo_entries: dict[Path, list[dict[str, Any]]] = {}
-
-    global_entries: list[dict[str, Any]] = []
-    for item in managed:
-        plugin = item["plugin"]
-        src = item["source_abs"]
-        if item["scope"] == "global":
-            dst = codex_plugin_root / plugin
-            desired_global_links[dst] = src
-            global_entries.append(item)
-            sync_link(dst, src, apply)
-            continue
-
-        for repo in item["repos"]:
-            repo_root = resolve_repo_root(repo, github_root, home)
-            repo_entries.setdefault(repo_root, []).append(item)
-            dst = repo_root / "plugins" / plugin
-            sync_link(dst, src, apply)
-
-    prune_obsolete_global_links(
-        codex_plugin_root,
-        (root_dir / "plugins-source").resolve(),
-        desired_global_links,
-        apply,
-    )
-
-    marketplace_path = root_dir / "plugins" / "marketplace.json"
-    if global_entries:
-        marketplace_payload = build_marketplace_payload(
-            global_marketplace[0],
-            global_marketplace[1],
-            global_entries,
-            source_prefix="./.codex/plugins",
-        )
-        _write_if_changed(marketplace_path, _marketplace_content(marketplace_payload))
-        print(f"SYNC {marketplace_path}")
-    else:
-        _delete_if_exists(marketplace_path)
-        print(f"DELETE {marketplace_path}")
-
-    for repo_root, entries in sorted(repo_entries.items(), key=lambda item: str(item[0])):
-        marketplace_name, display_name = repo_marketplace_metadata(repo_root)
-        payload = build_marketplace_payload(
-            marketplace_name,
-            display_name,
-            entries,
-            source_prefix="./plugins",
-        )
-        repo_marketplace_path = repo_root / ".agents" / "plugins" / "marketplace.json"
-        sync_marketplace(repo_marketplace_path, payload, apply)
-
-
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description=(
-            "Sync plugin symlinks from a canonical JSON registry, render marketplace "
-            "files, and generate Obsidian Base artifacts."
+            "Validate the canonical managed plugin registry and regenerate the "
+            "Obsidian registry views."
         )
     )
     parser.add_argument(
         "--apply",
         action="store_true",
-        help="Apply link changes (default is dry-run for linking).",
+        help="Accepted for consistency; registry view generation is always written in-place.",
     )
     parser.add_argument(
         "--no-generate",
@@ -566,9 +302,7 @@ def main() -> int:
     home = Path.home()
 
     try:
-        managed, unmanaged, github_root, codex_plugin_root, global_marketplace = (
-            validate_registry(data, root_dir, home)
-        )
+        managed, unmanaged, github_root = validate_registry(data, home)
     except ValueError as exc:
         print(f"Registry validation failed: {exc}", file=sys.stderr)
         return 1
@@ -579,19 +313,16 @@ def main() -> int:
         generate_registry_items(views_dir, managed, unmanaged)
         print(f"Generated registry Base artifacts in {views_dir}")
 
-    run_sync(
-        managed,
-        root_dir,
-        github_root,
-        codex_plugin_root,
-        global_marketplace,
-        args.apply,
+    print(
+        "Registry sync complete. Codex plugin install/config state is applied by "
+        "the Codex bootstrap, not by local marketplace rendering."
     )
-
+    print(f"GitHub root: {github_root}")
+    print(f"Managed plugins: {len(managed)}")
     if args.apply:
         print("Apply complete.")
     else:
-        print("Dry run complete. Re-run with --apply to execute link changes.")
+        print("Dry run complete.")
     return 0
 
 
