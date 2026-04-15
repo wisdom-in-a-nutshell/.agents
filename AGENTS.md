@@ -91,6 +91,8 @@ Personal agent, Codex, and Claude control plane.
 - Dry-run Codex bootstrap batch: `./codex/scripts/bootstrap-machine-codex.sh`
 - Apply Codex bootstrap batch: `./codex/scripts/bootstrap-machine-codex.sh --apply`
   - This applies the Codex control-plane outputs only; the shared shell links still live in `~/GitHub/scripts`.
+- Dry-run repo-local Codex plugin bootstrap from an installed bundle: `./codex/scripts/bootstrap-repo-local-plugin.sh <plugin@marketplace> --repo <repo>`
+- Apply repo-local Codex plugin bootstrap from an installed bundle: `./codex/scripts/bootstrap-repo-local-plugin.sh <plugin@marketplace> --repo <repo> --apply`
 - Link shared zshrc: `~/GitHub/scripts/setup/codex/link-shared-zshrc.sh --apply`
 - Link shared zprofile: `~/GitHub/scripts/setup/codex/link-shared-zprofile.sh --apply`
 - Validate Codex control-plane inputs + rendered runtimes: `./codex/scripts/check-codex-control-plane.sh`
