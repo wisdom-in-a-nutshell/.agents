@@ -13,7 +13,7 @@ flowchart LR
     A[plugins/registry.json] --> B[Real plugin folder in plugins-source/...]
     B --> C[Global symlink: ~/.codex/plugins/{plugin}]
     B --> D[Repo symlink: ~/GitHub/{repo}/plugins/{plugin}]
-    A --> E[Global marketplace: ~/.agents/plugins/marketplace.json]
+    A --> E[Optional global marketplace: ~/.agents/plugins/marketplace.json]
     A --> F[Generated Obsidian views in docs/references/registry/]
 ```
 
@@ -36,6 +36,8 @@ flowchart LR
 - Run `./scripts/sync-plugins-registry.sh --apply`.
 - Run `./scripts/check-plugins-registry.sh`.
 - Restart Codex after plugin source or marketplace changes so the local install picks them up.
+- Managed plugins default to `policy.installation = INSTALLED_BY_DEFAULT` unless you override it explicitly.
+- If there are no global-scoped managed plugins, the personal marketplace file is removed instead of rendering an empty catalog.
 
 ```mermaid
 flowchart LR
@@ -65,5 +67,5 @@ flowchart LR
 - `source_path`: real source folder under `plugins-source/...`.
 - `upstream_ref`: upstream source for external plugins.
 - `category`: marketplace category shown in Codex.
-- `policy.installation`: Codex install policy for the marketplace entry.
+- `policy.installation`: Codex install policy for the marketplace entry. Managed plugins default to `INSTALLED_BY_DEFAULT`.
 - `policy.authentication`: when Codex should ask for auth for the marketplace entry.

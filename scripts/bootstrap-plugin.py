@@ -215,8 +215,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--installation-policy",
         choices=sorted(ALLOWED_INSTALLATION_POLICIES),
-        default="AVAILABLE",
-        help="Codex marketplace installation policy (default: AVAILABLE).",
+        default="INSTALLED_BY_DEFAULT",
+        help="Codex marketplace installation policy (default: INSTALLED_BY_DEFAULT).",
     )
     parser.add_argument(
         "--authentication-policy",

@@ -35,7 +35,7 @@ Personal agent, Codex, and Claude control plane.
   - `plugins-source/external/<plugin>/`
   - `plugins-source/owned/<plugin>/`
 - Global runtime skills live in `skills/<skill>` as symlinks.
-- Global plugin marketplace lives in `plugins/marketplace.json`.
+- Global plugin marketplace, when global-scoped managed plugins exist, lives in `plugins/marketplace.json`.
 - Global runtime plugins live in `~/.codex/plugins/<plugin>` as symlinks.
 - Generated views for Obsidian live in:
   - `docs/references/registry/skills.base`
@@ -125,4 +125,3 @@ Personal agent, Codex, and Claude control plane.
 - If `mcp/config/presets.json` changes, run both Codex and Claude control-plane validation in the same change.
 - If `agents/registry.json` changes, run both Codex and Claude control-plane validation plus `./scripts/test-control-plane.sh` in the same change.
 - If `codex/config/agents/*.toml`, `codex/config/global.config.toml`, `codex/config/xcode.config.toml`, or `codex/config/repo-bootstrap.json` changes, run the Codex control-plane validation script in the same change.
-

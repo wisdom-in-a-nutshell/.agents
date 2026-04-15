@@ -84,6 +84,11 @@ def _write_if_changed(path: Path, content: str) -> None:
         path.write_text(content, encoding="utf-8")
 
 
+def _delete_if_exists(path: Path) -> None:
+    if path.exists() or path.is_symlink():
+        path.unlink()
+
+
 def generated_views_dir(root_dir: Path) -> Path:
     return root_dir / "docs" / "references" / "registry"
 
@@ -247,12 +252,12 @@ def _load_plugin_manifest(plugin_root: Path) -> dict[str, Any]:
 def _normalize_policy(raw: Any, idx: int) -> dict[str, str]:
     if raw is None:
         return {
-            "installation": "AVAILABLE",
+            "installation": "INSTALLED_BY_DEFAULT",
             "authentication": "ON_INSTALL",
         }
     if not isinstance(raw, dict):
         raise ValueError(f"managed_plugins[{idx}] policy must be an object")
-    installation = str(raw.get("installation", "")).strip() or "AVAILABLE"
+    installation = str(raw.get("installation", "")).strip() or "INSTALLED_BY_DEFAULT"
     authentication = str(raw.get("authentication", "")).strip() or "ON_INSTALL"
     if installation not in ALLOWED_INSTALLATION_POLICIES:
         raise ValueError(
@@ -492,14 +497,18 @@ def run_sync(
     )
 
     marketplace_path = root_dir / "plugins" / "marketplace.json"
-    marketplace_payload = build_marketplace_payload(
-        global_marketplace[0],
-        global_marketplace[1],
-        global_entries,
-        source_prefix="./.codex/plugins",
-    )
-    _write_if_changed(marketplace_path, _marketplace_content(marketplace_payload))
-    print(f"SYNC {marketplace_path}")
+    if global_entries:
+        marketplace_payload = build_marketplace_payload(
+            global_marketplace[0],
+            global_marketplace[1],
+            global_entries,
+            source_prefix="./.codex/plugins",
+        )
+        _write_if_changed(marketplace_path, _marketplace_content(marketplace_payload))
+        print(f"SYNC {marketplace_path}")
+    else:
+        _delete_if_exists(marketplace_path)
+        print(f"DELETE {marketplace_path}")
 
     for repo_root, entries in sorted(repo_entries.items(), key=lambda item: str(item[0])):
         marketplace_name, display_name = repo_marketplace_metadata(repo_root)

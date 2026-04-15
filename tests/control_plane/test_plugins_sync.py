@@ -48,7 +48,7 @@ class ManagedPluginsRegistrySyncTests(TempDirTestCase):
                         "source_path": "plugins-source/owned/build-global",
                         "category": "Coding",
                         "policy": {
-                            "installation": "AVAILABLE",
+                            "installation": "INSTALLED_BY_DEFAULT",
                             "authentication": "ON_INSTALL",
                         },
                     },
@@ -60,7 +60,7 @@ class ManagedPluginsRegistrySyncTests(TempDirTestCase):
                         "source_path": "plugins-source/owned/build-repo",
                         "category": "Coding",
                         "policy": {
-                            "installation": "AVAILABLE",
+                            "installation": "INSTALLED_BY_DEFAULT",
                             "authentication": "ON_USE",
                         },
                     },
@@ -121,7 +121,7 @@ class ManagedPluginsRegistrySyncTests(TempDirTestCase):
         self.assertIn('plugin: "build-global"', global_item_text)
         self.assertIn('scope: "global"', global_item_text)
         self.assertIn('category: "Coding"', global_item_text)
-        self.assertIn('installation_policy: "AVAILABLE"', global_item_text)
+        self.assertIn('installation_policy: "INSTALLED_BY_DEFAULT"', global_item_text)
 
         global_marketplace_text = global_marketplace.read_text(encoding="utf-8")
         self.assertIn('"name": "managed-plugins"', global_marketplace_text)
@@ -130,3 +130,62 @@ class ManagedPluginsRegistrySyncTests(TempDirTestCase):
         repo_marketplace_text = repo_marketplace.read_text(encoding="utf-8")
         self.assertIn('"path": "./plugins/build-repo"', repo_marketplace_text)
         self.assertIn('"authentication": "ON_USE"', repo_marketplace_text)
+        self.assertIn('"installation": "INSTALLED_BY_DEFAULT"', repo_marketplace_text)
+
+    def test_repo_only_plugins_do_not_render_empty_global_marketplace(self) -> None:
+        root = make_control_plane_root(self.temp_path)
+        home = self.temp_path / "home"
+        github_root = home / "GitHub"
+        adi = init_git_repo(github_root / "adi")
+
+        repo_source = make_plugin_source(
+            root / "plugins-source/owned/build-repo",
+            "build-repo",
+        )
+
+        registry_path = root / "plugins/registry.json"
+        write_json(
+            registry_path,
+            {
+                "managed_plugins": [
+                    {
+                        "plugin": "build-repo",
+                        "origin": "owned",
+                        "scope": "repo",
+                        "repos": ["adi"],
+                        "source_path": "plugins-source/owned/build-repo",
+                        "category": "Coding",
+                    }
+                ],
+                "marketplaces": {
+                    "global": {
+                        "name": "managed-plugins",
+                        "display_name": "Managed Plugins",
+                    }
+                },
+                "paths": {
+                    "github_root": str(github_root),
+                    "codex_plugin_root": str(home / ".codex/plugins"),
+                },
+                "unmanaged_repo_local_plugins": [],
+            },
+        )
+
+        run_command(
+            [
+                "python3",
+                str(REPO_ROOT / "scripts/sync-plugins-registry.py"),
+                "--apply",
+                str(registry_path),
+            ],
+            env={"HOME": str(home)},
+        )
+
+        repo_link = adi / "plugins/build-repo"
+        repo_marketplace = adi / ".agents/plugins/marketplace.json"
+        global_marketplace = root / "plugins/marketplace.json"
+
+        self.assertTrue(repo_link.is_symlink())
+        self.assertEqual(repo_source.resolve(), repo_link.resolve())
+        self.assertTrue(repo_marketplace.is_file())
+        self.assertFalse(global_marketplace.exists())

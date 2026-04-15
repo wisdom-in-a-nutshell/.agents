@@ -48,6 +48,7 @@ Use [Codex Control Plane Ownership](/Users/dobby/.agents/docs/references/codex-c
 - Bootstrap one managed external plugin into the canonical registry:
   - [`bootstrap-plugin.sh`](/Users/dobby/.agents/scripts/bootstrap-plugin.sh)
   - `~/.agents/scripts/bootstrap-plugin.sh https://github.com/openai/plugins/tree/main/plugins/build-ios-apps --apply`
+  - managed plugin bootstrap defaults to `policy.installation = INSTALLED_BY_DEFAULT`; pass `--installation-policy` only when you want non-default behavior
 - Apply the full Codex bootstrap batch:
   - [`bootstrap-machine-codex.sh`](/Users/dobby/.agents/codex/scripts/bootstrap-machine-codex.sh)
   - `~/.agents/codex/scripts/bootstrap-machine-codex.sh --apply`
