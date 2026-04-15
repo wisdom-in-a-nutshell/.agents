@@ -31,7 +31,7 @@ Read `references/template-patterns.md` when you need to understand or modify the
 ## Core workflow
 
 1. Read `reference/career/profile.md` first for source-of-truth career facts.
-2. Read `reference/career/tailoring-guide.md` if tailoring or summary changes are needed.
+2. Read `reference/career/tailoring-guide.md` if tailoring or summary changes are needed. Pay particular attention to the "Competitor awareness" section, which governs how to handle product-level references to the target company's rivals (e.g. do not send an Anthropic application full of Codex name-drops).
 3. If `reference/career/cv/latex/tailored/<company>/job-description.md` already exists, read that first when reviewing or continuing a tailored packet.
 4. If the tailored JD snapshot does not exist yet, read the relevant JD from `reference/career/job-tracker/` or the user-provided source, then store a frozen copy beside the tailored files as `cv/latex/tailored/<company>/job-description.md` so later review is self-contained.
 5. When starting a new tailored packet, initialize it with `cv.py init --company <slug>` instead of manually copying files.
@@ -39,6 +39,7 @@ Read `references/template-patterns.md` when you need to understand or modify the
 7. Put company-specific versions in `cv/latex/tailored/<company>/`.
 8. Never invent experience, skills, tools, certifications, customers, or outcomes.
 9. Compile and visually review before calling the output done.
+10. Before committing the final PDF, run a competitor-awareness grep against the target's rival products and companies. See the "Competitor awareness" section of `tailoring-guide.md` for the current map and the audit checklist.
 
 ## Build and review
 

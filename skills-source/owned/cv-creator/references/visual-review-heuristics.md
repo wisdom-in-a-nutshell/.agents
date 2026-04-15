@@ -71,9 +71,11 @@ document the hiring team would read.
   bold, and regular variants.
 - Italic is for subtitles, company names, and journal names. Bold is for role
   titles, section headings, and emphasized keywords. Underline is never used.
-- Use en-dash (`--`) for date ranges and as the bullet marker. Reserve em-dash
-  for inline separators inside prose. Do not use U+2011, U+2013, or U+2014
-  literal characters; use LaTeX's `--` and `---`.
+- Use en-dash (`--`) for date ranges and as the bullet marker. Do NOT use em-dash
+  (`---`, `\textemdash{}`, or U+2014) anywhere in prose. Adi's writing voice
+  explicitly forbids em-dashes. Use commas or periods instead. Do not use
+  U+2011, U+2013, or U+2014 literal characters. For date ranges, LaTeX's `--`
+  is correct.
 - Set `\raggedright` globally for the body. Justified text with a short line
   measure creates word-spacing rivers. A resume reads faster ragged-right and
   is less fatiguing.
