@@ -123,6 +123,9 @@ The Claude control plane is intended to follow the same sync/check pattern as Co
 - Those are normal generated outputs from `sync-repo-claude-configs.sh` and `sync-skills.sh`, not evidence that the bootstrap misfired.
 - Repo `.claude/agents/.managed-subagents.json` is also a normal generated manifest used to prune stale managed subagent files without touching hand-written ones.
 - If a managed repo tracks those paths in git, they will appear as ordinary worktree changes until committed.
+- `check-claude-control-plane.sh` now also flags untracked files under tracked repo-local Claude generated surfaces such as `.claude/skills/` and `.claude/agents/`.
+  - This catches the "new generated Claude symlink was created but never added to the repo" case.
+  - It does not auto-commit or auto-push target repos.
 
 ## Deferred Rules
 

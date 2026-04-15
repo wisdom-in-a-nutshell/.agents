@@ -208,3 +208,217 @@ class ClaudeControlPlaneCheckTests(TempDirTestCase):
         self.assertTrue((adi / ".claude/settings.json").is_file())
         self.assertTrue((adi / ".mcp.json").is_file())
         self.assertTrue((adi / "CLAUDE.md").is_file())
+
+    def test_check_script_fails_for_untracked_claude_skill_in_tracked_surface(self) -> None:
+        root = make_control_plane_root(self.temp_path)
+        home = self.temp_path / "home"
+        github_root = home / "GitHub"
+        adi = init_git_repo(github_root / "adi", with_initial_commit=True)
+        write_text(adi / "AGENTS.md", "# Repo Guidance\n")
+
+        make_skill_source(root / "skills-source/owned/existing-helper", "existing-helper")
+        make_skill_source(root / "skills-source/owned/repo-helper", "repo-helper")
+
+        registry_path = root / "skills/registry.json"
+        write_json(
+            registry_path,
+            {
+                "managed_skills": [
+                    {
+                        "skill": "existing-helper",
+                        "origin": "owned",
+                        "scope": "repo",
+                        "repos": ["adi"],
+                        "source_path": "skills-source/owned/existing-helper",
+                    }
+                ],
+                "paths": {
+                    "github_root": str(github_root),
+                },
+                "unmanaged_repo_local_skills": [],
+            },
+        )
+        write_json(
+            root / "codex/config/repo-bootstrap.json",
+            {
+                "defaults": {},
+                "repos": [
+                    {
+                        "path": str(adi),
+                    }
+                ],
+            },
+        )
+        write_json(root / "mcp/config/presets.json", default_mcp_registry())
+        write_json(
+            root / "agents/registry.json",
+            {
+                "managed_agents": [
+                    external_researcher_agent(),
+                ],
+                "version": 1,
+            },
+        )
+
+        env = {"HOME": str(home)}
+        run_command(
+            [
+                str(REPO_ROOT / "claude/scripts/sync-global-claude-md.sh"),
+                "--apply",
+                "--global-claude-md",
+                str(home / ".claude/CLAUDE.md"),
+                "--canonical-claude",
+                str(root / "claude/config/global.claude.md"),
+            ],
+            env=env,
+        )
+        run_command(
+            [
+                str(REPO_ROOT / "claude/scripts/sync-settings.sh"),
+                "--apply",
+                "--global-settings",
+                str(home / ".claude/settings.json"),
+                "--canonical-settings",
+                str(root / "claude/config/settings.json"),
+            ],
+            env=env,
+        )
+        run_command(
+            [
+                str(REPO_ROOT / "claude/scripts/sync-global-mcp.sh"),
+                "--apply",
+                "--global-config",
+                str(home / ".claude.json"),
+                "--mcp-registry",
+                str(root / "mcp/config/presets.json"),
+            ],
+            env=env,
+        )
+        run_command(
+            [
+                str(REPO_ROOT / "claude/scripts/sync-subagents.sh"),
+                "--apply",
+                "--registry",
+                str(root / "codex/config/repo-bootstrap.json"),
+                "--agent-registry",
+                str(root / "agents/registry.json"),
+                "--global-agents-dir",
+                str(home / ".claude/agents"),
+            ],
+            env=env,
+        )
+        run_command(
+            [
+                str(REPO_ROOT / "claude/scripts/sync-skills.sh"),
+                "--apply",
+                "--registry",
+                str(registry_path),
+            ],
+            env=env,
+        )
+        run_command(
+            [
+                str(REPO_ROOT / "claude/scripts/sync-repo-claude-configs.sh"),
+                "--apply",
+                "--registry",
+                str(root / "codex/config/repo-bootstrap.json"),
+                "--bootstrap",
+                str(root / "claude/config/bootstrap.json"),
+                "--mcp-registry",
+                str(root / "mcp/config/presets.json"),
+            ],
+            env=env,
+        )
+        run_command(
+            [
+                "git",
+                "-C",
+                str(adi),
+                "add",
+                ".claude/skills/existing-helper",
+                "AGENTS.md",
+            ],
+            env=env,
+        )
+        run_command(
+            [
+                "git",
+                "-C",
+                str(adi),
+                "commit",
+                "-q",
+                "-m",
+                "track existing Claude skill",
+            ],
+            env=env,
+        )
+
+        write_json(
+            registry_path,
+            {
+                "managed_skills": [
+                    {
+                        "skill": "existing-helper",
+                        "origin": "owned",
+                        "scope": "repo",
+                        "repos": ["adi"],
+                        "source_path": "skills-source/owned/existing-helper",
+                    },
+                    {
+                        "skill": "repo-helper",
+                        "origin": "owned",
+                        "scope": "repo",
+                        "repos": ["adi"],
+                        "source_path": "skills-source/owned/repo-helper",
+                    },
+                ],
+                "paths": {
+                    "github_root": str(github_root),
+                },
+                "unmanaged_repo_local_skills": [],
+            },
+        )
+        run_command(
+            [
+                str(REPO_ROOT / "claude/scripts/sync-skills.sh"),
+                "--apply",
+                "--registry",
+                str(registry_path),
+            ],
+            env=env,
+        )
+
+        result = run_command(
+            [
+                str(REPO_ROOT / "claude/scripts/check-claude-control-plane.sh"),
+                "--canonical-dir",
+                str(root / "claude/config"),
+                "--global-claude-md",
+                str(home / ".claude/CLAUDE.md"),
+                "--global-settings",
+                str(home / ".claude/settings.json"),
+                "--global-config",
+                str(home / ".claude.json"),
+                "--global-agents-dir",
+                str(home / ".claude/agents"),
+                "--registry",
+                str(root / "codex/config/repo-bootstrap.json"),
+                "--bootstrap",
+                str(root / "claude/config/bootstrap.json"),
+                "--mcp-registry",
+                str(root / "mcp/config/presets.json"),
+                "--skills-registry",
+                str(registry_path),
+                "--agent-registry",
+                str(root / "agents/registry.json"),
+                "--repo",
+                str(adi),
+            ],
+            env=env,
+            check=False,
+        )
+
+        self.assertNotEqual(0, result.returncode)
+        self.assertIn("Managed repo-local Claude files need git attention:", result.stderr)
+        self.assertIn("surface: .claude/skills", result.stderr)
+        self.assertIn(".claude/skills/repo-helper", result.stderr)
