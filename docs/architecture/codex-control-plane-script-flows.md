@@ -9,15 +9,20 @@ Use [Codex Control Plane Operations](/Users/dobby/.agents/docs/references/codex-
 
 The scripts are easier to understand if you split them into three groups:
 
+- plugin-source refresh/sync scripts that feed skills and MCP
 - apply scripts that write config and trust state
 - post-sync reconcile scripts that auto-apply new control-plane revisions
 - startup scripts that shape the terminal and Ghostty experience
 - post-turn scripts that run after Codex finishes a turn
 
-## Figure 1: Apply Scripts
+## Figure 1: Plugin Source And Apply Scripts
 
 ```mermaid
 flowchart TD
+    P[refresh-external-plugins.sh] --> Q[sync-plugins-registry.sh]
+    Q --> S[skills/registry.json managed_plugin_skills]
+    Q --> T[mcp/config/presets.json plugin_presets]
+    Q --> R[repo-bootstrap.json plugin_mcp_presets]
     A[bootstrap-machine-codex.sh] --> B[sync-config.sh]
     A --> C[sync-trusted-projects.sh]
     A --> D[sync-repo-codex-configs.sh]
@@ -36,6 +41,14 @@ flowchart TD
 
 ### What This Group Does
 
+- [`refresh-external-plugins.sh`](/Users/dobby/.agents/scripts/refresh-external-plugins.sh)
+  - refreshes mirrored plugin source under `plugins-source/external/`
+- [`sync-plugins-registry.sh`](/Users/dobby/.agents/scripts/sync-plugins-registry.sh)
+  - validates `plugins/registry.json`
+  - writes plugin registry views
+  - derives plugin-provided skills into `skills/registry.json`
+  - derives plugin-provided MCP presets into `mcp/config/presets.json`
+  - derives repo MCP assignments into `codex/config/repo-bootstrap.json`
 - [`bootstrap-machine-codex.sh`](/Users/dobby/.agents/codex/scripts/bootstrap-machine-codex.sh)
   - orchestrates the main Codex-specific bootstrap batch
 - [`sync-config.sh`](/Users/dobby/.agents/codex/scripts/sync-config.sh)
@@ -59,12 +72,15 @@ flowchart TD
     A[git-auto-sync.sh] --> B[auto-apply-agent-control-planes.sh]
     B --> C{What changed in ~/.agents?}
     C -->|skills| D[sync-skills-registry.sh]
-    C -->|skills, codex, or mcp| E[bootstrap-machine-codex.sh --apply]
-    C -->|skills, claude, or shared inputs| F[bootstrap-machine-claude.sh --apply]
+    C -->|plugins| P[refresh-external-plugins.sh + sync-plugins-registry.sh]
+    C -->|skills, plugins, codex, or mcp| E[bootstrap-machine-codex.sh --apply]
+    C -->|skills, plugins, claude, or shared inputs| F[bootstrap-machine-claude.sh --apply]
     D --> G[Update shared runtime links]
+    P --> G2[Update plugin-derived skills/MCP state]
     E --> H[Codex runtime updated]
     F --> I[Claude runtime updated]
     G --> J[Update machine-local reconcile stamp]
+    G2 --> J
     H --> J
     I --> J
 ```

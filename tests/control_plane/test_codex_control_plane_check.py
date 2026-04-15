@@ -4,7 +4,6 @@ from tests.control_plane.support import (
     REPO_ROOT,
     TempDirTestCase,
     default_mcp_registry,
-    default_plugins_registry,
     init_git_repo,
     make_control_plane_root,
     run_command,
@@ -46,8 +45,6 @@ class CodexControlPlaneCheckTests(TempDirTestCase):
             }
         }
         write_json(root / "mcp/config/presets.json", mcp_registry)
-        plugin_registry = default_plugins_registry()
-        write_json(root / "plugins/registry.json", plugin_registry)
         write_json(
             root / "agents/registry.json",
             {
@@ -69,8 +66,6 @@ class CodexControlPlaneCheckTests(TempDirTestCase):
                 str(root / "mcp/config/presets.json"),
                 "--agent-registry",
                 str(root / "agents/registry.json"),
-                "--plugin-registry",
-                str(root / "plugins/registry.json"),
             ],
             env=env,
         )

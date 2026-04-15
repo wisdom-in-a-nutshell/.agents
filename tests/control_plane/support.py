@@ -173,19 +173,6 @@ def default_skills_registry() -> dict[str, Any]:
         },
         "unmanaged_repo_local_skills": [],
     }
-
-
-def default_plugins_registry() -> dict[str, Any]:
-    return {
-        "version": 1,
-        "paths": {
-            "github_root": "~/GitHub",
-        },
-        "managed_plugins": [],
-        "unmanaged_repo_local_plugins": [],
-    }
-
-
 def external_researcher_agent() -> dict[str, Any]:
     return {
         "access_profile": "read_only",

@@ -17,7 +17,6 @@ XCODE_RULES="${HOME}/Library/Developer/Xcode/CodingAssistant/codex/rules/xcode.r
 CANONICAL_DIR="${CONTROL_PLANE_DIR}/config"
 MCP_REGISTRY="${ROOT_DIR}/mcp/config/presets.json"
 AGENT_REGISTRY="${ROOT_DIR}/agents/registry.json"
-PLUGIN_REGISTRY="${ROOT_DIR}/plugins/registry.json"
 CANONICAL_GLOBAL_TEMPLATE="${CANONICAL_DIR}/global.config.toml"
 CANONICAL_AGENTS_DIR="${CANONICAL_DIR}/agents"
 CANONICAL_XCODE_TEMPLATE="${CANONICAL_DIR}/xcode.config.toml"
@@ -55,8 +54,6 @@ Options:
                              (default: mcp/config/presets.json)
   --agent-registry <path>    Shared agent registry
                              (default: agents/registry.json)
-  --plugin-registry <path>   Managed plugins registry
-                             (default: plugins/registry.json)
   -h, --help                 Show this help
 
 Examples:
@@ -133,10 +130,6 @@ while [[ $# -gt 0 ]]; do
       ;;
     --agent-registry)
       AGENT_REGISTRY="${2:-}"
-      shift 2
-      ;;
-    --plugin-registry)
-      PLUGIN_REGISTRY="${2:-}"
       shift 2
       ;;
     -h|--help)
@@ -240,47 +233,6 @@ for name in [str(value) for value in global_presets] + [str(value) for value in 
     section = f"mcp_servers.{name}"
     for key in sorted(k for k in preset.keys() if k != "transport"):
         print(f"{section}\x1F{key}\x1F{toml_value(preset[key])}")
-PY
-}
-
-extract_managed_global_plugin_entries() {
-  local registry_file="$1"
-  python3 - "$registry_file" <<'PY'
-from __future__ import annotations
-
-import json
-import sys
-from pathlib import Path
-
-
-registry_file = Path(sys.argv[1])
-data = json.loads(registry_file.read_text(encoding="utf-8"))
-managed = data.get("managed_plugins", [])
-if not isinstance(managed, list):
-    raise SystemExit("managed_plugins must be an array")
-
-seen: set[str] = set()
-for idx, item in enumerate(managed):
-    if not isinstance(item, dict):
-        raise SystemExit(f"managed_plugins[{idx}] must be an object")
-
-    plugin_id = str(item.get("plugin_id", "")).strip()
-    scope = str(item.get("scope", "")).strip()
-    enabled = item.get("enabled", True)
-
-    if not plugin_id or "@" not in plugin_id:
-        raise SystemExit(f"managed_plugins[{idx}] invalid plugin_id: {plugin_id!r}")
-    if plugin_id in seen:
-        raise SystemExit(f"duplicate managed plugin_id: {plugin_id}")
-    seen.add(plugin_id)
-    if scope not in {"global", "repo"}:
-        raise SystemExit(f"managed_plugins[{idx}] invalid scope: {scope!r}")
-    if not isinstance(enabled, bool):
-        raise SystemExit(f"managed_plugins[{idx}] enabled must be a boolean")
-
-    desired_enabled = enabled if scope == "global" else False
-    quoted_plugin_id = json.dumps(plugin_id)
-    print(f'plugins.{quoted_plugin_id}\x1fenabled\x1f{"true" if desired_enabled else "false"}')
 PY
 }
 
@@ -624,7 +576,6 @@ render_global_config() {
   local template_file="$2"
   local mcp_registry_file="$3"
   local agent_registry_file="$4"
-  local plugin_registry_file="$5"
   local section key value
   local notify_value
 
@@ -1194,11 +1145,10 @@ sync_global() {
   require_readable_file "$CANONICAL_GLOBAL_TEMPLATE"
   require_readable_file "$MCP_REGISTRY"
   require_readable_file "$AGENT_REGISTRY"
-  require_readable_file "$PLUGIN_REGISTRY"
   ensure_parent_dir "$original"
   prepare_work_file "$original" "$rendered"
   sanitize_machine_specific_entries "$rendered"
-  render_global_config "$rendered" "$CANONICAL_GLOBAL_TEMPLATE" "$MCP_REGISTRY" "$AGENT_REGISTRY" "$PLUGIN_REGISTRY"
+  render_global_config "$rendered" "$CANONICAL_GLOBAL_TEMPLATE" "$MCP_REGISTRY" "$AGENT_REGISTRY"
   ensure_system_skills_disabled "$rendered"
 
   log ""

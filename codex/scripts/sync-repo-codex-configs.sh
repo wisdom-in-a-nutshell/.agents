@@ -5,7 +5,6 @@ APPLY=0
 REGISTRY_FILE=""
 MCP_REGISTRY_FILE=""
 AGENT_REGISTRY_FILE=""
-PLUGIN_REGISTRY_FILE=""
 REPO_FILTERS=()
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -14,7 +13,6 @@ ROOT_DIR="$(cd "$CONTROL_PLANE_DIR/.." && pwd)"
 DEFAULT_REGISTRY_FILE="${CONTROL_PLANE_DIR}/config/repo-bootstrap.json"
 DEFAULT_MCP_REGISTRY_FILE="${ROOT_DIR}/mcp/config/presets.json"
 DEFAULT_AGENT_REGISTRY_FILE="${ROOT_DIR}/agents/registry.json"
-DEFAULT_PLUGIN_REGISTRY_FILE="${ROOT_DIR}/plugins/registry.json"
 
 usage() {
   cat <<USAGE
@@ -33,9 +31,6 @@ Options:
   --agent-registry <path>
                          Override shared agent registry
                          (default: agents/registry.json)
-  --plugin-registry <path>
-                         Override managed plugins registry
-                         (default: plugins/registry.json)
   --repo <path>          Limit sync to an exact repo path (repeatable)
   -h, --help             Show this help
 
@@ -86,10 +81,6 @@ while [[ $# -gt 0 ]]; do
       AGENT_REGISTRY_FILE="${2:-}"
       shift 2
       ;;
-    --plugin-registry)
-      PLUGIN_REGISTRY_FILE="${2:-}"
-      shift 2
-      ;;
     --repo)
       REPO_FILTERS+=("${2:-}")
       shift 2
@@ -113,18 +104,12 @@ fi
 if [[ -z "$AGENT_REGISTRY_FILE" ]]; then
   AGENT_REGISTRY_FILE="$DEFAULT_AGENT_REGISTRY_FILE"
 fi
-if [[ -z "$PLUGIN_REGISTRY_FILE" ]]; then
-  PLUGIN_REGISTRY_FILE="$DEFAULT_PLUGIN_REGISTRY_FILE"
-fi
-
 [[ -f "$REGISTRY_FILE" ]] || die "Missing registry file: $REGISTRY_FILE"
 [[ -r "$REGISTRY_FILE" ]] || die "Registry file is not readable: $REGISTRY_FILE"
 [[ -f "$MCP_REGISTRY_FILE" ]] || die "Missing MCP registry file: $MCP_REGISTRY_FILE"
 [[ -r "$MCP_REGISTRY_FILE" ]] || die "MCP registry file is not readable: $MCP_REGISTRY_FILE"
 [[ -f "$AGENT_REGISTRY_FILE" ]] || die "Missing agent registry file: $AGENT_REGISTRY_FILE"
 [[ -r "$AGENT_REGISTRY_FILE" ]] || die "Agent registry file is not readable: $AGENT_REGISTRY_FILE"
-[[ -f "$PLUGIN_REGISTRY_FILE" ]] || die "Missing plugin registry file: $PLUGIN_REGISTRY_FILE"
-[[ -r "$PLUGIN_REGISTRY_FILE" ]] || die "Plugin registry file is not readable: $PLUGIN_REGISTRY_FILE"
 
 ensure_parent_dir() {
   local file="$1"
@@ -160,7 +145,7 @@ install_rendered_file() {
 }
 
 mapfile -t MANIFEST < <(
-  python3 - "$REGISTRY_FILE" "$MCP_REGISTRY_FILE" "$AGENT_REGISTRY_FILE" "$PLUGIN_REGISTRY_FILE" "$TMP_DIR" "${REPO_FILTERS[@]}" <<'PY'
+  python3 - "$REGISTRY_FILE" "$MCP_REGISTRY_FILE" "$AGENT_REGISTRY_FILE" "$TMP_DIR" "${REPO_FILTERS[@]}" <<'PY'
 from __future__ import annotations
 
 import hashlib
@@ -217,23 +202,6 @@ def ordered_unique(values: list[str]) -> list[str]:
         if value not in ordered:
             ordered.append(value)
     return ordered
-
-
-def parse_plugin_id(plugin_id: str) -> tuple[str, str]:
-    if "@" not in plugin_id:
-        raise TypeError(f"plugin_id must look like <plugin-name>@<marketplace>: {plugin_id}")
-    plugin_name, marketplace = plugin_id.rsplit("@", 1)
-    plugin_name = plugin_name.strip()
-    marketplace = marketplace.strip()
-    if not plugin_name or not marketplace:
-        raise TypeError(f"invalid plugin_id: {plugin_id}")
-    return plugin_name, marketplace
-
-
-def normalize_plugin_repo_token(raw: str, github_root: Path) -> str:
-    if raw.startswith("~/") or raw.startswith("/"):
-        return normalize_path(raw)
-    return str((github_root / raw).resolve())
 
 
 def toml_value(value):
@@ -467,9 +435,8 @@ def render_repo_config(
 registry_path = Path(sys.argv[1]).expanduser().resolve()
 mcp_registry_path = Path(sys.argv[2]).expanduser().resolve()
 agent_registry_path = Path(sys.argv[3]).expanduser().resolve()
-plugin_registry_path = Path(sys.argv[4]).expanduser().resolve()
-tmp_dir = Path(sys.argv[5]).resolve()
-filters = {normalize_path(path) for path in sys.argv[6:] if path}
+tmp_dir = Path(sys.argv[4]).resolve()
+filters = {normalize_path(path) for path in sys.argv[5:] if path}
 
 root_dir = agent_registry_path.parent.parent.resolve()
 sys.path.insert(0, str(root_dir))

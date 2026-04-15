@@ -1,9 +1,10 @@
 # Capability Bootstrap Model
 
-This repo now has three capability families to bootstrap: skills, MCPs, and agents.
+This repo now has four capability families to think about: plugin source packages, skills, MCPs, and agents.
 
 They should not all be modeled the same way. The clean split is:
 
+- **plugin source packages** are upstream bundles that can feed other capability families
 - **skills** are capability bundles that mainly need an effective per-repo view
 - **MCPs** are connection endpoints that need both per-repo assignment and scope-aware registry views
 - **agents** are role definitions plus role assignments, so they need both a role-centric registry and a per-repo effective view
@@ -14,10 +15,13 @@ The design rule is simple: keep **definitions** canonical in `~/.agents`, keep *
 
 ```mermaid
 flowchart TD
+    P[plugins/registry.json]
+    P2[plugins-source/external or owned]
     A[skills/registry.json]
     B[codex/config/repo-bootstrap.json]
     C[mcp/config/presets.json]
     D[codex/config/agents/*.toml]
+    PS[sync-plugins-registry.sh]
     E[sync-skills-registry.sh]
     F[sync-repo-codex-configs.sh]
     G[sync-config.sh]
@@ -26,6 +30,11 @@ flowchart TD
     J[Repo-local .codex]
     K[Registry views]
 
+    P --> PS
+    P2 --> PS
+    PS --> A
+    PS --> B
+    PS --> C
     A --> E
     A --> H
     B --> F
@@ -41,6 +50,39 @@ flowchart TD
     G --> I
     H --> K
 ```
+
+## Plugin Source Packages
+
+### Source of truth
+
+- `plugins/registry.json`
+- canonical mirrored or owned source in `plugins-source/`
+
+### Scope model
+
+- source packages can be `external` or `owned`
+- extracted skills can be `global` or `repo`
+- extracted MCP can be `global` or `repo`
+
+### Apply path
+
+- `scripts/refresh-external-plugins.sh`
+- `scripts/sync-plugins-registry.sh`
+
+### Generated views
+
+- `docs/references/registry/plugins.base`
+- `docs/references/registry/plugins-items/`
+
+### Why this shape
+
+Plugins are not the runtime abstraction in this control plane.
+
+The important question is:
+
+> what durable capabilities should this upstream bundle contribute to the normal skills and MCP flows?
+
+That is why plugin source packages feed the other registries instead of becoming a separate runtime install system.
 
 ## Skills
 
@@ -159,6 +201,7 @@ Repo bootstrap does not re-define per-agent MCP/tool policy.
 
 ### 1. Keep canonical behavior in one place
 
+- plugin source stays in `plugins-source/`
 - skill content stays in `skills-source/`
 - MCP preset definitions stay in `mcp/config/presets.json`
 - agent role behavior stays in `codex/config/agents/*.toml`
@@ -186,6 +229,7 @@ Custom agent names must stay distinct from built-in Codex role names unless over
 ## Recommended mental model
 
 - **Skills** answer: _what helper knowledge/capabilities are available here?_
+- **Plugin source packages** answer: _what upstream bundle should feed the shared skills/MCP system?_
 - **MCPs** answer: _what external endpoints can this repo or runtime connect to?_
 - **Agents** answer: _what specialized worker/reviewer/researcher roles can Codex spawn here?_
 

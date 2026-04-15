@@ -17,6 +17,7 @@ Use [Codex Control Plane](/Users/dobby/.agents/docs/architecture/codex-control-p
 
 - Codex architecture docs and migration trackers
 - Codex-specific managed scripts
+- plugin source registry plus mirrored or owned plugin source packages
 - canonical config fragments and presets
 - MCP preset definitions and ownership docs
 - generated user-facing Obsidian registry views under `docs/references/registry/`
@@ -77,14 +78,15 @@ Use [Codex Control Plane](/Users/dobby/.agents/docs/architecture/codex-control-p
 
 - [AGENTS.md](/Users/dobby/.agents/AGENTS.md): machine-local guidance for this repo; now includes the canonical Codex control-plane commands.
 - [docs/architecture/codex-control-plane.md](/Users/dobby/.agents/docs/architecture/codex-control-plane.md): canonical high-level design.
-- [scripts/bootstrap-machine-agent-control-planes.sh](/Users/adi/.agents/scripts/bootstrap-machine-agent-control-planes.sh): canonical machine-facing bootstrap entrypoint for shared skills plus Codex and Claude.
-- [scripts/auto-apply-agent-control-planes.sh](/Users/adi/.agents/scripts/auto-apply-agent-control-planes.sh): canonical machine-facing post-sync reconcile entrypoint used for automatic cross-machine apply.
+- [scripts/bootstrap-machine-agent-control-planes.sh](/Users/dobby/.agents/scripts/bootstrap-machine-agent-control-planes.sh): canonical machine-facing bootstrap entrypoint for shared skills plus Codex and Claude.
+- [scripts/auto-apply-agent-control-planes.sh](/Users/dobby/.agents/scripts/auto-apply-agent-control-planes.sh): canonical machine-facing post-sync reconcile entrypoint used for automatic cross-machine apply.
 - [codex/scripts/bootstrap-machine-codex.sh](/Users/dobby/.agents/codex/scripts/bootstrap-machine-codex.sh): canonical Codex-specific machine bootstrap entrypoint.
-- [codex/scripts/auto-apply-codex-control-plane.sh](/Users/adi/.agents/codex/scripts/auto-apply-codex-control-plane.sh): canonical low-level Codex-specific post-sync reconcile helper.
+- [codex/scripts/auto-apply-codex-control-plane.sh](/Users/dobby/.agents/codex/scripts/auto-apply-codex-control-plane.sh): canonical low-level Codex-specific post-sync reconcile helper.
 - [codex/scripts/sync-trusted-projects.sh](/Users/dobby/.agents/codex/scripts/sync-trusted-projects.sh): canonical trusted-repo sync for terminal + Xcode Codex configs.
-- [codex/scripts/sync-repo-codex-configs.sh](/Users/adi/.agents/codex/scripts/sync-repo-codex-configs.sh): canonical repo-local Codex config sync for managed repos.
-- [codex/config/repo-bootstrap.json](/Users/adi/.agents/codex/config/repo-bootstrap.json): canonical repo bootstrap registry for managed repos plus repo-local model/agent/MCP assignment.
-- [mcp/config/presets.json](/Users/adi/.agents/mcp/config/presets.json): canonical shared MCP definitions plus machine-wide default MCP enablement.
+- [codex/scripts/sync-repo-codex-configs.sh](/Users/dobby/.agents/codex/scripts/sync-repo-codex-configs.sh): canonical repo-local Codex config sync for managed repos.
+- [codex/config/repo-bootstrap.json](/Users/dobby/.agents/codex/config/repo-bootstrap.json): canonical repo bootstrap registry for managed repos plus repo-local model/agent/MCP assignment.
+- [mcp/config/presets.json](/Users/dobby/.agents/mcp/config/presets.json): canonical shared MCP definitions plus machine-wide default MCP enablement.
+- [plugins/registry.json](/Users/dobby/.agents/plugins/registry.json): canonical plugin source registry for upstream bundles that feed shared skills and MCP.
 - [codex/scripts/install-sudoers-codex-ops.sh](/Users/dobby/.agents/codex/scripts/install-sudoers-codex-ops.sh): canonical Codex sudoers installer.
 
 ## Migration Intent

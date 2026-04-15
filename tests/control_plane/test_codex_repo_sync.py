@@ -4,7 +4,6 @@ from tests.control_plane.support import (
     REPO_ROOT,
     TempDirTestCase,
     default_mcp_registry,
-    default_plugins_registry,
     init_git_repo,
     make_control_plane_root,
     run_command,
@@ -21,8 +20,6 @@ class CodexRepoSyncTests(TempDirTestCase):
         repo_registry_path = root / "codex/config/repo-bootstrap.json"
         mcp_registry_path = root / "mcp/config/presets.json"
         agent_registry_path = root / "agents/registry.json"
-        plugin_registry_path = root / "plugins/registry.json"
-
         write_json(
             repo_registry_path,
             {
@@ -49,8 +46,6 @@ class CodexRepoSyncTests(TempDirTestCase):
             }
         }
         write_json(mcp_registry_path, mcp_registry)
-        plugin_registry = default_plugins_registry()
-        write_json(plugin_registry_path, plugin_registry)
         write_json(
             agent_registry_path,
             {
@@ -71,8 +66,6 @@ class CodexRepoSyncTests(TempDirTestCase):
                 str(mcp_registry_path),
                 "--agent-registry",
                 str(agent_registry_path),
-                "--plugin-registry",
-                str(plugin_registry_path),
             ]
         )
 

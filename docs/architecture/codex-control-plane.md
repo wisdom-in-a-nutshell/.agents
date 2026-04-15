@@ -4,7 +4,14 @@ This repo is becoming the canonical personal control plane for Codex across both
 
 That split keeps Codex-specific policy, repo assignment, shared MCP presets, skills, docs, and managed scripts in one synced place without pretending that auth, sessions, logs, or runtime databases belong in git.
 
-The newest part of that control plane is the repo bootstrap registry in `~/.agents/codex/config/repo-bootstrap.json`. It now acts as the canonical source for:
+The newest part of that control plane is the plugin-source extraction layer plus the repo bootstrap registry in `~/.agents/codex/config/repo-bootstrap.json`.
+
+Plugin source packages now live under `~/.agents/plugins-source/`. They are not the runtime abstraction. Instead, the control plane mirrors upstream plugin bundles there, then extracts:
+
+- bundled `skills/` into the normal managed skills flow
+- bundled `.mcp.json` into the normal shared MCP flow
+
+The repo bootstrap registry in `~/.agents/codex/config/repo-bootstrap.json` then acts as the canonical source for:
 
 - which repos are managed
 - which extra repos live outside `~/GitHub`
@@ -35,15 +42,25 @@ flowchart TD
 ```mermaid
 flowchart TD
     A[Edit ~/.agents] --> B[bootstrap-machine-codex.sh]
+    A --> P[plugins/registry.json]
     A --> R[repo-bootstrap.json]
+    P --> Q[sync-plugins-registry.sh]
+    P --> S[plugins-source/external or owned]
+    S --> Q
     B --> C[sync-config.sh]
     B --> D[sync-trusted-projects.sh]
     B --> E[sync-repo-codex-configs.sh]
     B --> F[configure-ghostty-cwd.sh]
+    Q --> T[skills/registry.json managed_plugin_skills]
+    Q --> U[mcp/config/presets.json plugin_presets]
+    Q --> R
     C --> G[~/.codex/config.toml]
     C --> H[Xcode Codex config]
     R --> D
     R --> E
+    T --> E
+    U --> C
+    U --> E
     D --> G
     D --> H
     E --> I[Repo-local .codex/config.toml]
@@ -72,6 +89,7 @@ Owns the durable, synced source of truth for Codex-specific setup:
 
 - managed config fragments and presets
 - repo bootstrap registry
+- plugin source registry and plugin source packages
 - Codex-specific scripts and wrappers
 - skills, references, and architecture docs
 - migration and ownership documentation
@@ -116,9 +134,10 @@ These settings stay close to the repo because they describe how Codex should beh
 1. Canonical Codex policy and assets are edited in `~/.agents`.
 2. Shared machine-facing apply enters through `~/.agents/scripts/bootstrap-machine-agent-control-planes.sh` or `~/.agents/scripts/auto-apply-agent-control-planes.sh`.
 3. The global templates drive machine config in `~/.codex` and Xcode Codex config.
-4. The repo bootstrap registry drives both trusted repo discovery and managed repo-local `.codex/config.toml` generation.
-5. Codex starts from `~/.codex/config.toml` and any trusted repo-local `.codex/config.toml` in real project repos.
-6. Repo-local overrides refine behavior for one project without changing the global control plane.
+4. Managed plugin source is refreshed under `plugins-source/`, then extracted into shared skills and MCP registries.
+5. The repo bootstrap registry drives both trusted repo discovery and managed repo-local `.codex/config.toml` generation.
+6. Codex starts from `~/.codex/config.toml` and any trusted repo-local `.codex/config.toml` in real project repos.
+7. Repo-local overrides refine behavior for one project without changing the global control plane.
 
 ## Key Boundaries
 
@@ -126,6 +145,7 @@ These settings stay close to the repo because they describe how Codex should beh
 - Applied runtime and volatile state belongs in `~/.codex`.
 - Generic machine bootstrap belongs in `~/GitHub/scripts`.
 - Repo-specific Codex behavior belongs in repo-local `.codex/`.
+- Plugin source belongs in `plugins-source/`; extracted skills and MCP belong in the normal shared skills/MCP registries.
 - The repo registry decides which repos get generated repo-local config and which MCP presets they receive.
 - The same registry also decides which repo-local agent role files should be rendered from canonical role templates plus repo policy.
 
