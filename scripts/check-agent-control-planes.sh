@@ -14,7 +14,7 @@ usage() {
   cat <<USAGE
 Usage: $(basename "$0") [options]
 
-Validate the shared skills registry plus Codex and Claude rendered state.
+Validate the shared skills and plugins registries plus Codex and Claude rendered state.
 
 Options:
   --repo <path>    Limit Claude validation to an exact repo path (repeatable)

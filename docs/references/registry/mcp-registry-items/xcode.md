@@ -1,13 +1,13 @@
 ---
 mcp_name: "xcode"
-effective_scope: "repo"
+effective_scope: "-"
 global_terminal: "false"
 global_xcode: "false"
-repos_csv: "codexclaw"
+repos_csv: "-"
 transport: "stdio"
 target: "xcrun mcpbridge"
 repos:
-  - "codexclaw"
+  - "-"
 ---
 
 Generated from `codex/config/repo-bootstrap.json` and `mcp/config/presets.json`. Do not edit manually.

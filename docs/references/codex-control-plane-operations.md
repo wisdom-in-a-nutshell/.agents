@@ -31,14 +31,23 @@ Use [Codex Control Plane Ownership](/Users/dobby/.agents/docs/references/codex-c
 - Apply the shared machine-facing agent bootstrap batch:
   - [`bootstrap-machine-agent-control-planes.sh`](/Users/dobby/.agents/scripts/bootstrap-machine-agent-control-planes.sh)
   - `~/.agents/scripts/bootstrap-machine-agent-control-planes.sh --apply`
-  - this syncs managed skill links plus the Codex and Claude runtime control planes from one stable root entrypoint
+  - this syncs managed skill links, managed plugin links and marketplace files, plus the Codex and Claude runtime control planes from one stable root entrypoint
 - Auto-apply the shared agent control plane after `~/.agents` sync when runtime-relevant files changed:
   - [`auto-apply-agent-control-planes.sh`](/Users/dobby/.agents/scripts/auto-apply-agent-control-planes.sh)
   - `~/.agents/scripts/auto-apply-agent-control-planes.sh --apply`
   - this is the machine-facing post-sync entrypoint that external bootstrap repos should call
-- Validate shared skills plus Codex and Claude rendered runtime state:
+- Validate shared skills, plugins, plus Codex and Claude rendered runtime state:
   - [`check-agent-control-planes.sh`](/Users/dobby/.agents/scripts/check-agent-control-planes.sh)
   - `~/.agents/scripts/check-agent-control-planes.sh`
+- Sync managed plugins and render managed marketplaces:
+  - [`sync-plugins-registry.sh`](/Users/dobby/.agents/scripts/sync-plugins-registry.sh)
+  - `~/.agents/scripts/sync-plugins-registry.sh --apply`
+- Refresh managed external plugins from upstream:
+  - [`refresh-external-plugins.sh`](/Users/dobby/.agents/scripts/refresh-external-plugins.sh)
+  - `~/.agents/scripts/refresh-external-plugins.sh --apply`
+- Bootstrap one managed external plugin into the canonical registry:
+  - [`bootstrap-plugin.sh`](/Users/dobby/.agents/scripts/bootstrap-plugin.sh)
+  - `~/.agents/scripts/bootstrap-plugin.sh https://github.com/openai/plugins/tree/main/plugins/build-ios-apps --apply`
 - Apply the full Codex bootstrap batch:
   - [`bootstrap-machine-codex.sh`](/Users/dobby/.agents/codex/scripts/bootstrap-machine-codex.sh)
   - `~/.agents/codex/scripts/bootstrap-machine-codex.sh --apply`
@@ -134,6 +143,7 @@ Use [Codex Control Plane Ownership](/Users/dobby/.agents/docs/references/codex-c
   - reads shared agent exposure from [`agents/registry.json`](/Users/dobby/.agents/agents/registry.json)
   - pulls MCP preset definitions from [`mcp/config/presets.json`](/Users/dobby/.agents/mcp/config/presets.json)
   - enriches the per-repo view with effective skills from [`skills/registry.json`](/Users/dobby/.agents/skills/registry.json)
+  - plugin registry state currently renders into its own plugin-specific views and marketplace files, not into the repo bootstrap registry
   - now also exposes effective agents per repo:
     - `global_agents`
     - `custom_agents`
@@ -211,6 +221,7 @@ Use [Codex Control Plane Ownership](/Users/dobby/.agents/docs/references/codex-c
 - Launchd still lives in [`~/GitHub/scripts/sync/git-auto-sync.sh`](/Users/dobby/GitHub/scripts/sync/git-auto-sync.sh), because scheduler ownership is part of the generic machine-ops repo.
 - Machine-facing multi-surface apply now lives in [`auto-apply-agent-control-planes.sh`](/Users/dobby/.agents/scripts/auto-apply-agent-control-planes.sh), which calls the Codex and Claude entrypoints as needed after `~/.agents` sync.
 - When shared skill inputs change, that wrapper also reruns the Codex bootstrap so machine-side dependencies for managed skills such as `pdf` stay converged.
+- That same wrapper now also runs the managed external plugin refresh once per day, then re-syncs plugin links and marketplace files.
 - When `agents/registry.json` changes, that wrapper reruns both the Codex and Claude bootstraps so global and repo-local agent surfaces stay converged.
 - Codex-specific post-sync apply logic still lives in [`auto-apply-codex-control-plane.sh`](/Users/dobby/.agents/codex/scripts/auto-apply-codex-control-plane.sh) as an optional lower-level Codex-only reconcile helper.
 - Practical flow:
