@@ -255,6 +255,15 @@ def update_mcp_registry(
     _write_json_if_changed(registry_path, data)
 
 
+def canonical_mcp_preset_names(root_dir: Path) -> set[str]:
+    registry_path = root_dir / "mcp" / "config" / "presets.json"
+    data = json.loads(registry_path.read_text(encoding="utf-8"))
+    presets = data.get("presets", {})
+    if not isinstance(presets, dict):
+        raise ValueError("presets must be an object in mcp/config/presets.json")
+    return {str(name) for name in presets.keys()}
+
+
 def update_repo_bootstrap(
     root_dir: Path,
     plugin_repo_assignments: dict[str, list[str]],
@@ -356,8 +365,10 @@ def main() -> int:
             home=home,
         )
         plugin_skills = derive_plugin_skill_entries(managed, root_dir=root_dir)
+        reserved_mcp_names = canonical_mcp_preset_names(root_dir)
         plugin_presets, plugin_global_presets, plugin_repo_assignments = derive_plugin_mcp_state(
-            managed
+            managed,
+            reserved_names=reserved_mcp_names,
         )
         update_skills_registry(root_dir, plugin_skills)
         update_mcp_registry(root_dir, plugin_presets, plugin_global_presets)

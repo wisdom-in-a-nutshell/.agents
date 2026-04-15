@@ -75,6 +75,36 @@ def derived_mcp_preset_name(plugin_name: str, server_name: str) -> str:
     return f"plugin-{slug(plugin_name)}-{slug(server_name)}"
 
 
+def preferred_mcp_preset_name(
+    plugin_name: str,
+    server_name: str,
+    normalized: dict[str, Any],
+    *,
+    reserved_names: set[str],
+    existing_presets: dict[str, dict[str, Any]],
+) -> str:
+    primary = slug(server_name)
+    if not primary:
+        raise ValueError(f"plugin `{plugin_name}` MCP server name must not be empty")
+
+    existing = existing_presets.get(primary)
+    if existing is None and primary not in reserved_names:
+        return primary
+    if existing == normalized:
+        return primary
+
+    fallback = derived_mcp_preset_name(plugin_name, server_name)
+    existing = existing_presets.get(fallback)
+    if existing is None and fallback not in reserved_names:
+        return fallback
+    if existing == normalized:
+        return fallback
+
+    raise ValueError(
+        f"unable to derive unique MCP preset name for plugin `{plugin_name}` server `{server_name}`"
+    )
+
+
 def validate_plugin_registry(
     data: dict[str, Any],
     *,
@@ -271,10 +301,13 @@ def _normalize_plugin_mcp_server(
 
 def derive_plugin_mcp_state(
     plugins: list[ManagedPlugin],
+    *,
+    reserved_names: set[str] | None = None,
 ) -> tuple[dict[str, dict[str, Any]], list[str], dict[str, list[str]]]:
     presets: dict[str, dict[str, Any]] = {}
     global_presets: list[str] = []
     repo_assignments: dict[str, list[str]] = {}
+    reserved = set(reserved_names or set())
 
     for plugin in plugins:
         if not plugin.extract_mcp:
@@ -295,8 +328,13 @@ def derive_plugin_mcp_state(
                 raise ValueError(
                     f"plugin `{plugin.plugin}` MCP server `{server_name}` must be an object"
                 )
-            preset_name, normalized = _normalize_plugin_mcp_server(
-                plugin.plugin, str(server_name), raw_config
+            _, normalized = _normalize_plugin_mcp_server(plugin.plugin, str(server_name), raw_config)
+            preset_name = preferred_mcp_preset_name(
+                plugin.plugin,
+                str(server_name),
+                normalized,
+                reserved_names=reserved,
+                existing_presets=presets,
             )
             existing = presets.get(preset_name)
             if existing is not None and existing != normalized:
