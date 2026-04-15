@@ -190,3 +190,55 @@ class ClaudeSkillsSyncTests(TempDirTestCase):
         self.assertEqual(repo_local_source.resolve(), repo_local_link.resolve())
         self.assertFalse(stale_global_link.exists())
         self.assertFalse(stale_repo_link.exists())
+
+    def test_prunes_stale_repo_local_link_when_registry_entry_source_is_missing(self) -> None:
+        root = make_control_plane_root(self.temp_path)
+        home = self.temp_path / "home"
+        github_root = home / "GitHub"
+        adi = init_git_repo(github_root / "adi")
+
+        missing_repo_local_source = adi / ".agents/skills/missing-local"
+        missing_repo_local_source.mkdir(parents=True, exist_ok=True)
+
+        registry_path = root / "skills/registry.json"
+        write_json(
+            registry_path,
+            {
+                "managed_skills": [
+                    {
+                        "skill": "global-helper",
+                        "origin": "owned",
+                        "scope": "global",
+                        "source_path": "skills-source/owned/global-helper",
+                    }
+                ],
+                "managed_plugin_skills": [],
+                "paths": {
+                    "github_root": str(github_root),
+                },
+                "unmanaged_repo_local_skills": [
+                    {
+                        "repo": "adi",
+                        "skill": "missing-local",
+                    }
+                ],
+            },
+        )
+        make_skill_source(root / "skills-source/owned/global-helper", "global-helper")
+
+        stale_repo_link = adi / ".claude/skills/missing-local"
+        stale_repo_link.parent.mkdir(parents=True, exist_ok=True)
+        stale_repo_link.symlink_to(missing_repo_local_source)
+
+        result = run_command(
+            [
+                str(REPO_ROOT / "claude/scripts/sync-skills.sh"),
+                "--apply",
+                "--registry",
+                str(registry_path),
+            ],
+            env={"HOME": str(home)},
+        )
+
+        self.assertIn("missing SKILL.md", result.stderr)
+        self.assertFalse(stale_repo_link.exists())

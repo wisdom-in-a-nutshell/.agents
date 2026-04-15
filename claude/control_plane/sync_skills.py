@@ -224,6 +224,7 @@ def main() -> int:
         if filters and actual_repo_str not in filters:
             continue
 
+        repo_dirs_to_prune.setdefault(actual_repo, {})
         src = actual_repo / ".agents" / "skills" / skill
         if not ensure_skill_source(src, label=f"repo-local skill {skill} in {actual_repo}"):
             continue
@@ -233,7 +234,7 @@ def main() -> int:
         if dst in desired_links and desired_links[dst] != src:
             raise ControlPlaneError(f"conflicting Claude skill targets for {dst}")
         desired_links[dst] = src
-        repo_dirs_to_prune.setdefault(actual_repo, {})[dst] = src
+        repo_dirs_to_prune[actual_repo][dst] = src
         sync_link(dst, src, apply=args.apply)
 
     prune_dir(
