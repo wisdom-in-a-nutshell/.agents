@@ -2,7 +2,7 @@
 repo_name: "adi"
 path: "~/GitHub/adi"
 mcp_count: 1
-skill_count: 21
+skill_count: 22
 repo_local_skill_count: 0
 global_agent_count: 1
 custom_agent_count: 1
@@ -35,6 +35,7 @@ repo_skills:
   - "client-interface-guidelines"
   - "codex-agent-loop"
   - "codex-app-server"
+  - "cv-creator"
   - "frontend-skill"
   - "health"
   - "imagegen"
@@ -52,6 +53,7 @@ skills:
   - "client-interface-guidelines"
   - "codex-agent-loop"
   - "codex-app-server"
+  - "cv-creator"
   - "defuddle"
   - "find-skills"
   - "frontend-skill"
