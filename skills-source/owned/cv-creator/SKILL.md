@@ -111,3 +111,51 @@ identified.
 
 Track source `.tex`, tailored `job-description.md`, and notes files.
 Ignore generated PDFs and LaTeX build artifacts via `reference/career/cv/latex/.gitignore`.
+
+## Submitting applications via browser
+
+When the user asks you to actually submit a compiled CV to a web form, do NOT reach for the Claude-in-Chrome `file_upload` tool. It is broken as of 2026-04-15 (CDP error `-32000 "Not allowed"` on all origins, tracked as [anthropics/claude-code#32561](https://github.com/anthropics/claude-code/issues/32561)). Attempting it wastes time and blocks the rest of the submission.
+
+Use the `agent-browser` CLI instead. It drives Chrome via CDP directly with no extension bridge and handles file uploads cleanly.
+
+### Canonical submission flow
+
+```bash
+# 1. Open the application page in agent-browser
+agent-browser open "<application-url>"
+agent-browser wait --load networkidle
+
+# 2. Get the accessibility tree with element refs
+agent-browser snapshot -i
+
+# 3. Fill text fields and click radios/buttons using the @eN refs
+agent-browser fill @e13 "Adithyan Ilangovan"
+agent-browser fill @e14 "adi@aipodcast.ing"
+agent-browser click @e33  # radio button
+agent-browser click @e5   # combobox option after fill
+
+# 4. Upload resume + cover letter PDFs (this is the bit Claude-in-Chrome cannot do)
+agent-browser upload @e15 "/Users/dobby/GitHub/adi/reference/career/cv/latex/tailored/<slug>/resume.pdf"
+agent-browser upload @eN "/Users/dobby/GitHub/adi/reference/career/cv/latex/tailored/<slug>/cover-letter.pdf"
+
+# 5. Screenshot for verification before the final click
+agent-browser screenshot /tmp/<slug>-before-submit.png
+
+# 6. Submit
+agent-browser click @eN  # submit button
+agent-browser wait --load networkidle
+agent-browser screenshot /tmp/<slug>-after-submit.png
+```
+
+### Workflow notes
+
+- Combobox selection is a two-step dance: `fill` then `click` the matching option ref. The option ref appears in a fresh `snapshot -i` after the fill.
+- `agent-browser` uses a separate Chrome instance from Claude-in-Chrome. Any login state from the extension does not carry over. Most Ashby/Greenhouse/Lever application forms do not require login, so this is usually fine.
+- Before every `click @eN` on a submit button, take a screenshot and show it to the user. Submission is irreversible.
+- After submission, capture a confirmation screenshot (`agent-browser screenshot`) as evidence and note the result in the relevant tracker file (e.g. `capture/job-applications-<date>/STATUS.md`).
+- If the form has many essay questions, draft all answers before opening the form and fill them in a single pass. Reviewing drafts in source is easier than scrolling a populated form.
+- Refs can renumber between `snapshot -i` calls when the DOM changes. If a `fill` or `click` starts acting weird, re-snapshot and use the new refs.
+
+### When to prefer Claude-in-Chrome
+
+Claude-in-Chrome is still the right tool when the task needs an already-logged-in session, cookies, or extensions you have configured in your daily browser. For stateless public application forms, agent-browser is simpler and more reliable.
