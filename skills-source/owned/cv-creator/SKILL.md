@@ -154,7 +154,11 @@ agent-browser screenshot /tmp/<slug>-after-submit.png
 - Before every `click @eN` on a submit button, take a screenshot and show it to the user. Submission is irreversible.
 - After submission, capture a confirmation screenshot (`agent-browser screenshot`) as evidence and note the result in the relevant tracker file (e.g. `capture/job-applications-<date>/STATUS.md`).
 - If the form has many essay questions, draft all answers before opening the form and fill them in a single pass. Reviewing drafts in source is easier than scrolling a populated form.
-- Refs can renumber between `snapshot -i` calls when the DOM changes. If a `fill` or `click` starts acting weird, re-snapshot and use the new refs.
+- **Refs renumber aggressively.** Any interaction that changes the DOM (combobox selection, radio click, upload) can shift every ref below it by one. If you drafted fills using refs from an early snapshot and then interacted with the form, your essays will land in the wrong fields. Always re-snapshot right before a batch of fills, and verify filled content with `agent-browser eval` after.
+- **Ashby has invisible reCAPTCHA and will flag automated submissions as spam.** The form will appear to submit successfully, then replace itself with "Your application submission was flagged as possible spam. If you believe this was a mistake, please submit your application again." The reCAPTCHA token is generated from user gesture signals (mouse movement, genuine clicks, focus patterns) that programmatic fills do not produce. Retry does not help. Presence of `textarea[name=g-recaptcha-response]` on the form is the tell.
+  - **Workaround**: fill everything with agent-browser, verify the filled state in a screenshot, then hand the already-filled form to Adi and ask him to click Submit. Same handoff pattern as the Chrome file_upload workaround.
+  - Do NOT close the agent-browser window after filling. Adi needs the populated tab still open to click Submit.
+  - Greenhouse and Lever do not generally trip this. Ashby is the problem surface.
 
 ### When to prefer Claude-in-Chrome
 
