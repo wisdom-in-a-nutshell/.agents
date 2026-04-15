@@ -26,5 +26,20 @@
       "tool_timeout_sec": 120
     }
   },
-  "global_presets": []
+  "global_presets": [],
+  "plugin_presets": {
+    "plugin-build-ios-apps-xcodebuildmcp": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "xcodebuildmcp@latest",
+        "mcp"
+      ],
+      "env": {
+        "XCODEBUILDMCP_ENABLED_WORKFLOWS": "simulator,ui-automation,debugging,logging"
+      },
+      "transport": "stdio"
+    }
+  },
+  "plugin_global_presets": []
 }

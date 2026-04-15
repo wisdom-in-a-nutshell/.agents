@@ -11,6 +11,9 @@ cd "$REPO_ROOT"
 python3 scripts/sync-plugins-registry.py >/dev/null
 
 changes="$(git status --porcelain -- \
+  skills/registry.json \
+  mcp/config/presets.json \
+  codex/config/repo-bootstrap.json \
   docs/references/registry/plugins.base \
   docs/references/registry/plugins-items)"
 if [[ -n "$changes" ]]; then

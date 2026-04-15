@@ -5,6 +5,8 @@ import json
 from tests.control_plane.support import (
     REPO_ROOT,
     TempDirTestCase,
+    default_mcp_registry,
+    default_skills_registry,
     init_git_repo,
     make_control_plane_root,
     run_command,
@@ -17,6 +19,8 @@ class ManagedPluginsRegistrySyncTests(TempDirTestCase):
     def test_generates_registry_views_and_derived_skill_mcp_state(self) -> None:
         root = make_control_plane_root(self.temp_path)
         adi = init_git_repo(self.temp_path / "adi")
+        write_json(root / "skills/registry.json", default_skills_registry())
+        write_json(root / "mcp/config/presets.json", default_mcp_registry())
         plugin_root = root / "plugins-source/external/build-ios-apps"
         (plugin_root / "skills/ios-debugger-agent").mkdir(parents=True, exist_ok=True)
         (plugin_root / "skills/swiftui-ui-patterns").mkdir(parents=True, exist_ok=True)
@@ -139,6 +143,19 @@ class ManagedPluginsRegistrySyncTests(TempDirTestCase):
 
     def test_empty_managed_plugins_is_valid(self) -> None:
         root = make_control_plane_root(self.temp_path)
+        write_json(root / "skills/registry.json", default_skills_registry())
+        write_json(root / "mcp/config/presets.json", default_mcp_registry())
+        write_json(
+            root / "codex/config/repo-bootstrap.json",
+            {
+                "defaults": {
+                    "model": "gpt-5.4",
+                    "model_reasoning_effort": "high",
+                    "service_tier": None,
+                },
+                "repos": [],
+            },
+        )
         registry_path = root / "plugins/registry.json"
         write_json(
             registry_path,

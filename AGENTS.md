@@ -35,7 +35,9 @@ Personal agent, Codex, and Claude control plane.
   - `plugins-source/external/<plugin>/`
   - `plugins-source/owned/<plugin>/`
 - Global runtime skills live in `skills/<skill>` as symlinks.
-- Managed plugin install/enable state lives in Codex config plus the Codex plugin cache under `~/.codex/plugins/cache/`.
+- Plugin-derived skill assignments render into `skills/registry.json` under `managed_plugin_skills`.
+- Plugin-derived shared MCP presets render into `mcp/config/presets.json` under `plugin_presets` and `plugin_global_presets`.
+- Plugin-derived repo MCP assignments render into `codex/config/repo-bootstrap.json` under `plugin_mcp_presets`.
 - Generated views for Obsidian live in:
   - `docs/references/registry/skills.base`
   - `docs/references/registry/skills-items/`
@@ -50,7 +52,7 @@ Personal agent, Codex, and Claude control plane.
 
 - Dry-run machine-facing agent bootstrap batch: `./scripts/bootstrap-machine-agent-control-planes.sh`
 - Apply machine-facing agent bootstrap batch: `./scripts/bootstrap-machine-agent-control-planes.sh --apply`
-  - Syncs managed skill links plus the Codex and Claude control-plane runtimes from one stable `~/.agents` entrypoint.
+  - Syncs managed skill links, plugin-derived skills/MCP state, plus the Codex and Claude control-plane runtimes from one stable `~/.agents` entrypoint.
 - Dry-run post-sync agent control-plane reconcile: `./scripts/auto-apply-agent-control-planes.sh --dry-run`
 - Apply post-sync agent control-plane reconcile: `./scripts/auto-apply-agent-control-planes.sh --apply`
   - Detects runtime-relevant changes in `skills/`, `skills-source/`, `mcp/`, `codex/`, and `claude/`, then runs the necessary shared apply steps.
@@ -68,14 +70,14 @@ Personal agent, Codex, and Claude control plane.
   - Refresh preserves local `agents/openai.yaml` inside external skill folders.
 - Dry-run plugin sync: `./scripts/sync-plugins-registry.sh`
 - Apply plugin sync: `./scripts/sync-plugins-registry.sh --apply`
-  - Sync validates `plugins/registry.json` and regenerates the Obsidian registry views.
+  - Sync validates `plugins/registry.json`, regenerates the Obsidian registry views, and refreshes plugin-derived skills plus MCP state.
 - Validate generated plugin registry artifacts: `./scripts/check-plugins-registry.sh`
 - Dry-run external plugin refresh: `./scripts/refresh-external-plugins.sh`
 - Apply external plugin refresh: `./scripts/refresh-external-plugins.sh --apply`
-  - Refresh preserves local `agents/openai.yaml` inside external plugin folders when you intentionally mirror local plugin source.
+  - Refresh preserves local `agents/openai.yaml` inside external plugin source folders.
 - Dry-run plugin bootstrap: `./scripts/bootstrap-plugin.sh <plugin-name-or-id>`
 - Apply plugin bootstrap: `./scripts/bootstrap-plugin.sh <plugin-name-or-id> --apply`
-  - Bootstraps a managed plugin by updating `plugins/registry.json`, regenerating the registry artifacts, syncing Codex config, and ensuring the plugin is installed in Codex.
+  - Bootstraps a managed plugin source by updating `plugins/registry.json`, refreshing upstream source, regenerating plugin-derived registry artifacts, and applying shared skills plus Codex and Claude bootstraps.
 - Dry-run Codex config apply: `./codex/scripts/sync-config.sh`
 - Apply Codex config: `./codex/scripts/sync-config.sh --apply`
 - Dry-run Codex global AGENTS apply: `./codex/scripts/sync-global-agents-md.sh`
@@ -91,8 +93,6 @@ Personal agent, Codex, and Claude control plane.
 - Dry-run Codex bootstrap batch: `./codex/scripts/bootstrap-machine-codex.sh`
 - Apply Codex bootstrap batch: `./codex/scripts/bootstrap-machine-codex.sh --apply`
   - This applies the Codex control-plane outputs only; the shared shell links still live in `~/GitHub/scripts`.
-- Dry-run repo-local Codex plugin bootstrap from an installed bundle: `./codex/scripts/bootstrap-repo-local-plugin.sh <plugin@marketplace> --repo <repo>`
-- Apply repo-local Codex plugin bootstrap from an installed bundle: `./codex/scripts/bootstrap-repo-local-plugin.sh <plugin@marketplace> --repo <repo> --apply`
 - Link shared zshrc: `~/GitHub/scripts/setup/codex/link-shared-zshrc.sh --apply`
 - Link shared zprofile: `~/GitHub/scripts/setup/codex/link-shared-zprofile.sh --apply`
 - Validate Codex control-plane inputs + rendered runtimes: `./codex/scripts/check-codex-control-plane.sh`
@@ -109,12 +109,12 @@ Personal agent, Codex, and Claude control plane.
 
 ## Rules
 
-- Distribution policy is link-only.
+- Runtime distribution is link-first for skills; plugin source stays canonical under `plugins-source/` and feeds extracted skills plus MCP.
 - Treat global skills as a minimal default kit; prefer repo scope or repo-local unless a skill is broadly useful across unrelated repos.
 - When a user provides a `skills.sh` URL or upstream skill reference and wants it installed into a repo, prefer `./scripts/bootstrap-skill.sh` over manual registry edits.
 - Do not edit managed skills through repo symlink destinations; edit canonical source paths.
-- Do not edit managed plugins through runtime symlink destinations or generated marketplace files; edit canonical source paths and `plugins/registry.json`.
-- Do not treat official OpenAI plugins as mirrored local source by default; manage official plugin ids in `plugins/registry.json` and let Codex install them.
+- Do not edit plugin-derived skills, MCP, or repo runtime files as source; edit canonical plugin source paths and `plugins/registry.json`.
+- Managed plugins can mirror upstream source under `plugins-source/external/` when the control plane extracts bundled skills and `.mcp.json` into the normal skills and MCP flows.
 - Keep repo-local skills listed in `skills/registry.json` under `unmanaged_repo_local_skills`.
 - Keep repo-local plugins listed in `plugins/registry.json` under `unmanaged_repo_local_plugins`.
 - Do not add additional manifest files for skill mapping; update `skills/registry.json`.

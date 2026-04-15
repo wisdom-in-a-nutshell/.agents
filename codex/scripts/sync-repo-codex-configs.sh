@@ -249,6 +249,14 @@ def toml_value(value):
         return f'"{escaped}"'
     if isinstance(value, list):
         return "[" + ", ".join(toml_value(item) for item in value) + "]"
+    if isinstance(value, dict):
+        items = []
+        for key in sorted(value):
+            if not isinstance(key, str):
+                raise TypeError(f"Unsupported TOML key type: {key!r}")
+            escaped_key = key.replace("\\", "\\\\").replace('"', '\\"')
+            items.append(f'"{escaped_key}" = {toml_value(value[key])}')
+        return "{ " + ", ".join(items) + " }"
     raise TypeError(f"Unsupported TOML value: {value!r}")
 
 

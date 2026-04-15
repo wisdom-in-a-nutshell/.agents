@@ -60,7 +60,10 @@
       ]
     },
     {
-      "path": "~/GitHub/codexclaw"
+      "path": "~/GitHub/codexclaw",
+      "plugin_mcp_presets": [
+        "plugin-build-ios-apps-xcodebuildmcp"
+      ]
     },
     {
       "path": "~/GitHub/focus"

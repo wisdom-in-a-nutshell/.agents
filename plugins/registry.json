@@ -5,13 +5,21 @@
   },
   "managed_plugins": [
     {
-      "plugin_id": "build-ios-apps@openai-curated",
+      "plugin": "build-ios-apps",
+      "origin": "external",
       "scope": "repo",
       "repos": [
         "codexclaw"
       ],
-      "enabled": true,
-      "category": "Coding"
+      "mcp_scope": "repo",
+      "mcp_repos": [
+        "codexclaw"
+      ],
+      "source_path": "plugins-source/external/build-ios-apps",
+      "upstream_ref": "openai/plugins:plugins/build-ios-apps@main",
+      "category": "Coding",
+      "extract_skills": true,
+      "extract_mcp": true
     }
   ],
   "unmanaged_repo_local_plugins": []
