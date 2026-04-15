@@ -2,8 +2,8 @@
 repo_name: "codexclaw"
 path: "~/GitHub/codexclaw"
 mcp_count: 1
-skill_count: 20
-repo_local_skill_count: 1
+skill_count: 19
+repo_local_skill_count: 0
 global_agent_count: 1
 custom_agent_count: 0
 agent_count: 1
@@ -11,7 +11,7 @@ model: "gpt-5.4"
 reasoning: "high"
 service_tier: "-"
 mcps:
-  - "plugin-build-ios-apps-xcodebuildmcp"
+  - "xcodebuildmcp"
 global_agents:
   - "external_researcher"
 custom_agents: []
@@ -38,8 +38,7 @@ repo_skills:
   - "swiftui-performance-audit"
   - "swiftui-ui-patterns"
   - "swiftui-view-refactor"
-repo_local_skills:
-  - "ios-mobile-gateway-workflow"
+repo_local_skills: []
 skills:
   - "agent-browser"
   - "agent-native-repo-playbook"
@@ -52,7 +51,6 @@ skills:
   - "find-skills"
   - "ios-app-intents"
   - "ios-debugger-agent"
-  - "ios-mobile-gateway-workflow"
   - "pdf"
   - "project"
   - "secret-management"

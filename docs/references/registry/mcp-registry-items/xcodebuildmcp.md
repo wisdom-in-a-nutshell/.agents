@@ -1,5 +1,5 @@
 ---
-mcp_name: "plugin-build-ios-apps-xcodebuildmcp"
+mcp_name: "xcodebuildmcp"
 effective_scope: "repo"
 global_terminal: "false"
 global_xcode: "false"
