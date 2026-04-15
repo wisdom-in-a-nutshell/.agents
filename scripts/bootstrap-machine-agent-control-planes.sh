@@ -8,6 +8,7 @@ REPO_FILTERS=()
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
 SYNC_SKILLS_SCRIPT="${SCRIPT_DIR}/sync-skills-registry.sh"
+SYNC_PLUGINS_SCRIPT="${SCRIPT_DIR}/sync-plugins-registry.sh"
 CODEX_BOOTSTRAP_SCRIPT="${ROOT_DIR}/codex/scripts/bootstrap-machine-codex.sh"
 CLAUDE_BOOTSTRAP_SCRIPT="${ROOT_DIR}/claude/scripts/bootstrap-machine-claude.sh"
 
@@ -77,12 +78,13 @@ if (( APPLY == 1 )); then
   MODE_FLAG="--apply"
 fi
 
-SKILLS_ARGS=()
+SYNC_ARGS=()
 if (( APPLY == 1 )); then
-  SKILLS_ARGS+=(--apply)
+  SYNC_ARGS+=(--apply)
 fi
 
 [[ -x "$SYNC_SKILLS_SCRIPT" ]] || die "Missing executable: $SYNC_SKILLS_SCRIPT"
+[[ -x "$SYNC_PLUGINS_SCRIPT" ]] || die "Missing executable: $SYNC_PLUGINS_SCRIPT"
 [[ -x "$CODEX_BOOTSTRAP_SCRIPT" ]] || die "Missing executable: $CODEX_BOOTSTRAP_SCRIPT"
 [[ -x "$CLAUDE_BOOTSTRAP_SCRIPT" ]] || die "Missing executable: $CLAUDE_BOOTSTRAP_SCRIPT"
 REPO_ARGS=()
@@ -92,10 +94,17 @@ done
 
 sync_skills_cmd=(
   "$SYNC_SKILLS_SCRIPT"
-  "${SKILLS_ARGS[@]}"
+  "${SYNC_ARGS[@]}"
 )
 log "+ ${sync_skills_cmd[*]}"
 "${sync_skills_cmd[@]}"
+
+sync_plugins_cmd=(
+  "$SYNC_PLUGINS_SCRIPT"
+  "${SYNC_ARGS[@]}"
+)
+log "+ ${sync_plugins_cmd[*]}"
+"${sync_plugins_cmd[@]}"
 
 codex_cmd=(
   "$CODEX_BOOTSTRAP_SCRIPT"

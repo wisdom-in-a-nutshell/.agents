@@ -1,0 +1,36 @@
+{
+  "version": 1,
+  "policy": {
+    "origins": [
+      "external",
+      "owned"
+    ],
+    "distribution": "link-and-marketplace"
+  },
+  "paths": {
+    "github_root": "~/GitHub",
+    "codex_plugin_root": "~/.codex/plugins"
+  },
+  "marketplaces": {
+    "global": {
+      "name": "dobby-managed",
+      "display_name": "Dobby Managed Plugins"
+    }
+  },
+  "managed_plugins": [
+    {
+      "plugin": "build-ios-apps",
+      "origin": "external",
+      "scope": "global",
+      "repos": [],
+      "source_path": "plugins-source/external/build-ios-apps",
+      "upstream_ref": "openai/plugins:plugins/build-ios-apps@main",
+      "category": "Coding",
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      }
+    }
+  ],
+  "unmanaged_repo_local_plugins": []
+}

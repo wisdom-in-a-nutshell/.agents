@@ -12,6 +12,7 @@ Personal agent, Codex, and Claude control plane.
 ## Source of Truth
 
 - `skills/registry.json` is the canonical skill registry.
+- `plugins/registry.json` is the canonical plugin registry.
 - `mcp/config/presets.json` is the canonical shared MCP registry.
 - `agents/registry.json` is the canonical shared agent registry for Codex agents and Claude subagents.
 - `codex/` holds canonical personal Codex control-plane inputs.
@@ -30,7 +31,12 @@ Personal agent, Codex, and Claude control plane.
 - Managed canonical skill content lives in:
   - `skills-source/external/<skill>/`
   - `skills-source/owned/<skill>/`
+- Managed canonical plugin content lives in:
+  - `plugins-source/external/<plugin>/`
+  - `plugins-source/owned/<plugin>/`
 - Global runtime skills live in `skills/<skill>` as symlinks.
+- Global plugin marketplace lives in `plugins/marketplace.json`.
+- Global runtime plugins live in `~/.codex/plugins/<plugin>` as symlinks.
 - Generated views for Obsidian live in:
   - `docs/references/registry/skills.base`
   - `docs/references/registry/skills-items/`
@@ -61,6 +67,16 @@ Personal agent, Codex, and Claude control plane.
 - Dry-run external upstream refresh: `./scripts/refresh-external-skills.sh`
 - Apply external upstream refresh: `./scripts/refresh-external-skills.sh --apply`
   - Refresh preserves local `agents/openai.yaml` inside external skill folders.
+- Dry-run plugin sync: `./scripts/sync-plugins-registry.sh`
+- Apply plugin sync: `./scripts/sync-plugins-registry.sh --apply`
+  - Sync applies desired managed plugin links, renders marketplace files, and prunes obsolete managed global plugin links under `~/.codex/plugins/`.
+- Validate generated plugin registry artifacts: `./scripts/check-plugins-registry.sh`
+- Dry-run external plugin refresh: `./scripts/refresh-external-plugins.sh`
+- Apply external plugin refresh: `./scripts/refresh-external-plugins.sh --apply`
+  - Refresh preserves local `agents/openai.yaml` inside external plugin folders.
+- Dry-run plugin bootstrap: `./scripts/bootstrap-plugin.sh <github-tree-url-or-upstream-ref>`
+- Apply plugin bootstrap: `./scripts/bootstrap-plugin.sh <github-tree-url-or-upstream-ref> --apply`
+  - Bootstraps a managed external plugin by updating `plugins/registry.json`, importing upstream source, syncing runtime links, and regenerating the managed marketplace and registry artifacts.
 - Dry-run Codex config apply: `./codex/scripts/sync-config.sh`
 - Apply Codex config: `./codex/scripts/sync-config.sh --apply`
 - Dry-run Codex global AGENTS apply: `./codex/scripts/sync-global-agents-md.sh`
@@ -85,6 +101,8 @@ Personal agent, Codex, and Claude control plane.
 - Scheduler entrypoint lives in `~/GitHub/scripts/sync/git-auto-sync.sh` (launchd every 15 minutes).
 - External upstream refresh runs through that job with a once-per-day gate:
   - `~/.agents/scripts/refresh-external-skills.sh --apply`
+- External plugin upstream refresh now runs through the shared reconcile wrapper with a once-per-day gate:
+  - `~/.agents/scripts/refresh-external-plugins.sh --apply`
 - Shared agent control-plane reconcile runs every auto-sync cycle:
   - `~/.agents/scripts/auto-apply-agent-control-planes.sh --apply`
 
@@ -94,14 +112,17 @@ Personal agent, Codex, and Claude control plane.
 - Treat global skills as a minimal default kit; prefer repo scope or repo-local unless a skill is broadly useful across unrelated repos.
 - When a user provides a `skills.sh` URL or upstream skill reference and wants it installed into a repo, prefer `./scripts/bootstrap-skill.sh` over manual registry edits.
 - Do not edit managed skills through repo symlink destinations; edit canonical source paths.
+- Do not edit managed plugins through runtime symlink destinations or generated marketplace files; edit canonical source paths and `plugins/registry.json`.
 - Keep repo-local skills listed in `skills/registry.json` under `unmanaged_repo_local_skills`.
+- Keep repo-local plugins listed in `plugins/registry.json` under `unmanaged_repo_local_plugins`.
 - Do not add additional manifest files for skill mapping; update `skills/registry.json`.
+- Do not add additional manifest files for plugin mapping; update `plugins/registry.json`.
 - If `skills/registry.json` changes, run sync/check in the same change.
+- If `plugins/registry.json` changes, run plugin sync/check in the same change.
 - Do not hand-edit generated repo-local `.codex/config.toml` files in managed repos; update `codex/config/repo-bootstrap.json` and re-run the sync scripts.
 - Do not hand-edit generated repo-local `.codex/agents/*.toml` files in managed repos; update `codex/config/repo-bootstrap.json` or `codex/config/agents/*.toml` and re-run the sync scripts.
 - When changing shared bootstrap inputs such as `mcp/config/presets.json`, `codex/config/repo-bootstrap.json`, or repo MCP assignment, prefer `./scripts/bootstrap-machine-agent-control-planes.sh --apply --repo <repo>` so Codex and Claude repo-local state are both re-rendered together. Use component-only Codex or Claude scripts only for intentional single-surface troubleshooting.
 - If `mcp/config/presets.json` changes, run both Codex and Claude control-plane validation in the same change.
 - If `agents/registry.json` changes, run both Codex and Claude control-plane validation plus `./scripts/test-control-plane.sh` in the same change.
 - If `codex/config/agents/*.toml`, `codex/config/global.config.toml`, `codex/config/xcode.config.toml`, or `codex/config/repo-bootstrap.json` changes, run the Codex control-plane validation script in the same change.
-
 

@@ -4,10 +4,13 @@ set -euo pipefail
 AGENTS_REPO="${HOME}/.agents"
 GITHUB_ROOT="${HOME}/GitHub"
 STAMP_FILE="${HOME}/.local/state/agents-control-plane/last-reconciled-agents.sha"
+PLUGIN_REFRESH_STAMP_FILE="${HOME}/.local/state/agents-control-plane/last-external-plugin-refresh.date"
 MODE="--apply"
 
 ROOT_BOOTSTRAP_SCRIPT=""
 SYNC_SKILLS_SCRIPT=""
+SYNC_PLUGINS_SCRIPT=""
+REFRESH_EXTERNAL_PLUGINS_SCRIPT=""
 CODEX_BOOTSTRAP_SCRIPT=""
 CLAUDE_BOOTSTRAP_SCRIPT=""
 
@@ -55,6 +58,40 @@ skills_mode_args() {
   fi
 }
 
+refresh_external_plugins_if_due() {
+  local today=""
+  local last=""
+  local cmd=()
+  today="$(date -u +%F)"
+  if [[ -f "$PLUGIN_REFRESH_STAMP_FILE" ]]; then
+    last="$(tr -d '[:space:]' <"$PLUGIN_REFRESH_STAMP_FILE")"
+  fi
+  if [[ "$last" == "$today" ]]; then
+    log "SKIP: external plugin refresh already ran for ${today}"
+    return 0
+  fi
+
+  cmd=("$REFRESH_EXTERNAL_PLUGINS_SCRIPT")
+  if [[ "$MODE" == "--apply" ]]; then
+    cmd+=(--apply)
+    log "APPLY: external plugin refresh is due for ${today}"
+  else
+    log "DRY-RUN: external plugin refresh is due for ${today}"
+  fi
+  log "+ ${cmd[*]}"
+  "${cmd[@]}"
+
+  if [[ "$MODE" != "--apply" ]]; then
+    return 0
+  fi
+
+  log "+ ${SYNC_PLUGINS_SCRIPT} --apply"
+  "$SYNC_PLUGINS_SCRIPT" --apply
+  mkdir -p "$(dirname "$PLUGIN_REFRESH_STAMP_FILE")"
+  printf '%s\n' "$today" >"$PLUGIN_REFRESH_STAMP_FILE"
+  log "Stamped external plugin refresh: $PLUGIN_REFRESH_STAMP_FILE -> $today"
+}
+
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --apply)
@@ -89,14 +126,20 @@ done
 
 ROOT_BOOTSTRAP_SCRIPT="${AGENTS_REPO}/scripts/bootstrap-machine-agent-control-planes.sh"
 SYNC_SKILLS_SCRIPT="${AGENTS_REPO}/scripts/sync-skills-registry.sh"
+SYNC_PLUGINS_SCRIPT="${AGENTS_REPO}/scripts/sync-plugins-registry.sh"
+REFRESH_EXTERNAL_PLUGINS_SCRIPT="${AGENTS_REPO}/scripts/refresh-external-plugins.sh"
 CODEX_BOOTSTRAP_SCRIPT="${AGENTS_REPO}/codex/scripts/bootstrap-machine-codex.sh"
 CLAUDE_BOOTSTRAP_SCRIPT="${AGENTS_REPO}/claude/scripts/bootstrap-machine-claude.sh"
 
 [[ -d "$AGENTS_REPO/.git" ]] || die "Missing ~/.agents git repo: $AGENTS_REPO"
 [[ -x "$ROOT_BOOTSTRAP_SCRIPT" ]] || die "Missing executable: $ROOT_BOOTSTRAP_SCRIPT"
 [[ -x "$SYNC_SKILLS_SCRIPT" ]] || die "Missing executable: $SYNC_SKILLS_SCRIPT"
+[[ -x "$SYNC_PLUGINS_SCRIPT" ]] || die "Missing executable: $SYNC_PLUGINS_SCRIPT"
+[[ -x "$REFRESH_EXTERNAL_PLUGINS_SCRIPT" ]] || die "Missing executable: $REFRESH_EXTERNAL_PLUGINS_SCRIPT"
 [[ -x "$CODEX_BOOTSTRAP_SCRIPT" ]] || die "Missing executable: $CODEX_BOOTSTRAP_SCRIPT"
 [[ -x "$CLAUDE_BOOTSTRAP_SCRIPT" ]] || die "Missing executable: $CLAUDE_BOOTSTRAP_SCRIPT"
+
+refresh_external_plugins_if_due
 
 current_sha="$(git -C "$AGENTS_REPO" rev-parse HEAD)"
 last_sha=""
@@ -132,6 +175,8 @@ mapfile -t changed_paths < <(
     claude \
     codex \
     mcp \
+    plugins \
+    plugins-source \
     skills \
     skills-source
 )
@@ -143,6 +188,7 @@ if (( ${#changed_paths[@]} == 0 )); then
 fi
 
 skills_changed=0
+plugins_changed=0
 codex_changed=0
 claude_changed=0
 shared_mcp_changed=0
@@ -158,6 +204,11 @@ for path in "${changed_paths[@]}"; do
   case "$path" in
     skills/*|skills-source/*)
       skills_changed=1
+      ;;
+  esac
+  case "$path" in
+    plugins/*|plugins-source/*)
+      plugins_changed=1
       ;;
   esac
   case "$path" in
@@ -181,11 +232,15 @@ for path in "${changed_paths[@]}"; do
 done
 
 need_sync_skills=0
+need_sync_plugins=0
 need_bootstrap_codex=0
 need_bootstrap_claude=0
 
 if (( skills_changed == 1 )); then
   need_sync_skills=1
+fi
+if (( plugins_changed == 1 )); then
+  need_sync_plugins=1
 fi
 if (( skills_changed == 1 || codex_changed == 1 || shared_mcp_changed == 1 || agent_registry_changed == 1 )); then
   need_bootstrap_codex=1
@@ -197,6 +252,9 @@ fi
 actions=()
 if (( need_sync_skills == 1 )); then
   actions+=("sync_skills_registry")
+fi
+if (( need_sync_plugins == 1 )); then
+  actions+=("sync_plugins_registry")
 fi
 if (( need_bootstrap_codex == 1 )); then
   actions+=("bootstrap_codex")
@@ -217,6 +275,10 @@ for action in "${actions[@]}"; do
     sync_skills_registry)
       mapfile -t skill_args < <(skills_mode_args)
       cmd=("$SYNC_SKILLS_SCRIPT" "${skill_args[@]}")
+      ;;
+    sync_plugins_registry)
+      mapfile -t plugin_args < <(skills_mode_args)
+      cmd=("$SYNC_PLUGINS_SCRIPT" "${plugin_args[@]}")
       ;;
     bootstrap_codex)
       cmd=("$CODEX_BOOTSTRAP_SCRIPT" "$MODE" --github-root "$GITHUB_ROOT")

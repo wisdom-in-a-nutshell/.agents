@@ -4,6 +4,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
 CHECK_SKILLS_SCRIPT="${SCRIPT_DIR}/check-skills-registry.sh"
+CHECK_PLUGINS_SCRIPT="${SCRIPT_DIR}/check-plugins-registry.sh"
 CHECK_CODEX_SCRIPT="${ROOT_DIR}/codex/scripts/check-codex-control-plane.sh"
 CHECK_CLAUDE_SCRIPT="${ROOT_DIR}/claude/scripts/check-claude-control-plane.sh"
 TEST_CONTROL_PLANE_SCRIPT="${SCRIPT_DIR}/test-control-plane.sh"
@@ -51,6 +52,7 @@ while [[ $# -gt 0 ]]; do
 done
 
 [[ -x "$CHECK_SKILLS_SCRIPT" ]] || die "Missing executable: $CHECK_SKILLS_SCRIPT"
+[[ -x "$CHECK_PLUGINS_SCRIPT" ]] || die "Missing executable: $CHECK_PLUGINS_SCRIPT"
 [[ -x "$CHECK_CODEX_SCRIPT" ]] || die "Missing executable: $CHECK_CODEX_SCRIPT"
 [[ -x "$CHECK_CLAUDE_SCRIPT" ]] || die "Missing executable: $CHECK_CLAUDE_SCRIPT"
 [[ -x "$TEST_CONTROL_PLANE_SCRIPT" ]] || die "Missing executable: $TEST_CONTROL_PLANE_SCRIPT"
@@ -63,6 +65,10 @@ done
 skills_cmd=("$CHECK_SKILLS_SCRIPT")
 log "+ ${skills_cmd[*]}"
 "${skills_cmd[@]}"
+
+plugins_cmd=("$CHECK_PLUGINS_SCRIPT")
+log "+ ${plugins_cmd[*]}"
+"${plugins_cmd[@]}"
 
 codex_cmd=("$CHECK_CODEX_SCRIPT")
 log "+ ${codex_cmd[*]}"

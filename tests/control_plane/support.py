@@ -136,6 +136,16 @@ def make_skill_source(path: Path, skill_name: str, *, description: str | None = 
     return path
 
 
+def make_plugin_source(path: Path, plugin_name: str) -> Path:
+    write_json(
+        path / ".codex-plugin" / "plugin.json",
+        {
+            "name": plugin_name,
+        },
+    )
+    return path
+
+
 def default_mcp_registry() -> dict[str, Any]:
     return {
         "global_presets": ["openaiDeveloperDocs"],
@@ -159,6 +169,23 @@ def default_skills_registry() -> dict[str, Any]:
             "github_root": "~/GitHub",
         },
         "unmanaged_repo_local_skills": [],
+    }
+
+
+def default_plugins_registry() -> dict[str, Any]:
+    return {
+        "managed_plugins": [],
+        "marketplaces": {
+            "global": {
+                "name": "managed-plugins",
+                "display_name": "Managed Plugins",
+            }
+        },
+        "paths": {
+            "github_root": "~/GitHub",
+            "codex_plugin_root": "~/.codex/plugins",
+        },
+        "unmanaged_repo_local_plugins": [],
     }
 
 
