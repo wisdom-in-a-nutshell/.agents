@@ -248,6 +248,16 @@
       "upstream_ref": "-"
     },
     {
+      "skill": "cv-creator",
+      "origin": "owned",
+      "scope": "repo",
+      "repos": [
+        "adi"
+      ],
+      "source_path": "skills-source/owned/cv-creator",
+      "upstream_ref": "-"
+    },
+    {
       "skill": "journal-checkin",
       "origin": "owned",
       "scope": "repo",
