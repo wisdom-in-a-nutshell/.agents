@@ -20,6 +20,8 @@ flowchart LR
 
 - `managed_skills`: actively synced by this repo (links are created/updated).
 - `unmanaged_repo_local_skills`: tracked for visibility only (no managed links created here).
+  - If the target repo exists locally, the repo must actually contain `.agents/skills/<skill>/SKILL.md`.
+  - Registry sync now fails early for stale repo-local entries instead of letting them leak into generated views or downstream Claude warnings.
 
 ```mermaid
 flowchart LR

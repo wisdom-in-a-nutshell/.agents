@@ -51,6 +51,10 @@ def resolve_repo_root(repo: str, github_root: Path, home: Path) -> Path:
     return (github_root / repo).resolve()
 
 
+def repo_local_skill_source(repo_root: Path, skill: str) -> Path:
+    return repo_root / ".agents" / "skills" / skill / "SKILL.md"
+
+
 def sync_link(dst: Path, src: Path, apply: bool) -> None:
     rel = rel_link(dst, src)
     if dst.is_symlink() and resolved_target(dst) == src.resolve():
@@ -286,17 +290,25 @@ def validate_registry(
         raise ValueError("managed_skills plus managed_plugin_skills must not both be empty")
 
     validated_unmanaged: list[dict[str, Any]] = []
+    github_root_raw = data.get("paths", {}).get("github_root", "~/GitHub")
+    if not isinstance(github_root_raw, str) or not github_root_raw.strip():
+        raise ValueError("paths.github_root must be a non-empty string")
+    github_root = expand_path(github_root_raw.strip(), home).resolve()
+
     for idx, item in enumerate(unmanaged):
         if not isinstance(item, dict):
             raise ValueError(f"unmanaged_repo_local_skills[{idx}] must be an object")
         repo = ensure_str(item.get("repo"), "repo", idx)
         skill = ensure_str(item.get("skill"), "skill", idx)
+        repo_root = resolve_repo_root(repo, github_root, home)
+        if repo_root.exists():
+            skill_md = repo_local_skill_source(repo_root, skill)
+            if not skill_md.is_file():
+                raise ValueError(
+                    f"unmanaged_repo_local_skills[{idx}] missing SKILL.md for "
+                    f"{repo}/{skill}: {skill_md}"
+                )
         validated_unmanaged.append({"repo": repo, "skill": skill})
-
-    github_root_raw = data.get("paths", {}).get("github_root", "~/GitHub")
-    if not isinstance(github_root_raw, str) or not github_root_raw.strip():
-        raise ValueError("paths.github_root must be a non-empty string")
-    github_root = expand_path(github_root_raw.strip(), home).resolve()
 
     return validated_managed, validated_unmanaged, github_root
 

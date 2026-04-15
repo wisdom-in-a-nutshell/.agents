@@ -337,6 +337,10 @@ def _resolve_repo_root(path: Path) -> Path:
         return path.resolve()
 
 
+def _repo_local_skill_source(repo_root: Path, skill: str) -> Path:
+    return repo_root / ".agents" / "skills" / skill / "SKILL.md"
+
+
 def _load_skill_assignments(
     root_dir: Path, home: Path, repos: list[dict[str, Any]]
 ) -> None:
@@ -400,7 +404,7 @@ def _load_skill_assignments(
             if repo_ref.startswith(("~/", "/"))
             else github_root / repo_ref
         )
-        if repo_root in repo_local:
+        if repo_root in repo_local and _repo_local_skill_source(repo_root, skill).is_file():
             repo_local[repo_root].add(skill)
 
     global_skill_list = sorted(global_skills)

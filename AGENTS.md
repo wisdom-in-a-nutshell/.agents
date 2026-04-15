@@ -116,6 +116,7 @@ Personal agent, Codex, and Claude control plane.
 - Do not edit plugin-derived skills, MCP, or repo runtime files as source; edit canonical plugin source paths and `plugins/registry.json`.
 - Managed plugins can mirror upstream source under `plugins-source/external/` when the control plane extracts bundled skills and `.mcp.json` into the normal skills and MCP flows.
 - Keep repo-local skills listed in `skills/registry.json` under `unmanaged_repo_local_skills`.
+- Keep `unmanaged_repo_local_skills` honest: if the target repo exists locally, the repo must contain `.agents/skills/<skill>/SKILL.md` or skill sync should fail until the stale registry entry is removed.
 - Keep repo-local plugins listed in `plugins/registry.json` under `unmanaged_repo_local_plugins`.
 - Do not add additional manifest files for skill mapping; update `skills/registry.json`.
 - Do not add additional manifest files for plugin mapping; update `plugins/registry.json`.

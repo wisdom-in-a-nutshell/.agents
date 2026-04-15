@@ -105,6 +105,55 @@ class ManagedSkillsRegistrySyncTests(TempDirTestCase):
         self.assertIn('repo: "adi"', repo_local_text)
         self.assertIn('skill: "local-review"', repo_local_text)
 
+    def test_rejects_missing_repo_local_skill_source_for_existing_repo(self) -> None:
+        root = make_control_plane_root(self.temp_path)
+        home = self.temp_path / "home"
+        github_root = home / "GitHub"
+        adi = init_git_repo(github_root / "adi")
+
+        make_skill_source(root / "skills-source/owned/global-helper", "global-helper")
+        (adi / ".agents/skills/missing-local").mkdir(parents=True, exist_ok=True)
+
+        registry_path = root / "skills/registry.json"
+        write_json(
+            registry_path,
+            {
+                "managed_skills": [
+                    {
+                        "skill": "global-helper",
+                        "origin": "owned",
+                        "scope": "global",
+                        "source_path": "skills-source/owned/global-helper",
+                    }
+                ],
+                "paths": {
+                    "github_root": str(github_root),
+                },
+                "unmanaged_repo_local_skills": [
+                    {
+                        "repo": "adi",
+                        "skill": "missing-local",
+                    }
+                ],
+            },
+        )
+
+        result = run_command(
+            [
+                "python3",
+                str(REPO_ROOT / "scripts/sync-skills-registry.py"),
+                str(registry_path),
+            ],
+            env={"HOME": str(home)},
+            check=False,
+        )
+
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn(
+            "missing SKILL.md for adi/missing-local",
+            result.stderr,
+        )
+
 
 class ClaudeSkillsSyncTests(TempDirTestCase):
     def test_syncs_claude_skill_links_and_prunes_removed_managed_links(self) -> None:
