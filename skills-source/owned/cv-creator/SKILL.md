@@ -107,6 +107,68 @@ Do not run a separate primary "text review" workflow. Use the PDF as the
 single source of review truth, then edit the `.tex` only after issues are
 identified.
 
+## Pre-submission audit (run before every batch submit)
+
+When multiple tailored packs are ready for submission, run a cross-pack audit before Adi clicks submit. This catches mistakes that per-pack review misses (wrong company name leaked from a copy-paste, competitor name-drops that slipped through, contact info drift).
+
+### Audit checklist (grep across all `tailored/*/resume.tex` and `tailored/*/cover-letter.tex`)
+
+1. **Wrong company name**: does each file reference only its own target company? A Cresta cover letter must not say "Synthesia."
+2. **Competitor name-drops in prose**: grep for product-level rival names. Flag any occurrence NOT inside a literal quoted blog title or URL slug. The competitor map lives in `reference/career/tailoring-guide.md` "Competitor awareness" section. Key rules:
+   - Applying to Anthropic: no OpenAI, Codex, ChatGPT, GPT-4, GPT-5
+   - Applying to OpenAI: no Anthropic, Claude
+   - Applying to Mistral/Cohere/HuggingFace: no Claude, GPT, ChatGPT
+   - Applying to Cognition/Poolside/Cursor: no other coding-agent product names
+   - Applying to Synthesia: no HeyGen, D-ID, Runway, Pika
+   - Applying to Speechmatics: no Deepgram, AssemblyAI, Whisper
+   - Applying to Deepgram: no Speechmatics, AssemblyAI, Whisper
+   - General: category-level language ("frontier coding agents", "voice AI platform") is always safe
+3. **Em-dashes**: grep for `---`, `\textemdash`, `—`, `–` in visible prose (not LaTeX comments). Zero tolerance.
+4. **AI-smell words**: grep for delve, underscore, pivotal, realm, harness (as verb/metaphor), illuminate, facilitate, shed light, bolster, differentiate, streamline. Zero tolerance.
+5. **Contact info**: every resume must have Name=Adithyan Ilangovan, Email=adi@aipodcast.ing in header, Phone=+49 178 7369173 in Details section (NOT in header).
+6. **Page count**: every resume PDF must be exactly 2 pages (not 1, not 3). Check with `pdfinfo`.
+7. **Sign-off**: every cover letter must end with "Thanks," (not "Sincerely," or "Best regards," or "Warm regards,").
+8. **Invented content**: spot-check 5-6 packs for claims not supported by `reference/career/profile.md`. Tools, customers, certifications, outcomes, revenue figures must all trace back to profile.md.
+
+### How to run
+
+```bash
+# Competitor names (adjust per target)
+grep -rn "Codex\|Claude\|ChatGPT\|GPT-4\|GPT-5\|OpenAI\|Anthropic\|Cursor\|Devin\|Windsurf\|Poolside\|Deepgram\|Speechmatics\|AssemblyAI\|Whisper" reference/career/cv/latex/tailored/*/resume.tex reference/career/cv/latex/tailored/*/cover-letter.tex
+
+# Em-dashes
+grep -rn "textemdash\|—\|–" reference/career/cv/latex/tailored/*/resume.tex reference/career/cv/latex/tailored/*/cover-letter.tex | grep -v "^%"
+
+# AI-smell
+grep -rni "delve\|underscore\|pivotal\|realm\|illuminate\|facilitate\|shed light\|bolster\|differentiate\|streamline" reference/career/cv/latex/tailored/*/resume.tex reference/career/cv/latex/tailored/*/cover-letter.tex
+
+# Sign-off
+grep -rn "Sincerely\|Best regards\|Warm regards\|Kind regards" reference/career/cv/latex/tailored/*/cover-letter.tex
+
+# Page count
+for f in reference/career/cv/latex/tailored/*/resume.pdf; do echo "$f: $(pdfinfo "$f" 2>/dev/null | grep Pages)"; done
+```
+
+### Report format
+
+```
+### CRITICAL (fix before submit)
+- [wrong company, competitor name-drops in wrong context, invented content]
+
+### WARNING (cosmetic)
+- [em-dashes in comments, template residue, borderline framings]
+
+### CLEAN
+- [packs that passed everything]
+
+### STATS
+Total checked / competitor violations / em-dash / AI-smell / contact / sign-off / page count / invented
+```
+
+### Lesson from 2026-04-15 batch
+
+The `mistral-fde` resume was tailored in the first wave before the competitor-awareness rule was established. It named "OpenAI, and Anthropic" in an AIP experience bullet sent TO Mistral. This was caught in the post-submission audit but could not be unsubmitted. The rule: always run the competitor grep BEFORE submitting, not after.
+
 ## Output hygiene
 
 Track source `.tex`, tailored `job-description.md`, and notes files.
