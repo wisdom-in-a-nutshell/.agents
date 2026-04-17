@@ -1,6 +1,6 @@
 ---
 name: journal-checkin
-description: Run a structured journaling and check-in workflow and store results under `journal/entries/`. Use when the user wants to journal, wants to check in, sends a morning/evening/night reflection, sends a voice note or speech-to-text journal dump, asks to save a reflection, or when the agent needs to read/query recent journal entries for continuity or synthesis.
+description: Run a structured journaling and check-in workflow and store results under `journal/daily/`. Use when the user wants to journal, wants to check in, sends a morning/evening/night reflection, sends a voice note or speech-to-text journal dump, asks to save a reflection, or when the agent needs to read/query recent journal entries for continuity or synthesis.
 ---
 
 # Journal Check-In
@@ -12,7 +12,7 @@ This skill has two jobs:
 
 ## Data Layout
 
-Entries live under `journal/entries/YYYY-MM-DD/` relative to the workspace root.
+Entries live under `journal/daily/YYYY-MM-DD/` relative to the workspace root.
 
 Each day directory can contain:
 
@@ -68,7 +68,7 @@ Read only the mode file you need:
 
 ### Storage Rules
 
-- Store entries under `journal/entries/YYYY-MM-DD/` relative to the active workspace root.
+- Store entries under `journal/daily/YYYY-MM-DD/` relative to the active workspace root.
 - Use one stable file per day for:
   - `morning.json`
   - `night.json`

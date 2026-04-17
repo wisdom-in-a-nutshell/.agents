@@ -253,10 +253,10 @@ def main() -> int:
         if args.workspace_root
         else detect_workspace_root()
     )
-    entries_dir = workspace_root / "journal" / "entries"
+    entries_dir = workspace_root / "journal" / "daily"
 
     if not entries_dir.is_dir():
-        print(f"Entries directory not found: {entries_dir}", file=sys.stderr)
+        print(f"Journal daily directory not found: {entries_dir}", file=sys.stderr)
         return 1
 
     start, end = resolve_date_range(args)

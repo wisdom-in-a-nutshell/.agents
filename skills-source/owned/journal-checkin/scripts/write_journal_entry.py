@@ -66,7 +66,7 @@ def load_existing_json(path: Path) -> dict[str, Any]:
 
 
 def build_output_path(workspace_root: Path, kind: str, date: str, timestamp: datetime, entry_id: str | None) -> Path:
-    day_dir = workspace_root / "journal" / "entries" / date
+    day_dir = workspace_root / "journal" / "daily" / date
     day_dir.mkdir(parents=True, exist_ok=True)
     if kind == "general":
         return day_dir / "general.md"
