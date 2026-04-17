@@ -269,6 +269,17 @@
       "upstream_ref": "-"
     },
     {
+      "skill": "dobby",
+      "origin": "owned",
+      "scope": "repo",
+      "repos": [
+        "adi",
+        "angie"
+      ],
+      "source_path": "skills-source/owned/dobby",
+      "upstream_ref": "-"
+    },
+    {
       "skill": "modal-function-sync",
       "origin": "owned",
       "scope": "repo",

@@ -2,7 +2,7 @@
 repo_name: "angie"
 path: "~/GitHub/angie"
 mcp_count: 0
-skill_count: 12
+skill_count: 13
 repo_local_skill_count: 0
 global_agent_count: 1
 custom_agent_count: 0
@@ -28,6 +28,7 @@ global_skills:
 repo_skills:
   - "agent-native-repo-playbook"
   - "client-interface-guidelines"
+  - "dobby"
   - "imagegen"
   - "journal-checkin"
 repo_local_skills: []
@@ -37,6 +38,7 @@ skills:
   - "architecture-docs"
   - "client-interface-guidelines"
   - "defuddle"
+  - "dobby"
   - "find-skills"
   - "imagegen"
   - "journal-checkin"

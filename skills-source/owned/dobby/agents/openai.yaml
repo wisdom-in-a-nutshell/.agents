@@ -1,4 +1,4 @@
 interface:
   display_name: "Dobby"
-  short_description: "Operate Adi's workspace: memory, tasks, routing"
+  short_description: "Operate a Dobby workspace: memory, tasks, routing"
   default_prompt: "Where does this go in memory?"
