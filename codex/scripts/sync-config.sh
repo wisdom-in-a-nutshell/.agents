@@ -22,11 +22,13 @@ CANONICAL_AGENTS_DIR="${CANONICAL_DIR}/agents"
 CANONICAL_XCODE_TEMPLATE="${CANONICAL_DIR}/xcode.config.toml"
 CANONICAL_XCODE_RULES_TEMPLATE="${CANONICAL_DIR}/xcode.rules"
 NOTIFY_SCRIPT_PATH="${HOME}/.agents/codex/scripts/notify.py"
-SYSTEM_SKILLS_DISABLE_PATHS=(
+CODEX_SKILLS_DISABLE_PATHS=(
   "${HOME}/.codex/skills/.system/imagegen/SKILL.md"
   "${HOME}/.codex/skills/.system/openai-docs/SKILL.md"
   "${HOME}/.codex/skills/.system/skill-creator/SKILL.md"
   "${HOME}/.codex/skills/.system/skill-installer/SKILL.md"
+  "${HOME}/.codex/skills/codex-primary-runtime/slides/SKILL.md"
+  "${HOME}/.codex/skills/codex-primary-runtime/spreadsheets/SKILL.md"
 )
 
 usage() {
@@ -698,7 +700,7 @@ PY
 
 ensure_system_skills_disabled() {
   local target_file="$1"
-  python3 - "$target_file" "${SYSTEM_SKILLS_DISABLE_PATHS[@]}" <<'PY'
+  python3 - "$target_file" "${CODEX_SKILLS_DISABLE_PATHS[@]}" <<'PY'
 from __future__ import annotations
 
 import re
