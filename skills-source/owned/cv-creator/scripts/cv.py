@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+from __future__ import annotations
+
 """
 Generic CV build/review helper for repo-local LaTeX career materials.
 """
@@ -108,7 +110,7 @@ def validate_company_slug(company: str) -> bool:
 
 
 def source_for(repo_root: Path, kind: str, company: str | None) -> Path:
-    latex_root = repo_root / "reference" / "career" / "cv" / "latex"
+    latex_root = repo_root / "memory" / "areas" / "builder" / "career" / "cv" / "latex"
     if company:
         return latex_root / "tailored" / company / f"{kind}.tex"
     return latex_root / "base" / f"{kind}.tex"
@@ -117,7 +119,7 @@ def source_for(repo_root: Path, kind: str, company: str | None) -> Path:
 def job_description_for(repo_root: Path, company: str | None) -> Path | None:
     if not company:
         return None
-    latex_root = repo_root / "reference" / "career" / "cv" / "latex"
+    latex_root = repo_root / "memory" / "areas" / "builder" / "career" / "cv" / "latex"
     return latex_root / "tailored" / company / "job-description.md"
 
 
@@ -152,7 +154,7 @@ def run_init(repo_root: Path, company: str | None, plain: bool) -> int:
             "code": "E_FILE_NOT_FOUND",
             "message": f"Base resume source not found: {base_resume}",
             "retryable": False,
-            "hint": "Create `reference/career/cv/latex/base/resume.tex` before initializing a tailored packet.",
+            "hint": "Create `memory/areas/builder/career/cv/latex/base/resume.tex` before initializing a tailored packet.",
         }
         emit(result(command, "error", error=err, duration_ms=(time.monotonic() - t0) * 1000), plain)
         return 2

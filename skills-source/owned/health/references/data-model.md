@@ -2,7 +2,7 @@
 
 Canonical sink root:
 
-- `reference/health/`
+- `memory/areas/health/`
 
 Primary split:
 
@@ -49,7 +49,7 @@ Current upstream implementation:
 
 - Current fetch path is a normalized health snapshot endpoint, not a direct provider call from the skill.
 - Provider details should stay upstream; the local sink contract should not depend on a specific health vendor.
-- The script writes to `reference/health/` under the current repo root by default.
+- The script writes to `memory/areas/health/` under the current repo root by default.
 - Use `--output-root` only when the sink should live somewhere else.
 - The default person selector is the current repo root name, overridden by `--person` only when needed.
 - The current snapshot endpoint supports `adi` and `angie`; keep separate sink roots or separate repos per person.

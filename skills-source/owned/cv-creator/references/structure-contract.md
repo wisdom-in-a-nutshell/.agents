@@ -3,7 +3,7 @@
 ## Minimal layout
 
 ```text
-reference/career/
+memory/areas/builder/career/
   README.md
   profile.md
   tailoring-guide.md
@@ -42,7 +42,7 @@ When migrating from a flat `latex/` folder:
 
 ## Git ignore
 
-Keep a `.gitignore` inside `reference/career/cv/latex/` that ignores build products like:
+Keep a `.gitignore` inside `memory/areas/builder/career/cv/latex/` that ignores build products like:
 
 - `*.pdf`
 - `*.aux`

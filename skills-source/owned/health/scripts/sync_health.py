@@ -34,7 +34,7 @@ REPO_ROOT = _discover_repo_root(Path.cwd())
 
 
 def _default_output_root() -> Path:
-    return (REPO_ROOT / "reference" / "health").resolve()
+    return (REPO_ROOT / "memory" / "areas" / "health").resolve()
 
 
 def _default_person() -> str:

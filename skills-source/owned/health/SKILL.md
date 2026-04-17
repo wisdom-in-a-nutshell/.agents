@@ -1,6 +1,6 @@
 ---
 name: health
-description: Read, refresh, and query repo-local personal health data. Use when answering questions about sleep, weight, body composition, activity, workouts, devices, or recent health trends, and when syncing fresh health data into `reference/health/` from the canonical health snapshot API.
+description: Read, refresh, and query repo-local personal health data. Use when answering questions about sleep, weight, body composition, activity, workouts, devices, or recent health trends, and when syncing fresh health data into `memory/areas/health/` from the canonical health snapshot API.
 ---
 
 # Health
@@ -10,11 +10,11 @@ Use this skill for personal health work in the local memory-bank flow.
 
 Important boundary:
 
-- The canonical read surface is the local sink under `reference/health/`.
+- The canonical read surface is the local sink under `memory/areas/health/`.
 - The skill pulls from a normalized health snapshot API.
 - Upstream systems own provider auth, token refresh, and normalization.
 - The skill only fetches the normalized snapshot JSON and writes the local sink.
-- The skill is portable across repos; by default it writes to `reference/health/` under the current repo root.
+- The skill is portable across repos; by default it writes to `memory/areas/health/` under the current repo root.
 - The query tooling in this skill exists mainly for Dobby, not as a user-facing product surface.
 
 ## Default Workflow
@@ -48,15 +48,15 @@ Read the local files directly when:
 - you need to debug the sink shape
 - you need raw fields that the query script intentionally omits
 
-- `reference/health/metrics/weight/latest.json`
-- `reference/health/metrics/body-composition/latest.json`
-- `reference/health/metrics/activity/daily/latest.json`
-- `reference/health/metrics/activity/workouts/latest.json`
-- `reference/health/metrics/sleep/stages/latest.json`
-- `reference/health/metrics/devices/latest.json`
-- `reference/health/profile/latest.json`
+- `memory/areas/health/metrics/weight/latest.json`
+- `memory/areas/health/metrics/body-composition/latest.json`
+- `memory/areas/health/metrics/activity/daily/latest.json`
+- `memory/areas/health/metrics/activity/workouts/latest.json`
+- `memory/areas/health/metrics/sleep/stages/latest.json`
+- `memory/areas/health/metrics/devices/latest.json`
+- `memory/areas/health/profile/latest.json`
 
-History lives under `reference/health/metrics/**/by-date/YYYY/YYYY-MM-DD.json`.
+History lives under `memory/areas/health/metrics/**/by-date/YYYY/YYYY-MM-DD.json`.
 
 Current sleep rule:
 
@@ -93,13 +93,13 @@ Current defaults:
 - API URL:
   - the hardcoded canonical deployed health snapshot URL in `scripts/sync_health.py`
 - sink root:
-  - `reference/health/` under the current repo root
+  - `memory/areas/health/` under the current repo root
 - recent sync window: 3 days for measurements, activity, workouts, and sleep
 
 Path behavior:
 
 - Nothing is hard-coded to `adi`.
-- Running the script inside another repo writes to that repo's `reference/health/` by default.
+- Running the script inside another repo writes to that repo's `memory/areas/health/` by default.
 - Use `--output-root` when the sink should live somewhere else.
 - The default person selector is the current repo root name, overridden by `--person` only when needed.
 
@@ -107,7 +107,7 @@ Current person/account boundary:
 
 - The current snapshot endpoint supports the person keys `adi` and `angie`.
 - The skill passes the repo root name as the default person key, so `adi` maps to Adi and `angie` maps to Angie.
-- Keep separate sink roots per person or per repo; do not mix multiple people into one `reference/health/`.
+- Keep separate sink roots per person or per repo; do not mix multiple people into one `memory/areas/health/`.
 
 ## Implementation Notes
 

@@ -5,7 +5,7 @@ from __future__ import annotations
 
 import argparse
 from dataclasses import dataclass
-from datetime import UTC, date, datetime, timedelta
+from datetime import date, datetime, timedelta, timezone
 import json
 from pathlib import Path
 import sys
@@ -14,6 +14,7 @@ import uuid
 from typing import Any
 
 SCHEMA_VERSION = "1.0"
+UTC = timezone.utc
 
 EXIT_OK = 0
 EXIT_GENERIC = 1
@@ -58,7 +59,7 @@ def _discover_repo_root(start: Path) -> Path:
 
 
 REPO_ROOT = _discover_repo_root(Path.cwd())
-HEALTH_ROOT = REPO_ROOT / "reference" / "health"
+HEALTH_ROOT = REPO_ROOT / "memory" / "areas" / "health"
 METRICS_ROOT = HEALTH_ROOT / "metrics"
 PROFILE_ROOT = HEALTH_ROOT / "profile"
 
@@ -146,7 +147,7 @@ def _profile_latest_payload() -> dict[str, Any]:
         raise HealthQueryError(
             code="E_PROFILE_MISSING",
             message=f"Missing health profile file: {path}",
-            hint="Create reference/health/profile/latest.json with the stable health facts you want to query.",
+            hint="Create memory/areas/health/profile/latest.json with the stable health facts you want to query.",
             exit_code=EXIT_DEPENDENCY,
         )
     return _load_json(path)
@@ -587,7 +588,7 @@ def _profile_latest() -> dict[str, Any]:
         raise HealthQueryError(
             code="E_INVALID_PROFILE",
             message="Health profile file is missing a top-level body object.",
-            hint="Store stable facts under the body key in reference/health/profile/latest.json.",
+            hint="Store stable facts under the body key in memory/areas/health/profile/latest.json.",
             exit_code=EXIT_DEPENDENCY,
         )
     return {

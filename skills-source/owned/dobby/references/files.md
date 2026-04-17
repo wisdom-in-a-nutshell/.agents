@@ -42,7 +42,9 @@ Each area has a folder under `memory/areas/`. The set of areas is workspace-inst
 - **Write pattern:** append only. One-line dated entries: `- YYYY-MM-DD — <event>`. Never rewrite historical entries.
 
 ### Sub-files inside an area
-Additional files are fine when an area has real internal structure — person files inside a relationship area, career sub-tree inside a work area, metrics inside a health area. Keep them discoverable by listing the area folder.
+Additional files are fine when an area has real internal structure — person files inside a relationship area, `career/` inside the builder area, and `metrics/` / `profile/` inside the health area. Keep them discoverable by listing the area folder.
+
+Generated or synced data that is semantically part of an area still lives under that area. Do not recreate top-level `reference/` for health metrics, career packets, PDFs, or lookup material.
 
 ## Dobby's own layer
 
