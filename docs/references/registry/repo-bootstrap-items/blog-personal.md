@@ -2,7 +2,7 @@
 repo_name: "blog-personal"
 path: "~/GitHub/blog-personal"
 mcp_count: 1
-skill_count: 19
+skill_count: 20
 repo_local_skill_count: 1
 global_agent_count: 1
 custom_agent_count: 1
@@ -36,6 +36,7 @@ repo_skills:
   - "frontend-skill"
   - "imagegen"
   - "paper-design"
+  - "pretty-mermaid"
   - "vercel-react-best-practices"
   - "web-design-guidelines"
   - "web-typography"
@@ -55,6 +56,7 @@ skills:
   - "imagegen"
   - "paper-design"
   - "pdf"
+  - "pretty-mermaid"
   - "project"
   - "secret-management"
   - "skill-creator"
