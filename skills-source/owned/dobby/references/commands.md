@@ -1,13 +1,13 @@
 # Dobby commands — CLI first, direct-ops fallback
 
-The CLI (`scripts/dobby/dobby`) is the preferred path. Use `Edit`/`Write` tools only when the CLI can't do what's needed.
+The skill-bundled scripts are the preferred path. Use `Edit`/`Write` tools only when the scripts cannot do what is needed. Run from a Dobby workspace root, or set `DOBBY_WORKSPACE=/path/to/workspace`.
 
 ## Boot
 
 Pull full context at session start.
 
 ```bash
-scripts/dobby/dobby memory boot
+/Users/adi/.agents/skills-source/owned/dobby/scripts/dobby-memory boot
 ```
 Returns: `profile.md` + `now.md` + `becoming.md` content + lazy area manifest (file names, sizes, mtimes — not content).
 
@@ -16,11 +16,11 @@ Add `--json` for structured output.
 ## Read a specific file
 
 ```bash
-dobby memory read --section profile
-dobby memory read --section now
-dobby memory read --section becoming
-dobby memory read --section area.<name>              # concatenates all .md in that area
-dobby memory read --section area.<name>.<file>       # single file (without .md)
+/Users/adi/.agents/skills-source/owned/dobby/scripts/dobby-memory read --section profile
+/Users/adi/.agents/skills-source/owned/dobby/scripts/dobby-memory read --section now
+/Users/adi/.agents/skills-source/owned/dobby/scripts/dobby-memory read --section becoming
+/Users/adi/.agents/skills-source/owned/dobby/scripts/dobby-memory read --section area.<name>              # concatenates all .md in that area
+/Users/adi/.agents/skills-source/owned/dobby/scripts/dobby-memory read --section area.<name>.<file>       # single file (without .md)
 ```
 
 Fallback (when you only need one file and don't want CLI overhead):
@@ -34,7 +34,7 @@ The CLI auto-stamps a timestamped header — ideal for log-style appends.
 
 ```bash
 echo "- 2026-04-17 — event" | \
-  dobby memory write --section area.<name>.log --message "short label"
+  /Users/adi/.agents/skills-source/owned/dobby/scripts/dobby-memory write --section area.<name>.log --message "short label"
 ```
 
 The CLI does NOT create files. The target must already exist.
@@ -63,29 +63,45 @@ CLI `memory write` does not create files. Use `Write` for:
 No file-based alternative — always via CLI.
 
 ```bash
-dobby tasks today
-dobby tasks inbox
-dobby tasks overdue
+/Users/adi/.agents/skills-source/owned/dobby/scripts/dobby-tasks today
+/Users/adi/.agents/skills-source/owned/dobby/scripts/dobby-tasks inbox
+/Users/adi/.agents/skills-source/owned/dobby/scripts/dobby-tasks overdue
 
-dobby tasks add "Task title" --when today --area <Area>
-dobby tasks add "Task title" --when "next monday" --area <Area> \
+/Users/adi/.agents/skills-source/owned/dobby/scripts/dobby-tasks add "Task title" --when today --area <Area>
+/Users/adi/.agents/skills-source/owned/dobby/scripts/dobby-tasks add "Task title" --when "next monday" --area <Area> \
   --checklist "step one, step two, step three"
 
-dobby tasks done <id-prefix>
-dobby tasks cancel <id-prefix>
-dobby tasks delete <id-prefix>
+/Users/adi/.agents/skills-source/owned/dobby/scripts/dobby-tasks done <id-prefix>
+/Users/adi/.agents/skills-source/owned/dobby/scripts/dobby-tasks cancel <id-prefix>
+/Users/adi/.agents/skills-source/owned/dobby/scripts/dobby-tasks delete <id-prefix>
 
-dobby tasks doctor                    # 5-point health check
+/Users/adi/.agents/skills-source/owned/dobby/scripts/dobby-tasks doctor                    # 5-point health check
 ```
 
 `--when` accepts natural-language dates: `today`, `tomorrow`, `next monday`, `in 3 days`, specific dates.
 `--area` is case-sensitive and must match an existing Things 3 Area.
 
+## Calendar
+
+Calendar operations use `dobby-calendar` (EventKit via `ical`). Default calendar: `adithyan@wisdominanutshell.academy`. Search/list commands should be date-bounded.
+
+```bash
+/Users/adi/.agents/skills-source/owned/dobby/scripts/dobby-calendar doctor
+/Users/adi/.agents/skills-source/owned/dobby/scripts/dobby-calendar calendars
+/Users/adi/.agents/skills-source/owned/dobby/scripts/dobby-calendar week
+/Users/adi/.agents/skills-source/owned/dobby/scripts/dobby-calendar search "Birthday" --from 2026-01-01 --to 2026-12-31
+/Users/adi/.agents/skills-source/owned/dobby/scripts/dobby-calendar search "Neha" --from 2025-01-01 --to 2027-12-31 --all-calendars
+/Users/adi/.agents/skills-source/owned/dobby/scripts/dobby-calendar add-event --title "Sassnitz / Rügen trip" --start 2026-04-30 --end 2026-05-06 --all-day --location "Ummanzer Str. 10, 18546 Sassnitz, Germany" --dry-run
+/Users/adi/.agents/skills-source/owned/dobby/scripts/dobby-calendar upsert-event --title "Sassnitz / Rügen trip" --start 2026-04-30 --end 2026-05-06 --all-day --match-from 2026-04-01 --match-to 2026-05-31
+```
+
+Do not use AppleScript for broad calendar search/audits; it can hang on Google-backed calendars. Use `dobby-calendar` or export/parse `.ics` for migrations.
+
 ## Diff and history
 
 ```bash
-dobby memory diff --since "24 hours ago"
-dobby memory diff --since "1 week ago"
+/Users/adi/.agents/skills-source/owned/dobby/scripts/dobby-memory diff --since "24 hours ago"
+/Users/adi/.agents/skills-source/owned/dobby/scripts/dobby-memory diff --since "1 week ago"
 ```
 
 Wraps `git log -p memory/` with date filtering.
@@ -94,20 +110,20 @@ Wraps `git log -p memory/` with date filtering.
 
 Every CLI command supports `--json` for a stable envelope:
 ```bash
-dobby memory boot --json
-dobby tasks today --json
-dobby tasks doctor --json
+/Users/adi/.agents/skills-source/owned/dobby/scripts/dobby-memory boot --json
+/Users/adi/.agents/skills-source/owned/dobby/scripts/dobby-tasks today --json
+/Users/adi/.agents/skills-source/owned/dobby/scripts/dobby-tasks doctor --json
 ```
 
-See `docs/references/dobby-cli.md` for the full envelope schema.
+The scripts emit the standard Dobby JSON envelope (`schema_version`, `command`, `status`, `data`, `error`, `meta`) when `--json` is used or for JSON-default calendar commands.
 
 ## Typical session-start pattern
 
 ```bash
-dobby memory boot                     # full context
-dobby tasks today                     # live task state
-dobby tasks overdue
-dobby tasks inbox
+/Users/adi/.agents/skills-source/owned/dobby/scripts/dobby-memory boot                     # full context
+/Users/adi/.agents/skills-source/owned/dobby/scripts/dobby-tasks today                     # live task state
+/Users/adi/.agents/skills-source/owned/dobby/scripts/dobby-tasks overdue
+/Users/adi/.agents/skills-source/owned/dobby/scripts/dobby-tasks inbox
 # then respond with counts surfaced: "Today N, overdue M, inbox K (notes)"
 ```
 

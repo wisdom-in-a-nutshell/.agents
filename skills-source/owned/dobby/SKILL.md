@@ -16,21 +16,21 @@ Soul lives in `/soul.md` (Dobby's character). Operations live here.
 On any fresh session:
 
 1. `soul.md` is loaded automatically by the harness.
-2. Load memory context via `scripts/dobby/dobby memory boot` (returns `profile.md` + `now.md` + `becoming.md` + lazy area manifest with mtimes).
-3. Check task state: `scripts/dobby/dobby tasks today`, `tasks overdue`, `tasks inbox`.
+2. Load memory context via this skill’s `scripts/dobby-memory boot` (returns `profile.md` + `now.md` + `becoming.md` + lazy area manifest with mtimes).
+3. Check task state via `scripts/dobby-tasks today`, `overdue`, and `inbox` from this skill.
 4. Surface overdue count, today count, and inbox count naturally in the first response.
 5. Read deeper files only when the task actually needs them. Areas under `memory/areas/` load on demand.
 
 ## Prefer the CLI
 
-The Dobby CLI (`scripts/dobby/dobby`) is the preferred path for reads, appends, and tasks. It is deterministic, timestamped, and tested.
+The skill-bundled Dobby scripts are the preferred path for reads, appends, tasks, and calendar operations. They live beside this file under `scripts/`: `dobby-memory`, `dobby-tasks`, and `dobby-calendar`. They are deterministic, timestamped, and tested. Run them from a Dobby workspace root, or set `DOBBY_WORKSPACE=/path/to/workspace`.
 
 **Reach for the CLI first.** Fall through to the `Edit`/`Write` tools only when the CLI cannot do what's needed — surgical mid-file section rewrites, or creating a new file. Both are legitimate; the CLI is simply the default.
 
 Examples:
-- Boot: `dobby memory boot`
-- Read a file: `dobby memory read --section profile` / `--section area.<name>.<file>`
-- Append to a log: `echo "- date — event" | dobby memory write --section area.<name>.log --message "label"`
+- Boot: `scripts/dobby-memory boot`
+- Read a file: `scripts/dobby-memory read --section profile` / `--section area.<name>.<file>`
+- Append to a log: `echo "- date — event" | scripts/dobby-memory write --section area.<name>.log --message "label"`
 - Mid-file section edit in `profile.md`: use `Edit` tool (CLI can't replace sections)
 - New journal file: use `Write` tool (CLI `write` appends, doesn't create)
 
@@ -42,7 +42,7 @@ When new information surfaces, route it to exactly one canonical home. Never dup
 
 | Signal | Home | Operation |
 |---|---|---|
-| Actionable item (to do, follow up, remind me) | **Things 3** | `dobby tasks add "..." --when ... --area <Area>` |
+| Actionable item (to do, follow up, remind me) | **Things 3** | `scripts/dobby-tasks add "..." --when ... --area <Area>` |
 | Durable truth about the user (identity, pattern, preference) | `memory/profile.md` | Edit in place (section) |
 | Direction / future-self / commitment to self | `memory/becoming.md` | Edit in place, or append commitments |
 | This week's active context / session handoff | `memory/now.md` | Rewrite the relevant section, keep ≤60 lines |
@@ -62,14 +62,24 @@ For user-intent-to-action mappings, see `references/scenarios.md`.
 
 Tasks always go through the CLI. There is no file-based alternative.
 
-- Add: `dobby tasks add "..." --when today|tomorrow|"next monday" --area <Area> --checklist "a,b,c"`
-- List: `dobby tasks today | inbox | overdue`
-- Complete: `dobby tasks done <id-prefix>`
-- Doctor: `dobby tasks doctor` (5-point health check)
+- Add: `scripts/dobby-tasks add "..." --when today|tomorrow|"next monday" --area <Area> --checklist "a,b,c"`
+- List: `scripts/dobby-tasks today | inbox | overdue`
+- Complete: `scripts/dobby-tasks done <id-prefix>`
+- Doctor: `scripts/dobby-tasks doctor` (5-point health check)
 
 Habits are not Things 3 tasks. Structured check-ins are handled by a journaling skill if one is installed; recurring physical habits (running, etc.) are Things 3 recurring tasks set once in the UI; behavioral nudges happen inside conversation.
 
 Default for ambiguous new tasks: drop into Things 3 Inbox. The user sorts during morning review.
+
+## Calendar
+
+Calendar operations go through the skill-bundled EventKit wrapper: `scripts/dobby-calendar`. It uses `ical` as the backend and defaults to `adithyan@wisdominanutshell.academy`. Use it for date-bounded reads and safe writes. Do not use AppleScript for broad calendar search/audits.
+
+- List calendars: `scripts/dobby-calendar calendars`
+- Week view: `scripts/dobby-calendar week`
+- Date-bounded search: `scripts/dobby-calendar search "Neha" --from 2026-01-01 --to 2026-12-31 --all-calendars`
+- Safe write: `scripts/dobby-calendar upsert-event --title "Trip" --start 2026-04-30 --end 2026-05-06 --all-day --match-from 2026-04-01 --match-to 2026-05-31`
+- Doctor: `scripts/dobby-calendar doctor`
 
 ## Hygiene
 

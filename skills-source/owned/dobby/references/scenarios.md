@@ -16,7 +16,7 @@ Confirm in one line: "Added to `profile.md` under Communication preferences."
 → `Edit memory/becoming.md` under "Active shifts" or "Commitments made to self" (dated).
 
 **"Save this for later"** / "Keep this"
-→ Actionable? → Things 3 Inbox via `dobby tasks add`. Content/reflection? → new file in `journal/daily/<today>/notes-<slug>.md`.
+→ Actionable? → Things 3 Inbox via `scripts/dobby-tasks add`. Content/reflection? → new file in `journal/daily/<today>/notes-<slug>.md`.
 
 **"Add this to <area>"**
 → Durable canon? → `Edit memory/areas/<area>/<area>.md`. Event/completion? → append to `memory/areas/<area>/log.md` via CLI.
@@ -24,19 +24,19 @@ Confirm in one line: "Added to `profile.md` under Communication preferences."
 ## Read
 
 **"What's on today?"** / "What's my day look like?"
-→ `dobby tasks today` + `dobby tasks overdue` (if non-empty). Surface counts and the live list.
+→ `scripts/dobby-tasks today` + `scripts/dobby-tasks overdue` (if non-empty). Surface counts and the live list.
 
 **"What's in my inbox?"**
-→ `dobby tasks inbox`. Flag anything stale.
+→ `scripts/dobby-tasks inbox`. Flag anything stale.
 
 **"What do you know about <area>?"**
-→ `dobby memory read --section area.<area>.<area>` (single main file). Surface "Current state" section first. Load the log only if asked.
+→ `scripts/dobby-memory read --section area.<area>.<area>` (single main file). Surface "Current state" section first. Load the log only if asked.
 
 **"What am I aiming at?"** / "Remind me of my direction"
-→ `dobby memory read --section becoming`. Surface north star + active shifts.
+→ `scripts/dobby-memory read --section becoming`. Surface north star + active shifts.
 
 **"What's live right now?"**
-→ `dobby memory read --section now`.
+→ `scripts/dobby-memory read --section now`.
 
 **"What happened yesterday / last week?"**
 → `ls journal/daily/` for recent dates; `Read` the relevant folder's `checkin.md` or reflections.
@@ -56,13 +56,13 @@ Propose the destination; do the write.
 ## Tasks
 
 **"Add a task to X"** / "Remind me to X" / "I need to X"
-→ `dobby tasks add "X" --when <default: today> --area <best guess; ask if unclear>`.
+→ `scripts/dobby-tasks add "X" --when <default: today> --area <best guess; ask if unclear>`.
 
 **"Mark X done"**
-→ `dobby tasks done <id-prefix>`. If no id, list matches from `today` or `inbox` first.
+→ `scripts/dobby-tasks done <id-prefix>`. If no id, list matches from `today` or `inbox` first.
 
 **"What's overdue?"**
-→ `dobby tasks overdue`. Name any drift from stated commitments directly.
+→ `scripts/dobby-tasks overdue`. Name any drift from stated commitments directly.
 
 ## Reflect
 
