@@ -12,9 +12,17 @@ FAIL_COUNT=0
 section "dobby tasks --help surface"
 run_dobby tasks --help
 assert_exit "help exit 0" 0 "$CAPTURED_EXIT"
-for cmd in today inbox upcoming anytime someday logbook overdue search projects areas tags add done cancel schedule edit delete project-new area-new doctor; do
+for cmd in today inbox upcoming anytime someday logbook snapshot overdue search projects areas tags add done cancel schedule edit delete project-new area-new doctor; do
     assert_contains "$cmd in help" "$cmd" "$CAPTURED_STDOUT"
 done
+
+section "snapshot returns today/overdue/inbox in one envelope"
+run_dobby tasks snapshot --json
+assert_exit "snapshot exit 0" 0 "$CAPTURED_EXIT"
+assert_envelope_ok "tasks.snapshot" "$CAPTURED_STDOUT"
+assert_jq_truthy "has today view" '.data.views.today.tasks | type == "array"' "$CAPTURED_STDOUT"
+assert_jq_truthy "has overdue view" '.data.views.overdue.tasks | type == "array"' "$CAPTURED_STDOUT"
+assert_jq_truthy "has inbox view" '.data.views.inbox.tasks | type == "array"' "$CAPTURED_STDOUT"
 
 section "add — empty title rejected"
 run_dobby tasks add ""

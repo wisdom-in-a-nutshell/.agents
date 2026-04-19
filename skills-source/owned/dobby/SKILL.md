@@ -17,7 +17,7 @@ On any fresh session:
 
 1. `soul.md` is loaded automatically by the harness.
 2. Load memory context via this skill’s `scripts/dobby-memory boot` (returns `profile.md` + `now.md` + `becoming.md` + lazy area manifest with mtimes).
-3. Check task state via `scripts/dobby-tasks today`, `overdue`, and `inbox` from this skill.
+3. Check task state via `scripts/dobby-tasks snapshot` from this skill (one call returns today, overdue, and inbox).
 4. Surface overdue count, today count, and inbox count naturally in the first response.
 5. Read deeper files only when the task actually needs them. Areas under `memory/areas/` load on demand.
 
@@ -63,7 +63,9 @@ For user-intent-to-action mappings, see `references/scenarios.md`.
 Tasks always go through the CLI. There is no file-based alternative.
 
 - Add: `scripts/dobby-tasks add "..." --when today|tomorrow|"next monday" --area <Area> --checklist "a,b,c"`
+- Boot snapshot: `scripts/dobby-tasks snapshot`
 - List: `scripts/dobby-tasks today | inbox | overdue`
+- Search: `scripts/dobby-tasks search "..."` (fast summary by default; add `--verbose` only when full fields are needed)
 - Complete: `scripts/dobby-tasks done <id-prefix>`
 - Doctor: `scripts/dobby-tasks doctor` (5-point health check)
 

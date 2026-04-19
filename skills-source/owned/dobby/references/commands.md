@@ -63,9 +63,12 @@ CLI `memory write` does not create files. Use `Write` for:
 No file-based alternative — always via CLI.
 
 ```bash
+/Users/adi/.agents/skills-source/owned/dobby/scripts/dobby-tasks snapshot   # today + overdue + inbox in one JXA call
 /Users/adi/.agents/skills-source/owned/dobby/scripts/dobby-tasks today
 /Users/adi/.agents/skills-source/owned/dobby/scripts/dobby-tasks inbox
 /Users/adi/.agents/skills-source/owned/dobby/scripts/dobby-tasks overdue
+/Users/adi/.agents/skills-source/owned/dobby/scripts/dobby-tasks search "Beach"
+/Users/adi/.agents/skills-source/owned/dobby/scripts/dobby-tasks search "Beach" --verbose  # slower, full fields
 
 /Users/adi/.agents/skills-source/owned/dobby/scripts/dobby-tasks add "Task title" --when today --area <Area>
 /Users/adi/.agents/skills-source/owned/dobby/scripts/dobby-tasks add "Task title" --when "next monday" --area <Area> \
@@ -80,6 +83,7 @@ No file-based alternative — always via CLI.
 
 `--when` accepts natural-language dates: `today`, `tomorrow`, `next monday`, `in 3 days`, specific dates.
 `--area` is case-sensitive and must match an existing Things 3 Area.
+Read commands return a fast summary shape by default. Use `--verbose` only when full fields such as notes and timestamps are needed. Create commands avoid slow read-back by default; pass `--resolve` when full created-object data is worth the latency.
 
 ## Calendar
 
@@ -111,6 +115,7 @@ Wraps `git log -p memory/` with date filtering.
 Every CLI command supports `--json` for a stable envelope:
 ```bash
 /Users/adi/.agents/skills-source/owned/dobby/scripts/dobby-memory boot --json
+/Users/adi/.agents/skills-source/owned/dobby/scripts/dobby-tasks snapshot --json
 /Users/adi/.agents/skills-source/owned/dobby/scripts/dobby-tasks today --json
 /Users/adi/.agents/skills-source/owned/dobby/scripts/dobby-tasks doctor --json
 ```
@@ -121,9 +126,7 @@ The scripts emit the standard Dobby JSON envelope (`schema_version`, `command`, 
 
 ```bash
 /Users/adi/.agents/skills-source/owned/dobby/scripts/dobby-memory boot                     # full context
-/Users/adi/.agents/skills-source/owned/dobby/scripts/dobby-tasks today                     # live task state
-/Users/adi/.agents/skills-source/owned/dobby/scripts/dobby-tasks overdue
-/Users/adi/.agents/skills-source/owned/dobby/scripts/dobby-tasks inbox
+/Users/adi/.agents/skills-source/owned/dobby/scripts/dobby-tasks snapshot                 # today + overdue + inbox
 # then respond with counts surfaced: "Today N, overdue M, inbox K (notes)"
 ```
 

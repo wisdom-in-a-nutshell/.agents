@@ -90,17 +90,21 @@ def add_subparsers(parent: argparse.ArgumentParser) -> None:
         ("logbook", "Logbook (completed tasks)"),
     ]:
         p = sub.add_parser(name, help=help_text)
-        _fmt(p)
+        _read_fmt(p)
         p.set_defaults(handler=lambda a, _n=name: cmd_list(a, _n))
 
+    p = sub.add_parser("snapshot", help="One-call boot snapshot: today + overdue + inbox")
+    _read_fmt(p)
+    p.set_defaults(handler=cmd_snapshot)
+
     p = sub.add_parser("overdue", help="Tasks with deadline before today")
-    _fmt(p)
+    _read_fmt(p)
     p.set_defaults(handler=cmd_overdue)
 
     p = sub.add_parser("search", help="Search tasks by name")
     p.add_argument("query")
     p.add_argument("--include-completed", action="store_true")
-    _fmt(p)
+    _read_fmt(p)
     p.set_defaults(handler=cmd_search)
 
     p = sub.add_parser("projects", help="List projects")
@@ -132,6 +136,7 @@ def add_subparsers(parent: argparse.ArgumentParser) -> None:
     p.add_argument("--area", help="Area name (used if no --project)")
     p.add_argument("--heading", help="Heading title within the project")
     p.add_argument("--checklist", help="Comma-separated checklist items")
+    p.add_argument("--resolve", action="store_true", help="After creating, do a slower read-back to resolve full task data")
     _fmt(p)
     p.set_defaults(handler=cmd_add)
 
@@ -141,6 +146,7 @@ def add_subparsers(parent: argparse.ArgumentParser) -> None:
     p.add_argument("--notes")
     p.add_argument("--when", help="today | someday | YYYY-MM-DD")
     p.add_argument("--deadline")
+    p.add_argument("--resolve", action="store_true", help="After creating, do a slower read-back to resolve full project data")
     _fmt(p)
     p.set_defaults(handler=cmd_project_new)
 
@@ -214,6 +220,11 @@ def _fmt(p: argparse.ArgumentParser) -> None:
     g = p.add_mutually_exclusive_group()
     g.add_argument("--json", action="store_true", help="Dobby JSON envelope")
     g.add_argument("--plain", action="store_true", help="Compact plain text")
+
+
+def _read_fmt(p: argparse.ArgumentParser) -> None:
+    _fmt(p)
+    p.add_argument("--verbose", action="store_true", help="Return full task fields; default is a faster summary shape")
 
 
 # ---------------------------------------------------------------------------
@@ -341,13 +352,173 @@ _TODO_FIELDS = """
     area: (() => { try { const a = t.area(); return a ? a.name() : null; } catch(e) { return null; } })(),
 """
 
+_TODO_SUMMARY_FIELDS = """
+    id: t.id(),
+    name: t.name(),
+    status: t.status(),
+    tagNames: (() => { try { return t.tagNames() || ""; } catch(e) { return ""; } })(),
+    project: (() => { try { const p = t.project(); return p ? p.name() : null; } catch(e) { return null; } })(),
+    area: (() => { try { const a = t.area(); return a ? a.name() : null; } catch(e) { return null; } })(),
+"""
 
-def _jxa_list(name: str) -> str:
-    return f'const things = Application("Things3");\nconst todos = things.lists.byName("{name}").toDos();\nJSON.stringify(todos.map(t => ({{ {_TODO_FIELDS} }})));'
+_TODO_DATED_SUMMARY_FIELDS = """
+    id: t.id(),
+    name: t.name(),
+    status: t.status(),
+    tagNames: (() => { try { return t.tagNames() || ""; } catch(e) { return ""; } })(),
+    dueDate: (() => { try { const d = t.dueDate(); return d ? d.toISOString() : null; } catch(e) { return null; } })(),
+    project: (() => { try { const p = t.project(); return p ? p.name() : null; } catch(e) { return null; } })(),
+    area: (() => { try { const a = t.area(); return a ? a.name() : null; } catch(e) { return null; } })(),
+"""
 
 
-def _jxa_all() -> str:
-    return f'const things = Application("Things3");\nconst todos = things.toDos();\nJSON.stringify(todos.map(t => ({{ {_TODO_FIELDS} }})));'
+def _task_fields(verbose: bool, *, dated: bool = False) -> str:
+    if verbose:
+        return _TODO_FIELDS
+    return _TODO_DATED_SUMMARY_FIELDS if dated else _TODO_SUMMARY_FIELDS
+
+
+def _jxa_list(name: str, *, verbose: bool = False) -> str:
+    return (
+        "const things = Application(\"Things3\");\n"
+        f"const todos = things.lists.byName({json.dumps(name)}).toDos();\n"
+        f"JSON.stringify(todos.map(t => ({{ {_task_fields(verbose)} }})));"
+    )
+
+
+def _jxa_all(*, verbose: bool = False) -> str:
+    return f'const things = Application("Things3");\nconst todos = things.toDos();\nJSON.stringify(todos.map(t => ({{ {_task_fields(verbose)} }})));'
+
+
+def _jxa_search(query: str, *, include_completed: bool = False, verbose: bool = False) -> str:
+    """Search in JXA before serializing task objects.
+
+    This avoids fetching full fields for every task in Python. Project/area and
+    other heavier properties are only fetched for tasks whose names match.
+    """
+    q = json.dumps(query.lower())
+    fields = _task_fields(verbose)
+    if not include_completed:
+        return f"""
+const things = Application("Things3");
+const q = {q};
+const matches = [];
+
+function taskObject(t) {{
+  return {{ {fields} }};
+}}
+
+for (const t of things.toDos()) {{
+  const name = t.name();
+  const status = t.status();
+  if (status === "open" && name.toLowerCase().includes(q)) {{
+    matches.push(taskObject(t));
+  }}
+}}
+JSON.stringify(matches);
+"""
+
+    include = "true"
+    return f"""
+const things = Application("Things3");
+const q = {q};
+const includeCompleted = {include};
+const matches = [];
+const seen = {{}};
+
+function taskObject(t) {{
+  return {{ {fields} }};
+}}
+
+function scan(todos) {{
+  for (const t of todos) {{
+    const id = t.id();
+    if (seen[id]) continue;
+    seen[id] = true;
+    const name = t.name();
+    const status = t.status();
+    if (!includeCompleted && status !== "open") continue;
+    if (name.toLowerCase().includes(q)) {{
+      matches.push(taskObject(t));
+    }}
+  }}
+}}
+
+scan(things.toDos());
+if (includeCompleted) {{
+  try {{ scan(things.lists.byName("Logbook").toDos()); }} catch(e) {{}}
+}}
+JSON.stringify(matches);
+"""
+
+
+def _jxa_overdue(today_iso: str, *, verbose: bool = False) -> str:
+    fields = _task_fields(verbose, dated=True)
+    return f"""
+const things = Application("Things3");
+const today = {json.dumps(today_iso)};
+const todos = things.toDos();
+const overdue = [];
+for (const t of todos) {{
+  const status = t.status();
+  if (status !== "open") continue;
+  let due = null;
+  try {{
+    const d = t.dueDate();
+    due = d ? d.toISOString() : null;
+  }} catch(e) {{}}
+  if (due && due.slice(0, 10) < today) {{
+    overdue.push({{ {fields} }});
+  }}
+}}
+JSON.stringify(overdue);
+"""
+
+
+def _jxa_snapshot(today_iso: str, *, verbose: bool = False) -> str:
+    fields = _task_fields(verbose)
+    overdue_fields = _task_fields(verbose, dated=True)
+    return f"""
+const things = Application("Things3");
+const today = {json.dumps(today_iso)};
+
+function taskObject(t) {{
+  return {{ {fields} }};
+}}
+
+function openList(name) {{
+  const todos = things.lists.byName(name).toDos();
+  const out = [];
+  for (const t of todos) {{
+    if (t.status() === "open") out.push(taskObject(t));
+  }}
+  return out;
+}}
+
+function overdueList() {{
+  const todos = things.toDos();
+  const out = [];
+  for (const t of todos) {{
+    if (t.status() !== "open") continue;
+    let due = null;
+    try {{
+      const d = t.dueDate();
+      due = d ? d.toISOString() : null;
+    }} catch(e) {{}}
+    if (due && due.slice(0, 10) < today) out.push({{ {overdue_fields} }});
+  }}
+  return out;
+}}
+
+const todayItems = openList("Today");
+const inboxItems = openList("Inbox");
+const overdueItems = overdueList();
+JSON.stringify({{
+  today: {{count: todayItems.length, tasks: todayItems}},
+  overdue: {{count: overdueItems.length, tasks: overdueItems}},
+  inbox: {{count: inboxItems.length, tasks: inboxItems}}
+}});
+"""
 
 
 def _jxa_projects() -> str:
@@ -417,6 +588,16 @@ def _proj_line(p: dict) -> str:
     return f"  {p.get('name','')}" + (f" · {area}" if area else "")
 
 
+def _snapshot_text(snapshot: dict[str, Any]) -> str:
+    parts: list[str] = []
+    for key, title in [("overdue", "Overdue"), ("today", "Today"), ("inbox", "Inbox")]:
+        section = snapshot.get(key, {})
+        tasks = section.get("tasks", [])
+        parts.append(f"{title} ({len(tasks)})")
+        parts.append("\n".join(_task_line(t) for t in tasks) if tasks else "  (empty)")
+    return "\n\n".join(parts)
+
+
 # ---------------------------------------------------------------------------
 # error classification
 # ---------------------------------------------------------------------------
@@ -441,7 +622,7 @@ def _err_code(e: Things3Error) -> str:
 def cmd_list(args: argparse.Namespace, name: str) -> int:
     env = Envelope(f"tasks.{name}")
     try:
-        tasks = run_jxa(_jxa_list(name.capitalize() if name != "logbook" else "Logbook"))
+        tasks = run_jxa(_jxa_list(name.capitalize() if name != "logbook" else "Logbook", verbose=args.verbose))
     except Things3Error as e:
         return emit_json(env.err(_err_code(e), str(e)))
     # Filter out completed/canceled tasks from active lists (they linger briefly
@@ -450,39 +631,51 @@ def cmd_list(args: argparse.Namespace, name: str) -> int:
     if name != "logbook":
         tasks = [t for t in tasks if t.get("status") == "open"]
     if args.json:
-        return emit_json(env.ok({"count": len(tasks), "tasks": tasks}))
+        return emit_json(env.ok({"count": len(tasks), "tasks": tasks, "verbose": args.verbose}))
     return emit_text("\n".join(_task_line(t) for t in tasks) if tasks else "(empty)")
+
+
+def cmd_snapshot(args: argparse.Namespace) -> int:
+    env = Envelope("tasks.snapshot")
+    try:
+        snapshot = run_jxa(_jxa_snapshot(date.today().isoformat(), verbose=args.verbose))
+    except Things3Error as e:
+        return emit_json(env.err(_err_code(e), str(e)))
+    payload = {"views": snapshot, "verbose": args.verbose}
+    if args.json:
+        return emit_json(env.ok(payload))
+    return emit_text(_snapshot_text(snapshot))
 
 
 def cmd_overdue(args: argparse.Namespace) -> int:
     env = Envelope("tasks.overdue")
     try:
-        all_tasks = run_jxa(_jxa_all())
+        overdue = run_jxa(_jxa_overdue(date.today().isoformat(), verbose=args.verbose))
     except Things3Error as e:
         return emit_json(env.err(_err_code(e), str(e)))
-    today_str = date.today().isoformat()
-    overdue = [t for t in all_tasks if t.get("dueDate") and t["dueDate"][:10] < today_str and t.get("status") == "open"]
     if args.json:
-        return emit_json(env.ok({"count": len(overdue), "tasks": overdue}))
+        return emit_json(env.ok({"count": len(overdue), "tasks": overdue, "verbose": args.verbose}))
     return emit_text("\n".join(_task_line(t) for t in overdue) if overdue else "(no overdue tasks)")
 
 
 def cmd_search(args: argparse.Namespace) -> int:
     env = Envelope("tasks.search")
     try:
-        all_tasks = run_jxa(_jxa_all())
-        if args.include_completed:
-            logbook = run_jxa(_jxa_list("Logbook"))
-            seen = {t["id"] for t in all_tasks}
-            for t in logbook:
-                if t["id"] not in seen:
-                    all_tasks.append(t)
+        matches = run_jxa(_jxa_search(
+            args.query,
+            include_completed=args.include_completed,
+            verbose=args.verbose,
+        ))
     except Things3Error as e:
         return emit_json(env.err(_err_code(e), str(e)))
-    q = args.query.lower()
-    matches = [t for t in all_tasks if q in (t.get("name") or "").lower() and (args.include_completed or t.get("status") == "open")]
     if args.json:
-        return emit_json(env.ok({"count": len(matches), "tasks": matches}))
+        return emit_json(env.ok({
+            "count": len(matches),
+            "tasks": matches,
+            "query": args.query,
+            "include_completed": args.include_completed,
+            "verbose": args.verbose,
+        }))
     return emit_text("\n".join(_task_line(t) for t in matches) if matches else "(no matches)")
 
 
@@ -552,15 +745,16 @@ def cmd_add(args: argparse.Namespace) -> int:
         return emit_json(env.err(_err_code(e), str(e)))
 
     if args.json:
-        # Search for the task we just created to return structured data
-        try:
-            time.sleep(0.3)  # extra settle time for JSON response
-            all_tasks = run_jxa(_jxa_all())
-            match = [t for t in all_tasks if t.get("name") == args.title]
-            task_data = match[-1] if match else {"name": args.title}
-        except Things3Error:
-            task_data = {"name": args.title}
-        return emit_json(env.ok({"task": task_data, "title": args.title}))
+        task_data: dict[str, Any] = {"name": args.title, "resolved": False}
+        if args.resolve:
+            try:
+                time.sleep(0.3)  # extra settle time for JSON response
+                matches = run_jxa(_jxa_search(args.title, verbose=True))
+                exact = [t for t in matches if t.get("name") == args.title]
+                task_data = (exact[-1] if exact else {"name": args.title}) | {"resolved": bool(exact)}
+            except Things3Error:
+                task_data = {"name": args.title, "resolved": False}
+        return emit_json(env.ok({"task": task_data, "title": args.title, "resolved": args.resolve and task_data.get("resolved") is True}))
     return emit_text(f"created: {args.title}")
 
 
@@ -585,14 +779,16 @@ def cmd_project_new(args: argparse.Namespace) -> int:
         return emit_json(env.err(_err_code(e), str(e)))
 
     if args.json:
-        try:
-            time.sleep(0.3)
-            projects = run_jxa(_jxa_projects())
-            match = [p for p in projects if p.get("name") == args.title]
-            proj_data = match[-1] if match else {"name": args.title}
-        except Things3Error:
-            proj_data = {"name": args.title}
-        return emit_json(env.ok({"project": proj_data, "title": args.title}))
+        proj_data: dict[str, Any] = {"name": args.title, "resolved": False}
+        if args.resolve:
+            try:
+                time.sleep(0.3)
+                projects = run_jxa(_jxa_projects())
+                match = [p for p in projects if p.get("name") == args.title]
+                proj_data = (match[-1] if match else {"name": args.title}) | {"resolved": bool(match)}
+            except Things3Error:
+                proj_data = {"name": args.title, "resolved": False}
+        return emit_json(env.ok({"project": proj_data, "title": args.title, "resolved": args.resolve and proj_data.get("resolved") is True}))
     return emit_text(f"project created: {args.title}")
 
 

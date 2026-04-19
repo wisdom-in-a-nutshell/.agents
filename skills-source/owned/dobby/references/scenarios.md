@@ -24,7 +24,7 @@ Confirm in one line: "Added to `profile.md` under Communication preferences."
 ## Read
 
 **"What's on today?"** / "What's my day look like?"
-→ `scripts/dobby-tasks today` + `scripts/dobby-tasks overdue` (if non-empty). Surface counts and the live list.
+→ `scripts/dobby-tasks snapshot` for today + overdue + inbox in one call. Surface counts and the live list.
 
 **"What's in my inbox?"**
 → `scripts/dobby-tasks inbox`. Flag anything stale.
@@ -59,7 +59,7 @@ Propose the destination; do the write.
 → `scripts/dobby-tasks add "X" --when <default: today> --area <best guess; ask if unclear>`.
 
 **"Mark X done"**
-→ `scripts/dobby-tasks done <id-prefix>`. If no id, list matches from `today` or `inbox` first.
+→ `scripts/dobby-tasks done <id-prefix>`. If no id, use `scripts/dobby-tasks search "X"` first.
 
 **"What's overdue?"**
 → `scripts/dobby-tasks overdue`. Name any drift from stated commitments directly.

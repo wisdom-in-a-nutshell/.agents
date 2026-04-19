@@ -363,7 +363,7 @@ def cmd_today(args: argparse.Namespace) -> int:
     env = Envelope("calendar.today")
     cmd = _with_calendar(["today", "-o", "json"], args)
     try:
-        data = _run_ical_add(cmd)
+        data = _run_ical(cmd)
     except CalendarError as e:
         return emit_json(env.err(_err_code(e), str(e)))
     return _emit(env, {"count": len(data or []), "events": data or [], "calendar": None if args.all_calendars else args.calendar}, args, plain=_plain_summary(data))
@@ -379,7 +379,7 @@ def _cmd_upcoming_days(args: argparse.Namespace, days: int, command: str) -> int
         return emit_json(env.err("E_VALIDATION", "--days must be between 1 and 366"))
     cmd = _with_calendar(["upcoming", "-d", str(days), "-o", "json"], args)
     try:
-        data = _run_ical_add(cmd)
+        data = _run_ical(cmd)
     except CalendarError as e:
         return emit_json(env.err(_err_code(e), str(e)))
     return _emit(env, {"count": len(data or []), "events": data or [], "days": days, "calendar": None if args.all_calendars else args.calendar}, args, plain=_plain_summary(data))
@@ -426,7 +426,7 @@ def cmd_add_event(args: argparse.Namespace) -> int:
         planned = {"backend": "ical", "argv": cmd, "calendar": args.calendar, "title": args.title, "start": args.start, "end": args.end, "all_day": args.all_day}
         if args.dry_run:
             return _emit(env, {"created": False, "dry_run": True, "planned": planned}, args, plain=f"dry-run: {args.title}")
-        data = _run_ical(cmd)
+        data = _run_ical_add(cmd)
     except CalendarError as e:
         return emit_json(env.err(_err_code(e), str(e)))
     return _emit(env, {"created": True, "event": data, "calendar": args.calendar}, args, plain=f"created: {args.title}")
@@ -443,7 +443,7 @@ def cmd_upsert_event(args: argparse.Namespace) -> int:
         planned = {"backend": "ical", "argv": cmd, "calendar": args.calendar, "title": args.title, "start": args.start, "end": args.end, "all_day": args.all_day}
         if args.dry_run:
             return _emit(env, {"created": False, "duplicate": False, "dry_run": True, "planned": planned}, args, plain=f"dry-run create: {args.title}")
-        data = _run_ical(cmd)
+        data = _run_ical_add(cmd)
     except CalendarError as e:
         return emit_json(env.err(_err_code(e), str(e)))
     return _emit(env, {"created": True, "duplicate": False, "event": data, "calendar": args.calendar}, args, plain=f"created: {args.title}")
