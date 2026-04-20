@@ -96,6 +96,7 @@ Use [Codex Control Plane Ownership](/Users/dobby/.agents/docs/references/codex-c
 - The shared `Stop` hook owns the machine-wide git conveyor:
   - stages all changes with `git add -A`
   - commits so each repo's own pre-commit hooks/checks decide whether the change is acceptable
+  - relies on managed repo local `core.hooksPath` pointing at `~/.agents/hooks/git`
   - returns hook continuation JSON with commit/check failures so the current agent can fix them
   - tracked branches use the normal `commit -> pull --rebase -> push` path
   - brand-new branches without upstream tracking use an initial `git push -u <remote> HEAD`, so the hook can publish the branch before future tracked-branch pulls
@@ -140,6 +141,10 @@ Use [Codex Control Plane Ownership](/Users/dobby/.agents/docs/references/codex-c
   - keeps the repo list and repo-level MCP/model assignments in [`repo-bootstrap.json`](/Users/dobby/.agents/codex/config/repo-bootstrap.json)
   - keeps shared agent scope and runtime metadata in [`agents/registry.json`](/Users/dobby/.agents/agents/registry.json)
   - resolves MCP preset definitions through [`mcp/config/presets.json`](/Users/dobby/.agents/mcp/config/presets.json), including plugin-derived presets and repo assignments
+- [`sync-managed-git-hooks.sh`](/Users/dobby/.agents/scripts/sync-managed-git-hooks.sh)
+  - applies local-only `core.hooksPath` for every managed repo in [`repo-bootstrap.json`](/Users/dobby/.agents/codex/config/repo-bootstrap.json)
+  - points Git at [`hooks/git/pre-commit`](/Users/dobby/.agents/hooks/git/pre-commit)
+  - does not edit repo worktree files and does not affect GitHub Actions
 - [`check-codex-control-plane.sh`](/Users/dobby/.agents/codex/scripts/check-codex-control-plane.sh)
   - validates canonical `global.config.toml`, `xcode.config.toml`, `repo-bootstrap.json`, `agents/registry.json`, and `mcp/config/presets.json`
   - validates [`hooks/registry.json`](/Users/dobby/.agents/hooks/registry.json) and rendered global `~/.codex/hooks.json` when hooks are enabled

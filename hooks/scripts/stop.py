@@ -71,7 +71,7 @@ def utc_now_commit_timestamp() -> str:
 
 def log(runtime: str, message: str) -> None:
     try:
-        log_dir = Path.home() / ".agents" / "log"
+        log_dir = Path.home() / ".local" / "state" / "agents-control-plane" / "log"
         log_dir.mkdir(parents=True, exist_ok=True)
         log_path = log_dir / "hooks-stop.log"
         if log_path.exists() and log_path.stat().st_size >= MAX_LOG_BYTES:

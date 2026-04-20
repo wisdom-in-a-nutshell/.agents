@@ -34,6 +34,7 @@ This file is machine-wide baseline guidance. Keep it generic and avoid portfolio
 ## Git Automation (Agent Stop Hook)
 - This environment runs a Stop hook after each agent turn that auto-stages, commits, runs repo-owned pre-commit checks through `git commit`, rebases, and pushes.
 - If repo-owned checks fail, the hook returns the failure details to the current agent so it can fix the issue in the same session.
+- Managed repos use a shared local Git `pre-commit` hook from `~/.agents/hooks/git/`; repo-specific checks remain owned by each repo's pre-commit/Husky configuration.
 - Do not run `git commit` or `git push` unless the user explicitly asks.
 - Focus on making changes and reporting what changed; the hook handles the rest.
 

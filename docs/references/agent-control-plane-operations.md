@@ -9,6 +9,7 @@ These wrappers exist so external machine bootstrap repos such as `~/GitHub/scrip
 - `scripts/bootstrap-machine-agent-control-planes.sh`
   - machine-facing full bootstrap batch
   - syncs managed skill links from `skills/registry.json`
+  - syncs managed repo local Git `core.hooksPath` to the shared Git hooks directory
   - applies the Codex runtime via `codex/scripts/bootstrap-machine-codex.sh`
   - applies the Claude runtime via `claude/scripts/bootstrap-machine-claude.sh`
 - `scripts/auto-apply-agent-control-planes.sh`
@@ -17,8 +18,12 @@ These wrappers exist so external machine bootstrap repos such as `~/GitHub/scrip
   - runs the minimum shared apply steps needed for runtime-relevant changes
 - `scripts/check-agent-control-planes.sh`
   - shared validation entrypoint
-  - validates skills registry artifacts plus Codex and Claude rendered runtime state
+  - validates skills registry artifacts, managed repo local Git hook config, plus Codex and Claude rendered runtime state
   - runs the hermetic control-plane regression suite in `tests/control_plane/`
+- `scripts/sync-managed-git-hooks.sh`
+  - machine-facing local-only sync for managed repo Git hooks
+  - sets repo-local `core.hooksPath` to `~/.agents/hooks/git`
+  - supports `--check` to fail when a managed repo is not pointed at the shared hook directory
 - `scripts/test-control-plane.sh`
   - hermetic regression test entrypoint for shared skills, hooks, MCPs, Codex config rendering, Claude subagent rendering, and shared registry views
 
@@ -33,6 +38,7 @@ These wrappers exist so external machine bootstrap repos such as `~/GitHub/scrip
 - `codex/`
 - `claude/`
 - `hooks/`
+- `scripts/sync-managed-git-hooks.sh`
 
 Current apply rules:
 
@@ -44,6 +50,8 @@ Current apply rules:
   - run both Codex and Claude bootstrap batches
 - `hooks/` changes:
   - run both Codex and Claude bootstrap batches
+- `hooks/git/`, `scripts/sync-managed-git-hooks.sh`, or repo-bootstrap registry changes:
+  - sync managed repo local Git hook config
 - `agents/` changes:
   - run both Codex and Claude bootstrap batches
 - `codex/` changes:
@@ -64,6 +72,8 @@ cd ~/.agents
 ./scripts/auto-apply-agent-control-planes.sh --apply
 ./scripts/check-agent-control-planes.sh
 ./scripts/test-control-plane.sh
+./scripts/sync-managed-git-hooks.sh --apply
+./scripts/sync-managed-git-hooks.sh --check
 ```
 
 Optional scoped Claude validation/bootstrap:

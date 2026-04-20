@@ -51,6 +51,8 @@ Personal agent, Codex, and Claude control plane.
   - `docs/references/registry/mcp-registry-items/`
 - Shared lifecycle hook scripts live in:
   - `hooks/scripts/`
+- Shared local Git hook scripts live in:
+  - `hooks/git/`
 
 ## Key Entry Points
 
@@ -89,6 +91,7 @@ Detailed operations live in:
 - Do not add additional manifest files for plugin mapping; update `plugins/registry.json`.
 - New or promoted agent-facing CLI clients must follow `docs/references/cli-interface-contract.md`.
 - Do not hand-edit rendered runtime hook files. Update `hooks/registry.json` or `hooks/scripts/*`, then rerun the shared bootstrap/check.
+- Managed repos use local Git `core.hooksPath` pointing at `hooks/git/`; update that source and rerun `scripts/sync-managed-git-hooks.sh --apply` or the shared bootstrap wrapper.
 - If `skills/registry.json` changes, run sync/check in the same change.
 - If `plugins/registry.json` changes, run plugin sync/check in the same change.
 - Do not hand-edit generated repo-local `.codex/config.toml` files in managed repos; update `codex/config/repo-bootstrap.json` and re-run the sync scripts.
@@ -96,5 +99,5 @@ Detailed operations live in:
 - When changing shared bootstrap inputs such as `mcp/config/presets.json`, `codex/config/repo-bootstrap.json`, or repo MCP assignment, prefer `./scripts/bootstrap-machine-agent-control-planes.sh --apply --repo <repo>` so Codex and Claude repo-local state are both re-rendered together. Use component-only Codex or Claude scripts only for intentional single-surface troubleshooting.
 - If `mcp/config/presets.json` changes, run both Codex and Claude control-plane validation in the same change.
 - If `agents/registry.json` changes, run both Codex and Claude control-plane validation plus `./scripts/test-control-plane.sh` in the same change.
-- If `hooks/registry.json` or `hooks/scripts/*` changes, run both Codex and Claude control-plane validation plus `./scripts/test-control-plane.sh` in the same change.
+- If `hooks/registry.json`, `hooks/scripts/*`, `hooks/git/*`, or `scripts/sync-managed-git-hooks.sh` changes, run shared bootstrap/check plus `./scripts/test-control-plane.sh` in the same change.
 - If `codex/config/agents/*.toml`, `codex/config/global.config.toml`, `codex/config/xcode.config.toml`, or `codex/config/repo-bootstrap.json` changes, run the Codex control-plane validation script in the same change.

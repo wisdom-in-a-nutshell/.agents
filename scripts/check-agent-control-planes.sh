@@ -6,6 +6,7 @@ ROOT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
 CHECK_SKILLS_SCRIPT="${SCRIPT_DIR}/check-skills-registry.sh"
 CHECK_PLUGINS_SCRIPT="${SCRIPT_DIR}/check-plugins-registry.sh"
 CHECK_HYGIENE_SCRIPT="${SCRIPT_DIR}/check-repo-hygiene.sh"
+CHECK_GIT_HOOKS_SCRIPT="${SCRIPT_DIR}/sync-managed-git-hooks.sh"
 CHECK_CODEX_SCRIPT="${ROOT_DIR}/codex/scripts/check-codex-control-plane.sh"
 CHECK_CLAUDE_SCRIPT="${ROOT_DIR}/claude/scripts/check-claude-control-plane.sh"
 TEST_CONTROL_PLANE_SCRIPT="${SCRIPT_DIR}/test-control-plane.sh"
@@ -18,7 +19,7 @@ Usage: $(basename "$0") [options]
 Validate repo hygiene, shared registries, Codex and Claude rendered state, and tests.
 
 Options:
-  --repo <path>    Limit Codex and Claude validation to an exact repo path (repeatable)
+  --repo <path>    Limit repo-local validation to an exact repo path (repeatable)
   -h, --help       Show this help
 
 Examples:
@@ -55,6 +56,7 @@ done
 [[ -x "$CHECK_SKILLS_SCRIPT" ]] || die "Missing executable: $CHECK_SKILLS_SCRIPT"
 [[ -x "$CHECK_PLUGINS_SCRIPT" ]] || die "Missing executable: $CHECK_PLUGINS_SCRIPT"
 [[ -x "$CHECK_HYGIENE_SCRIPT" ]] || die "Missing executable: $CHECK_HYGIENE_SCRIPT"
+[[ -x "$CHECK_GIT_HOOKS_SCRIPT" ]] || die "Missing executable: $CHECK_GIT_HOOKS_SCRIPT"
 [[ -x "$CHECK_CODEX_SCRIPT" ]] || die "Missing executable: $CHECK_CODEX_SCRIPT"
 [[ -x "$CHECK_CLAUDE_SCRIPT" ]] || die "Missing executable: $CHECK_CLAUDE_SCRIPT"
 [[ -x "$TEST_CONTROL_PLANE_SCRIPT" ]] || die "Missing executable: $TEST_CONTROL_PLANE_SCRIPT"
@@ -75,6 +77,14 @@ log "+ ${skills_cmd[*]}"
 plugins_cmd=("$CHECK_PLUGINS_SCRIPT")
 log "+ ${plugins_cmd[*]}"
 "${plugins_cmd[@]}"
+
+git_hooks_cmd=(
+  "$CHECK_GIT_HOOKS_SCRIPT"
+  --check
+  "${REPO_ARGS[@]}"
+)
+log "+ ${git_hooks_cmd[*]}"
+"${git_hooks_cmd[@]}"
 
 codex_cmd=(
   "$CHECK_CODEX_SCRIPT"

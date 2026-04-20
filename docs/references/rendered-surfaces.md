@@ -30,11 +30,12 @@ Edit the canonical source, run the renderer, then run the validation command.
 | `~/.codex/hooks.json` | live Codex global hooks | `hooks/registry.json` | `codex/scripts/sync-config.sh --apply` | `codex/scripts/check-codex-control-plane.sh` | No |
 | `~/.claude/settings.json` | live Claude runtime settings | `claude/config/settings.json`, `hooks/registry.json` | `claude/scripts/sync-settings.sh --apply` | `claude/scripts/check-claude-control-plane.sh` | No |
 | `~/.claude/agents/*.md` | live Claude global subagents | `agents/registry.json`, `claude/config/agents/*.md` | `claude/scripts/sync-subagents.sh --apply` | `claude/scripts/check-claude-control-plane.sh` | No |
+| managed repo `.git/config` `core.hooksPath` | machine-local Git hook config | `hooks/git/`, `codex/config/repo-bootstrap.json` | `scripts/sync-managed-git-hooks.sh --apply` | `scripts/sync-managed-git-hooks.sh --check` | No |
 
 ## Canonical Source Families
 
 - Registries: `skills/registry.json`, `plugins/registry.json`, `agents/registry.json`, `hooks/registry.json`, `mcp/config/presets.json`, `codex/config/repo-bootstrap.json`.
-- Source content: `skills-source/`, `plugins-source/`, `hooks/scripts/`, `codex/config/`, `claude/config/`.
+- Source content: `skills-source/`, `plugins-source/`, `hooks/scripts/`, `hooks/git/`, `codex/config/`, `claude/config/`.
 - Generated lookup views: `docs/references/registry/`.
 - Machine-local state and backups: `~/.local/state/...`, not tracked repo paths.
 

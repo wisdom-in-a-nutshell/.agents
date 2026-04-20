@@ -10,6 +10,7 @@ MODE="--apply"
 ROOT_BOOTSTRAP_SCRIPT=""
 SYNC_SKILLS_SCRIPT=""
 SYNC_PLUGINS_SCRIPT=""
+SYNC_GIT_HOOKS_SCRIPT=""
 REFRESH_EXTERNAL_PLUGINS_SCRIPT=""
 CODEX_BOOTSTRAP_SCRIPT=""
 CLAUDE_BOOTSTRAP_SCRIPT=""
@@ -127,6 +128,7 @@ done
 ROOT_BOOTSTRAP_SCRIPT="${AGENTS_REPO}/scripts/bootstrap-machine-agent-control-planes.sh"
 SYNC_SKILLS_SCRIPT="${AGENTS_REPO}/scripts/sync-skills-registry.sh"
 SYNC_PLUGINS_SCRIPT="${AGENTS_REPO}/scripts/sync-plugins-registry.sh"
+SYNC_GIT_HOOKS_SCRIPT="${AGENTS_REPO}/scripts/sync-managed-git-hooks.sh"
 REFRESH_EXTERNAL_PLUGINS_SCRIPT="${AGENTS_REPO}/scripts/refresh-external-plugins.sh"
 CODEX_BOOTSTRAP_SCRIPT="${AGENTS_REPO}/codex/scripts/bootstrap-machine-codex.sh"
 CLAUDE_BOOTSTRAP_SCRIPT="${AGENTS_REPO}/claude/scripts/bootstrap-machine-claude.sh"
@@ -135,6 +137,7 @@ CLAUDE_BOOTSTRAP_SCRIPT="${AGENTS_REPO}/claude/scripts/bootstrap-machine-claude.
 [[ -x "$ROOT_BOOTSTRAP_SCRIPT" ]] || die "Missing executable: $ROOT_BOOTSTRAP_SCRIPT"
 [[ -x "$SYNC_SKILLS_SCRIPT" ]] || die "Missing executable: $SYNC_SKILLS_SCRIPT"
 [[ -x "$SYNC_PLUGINS_SCRIPT" ]] || die "Missing executable: $SYNC_PLUGINS_SCRIPT"
+[[ -x "$SYNC_GIT_HOOKS_SCRIPT" ]] || die "Missing executable: $SYNC_GIT_HOOKS_SCRIPT"
 [[ -x "$REFRESH_EXTERNAL_PLUGINS_SCRIPT" ]] || die "Missing executable: $REFRESH_EXTERNAL_PLUGINS_SCRIPT"
 [[ -x "$CODEX_BOOTSTRAP_SCRIPT" ]] || die "Missing executable: $CODEX_BOOTSTRAP_SCRIPT"
 [[ -x "$CLAUDE_BOOTSTRAP_SCRIPT" ]] || die "Missing executable: $CLAUDE_BOOTSTRAP_SCRIPT"
@@ -178,6 +181,7 @@ mapfile -t changed_paths < <(
     mcp \
     plugins \
     plugins-source \
+    scripts \
     skills \
     skills-source
 )
@@ -193,6 +197,7 @@ plugins_changed=0
 codex_changed=0
 claude_changed=0
 hooks_changed=0
+git_hooks_changed=0
 shared_mcp_changed=0
 repo_registry_changed=0
 agent_registry_changed=0
@@ -206,6 +211,11 @@ for path in "${changed_paths[@]}"; do
   case "$path" in
     hooks/*)
       hooks_changed=1
+      ;;
+  esac
+  case "$path" in
+    hooks/git/*|scripts/sync-managed-git-hooks.sh|scripts/bootstrap-machine-agent-control-planes.sh)
+      git_hooks_changed=1
       ;;
   esac
   case "$path" in
@@ -240,6 +250,7 @@ done
 
 need_sync_skills=0
 need_sync_plugins=0
+need_sync_git_hooks=0
 need_bootstrap_codex=0
 need_bootstrap_claude=0
 
@@ -248,6 +259,9 @@ if (( skills_changed == 1 )); then
 fi
 if (( plugins_changed == 1 )); then
   need_sync_plugins=1
+fi
+if (( git_hooks_changed == 1 || repo_registry_changed == 1 )); then
+  need_sync_git_hooks=1
 fi
 if (( skills_changed == 1 || plugins_changed == 1 || codex_changed == 1 || hooks_changed == 1 || shared_mcp_changed == 1 || agent_registry_changed == 1 )); then
   need_bootstrap_codex=1
@@ -262,6 +276,9 @@ if (( need_sync_skills == 1 )); then
 fi
 if (( need_sync_plugins == 1 )); then
   actions+=("sync_plugins_registry")
+fi
+if (( need_sync_git_hooks == 1 )); then
+  actions+=("sync_managed_git_hooks")
 fi
 if (( need_bootstrap_codex == 1 )); then
   actions+=("bootstrap_codex")
@@ -286,6 +303,9 @@ for action in "${actions[@]}"; do
     sync_plugins_registry)
       mapfile -t plugin_args < <(skills_mode_args)
       cmd=("$SYNC_PLUGINS_SCRIPT" "${plugin_args[@]}")
+      ;;
+    sync_managed_git_hooks)
+      cmd=("$SYNC_GIT_HOOKS_SCRIPT" "$MODE")
       ;;
     bootstrap_codex)
       cmd=("$CODEX_BOOTSTRAP_SCRIPT" "$MODE" --github-root "$GITHUB_ROOT")

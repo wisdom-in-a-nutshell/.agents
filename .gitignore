@@ -25,6 +25,9 @@ __pycache__/
 # Generic caches
 .cache/
 
+# Local runtime logs
+log/
+
 # Local rendered runtime backups
 .codex/*.bak.*
 .claude/*.bak.*

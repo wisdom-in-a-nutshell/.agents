@@ -33,6 +33,7 @@ class SharedBootstrapWrapperTests(TempDirTestCase):
         script_path.chmod(0o755)
         write_executable(root / "scripts/sync-skills-registry.sh", STUB_SCRIPT)
         write_executable(root / "scripts/sync-plugins-registry.sh", STUB_SCRIPT)
+        write_executable(root / "scripts/sync-managed-git-hooks.sh", STUB_SCRIPT)
         write_executable(root / "codex/scripts/bootstrap-machine-codex.sh", STUB_SCRIPT)
         write_executable(root / "claude/scripts/bootstrap-machine-claude.sh", STUB_SCRIPT)
         return root, log_path
@@ -61,6 +62,7 @@ class SharedBootstrapWrapperTests(TempDirTestCase):
             [
                 "sync-skills-registry.sh|--apply",
                 "sync-plugins-registry.sh|--apply",
+                f"sync-managed-git-hooks.sh|--apply --repo {repo_a} --repo {repo_b}",
                 f"bootstrap-machine-codex.sh|--apply --github-root {github_root}",
                 f"bootstrap-machine-claude.sh|--apply --repo {repo_a} --repo {repo_b}",
             ],
@@ -80,6 +82,7 @@ class SharedCheckWrapperTests(TempDirTestCase):
         write_executable(root / "scripts/check-repo-hygiene.sh", STUB_SCRIPT)
         write_executable(root / "scripts/check-skills-registry.sh", STUB_SCRIPT)
         write_executable(root / "scripts/check-plugins-registry.sh", STUB_SCRIPT)
+        write_executable(root / "scripts/sync-managed-git-hooks.sh", STUB_SCRIPT)
         write_executable(root / "codex/scripts/check-codex-control-plane.sh", STUB_SCRIPT)
         write_executable(root / "claude/scripts/check-claude-control-plane.sh", STUB_SCRIPT)
         write_executable(root / "scripts/test-control-plane.sh", STUB_SCRIPT)
@@ -106,6 +109,7 @@ class SharedCheckWrapperTests(TempDirTestCase):
                 "check-repo-hygiene.sh|",
                 "check-skills-registry.sh|",
                 "check-plugins-registry.sh|",
+                f"sync-managed-git-hooks.sh|--check --repo {repo_a} --repo {repo_b}",
                 f"check-codex-control-plane.sh|--repo {repo_a} --repo {repo_b}",
                 f"check-claude-control-plane.sh|--repo {repo_a} --repo {repo_b}",
                 "test-control-plane.sh|",
@@ -133,6 +137,7 @@ class AutoApplyRoutingTests(TempDirTestCase):
         write_executable(root / "scripts/bootstrap-machine-agent-control-planes.sh", STUB_SCRIPT)
         write_executable(root / "scripts/sync-skills-registry.sh", STUB_SCRIPT)
         write_executable(root / "scripts/sync-plugins-registry.sh", STUB_SCRIPT)
+        write_executable(root / "scripts/sync-managed-git-hooks.sh", STUB_SCRIPT)
         write_executable(root / "scripts/refresh-external-plugins.sh", STUB_SCRIPT)
         write_executable(root / "codex/scripts/bootstrap-machine-codex.sh", STUB_SCRIPT)
         write_executable(root / "claude/scripts/bootstrap-machine-claude.sh", STUB_SCRIPT)
