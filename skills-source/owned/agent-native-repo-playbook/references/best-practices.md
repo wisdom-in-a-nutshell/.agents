@@ -61,7 +61,8 @@ This guide is based on the OpenAI harness-engineering model and adapted for a so
 - Direct-to-main is the default and preferred workflow.
 - Do not introduce branch-heavy flow unless explicitly requested.
 - Keep pre-commit checks and CI checks focused and fast so iteration stays high-velocity.
-- Use the notify automation loop (auto commit, pull --rebase, push) as the standard shipping path.
+- Use the agent Stop hook automation loop (auto commit, pull --rebase, push) as the standard shipping path.
+- Prefer one shared local Git hook entrypoint that delegates to repo-owned pre-commit/Husky checks when managing many agent-native repos on the same machine.
 
 ## 12) Agent self-review loop
 - Before push: run local checks, inspect diff, address obvious issues, re-run checks.
