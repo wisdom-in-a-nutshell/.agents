@@ -32,12 +32,12 @@ sweep_things3() {
     # Clean up any DOBBY-TEST-* tasks left by prior test runs.
     # Uses the Dobby CLI itself (AppleScript-backed) — no external task binary.
     local found=0
-    local names
-    names=$("$DOBBY_BIN" tasks search "DOBBY-TEST-" --include-completed --json 2>/dev/null \
-        | jq -r '.data.tasks[]?.name' 2>/dev/null || true)
-    for name in $names; do
-        [[ -z "$name" ]] && continue
-        "$DOBBY_BIN" tasks delete "$name" --yes > /dev/null 2>&1 || true
+    local ids
+    ids=$("$DOBBY_BIN" tasks search "DOBBY-TEST-" --include-completed --json 2>/dev/null \
+        | jq -r '.data.tasks[]?.id' 2>/dev/null || true)
+    for id in $ids; do
+        [[ -z "$id" ]] && continue
+        "$DOBBY_BIN" tasks delete "$id" --yes > /dev/null 2>&1 || true
         found=$((found + 1))
     done
     if (( found > 0 )); then
