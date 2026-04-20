@@ -125,7 +125,40 @@ flowchart TD
 - [`link-shared-zprofile.sh`](/Users/dobby/GitHub/scripts/setup/codex/link-shared-zprofile.sh)
   - links `~/.zprofile` to the tracked shared login-shell file
 
-## Figure 4: Post-Turn Automation
+## Figure 4: Session Start Dispatch
+
+One global `SessionStart` hook definition is rendered into both Codex and Claude. It stays generic: repo-specific startup context lives in an optional repo-owned script.
+
+```mermaid
+flowchart TD
+    A[hooks/registry.json<br/>one global SessionStart definition] --> B[~/.codex/hooks.json]
+    A --> C[~/.claude/settings.json]
+    B --> D[Codex session starts]
+    C --> E[Claude session starts]
+    D --> F[hooks/scripts/session_start.py]
+    E --> F
+    F --> G[resolve git root from hook cwd]
+    G --> H{scripts/hooks/session-start.sh exists?}
+    H -->|yes| I[run script from repo root]
+    I --> J[forward stdout as startup context]
+    H -->|no| K[silent success]
+```
+
+### What This Group Does
+
+- [`session_start.py`](/Users/dobby/.agents/hooks/scripts/session_start.py)
+  - runs as the shared Codex and Claude `SessionStart` hook
+  - resolves the current git root from the hook payload `cwd`
+  - runs repo-owned `scripts/hooks/session-start.sh` when present
+  - passes the original hook JSON to the repo script on stdin
+  - sets `AGENT_HOOK_EVENT`, `AGENT_HOOK_RUNTIME`, and `AGENT_REPO_ROOT`
+  - forwards repo script stdout as startup context
+- `scripts/hooks/session-start.sh`
+  - optional repo-owned startup context command
+  - should stay fast, deterministic, and non-interactive
+  - should print only the context the agent should receive at session start
+
+## Figure 5: Post-Turn Automation
 
 One global `Stop` hook definition is rendered into both Codex and Claude. The `Stop` hook owns turn finalization, while each repo owns its fast commit gate through `scripts/check-fast.sh`.
 
@@ -173,9 +206,9 @@ flowchart TD
   - should contain fast deterministic checks that answer whether the commit is acceptable
   - should not become a general after-turn lifecycle hook; use a future explicit lifecycle hook for non-validation side effects
 - [`session_start.py`](/Users/dobby/.agents/hooks/scripts/session_start.py)
-  - shared no-op `SessionStart` hook; kept silent unless a future milestone intentionally adds startup context
+  - shared `SessionStart` hook dispatcher; runs optional repo-owned `scripts/hooks/session-start.sh`
 
-## Figure 5: Optional Machine Policy Script
+## Figure 6: Optional Machine Policy Script
 
 ```mermaid
 flowchart TD

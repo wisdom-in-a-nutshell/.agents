@@ -9,15 +9,15 @@ Hooks will become a common agent-native feedback loop across repositories. A sha
 ## Scope / Non-Goals
 ### In Scope
 - Global `SessionStart` and `Stop` hooks for Codex and Claude.
-- A shared no-op `SessionStart` hook runner.
+- A shared `SessionStart` hook runner that stays silent unless the current repo defines `scripts/hooks/session-start.sh`.
 - Shared `Stop` hook git finalization that stages, commits, reports repo-owned fast-check failures to the current agent, rebases, and pushes.
+- Optional repo-owned `SessionStart` startup context through `scripts/hooks/session-start.sh`.
 - Shared local Git commit-time hook for managed repos.
 - Codex Plan Mode high reasoning in canonical bootstrap config.
 - Validation and docs for the new rendered surfaces.
 
 ### Out of Scope
 - Repo-local hook rendering.
-- Session-start context injection.
 - Claude-only `SessionEnd`.
 
 ## Context / Constraints
@@ -35,6 +35,7 @@ Hooks will become a common agent-native feedback loop across repositories. A sha
 - [x] Codex config renders `model = "gpt-5.4"` and `plan_mode_reasoning_effort = "high"`.
 - [x] Control-plane checks and tests pass after notify removal.
 - [x] Managed repos use shared local Git `core.hooksPath`.
+- [x] Repo-owned `scripts/hooks/session-start.sh` runs from the shared `SessionStart` dispatcher when present.
 
 ## Milestones
 - [x] Milestone 1 — V1 shared hooks. Acceptance: Codex and Claude render global `SessionStart` and `Stop` from one registry. Validate: `./scripts/test-control-plane.sh`.
@@ -43,8 +44,9 @@ Hooks will become a common agent-native feedback loop across repositories. A sha
 - [x] Milestone 4 — Managed repo local commit-time check consolidation. Acceptance: managed repos point local `core.hooksPath` at `hooks/git`, and the shared hook delegates to repo-owned `scripts/check-fast.sh` when present. Validate: `./scripts/sync-managed-git-hooks.sh --check` and `./scripts/check-agent-control-planes.sh`.
 
 ## Execution Rules
-- Keep `SessionStart` behavior no-op and successful unless the hook command itself is invoked with invalid CLI arguments.
-- Keep stdout empty for hook success; only write runtime hook protocol JSON when `Stop` needs to continue/block.
+- Keep `SessionStart` behavior no-op and successful when no repo script exists.
+- Keep `SessionStart` stdout empty when no repo script exists; when a repo script exists, stdout is intentional startup context.
+- Only write runtime hook protocol JSON when `Stop` needs to continue/block.
 - Keep runtime config native to each client; the shared layer owns intent, not runtime schema replacement.
 - Update this tracker when scope or hook behavior changes materially.
 
@@ -56,6 +58,7 @@ Hooks will become a common agent-native feedback loop across repositories. A sha
 - Replace the legacy Codex post-turn path with the shared `Stop` hook instead of spawning a second agent process.
 - Drop audible completion notification from the post-turn path.
 - Keep local Git hook config machine-local through `core.hooksPath`; do not change GitHub Actions workflows for this.
+- Use `scripts/hooks/session-start.sh` as the repo-owned startup context convention. The shared dispatcher owns discovery and forwarding only.
 
 ## Open Questions / Blockers
 - None.
@@ -66,7 +69,7 @@ Hooks will become a common agent-native feedback loop across repositories. A sha
 | done | Consolidate managed repo local Git commit-time check entrypoint | parent |  |
 
 ## Backlog / Remaining Work
-- [ ] Add optional repo-local `SessionStart` context injection.
+- [x] Add optional repo-local `SessionStart` context injection.
 - [ ] Decide whether Claude-only `SessionEnd` belongs in a runtime-specific extension layer.
 - [ ] Archive or refresh this tracker after the v1 validation result is recorded.
 
@@ -81,3 +84,4 @@ Hooks will become a common agent-native feedback loop across repositories. A sha
 - 2026-04-20: [DONE] Implemented v1 global `SessionStart` and `Stop` hooks for Codex and Claude; validation passed with `./scripts/check-agent-control-planes.sh`.
 - 2026-04-20: [DONE] Removed legacy Codex post-turn scripts/config and moved the git conveyor into the shared `Stop` hook; validation passed with `./scripts/test-control-plane.sh` and `./scripts/check-agent-control-planes.sh`.
 - 2026-04-20: [DONE] Consolidated managed repo local commit-time entrypoints through shared `core.hooksPath`; validation passed with `./scripts/sync-managed-git-hooks.sh --check` and `./scripts/check-agent-control-planes.sh`.
+- 2026-04-20: [DONE] Added repo-owned `SessionStart` dispatch through `scripts/hooks/session-start.sh`; Adi now delegates startup context to `dobby-memory boot`.

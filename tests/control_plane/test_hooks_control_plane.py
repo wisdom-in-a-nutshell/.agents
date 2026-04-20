@@ -125,6 +125,87 @@ class HooksControlPlaneTests(TempDirTestCase):
                 self.assertEqual(result.stdout, "")
                 self.assertEqual(result.stderr, "")
 
+    def test_session_start_runs_repo_script_from_git_root(self) -> None:
+        repo = init_git_repo(self.temp_path / "repo")
+        nested = repo / "nested"
+        nested.mkdir()
+        write_executable(
+            repo / "scripts/hooks/session-start.sh",
+            "\n".join(
+                [
+                    "#!/usr/bin/env bash",
+                    "set -euo pipefail",
+                    (
+                        "python3 -c 'import json, os, sys; "
+                        "payload = json.load(sys.stdin); "
+                        'print("repo=" + os.environ["AGENT_REPO_ROOT"]); '
+                        'print("runtime=" + os.environ["AGENT_HOOK_RUNTIME"]); '
+                        'print("cwd=" + os.getcwd()); '
+                        'print("event=" + payload["hook_event_name"])'
+                        "'"
+                    ),
+                    "",
+                ]
+            ),
+        )
+        payload = {
+            "cwd": str(nested),
+            "hook_event_name": "SessionStart",
+            "model": "gpt-5.4",
+            "session_id": "session",
+            "source": "startup",
+            "transcript_path": None,
+        }
+
+        result = subprocess.run(
+            [
+                sys.executable,
+                str(REPO_ROOT / "hooks/scripts/session_start.py"),
+                "--runtime",
+                "codex",
+            ],
+            input=json.dumps(payload),
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+
+        self.assertEqual(result.returncode, 0)
+        self.assertEqual(result.stderr, "")
+        expected_repo = repo.resolve()
+        self.assertEqual(
+            result.stdout,
+            f"repo={expected_repo}\nruntime=codex\ncwd={expected_repo}\nevent=SessionStart\n",
+        )
+
+    def test_session_start_is_silent_when_repo_script_is_absent(self) -> None:
+        repo = init_git_repo(self.temp_path / "repo")
+        payload = {
+            "cwd": str(repo),
+            "hook_event_name": "SessionStart",
+            "model": "gpt-5.4",
+            "session_id": "session",
+            "source": "startup",
+            "transcript_path": None,
+        }
+
+        result = subprocess.run(
+            [
+                sys.executable,
+                str(REPO_ROOT / "hooks/scripts/session_start.py"),
+                "--runtime",
+                "claude",
+            ],
+            input=json.dumps(payload),
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+
+        self.assertEqual(result.returncode, 0)
+        self.assertEqual(result.stdout, "")
+        self.assertEqual(result.stderr, "")
+
     def test_codex_sync_config_renders_plan_mode_and_global_hooks(self) -> None:
         root = make_control_plane_root(self.temp_path)
         home = self.temp_path / "home"

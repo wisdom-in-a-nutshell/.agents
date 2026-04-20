@@ -95,6 +95,19 @@ Preferred rule for repo bootstrap or MCP changes:
 - Codex- and Claude-specific scripts remain the low-level component entrypoints owned by `codex/` and `claude/`.
 - Update this page and the component docs together when the shared machine-facing flow changes.
 
+## Agent Session Start Contract
+
+- The global lifecycle `SessionStart` hook is defined once in [`hooks/registry.json`](/Users/dobby/.agents/hooks/registry.json) and rendered into both Codex and Claude runtime config.
+- The `SessionStart` hook runs [`hooks/scripts/session_start.py`](/Users/dobby/.agents/hooks/scripts/session_start.py).
+- `session_start.py` resolves the current git root from the hook payload `cwd`.
+- If the repo contains `scripts/hooks/session-start.sh`, the dispatcher runs that script from the repo root.
+- The repo script receives the original hook JSON on stdin and these environment variables:
+  - `AGENT_HOOK_EVENT=SessionStart`
+  - `AGENT_HOOK_RUNTIME=codex` or `claude`
+  - `AGENT_REPO_ROOT=<repo root>`
+- The repo script's stdout is forwarded as startup context for the agent. Keep it concise, deterministic, and non-interactive.
+- If the repo has no `scripts/hooks/session-start.sh`, the hook exits silently and successfully.
+
 ## Agent Commit Gate Contract
 
 - The global lifecycle `Stop` hook is defined once in [`hooks/registry.json`](/Users/dobby/.agents/hooks/registry.json) and rendered into both Codex and Claude runtime config.
