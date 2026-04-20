@@ -31,8 +31,9 @@ This file is machine-wide baseline guidance. Keep it generic and avoid portfolio
 - Avoid subagents when the task is small, tightly coupled, or likely to create conflicts through parallel edits.
 - Favor a small number of focused subagents over many broad ones.
 
-## Git Automation (Codex Notify)
-- This environment runs a notify hook after each agent turn that auto-stages, commits, and pushes.
+## Git Automation (Agent Stop Hook)
+- This environment runs a Stop hook after each agent turn that auto-stages, commits, runs repo-owned pre-commit checks through `git commit`, rebases, and pushes.
+- If repo-owned checks fail, the hook returns the failure details to the current agent so it can fix the issue in the same session.
 - Do not run `git commit` or `git push` unless the user explicitly asks.
 - Focus on making changes and reporting what changed; the hook handles the rest.
 

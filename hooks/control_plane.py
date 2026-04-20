@@ -94,9 +94,9 @@ def validate_hooks_registry_data(registry: dict[str, Any], *, label: str) -> Non
         command = hook.get("command")
         if not isinstance(command, str) or not command.strip():
             raise HookRegistryError(f"{prefix}.command must be a non-empty string")
-        if "{runtime}" not in command or "{event}" not in command:
+        if "{runtime}" not in command:
             raise HookRegistryError(
-                f"{prefix}.command must include {{runtime}} and {{event}} placeholders"
+                f"{prefix}.command must include a {{runtime}} placeholder"
             )
 
         timeout = hook.get("timeout")
@@ -197,7 +197,11 @@ def merge_claude_hooks(settings: dict[str, Any], registry: dict[str, Any]) -> di
 
 def _without_managed_groups(groups: list[Any]) -> list[Any]:
     kept: list[Any] = []
-    marker = "~/.agents/hooks/scripts/lifecycle.py"
+    markers = {
+        "~/.agents/hooks/scripts/lifecycle.py",
+        "~/.agents/hooks/scripts/session_start.py",
+        "~/.agents/hooks/scripts/stop.py",
+    }
     for group in groups:
         if not isinstance(group, dict):
             kept.append(group)
@@ -211,7 +215,7 @@ def _without_managed_groups(groups: list[Any]) -> list[Any]:
             if not isinstance(handler, dict):
                 continue
             command = handler.get("command")
-            if isinstance(command, str) and marker in command:
+            if isinstance(command, str) and any(marker in command for marker in markers):
                 has_managed_handler = True
                 break
         if not has_managed_handler:

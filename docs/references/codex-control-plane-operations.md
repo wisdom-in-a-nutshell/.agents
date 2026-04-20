@@ -92,11 +92,13 @@ Use [Codex Control Plane Ownership](/Users/dobby/.agents/docs/references/codex-c
   - expected target: `~/GitHub/scripts/setup/codex/zprofile.shared`
 - Ghostty points at the canonical Codex startup wrapper:
   - `initial-command = direct:$HOME/.agents/codex/scripts/ghostty-codex-then-shell.sh`
-- `~/.codex/config.toml` uses the local machine notify path:
-  - `notify = ["python3", "$HOME/.agents/codex/scripts/notify.py"]`
-  - successful notify runs clear stale repo-local auto-fix state under `<repo>/.codex/auto_fix/` so old `last_failure.json` reports do not keep healthy repos looking failed
+- `~/.codex/config.toml` does not use Codex `notify`; post-turn automation is rendered into `~/.codex/hooks.json` from `hooks/registry.json`.
+- The shared `Stop` hook owns the machine-wide git conveyor:
+  - stages all changes with `git add -A`
+  - commits so each repo's own pre-commit hooks/checks decide whether the change is acceptable
+  - returns hook continuation JSON with commit/check failures so the current agent can fix them
   - tracked branches use the normal `commit -> pull --rebase -> push` path
-  - brand-new branches without upstream tracking use an initial `git push -u <remote> HEAD`, so notify can publish the branch before future tracked-branch pulls
+  - brand-new branches without upstream tracking use an initial `git push -u <remote> HEAD`, so the hook can publish the branch before future tracked-branch pulls
 - `~/.codex/config.toml` and Xcode Codex config contain exact trusted repo entries for local repos such as `focus`
 - `~/.codex/config.toml` enables Codex hooks through `[features].codex_hooks = true`
 - `~/.codex/hooks.json` is rendered from `hooks/registry.json`
@@ -114,7 +116,7 @@ Use [Codex Control Plane Ownership](/Users/dobby/.agents/docs/references/codex-c
   - leaves repo-scoped custom roles to the repo bootstrap path instead of enabling them globally by default
   - keeps Apps/connectors globally disabled through the managed `features.apps = false` baseline and explicit static `plugins.*.enabled = false` entries in the canonical template where desired
   - disables selected built-in system skills in `~/.codex/config.toml` when the control plane should prefer managed skill copies instead, including currently `imagegen`, `openai-docs`, `skill-creator`, and `skill-installer`
-  - rewrites machine-specific notify and system-skill paths for the current `$HOME`
+  - rewrites machine-specific system-skill paths for the current `$HOME`
   - renders global Codex lifecycle hooks from [`hooks/registry.json`](/Users/dobby/.agents/hooks/registry.json) into `~/.codex/hooks.json`
   - strips foreign-user project and system-skill entries before writing
   - prunes stale global `apps.*` and `plugins.*` sections that are no longer present in the canonical template, so old local connector/plugin state does not stick around
@@ -272,7 +274,7 @@ Meaning:
 - machine-specific config entries were preserved from another machine
 
 Current protection:
-- [`sync-config.sh`](/Users/dobby/.agents/codex/scripts/sync-config.sh) now rewrites local notify/system-skill paths and strips foreign-user project entries before applying
+- [`sync-config.sh`](/Users/dobby/.agents/codex/scripts/sync-config.sh) now rewrites local system-skill paths and strips foreign-user project entries before applying
 
 Fix:
 - rerun `~/.agents/codex/scripts/bootstrap-machine-codex.sh --apply`

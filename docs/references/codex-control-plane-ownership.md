@@ -50,7 +50,7 @@ Use [Codex Control Plane](/Users/dobby/.agents/docs/architecture/codex-control-p
 
 - managed `config.toml` sections sourced from canonical files in `~/.agents`
 - runtime-facing script entrypoints that Codex invokes directly
-- any generated wrappers needed for notify or apply flows
+- any generated wrappers needed for hook or apply flows
 
 ### Keep Repo-Local
 
@@ -64,7 +64,7 @@ Use [Codex Control Plane](/Users/dobby/.agents/docs/architecture/codex-control-p
 ### `~/.codex`
 
 - [config.toml](/Users/dobby/.codex/config.toml): live machine config; target is generated/applied, not hand-owned as the canonical source.
-- live `config.toml` now points at the canonical notify source in [notify.py](/Users/dobby/.agents/codex/scripts/notify.py).
+- live `config.toml` no longer owns post-turn automation; `~/.codex/hooks.json` is rendered from [hooks/registry.json](/Users/dobby/.agents/hooks/registry.json).
 - `~/.codex` is now runtime-only; repo-only files such as `.git`, `.gitignore`, nested `.codex/config.toml`, and repo-router docs can be removed.
 - [vendor_imports/skills](/Users/dobby/.codex/vendor_imports/skills): runtime-managed nested Git checkout from `openai/skills`; do not delete or flatten it during runtime cleanup.
 

@@ -1,8 +1,12 @@
 from __future__ import annotations
 
 import json
+import importlib.util
+import os
 import subprocess
 import sys
+from types import SimpleNamespace
+from unittest.mock import patch
 
 from hooks.control_plane import (
     HookRegistryError,
@@ -15,15 +19,26 @@ from tests.control_plane.support import (
     TempDirTestCase,
     default_mcp_registry,
     external_researcher_agent,
+    init_git_repo,
     make_control_plane_root,
     read_json,
     run_command,
+    write_executable,
     write_json,
 )
 
 
 class HooksControlPlaneTests(TempDirTestCase):
-    def test_registry_renders_codex_and_claude_lifecycle_hooks(self) -> None:
+    def load_stop_module(self):  # noqa: ANN201
+        stop_path = REPO_ROOT / "hooks/scripts/stop.py"
+        spec = importlib.util.spec_from_file_location("hooks_stop", stop_path)
+        if spec is None or spec.loader is None:
+            raise AssertionError(f"Failed to load Stop hook module from {stop_path}")
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        return module
+
+    def test_registry_renders_codex_and_claude_hooks(self) -> None:
         registry = load_hooks_registry(REPO_ROOT / "hooks/registry.json")
 
         codex_hooks = render_codex_hooks(registry)
@@ -38,7 +53,11 @@ class HooksControlPlaneTests(TempDirTestCase):
         self.assertNotIn("matcher", codex_hooks["hooks"]["Stop"][0])
         self.assertEqual(
             codex_hooks["hooks"]["Stop"][0]["hooks"][0]["command"],
-            "python3 ~/.agents/hooks/scripts/lifecycle.py --runtime codex --event Stop",
+            "python3 ~/.agents/hooks/scripts/stop.py --runtime codex",
+        )
+        self.assertEqual(
+            codex_hooks["hooks"]["Stop"][0]["hooks"][0]["timeout"],
+            900,
         )
 
         claude_settings = merge_claude_hooks({"permissions": {"defaultMode": "bypassPermissions"}}, registry)
@@ -48,7 +67,7 @@ class HooksControlPlaneTests(TempDirTestCase):
         )
         self.assertEqual(
             claude_settings["hooks"]["Stop"][0]["hooks"][0]["command"],
-            "python3 ~/.agents/hooks/scripts/lifecycle.py --runtime claude --event Stop",
+            "python3 ~/.agents/hooks/scripts/stop.py --runtime claude",
         )
 
     def test_registry_rejects_unsupported_runtime(self) -> None:
@@ -58,7 +77,7 @@ class HooksControlPlaneTests(TempDirTestCase):
             {
                 "managed_hooks": [
                     {
-                        "command": "python3 hook.py --runtime {runtime} --event {event}",
+                        "command": "python3 hook.py --runtime {runtime}",
                         "enabled": True,
                         "event": "Stop",
                         "id": "bad-runtime",
@@ -74,7 +93,12 @@ class HooksControlPlaneTests(TempDirTestCase):
         with self.assertRaises(HookRegistryError):
             load_hooks_registry(registry_path)
 
-    def test_lifecycle_runner_is_silent_success_for_supported_events(self) -> None:
+    def test_hook_runners_are_silent_on_success(self) -> None:
+        script_by_event = {
+            "SessionStart": REPO_ROOT / "hooks/scripts/session_start.py",
+            "Stop": REPO_ROOT / "hooks/scripts/stop.py",
+        }
+        home = self.temp_path / "home"
         for runtime in ("codex", "claude"):
             for event in ("SessionStart", "Stop"):
                 payload = {
@@ -87,13 +111,12 @@ class HooksControlPlaneTests(TempDirTestCase):
                 result = subprocess.run(
                     [
                         sys.executable,
-                        str(REPO_ROOT / "hooks/scripts/lifecycle.py"),
+                        str(script_by_event[event]),
                         "--runtime",
                         runtime,
-                        "--event",
-                        event,
                     ],
                     input=json.dumps(payload),
+                    env={**os.environ, "HOME": str(home)},
                     capture_output=True,
                     text=True,
                     check=False,
@@ -140,9 +163,100 @@ class HooksControlPlaneTests(TempDirTestCase):
         self.assertIn('model_reasoning_effort = "high"', rendered_config)
         self.assertIn('plan_mode_reasoning_effort = "high"', rendered_config)
         self.assertIn("codex_hooks = true", rendered_config)
+        self.assertNotIn("notify =", rendered_config)
 
         hooks = read_json(home / ".codex/hooks.json")
         self.assertEqual(
             hooks["hooks"]["Stop"][0]["hooks"][0]["command"],
-            "python3 ~/.agents/hooks/scripts/lifecycle.py --runtime codex --event Stop",
+            "python3 ~/.agents/hooks/scripts/stop.py --runtime codex",
         )
+
+    def test_stop_hook_has_tracking_upstream_false_for_new_local_branch(self) -> None:
+        module = self.load_stop_module()
+        remote = init_git_repo(self.temp_path / "remote.git")
+        run_command(["git", "-C", str(remote), "config", "receive.denyCurrentBranch", "updateInstead"])
+        repo = init_git_repo(self.temp_path / "repo", with_initial_commit=True)
+        run_command(["git", "-C", str(repo), "remote", "add", "origin", str(remote)])
+        run_command(["git", "-C", str(repo), "push", "-u", "origin", "main"])
+        run_command(["git", "-C", str(repo), "checkout", "-b", "feature/test"])
+
+        self.assertFalse(module.has_tracking_upstream(str(repo)))
+
+    def test_stop_hook_uses_initial_push_for_branch_without_upstream(self) -> None:
+        module = self.load_stop_module()
+        remote = init_git_repo(self.temp_path / "remote.git")
+        run_command(["git", "-C", str(remote), "config", "receive.denyCurrentBranch", "updateInstead"])
+        repo = init_git_repo(self.temp_path / "repo", with_initial_commit=True)
+        run_command(["git", "-C", str(repo), "remote", "add", "origin", str(remote)])
+        run_command(["git", "-C", str(repo), "push", "-u", "origin", "main"])
+        run_command(["git", "-C", str(repo), "checkout", "-b", "feature/test"])
+        (repo / "note.txt").write_text("hello\n", encoding="utf-8")
+
+        with patch.object(module, "log"):
+            output = module.process_repo(str(repo), {"hook_event_name": "Stop"}, runtime="codex")
+
+        self.assertIsNone(output)
+        upstream = run_command(
+            [
+                "git",
+                "-C",
+                str(repo),
+                "rev-parse",
+                "--abbrev-ref",
+                "--symbolic-full-name",
+                "@{upstream}",
+            ]
+        )
+        self.assertEqual(upstream.stdout.strip(), "origin/feature/test")
+
+    def test_stop_hook_uses_pull_for_branch_with_upstream(self) -> None:
+        module = self.load_stop_module()
+        repo = init_git_repo(self.temp_path / "repo", with_initial_commit=True)
+        captured_commands: list[list[str]] = []
+
+        def fake_run(args, cwd, *, timeout, env=None):  # noqa: ANN001, ARG001
+            captured_commands.append(list(args))
+            if args[:3] == ["git", "status", "--porcelain"]:
+                return SimpleNamespace(returncode=0, stdout=" M file.txt\n", stderr="")
+            if args[:4] == ["git", "symbolic-ref", "--quiet", "--short"]:
+                return SimpleNamespace(returncode=0, stdout="main\n", stderr="")
+            if args[:3] == ["git", "config", "--get"]:
+                return SimpleNamespace(returncode=0, stdout="origin\n", stderr="")
+            if args[:4] == ["git", "rev-parse", "--abbrev-ref", "--symbolic-full-name"]:
+                return SimpleNamespace(returncode=0, stdout="origin/main\n", stderr="")
+            return SimpleNamespace(returncode=0, stdout="", stderr="")
+
+        with patch.object(module, "run", side_effect=fake_run):
+            with patch.object(module, "is_git_repo", return_value=True):
+                with patch.object(module, "has_in_progress_ops", return_value=False):
+                    with patch.object(module, "clear_stale_index_lock", return_value=True):
+                        with patch.object(module, "log"):
+                            output = module.process_repo(
+                                str(repo),
+                                {"hook_event_name": "Stop"},
+                                runtime="codex",
+                            )
+
+        self.assertIsNone(output)
+        self.assertIn(["git", "pull", "--rebase"], captured_commands)
+        self.assertIn(["git", "push", "origin", "HEAD"], captured_commands)
+        self.assertNotIn(["git", "push", "-u", "origin", "HEAD"], captured_commands)
+
+    def test_stop_hook_blocks_on_pre_commit_failure(self) -> None:
+        module = self.load_stop_module()
+        repo = init_git_repo(self.temp_path / "repo", with_initial_commit=True)
+        write_executable(
+            repo / ".git/hooks/pre-commit",
+            "#!/bin/sh\nprintf 'repo check failed\\n' >&2\nexit 1\n",
+        )
+        (repo / "note.txt").write_text("hello\n", encoding="utf-8")
+
+        with patch.object(module, "log"):
+            output = module.process_repo(str(repo), {"hook_event_name": "Stop"}, runtime="codex")
+
+        self.assertIsNotNone(output)
+        assert output is not None
+        self.assertEqual(output["decision"], "block")
+        self.assertIn("git commit / pre-commit checks", output["reason"])
+        self.assertIn("repo check failed", output["reason"])
+        self.assertIn("Please fix the issue", output["reason"])

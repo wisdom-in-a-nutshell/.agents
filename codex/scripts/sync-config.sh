@@ -23,7 +23,6 @@ CANONICAL_GLOBAL_TEMPLATE="${CANONICAL_DIR}/global.config.toml"
 CANONICAL_AGENTS_DIR="${CANONICAL_DIR}/agents"
 CANONICAL_XCODE_TEMPLATE="${CANONICAL_DIR}/xcode.config.toml"
 CANONICAL_XCODE_RULES_TEMPLATE="${CANONICAL_DIR}/xcode.rules"
-NOTIFY_SCRIPT_PATH="${HOME}/.agents/codex/scripts/notify.py"
 CODEX_SKILLS_DISABLE_PATHS=(
   "${HOME}/.codex/skills/.system/imagegen/SKILL.md"
   "${HOME}/.codex/skills/.system/openai-docs/SKILL.md"
@@ -592,7 +591,6 @@ render_global_config() {
   local mcp_registry_file="$3"
   local agent_registry_file="$4"
   local section key value
-  local notify_value
 
   while IFS=$'\x1f' read -r section key value; do
     [[ -n "$key" ]] || continue
@@ -608,8 +606,8 @@ render_global_config() {
     upsert_section_key "$target_file" "$section" "$key" "$value"
   done < <(extract_global_mcp_entries "$mcp_registry_file")
 
-  notify_value="[\"python3\", $(quote_toml_string "$NOTIFY_SCRIPT_PATH")]"
-  upsert_top_level_key "$target_file" "notify" "$notify_value"
+  # Codex turn-end automation now lives in hooks/registry.json -> Stop.
+  remove_top_level_key "$target_file" "notify"
 
   # service_tier should follow the canonical template; if it is removed there,
   # prune stale copies from older live configs.

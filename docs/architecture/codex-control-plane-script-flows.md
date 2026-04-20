@@ -129,21 +129,26 @@ flowchart TD
 
 ```mermaid
 flowchart TD
-    A[Codex turn completes] --> B[notify.py]
-    B --> C[git add / commit / tracked branch: pull --rebase + push]
-    B --> D1[new branch without upstream: push -u]
-    B --> D[auto-fix guard]
-    D --> E[codex exec -p autofix]
+    A[Agent turn reaches Stop] --> B[hooks/scripts/stop.py]
+    B --> C[git add -A]
+    C --> D[git commit runs repo-owned pre-commit]
+    D --> E{commit succeeded?}
+    E -->|no| F[return hook block with failure details]
+    E -->|yes, tracked branch| G[git pull --rebase]
+    G --> H[git push remote HEAD]
+    E -->|yes, no upstream| I[git push -u remote HEAD]
 ```
 
 ### What This Group Does
 
-- [`notify.py`](/Users/dobby/.agents/codex/scripts/notify.py)
-  - runs after a Codex turn and automates the git loop
-  - for tracked branches, it commits then runs `git pull --rebase` followed by push
-  - for brand-new local branches without upstream tracking, it skips the ambiguous pull and uses `git push -u <remote> HEAD` to establish upstream automatically
-- [`notify-wrapper.sh`](/Users/dobby/.agents/codex/scripts/notify-wrapper.sh)
-  - thin shell entrypoint that logs and calls `notify.py`
+- [`stop.py`](/Users/dobby/.agents/hooks/scripts/stop.py)
+  - runs as the shared Codex and Claude `Stop` hook
+  - stages all repo changes and lets `git commit` run that repo's own pre-commit checks
+  - if commit checks fail, returns hook continuation JSON with the failure output so the current agent can fix it
+  - for tracked branches, commits then runs `git pull --rebase` followed by push
+  - for brand-new local branches without upstream tracking, uses `git push -u <remote> HEAD` to establish upstream automatically
+- [`session_start.py`](/Users/dobby/.agents/hooks/scripts/session_start.py)
+  - shared no-op `SessionStart` hook; kept silent unless a future milestone intentionally adds startup context
 
 ## Figure 5: Optional Machine Policy Script
 

@@ -77,8 +77,9 @@ flowchart TD
     I --> J[Codex CLI]
     D[~/.codex/config.toml] --> J
     E[Repo-local .codex/config.toml] --> J
-    J --> F[notify.py]
-    F --> G[git automation]
+    K[~/.codex/hooks.json] --> J
+    J --> F[Stop hook]
+    F --> G[git add / commit / pull --rebase / push]
 ```
 
 ## Main Parts

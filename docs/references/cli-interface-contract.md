@@ -6,7 +6,7 @@ The repo has three CLI classes:
 
 - Agent-facing clients: stable commands that agents may call directly as productized repo operations.
 - Machine-facing orchestration scripts: deterministic bootstrap, sync, check, and reconcile helpers called by automation.
-- Runtime helpers: narrow scripts for Ghostty, notify hooks, shell startup, or machine-local setup.
+- Runtime helpers: narrow scripts for Ghostty, lifecycle hooks, shell startup, or machine-local setup.
 
 Because agents are the primary operators of this repo, new top-level feature commands should default to the agent-facing client contract unless they are clearly internal renderers or runtime helpers.
 
