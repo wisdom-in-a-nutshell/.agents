@@ -1,10 +1,10 @@
 # Codex Control Plane
 
-This repo is becoming the canonical personal control plane for Codex across both machines. The core idea is simple: keep the durable source of truth in `~/.agents`, keep the live runtime home in `~/.codex`, and keep `~/GitHub/scripts` limited to generic machine bootstrap plus shared shell glue that is not Codex-owned.
+This repo is the canonical personal control plane for Codex across both machines. The core idea is simple: keep the durable source of truth in `~/.agents`, keep the live runtime home in `~/.codex`, and keep `~/GitHub/scripts` limited to generic machine bootstrap plus shared shell glue that is not Codex-owned.
 
 That split keeps Codex-specific policy, repo assignment, shared MCP presets, skills, docs, and managed scripts in one synced place without pretending that auth, sessions, logs, or runtime databases belong in git.
 
-The newest part of that control plane is the plugin-source extraction layer plus the repo bootstrap registry in `~/.agents/codex/config/repo-bootstrap.json`.
+The control plane includes plugin-source extraction plus the repo bootstrap registry in `~/.agents/codex/config/repo-bootstrap.json`.
 
 Plugin source packages now live under `~/.agents/plugins-source/`. They are not the runtime abstraction. Instead, the control plane mirrors upstream plugin bundles there, then extracts:
 
@@ -92,7 +92,7 @@ Owns the durable, synced source of truth for Codex-specific setup:
 - plugin source registry and plugin source packages
 - Codex-specific scripts and wrappers
 - skills, references, and architecture docs
-- migration and ownership documentation
+- ownership and operations documentation
 
 This is the repo a future agent should edit first when changing personal Codex behavior across machines.
 
@@ -104,7 +104,7 @@ Owns only generic machine bootstrap and shared shell glue that is broader than C
 - non-Codex launchd/install helpers
 - shared shell files that source Codex fragments from `~/.agents`
 
-This repo should remain useful for bootstrapping a fresh machine, but it should stop owning Codex-specific wrappers, templates, and policy.
+This repo remains useful for bootstrapping a fresh machine, but Codex-specific wrappers, templates, and policy live in `~/.agents`.
 
 ### `~/.codex`
 

@@ -1,6 +1,6 @@
 # Unified Codex And Claude Agent Model
 
-This repo is trying to do one simple thing: keep one shared control-plane idea for agent roles, while still rendering the right runtime artifacts for Codex and Claude.
+This repo keeps one shared control-plane idea for agent roles while still rendering the right runtime artifacts for Codex and Claude.
 
 The important rule is that the intent can be unified, but the final files cannot. Codex agents are declared through `config.toml` plus TOML role layers. Claude subagents are Markdown files in `.claude/agents/` or `~/.claude/agents/`.
 

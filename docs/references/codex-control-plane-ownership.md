@@ -1,6 +1,6 @@
 # Codex Control Plane Ownership
 
-This document is the exact ownership reference for the Codex control-plane migration.
+This document is the exact ownership reference for the Codex control plane.
 
 Use [Codex Control Plane](/Users/dobby/.agents/docs/architecture/codex-control-plane.md) for the high-level shape and this file for concrete keep / move / generate decisions.
 
@@ -15,7 +15,7 @@ Use [Codex Control Plane](/Users/dobby/.agents/docs/architecture/codex-control-p
 
 ### Keep in `~/.agents`
 
-- Codex architecture docs and migration trackers
+- Codex architecture and ownership docs
 - Codex-specific managed scripts
 - plugin source registry plus mirrored or owned plugin source packages
 - canonical config fragments and presets
@@ -89,16 +89,9 @@ Use [Codex Control Plane](/Users/dobby/.agents/docs/architecture/codex-control-p
 - [plugins/registry.json](/Users/dobby/.agents/plugins/registry.json): canonical plugin source registry for upstream bundles that feed shared skills and MCP.
 - [codex/scripts/install-sudoers-codex-ops.sh](/Users/dobby/.agents/codex/scripts/install-sudoers-codex-ops.sh): canonical Codex sudoers installer.
 
-## Migration Intent
+## Ongoing Direction
 
-Short term:
-
-- add the canonical Codex control-plane folder under `~/.agents`
-- move the first durable Codex-managed assets there
-- move remaining Codex-specific setup wrappers and helpers out of `~/GitHub/scripts`
-- keep only generic shared shell bootstrap in `~/GitHub/scripts/setup/codex/` and source Codex-specific shell behavior from `~/.agents`
-
-Later:
-
-- remove remaining duplicated Codex policy from `~/GitHub/scripts`
-- reduce `~/.codex` to a cleaner applied runtime home
+- Keep `~/.agents` as the durable source for Codex policy, config templates, managed scripts, skills, plugins, MCPs, agents, and repo bootstrap state.
+- Keep `~/GitHub/scripts` focused on generic machine bootstrap and shared shell glue that can call into this control plane.
+- Keep `~/.codex` as an applied runtime home for auth, sessions, generated config, logs, caches, and runtime-managed vendor imports.
+- Move any newly discovered durable Codex policy out of runtime paths and into this repo.

@@ -8,12 +8,21 @@ The repo has three CLI classes:
 - Machine-facing orchestration scripts: deterministic bootstrap, sync, check, and reconcile helpers called by automation.
 - Runtime helpers: narrow scripts for Ghostty, notify hooks, shell startup, or machine-local setup.
 
+Because agents are the primary operators of this repo, new top-level feature commands should default to the agent-facing client contract unless they are clearly internal renderers or runtime helpers.
+
 ## Agent-Facing Clients
 
 Current agent-facing clients:
 
 - `scripts/bootstrap-skill.sh`
 - `scripts/bootstrap-plugin.sh`
+
+Recommended promotion priority:
+
+- New feature entrypoints that agents call directly should be born as agent-facing clients.
+- Existing bootstrap/import commands should be promoted when agents need to inspect structured outcomes programmatically.
+- Aggregate validation may stay plain-text while it is used as a pass/fail gate; add JSON only when another tool needs to consume detailed status.
+- Low-level renderers and runtime helpers should stay simple unless their output becomes a machine data API.
 
 These commands must follow the machine-primary contract:
 
@@ -53,7 +62,7 @@ Examples:
 - `codex/scripts/bootstrap-machine-codex.sh`
 - `claude/scripts/bootstrap-machine-claude.sh`
 
-These scripts are automation surfaces, but they are not required to expose the full JSON contract unless they become productized agent-facing clients.
+These scripts are automation surfaces, but they are not required to expose the full JSON contract unless they become productized agent-facing clients or another command needs to consume their detailed output.
 
 They must still be agent-safe:
 
@@ -79,4 +88,4 @@ Runtime helpers can stay narrow and shell-native, but they should still be predi
 
 ## Future Rule
 
-When a new feature adds a CLI, decide its class before implementation. If agents will call it directly to make decisions, use the agent-facing JSON contract from the start.
+When a new feature adds a CLI, decide its class before implementation. If agents will call it directly to make decisions, use the agent-facing JSON contract from the start. If the command only applies or validates control-plane state as part of a larger wrapper, keep it deterministic, non-interactive, and easy to test.

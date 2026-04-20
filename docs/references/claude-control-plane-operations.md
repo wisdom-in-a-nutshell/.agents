@@ -56,7 +56,7 @@ Use [Claude Control Plane](/Users/dobby/.agents/docs/architecture/claude-control
 
 ## Command Surface
 
-The Claude control plane is intended to follow the same sync/check pattern as Codex, with scripts living under `claude/scripts/`:
+The Claude control plane follows the same sync/check pattern as Codex, with scripts living under `claude/scripts/`:
 
 - `claude/scripts/*.sh` are thin shell entrypoints
   - they delegate to `python3 -m claude.control_plane.<module>`
@@ -113,7 +113,7 @@ The Claude control plane is intended to follow the same sync/check pattern as Co
 
 ## Expected Repo Diffs
 
-- The first successful Claude bootstrap on a machine may create or update repo-local compatibility files in managed repos.
+- A Claude bootstrap on a machine may create or update repo-local compatibility files in managed repos.
 - Common examples are:
   - repo `CLAUDE.md`
   - repo `.claude/settings.json`
