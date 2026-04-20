@@ -173,9 +173,17 @@ class HooksControlPlaneTests(TempDirTestCase):
         self.assertEqual(result.returncode, 0)
         self.assertEqual(result.stderr, "")
         expected_repo = repo.resolve()
+        output = json.loads(result.stdout)
         self.assertEqual(
-            result.stdout,
-            f"repo={expected_repo}\nruntime=codex\ncwd={expected_repo}\nevent=SessionStart\n",
+            output,
+            {
+                "hookSpecificOutput": {
+                    "additionalContext": (
+                        f"repo={expected_repo}\nruntime=codex\ncwd={expected_repo}\nevent=SessionStart\n"
+                    ),
+                    "hookEventName": "SessionStart",
+                }
+            },
         )
 
     def test_session_start_is_silent_when_repo_script_is_absent(self) -> None:

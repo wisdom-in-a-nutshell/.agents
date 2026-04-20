@@ -13,6 +13,7 @@ from typing import Any
 VALID_RUNTIMES = {"codex", "claude"}
 REPO_SESSION_START = Path("scripts/hooks/session-start.sh")
 GIT_ROOT_TIMEOUT_SEC = 5
+MAX_CONTEXT_CHARS = 12000
 
 
 def parse_args() -> argparse.Namespace:
@@ -99,10 +100,29 @@ def run_repo_session_start(
         return 0
 
     if result.stdout:
-        sys.stdout.write(result.stdout)
+        context = truncate_text(result.stdout, MAX_CONTEXT_CHARS)
+        sys.stdout.write(
+            json.dumps(
+                {
+                    "hookSpecificOutput": {
+                        "additionalContext": context,
+                        "hookEventName": "SessionStart",
+                    }
+                },
+                sort_keys=True,
+            )
+        )
+        sys.stdout.write("\n")
     if result.stderr:
         sys.stderr.write(result.stderr)
     return result.returncode
+
+
+def truncate_text(text: str, limit: int) -> str:
+    if len(text) <= limit:
+        return text
+    suffix = "\n...[truncated]"
+    return text[: max(0, limit - len(suffix))] + suffix
 
 
 def main() -> int:
