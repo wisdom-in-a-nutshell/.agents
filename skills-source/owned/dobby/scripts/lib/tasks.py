@@ -591,6 +591,10 @@ def _as_ref(target: str) -> str:
     return f'to do named "{_esc_as(target)}"'
 
 
+def _looks_like_things_id(target: str) -> bool:
+    return bool(re.match(r"^[A-Za-z0-9]{15,}$", target))
+
+
 def _resolve_id(target: str) -> str:
     """Resolve a target (name or ID) to a Things 3 task ID."""
     if re.match(r"^[A-Za-z0-9]{15,}$", target):
@@ -975,15 +979,27 @@ def cmd_delete(args: argparse.Namespace) -> int:
     if not args.yes:
         return emit_json(env.err("E_VALIDATION", "delete is destructive; pass --yes to confirm", hint="Deliberate safety gate"))
     ref = _as_ref(args.target)
-    try:
-        name = run_applescript(f'''tell application "Things3"
+    script = f'''tell application "Things3"
     set t to {ref}
     set n to name of t
     delete t
     return n
-end tell''')
+end tell'''
+    try:
+        name = run_applescript(script)
     except Things3Error as e:
-        return emit_json(env.err(_err_code(e), str(e)))
+        if not _looks_like_things_id(args.target):
+            return emit_json(env.err(_err_code(e), str(e)))
+        logbook_ref = f'to do id "{_esc_as(args.target)}" of list "Logbook"'
+        logbook_script = f'''tell application "Things3"
+    set n to name of ({logbook_ref})
+    delete ({logbook_ref})
+    return n
+end tell'''
+        try:
+            name = run_applescript(logbook_script)
+        except Things3Error:
+            return emit_json(env.err(_err_code(e), str(e)))
     if not args.plain:
         return emit_json(env.ok({"target": args.target, "name": name}))
     return emit_text(f"deleted: {name}")

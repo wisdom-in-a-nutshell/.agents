@@ -89,6 +89,8 @@ No file-based alternative — always via CLI.
 Read commands return a fast summary shape by default. Use `--verbose` only when full fields such as notes and timestamps are needed. Create commands avoid slow read-back by default; pass `--resolve` when full created-object data is worth the latency.
 Add `--plain` for compact inspection output.
 
+`delete` can remove open tasks by name/ID and completed Logbook tasks by exact ID. Use `search --include-completed` first when cleaning old test artifacts.
+
 ## Calendar
 
 Calendar operations use `dobby-calendar` (EventKit via `ical`). Default calendar: `adithyan@wisdominanutshell.academy`. Search/list commands should be date-bounded.
@@ -120,15 +122,15 @@ RUN_LIVE=1 bash /Users/adi/.agents/skills-source/owned/dobby/tests/run.sh
 bash /Users/adi/.agents/skills-source/owned/dobby/tests/run.sh tasks live
 bash /Users/adi/.agents/skills-source/owned/dobby/tests/run.sh calendar live
 
-# Cleanup stale open Things 3 DOBBY-TEST-* artifacts without running live suites.
+# Cleanup stale Things 3 DOBBY-TEST-* artifacts without running live suites.
 SWEEP_THINGS=1 bash /Users/adi/.agents/skills-source/owned/dobby/tests/run.sh
 ```
 
 Rules for agents:
 - Run the default cheap suite for normal Dobby script/doc changes.
 - Run live suites only when touching Things 3 writes, Calendar writes, backend integration, or before closing a risky refactor.
-- Live Things tests use `DOBBY-TEST-*` task titles and sweep open leftovers before/after selected live task runs.
-- Do not mark synthetic Things test tasks `done`: Things keeps completed items in Logbook and AppleScript cannot reliably purge them one-by-one.
+- Live Things tests use `DOBBY-TEST-*` task titles and sweep leftovers before/after selected live task runs.
+- Do not mark synthetic Things test tasks `done`: even though known `DOBBY-TEST-*` IDs can be purged, live tests should avoid creating completed Logbook artifacts in the first place.
 - Do not add real external writes to non-live test files. Put write-path coverage in `*/live.sh`.
 
 ## Diff and history

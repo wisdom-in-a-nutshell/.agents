@@ -98,4 +98,9 @@ run_dobby tasks search "$PREFIX"
 assert_envelope_ok "tasks.search cleanup" "$CAPTURED_STDOUT"
 assert_jq_eq "no open tasks remain" '.data.count' "0" "$CAPTURED_STDOUT"
 
+section "post-cleanup: no completed test tasks remain"
+run_dobby tasks search "$PREFIX" --include-completed
+assert_envelope_ok "tasks.search cleanup include-completed" "$CAPTURED_STDOUT"
+assert_jq_eq "no completed/logbook tasks remain" '.data.count' "0" "$CAPTURED_STDOUT"
+
 finish_test "tasks/live.sh"
