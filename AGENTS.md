@@ -48,54 +48,22 @@ Personal agent, Codex, and Claude control plane.
   - `docs/references/registry/mcp-registry.base`
   - `docs/references/registry/mcp-registry-items/`
 
-## Operations
+## Key Entry Points
 
-- Dry-run machine-facing agent bootstrap batch: `./scripts/bootstrap-machine-agent-control-planes.sh`
-- Apply machine-facing agent bootstrap batch: `./scripts/bootstrap-machine-agent-control-planes.sh --apply`
-  - Syncs managed skill links, plugin-derived skills/MCP state, plus the Codex and Claude control-plane runtimes from one stable `~/.agents` entrypoint.
-- Dry-run post-sync agent control-plane reconcile: `./scripts/auto-apply-agent-control-planes.sh --dry-run`
-- Apply post-sync agent control-plane reconcile: `./scripts/auto-apply-agent-control-planes.sh --apply`
-  - Detects runtime-relevant changes in `skills/`, `skills-source/`, `mcp/`, `codex/`, and `claude/`, then runs the necessary shared apply steps.
-- Validate shared skills + Codex + Claude rendered state: `./scripts/check-agent-control-planes.sh`
-- Run hermetic control-plane regression tests: `./scripts/test-control-plane.sh`
-- Dry-run skill bootstrap: `./scripts/bootstrap-skill.sh <skills.sh-url-or-upstream-ref> --repo <repo>`
-- Apply skill bootstrap: `./scripts/bootstrap-skill.sh <skills.sh-url-or-upstream-ref> --repo <repo> --apply`
-  - Bootstraps a managed external skill by updating `skills/registry.json`, importing upstream source, syncing links, and regenerating derived registry artifacts.
-- Dry-run sync: `./scripts/sync-skills-registry.sh`
-- Apply sync: `./scripts/sync-skills-registry.sh --apply`
-  - Sync applies desired managed links and prunes obsolete managed global runtime links.
-- Validate generated registry artifacts: `./scripts/check-skills-registry.sh`
-- Dry-run external upstream refresh: `./scripts/refresh-external-skills.sh`
-- Apply external upstream refresh: `./scripts/refresh-external-skills.sh --apply`
-  - Refresh preserves local `agents/openai.yaml` inside external skill folders.
-- Dry-run plugin sync: `./scripts/sync-plugins-registry.sh`
-- Apply plugin sync: `./scripts/sync-plugins-registry.sh --apply`
-  - Sync validates `plugins/registry.json`, regenerates the Obsidian registry views, and refreshes plugin-derived skills plus MCP state.
-- Validate generated plugin registry artifacts: `./scripts/check-plugins-registry.sh`
-- Dry-run external plugin refresh: `./scripts/refresh-external-plugins.sh`
-- Apply external plugin refresh: `./scripts/refresh-external-plugins.sh --apply`
-  - Refresh preserves local `agents/openai.yaml` inside external plugin source folders.
-- Dry-run plugin bootstrap: `./scripts/bootstrap-plugin.sh <plugin-name-or-id>`
-- Apply plugin bootstrap: `./scripts/bootstrap-plugin.sh <plugin-name-or-id> --apply`
-  - Bootstraps a managed plugin source by updating `plugins/registry.json`, refreshing upstream source, regenerating plugin-derived registry artifacts, and applying shared skills plus Codex and Claude bootstraps.
-- Dry-run Codex config apply: `./codex/scripts/sync-config.sh`
-- Apply Codex config: `./codex/scripts/sync-config.sh --apply`
-- Dry-run Codex global AGENTS apply: `./codex/scripts/sync-global-agents-md.sh`
-- Apply Codex global AGENTS apply: `./codex/scripts/sync-global-agents-md.sh --apply`
-- Dry-run Codex trust sync: `./codex/scripts/sync-trusted-projects.sh`
-- Apply Codex trust sync: `./codex/scripts/sync-trusted-projects.sh --apply`
-- Rebuild Codex repo bootstrap Base artifacts: `./codex/scripts/sync-repo-bootstrap-registry.sh`
-- Apply managed repo-local Codex configs: `./codex/scripts/sync-repo-codex-configs.sh --apply`
-- Dry-run Claude bootstrap batch: `./claude/scripts/bootstrap-machine-claude.sh`
-- Apply Claude bootstrap batch: `./claude/scripts/bootstrap-machine-claude.sh --apply`
-- Claude bootstrap now validates rendered state at the end of the batch.
-- Validate Claude control-plane inputs + rendered runtimes: `./claude/scripts/check-claude-control-plane.sh`
-- Dry-run Codex bootstrap batch: `./codex/scripts/bootstrap-machine-codex.sh`
-- Apply Codex bootstrap batch: `./codex/scripts/bootstrap-machine-codex.sh --apply`
-  - This applies the Codex control-plane outputs only; the shared shell links still live in `~/GitHub/scripts`.
-- Link shared zshrc: `~/GitHub/scripts/setup/codex/link-shared-zshrc.sh --apply`
-- Link shared zprofile: `~/GitHub/scripts/setup/codex/link-shared-zprofile.sh --apply`
-- Validate Codex control-plane inputs + rendered runtimes: `./codex/scripts/check-codex-control-plane.sh`
+- Apply all shared agent control planes: `./scripts/bootstrap-machine-agent-control-planes.sh --apply`
+- Reconcile after git sync: `./scripts/auto-apply-agent-control-planes.sh --apply`
+- Validate shared skills, plugins, Codex, Claude, and regression tests: `./scripts/check-agent-control-planes.sh`
+- Run hermetic regression tests only: `./scripts/test-control-plane.sh`
+- Bootstrap external skills/plugins through the agent-facing clients:
+  - `./scripts/bootstrap-skill.sh <skills.sh-url-or-upstream-ref> --repo <repo>`
+  - `./scripts/bootstrap-plugin.sh <plugin-name-or-id> --repo <repo>`
+
+Detailed operations live in:
+
+- `docs/references/agent-control-plane-operations.md`
+- `docs/references/codex-control-plane-operations.md`
+- `docs/references/claude-control-plane-operations.md`
+- `docs/references/cli-interface-contract.md`
 
 ## Automation Cadence
 
@@ -120,6 +88,7 @@ Personal agent, Codex, and Claude control plane.
 - Keep repo-local plugins listed in `plugins/registry.json` under `unmanaged_repo_local_plugins`.
 - Do not add additional manifest files for skill mapping; update `skills/registry.json`.
 - Do not add additional manifest files for plugin mapping; update `plugins/registry.json`.
+- New or promoted agent-facing CLI clients must follow `docs/references/cli-interface-contract.md`.
 - If `skills/registry.json` changes, run sync/check in the same change.
 - If `plugins/registry.json` changes, run plugin sync/check in the same change.
 - Do not hand-edit generated repo-local `.codex/config.toml` files in managed repos; update `codex/config/repo-bootstrap.json` and re-run the sync scripts.

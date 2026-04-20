@@ -89,6 +89,6 @@ So the system is eventually consistent, not instantly consistent.
 - let the 15-minute sync loop apply it automatically
 
 If you want the next level of detail after this page:
-- read [Agent Control-Plane Operations](/Users/adi/.agents/docs/references/agent-control-plane-operations.md)
-- then read [Codex Control Plane Operations](/Users/dobby/.agents/docs/references/codex-control-plane-operations.md)
-- then read [Claude Control Plane Operations](/Users/adi/.agents/docs/references/claude-control-plane-operations.md)
+- read [Agent Control-Plane Operations](../references/agent-control-plane-operations.md)
+- then read [Codex Control Plane Operations](../references/codex-control-plane-operations.md)
+- then read [Claude Control Plane Operations](../references/claude-control-plane-operations.md)
