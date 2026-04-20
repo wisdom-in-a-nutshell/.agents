@@ -65,7 +65,7 @@ codex_jump() {
 
   _codex_jump_load_usage() {
     local usage_path="$1"
-    local usage_dir usage_count_raw usage_last_raw usage_extra
+    local usage_dir usage_score_raw usage_last_raw usage_extra
     local valid_entries=0
     local invalid_entries=0
     local sanitized_tmp
@@ -73,7 +73,7 @@ codex_jump() {
 
     [[ -f "$usage_path" ]] || return 0
 
-    while IFS=$'\t' read -r usage_dir usage_count_raw usage_last_raw usage_extra || [[ -n "${usage_dir:-}" ]]; do
+    while IFS=$'\t' read -r usage_dir usage_score_raw usage_last_raw usage_extra || [[ -n "${usage_dir:-}" ]]; do
       if [[ -z "${usage_dir:-}" || -n "${usage_extra:-}" ]]; then
         (( invalid_entries++ ))
         continue
@@ -84,12 +84,12 @@ codex_jump() {
         usage_dir="${usage_dir%\"}"
       fi
 
-      if [[ -z "$usage_dir" || ! -d "$usage_dir" || ! "${usage_count_raw:-}" =~ ^[0-9]+$ || ! "${usage_last_raw:-}" =~ ^[0-9]+$ ]]; then
+      if [[ -z "$usage_dir" || ! -d "$usage_dir" || ! "${usage_score_raw:-}" =~ ^[0-9]+([.][0-9]+)?$ || ! "${usage_last_raw:-}" =~ ^[0-9]+$ ]]; then
         (( invalid_entries++ ))
         continue
       fi
 
-      usage_count[$usage_dir]="$usage_count_raw"
+      usage_score[$usage_dir]="$usage_score_raw"
       usage_last[$usage_dir]="$usage_last_raw"
       (( valid_entries++ ))
     done < "$usage_path"
@@ -100,10 +100,10 @@ codex_jump() {
 
       sanitized_tmp="$(mktemp -t codex-jump-usage-sanitized)"
       if (( valid_entries > 0 )); then
-        for usage_dir in "${(@k)usage_count}"; do
+        for usage_dir in "${(@k)usage_score}"; do
           printf '%s\t%s\t%s\n' \
             "$usage_dir" \
-            "${usage_count[$usage_dir]}" \
+            "${usage_score[$usage_dir]}" \
             "${usage_last[$usage_dir]:-0}" >> "$sanitized_tmp"
         done
         sort -t $'\t' -k2,2nr -k3,3nr "$sanitized_tmp" > "${sanitized_tmp}.sorted"
@@ -113,6 +113,34 @@ codex_jump() {
       fi
       rm -f "$sanitized_tmp"
     fi
+  }
+
+  _codex_jump_decayed_score() {
+    local score="$1"
+    local last="$2"
+    local now="$3"
+    local halflife_seconds="$4"
+    local elapsed
+    local decayed_score
+
+    if [[ ! "${score:-}" =~ ^[0-9]+([.][0-9]+)?$ || ! "${last:-}" =~ ^[0-9]+$ ]]; then
+      printf '0.000000\n'
+      return 0
+    fi
+
+    if (( halflife_seconds <= 0 )); then
+      printf '%.6f\n' "$score"
+      return 0
+    fi
+
+    elapsed="$(( now - last ))"
+    if (( elapsed <= 0 )); then
+      printf '%.6f\n' "$score"
+      return 0
+    fi
+
+    decayed_score="$(( score * (0.5 ** (elapsed / (halflife_seconds * 1.0))) ))"
+    printf '%.6f\n' "$decayed_score"
   }
 
   local -a candidates
@@ -127,17 +155,16 @@ codex_jump() {
   local github_root="${CODEX_JUMP_GITHUB_ROOT:-$HOME/GitHub}"
   local usage_file="${CODEX_JUMP_USAGE_FILE:-$HOME/.local/state/codex-jump-usage.tsv}"
   local smart_sort="${CODEX_JUMP_SMART_SORT:-1}"
-  local recent_window_days="${CODEX_JUMP_RECENT_WINDOW_DAYS:-14}"
-  local recent_window_seconds=0
+  local score_halflife_hours="${CODEX_JUMP_SCORE_HALFLIFE_HOURS:-6}"
+  local score_halflife_seconds=21600
   local usage_tmp
   local rank_tmp
-  local recent_rank_tmp
-  local older_rank_tmp
   local idx
   local now
-  local count
+  local score
+  local decayed_score
   local last
-  typeset -A usage_count
+  typeset -A usage_score
   typeset -A usage_last
 
   candidates=()
@@ -179,45 +206,33 @@ codex_jump() {
     _codex_jump_load_usage "$usage_file"
     now="$(date +%s)"
 
-    if [[ "$recent_window_days" =~ ^[0-9]+$ ]] && (( recent_window_days > 0 )); then
-      recent_window_seconds="$((recent_window_days * 86400))"
+    if [[ "$score_halflife_hours" =~ ^[0-9]+([.][0-9]+)?$ ]] && (( score_halflife_hours > 0 )); then
+      score_halflife_seconds="$(( score_halflife_hours * 3600 ))"
     fi
 
-    # Keep the picker easy to steer:
-    # - repos used recently are pinned first by pure recency
-    # - older repos fall back to lifetime frequency with recency as a tiebreaker
-    recent_rank_tmp="$(mktemp -t codex-jump-rank-recent)"
-    older_rank_tmp="$(mktemp -t codex-jump-rank-older)"
+    # Keep the picker focused on the current working set. Repeated selections
+    # build score, and idle time decays it by half every configured half-life.
+    rank_tmp="$(mktemp -t codex-jump-rank)"
     idx=0
     for dir in "${uniq[@]}"; do
       (( idx++ ))
-      count="${usage_count[$dir]:-0}"
+      score="${usage_score[$dir]:-0}"
       last="${usage_last[$dir]:-0}"
+      decayed_score="$(_codex_jump_decayed_score "$score" "$last" "$now" "$score_halflife_seconds")"
 
-      if (( recent_window_seconds > 0 )) && (( last >= now - recent_window_seconds )); then
-        printf '%s\t%s\t%s\n' \
-          "$last" \
-          "$count" \
-          "$dir" >> "$recent_rank_tmp"
-      else
-        printf '%s\t%s\t%s\t%s\n' \
-          "$count" \
-          "$last" \
-          "$idx" \
-          "$dir" >> "$older_rank_tmp"
-      fi
+      printf '%s\t%s\t%s\t%s\n' \
+        "$decayed_score" \
+        "$last" \
+        "$idx" \
+        "$dir" >> "$rank_tmp"
     done
 
     uniq=()
-    while IFS=$'\t' read -r last count dir; do
+    while IFS=$'\t' read -r decayed_score last idx dir; do
       [[ -n "${dir:-}" ]] && uniq+=("$dir")
-    done < <(sort -t $'\t' -k1,1nr -k2,2nr "$recent_rank_tmp")
+    done < <(sort -t $'\t' -k1,1nr -k2,2nr -k3,3n "$rank_tmp")
 
-    while IFS=$'\t' read -r count last idx dir; do
-      [[ -n "${dir:-}" ]] && uniq+=("$dir")
-    done < <(sort -t $'\t' -k1,1nr -k2,2nr -k3,3n "$older_rank_tmp")
-
-    rm -f "$recent_rank_tmp" "$older_rank_tmp"
+    rm -f "$rank_tmp"
   fi
 
   if command -v fzf >/dev/null 2>&1; then
@@ -264,13 +279,19 @@ codex_jump() {
 
     _codex_jump_load_usage "$usage_file"
 
-    count="${usage_count[$selected]:-0}"
-    usage_count[$selected]="$((count + 1))"
+    if [[ "$score_halflife_hours" =~ ^[0-9]+([.][0-9]+)?$ ]] && (( score_halflife_hours > 0 )); then
+      score_halflife_seconds="$(( score_halflife_hours * 3600 ))"
+    fi
+
+    score="${usage_score[$selected]:-0}"
+    last="${usage_last[$selected]:-0}"
+    decayed_score="$(_codex_jump_decayed_score "$score" "$last" "$now" "$score_halflife_seconds")"
+    usage_score[$selected]="$(printf '%.6f' "$(( decayed_score + 1.0 ))")"
     usage_last[$selected]="$now"
 
     usage_tmp="$(mktemp -t codex-jump-usage)"
-    for dir in "${(@k)usage_count}"; do
-      printf '%s\t%s\t%s\n' "$dir" "${usage_count[$dir]}" "${usage_last[$dir]:-0}" >> "$usage_tmp"
+    for dir in "${(@k)usage_score}"; do
+      printf '%s\t%s\t%s\n' "$dir" "${usage_score[$dir]}" "${usage_last[$dir]:-0}" >> "$usage_tmp"
     done
     sort -t $'\t' -k2,2nr -k3,3nr "$usage_tmp" > "${usage_tmp}.sorted"
     mv "${usage_tmp}.sorted" "$usage_file"
