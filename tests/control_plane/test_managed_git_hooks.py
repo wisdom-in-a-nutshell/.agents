@@ -101,3 +101,15 @@ class ManagedGitHooksTests(TempDirTestCase):
         run_command([str(REPO_ROOT / "hooks/git/pre-commit")], cwd=repo)
 
         self.assertEqual("husky", log_path.read_text(encoding="utf-8").strip())
+
+    def test_shared_git_hook_runs_non_executable_husky_script(self) -> None:
+        repo = init_git_repo(self.temp_path / "repo")
+        log_path = self.temp_path / "husky.log"
+        write_text(
+            repo / ".husky/pre-commit",
+            f"#!/usr/bin/env sh\nprintf '%s\\n' husky > {log_path}\n",
+        )
+
+        run_command([str(REPO_ROOT / "hooks/git/pre-commit")], cwd=repo)
+
+        self.assertEqual("husky", log_path.read_text(encoding="utf-8").strip())

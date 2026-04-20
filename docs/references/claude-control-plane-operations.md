@@ -7,7 +7,9 @@ Use [Claude Control Plane](/Users/dobby/.agents/docs/architecture/claude-control
 ## Canonical Inputs
 
 - `claude/config/global.claude.md`
-  - canonical source for `~/.claude/CLAUDE.md`
+  - symlink alias to `codex/config/global.agents.md` for `~/.claude/CLAUDE.md`
+- `codex/config/global.agents.md`
+  - single canonical machine-wide guidance source shared by Codex and Claude
 - `claude/config/settings.json`
   - canonical source for `~/.claude/settings.json`
 - `hooks/registry.json`
@@ -71,7 +73,7 @@ The Claude control plane follows the same sync/check pattern as Codex, with scri
 - `~/.agents/scripts/check-agent-control-planes.sh`
   - shared validation entrypoint
 - `sync-global-claude-md.sh`
-  - link `~/.claude/CLAUDE.md` to `claude/config/global.claude.md`
+  - link `~/.claude/CLAUDE.md` to `claude/config/global.claude.md`, which resolves to `codex/config/global.agents.md`
 - `sync-settings.sh`
   - install the permissive global `settings.json` into `~/.claude/settings.json` and merge managed lifecycle hooks from `hooks/registry.json`
 - `sync-global-mcp.sh`
@@ -92,6 +94,7 @@ The Claude control plane follows the same sync/check pattern as Codex, with scri
 - `CLAUDE.md` should contain only `@AGENTS.md` for the generic case.
 - Nested `AGENTS.md` files should also get sibling `CLAUDE.md` files containing only `@AGENTS.md`.
 - `AGENTS.md` remains the shared repo instruction source.
+- `codex/config/global.agents.md` remains the shared global instruction source.
 - `skipDangerousModePermissionPrompt` belongs in user/global Claude settings, not project settings.
 - `enableAllProjectMcpServers` is part of the permissive global baseline.
 - `sandbox.enabled = false` is the closest local no-sandbox default.
@@ -105,7 +108,7 @@ The Claude control plane follows the same sync/check pattern as Codex, with scri
 
 ## Scope Rules
 
-- Global Claude guidance lives in `~/.claude/CLAUDE.md`.
+- Global Claude guidance lives in `~/.claude/CLAUDE.md`, linked through `claude/config/global.claude.md` to the shared global AGENTS source.
 - Project Claude guidance lives in repo `CLAUDE.md`.
 - Global MCP lives in `~/.claude.json`.
 - Project MCP lives in `.mcp.json`.

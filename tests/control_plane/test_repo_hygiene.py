@@ -66,6 +66,24 @@ class RepoHygieneTests(TempDirTestCase):
         self.assertEqual(result.returncode, 1)
         self.assertIn("backup/scratch artifact", result.stderr)
 
+    def test_repo_hygiene_script_rejects_broken_symlink(self) -> None:
+        root = self.temp_path / "repo"
+        root.mkdir(parents=True)
+        (root / "missing-link").symlink_to("missing-target")
+
+        result = run_command(
+            [
+                sys.executable,
+                str(REPO_ROOT / "scripts/check-repo-hygiene.py"),
+                "--root",
+                str(root),
+            ],
+            check=False,
+        )
+
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("broken symlink", result.stderr)
+
     def test_repo_hygiene_script_rejects_broken_local_markdown_link(self) -> None:
         root = self.temp_path / "repo"
         write_text(root / "docs" / "index.md", "[Missing](missing.md)\n")

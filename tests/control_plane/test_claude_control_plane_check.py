@@ -6,6 +6,7 @@ from tests.control_plane.support import (
     REPO_ROOT,
     TempDirTestCase,
     default_mcp_registry,
+    default_skills_registry,
     external_researcher_agent,
     init_git_repo,
     make_control_plane_root,
@@ -190,6 +191,11 @@ class ClaudeControlPlaneCheckTests(TempDirTestCase):
         )
 
         self.assertIn("Claude control plane validation passed.", result.stdout)
+        self.assertTrue((root / "claude/config/global.claude.md").is_symlink())
+        self.assertEqual(
+            (root / "codex/config/global.agents.md").resolve(),
+            (root / "claude/config/global.claude.md").resolve(),
+        )
         self.assertTrue((home / ".claude/CLAUDE.md").is_symlink())
         self.assertEqual(
             (root / "claude/config/global.claude.md").resolve(),
@@ -430,3 +436,42 @@ class ClaudeControlPlaneCheckTests(TempDirTestCase):
         self.assertIn("Managed repo-local Claude files need git attention:", result.stderr)
         self.assertIn("surface: .claude/skills", result.stderr)
         self.assertIn(".claude/skills/repo-helper", result.stderr)
+
+    def test_validate_inputs_fails_when_global_claude_forks_global_agents(self) -> None:
+        root = make_control_plane_root(self.temp_path)
+        write_json(root / "codex/config/repo-bootstrap.json", {"defaults": {}, "repos": []})
+        write_json(root / "mcp/config/presets.json", default_mcp_registry())
+        write_json(root / "skills/registry.json", default_skills_registry())
+        write_json(root / "agents/registry.json", {"managed_agents": [], "version": 1})
+
+        (root / "claude/config/global.claude.md").unlink()
+        write_text(root / "claude/config/global.claude.md", "# Forked Claude Guidance\n")
+
+        result = run_command(
+            [
+                "python3",
+                "-m",
+                "claude.control_plane.validate_inputs",
+                "--canonical-dir",
+                str(root / "claude/config"),
+                "--registry",
+                str(root / "codex/config/repo-bootstrap.json"),
+                "--bootstrap",
+                str(root / "claude/config/bootstrap.json"),
+                "--mcp-registry",
+                str(root / "mcp/config/presets.json"),
+                "--skills-registry",
+                str(root / "skills/registry.json"),
+                "--agent-registry",
+                str(root / "agents/registry.json"),
+                "--hooks-registry",
+                str(root / "hooks/registry.json"),
+                "--global-agents",
+                str(root / "codex/config/global.agents.md"),
+            ],
+            cwd=REPO_ROOT,
+            check=False,
+        )
+
+        self.assertNotEqual(0, result.returncode)
+        self.assertIn("must be a symlink to shared global AGENTS guidance", result.stderr)

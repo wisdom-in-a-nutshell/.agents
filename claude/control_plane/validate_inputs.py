@@ -18,6 +18,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--skills-registry", required=True)
     parser.add_argument("--agent-registry", required=True)
     parser.add_argument("--hooks-registry", required=True)
+    parser.add_argument("--global-agents", required=True)
     return parser.parse_args()
 
 
@@ -39,6 +40,7 @@ def main() -> int:
     skills_registry = Path(args.skills_registry).expanduser().resolve()
     agent_registry = Path(args.agent_registry).expanduser().resolve()
     hooks_registry = Path(args.hooks_registry).expanduser().resolve()
+    global_agents = Path(args.global_agents).expanduser().resolve()
 
     global_claude = canonical_dir / "global.claude.md"
     settings_json = canonical_dir / "settings.json"
@@ -51,9 +53,19 @@ def main() -> int:
         skills_registry,
         agent_registry,
         hooks_registry,
+        global_agents,
     ):
         if not path.is_file():
             raise ControlPlaneError(f"missing required file: {path}")
+
+    if not global_claude.is_symlink():
+        raise ControlPlaneError(
+            f"{global_claude} must be a symlink to shared global AGENTS guidance"
+        )
+    if global_claude.resolve() != global_agents.resolve():
+        raise ControlPlaneError(
+            f"{global_claude} must resolve to {global_agents}"
+        )
 
     settings = _load_json_object(settings_json, label="settings")
     repo_data = _load_json_object(repo_registry, label="repo bootstrap")

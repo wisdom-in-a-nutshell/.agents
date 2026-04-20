@@ -29,8 +29,15 @@ if [[ -f ".pre-commit-config.yaml" ]]; then
   exit 1
 fi
 
-if [[ -x ".husky/pre-commit" ]]; then
-  exec ".husky/pre-commit"
+if [[ -x ".husky/_/pre-commit" ]]; then
+  exec ".husky/_/pre-commit"
+fi
+
+if [[ -f ".husky/pre-commit" ]]; then
+  if [[ -x ".husky/pre-commit" ]]; then
+    exec ".husky/pre-commit"
+  fi
+  exec sh -e ".husky/pre-commit"
 fi
 
 legacy_hook="$(git rev-parse --git-path hooks/pre-commit 2>/dev/null || true)"

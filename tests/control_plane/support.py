@@ -66,6 +66,9 @@ def copy_repo_file(relative_path: str, destination_root: Path, *, destination: s
     source = REPO_ROOT / relative_path
     target = destination_root / (destination or relative_path)
     target.parent.mkdir(parents=True, exist_ok=True)
+    if source.is_symlink():
+        target.symlink_to(os.readlink(source))
+        return target
     shutil.copy2(source, target)
     return target
 

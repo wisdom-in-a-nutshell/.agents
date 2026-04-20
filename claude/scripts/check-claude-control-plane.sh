@@ -16,6 +16,7 @@ MCP_REGISTRY="${ROOT_DIR}/mcp/config/presets.json"
 SKILLS_REGISTRY="${ROOT_DIR}/skills/registry.json"
 AGENT_REGISTRY="${ROOT_DIR}/agents/registry.json"
 HOOKS_REGISTRY="${ROOT_DIR}/hooks/registry.json"
+GLOBAL_AGENTS_MD=""
 REPO_FILTERS=()
 
 usage() {
@@ -36,6 +37,7 @@ Options:
   --skills-registry <path>  Override shared skills registry path
   --agent-registry <path>   Override shared agent registry path
   --hooks-registry <path>   Override shared hooks registry path
+  --global-agents <path>    Override shared global AGENTS guidance path
   --repo <path>             Limit repo-local validation to one repo path (repeatable)
   -h, --help                Show this help
 USAGE
@@ -88,6 +90,10 @@ while [[ $# -gt 0 ]]; do
       HOOKS_REGISTRY="${2:-}"
       shift 2
       ;;
+    --global-agents)
+      GLOBAL_AGENTS_MD="${2:-}"
+      shift 2
+      ;;
     --repo)
       REPO_FILTERS+=("${2:-}")
       shift 2
@@ -103,6 +109,11 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
+if [[ -z "$GLOBAL_AGENTS_MD" ]]; then
+  CANONICAL_ROOT="$(cd "${CANONICAL_DIR}/../.." && pwd)"
+  GLOBAL_AGENTS_MD="${CANONICAL_ROOT}/codex/config/global.agents.md"
+fi
+
 cd "$ROOT_DIR"
 python3 -m claude.control_plane.validate_inputs \
   --canonical-dir "$CANONICAL_DIR" \
@@ -111,7 +122,8 @@ python3 -m claude.control_plane.validate_inputs \
   --mcp-registry "$MCP_REGISTRY" \
   --skills-registry "$SKILLS_REGISTRY" \
   --agent-registry "$AGENT_REGISTRY" \
-  --hooks-registry "$HOOKS_REGISTRY"
+  --hooks-registry "$HOOKS_REGISTRY" \
+  --global-agents "$GLOBAL_AGENTS_MD"
 
 REPO_ARGS=()
 for repo in "${REPO_FILTERS[@]}"; do

@@ -17,6 +17,7 @@ Personal agent, Codex, and Claude control plane.
 - `agents/registry.json` is the canonical shared agent registry for Codex agents and Claude subagents.
 - `hooks/registry.json` is the canonical shared lifecycle hook registry for Codex and Claude.
 - `codex/` holds canonical personal Codex control-plane inputs.
+- `codex/config/global.agents.md` is the single canonical machine-wide guidance source for both `~/.codex/AGENTS.md` and `~/.claude/CLAUDE.md`.
 - `codex/config/repo-bootstrap.json` is the canonical shared repo registry for managed repo-local behavior.
   - Per repo it can define:
     - `mcp_presets`
@@ -83,6 +84,7 @@ Detailed operations live in:
 - When a user provides a `skills.sh` URL or upstream skill reference and wants it installed into a repo, prefer `./scripts/bootstrap-skill.sh` over manual registry edits.
 - Do not edit managed skills through repo symlink destinations; edit canonical source paths.
 - Do not edit plugin-derived skills, MCP, or repo runtime files as source; edit canonical plugin source paths and `plugins/registry.json`.
+- Do not make `claude/config/global.claude.md` diverge from `codex/config/global.agents.md`; it must stay a symlink alias to the shared global guidance source.
 - Managed plugins can mirror upstream source under `plugins-source/external/` when the control plane extracts bundled skills and `.mcp.json` into the normal skills and MCP flows.
 - Keep repo-local skills listed in `skills/registry.json` under `unmanaged_repo_local_skills`.
 - Keep `unmanaged_repo_local_skills` honest: if the target repo exists locally, the repo must contain `.agents/skills/<skill>/SKILL.md` or skill sync should fail until the stale registry entry is removed.

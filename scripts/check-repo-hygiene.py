@@ -68,6 +68,14 @@ def check_backup_artifacts(root: Path, files: list[Path]) -> list[str]:
     return errors
 
 
+def check_broken_symlinks(root: Path, files: list[Path]) -> list[str]:
+    errors: list[str] = []
+    for path in files:
+        if path.is_symlink() and not path.exists():
+            errors.append(f"broken symlink in repo tree: {path.relative_to(root)}")
+    return errors
+
+
 def markdown_files(root: Path, files: list[Path]) -> list[Path]:
     docs: list[Path] = []
     for path in files:
@@ -140,6 +148,7 @@ def main() -> int:
     files = iter_files(root)
     errors = []
     errors.extend(check_backup_artifacts(root, files))
+    errors.extend(check_broken_symlinks(root, files))
     errors.extend(check_markdown_links(root, files))
 
     if errors:
