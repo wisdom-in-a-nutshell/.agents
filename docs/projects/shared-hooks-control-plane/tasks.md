@@ -29,14 +29,14 @@ Hooks will become a common agent-native feedback loop across repositories. A sha
 - Hook stdout is runtime protocol output, so the v1 runner prints nothing on success.
 
 ## Done When
-- [ ] Codex and Claude global lifecycle hooks render from `hooks/registry.json`.
-- [ ] The shared lifecycle runner exits successfully and emits no stdout for `SessionStart` and `Stop`.
-- [ ] Codex config renders `model = "gpt-5.4"` and `plan_mode_reasoning_effort = "high"`.
-- [ ] Control-plane checks and tests pass.
+- [x] Codex and Claude global lifecycle hooks render from `hooks/registry.json`.
+- [x] The shared lifecycle runner exits successfully and emits no stdout for `SessionStart` and `Stop`.
+- [x] Codex config renders `model = "gpt-5.4"` and `plan_mode_reasoning_effort = "high"`.
+- [x] Control-plane checks and tests pass.
 
 ## Milestones
-- [ ] Milestone 1 — V1 no-op lifecycle hooks. Acceptance: Codex and Claude render global `SessionStart` and `Stop` from one registry. Validate: `./scripts/test-control-plane.sh`.
-- [ ] Milestone 2 — Bootstrap/check integration. Acceptance: machine bootstrap applies hooks and checks detect drift. Validate: `./scripts/check-agent-control-planes.sh`.
+- [x] Milestone 1 — V1 no-op lifecycle hooks. Acceptance: Codex and Claude render global `SessionStart` and `Stop` from one registry. Validate: `./scripts/test-control-plane.sh`.
+- [x] Milestone 2 — Bootstrap/check integration. Acceptance: machine bootstrap applies hooks and checks detect drift. Validate: `./scripts/check-agent-control-planes.sh`.
 
 ## Execution Rules
 - Keep v1 behavior no-op and successful unless the hook command itself is invoked with invalid CLI arguments.
@@ -56,7 +56,7 @@ Hooks will become a common agent-native feedback loop across repositories. A sha
 ## Current Batch
 | Status | Work Item | Role | Resource |
 | --- | --- | --- | --- |
-| in_progress | Implement v1 shared no-op lifecycle hooks and validation | parent |  |
+| done | Implement v1 shared no-op lifecycle hooks and validation | parent |  |
 
 ## Backlog / Remaining Work
 - [ ] Add optional repo-local `SessionStart` context injection.
@@ -73,3 +73,4 @@ Hooks will become a common agent-native feedback loop across repositories. A sha
 
 ## Progress Log
 - 2026-04-20: [IN-PROGRESS] Created project tracker and started v1 implementation.
+- 2026-04-20: [DONE] Implemented v1 global `SessionStart` and `Stop` hooks for Codex and Claude; validation passed with `./scripts/check-agent-control-planes.sh`.

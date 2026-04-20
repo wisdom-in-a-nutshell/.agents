@@ -20,7 +20,7 @@ These wrappers exist so external machine bootstrap repos such as `~/GitHub/scrip
   - validates skills registry artifacts plus Codex and Claude rendered runtime state
   - runs the hermetic control-plane regression suite in `tests/control_plane/`
 - `scripts/test-control-plane.sh`
-  - hermetic regression test entrypoint for shared skills, MCPs, Codex config rendering, Claude subagent rendering, and shared registry views
+  - hermetic regression test entrypoint for shared skills, hooks, MCPs, Codex config rendering, Claude subagent rendering, and shared registry views
 
 ## Runtime-Relevant Change Model
 
@@ -32,6 +32,7 @@ These wrappers exist so external machine bootstrap repos such as `~/GitHub/scrip
 - `mcp/`
 - `codex/`
 - `claude/`
+- `hooks/`
 
 Current apply rules:
 
@@ -40,6 +41,8 @@ Current apply rules:
   - run `codex/scripts/bootstrap-machine-codex.sh`
   - run `claude/scripts/bootstrap-machine-claude.sh`
 - `mcp/` changes:
+  - run both Codex and Claude bootstrap batches
+- `hooks/` changes:
   - run both Codex and Claude bootstrap batches
 - `agents/` changes:
   - run both Codex and Claude bootstrap batches

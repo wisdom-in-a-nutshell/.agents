@@ -27,13 +27,14 @@ Edit the canonical source, run the renderer, then run the validation command.
 | `docs/references/registry/agent-registry.base` and `agent-registry-items/` | generated Obsidian agent views | `agents/registry.json`, `codex/config/agents/*.toml`, `claude/config/agents/*.md` | `codex/scripts/sync-repo-bootstrap-registry.sh` | `scripts/check-skills-registry.sh` | No |
 | `docs/references/registry/mcp-registry.base` and `mcp-registry-items/` | generated Obsidian MCP views | `codex/config/repo-bootstrap.json`, `mcp/config/presets.json` | `codex/scripts/sync-repo-bootstrap-registry.sh` | `scripts/check-skills-registry.sh` | No |
 | `~/.codex/config.toml` | live Codex runtime config | `codex/config/*`, `mcp/config/presets.json`, `agents/registry.json` | `codex/scripts/sync-config.sh --apply` | `codex/scripts/check-codex-control-plane.sh` | No |
-| `~/.claude/settings.json` | live Claude runtime settings | `claude/config/settings.json` | `claude/scripts/sync-settings.sh --apply` | `claude/scripts/check-claude-control-plane.sh` | No |
+| `~/.codex/hooks.json` | live Codex global hooks | `hooks/registry.json` | `codex/scripts/sync-config.sh --apply` | `codex/scripts/check-codex-control-plane.sh` | No |
+| `~/.claude/settings.json` | live Claude runtime settings | `claude/config/settings.json`, `hooks/registry.json` | `claude/scripts/sync-settings.sh --apply` | `claude/scripts/check-claude-control-plane.sh` | No |
 | `~/.claude/agents/*.md` | live Claude global subagents | `agents/registry.json`, `claude/config/agents/*.md` | `claude/scripts/sync-subagents.sh --apply` | `claude/scripts/check-claude-control-plane.sh` | No |
 
 ## Canonical Source Families
 
-- Registries: `skills/registry.json`, `plugins/registry.json`, `agents/registry.json`, `mcp/config/presets.json`, `codex/config/repo-bootstrap.json`.
-- Source content: `skills-source/`, `plugins-source/`, `codex/config/`, `claude/config/`.
+- Registries: `skills/registry.json`, `plugins/registry.json`, `agents/registry.json`, `hooks/registry.json`, `mcp/config/presets.json`, `codex/config/repo-bootstrap.json`.
+- Source content: `skills-source/`, `plugins-source/`, `hooks/scripts/`, `codex/config/`, `claude/config/`.
 - Generated lookup views: `docs/references/registry/`.
 - Machine-local state and backups: `~/.local/state/...`, not tracked repo paths.
 

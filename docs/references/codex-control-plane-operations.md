@@ -20,7 +20,7 @@ Use [Codex Control Plane Ownership](/Users/dobby/.agents/docs/references/codex-c
   - machine bootstrap entrypoint in [`setup/bootstrap-machine.sh`](/Users/dobby/GitHub/scripts/setup/bootstrap-machine.sh)
 - `~/.codex`
   - live runtime home only
-  - applied `config.toml`, auth, sessions, logs, caches, sqlite, shell snapshots
+  - applied `config.toml`, global `hooks.json`, auth, sessions, logs, caches, sqlite, shell snapshots
   - Codex-managed vendor imports in `vendor_imports/`, including the nested Git checkout at `vendor_imports/skills`
   - should not be a git repo
 - `~/.local/state/codex-control-plane`
@@ -61,7 +61,7 @@ Use [Codex Control Plane Ownership](/Users/dobby/.agents/docs/references/codex-c
 - Apply only the managed Codex config:
   - [`sync-config.sh`](/Users/dobby/.agents/codex/scripts/sync-config.sh)
   - `~/.agents/codex/scripts/sync-config.sh --apply`
-  - this syncs only the agent-role files actually referenced by the managed global/Xcode configs into the live runtime `agents/` folders
+  - this syncs the managed global config, global `hooks.json`, and only the agent-role files actually referenced by the managed global/Xcode configs into the live runtime `agents/` folders
 - Validate canonical and rendered Codex control-plane state:
   - [`check-codex-control-plane.sh`](/Users/dobby/.agents/codex/scripts/check-codex-control-plane.sh)
   - `~/.agents/codex/scripts/check-codex-control-plane.sh`
@@ -98,6 +98,8 @@ Use [Codex Control Plane Ownership](/Users/dobby/.agents/docs/references/codex-c
   - tracked branches use the normal `commit -> pull --rebase -> push` path
   - brand-new branches without upstream tracking use an initial `git push -u <remote> HEAD`, so notify can publish the branch before future tracked-branch pulls
 - `~/.codex/config.toml` and Xcode Codex config contain exact trusted repo entries for local repos such as `focus`
+- `~/.codex/config.toml` enables Codex hooks through `[features].codex_hooks = true`
+- `~/.codex/hooks.json` is rendered from `hooks/registry.json`
 - `~/.codex/config.toml` contains no Git conflict markers
 - `~/.codex/vendor_imports/skills` is a valid Git checkout:
   - `git -C ~/.codex/vendor_imports/skills rev-parse --show-toplevel`
@@ -113,6 +115,7 @@ Use [Codex Control Plane Ownership](/Users/dobby/.agents/docs/references/codex-c
   - keeps Apps/connectors globally disabled through the managed `features.apps = false` baseline and explicit static `plugins.*.enabled = false` entries in the canonical template where desired
   - disables selected built-in system skills in `~/.codex/config.toml` when the control plane should prefer managed skill copies instead, including currently `imagegen`, `openai-docs`, `skill-creator`, and `skill-installer`
   - rewrites machine-specific notify and system-skill paths for the current `$HOME`
+  - renders global Codex lifecycle hooks from [`hooks/registry.json`](/Users/dobby/.agents/hooks/registry.json) into `~/.codex/hooks.json`
   - strips foreign-user project and system-skill entries before writing
   - prunes stale global `apps.*` and `plugins.*` sections that are no longer present in the canonical template, so old local connector/plugin state does not stick around
   - prunes stale global terminal `mcp_servers.*` sections that are no longer present in the canonical template
@@ -137,6 +140,7 @@ Use [Codex Control Plane Ownership](/Users/dobby/.agents/docs/references/codex-c
   - resolves MCP preset definitions through [`mcp/config/presets.json`](/Users/dobby/.agents/mcp/config/presets.json), including plugin-derived presets and repo assignments
 - [`check-codex-control-plane.sh`](/Users/dobby/.agents/codex/scripts/check-codex-control-plane.sh)
   - validates canonical `global.config.toml`, `xcode.config.toml`, `repo-bootstrap.json`, `agents/registry.json`, and `mcp/config/presets.json`
+  - validates [`hooks/registry.json`](/Users/dobby/.agents/hooks/registry.json) and rendered global `~/.codex/hooks.json` when hooks are enabled
   - validates canonical role TOMLs and rendered runtime role TOMLs
   - catches missing or malformed `name` / `description` in role files
   - catches runtime `agents/` directories containing unreferenced role files
@@ -203,6 +207,7 @@ Use [Codex Control Plane Ownership](/Users/dobby/.agents/docs/references/codex-c
   - `mcp_presets`
   - `model`
   - `model_reasoning_effort`
+  - `plan_mode_reasoning_effort`
   - `model_verbosity`
   - `personality`
   - `model_instructions_file`
@@ -218,6 +223,7 @@ Use [Codex Control Plane Ownership](/Users/dobby/.agents/docs/references/codex-c
   - nested `codex`
   - nested `claude`
 - Shared MCP preset definitions live separately in [`mcp/config/presets.json`](/Users/dobby/.agents/mcp/config/presets.json).
+- Shared lifecycle hook definitions live separately in [`hooks/registry.json`](/Users/dobby/.agents/hooks/registry.json).
 - Shared plugin source extraction state lives separately in [`plugins/registry.json`](/Users/dobby/.agents/plugins/registry.json).
 - Agent behavior itself stays in [`codex/config/agents/*.toml`](/Users/dobby/.agents/codex/config/agents), including MCP posture, tool disables, feature disables, and sandbox level.
 - The global defaults block supplies fallback values for repos that do not override them.

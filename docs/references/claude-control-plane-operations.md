@@ -10,6 +10,8 @@ Use [Claude Control Plane](/Users/dobby/.agents/docs/architecture/claude-control
   - canonical source for `~/.claude/CLAUDE.md`
 - `claude/config/settings.json`
   - canonical source for `~/.claude/settings.json`
+- `hooks/registry.json`
+  - shared lifecycle hook registry merged into global Claude settings
 - `claude/control_plane/*.py`
   - importable Python implementation for the Claude sync/render/validation entrypoints
 - `claude/config/bootstrap.json`
@@ -36,7 +38,7 @@ Use [Claude Control Plane](/Users/dobby/.agents/docs/architecture/claude-control
 - `~/.claude/CLAUDE.md`
   - global guidance file
 - `~/.claude/settings.json`
-  - permissive user/global defaults
+  - permissive user/global defaults plus managed lifecycle hooks
 - `~/.claude.json`
   - user runtime state and global MCP store
 - `~/.claude/agents/*.md`
@@ -71,7 +73,7 @@ The Claude control plane follows the same sync/check pattern as Codex, with scri
 - `sync-global-claude-md.sh`
   - link `~/.claude/CLAUDE.md` to `claude/config/global.claude.md`
 - `sync-settings.sh`
-  - install the permissive global `settings.json` into `~/.claude/settings.json`
+  - install the permissive global `settings.json` into `~/.claude/settings.json` and merge managed lifecycle hooks from `hooks/registry.json`
 - `sync-global-mcp.sh`
   - merge global MCP entries from `mcp/config/presets.json` into `~/.claude.json`
 - `sync-subagents.sh`
@@ -97,6 +99,7 @@ The Claude control plane follows the same sync/check pattern as Codex, with scri
 ## Current Global Settings Baseline
 
 - `claude/config/settings.json` is the source of truth for `~/.claude/settings.json`.
+- `hooks/registry.json` is the source of truth for managed global `SessionStart` and `Stop` hook entries inside `~/.claude/settings.json`.
 - The canonical global baseline is provider-neutral by default.
 - Provider-specific opt-ins such as AWS Bedrock should live in explicit shell wrappers, not in the machine-wide Claude settings baseline.
 
