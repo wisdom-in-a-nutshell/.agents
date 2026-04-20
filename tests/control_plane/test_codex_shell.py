@@ -7,13 +7,18 @@ from tests.control_plane.support import REPO_ROOT, TempDirTestCase, run_command,
 
 
 class CodexShellTests(TempDirTestCase):
-    def test_codex_jump_ranks_quoted_usage_paths_by_recency(self) -> None:
-        home = self.temp_path / "home"
-        github_root = home / "GitHub"
+    def _capture_codex_jump_rows(
+        self,
+        *,
+        home,
+        github_root,
+        usage_rows: list[str],
+        halflife_hours: str = "6",
+    ) -> list[str]:
         win = github_root / "win"
         scripts = github_root / "scripts"
-        win.mkdir(parents=True)
-        scripts.mkdir(parents=True)
+        win.mkdir(parents=True, exist_ok=True)
+        scripts.mkdir(parents=True, exist_ok=True)
 
         dirs_file = home / ".agents/codex/shell/codex-jump-dirs.txt"
         write_text(
@@ -27,18 +32,8 @@ class CodexShellTests(TempDirTestCase):
             ),
         )
 
-        now = int(time.time())
         usage_file = home / ".local/state/codex-jump-usage.tsv"
-        write_text(
-            usage_file,
-            "\n".join(
-                [
-                    f'"{win}"\t4\t{now - 30 * 86400}',
-                    f'"{scripts}"\t1\t{now}',
-                    "",
-                ]
-            ),
-        )
+        write_text(usage_file, "\n".join([*usage_rows, ""]))
 
         capture_file = self.temp_path / "fzf-input.tsv"
         fake_bin = self.temp_path / "bin"
@@ -50,6 +45,7 @@ class CodexShellTests(TempDirTestCase):
         fake_fzf.chmod(0o755)
 
         env = {
+            "CODEX_JUMP_SCORE_HALFLIFE_HOURS": halflife_hours,
             "CODEX_JUMP_TEST_CAPTURE": str(capture_file),
             "HOME": str(home),
             "PATH": f"{fake_bin}{os.pathsep}{os.environ['PATH']}",
@@ -70,7 +66,44 @@ class CodexShellTests(TempDirTestCase):
         )
 
         self.assertEqual(0, result.returncode)
-        rows = capture_file.read_text(encoding="utf-8").splitlines()
+        return capture_file.read_text(encoding="utf-8").splitlines()
+
+    def test_codex_jump_ranks_quoted_usage_paths_by_recency(self) -> None:
+        home = self.temp_path / "home"
+        github_root = home / "GitHub"
+        win = github_root / "win"
+        scripts = github_root / "scripts"
+
+        now = int(time.time())
+        rows = self._capture_codex_jump_rows(
+            home=home,
+            github_root=github_root,
+            usage_rows=[
+                f'"{win}"\t4\t{now - 30 * 86400}',
+                f'"{scripts}"\t1\t{now}',
+            ],
+        )
+
         self.assertGreaterEqual(len(rows), 2)
         self.assertEqual("scripts", rows[0].split("\t", 1)[0])
         self.assertEqual("win", rows[1].split("\t", 1)[0])
+
+    def test_codex_jump_repeated_recent_use_beats_single_latest_use(self) -> None:
+        home = self.temp_path / "home"
+        github_root = home / "GitHub"
+        win = github_root / "win"
+        scripts = github_root / "scripts"
+
+        now = int(time.time())
+        rows = self._capture_codex_jump_rows(
+            home=home,
+            github_root=github_root,
+            usage_rows=[
+                f'"{win}"\t4\t{now - 3600}',
+                f'"{scripts}"\t1\t{now}',
+            ],
+        )
+
+        self.assertGreaterEqual(len(rows), 2)
+        self.assertEqual("win", rows[0].split("\t", 1)[0])
+        self.assertEqual("scripts", rows[1].split("\t", 1)[0])

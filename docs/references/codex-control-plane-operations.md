@@ -176,6 +176,7 @@ Use [Codex Control Plane Ownership](/Users/dobby/.agents/docs/references/codex-c
 - [`codex-shell.zsh`](/Users/dobby/.agents/codex/shell/codex-shell.zsh)
   - `codex_jump` sets the Ghostty tab/surface title to the selected repo basename before launching Codex
   - `codex_jump` also reports the selected cwd back to Ghostty immediately so regular new tabs and splits inherit the active repo instead of falling back to `~`
+  - `codex_jump` ranks picker rows by a decaying active working-set score: each selection adds `1`, scores halve every 6 hours by default, and `CODEX_JUMP_SCORE_HALFLIFE_HOURS` can tune the half-life
   - records the active Ghostty/Codex working directory to `~/.local/state/codex-control-plane/ghostty-last-dir.txt` so cold Ghostty launches can resume there
 - [`ghostty-codex-then-shell.sh`](/Users/dobby/.agents/codex/scripts/ghostty-codex-then-shell.sh)
   - reports the current cwd and repo basename title before the first-surface Codex launch so Ghostty new-window inheritance can reuse the active repo
