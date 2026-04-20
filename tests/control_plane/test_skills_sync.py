@@ -26,6 +26,10 @@ class ManagedSkillsRegistrySyncTests(TempDirTestCase):
             root / "skills-source/owned/repo-helper",
             "repo-helper",
         )
+        dormant_source = make_skill_source(
+            root / "skills-source/owned/dormant-helper",
+            "dormant-helper",
+        )
         make_skill_source(adi / ".agents/skills/local-review", "local-review")
 
         stale_source = make_skill_source(
@@ -35,6 +39,12 @@ class ManagedSkillsRegistrySyncTests(TempDirTestCase):
         stale_link = root / "skills/stale-helper"
         stale_link.parent.mkdir(parents=True, exist_ok=True)
         stale_link.symlink_to(stale_source)
+        dormant_global_link = root / "skills/dormant-helper"
+        dormant_global_link.parent.mkdir(parents=True, exist_ok=True)
+        dormant_global_link.symlink_to(dormant_source)
+        dormant_repo_link = adi / ".agents/skills/dormant-helper"
+        dormant_repo_link.parent.mkdir(parents=True, exist_ok=True)
+        dormant_repo_link.symlink_to(dormant_source)
 
         registry_path = root / "skills/registry.json"
         write_json(
@@ -53,6 +63,13 @@ class ManagedSkillsRegistrySyncTests(TempDirTestCase):
                         "scope": "repo",
                         "repos": ["adi"],
                         "source_path": "skills-source/owned/repo-helper",
+                    },
+                    {
+                        "skill": "dormant-helper",
+                        "origin": "owned",
+                        "scope": "dormant",
+                        "repos": [],
+                        "source_path": "skills-source/owned/dormant-helper",
                     },
                 ],
                 "paths": {
@@ -85,21 +102,31 @@ class ManagedSkillsRegistrySyncTests(TempDirTestCase):
         self.assertTrue(repo_link.is_symlink())
         self.assertEqual(repo_source.resolve(), repo_link.resolve())
         self.assertFalse(stale_link.exists())
+        self.assertFalse(dormant_global_link.exists())
+        self.assertFalse(dormant_repo_link.exists())
 
         skills_base = root / "docs/references/registry/skills.base"
         global_item = root / "docs/references/registry/skills-items/managed/global-helper.md"
+        dormant_item = root / "docs/references/registry/skills-items/managed/dormant-helper.md"
         repo_local_item = (
             root / "docs/references/registry/skills-items/repo-local/adi--local-review.md"
         )
 
         self.assertTrue(skills_base.is_file())
         self.assertTrue(global_item.is_file())
+        self.assertTrue(dormant_item.is_file())
         self.assertTrue(repo_local_item.is_file())
 
         global_item_text = global_item.read_text(encoding="utf-8")
         self.assertIn('skill: "global-helper"', global_item_text)
         self.assertIn('scope: "global"', global_item_text)
         self.assertIn('source_path: "skills-source/owned/global-helper"', global_item_text)
+
+        dormant_item_text = dormant_item.read_text(encoding="utf-8")
+        self.assertIn('skill: "dormant-helper"', dormant_item_text)
+        self.assertIn('scope: "dormant"', dormant_item_text)
+        self.assertIn('repos_csv: "-"', dormant_item_text)
+        self.assertIn('  - "-"', dormant_item_text)
 
         repo_local_text = repo_local_item.read_text(encoding="utf-8")
         self.assertIn('repo: "adi"', repo_local_text)

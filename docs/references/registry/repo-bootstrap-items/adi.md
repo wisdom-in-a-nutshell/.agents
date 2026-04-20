@@ -2,7 +2,7 @@
 repo_name: "adi"
 path: "~/GitHub/adi"
 mcp_count: 0
-skill_count: 23
+skill_count: 22
 repo_local_skill_count: 0
 global_agent_count: 1
 custom_agent_count: 1
@@ -40,7 +40,6 @@ repo_skills:
   - "health"
   - "imagegen"
   - "journal-checkin"
-  - "paper-design"
   - "pretty-mermaid"
   - "social-media-publishing"
 repo_local_skills: []
@@ -61,7 +60,6 @@ skills:
   - "health"
   - "imagegen"
   - "journal-checkin"
-  - "paper-design"
   - "pdf"
   - "pretty-mermaid"
   - "project"

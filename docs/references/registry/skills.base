@@ -2,7 +2,7 @@ filters:
   and:
     - 'file.inFolder("docs/references/registry/skills-items")'
 formulas:
-  scope_badge: 'if(scope == "global", "🌍 global", if(scope == "repo", "📦 repo", scope))'
+  scope_badge: 'if(scope == "global", "🌍 global", if(scope == "repo", "📦 repo", if(scope == "dormant", "⏸ dormant", scope)))'
   origin_badge: 'if(origin == "external", "↗ external", if(origin == "owned", "✳ owned", origin))'
 properties:
   registry_kind:

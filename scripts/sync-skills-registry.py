@@ -11,7 +11,7 @@ from typing import Any
 
 
 ALLOWED_ORIGINS = {"external", "owned"}
-ALLOWED_SCOPES = {"global", "repo"}
+ALLOWED_SCOPES = {"global", "repo", "dormant"}
 
 
 def expand_path(raw: str, home: Path) -> Path:
@@ -95,7 +95,7 @@ def generate_registry_base(views_dir: Path) -> None:
   and:
     - 'file.inFolder("docs/references/registry/skills-items")'
 formulas:
-  scope_badge: 'if(scope == "global", "🌍 global", if(scope == "repo", "📦 repo", scope))'
+  scope_badge: 'if(scope == "global", "🌍 global", if(scope == "repo", "📦 repo", if(scope == "dormant", "⏸ dormant", scope)))'
   origin_badge: 'if(origin == "external", "↗ external", if(origin == "owned", "✳ owned", origin))'
 properties:
   registry_kind:
@@ -173,7 +173,7 @@ def generate_registry_items(
 
     for item in managed:
         repos = item.get("repos", [])
-        repos_csv = ",".join(repos) if repos else "*"
+        repos_csv = ",".join(repos) if repos else ("*" if item["scope"] == "global" else "-")
         lines = [
             "---",
             "registry_kind: managed",
@@ -187,8 +187,10 @@ def generate_registry_items(
         ]
         if repos:
             lines.extend([f"  - {_yaml_str(repo)}" for repo in repos])
-        else:
+        elif item["scope"] == "global":
             lines.append("  - \"*\"")
+        else:
+            lines.append("  - \"-\"")
         lines.extend(
             [
                 "---",
@@ -264,7 +266,7 @@ def validate_registry(
             repos = [str(repo).strip() for repo in repos_raw if str(repo).strip()]
             if scope == "repo" and not repos:
                 raise ValueError(f"{label}[{idx}] repo scope needs repos")
-            if scope == "global":
+            if scope in {"global", "dormant"}:
                 repos = []
 
             src = Path(source_path)
@@ -321,6 +323,7 @@ def run_sync(
 ) -> None:
     home = Path.home()
     desired_links: dict[Path, Path] = {}
+    dormant_skills: set[str] = set()
     for item in managed:
         skill = item["skill"]
         src = item["source_abs"]
@@ -328,6 +331,9 @@ def run_sync(
             dst = root_dir / "skills" / skill
             desired_links[dst] = src
             sync_link(dst, src, apply)
+            continue
+        if item["scope"] == "dormant":
+            dormant_skills.add(skill)
             continue
 
         for repo in item["repos"]:
@@ -337,6 +343,7 @@ def run_sync(
             sync_link(dst, src, apply)
 
     prune_obsolete_global_links(root_dir, desired_links, apply)
+    prune_dormant_repo_links(root_dir, github_root, dormant_skills, apply)
 
 
 def prune_obsolete_global_links(
@@ -362,6 +369,57 @@ def prune_obsolete_global_links(
         print(f"PRUNE {entry}")
         if apply:
             entry.unlink()
+
+
+def prune_dormant_links_in_dir(
+    skills_dir: Path,
+    dormant_skills: set[str],
+    managed_source_roots: list[Path],
+    apply: bool,
+) -> None:
+    if not skills_dir.exists():
+        return
+    for entry in sorted(skills_dir.iterdir()):
+        if entry.name not in dormant_skills:
+            continue
+        if not entry.is_symlink():
+            continue
+        target = resolved_target(entry)
+        if not any(is_relative_to(target, root) for root in managed_source_roots):
+            continue
+        print(f"PRUNE {entry}")
+        if apply:
+            entry.unlink()
+
+
+def prune_dormant_repo_links(
+    root_dir: Path,
+    github_root: Path,
+    dormant_skills: set[str],
+    apply: bool,
+) -> None:
+    if not dormant_skills:
+        return
+    managed_source_roots = [
+        (root_dir / "skills-source").resolve(),
+        (root_dir / "plugins-source").resolve(),
+    ]
+    candidate_dirs: set[Path] = set()
+    candidate_dirs.add(root_dir / ".agents" / "skills")
+    if github_root.is_dir():
+        candidate_dirs.update(
+            repo_root / ".agents" / "skills"
+            for repo_root in github_root.iterdir()
+            if repo_root.is_dir()
+        )
+
+    for skills_dir in sorted(candidate_dirs):
+        prune_dormant_links_in_dir(
+            skills_dir,
+            dormant_skills,
+            managed_source_roots,
+            apply,
+        )
 
 
 def parse_args() -> argparse.Namespace:

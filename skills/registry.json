@@ -337,13 +337,8 @@
     {
       "skill": "paper-design",
       "origin": "owned",
-      "scope": "repo",
-      "repos": [
-        "~/.agents",
-        "adi",
-        "adithyan-ai-videos",
-        "blog-personal"
-      ],
+      "scope": "dormant",
+      "repos": [],
       "source_path": "skills-source/owned/paper-design",
       "upstream_ref": "-"
     },

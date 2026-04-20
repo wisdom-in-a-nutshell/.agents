@@ -19,7 +19,7 @@ from .common import (
 )
 
 ALLOWED_ORIGINS = {"external", "owned"}
-ALLOWED_SCOPES = {"global", "repo"}
+ALLOWED_SCOPES = {"global", "repo", "dormant"}
 
 
 def sync_link(dst: Path, src: Path, *, apply: bool) -> None:
@@ -186,6 +186,8 @@ def main() -> int:
                     raise ControlPlaneError(f"conflicting Claude skill targets for {dst}")
                 desired_links[dst] = src
                 sync_link(dst, src, apply=args.apply)
+                continue
+            if scope == "dormant":
                 continue
 
             for repo in repos:
