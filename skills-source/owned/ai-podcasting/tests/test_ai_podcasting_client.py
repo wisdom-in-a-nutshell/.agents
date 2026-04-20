@@ -337,6 +337,18 @@ class RunListEpisodesTests(unittest.TestCase):
 
 
 class SubmitAndIntroDryRunTests(unittest.TestCase):
+  def test_validate_submit_payload_rejects_main_mp3(self) -> None:
+    with self.assertRaises(client.ClientError) as error_context:
+      client.validate_submit_payload(
+        {
+          "show": "TCR",
+          "mainEpisodeFile": "https://example.com/exported-audio.mp3?download=1",
+        }
+      )
+
+    self.assertEqual(error_context.exception.code, "E_VALIDATION")
+    self.assertIn("cannot be an MP3 link", error_context.exception.message)
+
   def test_run_submit_episode_dry_run_uses_expected_request_shape(self) -> None:
     args = SimpleNamespace(
       payload_file=str(ROOT / "references" / "submit-episode.example.json"),

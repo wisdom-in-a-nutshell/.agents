@@ -58,6 +58,14 @@ INTRO_COPY_FIELD_MAP = {
   "introTranscript": "introTranscript",
   "editorInstructions": "editorInstructions",
 }
+TCR_MAIN_MP3_MESSAGE = (
+  "TCR submit-episode main file cannot be an MP3 link."
+)
+TCR_MAIN_MP3_HINT = (
+  "Use the original recording/session/video source link for the main file, such as Riverside, "
+  "YouTube, or a direct video file. MP3 links remain valid for intro/outro/supporting file fields "
+  "when those fields expect audio."
+)
 
 
 class ClientError(Exception):
@@ -363,10 +371,27 @@ def validate_submit_payload(payload: dict[str, Any]) -> None:
       exit_code=2,
     )
 
-  validate_upload_source_list(
-    "submit-episode main file",
-    [next(iter(unique_source_values))],
-  )
+  main_source_value = candidate_sources[0][1]
+  validate_upload_source_list("submit-episode main file", [main_source_value])
+  if looks_like_mp3_source(main_source_value):
+    raise ClientError(
+      code="E_VALIDATION",
+      message=TCR_MAIN_MP3_MESSAGE,
+      retryable=False,
+      hint=TCR_MAIN_MP3_HINT,
+      exit_code=2,
+    )
+
+
+def looks_like_mp3_source(value: str) -> bool:
+  """Return whether a public URL or local path appears to point at an MP3 file."""
+  candidate = value.strip()
+  if not candidate:
+    return False
+  parsed = urlparse.urlparse(candidate)
+  path = parsed.path if parsed.scheme else candidate
+  path = path.split("?", 1)[0].split("#", 1)[0]
+  return urlparse.unquote(path).lower().endswith(".mp3")
 
 
 def validate_intro_copy_payload(payload: dict[str, Any]) -> None:

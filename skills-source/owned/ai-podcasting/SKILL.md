@@ -133,6 +133,9 @@ python3 scripts/aip_local_upload_helper.py \
    The main file link may be either:
    - a public HTTP/HTTPS URL
    - a local file path, which the helper uploads first
+   TCR main episode submissions reject `.mp3` main-file inputs. Use the original recording,
+   session, or video source link instead, such as Riverside, YouTube, or a direct non-MP3 media
+   URL. This is not a Riverside-only allowlist.
    For plain-English payloads, the CLI accepts `mainEpisodeFile` and normalizes it to the backend
    submit shape automatically.
    `assetUrls` may also be public URLs or local file paths; local paths are uploaded first.
