@@ -378,12 +378,20 @@ def _task_fields(verbose: bool, *, dated: bool = False) -> str:
     return _TODO_DATED_SUMMARY_FIELDS if dated else _TODO_SUMMARY_FIELDS
 
 
-def _jxa_list(name: str, *, verbose: bool = False) -> str:
-    return (
-        "const things = Application(\"Things3\");\n"
-        f"const todos = things.lists.byName({json.dumps(name)}).toDos();\n"
-        f"JSON.stringify(todos.map(t => ({{ {_task_fields(verbose)} }})));"
-    )
+def _jxa_list(name: str, *, verbose: bool = False, open_only: bool = True) -> str:
+    """List tasks, filtering active views before serializing task fields."""
+    fields = _task_fields(verbose)
+    open_guard = 'if (t.status() !== "open") continue;' if open_only else ""
+    return f"""
+const things = Application("Things3");
+const todos = things.lists.byName({json.dumps(name)}).toDos();
+const out = [];
+for (const t of todos) {{
+  {open_guard}
+  out.push({{ {fields} }});
+}}
+JSON.stringify(out);
+"""
 
 
 def _jxa_all(*, verbose: bool = False) -> str:
@@ -622,12 +630,16 @@ def _err_code(e: Things3Error) -> str:
 def cmd_list(args: argparse.Namespace, name: str) -> int:
     env = Envelope(f"tasks.{name}")
     try:
-        tasks = run_jxa(_jxa_list(name.capitalize() if name != "logbook" else "Logbook", verbose=args.verbose))
+        list_name = name.capitalize() if name != "logbook" else "Logbook"
+        tasks = run_jxa(_jxa_list(
+            list_name,
+            verbose=args.verbose,
+            open_only=name != "logbook",
+        ))
     except Things3Error as e:
         return emit_json(env.err(_err_code(e), str(e)))
-    # Filter out completed/canceled tasks from active lists (they linger briefly
-    # after `set status to completed` + `log completed now` until Things 3 clears them).
-    # The Logbook is the exception — it's supposed to show completed tasks.
+    # Defensive fallback: active lists are already filtered inside JXA before
+    # fields are serialized, but keep this guard for backend quirks.
     if name != "logbook":
         tasks = [t for t in tasks if t.get("status") == "open"]
     if args.json:
