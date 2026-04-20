@@ -44,6 +44,14 @@ assert_jq_eq "title echoed" '.data.title' "$PREFIX beta" "$CAPTURED_STDOUT"
 CREATED_NAMES+=("$PREFIX beta")
 sleep 1
 
+section "add with natural-language --when"
+run_dobby tasks add "$PREFIX natural language" --when "tomorrow"
+assert_exit "exit 0" 0 "$CAPTURED_EXIT"
+assert_envelope_ok "tasks.add natural-language" "$CAPTURED_STDOUT"
+assert_jq_eq "title echoed" '.data.title' "$PREFIX natural language" "$CAPTURED_STDOUT"
+CREATED_NAMES+=("$PREFIX natural language")
+sleep 1
+
 section "today contains the tasks"
 run_dobby tasks today
 assert_exit "exit 0" 0 "$CAPTURED_EXIT"
@@ -59,7 +67,7 @@ assert_jq_truthy "count >= 2" '.data.count >= 2' "$CAPTURED_STDOUT"
 section "search finds both"
 run_dobby tasks search "$PREFIX" --json
 assert_envelope_ok "tasks.search" "$CAPTURED_STDOUT"
-assert_jq_truthy "count >= 2" '.data.count >= 2' "$CAPTURED_STDOUT"
+assert_jq_truthy "count >= 3" '.data.count >= 3' "$CAPTURED_STDOUT"
 
 section "mark alpha done"
 run_dobby tasks done "$PREFIX alpha"
@@ -93,8 +101,8 @@ run_dobby tasks delete "$PREFIX beta" --yes
 assert_exit "exit 0" 0 "$CAPTURED_EXIT"
 assert_envelope_ok "tasks.delete beta" "$CAPTURED_STDOUT"
 assert_jq_eq "deleted name" '.data.name' "$PREFIX beta" "$CAPTURED_STDOUT"
-# Remove from cleanup list since it's already deleted
-CREATED_NAMES=("$PREFIX alpha")
+# Remove beta from cleanup list since it's already deleted.
+CREATED_NAMES=("$PREFIX alpha" "$PREFIX natural language")
 
 section "delete without --yes is rejected"
 run_dobby tasks delete "anything"
@@ -110,6 +118,11 @@ if [[ "$CAPTURED_EXIT" -eq 0 ]]; then
 else
     _pass "alpha cleanup skipped (task already logged/trashed — expected for completed items)"
 fi
+
+section "cleanup natural-language task"
+run_dobby tasks delete "$PREFIX natural language" --yes
+assert_exit "natural-language cleanup exit 0" 0 "$CAPTURED_EXIT"
+assert_envelope_ok "tasks.delete natural-language" "$CAPTURED_STDOUT"
 CREATED_NAMES=()
 
 section "post-cleanup: no open test tasks remain"

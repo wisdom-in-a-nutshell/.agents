@@ -1,20 +1,23 @@
 #!/usr/bin/env bash
 # Top-level test runner for the Dobby skill scripts.
 #
-# Runs every *.sh under tests/ (except lib/*.sh), collects pass/fail counts,
-# and returns non-zero if any suite failed.
+# By default, runs only cheap/non-mutating suites. Live suites (`*/live.sh`)
+# are opt-in because they may write to real local surfaces such as Things 3 or
+# Calendar before cleaning up.
 #
-# Before running the suites, sweeps any DOBBY-* leftover tasks in Things 3 so
-# each run starts from a clean slate regardless of what earlier runs (or
-# aborted runs) may have left behind. Sweeps again after the suites finish
-# so the user's Things 3 is never polluted by test artifacts.
+# When the Things 3 live suite is selected, sweeps DOBBY-TEST-* leftover tasks
+# before and after the run so aborted live runs do not pollute the user's task
+# surface. Cheap/default runs do not touch Things for sweeping.
 #
 # Usage:
-#     bash ~/.agents/skills-source/owned/dobby/tests/run.sh              # run everything
-#     bash ~/.agents/skills-source/owned/dobby/tests/run.sh memory       # run only memory/*.sh
-#     bash ~/.agents/skills-source/owned/dobby/tests/run.sh tasks live   # run specific tests
-#     SKIP_LIVE=1 bash ~/.agents/skills-source/owned/dobby/tests/run.sh  # skip tasks/live.sh
-#     SKIP_SWEEP=1 bash ~/.agents/skills-source/owned/dobby/tests/run.sh # skip pre/post Things 3 sweep
+#     bash ~/.agents/skills-source/owned/dobby/tests/run.sh                 # cheap suites only
+#     RUN_LIVE=1 bash ~/.agents/skills-source/owned/dobby/tests/run.sh      # include all live suites
+#     bash ~/.agents/skills-source/owned/dobby/tests/run.sh memory          # only memory suites
+#     bash ~/.agents/skills-source/owned/dobby/tests/run.sh tasks live      # only tasks/live.sh
+#     bash ~/.agents/skills-source/owned/dobby/tests/run.sh live            # all live suites
+#     SKIP_LIVE=1 bash ~/.agents/skills-source/owned/dobby/tests/run.sh     # force-skip live suites
+#     SWEEP_THINGS=1 bash ~/.agents/skills-source/owned/dobby/tests/run.sh  # cleanup stale DOBBY-TEST-* tasks
+#     SKIP_SWEEP=1 RUN_LIVE=1 bash ~/.agents/skills-source/owned/dobby/tests/run.sh # skip live sweep
 set -uo pipefail
 
 TESTS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -23,13 +26,9 @@ DOBBY_BIN="$TESTS_DIR/support/dobby-shim"
 REPO_ROOT="${DOBBY_WORKSPACE:-/Users/adi/GitHub/adi}"
 export DOBBY_WORKSPACE="$REPO_ROOT"
 
-# Sweep any stale Things 3 test artifacts. The sweep patterns intentionally
-# match the prefixes used by live tests: DOBBY-TEST-, DOBBY-RT, DOBBY-SF-,
-# DOBBY-ES-, DOBBY-DEBUG-, DOBBY-SHAPE-, DOBBY-RAW-, DOBBY-ROUNDTRIP.
-# The generic `DOBBY-` prefix handles anything else Adi didn't label `dobby`.
+# Sweep any stale Things 3 test artifacts.
 sweep_things3() {
     [[ "${SKIP_SWEEP:-0}" == "1" ]] && return 0
-    # Clean up any DOBBY-TEST-* tasks left by prior test runs.
     # Uses the Dobby CLI itself (AppleScript-backed) — no external task binary.
     local found=0
     local ids
@@ -45,26 +44,50 @@ sweep_things3() {
     fi
 }
 
-sweep_things3
+has_filter() {
+    local needle="$1"
+    shift || true
+    local pattern
+    for pattern in "$@"; do
+        [[ "$pattern" == *"$needle"* ]] && return 0
+    done
+    return 1
+}
 
-# Collect test scripts. If args given, use them as filters (substring match on path).
+matches_filters() {
+    local file="$1"
+    shift || true
+    local pattern
+    for pattern in "$@"; do
+        [[ "$file" == *"$pattern"* ]] || return 1
+    done
+    return 0
+}
+
+# Collect test scripts. If args are given, each arg is an ANDed substring filter
+# on the script path. Example: `tasks live` selects `tasks/live.sh`.
 SCRIPTS=()
+SKIPPED_LIVE=0
+LIVE_FILTER_REQUESTED=0
+if has_filter "live" "$@"; then
+    LIVE_FILTER_REQUESTED=1
+fi
 while IFS= read -r -d '' file; do
     # Skip library shims
     [[ "$file" == */lib/* ]] && continue
     [[ "$(basename "$file")" == "run.sh" ]] && continue
     if [[ $# -gt 0 ]]; then
-        match=0
-        for pattern in "$@"; do
-            if [[ "$file" == *"$pattern"* ]]; then
-                match=1
-                break
-            fi
-        done
-        (( match )) || continue
+        matches_filters "$file" "$@" || continue
     fi
-    # Honor SKIP_LIVE
+    # Honor SKIP_LIVE. Otherwise, live suites are opt-in via RUN_LIVE=1 or an
+    # explicit `live` filter.
     if [[ "${SKIP_LIVE:-0}" == "1" ]] && [[ "$file" == *"/live.sh" ]]; then
+        continue
+    fi
+    if [[ "$file" == *"/live.sh" ]] \
+        && [[ "${RUN_LIVE:-0}" != "1" ]] \
+        && [[ "$LIVE_FILTER_REQUESTED" != "1" ]]; then
+        SKIPPED_LIVE=$((SKIPPED_LIVE + 1))
         continue
     fi
     # Honor SKIP_TASKS (when Things 3 isn't available)
@@ -73,6 +96,22 @@ while IFS= read -r -d '' file; do
     fi
     SCRIPTS+=("$file")
 done < <(find "$TESTS_DIR" -type f -name '*.sh' -print0 | sort -z)
+
+SELECTED_TASKS_LIVE=0
+for script in "${SCRIPTS[@]}"; do
+    if [[ "$script" == */tasks/live.sh ]]; then
+        SELECTED_TASKS_LIVE=1
+        break
+    fi
+done
+
+if [[ "$SKIPPED_LIVE" -gt 0 ]]; then
+    printf "\033[33m[tests] skipped %d live suite(s); set RUN_LIVE=1 or filter on 'live' to run them\033[0m\n" "$SKIPPED_LIVE"
+fi
+
+if [[ "$SELECTED_TASKS_LIVE" == "1" || "${SWEEP_THINGS:-0}" == "1" ]]; then
+    sweep_things3
+fi
 
 TOTAL_SUITES=0
 FAILED_SUITES=0
@@ -97,7 +136,9 @@ for script in "${SCRIPTS[@]}"; do
     fi
 done
 
-sweep_things3  # post-run sweep, catches anything the individual trap cleanups missed
+if [[ "$SELECTED_TASKS_LIVE" == "1" || "${SWEEP_THINGS:-0}" == "1" ]]; then
+    sweep_things3  # post-run sweep, catches anything the individual trap cleanups missed
+fi
 
 printf "\n\033[1m════════════════════════════════════════\033[0m\n"
 if [[ $FAILED_SUITES -eq 0 ]]; then
