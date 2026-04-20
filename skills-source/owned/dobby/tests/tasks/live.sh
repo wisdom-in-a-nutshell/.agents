@@ -69,33 +69,6 @@ run_dobby tasks search "$PREFIX" --json
 assert_envelope_ok "tasks.search" "$CAPTURED_STDOUT"
 assert_jq_truthy "count >= 3" '.data.count >= 3' "$CAPTURED_STDOUT"
 
-section "mark alpha done"
-run_dobby tasks done "$PREFIX alpha"
-assert_exit "exit 0" 0 "$CAPTURED_EXIT"
-assert_envelope_ok "tasks.done alpha" "$CAPTURED_STDOUT"
-assert_jq_eq "status completed" '.data.status' "completed" "$CAPTURED_STDOUT"
-
-section "alpha no longer in today"
-# Ride out potential delay
-found=0
-for attempt in 1 2 3; do
-    run_dobby tasks today
-    if printf '%s' "$CAPTURED_STDOUT" | jq -e '.data.tasks | all(.name != "'"$PREFIX alpha"'")' >/dev/null 2>&1; then
-        found=1
-        break
-    fi
-    sleep 1
-done
-if (( found )); then
-    _pass "alpha removed from today"
-else
-    _fail "alpha removed from today" "still visible"
-fi
-
-section "search --include-completed finds alpha"
-run_dobby tasks search "$PREFIX alpha" --include-completed --json
-assert_jq_truthy "found completed alpha" '.data.count >= 1' "$CAPTURED_STDOUT"
-
 section "delete beta"
 run_dobby tasks delete "$PREFIX beta" --yes
 assert_exit "exit 0" 0 "$CAPTURED_EXIT"
@@ -109,15 +82,10 @@ run_dobby tasks delete "anything"
 assert_exit "exit 2" 2 "$CAPTURED_EXIT"
 assert_envelope_error "tasks.delete no --yes" "E_VALIDATION" "$CAPTURED_STDOUT"
 
-section "cleanup alpha (best-effort — completed tasks may be auto-logged)"
-# Completed tasks move to Logbook after `log completed now`. They may become
-# unfindable by name. This is best-effort cleanup.
+section "cleanup alpha"
 run_dobby tasks delete "$PREFIX alpha" --yes
-if [[ "$CAPTURED_EXIT" -eq 0 ]]; then
-    _pass "alpha cleanup succeeded"
-else
-    _pass "alpha cleanup skipped (task already logged/trashed — expected for completed items)"
-fi
+assert_exit "alpha cleanup exit 0" 0 "$CAPTURED_EXIT"
+assert_envelope_ok "tasks.delete alpha" "$CAPTURED_STDOUT"
 
 section "cleanup natural-language task"
 run_dobby tasks delete "$PREFIX natural language" --yes

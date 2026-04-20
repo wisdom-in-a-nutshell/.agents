@@ -213,6 +213,7 @@ def add_subparsers(parent: argparse.ArgumentParser) -> None:
     # --- status + cleanup commands (AppleScript) ---
     p = sub.add_parser("done", help="Mark a task as completed")
     p.add_argument("target")
+    p.add_argument("--log-now", action="store_true", help="Immediately move completed items to Logbook")
     _fmt(p)
     p.set_defaults(handler=cmd_done)
 
@@ -935,18 +936,22 @@ def cmd_schedule(args: argparse.Namespace) -> int:
 def cmd_done(args: argparse.Namespace) -> int:
     env = Envelope("tasks.done")
     ref = _as_ref(args.target)
-    try:
-        name = run_applescript(f'''tell application "Things3"
+    script = f'''tell application "Things3"
     set t to {ref}
-    set status of t to completed
-    log completed now
+    set status of t to completed'''
+    if args.log_now:
+        script += "\n    log completed now"
+    script += '''
     return name of t
-end tell''')
+end tell'''
+    try:
+        name = run_applescript(script)
     except Things3Error as e:
         return emit_json(env.err(_err_code(e), str(e)))
     if not args.plain:
-        return emit_json(env.ok({"target": args.target, "name": name, "status": "completed"}))
-    return emit_text(f"done: {name}")
+        return emit_json(env.ok({"target": args.target, "name": name, "status": "completed", "logged": bool(args.log_now)}))
+    suffix = " (logged)" if args.log_now else ""
+    return emit_text(f"done: {name}{suffix}")
 
 
 def cmd_cancel(args: argparse.Namespace) -> int:

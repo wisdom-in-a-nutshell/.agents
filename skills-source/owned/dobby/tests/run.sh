@@ -5,9 +5,9 @@
 # are opt-in because they may write to real local surfaces such as Things 3 or
 # Calendar before cleaning up.
 #
-# When the Things 3 live suite is selected, sweeps DOBBY-TEST-* leftover tasks
-# before and after the run so aborted live runs do not pollute the user's task
-# surface. Cheap/default runs do not touch Things for sweeping.
+# When the Things 3 live suite is selected, sweeps open DOBBY-TEST-* leftover
+# tasks before and after the run so aborted live runs do not pollute the user's
+# active task surface. Cheap/default runs do not touch Things for sweeping.
 #
 # Usage:
 #     bash ~/.agents/skills-source/owned/dobby/tests/run.sh                 # cheap suites only
@@ -26,13 +26,16 @@ DOBBY_BIN="$TESTS_DIR/support/dobby-shim"
 REPO_ROOT="${DOBBY_WORKSPACE:-/Users/adi/GitHub/adi}"
 export DOBBY_WORKSPACE="$REPO_ROOT"
 
-# Sweep any stale Things 3 test artifacts.
+# Sweep any stale open Things 3 test artifacts. Completed Logbook items are not
+# included because Things' AppleScript delete can report success without
+# removing historical Logbook records; live tests avoid creating new Logbook
+# artifacts by default.
 sweep_things3() {
     [[ "${SKIP_SWEEP:-0}" == "1" ]] && return 0
     # Uses the Dobby CLI itself (AppleScript-backed) — no external task binary.
     local found=0
     local ids
-    ids=$("$DOBBY_BIN" tasks search "DOBBY-TEST-" --include-completed --json 2>/dev/null \
+    ids=$("$DOBBY_BIN" tasks search "DOBBY-TEST-" --json 2>/dev/null \
         | jq -r '.data.tasks[]?.id' 2>/dev/null || true)
     for id in $ids; do
         [[ -z "$id" ]] && continue
@@ -40,7 +43,7 @@ sweep_things3() {
         found=$((found + 1))
     done
     if (( found > 0 )); then
-        printf "\033[33m[sweep] removed %d stale DOBBY-TEST-* artifacts\033[0m\n" "$found"
+        printf "\033[33m[sweep] removed %d stale open DOBBY-TEST-* artifact(s)\033[0m\n" "$found"
     fi
 }
 

@@ -36,6 +36,16 @@ Examples:
 
 See `references/commands.md` for full recipes.
 
+## Testing
+
+Use the skill test runner for script changes. It is cheap/non-mutating by default; live suites that may create temporary Things 3 tasks or Calendar events are opt-in.
+
+- Normal check: `bash /Users/adi/.agents/skills-source/owned/dobby/tests/run.sh`
+- Live smoke: `RUN_LIVE=1 bash /Users/adi/.agents/skills-source/owned/dobby/tests/run.sh`
+- Specific live smoke: `bash /Users/adi/.agents/skills-source/owned/dobby/tests/run.sh tasks live`
+
+Do not add real external writes to non-live tests. Put write-path coverage in `*/live.sh`.
+
 ## Write-decision tree
 
 When new information surfaces, route it to exactly one canonical home. Never duplicate; point instead.

@@ -77,6 +77,7 @@ No file-based alternative — always via CLI.
   --checklist "step one, step two, step three"
 
 /Users/adi/.agents/skills-source/owned/dobby/scripts/dobby-tasks done <id-prefix>
+/Users/adi/.agents/skills-source/owned/dobby/scripts/dobby-tasks done <id-prefix> --log-now  # optional immediate Logbook move
 /Users/adi/.agents/skills-source/owned/dobby/scripts/dobby-tasks cancel <id-prefix>
 /Users/adi/.agents/skills-source/owned/dobby/scripts/dobby-tasks delete <id-prefix>
 
@@ -103,6 +104,32 @@ Calendar operations use `dobby-calendar` (EventKit via `ical`). Default calendar
 ```
 
 Do not use AppleScript for broad calendar search/audits; it can hang on Google-backed calendars. Use `dobby-calendar` or export/parse `.ics` for migrations.
+
+## Tests
+
+The Dobby skill test runner is cheap/non-mutating by default. Live suites are opt-in because they may create temporary real Things 3 tasks or Calendar events before cleanup.
+
+```bash
+# Default: cheap suites only. Does not run */live.sh.
+bash /Users/adi/.agents/skills-source/owned/dobby/tests/run.sh
+
+# Include all live integration/smoke suites.
+RUN_LIVE=1 bash /Users/adi/.agents/skills-source/owned/dobby/tests/run.sh
+
+# Run only a specific live suite.
+bash /Users/adi/.agents/skills-source/owned/dobby/tests/run.sh tasks live
+bash /Users/adi/.agents/skills-source/owned/dobby/tests/run.sh calendar live
+
+# Cleanup stale open Things 3 DOBBY-TEST-* artifacts without running live suites.
+SWEEP_THINGS=1 bash /Users/adi/.agents/skills-source/owned/dobby/tests/run.sh
+```
+
+Rules for agents:
+- Run the default cheap suite for normal Dobby script/doc changes.
+- Run live suites only when touching Things 3 writes, Calendar writes, backend integration, or before closing a risky refactor.
+- Live Things tests use `DOBBY-TEST-*` task titles and sweep open leftovers before/after selected live task runs.
+- Do not mark synthetic Things test tasks `done`: Things keeps completed items in Logbook and AppleScript cannot reliably purge them one-by-one.
+- Do not add real external writes to non-live test files. Put write-path coverage in `*/live.sh`.
 
 ## Diff and history
 
