@@ -15,6 +15,7 @@ BOOTSTRAP_FILE="${CANONICAL_DIR}/bootstrap.json"
 MCP_REGISTRY="${ROOT_DIR}/mcp/config/presets.json"
 SKILLS_REGISTRY="${ROOT_DIR}/skills/registry.json"
 AGENT_REGISTRY="${ROOT_DIR}/agents/registry.json"
+HOOKS_REGISTRY="${ROOT_DIR}/hooks/registry.json"
 REPO_FILTERS=()
 
 usage() {
@@ -34,6 +35,7 @@ Options:
   --mcp-registry <path>     Override shared MCP registry path
   --skills-registry <path>  Override shared skills registry path
   --agent-registry <path>   Override shared agent registry path
+  --hooks-registry <path>   Override shared hooks registry path
   --repo <path>             Limit repo-local validation to one repo path (repeatable)
   -h, --help                Show this help
 USAGE
@@ -82,6 +84,10 @@ while [[ $# -gt 0 ]]; do
       AGENT_REGISTRY="${2:-}"
       shift 2
       ;;
+    --hooks-registry)
+      HOOKS_REGISTRY="${2:-}"
+      shift 2
+      ;;
     --repo)
       REPO_FILTERS+=("${2:-}")
       shift 2
@@ -104,7 +110,8 @@ python3 -m claude.control_plane.validate_inputs \
   --bootstrap "$BOOTSTRAP_FILE" \
   --mcp-registry "$MCP_REGISTRY" \
   --skills-registry "$SKILLS_REGISTRY" \
-  --agent-registry "$AGENT_REGISTRY"
+  --agent-registry "$AGENT_REGISTRY" \
+  --hooks-registry "$HOOKS_REGISTRY"
 
 REPO_ARGS=()
 for repo in "${REPO_FILTERS[@]}"; do
@@ -132,7 +139,7 @@ run_and_require_clean() {
 run_and_require_clean "global Claude guidance" \
   bash "${SCRIPT_DIR}/sync-global-claude-md.sh" --dry-run --global-claude-md "$GLOBAL_CLAUDE_MD" --canonical-claude "${CANONICAL_DIR}/global.claude.md"
 run_and_require_clean "global Claude settings" \
-  bash "${SCRIPT_DIR}/sync-settings.sh" --dry-run --global-settings "$GLOBAL_SETTINGS" --canonical-settings "${CANONICAL_DIR}/settings.json"
+  bash "${SCRIPT_DIR}/sync-settings.sh" --dry-run --global-settings "$GLOBAL_SETTINGS" --canonical-settings "${CANONICAL_DIR}/settings.json" --hooks-registry "$HOOKS_REGISTRY"
 run_and_require_clean "global Claude MCP" \
   bash "${SCRIPT_DIR}/sync-global-mcp.sh" --dry-run --global-config "$GLOBAL_CONFIG" --mcp-registry "$MCP_REGISTRY"
 run_and_require_clean "Claude subagent sync" \

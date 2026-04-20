@@ -4,6 +4,7 @@ set -euo pipefail
 APPLY=0
 GITHUB_ROOT="${HOME}/GitHub"
 GLOBAL_CONFIG="${HOME}/.codex/config.toml"
+GLOBAL_HOOKS="${HOME}/.codex/hooks.json"
 GLOBAL_AGENTS="${HOME}/.codex/AGENTS.md"
 XCODE_CONFIG="${HOME}/Library/Developer/Xcode/CodingAssistant/codex/config.toml"
 XCODE_RULES="${HOME}/Library/Developer/Xcode/CodingAssistant/codex/rules/xcode.rules"
@@ -23,6 +24,7 @@ Options:
   --dry-run              Show actions only (default)
   --github-root <path>   Root used for workspace-write + repo trust scan
   --global-config <p>    Override ~/.codex/config.toml target
+  --global-hooks <p>     Override ~/.codex/hooks.json target
   --global-agents <p>    Override ~/.codex/AGENTS.md target
   --xcode-config <p>     Override Xcode Codex config target
   --xcode-rules <p>      Override Xcode rules target
@@ -60,6 +62,10 @@ while [[ $# -gt 0 ]]; do
       ;;
     --global-config)
       GLOBAL_CONFIG="${2:-}"
+      shift 2
+      ;;
+    --global-hooks)
+      GLOBAL_HOOKS="${2:-}"
       shift 2
       ;;
     --global-agents)
@@ -115,6 +121,7 @@ sync_config_cmd=(
   "$MODE_FLAG"
   --github-root "$GITHUB_ROOT"
   --global-config "$GLOBAL_CONFIG"
+  --global-hooks "$GLOBAL_HOOKS"
   --xcode-config "$XCODE_CONFIG"
   --xcode-rules "$XCODE_RULES"
 )
@@ -164,6 +171,7 @@ log "+ ${ghostty_cmd[*]}"
 check_cmd=(
   "$CHECK_CONTROL_PLANE_SCRIPT"
   --global-config "$GLOBAL_CONFIG"
+  --global-hooks "$GLOBAL_HOOKS"
   --xcode-config "$XCODE_CONFIG"
 )
 log "+ ${check_cmd[*]}"

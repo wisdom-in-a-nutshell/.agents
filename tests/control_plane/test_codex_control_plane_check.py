@@ -75,6 +75,8 @@ class CodexControlPlaneCheckTests(TempDirTestCase):
             str(root / "mcp/config/presets.json"),
             "--agent-registry",
             str(root / "agents/registry.json"),
+            "--hooks-registry",
+            str(root / "hooks/registry.json"),
             "--repo",
             str(repo),
         ]

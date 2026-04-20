@@ -1,0 +1,33 @@
+{
+  "managed_hooks": [
+    {
+      "command": "python3 ~/.agents/hooks/scripts/lifecycle.py --runtime {runtime} --event {event}",
+      "enabled": true,
+      "event": "SessionStart",
+      "id": "global-session-start",
+      "matchers": {
+        "claude": "startup|resume|clear|compact",
+        "codex": "startup|resume|clear"
+      },
+      "runtimes": [
+        "codex",
+        "claude"
+      ],
+      "scope": "global",
+      "timeout": 5
+    },
+    {
+      "command": "python3 ~/.agents/hooks/scripts/lifecycle.py --runtime {runtime} --event {event}",
+      "enabled": true,
+      "event": "Stop",
+      "id": "global-stop",
+      "runtimes": [
+        "codex",
+        "claude"
+      ],
+      "scope": "global",
+      "timeout": 5
+    }
+  ],
+  "version": 1
+}

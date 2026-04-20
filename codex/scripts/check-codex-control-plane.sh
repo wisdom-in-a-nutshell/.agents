@@ -7,6 +7,7 @@ ROOT_DIR="$(cd "$CONTROL_PLANE_DIR/.." && pwd)"
 SYNC_REPO_CONFIGS_SCRIPT="${SCRIPT_DIR}/sync-repo-codex-configs.sh"
 
 GLOBAL_CONFIG="${HOME}/.codex/config.toml"
+GLOBAL_HOOKS="${HOME}/.codex/hooks.json"
 GLOBAL_AGENTS_DIR="${HOME}/.codex/agents"
 XCODE_CONFIG="${HOME}/Library/Developer/Xcode/CodingAssistant/codex/config.toml"
 XCODE_AGENTS_DIR="${HOME}/Library/Developer/Xcode/CodingAssistant/codex/agents"
@@ -14,6 +15,7 @@ CANONICAL_DIR="${CONTROL_PLANE_DIR}/config"
 REGISTRY_FILE="${CANONICAL_DIR}/repo-bootstrap.json"
 MCP_REGISTRY_FILE="${ROOT_DIR}/mcp/config/presets.json"
 AGENT_REGISTRY_FILE="${ROOT_DIR}/agents/registry.json"
+HOOKS_REGISTRY_FILE="${ROOT_DIR}/hooks/registry.json"
 REPO_FILTERS=()
 
 usage() {
@@ -25,12 +27,14 @@ Validate canonical Codex control-plane inputs and rendered runtime outputs.
 Options:
   --canonical-dir <path>      Override canonical codex/config directory
   --global-config <path>      Override runtime ~/.codex/config.toml path
+  --global-hooks <path>       Override runtime ~/.codex/hooks.json path
   --global-agents-dir <path>  Override runtime ~/.codex/agents path
   --xcode-config <path>       Override Xcode runtime config path
   --xcode-agents-dir <path>   Override Xcode runtime agents dir
   --registry <path>           Override repo bootstrap registry path
   --mcp-registry <path>       Override shared MCP registry path
   --agent-registry <path>     Override shared agent registry path
+  --hooks-registry <path>     Override shared hooks registry path
   --repo <path>               Limit repo-local validation to one repo path (repeatable)
   -h, --help                  Show this help
 USAGE
@@ -45,6 +49,10 @@ while [[ $# -gt 0 ]]; do
       ;;
     --global-config)
       GLOBAL_CONFIG="${2:-}"
+      shift 2
+      ;;
+    --global-hooks)
+      GLOBAL_HOOKS="${2:-}"
       shift 2
       ;;
     --global-agents-dir)
@@ -69,6 +77,10 @@ while [[ $# -gt 0 ]]; do
       ;;
     --agent-registry)
       AGENT_REGISTRY_FILE="${2:-}"
+      shift 2
+      ;;
+    --hooks-registry)
+      HOOKS_REGISTRY_FILE="${2:-}"
       shift 2
       ;;
     --repo)
@@ -96,7 +108,7 @@ for repo in "${REPO_FILTERS[@]}"; do
   REPO_ARGS+=(--repo "$repo")
 done
 
-python3 - "$CANONICAL_DIR" "$GLOBAL_CONFIG" "$GLOBAL_AGENTS_DIR" "$XCODE_CONFIG" "$XCODE_AGENTS_DIR" "$REGISTRY_FILE" "$MCP_REGISTRY_FILE" "$AGENT_REGISTRY_FILE" "${REPO_FILTERS[@]}" <<'PY'
+PYTHONPATH="$ROOT_DIR" python3 - "$CANONICAL_DIR" "$GLOBAL_CONFIG" "$GLOBAL_HOOKS" "$GLOBAL_AGENTS_DIR" "$XCODE_CONFIG" "$XCODE_AGENTS_DIR" "$REGISTRY_FILE" "$MCP_REGISTRY_FILE" "$AGENT_REGISTRY_FILE" "$HOOKS_REGISTRY_FILE" "${REPO_FILTERS[@]}" <<'PY'
 from __future__ import annotations
 
 import json
@@ -201,18 +213,21 @@ def is_git_repo(path: Path) -> bool:
 
 canonical_dir = Path(sys.argv[1]).expanduser().resolve()
 global_config = Path(sys.argv[2]).expanduser().resolve()
-global_agents_dir = Path(sys.argv[3]).expanduser().resolve()
-xcode_config = Path(sys.argv[4]).expanduser().resolve()
-xcode_agents_dir = Path(sys.argv[5]).expanduser().resolve()
-registry_path = Path(sys.argv[6]).expanduser().resolve()
-mcp_registry_path = Path(sys.argv[7]).expanduser().resolve()
-agent_registry_path = Path(sys.argv[8]).expanduser().resolve()
-repo_filters = {str(Path(p).expanduser().resolve()) for p in sys.argv[9:] if p.strip()}
+global_hooks = Path(sys.argv[3]).expanduser().resolve()
+global_agents_dir = Path(sys.argv[4]).expanduser().resolve()
+xcode_config = Path(sys.argv[5]).expanduser().resolve()
+xcode_agents_dir = Path(sys.argv[6]).expanduser().resolve()
+registry_path = Path(sys.argv[7]).expanduser().resolve()
+mcp_registry_path = Path(sys.argv[8]).expanduser().resolve()
+agent_registry_path = Path(sys.argv[9]).expanduser().resolve()
+hooks_registry_path = Path(sys.argv[10]).expanduser().resolve()
+repo_filters = {str(Path(p).expanduser().resolve()) for p in sys.argv[11:] if p.strip()}
 
 root_dir = agent_registry_path.parent.parent.resolve()
 sys.path.insert(0, str(root_dir))
 
 from agents.registry import load_agent_registry
+from hooks.control_plane import load_hooks_registry, render_codex_hooks
 
 canonical_agents_dir = canonical_dir / "agents"
 global_template = canonical_dir / "global.config.toml"
@@ -253,6 +268,8 @@ if not mcp_registry_path.is_file():
     fail(f"missing MCP registry file: {mcp_registry_path}")
 if not agent_registry_path.is_file():
     fail(f"missing agent registry file: {agent_registry_path}")
+if not hooks_registry_path.is_file():
+    fail(f"missing hooks registry file: {hooks_registry_path}")
 try:
     registry = json.loads(registry_path.read_text(encoding="utf-8"))
 except Exception as exc:
@@ -261,6 +278,10 @@ try:
     mcp_registry = json.loads(mcp_registry_path.read_text(encoding="utf-8"))
 except Exception as exc:
     fail(f"invalid JSON in {mcp_registry_path}: {exc}")
+try:
+    hooks_registry = load_hooks_registry(hooks_registry_path)
+except Exception as exc:
+    fail(str(exc))
 
 if not isinstance(mcp_registry, dict):
     fail(f"MCP registry root must be an object in {mcp_registry_path}")
@@ -365,6 +386,24 @@ if xcode_config.exists():
             f"xcode runtime declares agents {sorted(declared_xcode_agents)} but registry expects {sorted(expected_global_agents)}"
         )
 
+if global_config.exists():
+    global_data = load_toml(global_config)
+    features = global_data.get("features", {})
+    codex_hooks_enabled = isinstance(features, dict) and features.get("codex_hooks") is True
+    if codex_hooks_enabled and not global_hooks.is_file():
+        fail(f"Codex hooks are enabled but hooks file is missing: {global_hooks}")
+    if global_hooks.is_file():
+        try:
+            actual_hooks = json.loads(global_hooks.read_text(encoding="utf-8"))
+        except Exception as exc:
+            fail(f"invalid JSON in {global_hooks}: {exc}")
+        expected_hooks = render_codex_hooks(hooks_registry)
+        if actual_hooks != expected_hooks:
+            fail(
+                f"global Codex hooks are out of sync: {global_hooks}. "
+                "Re-run codex/scripts/sync-config.sh --apply"
+            )
+
 validated_repo_count = 0
 for item in resolved_repos:
     repo_path = Path(item["path"]).resolve()
@@ -395,6 +434,7 @@ for item in resolved_repos:
 print("Codex structural validation passed")
 print(f"  canonical agent roles: {len(list(canonical_agents_dir.glob('*.toml')))}")
 print(f"  global runtime config checked: {'yes' if global_config.exists() else 'no'}")
+print(f"  global runtime hooks checked: {'yes' if global_hooks.exists() else 'no'}")
 print(f"  xcode runtime config checked: {'yes' if xcode_config.exists() else 'no'}")
 print(f"  repo-local configs checked: {validated_repo_count}")
 PY

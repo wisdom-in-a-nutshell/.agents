@@ -105,6 +105,9 @@ def make_control_plane_root(base_dir: Path) -> Path:
         "claude/config/global.claude.md",
         "claude/config/settings.json",
         "claude/config/agents/visual-reviewer.md",
+        "hooks/__init__.py",
+        "hooks/control_plane.py",
+        "hooks/registry.json",
     ):
         copy_repo_file(relative_path, root)
     (root / "codex/config").mkdir(parents=True, exist_ok=True)

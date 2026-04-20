@@ -174,6 +174,7 @@ mapfile -t changed_paths < <(
     agents \
     claude \
     codex \
+    hooks \
     mcp \
     plugins \
     plugins-source \
@@ -191,6 +192,7 @@ skills_changed=0
 plugins_changed=0
 codex_changed=0
 claude_changed=0
+hooks_changed=0
 shared_mcp_changed=0
 repo_registry_changed=0
 agent_registry_changed=0
@@ -199,6 +201,11 @@ for path in "${changed_paths[@]}"; do
   case "$path" in
     agents/*)
       agent_registry_changed=1
+      ;;
+  esac
+  case "$path" in
+    hooks/*)
+      hooks_changed=1
       ;;
   esac
   case "$path" in
@@ -242,10 +249,10 @@ fi
 if (( plugins_changed == 1 )); then
   need_sync_plugins=1
 fi
-if (( skills_changed == 1 || plugins_changed == 1 || codex_changed == 1 || shared_mcp_changed == 1 || agent_registry_changed == 1 )); then
+if (( skills_changed == 1 || plugins_changed == 1 || codex_changed == 1 || hooks_changed == 1 || shared_mcp_changed == 1 || agent_registry_changed == 1 )); then
   need_bootstrap_codex=1
 fi
-if (( claude_changed == 1 || shared_mcp_changed == 1 || skills_changed == 1 || plugins_changed == 1 || repo_registry_changed == 1 || agent_registry_changed == 1 )); then
+if (( claude_changed == 1 || hooks_changed == 1 || shared_mcp_changed == 1 || skills_changed == 1 || plugins_changed == 1 || repo_registry_changed == 1 || agent_registry_changed == 1 )); then
   need_bootstrap_claude=1
 fi
 

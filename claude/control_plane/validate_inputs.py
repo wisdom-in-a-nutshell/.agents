@@ -17,6 +17,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--mcp-registry", required=True)
     parser.add_argument("--skills-registry", required=True)
     parser.add_argument("--agent-registry", required=True)
+    parser.add_argument("--hooks-registry", required=True)
     return parser.parse_args()
 
 
@@ -37,6 +38,7 @@ def main() -> int:
     mcp_registry = Path(args.mcp_registry).expanduser().resolve()
     skills_registry = Path(args.skills_registry).expanduser().resolve()
     agent_registry = Path(args.agent_registry).expanduser().resolve()
+    hooks_registry = Path(args.hooks_registry).expanduser().resolve()
 
     global_claude = canonical_dir / "global.claude.md"
     settings_json = canonical_dir / "settings.json"
@@ -48,6 +50,7 @@ def main() -> int:
         mcp_registry,
         skills_registry,
         agent_registry,
+        hooks_registry,
     ):
         if not path.is_file():
             raise ControlPlaneError(f"missing required file: {path}")
@@ -58,6 +61,7 @@ def main() -> int:
     mcp_data = _load_json_object(mcp_registry, label="MCP registry")
     skills_data = _load_json_object(skills_registry, label="skills registry")
     agent_data = _load_json_object(agent_registry, label="agent registry")
+    hooks_data = _load_json_object(hooks_registry, label="hooks registry")
 
     repos = repo_data.get("repos", [])
     if not isinstance(repos, list):
@@ -176,6 +180,29 @@ def main() -> int:
     managed_agents = agent_data.get("managed_agents", [])
     if not isinstance(managed_agents, list):
         raise ControlPlaneError(f"managed_agents must be an array in {agent_registry}")
+
+    if hooks_data.get("version") != 1:
+        raise ControlPlaneError(f"hooks registry version must be 1 in {hooks_registry}")
+    managed_hooks = hooks_data.get("managed_hooks", [])
+    if not isinstance(managed_hooks, list):
+        raise ControlPlaneError(f"managed_hooks must be an array in {hooks_registry}")
+    for idx, hook in enumerate(managed_hooks):
+        if not isinstance(hook, dict):
+            raise ControlPlaneError(f"managed_hooks[{idx}] must be an object in {hooks_registry}")
+        if hook.get("event") not in {"SessionStart", "Stop"}:
+            raise ControlPlaneError(
+                f"managed_hooks[{idx}].event must be SessionStart or Stop in {hooks_registry}"
+            )
+        runtimes = hook.get("runtimes", [])
+        if not isinstance(runtimes, list) or not runtimes:
+            raise ControlPlaneError(
+                f"managed_hooks[{idx}].runtimes must be a non-empty array in {hooks_registry}"
+            )
+        for runtime in runtimes:
+            if runtime not in {"codex", "claude"}:
+                raise ControlPlaneError(
+                    f"managed_hooks[{idx}] has unsupported runtime `{runtime}` in {hooks_registry}"
+                )
 
     _ = settings
     return 0

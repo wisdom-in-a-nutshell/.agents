@@ -22,6 +22,7 @@ except ModuleNotFoundError:  # pragma: no cover
 ALLOWED_SCALAR_KEYS = {
     "model",
     "model_reasoning_effort",
+    "plan_mode_reasoning_effort",
     "service_tier",
     "profile",
     "model_reasoning_summary",

@@ -10,6 +10,7 @@ SYNC_GLOBAL=1
 SYNC_XCODE=1
 GITHUB_ROOT="${HOME}/GitHub"
 GLOBAL_CONFIG="${HOME}/.codex/config.toml"
+GLOBAL_HOOKS="${HOME}/.codex/hooks.json"
 GLOBAL_AGENTS_DIR="${HOME}/.codex/agents"
 XCODE_CONFIG="${HOME}/Library/Developer/Xcode/CodingAssistant/codex/config.toml"
 XCODE_AGENTS_DIR="${HOME}/Library/Developer/Xcode/CodingAssistant/codex/agents"
@@ -17,6 +18,7 @@ XCODE_RULES="${HOME}/Library/Developer/Xcode/CodingAssistant/codex/rules/xcode.r
 CANONICAL_DIR="${CONTROL_PLANE_DIR}/config"
 MCP_REGISTRY="${ROOT_DIR}/mcp/config/presets.json"
 AGENT_REGISTRY="${ROOT_DIR}/agents/registry.json"
+HOOKS_REGISTRY="${ROOT_DIR}/hooks/registry.json"
 CANONICAL_GLOBAL_TEMPLATE="${CANONICAL_DIR}/global.config.toml"
 CANONICAL_AGENTS_DIR="${CANONICAL_DIR}/agents"
 CANONICAL_XCODE_TEMPLATE="${CANONICAL_DIR}/xcode.config.toml"
@@ -48,6 +50,7 @@ Options:
   --github-root <path>       Root path for workspace-write writable_roots
                              (default: ~/GitHub)
   --global-config <path>     Override global codex config target
+  --global-hooks <path>      Override global codex hooks target
   --xcode-config <path>      Override Xcode codex config target
   --xcode-rules <path>       Override Xcode rules target
   --canonical-dir <path>     Directory containing canonical templates:
@@ -56,6 +59,8 @@ Options:
                              (default: mcp/config/presets.json)
   --agent-registry <path>    Shared agent registry
                              (default: agents/registry.json)
+  --hooks-registry <path>    Shared hooks registry
+                             (default: hooks/registry.json)
   -h, --help                 Show this help
 
 Examples:
@@ -111,6 +116,10 @@ while [[ $# -gt 0 ]]; do
       GLOBAL_CONFIG="${2:-}"
       shift 2
       ;;
+    --global-hooks)
+      GLOBAL_HOOKS="${2:-}"
+      shift 2
+      ;;
     --xcode-config)
       XCODE_CONFIG="${2:-}"
       shift 2
@@ -132,6 +141,10 @@ while [[ $# -gt 0 ]]; do
       ;;
     --agent-registry)
       AGENT_REGISTRY="${2:-}"
+      shift 2
+      ;;
+    --hooks-registry)
+      HOOKS_REGISTRY="${2:-}"
       shift 2
       ;;
     -h|--help)
@@ -1112,6 +1125,15 @@ render_xcode_rules() {
   cp "$template_rules_file" "$rendered_rules_file"
 }
 
+render_codex_hooks() {
+  local registry_file="$1"
+  local rendered_hooks_file="$2"
+
+  PYTHONPATH="$ROOT_DIR" python3 -m hooks.control_plane render-codex \
+    --registry "$registry_file" \
+    --output "$rendered_hooks_file"
+}
+
 show_diff() {
   local original="$1"
   local rendered="$2"
@@ -1143,22 +1165,31 @@ install_rendered_file() {
 sync_global() {
   local original="$GLOBAL_CONFIG"
   local rendered="${TMP_DIR}/global.config.toml"
+  local hooks_original="$GLOBAL_HOOKS"
+  local hooks_rendered="${TMP_DIR}/hooks.json"
 
   require_readable_file "$CANONICAL_GLOBAL_TEMPLATE"
   require_readable_file "$MCP_REGISTRY"
   require_readable_file "$AGENT_REGISTRY"
+  require_readable_file "$HOOKS_REGISTRY"
   ensure_parent_dir "$original"
+  ensure_parent_dir "$hooks_original"
   prepare_work_file "$original" "$rendered"
   sanitize_machine_specific_entries "$rendered"
   render_global_config "$rendered" "$CANONICAL_GLOBAL_TEMPLATE" "$MCP_REGISTRY" "$AGENT_REGISTRY"
   ensure_system_skills_disabled "$rendered"
+  render_codex_hooks "$HOOKS_REGISTRY" "$hooks_rendered"
 
   log ""
   log "=== Global Codex Config (${original}) ==="
   show_diff "$original" "$rendered"
+  log ""
+  log "=== Global Codex Hooks (${hooks_original}) ==="
+  show_diff "$hooks_original" "$hooks_rendered"
 
   if (( APPLY == 1 )); then
     install_rendered_file "$rendered" "$original"
+    install_rendered_file "$hooks_rendered" "$hooks_original"
   fi
 
   sync_agent_role_configs "Global Agent Roles" "$CANONICAL_AGENTS_DIR" "$GLOBAL_AGENTS_DIR" "$rendered"
