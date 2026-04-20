@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import re
 import shutil
 import subprocess
@@ -26,7 +27,20 @@ from typing import Any
 from lib.contract import Envelope, emit_json, emit_text
 
 DEFAULT_CALENDAR = "adithyan@wisdominanutshell.academy"
-ICAL_TIMEOUT_SECS = 20
+
+
+def _int_env(name: str, default: int) -> int:
+    raw = os.environ.get(name)
+    if not raw:
+        return default
+    try:
+        value = int(raw)
+    except ValueError:
+        return default
+    return value if value > 0 else default
+
+
+ICAL_TIMEOUT_SECS = _int_env("DOBBY_CALENDAR_TIMEOUT_SECS", 20)
 
 
 class CalendarError(RuntimeError):
@@ -342,7 +356,12 @@ def cmd_doctor(args: argparse.Namespace) -> int:
         "detail": DEFAULT_CALENDAR if default_ok else f"{DEFAULT_CALENDAR} not found or read-only",
     })
 
-    report = {"ok": all(c["ok"] for c in checks), "default_calendar": DEFAULT_CALENDAR, "checks": checks}
+    report = {
+        "ok": all(c["ok"] for c in checks),
+        "default_calendar": DEFAULT_CALENDAR,
+        "checks": checks,
+        "timeouts": {"ical_secs": ICAL_TIMEOUT_SECS},
+    }
     if report["ok"]:
         return _emit(env, report, args, plain="calendar: OK")
     err = env.err("E_DEPENDENCY", "one or more calendar checks failed")

@@ -1,6 +1,6 @@
 # Dobby commands — CLI first, direct-ops fallback
 
-The skill-bundled scripts are the preferred path. Use `Edit`/`Write` tools only when the scripts cannot do what is needed. Run from a Dobby workspace root, or set `DOBBY_WORKSPACE=/path/to/workspace`.
+The skill-bundled scripts are the preferred path. They are agent-first: JSON envelopes by default, `--plain` for operator inspection, no prompts, and stable error envelopes for validation/runtime failures. Use `Edit`/`Write` tools only when the scripts cannot do what is needed. Run from a Dobby workspace root, or set `DOBBY_WORKSPACE=/path/to/workspace`.
 
 ## Boot
 
@@ -11,7 +11,7 @@ Pull full context at session start.
 ```
 Returns: `profile.md` + `now.md` + `becoming.md` content + lazy area manifest (file names, sizes, mtimes — not content).
 
-Add `--json` for structured output.
+JSON is the default output contract. Add `--plain` for markdown inspection.
 
 ## Read a specific file
 
@@ -22,6 +22,8 @@ Add `--json` for structured output.
 /Users/adi/.agents/skills-source/owned/dobby/scripts/dobby-memory read --section area.<name>              # concatenates all .md in that area
 /Users/adi/.agents/skills-source/owned/dobby/scripts/dobby-memory read --section area.<name>.<file>       # single file (without .md)
 ```
+
+Add `--plain` when you want raw markdown content on stdout.
 
 Fallback (when you only need one file and don't want CLI overhead):
 ```
@@ -37,7 +39,7 @@ echo "- 2026-04-17 — event" | \
   /Users/adi/.agents/skills-source/owned/dobby/scripts/dobby-memory write --section area.<name>.log --message "short label"
 ```
 
-The CLI does NOT create files. The target must already exist.
+The CLI does NOT create files. The target must already exist. Content must arrive on stdin; commands do not prompt.
 
 ## Mid-file section rewrite (Edit tool only)
 
@@ -84,6 +86,7 @@ No file-based alternative — always via CLI.
 `--when` accepts natural-language dates: `today`, `tomorrow`, `next monday`, `in 3 days`, specific dates.
 `--area` is case-sensitive and must match an existing Things 3 Area.
 Read commands return a fast summary shape by default. Use `--verbose` only when full fields such as notes and timestamps are needed. Create commands avoid slow read-back by default; pass `--resolve` when full created-object data is worth the latency.
+Add `--plain` for compact inspection output.
 
 ## Calendar
 
@@ -110,17 +113,26 @@ Do not use AppleScript for broad calendar search/audits; it can hang on Google-b
 
 Wraps `git log -p memory/` with date filtering.
 
-## JSON mode
+## Output contract
 
-Every CLI command supports `--json` for a stable envelope:
+Every CLI command defaults to a stable JSON envelope and also accepts explicit `--json`:
 ```bash
-/Users/adi/.agents/skills-source/owned/dobby/scripts/dobby-memory boot --json
-/Users/adi/.agents/skills-source/owned/dobby/scripts/dobby-tasks snapshot --json
-/Users/adi/.agents/skills-source/owned/dobby/scripts/dobby-tasks today --json
-/Users/adi/.agents/skills-source/owned/dobby/scripts/dobby-tasks doctor --json
+/Users/adi/.agents/skills-source/owned/dobby/scripts/dobby-memory boot
+/Users/adi/.agents/skills-source/owned/dobby/scripts/dobby-tasks snapshot
+/Users/adi/.agents/skills-source/owned/dobby/scripts/dobby-tasks today
+/Users/adi/.agents/skills-source/owned/dobby/scripts/dobby-tasks doctor
 ```
 
-The scripts emit the standard Dobby JSON envelope (`schema_version`, `command`, `status`, `data`, `error`, `meta`) when `--json` is used or for JSON-default calendar commands.
+The scripts emit the standard Dobby JSON envelope (`schema_version`, `command`, `status`, `data`, `error`, `meta`) by default. Use `--plain` for markdown/text inspection.
+
+Timeout configuration:
+- `DOBBY_MEMORY_GIT_TIMEOUT_SECS` — memory diff git timeout, default `15`
+- `DOBBY_THINGS_OSASCRIPT_TIMEOUT_SECS` — Things JXA/AppleScript timeout, default `15`
+- `DOBBY_THINGS_OPEN_TIMEOUT_SECS` — Things URL open timeout, default `10`
+- `DOBBY_THINGS_URL_SETTLE_SECS` — post-URL settle delay, default `0.5`
+- `DOBBY_CALENDAR_TIMEOUT_SECS` — calendar `ical` timeout, default `20`
+
+Secrets are never accepted via flags. Things URL auth uses the workspace `.env` file provisioned by the local secret bootstrap; the token is not emitted in outputs.
 
 ## Typical session-start pattern
 

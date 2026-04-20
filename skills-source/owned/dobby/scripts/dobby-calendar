@@ -11,12 +11,12 @@ if str(SCRIPT_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPT_DIR))
 
 from lib import calendar  # noqa: E402
-from lib.contract import emit_json, err_envelope  # noqa: E402
+from lib.contract import DobbyArgumentParser, emit_json, err_envelope  # noqa: E402
 from lib.workspace import WorkspaceError  # noqa: E402
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(prog="dobby-calendar", description="Dobby calendar operations via EventKit-backed ical")
+    parser = DobbyArgumentParser(prog="dobby-calendar", description="Dobby calendar operations via EventKit-backed ical")
     parser.add_argument("--version", action="version", version="dobby-calendar 0.1.0")
     calendar.add_subparsers(parser)
     return parser

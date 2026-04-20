@@ -27,8 +27,10 @@ assert_jq_truthy "has default calendar" '.data.calendars | any(.title == "adithy
 
 section "search requires date range"
 run_dobby calendar search Neha
-assert_ne "missing range nonzero" 0 "$CAPTURED_EXIT"
-assert_contains "usage mentions --from" "--from" "$CAPTURED_STDERR"
+assert_exit "missing range exit 2" 2 "$CAPTURED_EXIT"
+assert_envelope_error "calendar.search missing range" "E_VALIDATION" "$CAPTURED_STDOUT"
+assert_contains "usage mentions --from" "--from" "$CAPTURED_STDOUT"
+assert_eq "stderr clean on parser error" "" "$CAPTURED_STDERR"
 
 section "date-bounded search returns envelope"
 run_dobby calendar search Birthday --from 2026-01-01 --to 2026-12-31

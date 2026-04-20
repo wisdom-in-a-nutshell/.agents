@@ -28,10 +28,11 @@ cleanup() {
 }
 trap cleanup EXIT
 
-section "add a task (plain default)"
+section "add a task (JSON default)"
 run_dobby tasks add "$PREFIX alpha" --when today
 assert_exit "exit 0" 0 "$CAPTURED_EXIT"
-assert_contains "says created" "created:" "$CAPTURED_STDOUT"
+assert_envelope_ok "tasks.add alpha" "$CAPTURED_STDOUT"
+assert_jq_eq "title echoed" '.data.title' "$PREFIX alpha" "$CAPTURED_STDOUT"
 CREATED_NAMES+=("$PREFIX alpha")
 sleep 1  # let URL scheme settle
 
@@ -46,8 +47,9 @@ sleep 1
 section "today contains the tasks"
 run_dobby tasks today
 assert_exit "exit 0" 0 "$CAPTURED_EXIT"
-assert_contains "alpha in today" "$PREFIX alpha" "$CAPTURED_STDOUT"
-assert_contains "beta in today" "$PREFIX beta" "$CAPTURED_STDOUT"
+assert_envelope_ok "tasks.today default" "$CAPTURED_STDOUT"
+assert_jq_truthy "alpha in today" '.data.tasks | any(.name == "'"$PREFIX alpha"'")' "$CAPTURED_STDOUT"
+assert_jq_truthy "beta in today" '.data.tasks | any(.name == "'"$PREFIX beta"'")' "$CAPTURED_STDOUT"
 
 section "today --json returns structured list"
 run_dobby tasks today --json
@@ -62,14 +64,15 @@ assert_jq_truthy "count >= 2" '.data.count >= 2' "$CAPTURED_STDOUT"
 section "mark alpha done"
 run_dobby tasks done "$PREFIX alpha"
 assert_exit "exit 0" 0 "$CAPTURED_EXIT"
-assert_contains "says done" "done:" "$CAPTURED_STDOUT"
+assert_envelope_ok "tasks.done alpha" "$CAPTURED_STDOUT"
+assert_jq_eq "status completed" '.data.status' "completed" "$CAPTURED_STDOUT"
 
 section "alpha no longer in today"
 # Ride out potential delay
 found=0
 for attempt in 1 2 3; do
     run_dobby tasks today
-    if [[ "$CAPTURED_STDOUT" != *"$PREFIX alpha"* ]]; then
+    if printf '%s' "$CAPTURED_STDOUT" | jq -e '.data.tasks | all(.name != "'"$PREFIX alpha"'")' >/dev/null 2>&1; then
         found=1
         break
     fi
@@ -88,7 +91,8 @@ assert_jq_truthy "found completed alpha" '.data.count >= 1' "$CAPTURED_STDOUT"
 section "delete beta"
 run_dobby tasks delete "$PREFIX beta" --yes
 assert_exit "exit 0" 0 "$CAPTURED_EXIT"
-assert_contains "says deleted" "deleted:" "$CAPTURED_STDOUT"
+assert_envelope_ok "tasks.delete beta" "$CAPTURED_STDOUT"
+assert_jq_eq "deleted name" '.data.name' "$PREFIX beta" "$CAPTURED_STDOUT"
 # Remove from cleanup list since it's already deleted
 CREATED_NAMES=("$PREFIX alpha")
 
@@ -110,6 +114,7 @@ CREATED_NAMES=()
 
 section "post-cleanup: no open test tasks remain"
 run_dobby tasks search "$PREFIX"
-assert_eq "no open tasks remain" "(no matches)" "$CAPTURED_STDOUT"
+assert_envelope_ok "tasks.search cleanup" "$CAPTURED_STDOUT"
+assert_jq_eq "no open tasks remain" '.data.count' "0" "$CAPTURED_STDOUT"
 
 finish_test "tasks/live.sh"

@@ -22,6 +22,11 @@ Three access methods, each used where it's strongest:
 All three go through `osascript` or `open` — no external binaries, no
 reverse-engineered protocol, no schema mismatch.
 
+Agent contract:
+    JSON envelope by default for every command; --plain is inspection.
+    No interactive commands are exposed; --no-input is accepted and honored.
+    Things URL auth token is read from the workspace .env file, not flags/env.
+
 Requirement: Things 3 must be installed on this Mac. It will be launched
 automatically if not already running.
 
@@ -50,9 +55,34 @@ from lib.contract import Envelope, emit_json, emit_text, log_stderr
 from lib.workspace import workspace_root
 
 THINGS3_BUNDLE = "com.culturedcode.ThingsMac"
-OSASCRIPT_TIMEOUT = 15  # seconds
 AUTH_TOKEN_ENV_VAR = "THINGS3_AUTH_TOKEN"
-URL_SCHEME_SETTLE_SECS = 0.5  # let Things 3 process the URL before reading back
+
+
+def _int_env(name: str, default: int) -> int:
+    raw = os.environ.get(name)
+    if not raw:
+        return default
+    try:
+        value = int(raw)
+    except ValueError:
+        return default
+    return value if value > 0 else default
+
+
+def _float_env(name: str, default: float) -> float:
+    raw = os.environ.get(name)
+    if not raw:
+        return default
+    try:
+        value = float(raw)
+    except ValueError:
+        return default
+    return value if value >= 0 else default
+
+
+OSASCRIPT_TIMEOUT = _int_env("DOBBY_THINGS_OSASCRIPT_TIMEOUT_SECS", 15)
+URL_SCHEME_OPEN_TIMEOUT = _int_env("DOBBY_THINGS_OPEN_TIMEOUT_SECS", 10)
+URL_SCHEME_SETTLE_SECS = _float_env("DOBBY_THINGS_URL_SETTLE_SECS", 0.5)  # let Things 3 process the URL before reading back
 
 _REPO_ROOT: Path | None = None
 
@@ -218,8 +248,9 @@ def add_subparsers(parent: argparse.ArgumentParser) -> None:
 
 def _fmt(p: argparse.ArgumentParser) -> None:
     g = p.add_mutually_exclusive_group()
-    g.add_argument("--json", action="store_true", help="Dobby JSON envelope")
+    g.add_argument("--json", action="store_true", help="Dobby JSON envelope (default)")
     g.add_argument("--plain", action="store_true", help="Compact plain text")
+    p.add_argument("--no-input", action="store_true", help="Fail rather than prompt; Dobby task commands never prompt")
 
 
 def _read_fmt(p: argparse.ArgumentParser) -> None:
@@ -292,7 +323,7 @@ def run_url_scheme(command: str, params: dict[str, str]) -> None:
     clean = {k: v for k, v in params.items() if v is not None and v != ""}
     url = f"things:///{command}?" + urllib.parse.urlencode(clean, quote_via=urllib.parse.quote)
     try:
-        r = subprocess.run(["open", url], capture_output=True, text=True, timeout=10)
+        r = subprocess.run(["open", url], capture_output=True, text=True, timeout=URL_SCHEME_OPEN_TIMEOUT)
     except Exception as e:
         raise Things3Error(f"URL scheme failed: {e}")
     if r.returncode != 0:
@@ -321,14 +352,12 @@ def _parse_env_file_value(path: Path, key: str) -> str | None:
 
 
 def read_auth_token() -> str:
-    """Read the Things 3 URL scheme auth token from env or repo-local .env."""
+    """Read the Things 3 URL scheme auth token from the repo-local .env file."""
     env_path = repo_env_path()
-    token = os.environ.get(AUTH_TOKEN_ENV_VAR, "").strip()
-    if not token:
-        token = (_parse_env_file_value(env_path, AUTH_TOKEN_ENV_VAR) or "").strip()
+    token = (_parse_env_file_value(env_path, AUTH_TOKEN_ENV_VAR) or "").strip()
     if not token:
         raise Things3Error(
-            f"{AUTH_TOKEN_ENV_VAR} not found in environment or {env_path}. "
+            f"{AUTH_TOKEN_ENV_VAR} not found in {env_path}. "
             "Run scripts/local/secrets/bootstrap_local_env_from_keyvault.sh after mapping "
             "THINGS3_AUTH_TOKEN to the repo's Things 3 auth-token secret."
         )
@@ -642,7 +671,7 @@ def cmd_list(args: argparse.Namespace, name: str) -> int:
     # fields are serialized, but keep this guard for backend quirks.
     if name != "logbook":
         tasks = [t for t in tasks if t.get("status") == "open"]
-    if args.json:
+    if not args.plain:
         return emit_json(env.ok({"count": len(tasks), "tasks": tasks, "verbose": args.verbose}))
     return emit_text("\n".join(_task_line(t) for t in tasks) if tasks else "(empty)")
 
@@ -654,7 +683,7 @@ def cmd_snapshot(args: argparse.Namespace) -> int:
     except Things3Error as e:
         return emit_json(env.err(_err_code(e), str(e)))
     payload = {"views": snapshot, "verbose": args.verbose}
-    if args.json:
+    if not args.plain:
         return emit_json(env.ok(payload))
     return emit_text(_snapshot_text(snapshot))
 
@@ -665,7 +694,7 @@ def cmd_overdue(args: argparse.Namespace) -> int:
         overdue = run_jxa(_jxa_overdue(date.today().isoformat(), verbose=args.verbose))
     except Things3Error as e:
         return emit_json(env.err(_err_code(e), str(e)))
-    if args.json:
+    if not args.plain:
         return emit_json(env.ok({"count": len(overdue), "tasks": overdue, "verbose": args.verbose}))
     return emit_text("\n".join(_task_line(t) for t in overdue) if overdue else "(no overdue tasks)")
 
@@ -680,7 +709,7 @@ def cmd_search(args: argparse.Namespace) -> int:
         ))
     except Things3Error as e:
         return emit_json(env.err(_err_code(e), str(e)))
-    if args.json:
+    if not args.plain:
         return emit_json(env.ok({
             "count": len(matches),
             "tasks": matches,
@@ -697,7 +726,7 @@ def cmd_projects(args: argparse.Namespace) -> int:
         projects = [p for p in run_jxa(_jxa_projects()) if p.get("status") == "open"]
     except Things3Error as e:
         return emit_json(env.err(_err_code(e), str(e)))
-    if args.json:
+    if not args.plain:
         return emit_json(env.ok({"count": len(projects), "projects": projects}))
     return emit_text("\n".join(_proj_line(p) for p in projects) if projects else "(no projects)")
 
@@ -708,7 +737,7 @@ def cmd_areas(args: argparse.Namespace) -> int:
         areas = run_jxa(_jxa_areas())
     except Things3Error as e:
         return emit_json(env.err(_err_code(e), str(e)))
-    if args.json:
+    if not args.plain:
         return emit_json(env.ok({"count": len(areas), "areas": areas}))
     return emit_text("\n".join(f"  {a.get('name','')}" for a in areas) if areas else "(no areas)")
 
@@ -719,7 +748,7 @@ def cmd_tags(args: argparse.Namespace) -> int:
         tags = run_jxa(_jxa_tags())
     except Things3Error as e:
         return emit_json(env.err(_err_code(e), str(e)))
-    if args.json:
+    if not args.plain:
         return emit_json(env.ok({"count": len(tags), "tags": tags}))
     return emit_text("\n".join(t.get("name", "") for t in tags) if tags else "(no tags)")
 
@@ -756,7 +785,7 @@ def cmd_add(args: argparse.Namespace) -> int:
     except Things3Error as e:
         return emit_json(env.err(_err_code(e), str(e)))
 
-    if args.json:
+    if not args.plain:
         task_data: dict[str, Any] = {"name": args.title, "resolved": False}
         if args.resolve:
             try:
@@ -790,7 +819,7 @@ def cmd_project_new(args: argparse.Namespace) -> int:
     except Things3Error as e:
         return emit_json(env.err(_err_code(e), str(e)))
 
-    if args.json:
+    if not args.plain:
         proj_data: dict[str, Any] = {"name": args.title, "resolved": False}
         if args.resolve:
             try:
@@ -815,7 +844,7 @@ def cmd_area_new(args: argparse.Namespace) -> int:
         )
     except Things3Error as e:
         return emit_json(env.err(_err_code(e), str(e)))
-    if args.json:
+    if not args.plain:
         return emit_json(env.ok({"id": area_id, "title": args.title}))
     return emit_text(f"area created: {args.title} ({area_id})")
 
@@ -866,7 +895,7 @@ def cmd_edit(args: argparse.Namespace) -> int:
         run_url_scheme("update", params)
     except Things3Error as e:
         return emit_json(env.err(_err_code(e), str(e)))
-    if args.json:
+    if not args.plain:
         return emit_json(env.ok({"target": args.target, "id": task_id}))
     return emit_text(f"edited: {args.target}")
 
@@ -894,7 +923,7 @@ def cmd_schedule(args: argparse.Namespace) -> int:
         run_url_scheme("update", params)
     except Things3Error as e:
         return emit_json(env.err(_err_code(e), str(e)))
-    if args.json:
+    if not args.plain:
         return emit_json(env.ok({"target": args.target, "id": task_id}))
     return emit_text(f"scheduled: {args.target}")
 
@@ -915,7 +944,7 @@ def cmd_done(args: argparse.Namespace) -> int:
 end tell''')
     except Things3Error as e:
         return emit_json(env.err(_err_code(e), str(e)))
-    if args.json:
+    if not args.plain:
         return emit_json(env.ok({"target": args.target, "name": name, "status": "completed"}))
     return emit_text(f"done: {name}")
 
@@ -931,7 +960,7 @@ def cmd_cancel(args: argparse.Namespace) -> int:
 end tell''')
     except Things3Error as e:
         return emit_json(env.err(_err_code(e), str(e)))
-    if args.json:
+    if not args.plain:
         return emit_json(env.ok({"target": args.target, "name": name, "status": "canceled"}))
     return emit_text(f"canceled: {name}")
 
@@ -950,7 +979,7 @@ def cmd_delete(args: argparse.Namespace) -> int:
 end tell''')
     except Things3Error as e:
         return emit_json(env.err(_err_code(e), str(e)))
-    if args.json:
+    if not args.plain:
         return emit_json(env.ok({"target": args.target, "name": name}))
     return emit_text(f"deleted: {name}")
 
@@ -982,7 +1011,7 @@ end tell'''
         result = run_applescript(script)
     except Things3Error as e:
         return emit_json(env.err(_err_code(e), str(e)))
-    if args.json:
+    if not args.plain:
         return emit_json(env.ok({"shown": result}))
     return emit_text(f"showing: {result}")
 
@@ -993,7 +1022,7 @@ def cmd_log_completed(args: argparse.Namespace) -> int:
         run_applescript('tell application "Things3" to log completed now')
     except Things3Error as e:
         return emit_json(env.err(_err_code(e), str(e)))
-    if args.json:
+    if not args.plain:
         return emit_json(env.ok({"action": "log-completed"}))
     return emit_text("logged all completed items")
 
@@ -1006,7 +1035,7 @@ def cmd_empty_trash(args: argparse.Namespace) -> int:
         run_applescript('tell application "Things3" to empty trash')
     except Things3Error as e:
         return emit_json(env.err(_err_code(e), str(e)))
-    if args.json:
+    if not args.plain:
         return emit_json(env.ok({"action": "empty-trash"}))
     return emit_text("trash emptied")
 
@@ -1050,24 +1079,29 @@ def cmd_doctor(args: argparse.Namespace) -> int:
     checks.append({"name": "jxa_roundtrip", "ok": jxa_ok, "detail": jxa_detail})
 
     env_path = repo_env_path()
-    token_source = f"environment variable {AUTH_TOKEN_ENV_VAR}"
-    token_ok = bool(os.environ.get(AUTH_TOKEN_ENV_VAR, "").strip())
-    if not token_ok:
-        token_value = (_parse_env_file_value(env_path, AUTH_TOKEN_ENV_VAR) or "").strip()
-        token_ok = bool(token_value)
-        token_source = str(env_path)
+    token_source = str(env_path)
+    token_value = (_parse_env_file_value(env_path, AUTH_TOKEN_ENV_VAR) or "").strip()
+    token_ok = bool(token_value)
     checks.append({
-        "name": "auth_token",
+        "name": "auth_token_file",
         "ok": token_ok,
         "detail": f"{AUTH_TOKEN_ENV_VAR} present via {token_source}" if token_ok else (
-            f"missing: {AUTH_TOKEN_ENV_VAR} in environment or {env_path}"
+            f"missing: {AUTH_TOKEN_ENV_VAR} in {env_path}"
         ),
     })
 
     all_ok = all(c["ok"] for c in checks)
-    report = {"ok": all_ok, "checks": checks}
+    report = {
+        "ok": all_ok,
+        "checks": checks,
+        "timeouts": {
+            "osascript_secs": OSASCRIPT_TIMEOUT,
+            "url_open_secs": URL_SCHEME_OPEN_TIMEOUT,
+            "url_settle_secs": URL_SCHEME_SETTLE_SECS,
+        },
+    }
 
-    if args.json:
+    if not args.plain:
         if all_ok:
             return emit_json(env.ok(report))
         err = env.err("E_DEPENDENCY", "one or more checks failed")

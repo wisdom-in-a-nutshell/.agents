@@ -26,6 +26,9 @@ Confirm in one line: "Added to `profile.md` under Communication preferences."
 **"What's on today?"** / "What's my day look like?"
 → `scripts/dobby-tasks snapshot` for today + overdue + inbox in one call. Surface counts and the live list.
 
+**"What's on my calendar / week?"**
+→ `scripts/dobby-calendar week` or `scripts/dobby-calendar today`. Use `--all-calendars` only when the user asks for an audit or cross-account search.
+
 **"What's in my inbox?"**
 → `scripts/dobby-tasks inbox`. Flag anything stale.
 
@@ -63,6 +66,14 @@ Propose the destination; do the write.
 
 **"What's overdue?"**
 → `scripts/dobby-tasks overdue`. Name any drift from stated commitments directly.
+
+## Calendar
+
+**"Add this to calendar"** / "Block this time" / "Schedule this trip"
+→ Use `scripts/dobby-calendar upsert-event` when an event may already exist; include a match range to avoid duplicates. Default calendar is `adithyan@wisdominanutshell.academy` unless the user explicitly chooses another.
+
+**"Search my calendar for X"**
+→ Use `scripts/dobby-calendar search "X" --from <date> --to <date>`. Calendar searches must be date-bounded; use `--all-calendars` for migration/audit work.
 
 ## Reflect
 

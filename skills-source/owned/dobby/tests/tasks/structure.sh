@@ -17,7 +17,7 @@ for cmd in today inbox upcoming anytime someday logbook snapshot overdue search 
 done
 
 section "snapshot returns today/overdue/inbox in one envelope"
-run_dobby tasks snapshot --json
+run_dobby tasks snapshot
 assert_exit "snapshot exit 0" 0 "$CAPTURED_EXIT"
 assert_envelope_ok "tasks.snapshot" "$CAPTURED_STDOUT"
 assert_jq_truthy "has today view" '.data.views.today.tasks | type == "array"' "$CAPTURED_STDOUT"
@@ -31,7 +31,8 @@ assert_envelope_error "tasks.add empty" "E_VALIDATION" "$CAPTURED_STDOUT"
 
 section "add — missing title rejected"
 run_dobby tasks add
-assert_ne "nonzero exit" 0 "$CAPTURED_EXIT"
+assert_exit "exit 2" 2 "$CAPTURED_EXIT"
+assert_envelope_error "tasks.add missing title" "E_VALIDATION" "$CAPTURED_STDOUT"
 
 section "delete without --yes rejected"
 run_dobby tasks delete "anything"
@@ -76,18 +77,19 @@ run_dobby tasks area-new ""
 assert_exit "exit 2" 2 "$CAPTURED_EXIT"
 assert_envelope_error "tasks.area-new empty" "E_VALIDATION" "$CAPTURED_STDOUT"
 
-section "doctor (plain default)"
-run_dobby tasks doctor
+section "doctor --plain returns inspection report"
+run_dobby tasks doctor --plain
 assert_exit "exit 0 or 4" 0 "$CAPTURED_EXIT" || true  # might be degraded
 assert_contains "doctor checks osascript" "osascript" "$CAPTURED_STDOUT"
 assert_contains "doctor checks things3_installed" "things3_installed" "$CAPTURED_STDOUT"
 assert_contains "doctor checks things3_running" "things3_running" "$CAPTURED_STDOUT"
 assert_contains "doctor checks jxa_roundtrip" "jxa_roundtrip" "$CAPTURED_STDOUT"
 
-section "doctor --json returns structured report"
-run_dobby tasks doctor --json
+section "doctor default returns structured report"
+run_dobby tasks doctor
 assert_envelope_shape "tasks.doctor" "$CAPTURED_STDOUT"
 assert_jq_truthy "data.checks is array" '(.data.checks | type) == "array"' "$CAPTURED_STDOUT"
 assert_jq_truthy "5 checks" '(.data.checks | length) == 5' "$CAPTURED_STDOUT"
+assert_jq_truthy "timeouts exposed" '(.data.timeouts.osascript_secs | type) == "number"' "$CAPTURED_STDOUT"
 
 finish_test "tasks/structure.sh"

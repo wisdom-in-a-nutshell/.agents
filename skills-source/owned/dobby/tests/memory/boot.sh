@@ -5,8 +5,23 @@ source "$(dirname "$0")/../lib/assert.sh"
 
 FAIL_COUNT=0
 
-section "memory boot — markdown default"
+section "memory boot — JSON default"
 run_dobby memory boot
+assert_exit "exit 0 on success" 0 "$CAPTURED_EXIT"
+assert_envelope_ok "memory.boot default" "$CAPTURED_STDOUT"
+assert_jq_eq "command=memory.boot" '.command' "memory.boot" "$CAPTURED_STDOUT"
+assert_jq_truthy "data.profile is a non-empty string" \
+    '(.data.profile | type) == "string" and (.data.profile | length > 0)' "$CAPTURED_STDOUT"
+assert_jq_truthy "data.now is a non-empty string" \
+    '(.data.now | type) == "string" and (.data.now | length > 0)' "$CAPTURED_STDOUT"
+assert_jq_truthy "data.areas is an array" \
+    '(.data.areas | type) == "array"' "$CAPTURED_STDOUT"
+assert_jq_truthy "data.counts.area_files is >= 1" \
+    '.data.counts.area_files >= 1' "$CAPTURED_STDOUT"
+assert_eq "stderr clean on success" "" "$CAPTURED_STDERR"
+
+section "memory boot --plain returns markdown"
+run_dobby memory boot --plain
 assert_exit "exit 0 on success" 0 "$CAPTURED_EXIT"
 assert_contains "contains profile marker comment" \
     "<!-- dobby memory boot: profile" "$CAPTURED_STDOUT"

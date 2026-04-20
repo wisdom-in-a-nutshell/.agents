@@ -13,15 +13,14 @@ Section routing (dot notation):
     area.<name>        -> memory/areas/<name>/  (concat all .md)
     area.<name>.<file> -> memory/areas/<name>/<file>.md
 
-Content commands (boot, read, diff) default to text/markdown on stdout so a
-language-model consumer reads them natively. --json flips to the envelope.
-Operation commands (write) default to the JSON envelope. --plain prints a
-minimal confirmation message instead.
+Every command defaults to the Dobby JSON envelope for agent reliability.
+`--plain` prints markdown/raw text for operator inspection when needed.
 """
 
 from __future__ import annotations
 
 import argparse
+import os
 import subprocess
 import sys
 from datetime import datetime
@@ -32,6 +31,20 @@ from lib.contract import Envelope, emit_json, emit_text, log_stderr
 from lib.workspace import WorkspaceError, workspace_root
 
 _REPO_ROOT: Path | None = None
+
+
+def _int_env(name: str, default: int) -> int:
+    raw = os.environ.get(name)
+    if not raw:
+        return default
+    try:
+        value = int(raw)
+    except ValueError:
+        return default
+    return value if value > 0 else default
+
+
+GIT_TIMEOUT_SECS = _int_env("DOBBY_MEMORY_GIT_TIMEOUT_SECS", 15)
 
 
 def repo_root() -> Path:
@@ -107,8 +120,9 @@ def add_subparsers(parent: argparse.ArgumentParser) -> None:
 
 def _add_format_flags(p: argparse.ArgumentParser) -> None:
     g = p.add_mutually_exclusive_group()
-    g.add_argument("--json", action="store_true", help="Output the full JSON envelope")
+    g.add_argument("--json", action="store_true", help="Output the full JSON envelope (default)")
     g.add_argument("--plain", action="store_true", help="Output plain text / minimal form")
+    p.add_argument("--no-input", action="store_true", help="Fail rather than prompt; Dobby memory commands never prompt")
 
 
 # ---------------------------------------------------------------------------
@@ -275,28 +289,25 @@ def cmd_boot(args: argparse.Namespace) -> int:
     except Exception as e:  # pragma: no cover - defensive
         return emit_json(env.err("E_RUNTIME", f"{type(e).__name__}: {e}"))
 
-    if args.json:
-        return emit_json(
-            env.ok(
-                {
-                    "profile": profile,
-                    "now": now,
-                    "becoming": becoming,
-                    "areas": manifest,
-                    "counts": {
-                        "profile_bytes": len(profile.encode("utf-8")),
-                        "now_bytes": len(now.encode("utf-8")),
-                        "becoming_bytes": len(becoming.encode("utf-8")),
-                        "area_files": sum(len(d["files"]) for d in manifest),
-                    },
-                }
-            )
-        )
+    payload = {
+        "profile": profile,
+        "now": now,
+        "becoming": becoming,
+        "areas": manifest,
+        "counts": {
+            "profile_bytes": len(profile.encode("utf-8")),
+            "now_bytes": len(now.encode("utf-8")),
+            "becoming_bytes": len(becoming.encode("utf-8")),
+            "area_files": sum(len(d["files"]) for d in manifest),
+        },
+    }
 
-    return emit_text(
-        _render_boot_markdown(profile, now, becoming, manifest),
-        ensure_newline=False,
-    )
+    if args.plain:
+        return emit_text(
+            _render_boot_markdown(profile, now, becoming, manifest),
+            ensure_newline=False,
+        )
+    return emit_json(env.ok(payload))
 
 
 def cmd_read(args: argparse.Namespace) -> int:
@@ -322,18 +333,15 @@ def cmd_read(args: argparse.Namespace) -> int:
     except OSError as e:
         return emit_json(env.err("E_IO", str(e)))
 
-    if args.json:
-        return emit_json(
-            env.ok(
-                {
-                    "section": args.section,
-                    "path": relpath(target),
-                    "content": content,
-                    "bytes": len(content.encode("utf-8")),
-                }
-            )
-        )
-    return emit_text(content)
+    payload = {
+        "section": args.section,
+        "path": relpath(target),
+        "content": content,
+        "bytes": len(content.encode("utf-8")),
+    }
+    if args.plain:
+        return emit_text(content)
+    return emit_json(env.ok(payload))
 
 
 def cmd_write(args: argparse.Namespace) -> int:
@@ -369,6 +377,14 @@ def cmd_write(args: argparse.Namespace) -> int:
 
     # Read content from stdin (never from flags — keeps the door open for
     # secret-bearing content and avoids shell quoting footguns for multiline).
+    if sys.stdin.isatty():
+        return emit_json(
+            env.err(
+                "E_VALIDATION",
+                "content must be piped on stdin",
+                hint="Pipe content into `dobby-memory write`",
+            )
+        )
     content = sys.stdin.read()
     if not content.strip():
         return emit_json(
@@ -402,12 +418,11 @@ def cmd_write(args: argparse.Namespace) -> int:
         "message": args.message,
     }
 
-    if args.json:
-        return emit_json(env.ok(payload))
-    # default: concise one-liner
-    return emit_text(
-        f"wrote {after - before} bytes to {payload['path']} at {stamp}",
-    )
+    if args.plain:
+        return emit_text(
+            f"wrote {after - before} bytes to {payload['path']} at {stamp}",
+        )
+    return emit_json(env.ok(payload))
 
 
 def cmd_diff(args: argparse.Namespace) -> int:
@@ -427,11 +442,11 @@ def cmd_diff(args: argparse.Namespace) -> int:
             cmd,
             capture_output=True,
             text=True,
-            timeout=15,
+            timeout=GIT_TIMEOUT_SECS,
         )
     except subprocess.TimeoutExpired:
         return emit_json(
-            env.err("E_TIMEOUT", "git log timed out", hint="Reduce --since range")
+            env.err("E_TIMEOUT", f"git log timed out after {GIT_TIMEOUT_SECS}s", hint="Reduce --since range or set DOBBY_MEMORY_GIT_TIMEOUT_SECS")
         )
     except FileNotFoundError:
         return emit_json(
@@ -446,16 +461,13 @@ def cmd_diff(args: argparse.Namespace) -> int:
             )
         )
 
-    if args.json:
-        return emit_json(
-            env.ok(
-                {
-                    "since": args.since,
-                    "diff": result.stdout,
-                    "is_empty": not result.stdout.strip(),
-                    "bytes": len(result.stdout.encode("utf-8")),
-                }
-            )
-        )
-    # plain default for diff — users and agents typically want raw git output
-    return emit_text(result.stdout, ensure_newline=False)
+    payload = {
+        "since": args.since,
+        "diff": result.stdout,
+        "is_empty": not result.stdout.strip(),
+        "bytes": len(result.stdout.encode("utf-8")),
+        "timeout_secs": GIT_TIMEOUT_SECS,
+    }
+    if args.plain:
+        return emit_text(result.stdout, ensure_newline=False)
+    return emit_json(env.ok(payload))

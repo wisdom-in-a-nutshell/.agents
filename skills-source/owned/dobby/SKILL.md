@@ -1,6 +1,6 @@
 ---
 name: dobby
-description: Canonical contract for operating a Dobby workspace — a personal-agent repo where memory, direction, per-area canon, journal, and tasks are held as the user's externalized mind. Use whenever the user wants to store, read, update, or route personal memory; check or update task state; reflect or journal; answer "where does this go"; or run any operation that touches `memory/`, `dobby/`, `journal/`, or Things 3. Triggers include "remember this", "store this", "add to memory", "save for later", "I want to become...", "what's on today", "what's overdue", "what's in my inbox", "what do you know about that area", "where does this go", "add a task", "mark done", "I need to...", and any routing decision about new information surfaced in conversation. This skill holds the write-decision tree, file contracts, command recipes, and hygiene rules so operating the workspace is deterministic across agents.
+description: Canonical contract for operating a Dobby workspace — a personal-agent repo where memory, direction, per-area canon, journal, tasks, and calendar are held as the user's externalized mind. Use whenever the user wants to store, read, update, or route personal memory; check or update task state; reflect or journal; inspect, search, or add calendar events; answer "where does this go"; or run any operation that touches `memory/`, `dobby/`, `journal/`, Things 3, or calendar. Triggers include "remember this", "store this", "add to memory", "save for later", "I want to become...", "what's on today", "what's overdue", "what's in my inbox", "what's on my calendar/week", "add this to calendar", "schedule this", "search my calendar", "what do you know about that area", "where does this go", "add a task", "mark done", "I need to...", and any routing decision about new information surfaced in conversation. This skill holds the write-decision tree, file contracts, command recipes, and hygiene rules so operating the workspace is deterministic across agents.
 ---
 
 # Dobby
@@ -23,12 +23,12 @@ On any fresh session:
 
 ## Prefer the CLI
 
-The skill-bundled Dobby scripts are the preferred path for reads, appends, tasks, and calendar operations. They live beside this file under `scripts/`: `dobby-memory`, `dobby-tasks`, and `dobby-calendar`. They are deterministic, timestamped, and tested. Run them from a Dobby workspace root, or set `DOBBY_WORKSPACE=/path/to/workspace`.
+The skill-bundled Dobby scripts are the preferred path for reads, appends, tasks, and calendar operations. They live beside this file under `scripts/`: `dobby-memory`, `dobby-tasks`, and `dobby-calendar`. They are deterministic, timestamped, tested, and agent-first: JSON envelopes by default, `--plain` only for operator inspection. Run them from a Dobby workspace root, or set `DOBBY_WORKSPACE=/path/to/workspace`.
 
 **Reach for the CLI first.** Fall through to the `Edit`/`Write` tools only when the CLI cannot do what's needed — surgical mid-file section rewrites, or creating a new file. Both are legitimate; the CLI is simply the default.
 
 Examples:
-- Boot: `scripts/dobby-memory boot`
+- Boot: `scripts/dobby-memory boot` (JSON default; add `--plain` for markdown)
 - Read a file: `scripts/dobby-memory read --section profile` / `--section area.<name>.<file>`
 - Append to a log: `echo "- date — event" | scripts/dobby-memory write --section area.<name>.log --message "label"`
 - Mid-file section edit in `profile.md`: use `Edit` tool (CLI can't replace sections)
@@ -72,6 +72,10 @@ Tasks always go through the CLI. There is no file-based alternative.
 Habits are not Things 3 tasks. Structured check-ins are handled by a journaling skill if one is installed; recurring physical habits (running, etc.) are Things 3 recurring tasks set once in the UI; behavioral nudges happen inside conversation.
 
 Default for ambiguous new tasks: drop into Things 3 Inbox. The user sorts during morning review.
+
+## Journal
+
+Dobby owns routing to `journal/`; the dedicated `journal-checkin` skill owns structured check-ins and guided reflections. For raw dated capture, create a file under `journal/daily/YYYY-MM-DD/` after reading enough context to avoid duplication. Do not turn journal entries into Things tasks unless there is an explicit action.
 
 ## Calendar
 

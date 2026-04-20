@@ -8,14 +8,14 @@ Follows `client-interface-guidelines`:
 - No secrets in any output
 
 Every command goes through `Envelope` for timing and shaping.
-Content commands (memory boot, memory read) default to markdown on stdout
-because I (the primary consumer) am a language model and markdown is natively
-machine-readable. Operation commands (memory write, tasks add, etc.) default
-to the JSON envelope. Every command honors `--json` and `--plain` overrides.
+Every command defaults to the JSON envelope for agent reliability. `--plain`
+is available only as an operator-inspection convenience. Every command honors
+`--json` and `--plain` overrides without TTY-sensitive semantic changes.
 """
 
 from __future__ import annotations
 
+import argparse
 import json
 import sys
 import time
@@ -37,6 +37,39 @@ ERROR_EXIT_CODES: dict[str, int] = {
     "E_AUTH": 3,        # authentication failure (Things Cloud, etc.)
     "E_TIMEOUT": 5,     # remote call timed out
 }
+
+
+def command_from_prog(prog: str) -> str:
+    """Infer the Dobby command path from an argparse program string."""
+    parts = prog.split()
+    if not parts:
+        return "dobby.cli"
+    root = parts[0]
+    if root.endswith("dobby-memory"):
+        domain = "memory"
+    elif root.endswith("dobby-tasks"):
+        domain = "tasks"
+    elif root.endswith("dobby-calendar"):
+        domain = "calendar"
+    else:
+        domain = "dobby"
+    leaf = parts[1] if len(parts) > 1 else "cli"
+    return f"{domain}.{leaf}"
+
+
+class DobbyArgumentParser(argparse.ArgumentParser):
+    """ArgumentParser that emits Dobby JSON error envelopes for usage errors."""
+
+    def error(self, message: str) -> None:
+        emit_json(
+            err_envelope(
+                command_from_prog(self.prog),
+                "E_VALIDATION",
+                message,
+                hint=f"Run `{self.prog} --help` for usage.",
+            )
+        )
+        raise SystemExit(ERROR_EXIT_CODES["E_VALIDATION"])
 
 
 def now_utc_iso() -> str:
@@ -122,8 +155,8 @@ def emit_json(envelope: dict[str, Any]) -> int:
 def emit_text(content: str, *, ensure_newline: bool = True) -> int:
     """Print content (markdown, plain text, git diff, etc.) to stdout.
 
-    Used for content commands defaulting to a non-envelope shape. The primary
-    machine consumer (a language model) reads this natively — no parsing step.
+    Used only for explicit `--plain` inspection output. Primary agent-facing
+    command output should use `emit_json`.
     """
     sys.stdout.write(content)
     if ensure_newline and not content.endswith("\n"):
