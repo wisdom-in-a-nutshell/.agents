@@ -126,6 +126,7 @@ Use [Codex Control Plane Ownership](/Users/dobby/.agents/docs/references/codex-c
   - skips no-op rewrites
 - [`sync-repo-codex-configs.sh`](/Users/dobby/.agents/codex/scripts/sync-repo-codex-configs.sh)
   - renders managed repo-local Codex files from the shared repo inventory plus the shared agent registry
+  - supports `--check` to fail when rendered repo-local files differ from the current `.codex` files
   - writes `.codex/config.toml` for all managed repos
   - writes repo-local `.codex/agents/*.toml` files for any repo-scoped Codex agents assigned in [`agents/registry.json`](/Users/dobby/.agents/agents/registry.json)
   - copies canonical role behavior from [`codex/config/agents/*.toml`](/Users/dobby/.agents/codex/config/agents) into those repo-local agent files
@@ -140,6 +141,7 @@ Use [Codex Control Plane Ownership](/Users/dobby/.agents/docs/references/codex-c
   - catches missing or malformed `name` / `description` in role files
   - catches runtime `agents/` directories containing unreferenced role files
   - validates generated repo-local `.codex/config.toml` agent declarations for managed repos present on the machine
+  - runs `sync-repo-codex-configs.sh --check`, so stale or hand-edited repo-local `.codex/config.toml` and `.codex/agents/*.toml` files fail validation
 - [`sync-repo-bootstrap-registry.sh`](/Users/dobby/.agents/codex/scripts/sync-repo-bootstrap-registry.sh)
   - regenerates the Obsidian Base artifacts from [`repo-bootstrap.json`](/Users/dobby/.agents/codex/config/repo-bootstrap.json)
   - reads shared agent exposure from [`agents/registry.json`](/Users/dobby/.agents/agents/registry.json)

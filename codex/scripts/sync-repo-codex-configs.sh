@@ -2,6 +2,7 @@
 set -euo pipefail
 
 APPLY=0
+CHECK=0
 REGISTRY_FILE=""
 MCP_REGISTRY_FILE=""
 AGENT_REGISTRY_FILE=""
@@ -24,6 +25,7 @@ Default mode is dry-run. Use --apply to write changes.
 Options:
   --apply                Apply changes in place
   --dry-run              Show diffs only (default)
+  --check                Fail if rendered files differ from repo-local files
   --registry <path>      Override repo bootstrap registry
                          (default: codex/config/repo-bootstrap.json)
   --mcp-registry <path>  Override shared MCP registry
@@ -63,10 +65,17 @@ while [[ $# -gt 0 ]]; do
   case "$1" in
     --apply)
       APPLY=1
+      CHECK=0
       shift
       ;;
     --dry-run)
       APPLY=0
+      CHECK=0
+      shift
+      ;;
+    --check)
+      APPLY=0
+      CHECK=1
       shift
       ;;
     --registry)
@@ -142,6 +151,13 @@ install_rendered_file() {
 
   install -m "$mode" "$rendered" "$target"
   log "Updated: $target"
+}
+
+is_drifted() {
+  local target="$1"
+  local rendered="$2"
+
+  [[ ! -f "$target" ]] || ! cmp -s "$target" "$rendered"
 }
 
 mapfile -t MANIFEST < <(
@@ -551,15 +567,29 @@ fi
 
 log "Rendered ${#MANIFEST[@]} managed repo-local Codex files from ${REGISTRY_FILE}."
 
+DRIFT=0
 for entry in "${MANIFEST[@]}"; do
   IFS=$'\t' read -r repo target rendered <<<"$entry"
-  ensure_parent_dir "$target"
 
   log ""
   log "=== Repo Codex File (${repo}) ==="
+  log "Target: $target"
   show_diff "$target" "$rendered"
 
+  if is_drifted "$target" "$rendered"; then
+    DRIFT=1
+  fi
+
   if (( APPLY == 1 )); then
+    ensure_parent_dir "$target"
     install_rendered_file "$rendered" "$target"
   fi
 done
+
+if (( CHECK == 1 )); then
+  if (( DRIFT == 1 )); then
+    printf 'ERROR: repo-local Codex files are out of sync. Re-run sync-repo-codex-configs.sh --apply for the affected repo(s).\n' >&2
+    exit 1
+  fi
+  log "OK: repo-local Codex files are in sync."
+fi

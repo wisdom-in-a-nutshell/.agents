@@ -59,6 +59,7 @@ class CodexShellTests(TempDirTestCase):
                 "zsh",
                 "-fc",
                 (
+                    "unset CODEX_SHELL_LOADED; "
                     f"source {REPO_ROOT / 'codex/shell/codex-shell.zsh'}; "
                     "CODEX_JUMP_GITHUB_ROOT=$HOME/GitHub codex_jump"
                 ),

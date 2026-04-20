@@ -4,6 +4,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 CONTROL_PLANE_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 ROOT_DIR="$(cd "$CONTROL_PLANE_DIR/.." && pwd)"
+SYNC_REPO_CONFIGS_SCRIPT="${SCRIPT_DIR}/sync-repo-codex-configs.sh"
 
 GLOBAL_CONFIG="${HOME}/.codex/config.toml"
 GLOBAL_AGENTS_DIR="${HOME}/.codex/agents"
@@ -83,6 +84,16 @@ while [[ $# -gt 0 ]]; do
       exit 1
       ;;
   esac
+done
+
+[[ -x "$SYNC_REPO_CONFIGS_SCRIPT" ]] || {
+  echo "ERROR: Missing executable: $SYNC_REPO_CONFIGS_SCRIPT" >&2
+  exit 1
+}
+
+REPO_ARGS=()
+for repo in "${REPO_FILTERS[@]}"; do
+  REPO_ARGS+=(--repo "$repo")
 done
 
 python3 - "$CANONICAL_DIR" "$GLOBAL_CONFIG" "$GLOBAL_AGENTS_DIR" "$XCODE_CONFIG" "$XCODE_AGENTS_DIR" "$REGISTRY_FILE" "$MCP_REGISTRY_FILE" "$AGENT_REGISTRY_FILE" "${REPO_FILTERS[@]}" <<'PY'
@@ -381,9 +392,24 @@ for item in resolved_repos:
         )
     validated_repo_count += 1
 
-print("OK: Codex control plane validation passed")
+print("Codex structural validation passed")
 print(f"  canonical agent roles: {len(list(canonical_agents_dir.glob('*.toml')))}")
 print(f"  global runtime config checked: {'yes' if global_config.exists() else 'no'}")
 print(f"  xcode runtime config checked: {'yes' if xcode_config.exists() else 'no'}")
 print(f"  repo-local configs checked: {validated_repo_count}")
 PY
+
+if ! drift_output="$(
+  "$SYNC_REPO_CONFIGS_SCRIPT" \
+    --check \
+    --registry "$REGISTRY_FILE" \
+    --mcp-registry "$MCP_REGISTRY_FILE" \
+    --agent-registry "$AGENT_REGISTRY_FILE" \
+    "${REPO_ARGS[@]}" \
+    2>&1
+)"; then
+  printf '%s\n' "$drift_output" >&2
+  exit 1
+fi
+
+printf 'OK: Codex control plane validation passed\n'
