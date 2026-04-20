@@ -19,8 +19,7 @@ claude_prompt_file: "visual-reviewer.md"
 claude_model: "inherit"
 claude_permission_mode: "-"
 description: "Read-only reviewer for visual work such as screenshots, layouts, hierarchy, and clarity."
-codex_enabled_mcps:
-  - "paper"
+codex_enabled_mcps: []
 codex_disabled_mcps:
   - "openaiDeveloperDocs"
 codex_enabled_tools: []

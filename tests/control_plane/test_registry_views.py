@@ -64,7 +64,7 @@ class RegistryViewsGenerationTests(TempDirTestCase):
                 },
                 "repos": [
                     {
-                        "mcp_presets": ["paper"],
+                        "mcp_presets": ["cloudflare-docs"],
                         "path": str(adi),
                     }
                 ],
@@ -109,14 +109,14 @@ class RegistryViewsGenerationTests(TempDirTestCase):
         )
 
         repo_item = root / "docs/references/registry/repo-bootstrap-items/adi.md"
-        paper_item = root / "docs/references/registry/mcp-registry-items/paper.md"
+        cloudflare_item = root / "docs/references/registry/mcp-registry-items/cloudflare-docs.md"
         hot_agent_item = root / "docs/references/registry/agent-registry-items/research-hot.md"
         reviewer_item = (
             root / "docs/references/registry/agent-registry-items/visual-reviewer.md"
         )
 
         self.assertTrue(repo_item.is_file())
-        self.assertTrue(paper_item.is_file())
+        self.assertTrue(cloudflare_item.is_file())
         self.assertTrue(hot_agent_item.is_file())
         self.assertTrue(reviewer_item.is_file())
 
@@ -129,11 +129,11 @@ class RegistryViewsGenerationTests(TempDirTestCase):
         self.assertIn('  - "repo-helper"', repo_text)
         self.assertIn('  - "local-review"', repo_text)
 
-        paper_text = paper_item.read_text(encoding="utf-8")
-        self.assertIn('mcp_name: "paper"', paper_text)
-        self.assertIn('effective_scope: "repo"', paper_text)
-        self.assertIn('transport: "http"', paper_text)
-        self.assertIn('  - "adi"', paper_text)
+        cloudflare_text = cloudflare_item.read_text(encoding="utf-8")
+        self.assertIn('mcp_name: "cloudflare-docs"', cloudflare_text)
+        self.assertIn('effective_scope: "repo"', cloudflare_text)
+        self.assertIn('transport: "http"', cloudflare_text)
+        self.assertIn('  - "adi"', cloudflare_text)
 
         hot_agent_text = hot_agent_item.read_text(encoding="utf-8")
         self.assertIn('agent_name: "research-hot"', hot_agent_text)

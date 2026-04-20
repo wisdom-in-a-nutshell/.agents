@@ -162,9 +162,9 @@ def default_mcp_registry() -> dict[str, Any]:
                 "transport": "http",
                 "url": "https://developers.openai.com/mcp",
             },
-            "paper": {
+            "cloudflare-docs": {
                 "transport": "http",
-                "url": "http://127.0.0.1:29979/mcp",
+                "url": "https://docs.mcp.cloudflare.com/mcp",
             },
         },
     }

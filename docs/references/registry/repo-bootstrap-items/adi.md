@@ -1,7 +1,7 @@
 ---
 repo_name: "adi"
 path: "~/GitHub/adi"
-mcp_count: 1
+mcp_count: 0
 skill_count: 23
 repo_local_skill_count: 0
 global_agent_count: 1
@@ -10,8 +10,7 @@ agent_count: 2
 model: "gpt-5.4"
 reasoning: "high"
 service_tier: "fast"
-mcps:
-  - "paper"
+mcps: []
 global_agents:
   - "external_researcher"
 custom_agents:

@@ -524,12 +524,14 @@ for agent in managed_agents:
             repo_agent_assignments.setdefault(str(repo_name), []).append(codex_name)
 
 manifest_lines: list[str] = []
+managed_header = "# Managed by ~/.agents/codex/scripts/sync-repo-codex-configs.sh."
 for item in repo_items_all:
     actual_repo = item["_actual_repo"]
     if filters and actual_repo not in filters:
         continue
 
     repo_agent_names = ordered_unique(repo_agent_assignments.get(item["_repo_name"], []))
+    expected_role_targets: set[Path] = set()
 
     rendered = render_repo_config(
         actual_repo,
@@ -556,7 +558,20 @@ for item in repo_items_all:
         rendered_role_path = tmp_dir / f"{hashlib.sha256((actual_repo + ':' + agent_name).encode()).hexdigest()}-{Path(preset['config_file']).name}"
         rendered_role_path.write_text(rendered_role, encoding="utf-8")
         target_role_path = Path(actual_repo) / ".codex" / "agents" / Path(preset["config_file"]).name
+        expected_role_targets.add(target_role_path.resolve())
         manifest_lines.append(f"{actual_repo}\t{target_role_path}\t{rendered_role_path}")
+
+    agents_dir = Path(actual_repo) / ".codex" / "agents"
+    if agents_dir.is_dir():
+        for existing_role_path in sorted(agents_dir.glob("*.toml")):
+            if existing_role_path.resolve() in expected_role_targets:
+                continue
+            try:
+                first_line = existing_role_path.read_text(encoding="utf-8").splitlines()[0]
+            except (IndexError, UnicodeDecodeError, OSError):
+                continue
+            if first_line == managed_header:
+                manifest_lines.append(f"{actual_repo}\t{existing_role_path}\t__DELETE__")
 
 for line in manifest_lines:
     print(line)
@@ -576,15 +591,25 @@ for entry in "${MANIFEST[@]}"; do
   log ""
   log "=== Repo Codex File (${repo}) ==="
   log "Target: $target"
-  show_diff "$target" "$rendered"
+  if [[ "$rendered" == "__DELETE__" ]]; then
+    log "Stale managed repo agent role file will be removed."
+    show_diff "$target" /dev/null
+  else
+    show_diff "$target" "$rendered"
+  fi
 
-  if is_drifted "$target" "$rendered"; then
+  if [[ "$rendered" == "__DELETE__" ]] || is_drifted "$target" "$rendered"; then
     DRIFT=1
   fi
 
   if (( APPLY == 1 )); then
-    ensure_parent_dir "$target"
-    install_rendered_file "$rendered" "$target"
+    if [[ "$rendered" == "__DELETE__" ]]; then
+      rm -f "$target"
+      log "Removed: $target"
+    else
+      ensure_parent_dir "$target"
+      install_rendered_file "$rendered" "$target"
+    fi
   fi
 done
 

@@ -60,7 +60,7 @@ class ClaudeControlPlaneCheckTests(TempDirTestCase):
                 "defaults": {},
                 "repos": [
                     {
-                        "mcp_presets": ["paper"],
+                        "mcp_presets": ["cloudflare-docs"],
                         "path": str(adi),
                     }
                 ],

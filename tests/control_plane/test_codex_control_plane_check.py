@@ -29,7 +29,7 @@ class CodexControlPlaneCheckTests(TempDirTestCase):
                 },
                 "repos": [
                     {
-                        "mcp_presets": ["paper"],
+                        "mcp_presets": ["cloudflare-docs"],
                         "plugin_mcp_presets": ["xcodebuildmcp"],
                         "path": str(adi),
                     }

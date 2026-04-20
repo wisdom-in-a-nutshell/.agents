@@ -9,6 +9,7 @@ from tests.control_plane.support import (
     run_command,
     visual_reviewer_agent,
     write_json,
+    write_text,
 )
 
 
@@ -20,6 +21,18 @@ class CodexRepoSyncTests(TempDirTestCase):
         repo_registry_path = root / "codex/config/repo-bootstrap.json"
         mcp_registry_path = root / "mcp/config/presets.json"
         agent_registry_path = root / "agents/registry.json"
+        stale_managed_role = write_text(
+            adi / ".codex/agents/writer.toml",
+            "\n".join(
+                [
+                    "# Managed by ~/.agents/codex/scripts/sync-repo-codex-configs.sh.",
+                    "# Old generated file.",
+                    'name = "writer"',
+                    'description = "Stale managed writer."',
+                    "",
+                ]
+            ),
+        )
         write_json(
             repo_registry_path,
             {
@@ -30,7 +43,7 @@ class CodexRepoSyncTests(TempDirTestCase):
                 },
                 "repos": [
                     {
-                        "mcp_presets": ["paper"],
+                        "mcp_presets": ["cloudflare-docs"],
                         "plugin_mcp_presets": ["xcodebuildmcp"],
                         "path": str(adi),
                     }
@@ -74,8 +87,8 @@ class CodexRepoSyncTests(TempDirTestCase):
 
         self.assertIn('model = "gpt-5.4"', repo_config)
         self.assertIn('model_reasoning_effort = "high"', repo_config)
-        self.assertIn("[mcp_servers.paper]", repo_config)
-        self.assertIn('url = "http://127.0.0.1:29979/mcp"', repo_config)
+        self.assertIn("[mcp_servers.cloudflare-docs]", repo_config)
+        self.assertIn('url = "https://docs.mcp.cloudflare.com/mcp"', repo_config)
         self.assertIn("[mcp_servers.xcodebuildmcp]", repo_config)
         self.assertIn('command = "npx"', repo_config)
         self.assertIn("[agents.visual_reviewer]", repo_config)
@@ -86,5 +99,5 @@ class CodexRepoSyncTests(TempDirTestCase):
         self.assertIn('name = "visual_reviewer"', repo_role)
         self.assertIn('description = "Read-only reviewer for visual work such as screenshots, layouts, hierarchy, and clarity."', repo_role)
         self.assertIn('sandbox_mode = "read-only"', repo_role)
-        self.assertIn("[mcp_servers.paper]", repo_role)
-        self.assertIn("enabled = true", repo_role)
+        self.assertNotIn("[mcp_servers.paper]", repo_role)
+        self.assertFalse(stale_managed_role.exists())
