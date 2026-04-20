@@ -28,80 +28,18 @@ Canonical personal Codex control-plane assets live here.
 - Keep managed backup artifacts under `~/.local/state/codex-control-plane/`, not alongside live files in `~/.codex`.
 - Do not delete, flatten, or "clean up" `~/.codex/vendor_imports/skills`; Codex App expects it to remain a nested Git checkout of `openai/skills`.
 
-## Current Scope
-
-- `../scripts/bootstrap-machine-agent-control-planes.sh` is the canonical machine-facing bootstrap batch for shared skills plus Codex and Claude.
-- `../scripts/auto-apply-agent-control-planes.sh` is the canonical machine-facing post-sync reconcile entrypoint used by external bootstrap repos such as `~/GitHub/scripts`.
-- `../scripts/check-agent-control-planes.sh` is the canonical shared validation entrypoint for skills plus Codex and Claude.
-- `scripts/sync-config.sh` is the canonical sync/apply entrypoint for machine Codex config.
-- `scripts/sync-global-agents-md.sh` is the canonical sync/apply entrypoint for machine-wide `~/.codex/AGENTS.md`.
-- `scripts/sync-trusted-projects.sh` is the canonical trusted-repo sync entrypoint for Codex.
-- `scripts/sync-repo-codex-configs.sh` is the canonical repo-local Codex config sync/apply entrypoint.
-- `scripts/bootstrap-machine-codex.sh` is the canonical Codex-specific bootstrap batch used by the shared root wrappers.
-- `scripts/install-pdf-skill-deps.sh` is the canonical machine bootstrap helper for the managed global `pdf` skill runtime.
-- `scripts/check-codex-control-plane.sh` is the canonical Codex control-plane validation entrypoint.
-- `scripts/auto-apply-codex-control-plane.sh` is the canonical low-level Codex-specific post-sync reconcile entrypoint.
-- `config/global.config.toml` and `config/xcode.config.toml` are the canonical managed baselines.
-- `config/agents/*.toml` are the canonical managed role overrides for built-in and custom multi-agent roles.
-- `config/repo-bootstrap.json` is the canonical shared repo registry for managed repo-local Codex bootstrap.
-- `../agents/registry.json` is the canonical shared agent registry for managed Codex and Claude agent exposure.
-- `../mcp/config/presets.json` is the canonical shared MCP registry for both Codex and Claude.
-- `scripts/sync-repo-bootstrap-registry.sh` generates the Obsidian Base artifacts for that registry.
-- `config/global.agents.md` is the canonical machine-wide AGENTS content that bootstraps to `~/.codex/AGENTS.md`.
-- `scripts/notify.py` is the canonical notify automation source.
-- `scripts/configure-ghostty-cwd.sh` and `scripts/ghostty-codex-then-shell.sh` are the canonical Ghostty/Codex startup helpers.
-- `scripts/install-sudoers-codex-ops.sh` is the canonical sudoers installer for Codex machine-ops workflows.
-- `shell/codex-shell.zsh` is the Codex-specific shell fragment sourced by the shared `~/.zshrc`.
-
-## Repo Bootstrap Registry
+## Key Boundaries
 
 - `config/repo-bootstrap.json` decides managed repo inventory plus per-repo Codex defaults and overrides.
-- `../agents/registry.json` decides which managed agents are exposed globally or in specific repos across Codex and Claude.
-- Role identity and capability for Codex belong in `config/agents/*.toml`.
-- Claude prompt behavior belongs in `../claude/config/agents/*.md`.
-- Global Codex agent declarations are rendered from `../agents/registry.json` into the live terminal and Xcode configs.
-- Role capabilities also belong in `config/agents/*.toml`.
-  - MCP exposure
-  - tool disables
-  - feature disables such as `js_repl`
-  - sandbox level
-- The shared agent registry should only decide where an agent is exposed, not re-define what that agent can do.
-- The current managed role setup is:
-  - built-in `explorer` remains available for local repo and runtime exploration
-  - managed `external_researcher` handles information outside the local repo and runtime
-- The current per-repo control surface is:
-  - `mcp_presets`
-  - `model`
-  - `model_reasoning_effort`
-  - `model_verbosity`
-  - `personality`
-  - `model_instructions_file`
-  - `developer_instructions`
-  - `project_root_markers`
-  - `features`
-  - `service_tier`
-- The shared agent registry carries:
-  - `agent`
-  - `scope`
-  - `repos`
-  - `access_profile`
-  - runtime-specific `codex` and `claude` metadata
-- MCP preset definitions themselves live in `../mcp/config/presets.json`, not in `repo-bootstrap.json`.
-- Canonical role TOMLs remain the single source of truth for agent behavior.
-- The registry `defaults` block is rendered into every managed repo-local `.codex/config.toml` unless a repo entry overrides those keys explicitly.
-- `defaults.features` is merged with per-repo `features`, so baseline feature flags can be enabled globally while still allowing repo overrides.
-- `scripts/sync-repo-bootstrap-registry.sh` regenerates:
-  - `../docs/references/registry/repo-bootstrap.base`
-    - includes effective per-repo skill availability merged from `../skills/registry.json`
-  - `../docs/references/registry/repo-bootstrap-items/`
-  - `../docs/references/registry/agent-registry.base`
-    - includes scope plus effective agent-level capabilities such as sandbox, MCP exposure, web search, and `js_repl`
-  - `../docs/references/registry/agent-registry-items/`
-  - `../docs/references/registry/mcp-registry.base`
-  - `../docs/references/registry/mcp-registry-items/`
-- `scripts/sync-repo-codex-configs.sh --apply` renders the actual repo-local `.codex/config.toml` files from that JSON registry.
-- `scripts/sync-config.sh --apply` renders machine-wide global MCP servers from `../mcp/config/presets.json`.
-- The same sync also renders repo-local `.codex/agents/*.toml` for any repo-assigned Codex agents declared in `../agents/registry.json` by copying the canonical role TOMLs.
-- `scripts/sync-trusted-projects.sh --apply` ensures those repo-local configs are trusted and therefore loaded by Codex.
-- `scripts/check-codex-control-plane.sh` validates the shared agent registry, canonical role definitions, runtime role declarations, and repo-scoped agent render output after sync.
-- `scripts/auto-apply-codex-control-plane.sh --apply` is the low-level Codex-only reconcile hook available for Codex-specific troubleshooting or component-scoped automation.
+- `../agents/registry.json` decides where managed agents are exposed across Codex and Claude.
+- Codex role behavior belongs in `config/agents/*.toml`; the shared agent registry should not redefine what a role can do.
+- MCP preset definitions belong in `../mcp/config/presets.json`, not in `repo-bootstrap.json`.
+- Generated Obsidian registry views belong under `../docs/references/registry/`.
+
+## References
+
+- `../docs/architecture/codex-control-plane.md`: high-level system shape.
+- `../docs/architecture/codex-config-layers.md`: config layering model.
+- `../docs/architecture/repo-scoped-agent-bootstrap.md`: repo-specific agent/bootstrap model.
+- `../docs/references/codex-control-plane-operations.md`: exact commands and checks.
+- `../docs/references/codex-control-plane-ownership.md`: keep / move / generate ownership.

@@ -1,8 +1,8 @@
 # Claude Control Plane
 
-This repo now carries a sibling personal control plane for Claude. The rule is the same one used for Codex: keep durable source in `~/.agents`, keep the applied runtime in `~/.claude`, and keep repo-local behavior close to the repo that needs it.
+This repo carries a sibling personal control plane for Claude. The rule is the same one used for Codex: keep durable source in `~/.agents`, keep the applied runtime in `~/.claude`, and keep repo-local behavior close to the repo that needs it.
 
-The first pass is local-only and generic. It does not try to solve the `adi` `soul.md` prompt override yet.
+The current baseline is local-first and generic. Repo-specific prompt overrides stay explicit follow-up work rather than becoming part of the shared default.
 
 ## Figure 1: Ownership Layout
 
@@ -76,13 +76,13 @@ Claude has both global and project layers:
 - global `~/.claude/agents/`
 - project `.claude/agents/`
 
-The first pass keeps the same permissive default posture at both scopes where Anthropic allows it:
+The baseline keeps the same permissive default posture at both scopes where Anthropic allows it:
 
 - `permissions.defaultMode = "bypassPermissions"`
 - `sandbox.enabled = false`
 - `skipDangerousModePermissionPrompt = true` at user/global scope
 
-## First-Pass Scope
+## Baseline Scope
 
 This baseline includes:
 
@@ -115,5 +115,4 @@ That keeps Claude as a sibling control plane, not a replacement for the existing
 ## Related Docs
 
 - [Claude Control Plane Operations](/Users/dobby/.agents/docs/references/claude-control-plane-operations.md)
-- [Anthropic Settings Research](/Users/dobby/.agents/docs/projects/claude-control-plane-bootstrap/resources/anthropic-settings-research.md)
-- [Anthropic Agent Surfaces Research](/Users/dobby/.agents/docs/projects/claude-control-plane-bootstrap/resources/anthropic-agent-surfaces.md)
+- [Unified Codex And Claude Agent Model](/Users/dobby/.agents/docs/architecture/unified-codex-claude-agent-model.md)

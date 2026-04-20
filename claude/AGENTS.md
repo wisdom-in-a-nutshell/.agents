@@ -38,3 +38,8 @@ Canonical personal Claude control-plane assets live here.
 - Treat `../agents/registry.json` as the shared agent exposure registry for Codex and Claude.
 - Treat `mcp/config/presets.json` as the shared MCP registry for both Codex and Claude.
 - Treat `config/bootstrap.json` as Claude-only settings and repo override input, not as the Claude subagent registry.
+
+## References
+
+- `../docs/architecture/claude-control-plane.md`: high-level system shape.
+- `../docs/references/claude-control-plane-operations.md`: exact commands, runtime targets, and generated repo-local outputs.

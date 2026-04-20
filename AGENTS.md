@@ -65,16 +65,6 @@ Detailed operations live in:
 - `docs/references/claude-control-plane-operations.md`
 - `docs/references/cli-interface-contract.md`
 
-## Automation Cadence
-
-- Scheduler entrypoint lives in `~/GitHub/scripts/sync/git-auto-sync.sh` (launchd every 15 minutes).
-- External upstream refresh runs through that job with a once-per-day gate:
-  - `~/.agents/scripts/refresh-external-skills.sh --apply`
-- External plugin upstream refresh now runs through the shared reconcile wrapper with a once-per-day gate:
-  - `~/.agents/scripts/refresh-external-plugins.sh --apply`
-- Shared agent control-plane reconcile runs every auto-sync cycle:
-  - `~/.agents/scripts/auto-apply-agent-control-planes.sh --apply`
-
 ## Rules
 
 - Runtime distribution is link-first for skills; plugin source stays canonical under `plugins-source/` and feeds extracted skills plus MCP.

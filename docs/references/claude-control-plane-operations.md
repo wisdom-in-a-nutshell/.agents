@@ -54,7 +54,7 @@ Use [Claude Control Plane](/Users/dobby/.agents/docs/architecture/claude-control
 - nested repo `CLAUDE.md`
   - tiny file containing only `@AGENTS.md` wherever nested `AGENTS.md` exists
 
-## First-Pass Commands
+## Command Surface
 
 The Claude control plane is intended to follow the same sync/check pattern as Codex, with scripts living under `claude/scripts/`:
 
@@ -127,8 +127,8 @@ The Claude control plane is intended to follow the same sync/check pattern as Co
   - This catches the "new generated Claude symlink was created but never added to the repo" case.
   - It does not auto-commit or auto-push target repos.
 
-## Deferred Rules
+## Generic Baseline Exclusions
 
 - Do not treat `soul.md` as part of the generic baseline.
-- Do not require host-level `systemPrompt` parity for the first pass.
+- Do not require host-level `systemPrompt` parity for the generic baseline.
 - Do not assume VS Code cloud/remote exposes the same operator surface as the local Claude CLI or SDK.
