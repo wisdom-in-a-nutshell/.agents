@@ -94,3 +94,12 @@ Preferred rule for repo bootstrap or MCP changes:
 - Machine repos such as `~/GitHub/scripts` should call these root wrappers.
 - Codex- and Claude-specific scripts remain the low-level component entrypoints owned by `codex/` and `claude/`.
 - Update this page and the component docs together when the shared machine-facing flow changes.
+
+## Agent Commit Gate Contract
+
+- The global lifecycle `Stop` hook is defined once in [`hooks/registry.json`](/Users/dobby/.agents/hooks/registry.json) and rendered into both Codex and Claude runtime config.
+- The `Stop` hook runs [`hooks/scripts/stop.py`](/Users/dobby/.agents/hooks/scripts/stop.py), stages changes, and runs `git commit`.
+- Git invokes the shared local hook from [`hooks/git/pre-commit`](/Users/dobby/.agents/hooks/git/pre-commit) because managed repos have local `core.hooksPath` set to `~/.agents/hooks/git`.
+- The shared Git hook delegates to repo-owned `scripts/check-fast.sh` when present.
+- Treat `scripts/check-fast.sh` as the repo's fast deterministic commit gate for agent-made changes, not as a general after-turn lifecycle hook.
+- Put slow or broad validation in `scripts/check-full.sh` or another explicit command.

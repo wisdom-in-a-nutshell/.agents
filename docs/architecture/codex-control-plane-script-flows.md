@@ -127,26 +127,51 @@ flowchart TD
 
 ## Figure 4: Post-Turn Automation
 
+One global `Stop` hook definition is rendered into both Codex and Claude. The `Stop` hook owns turn finalization, while each repo owns its fast commit gate through `scripts/check-fast.sh`.
+
 ```mermaid
 flowchart TD
-    A[Agent turn reaches Stop] --> B[hooks/scripts/stop.py]
-    B --> C[git add -A]
-    C --> D[git commit runs repo-owned pre-commit]
-    D --> E{commit succeeded?}
-    E -->|no| F[return hook block with failure details]
-    E -->|yes, tracked branch| G[git pull --rebase]
-    G --> H[git push remote HEAD]
-    E -->|yes, no upstream| I[git push -u remote HEAD]
+    A[hooks/registry.json<br/>one global Stop definition] --> B[~/.codex/hooks.json]
+    A --> C[~/.claude/settings.json]
+    B --> D[Codex turn reaches Stop]
+    C --> E[Claude turn reaches Stop]
+    D --> F[hooks/scripts/stop.py]
+    E --> F
+    F --> G[git add -A]
+    G --> H[git commit]
+    H --> I[Git uses repo core.hooksPath]
+    I --> J[hooks/git/pre-commit]
+    J --> K{scripts/check-fast.sh exists?}
+    K -->|yes| L[run repo-owned fast commit gate]
+    K -->|no| M[allow commit]
+    L --> N{checks passed?}
+    N -->|no| O[commit fails]
+    O --> P[Stop returns hook block with failure details]
+    N -->|yes| Q[commit succeeds]
+    M --> Q
+    Q --> R{tracked branch?}
+    R -->|yes| S[git pull --rebase]
+    S --> T[git push remote HEAD]
+    R -->|no upstream| U[git push -u remote HEAD]
 ```
 
 ### What This Group Does
 
 - [`stop.py`](/Users/dobby/.agents/hooks/scripts/stop.py)
   - runs as the shared Codex and Claude `Stop` hook
-  - stages all repo changes and lets `git commit` run that repo's own pre-commit checks
+  - stages all repo changes and runs `git commit`
+  - does not directly call repo validation; Git calls the shared local hook because managed repos set `core.hooksPath` to [`hooks/git/`](/Users/dobby/.agents/hooks/git)
   - if commit checks fail, returns hook continuation JSON with the failure output so the current agent can fix it
   - for tracked branches, commits then runs `git pull --rebase` followed by push
   - for brand-new local branches without upstream tracking, uses `git push -u <remote> HEAD` to establish upstream automatically
+- [`hooks/git/pre-commit`](/Users/dobby/.agents/hooks/git/pre-commit)
+  - shared local Git hook used by managed repos
+  - delegates to repo-owned `scripts/check-fast.sh` when present
+  - exits successfully when a repo has no `scripts/check-fast.sh`
+- `scripts/check-fast.sh`
+  - repo-owned fast commit gate for agent-made changes
+  - should contain fast deterministic checks that answer whether the commit is acceptable
+  - should not become a general after-turn lifecycle hook; use a future explicit lifecycle hook for non-validation side effects
 - [`session_start.py`](/Users/dobby/.agents/hooks/scripts/session_start.py)
   - shared no-op `SessionStart` hook; kept silent unless a future milestone intentionally adds startup context
 
