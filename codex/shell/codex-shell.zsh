@@ -89,8 +89,8 @@ codex_jump() {
         continue
       fi
 
-      usage_count["$usage_dir"]="$usage_count_raw"
-      usage_last["$usage_dir"]="$usage_last_raw"
+      usage_count[$usage_dir]="$usage_count_raw"
+      usage_last[$usage_dir]="$usage_last_raw"
       (( valid_entries++ ))
     done < "$usage_path"
 
@@ -265,8 +265,8 @@ codex_jump() {
     _codex_jump_load_usage "$usage_file"
 
     count="${usage_count[$selected]:-0}"
-    usage_count["$selected"]="$((count + 1))"
-    usage_last["$selected"]="$now"
+    usage_count[$selected]="$((count + 1))"
+    usage_last[$selected]="$now"
 
     usage_tmp="$(mktemp -t codex-jump-usage)"
     for dir in "${(@k)usage_count}"; do

@@ -5,6 +5,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
 CHECK_SKILLS_SCRIPT="${SCRIPT_DIR}/check-skills-registry.sh"
 CHECK_PLUGINS_SCRIPT="${SCRIPT_DIR}/check-plugins-registry.sh"
+CHECK_HYGIENE_SCRIPT="${SCRIPT_DIR}/check-repo-hygiene.sh"
 CHECK_CODEX_SCRIPT="${ROOT_DIR}/codex/scripts/check-codex-control-plane.sh"
 CHECK_CLAUDE_SCRIPT="${ROOT_DIR}/claude/scripts/check-claude-control-plane.sh"
 TEST_CONTROL_PLANE_SCRIPT="${SCRIPT_DIR}/test-control-plane.sh"
@@ -14,10 +15,10 @@ usage() {
   cat <<USAGE
 Usage: $(basename "$0") [options]
 
-Validate the shared skills and plugins registries plus Codex and Claude rendered state.
+Validate repo hygiene, shared registries, Codex and Claude rendered state, and tests.
 
 Options:
-  --repo <path>    Limit Claude validation to an exact repo path (repeatable)
+  --repo <path>    Limit Codex and Claude validation to an exact repo path (repeatable)
   -h, --help       Show this help
 
 Examples:
@@ -53,6 +54,7 @@ done
 
 [[ -x "$CHECK_SKILLS_SCRIPT" ]] || die "Missing executable: $CHECK_SKILLS_SCRIPT"
 [[ -x "$CHECK_PLUGINS_SCRIPT" ]] || die "Missing executable: $CHECK_PLUGINS_SCRIPT"
+[[ -x "$CHECK_HYGIENE_SCRIPT" ]] || die "Missing executable: $CHECK_HYGIENE_SCRIPT"
 [[ -x "$CHECK_CODEX_SCRIPT" ]] || die "Missing executable: $CHECK_CODEX_SCRIPT"
 [[ -x "$CHECK_CLAUDE_SCRIPT" ]] || die "Missing executable: $CHECK_CLAUDE_SCRIPT"
 [[ -x "$TEST_CONTROL_PLANE_SCRIPT" ]] || die "Missing executable: $TEST_CONTROL_PLANE_SCRIPT"
@@ -62,6 +64,10 @@ for repo in "${REPO_FILTERS[@]}"; do
   REPO_ARGS+=(--repo "$repo")
 done
 
+hygiene_cmd=("$CHECK_HYGIENE_SCRIPT")
+log "+ ${hygiene_cmd[*]}"
+"${hygiene_cmd[@]}"
+
 skills_cmd=("$CHECK_SKILLS_SCRIPT")
 log "+ ${skills_cmd[*]}"
 "${skills_cmd[@]}"
@@ -70,7 +76,10 @@ plugins_cmd=("$CHECK_PLUGINS_SCRIPT")
 log "+ ${plugins_cmd[*]}"
 "${plugins_cmd[@]}"
 
-codex_cmd=("$CHECK_CODEX_SCRIPT")
+codex_cmd=(
+  "$CHECK_CODEX_SCRIPT"
+  "${REPO_ARGS[@]}"
+)
 log "+ ${codex_cmd[*]}"
 "${codex_cmd[@]}"
 

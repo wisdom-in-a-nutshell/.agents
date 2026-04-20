@@ -3,18 +3,22 @@ set -euo pipefail
 
 TARGET_USER="${USER}"
 SUDOERS_FILE="/etc/sudoers.d/codex-ops"
-DRY_RUN=0
+APPLY=0
+NO_INPUT=0
 
 usage() {
   cat <<'USAGE'
 Usage: install-sudoers-codex-ops.sh [options]
 
 Install a scoped passwordless sudo policy for Codex machine-ops commands.
+Default mode is dry-run. Use --apply to write the sudoers file.
 
 Options:
   --user <name>      Username to grant policy to (default: current user)
   --file <path>      Sudoers file path (default: /etc/sudoers.d/codex-ops)
-  --dry-run          Print the generated sudoers line and exit
+  --apply            Install the generated sudoers file
+  --dry-run          Print the generated sudoers line and exit (default)
+  --no-input         Fail instead of prompting for sudo authentication
   -h, --help         Show this help
 
 Allowed command groups:
@@ -37,8 +41,16 @@ while [[ $# -gt 0 ]]; do
       SUDOERS_FILE="${2:-}"
       shift 2
       ;;
+    --apply)
+      APPLY=1
+      shift
+      ;;
     --dry-run)
-      DRY_RUN=1
+      APPLY=0
+      shift
+      ;;
+    --no-input)
+      NO_INPUT=1
       shift
       ;;
     -h|--help)
@@ -60,7 +72,7 @@ fi
 
 RULE="${TARGET_USER} ALL=(root) NOPASSWD: /opt/homebrew/bin/brew services *, /opt/homebrew/bin/tailscale *, /bin/launchctl *, /usr/sbin/softwareupdate *, /usr/bin/defaults write /Library/Preferences/com.apple.SoftwareUpdate *, /usr/bin/defaults write /Library/Preferences/com.apple.commerce AutoUpdate -bool true"
 
-if [[ "$DRY_RUN" -eq 1 ]]; then
+if [[ "$APPLY" -ne 1 ]]; then
   echo "$RULE"
   exit 0
 fi
@@ -70,6 +82,10 @@ trap 'rm -f "$TMP_FILE"' EXIT
 printf '%s\n' "$RULE" > "$TMP_FILE"
 
 if [[ "${EUID}" -ne 0 ]]; then
+  if [[ "$NO_INPUT" -eq 1 ]]; then
+    echo "ERROR: --apply requires root or sudo authentication; --no-input forbids prompting." >&2
+    exit 3
+  fi
   sudo -v
 fi
 

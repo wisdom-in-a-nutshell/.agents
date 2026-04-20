@@ -8,6 +8,7 @@ Use `docs/architecture/` for system shape and `docs/projects/<project>/tasks.md`
 
 - [Codex Control Plane Ownership](/Users/dobby/.agents/docs/references/codex-control-plane-ownership.md)
 - [Codex Control Plane Operations](/Users/dobby/.agents/docs/references/codex-control-plane-operations.md)
+- [Rendered Surfaces](/Users/dobby/.agents/docs/references/rendered-surfaces.md)
 - [Skills Registry](/Users/dobby/.agents/docs/references/skills-registry.md)
 - [CLI Interface Contract](/Users/dobby/.agents/docs/references/cli-interface-contract.md)
 - [Registry Views](/Users/dobby/.agents/docs/references/registry/AGENTS.md)

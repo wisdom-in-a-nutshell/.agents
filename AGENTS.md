@@ -65,6 +65,11 @@ Detailed operations live in:
 - `docs/references/claude-control-plane-operations.md`
 - `docs/references/cli-interface-contract.md`
 
+## Rendered Surfaces
+
+- Treat paths listed in `docs/references/rendered-surfaces.md` as linked, rendered, or generated outputs.
+- Do not hand-edit rendered outputs; update the canonical source and rerun the documented renderer/check.
+
 ## Rules
 
 - Runtime distribution is link-first for skills; plugin source stays canonical under `plugins-source/` and feeds extracted skills plus MCP.

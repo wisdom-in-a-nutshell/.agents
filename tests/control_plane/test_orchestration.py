@@ -68,6 +68,52 @@ class SharedBootstrapWrapperTests(TempDirTestCase):
         )
 
 
+class SharedCheckWrapperTests(TempDirTestCase):
+    def _make_stub_control_plane(self) -> tuple[Path, Path]:
+        root = self.temp_path / "stub-agents"
+        log_path = self.temp_path / "check.log"
+        script_path = copy_repo_file(
+            "scripts/check-agent-control-planes.sh",
+            root,
+        )
+        script_path.chmod(0o755)
+        write_executable(root / "scripts/check-repo-hygiene.sh", STUB_SCRIPT)
+        write_executable(root / "scripts/check-skills-registry.sh", STUB_SCRIPT)
+        write_executable(root / "scripts/check-plugins-registry.sh", STUB_SCRIPT)
+        write_executable(root / "codex/scripts/check-codex-control-plane.sh", STUB_SCRIPT)
+        write_executable(root / "claude/scripts/check-claude-control-plane.sh", STUB_SCRIPT)
+        write_executable(root / "scripts/test-control-plane.sh", STUB_SCRIPT)
+        return root, log_path
+
+    def test_repo_filter_is_forwarded_to_codex_and_claude_checks(self) -> None:
+        root, log_path = self._make_stub_control_plane()
+        repo_a = self.temp_path / "repo-a"
+        repo_b = self.temp_path / "repo-b"
+
+        run_command(
+            [
+                str(root / "scripts/check-agent-control-planes.sh"),
+                "--repo",
+                str(repo_a),
+                "--repo",
+                str(repo_b),
+            ],
+            env={"LOG_FILE": str(log_path)},
+        )
+
+        self.assertEqual(
+            [
+                "check-repo-hygiene.sh|",
+                "check-skills-registry.sh|",
+                "check-plugins-registry.sh|",
+                f"check-codex-control-plane.sh|--repo {repo_a} --repo {repo_b}",
+                f"check-claude-control-plane.sh|--repo {repo_a} --repo {repo_b}",
+                "test-control-plane.sh|",
+            ],
+            log_path.read_text(encoding="utf-8").splitlines(),
+        )
+
+
 class AutoApplyRoutingTests(TempDirTestCase):
     def _make_agents_repo(self) -> tuple[Path, Path, Path]:
         root = init_git_repo(self.temp_path / "agents-repo")
