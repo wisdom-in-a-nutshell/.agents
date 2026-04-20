@@ -95,7 +95,7 @@ Use [Codex Control Plane Ownership](/Users/dobby/.agents/docs/references/codex-c
 - `~/.codex/config.toml` does not use Codex `notify`; post-turn automation is rendered into `~/.codex/hooks.json` from `hooks/registry.json`.
 - The shared `Stop` hook owns the machine-wide git conveyor:
   - stages all changes with `git add -A`
-  - commits so each repo's own pre-commit hooks/checks decide whether the change is acceptable
+  - commits so each repo's own `scripts/check-fast.sh` checks decide whether the change is acceptable
   - relies on managed repo local `core.hooksPath` pointing at `~/.agents/hooks/git`
   - returns hook continuation JSON with commit/check failures so the current agent can fix them
   - tracked branches use the normal `commit -> pull --rebase -> push` path

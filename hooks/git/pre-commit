@@ -4,49 +4,8 @@ set -euo pipefail
 repo_root="$(git rev-parse --show-toplevel 2>/dev/null || pwd)"
 cd "$repo_root"
 
-find_pre_commit() {
-  if [[ -x "venv/bin/pre-commit" ]]; then
-    printf '%s\n' "venv/bin/pre-commit"
-    return 0
-  fi
-  if [[ -x ".venv/bin/pre-commit" ]]; then
-    printf '%s\n' ".venv/bin/pre-commit"
-    return 0
-  fi
-  if command -v pre-commit >/dev/null 2>&1; then
-    command -v pre-commit
-    return 0
-  fi
-  return 1
-}
-
-if [[ -f ".pre-commit-config.yaml" ]]; then
-  if pre_commit_cmd="$(find_pre_commit)"; then
-    exec "$pre_commit_cmd" run
-  fi
-  printf '%s\n' "ERROR: .pre-commit-config.yaml exists, but pre-commit is not available." >&2
-  printf '%s\n' "Install pre-commit in this repo or make it available on PATH." >&2
-  exit 1
-fi
-
-if [[ -x ".husky/_/pre-commit" ]]; then
-  exec ".husky/_/pre-commit"
-fi
-
-if [[ -f ".husky/pre-commit" ]]; then
-  if [[ -x ".husky/pre-commit" ]]; then
-    exec ".husky/pre-commit"
-  fi
-  exec sh -e ".husky/pre-commit"
-fi
-
-legacy_hook="$(git rev-parse --git-path hooks/pre-commit 2>/dev/null || true)"
-if [[ -n "$legacy_hook" && -x "$legacy_hook" ]]; then
-  self_path="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)/$(basename "${BASH_SOURCE[0]}")"
-  legacy_path="$(cd "$(dirname "$legacy_hook")" && pwd -P)/$(basename "$legacy_hook")"
-  if [[ "$legacy_path" != "$self_path" ]]; then
-    exec "$legacy_hook"
-  fi
+if [[ -f "scripts/check-fast.sh" ]]; then
+  exec bash "scripts/check-fast.sh"
 fi
 
 exit 0

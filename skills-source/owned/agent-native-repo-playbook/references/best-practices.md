@@ -60,9 +60,10 @@ This guide is based on the OpenAI harness-engineering model and adapted for a so
 ## 11) Merge philosophy (solo rapid-main)
 - Direct-to-main is the default and preferred workflow.
 - Do not introduce branch-heavy flow unless explicitly requested.
-- Keep pre-commit checks and CI checks focused and fast so iteration stays high-velocity.
+- Keep commit-time checks and CI checks focused and fast so iteration stays high-velocity.
 - Use the agent Stop hook automation loop (auto commit, pull --rebase, push) as the standard shipping path.
-- Prefer one shared local Git hook entrypoint that delegates to repo-owned pre-commit/Husky checks when managing many agent-native repos on the same machine.
+- Prefer one shared local Git hook entrypoint that delegates to repo-owned `scripts/check-fast.sh` when managing many agent-native repos on the same machine.
+- Use `scripts/check-fast.sh` for fast deterministic local guardrails, and reserve slower validation for an explicit command such as `scripts/check-full.sh`.
 
 ## 12) Agent self-review loop
 - Before push: run local checks, inspect diff, address obvious issues, re-run checks.
@@ -99,7 +100,7 @@ This guide is based on the OpenAI harness-engineering model and adapted for a so
 - Human intent, agent execution as the default operating model.
 - `AGENTS.md` as map and `docs/` as system of record.
 - `docs/projects/<project>/tasks.md` workflow via `$project`.
-- Fast mechanical guardrails (pre-commit, lint/test/typecheck where applicable).
+- Fast mechanical guardrails (commit-time checks, lint/test/typecheck where applicable).
 - Direct-to-main automation loop with commit/pull-rebase/push on each agent turn.
 - Docs update discipline: behavior changes and docs changes ship together.
 
