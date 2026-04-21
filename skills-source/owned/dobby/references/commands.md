@@ -59,7 +59,8 @@ CLI `memory write` does not create files. Use `Write` for:
 No file-based alternative — always via CLI.
 
 ```bash
-$HOME/.agents/skills-source/owned/dobby/scripts/dobby-tasks snapshot   # today + overdue + inbox in one JXA call
+$HOME/.agents/skills-source/owned/dobby/scripts/dobby-tasks snapshot --minimal --limit 10   # boot: exact counts + visible titles
+$HOME/.agents/skills-source/owned/dobby/scripts/dobby-tasks snapshot   # fuller today + overdue + inbox summary in one JXA call
 $HOME/.agents/skills-source/owned/dobby/scripts/dobby-tasks today
 $HOME/.agents/skills-source/owned/dobby/scripts/dobby-tasks inbox
 $HOME/.agents/skills-source/owned/dobby/scripts/dobby-tasks overdue
@@ -80,7 +81,7 @@ $HOME/.agents/skills-source/owned/dobby/scripts/dobby-tasks doctor              
 
 `--when` accepts natural-language dates: `today`, `tomorrow`, `next monday`, `in 3 days`, specific dates.
 `--area` is case-sensitive and must match an existing Things 3 Area.
-Read commands return a fast summary shape by default. Use `--verbose` only when full fields such as notes and timestamps are needed. Create commands avoid slow read-back by default; pass `--resolve` when full created-object data is worth the latency.
+Read commands return a fast summary shape by default. Use `--verbose` only when full fields such as notes and timestamps are needed. For boot/session context, prefer `snapshot --minimal --limit 10`: counts stay exact, but returned task payloads are just the top visible titles. Create commands avoid slow read-back by default; pass `--resolve` when full created-object data is worth the latency.
 Add `--plain` for compact inspection output.
 
 `delete` can remove open tasks by name/ID and completed Logbook tasks by exact ID. Use `search --include-completed` first when cleaning old test artifacts.
@@ -141,7 +142,7 @@ Wraps `git log -p memory/` with date filtering.
 Every CLI command defaults to a stable JSON envelope and also accepts explicit `--json`:
 ```bash
 $HOME/.agents/skills-source/owned/dobby/scripts/dobby-memory read --section now
-$HOME/.agents/skills-source/owned/dobby/scripts/dobby-tasks snapshot
+$HOME/.agents/skills-source/owned/dobby/scripts/dobby-tasks snapshot --minimal --limit 10
 $HOME/.agents/skills-source/owned/dobby/scripts/dobby-tasks today
 $HOME/.agents/skills-source/owned/dobby/scripts/dobby-tasks doctor
 ```

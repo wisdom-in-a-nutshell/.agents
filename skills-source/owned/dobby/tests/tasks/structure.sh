@@ -24,6 +24,16 @@ assert_jq_truthy "has today view" '.data.views.today.tasks | type == "array"' "$
 assert_jq_truthy "has overdue view" '.data.views.overdue.tasks | type == "array"' "$CAPTURED_STDOUT"
 assert_jq_truthy "has inbox view" '.data.views.inbox.tasks | type == "array"' "$CAPTURED_STDOUT"
 
+section "minimal snapshot limits returned tasks while keeping counts"
+run_dobby tasks snapshot --minimal --limit 2
+assert_exit "minimal snapshot exit 0" 0 "$CAPTURED_EXIT"
+assert_envelope_ok "tasks.snapshot minimal" "$CAPTURED_STDOUT"
+assert_jq_truthy "minimal flag exposed" '.data.minimal == true' "$CAPTURED_STDOUT"
+assert_jq_truthy "limit exposed" '.data.limit == 2' "$CAPTURED_STDOUT"
+assert_jq_truthy "today limited" '(.data.views.today.tasks | length) <= 2' "$CAPTURED_STDOUT"
+assert_jq_truthy "overdue limited" '(.data.views.overdue.tasks | length) <= 2' "$CAPTURED_STDOUT"
+assert_jq_truthy "inbox limited" '(.data.views.inbox.tasks | length) <= 2' "$CAPTURED_STDOUT"
+
 section "add — empty title rejected"
 run_dobby tasks add ""
 assert_exit "exit 2" 2 "$CAPTURED_EXIT"
