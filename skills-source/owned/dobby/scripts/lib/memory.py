@@ -1,7 +1,6 @@
 """Memory commands for the Dobby CLI.
 
 Commands:
-- boot: loads now + becoming + area manifest (with mtimes, no content)
 - read: loads a specific section by dot-notation path
 - write: appends to a section from stdin, timestamped
 - diff: wraps `git log -p memory/ --since <ref>`
@@ -15,6 +14,10 @@ Section routing (dot notation):
 Adi's durable identity lives in `soul.md` under `## About Adi` and is loaded
 via the wrapper-composed system prompt. It is intentionally not served by
 this CLI — editing soul.md is a manual `Edit` operation.
+
+Boot-time loading is handled by the repo's SessionStart hook
+(`scripts/hooks/session_start.py`) which reads memory files directly via
+file I/O. This CLI no longer exposes a `boot` command.
 
 Every command defaults to the Dobby JSON envelope for agent reliability.
 `--plain` prints markdown/raw text for operator inspection when needed.
@@ -77,10 +80,6 @@ def relpath(path: Path) -> str:
 
 def add_subparsers(parent: argparse.ArgumentParser) -> None:
     sub = parent.add_subparsers(dest="memory_cmd", required=True)
-
-    p_boot = sub.add_parser("boot", help="Load now + becoming + area manifest")
-    _add_format_flags(p_boot)
-    p_boot.set_defaults(handler=cmd_boot)
 
     p_read = sub.add_parser("read", help="Read a memory section")
     p_read.add_argument(
@@ -168,32 +167,6 @@ def resolve_section(section: str) -> Path:
     raise SectionError(f"unknown section root: {head!r}")
 
 
-def area_manifest() -> list[dict[str, Any]]:
-    """Build the lazy manifest of area files with mtimes.
-
-    Returns a list of {area, files[]} with file metadata (name, path,
-    size_bytes, mtime_date, mtime_iso). Content is NOT included.
-    """
-    areas_dir = memory_dir() / "areas"
-    if not areas_dir.exists():
-        return []
-    out: list[dict[str, Any]] = []
-    for area_dir in sorted(d for d in areas_dir.iterdir() if d.is_dir()):
-        files: list[dict[str, Any]] = []
-        for md in sorted(area_dir.glob("*.md")):
-            stat = md.stat()
-            mtime = datetime.fromtimestamp(stat.st_mtime)
-            files.append({
-                "name": md.stem,
-                "path": relpath(md),
-                "size_bytes": stat.st_size,
-                "mtime_date": mtime.strftime("%Y-%m-%d"),
-                "mtime_iso": mtime.isoformat(timespec="seconds"),
-            })
-        out.append({"area": area_dir.name, "files": files})
-    return out
-
-
 # ---------------------------------------------------------------------------
 # helpers
 # ---------------------------------------------------------------------------
@@ -214,91 +187,9 @@ def _read_dir_concat(path: Path) -> str:
     return "\n".join(parts)
 
 
-def _render_boot_markdown(
-    now: str,
-    becoming: str,
-    manifest: list[dict[str, Any]],
-) -> str:
-    """Render boot payload as markdown with HTML-comment section markers.
-
-    HTML comments are invisible in rendered markdown but give a language-model
-    consumer clear, unambiguous section boundaries in the raw text — and they
-    don't collide with the files' own `#` headings (which is what happens if
-    we wrap them in our own H1s).
-    """
-    lines: list[str] = []
-    lines.append("<!-- dobby memory boot: now (memory/now.md) -->")
-    lines.append("")
-    lines.append(now.rstrip())
-    lines.append("")
-    lines.append("<!-- dobby memory boot: becoming (memory/becoming.md) -->")
-    lines.append("")
-    lines.append(becoming.rstrip())
-    lines.append("")
-    lines.append(
-        "<!-- dobby memory boot: areas (lazy manifest — "
-        "read content via `dobby-memory read --section area.<name>`) -->"
-    )
-    lines.append("")
-    if not manifest:
-        lines.append("_no area files found_")
-        lines.append("")
-    for d in manifest:
-        lines.append(f"### {d['area']}")
-        lines.append("")
-        for f in d["files"]:
-            lines.append(
-                f"- `{f['path']}` — {f['mtime_date']} ({f['size_bytes']}B)"
-            )
-        lines.append("")
-    return "\n".join(lines).rstrip() + "\n"
-
-
 # ---------------------------------------------------------------------------
 # commands
 # ---------------------------------------------------------------------------
-
-def cmd_boot(args: argparse.Namespace) -> int:
-    env = Envelope("memory.boot")
-    try:
-        root_memory = memory_dir()
-        now = _read_file(root_memory / "now.md")
-        becoming_path = root_memory / "becoming.md"
-        becoming = becoming_path.read_text(encoding="utf-8") if becoming_path.exists() else ""
-        manifest = area_manifest()
-    except WorkspaceError as e:
-        return emit_json(env.err("E_VALIDATION", str(e)))
-    except FileNotFoundError as e:
-        return emit_json(
-            env.err(
-                "E_NOT_FOUND",
-                str(e),
-                hint="Ensure memory/now.md exists",
-            )
-        )
-    except OSError as e:
-        return emit_json(env.err("E_IO", str(e)))
-    except Exception as e:  # pragma: no cover - defensive
-        return emit_json(env.err("E_RUNTIME", f"{type(e).__name__}: {e}"))
-
-    payload = {
-        "now": now,
-        "becoming": becoming,
-        "areas": manifest,
-        "counts": {
-            "now_bytes": len(now.encode("utf-8")),
-            "becoming_bytes": len(becoming.encode("utf-8")),
-            "area_files": sum(len(d["files"]) for d in manifest),
-        },
-    }
-
-    if args.plain:
-        return emit_text(
-            _render_boot_markdown(now, becoming, manifest),
-            ensure_newline=False,
-        )
-    return emit_json(env.ok(payload))
-
 
 def cmd_read(args: argparse.Namespace) -> int:
     env = Envelope("memory.read")
