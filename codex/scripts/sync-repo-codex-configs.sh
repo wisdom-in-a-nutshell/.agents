@@ -160,8 +160,8 @@ is_drifted() {
   [[ ! -f "$target" ]] || ! cmp -s "$target" "$rendered"
 }
 
-mapfile -t MANIFEST < <(
-  python3 - "$REGISTRY_FILE" "$MCP_REGISTRY_FILE" "$AGENT_REGISTRY_FILE" "$TMP_DIR" "${REPO_FILTERS[@]}" <<'PY'
+MANIFEST_FILE="${TMP_DIR}/manifest.tsv"
+python3 - "$REGISTRY_FILE" "$MCP_REGISTRY_FILE" "$AGENT_REGISTRY_FILE" "$TMP_DIR" ${REPO_FILTERS[@]+"${REPO_FILTERS[@]}"} >"$MANIFEST_FILE" <<'PY'
 from __future__ import annotations
 
 import hashlib
@@ -576,7 +576,13 @@ for item in repo_items_all:
 for line in manifest_lines:
     print(line)
 PY
-)
+
+MANIFEST=()
+while IFS= read -r line; do
+  if [[ -n "$line" ]]; then
+    MANIFEST+=("$line")
+  fi
+done <"$MANIFEST_FILE"
 
 if (( ${#MANIFEST[@]} == 0 )); then
   die "No managed repo configs were rendered."
@@ -585,7 +591,7 @@ fi
 log "Rendered ${#MANIFEST[@]} managed repo-local Codex files from ${REGISTRY_FILE}."
 
 DRIFT=0
-for entry in "${MANIFEST[@]}"; do
+for entry in ${MANIFEST[@]+"${MANIFEST[@]}"}; do
   IFS=$'\t' read -r repo target rendered <<<"$entry"
 
   log ""

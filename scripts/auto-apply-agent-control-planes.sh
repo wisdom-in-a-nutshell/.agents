@@ -54,12 +54,6 @@ stamp_current_sha() {
   log "Stamped reconcile state: $STAMP_FILE -> $sha"
 }
 
-skills_mode_args() {
-  if [[ "$MODE" == "--apply" ]]; then
-    printf '%s\n' "--apply"
-  fi
-}
-
 refresh_external_plugins_if_due() {
   local today=""
   local last=""
@@ -175,7 +169,12 @@ if ! git -C "$AGENTS_REPO" cat-file -e "${last_sha}^{commit}" 2>/dev/null; then
   exit 0
 fi
 
-mapfile -t changed_paths < <(
+changed_paths=()
+while IFS= read -r path; do
+  if [[ -n "$path" ]]; then
+    changed_paths+=("$path")
+  fi
+done < <(
   git -C "$AGENTS_REPO" diff --name-only "$last_sha" "$current_sha" -- \
     agents \
     claude \
@@ -202,11 +201,17 @@ claude_changed=0
 hooks_changed=0
 git_hooks_changed=0
 copilot_hooks_changed=0
+root_bootstrap_changed=0
 shared_mcp_changed=0
 repo_registry_changed=0
 agent_registry_changed=0
 
 for path in "${changed_paths[@]}"; do
+  case "$path" in
+    scripts/bootstrap-machine-agent-control-planes.sh)
+      root_bootstrap_changed=1
+      ;;
+  esac
   case "$path" in
     agents/*)
       agent_registry_changed=1
@@ -218,12 +223,12 @@ for path in "${changed_paths[@]}"; do
       ;;
   esac
   case "$path" in
-    hooks/*|scripts/sync-copilot-hooks.sh|scripts/bootstrap-machine-agent-control-planes.sh)
+    hooks/*|scripts/sync-copilot-hooks.sh)
       copilot_hooks_changed=1
       ;;
   esac
   case "$path" in
-    hooks/git/*|scripts/sync-managed-git-hooks.sh|scripts/bootstrap-machine-agent-control-planes.sh)
+    hooks/git/*|scripts/sync-managed-git-hooks.sh)
       git_hooks_changed=1
       ;;
   esac
@@ -261,9 +266,13 @@ need_sync_skills=0
 need_sync_plugins=0
 need_sync_git_hooks=0
 need_sync_copilot_hooks=0
+need_root_bootstrap=0
 need_bootstrap_codex=0
 need_bootstrap_claude=0
 
+if (( root_bootstrap_changed == 1 )); then
+  need_root_bootstrap=1
+fi
 if (( skills_changed == 1 )); then
   need_sync_skills=1
 fi
@@ -284,23 +293,27 @@ if (( claude_changed == 1 || hooks_changed == 1 || shared_mcp_changed == 1 || sk
 fi
 
 actions=()
-if (( need_sync_skills == 1 )); then
-  actions+=("sync_skills_registry")
-fi
-if (( need_sync_plugins == 1 )); then
-  actions+=("sync_plugins_registry")
-fi
-if (( need_sync_git_hooks == 1 )); then
-  actions+=("sync_managed_git_hooks")
-fi
-if (( need_sync_copilot_hooks == 1 )); then
-  actions+=("sync_copilot_hooks")
-fi
-if (( need_bootstrap_codex == 1 )); then
-  actions+=("bootstrap_codex")
-fi
-if (( need_bootstrap_claude == 1 )); then
-  actions+=("bootstrap_claude")
+if (( need_root_bootstrap == 1 )); then
+  actions+=("root_bootstrap")
+else
+  if (( need_sync_skills == 1 )); then
+    actions+=("sync_skills_registry")
+  fi
+  if (( need_sync_plugins == 1 )); then
+    actions+=("sync_plugins_registry")
+  fi
+  if (( need_sync_git_hooks == 1 )); then
+    actions+=("sync_managed_git_hooks")
+  fi
+  if (( need_sync_copilot_hooks == 1 )); then
+    actions+=("sync_copilot_hooks")
+  fi
+  if (( need_bootstrap_codex == 1 )); then
+    actions+=("bootstrap_codex")
+  fi
+  if (( need_bootstrap_claude == 1 )); then
+    actions+=("bootstrap_claude")
+  fi
 fi
 
 if (( ${#actions[@]} == 0 )); then
@@ -312,13 +325,22 @@ fi
 log "APPLY: detected shared agent control-plane changes since ${last_sha}"
 for action in "${actions[@]}"; do
   case "$action" in
+    root_bootstrap)
+      cmd=("$ROOT_BOOTSTRAP_SCRIPT" "$MODE" --github-root "$GITHUB_ROOT")
+      ;;
     sync_skills_registry)
-      mapfile -t skill_args < <(skills_mode_args)
-      cmd=("$SYNC_SKILLS_SCRIPT" "${skill_args[@]}")
+      if [[ "$MODE" == "--apply" ]]; then
+        cmd=("$SYNC_SKILLS_SCRIPT" --apply)
+      else
+        cmd=("$SYNC_SKILLS_SCRIPT")
+      fi
       ;;
     sync_plugins_registry)
-      mapfile -t plugin_args < <(skills_mode_args)
-      cmd=("$SYNC_PLUGINS_SCRIPT" "${plugin_args[@]}")
+      if [[ "$MODE" == "--apply" ]]; then
+        cmd=("$SYNC_PLUGINS_SCRIPT" --apply)
+      else
+        cmd=("$SYNC_PLUGINS_SCRIPT")
+      fi
       ;;
     sync_managed_git_hooks)
       cmd=("$SYNC_GIT_HOOKS_SCRIPT" "$MODE")

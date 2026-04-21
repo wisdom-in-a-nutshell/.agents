@@ -150,8 +150,8 @@ is_drifted() {
   [[ ! -f "$target" ]] || ! cmp -s "$target" "$rendered"
 }
 
-mapfile -t MANIFEST < <(
-  python3 - "$ROOT_DIR" "$REGISTRY_FILE" "$HOOKS_REGISTRY_FILE" "$TMP_DIR" "$TARGET_RELATIVE" "${REPO_FILTERS[@]}" <<'PY'
+MANIFEST_FILE="${TMP_DIR}/manifest.tsv"
+python3 - "$ROOT_DIR" "$REGISTRY_FILE" "$HOOKS_REGISTRY_FILE" "$TMP_DIR" "$TARGET_RELATIVE" ${REPO_FILTERS[@]+"${REPO_FILTERS[@]}"} >"$MANIFEST_FILE" <<'PY'
 from __future__ import annotations
 
 import hashlib
@@ -215,7 +215,13 @@ for item in repos:
 for line in manifest_lines:
     print(line)
 PY
-)
+
+MANIFEST=()
+while IFS= read -r line; do
+  if [[ -n "$line" ]]; then
+    MANIFEST+=("$line")
+  fi
+done <"$MANIFEST_FILE"
 
 if (( ${#REPO_FILTERS[@]} > 0 && ${#MANIFEST[@]} == 0 )); then
   die "No managed repos matched the requested --repo filters"
@@ -227,7 +233,7 @@ fi
 log "Rendered ${#MANIFEST[@]} managed repo-local Copilot hook files from ${HOOKS_REGISTRY_FILE}."
 
 DRIFT=0
-for entry in "${MANIFEST[@]}"; do
+for entry in ${MANIFEST[@]+"${MANIFEST[@]}"}; do
   IFS=$'\t' read -r repo target rendered <<<"$entry"
 
   log ""

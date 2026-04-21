@@ -157,6 +157,7 @@ class AutoApplyRoutingTests(TempDirTestCase):
         stamp_file: Path,
         *,
         skip_daily_plugin_refresh: bool = True,
+        env: dict[str, str] | None = None,
     ) -> str:
         home = self.temp_path / "home"
         if skip_daily_plugin_refresh:
@@ -180,7 +181,11 @@ class AutoApplyRoutingTests(TempDirTestCase):
                 "--stamp-file",
                 str(stamp_file),
             ],
-            env={"HOME": str(home), "LOG_FILE": str(log_path)},
+            env={
+                "HOME": str(home),
+                "LOG_FILE": str(log_path),
+                **(env or {}),
+            },
         )
         return result.stdout
 
@@ -338,6 +343,34 @@ class AutoApplyRoutingTests(TempDirTestCase):
         self.assertEqual(
             [
                 "sync-copilot-hooks.sh|--apply",
+            ],
+            log_path.read_text(encoding="utf-8").splitlines(),
+        )
+
+    def test_root_bootstrap_wrapper_change_runs_root_bootstrap(self) -> None:
+        root, log_path, stamp_file = self._make_agents_repo()
+        baseline_sha = run_command(
+            ["git", "-C", str(root), "rev-parse", "HEAD"],
+        ).stdout.strip()
+        write_text(stamp_file, baseline_sha + "\n")
+
+        write_executable(
+            root / "scripts/bootstrap-machine-agent-control-planes.sh",
+            STUB_SCRIPT + "\n# changed\n",
+        )
+        commit_all(root, "update root bootstrap wrapper")
+
+        output = self._run_auto_apply(
+            root,
+            log_path,
+            stamp_file,
+            env={"PATH": "/usr/bin:/bin"},
+        )
+
+        self.assertIn("APPLY: detected shared agent control-plane changes", output)
+        self.assertEqual(
+            [
+                f"bootstrap-machine-agent-control-planes.sh|--apply --github-root {self.temp_path / 'GitHub'}",
             ],
             log_path.read_text(encoding="utf-8").splitlines(),
         )

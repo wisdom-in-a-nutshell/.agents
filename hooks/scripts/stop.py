@@ -121,8 +121,10 @@ def normalize_output_for_runtime(
     runtime: str,
 ) -> dict[str, Any] | None:
     if runtime == "copilot" and output and "systemMessage" in output:
-        log(runtime, "suppress unsupported systemMessage output")
-        return None
+        return {
+            "decision": "allow",
+            "reason": truncate_text(str(output["systemMessage"]), MAX_REASON_CHARS),
+        }
     return output
 
 

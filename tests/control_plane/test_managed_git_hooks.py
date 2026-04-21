@@ -69,6 +69,41 @@ class ManagedGitHooksTests(TempDirTestCase):
         )
         self.assertIn("OK", check.stdout)
 
+    def test_sync_managed_git_hooks_runs_under_macos_system_bash(self) -> None:
+        repo = init_git_repo(self.temp_path / "repo")
+        registry = self.temp_path / "repo-bootstrap.json"
+        hooks_path = REPO_ROOT / "hooks/git"
+        write_json(
+            registry,
+            {
+                "defaults": {},
+                "repos": [
+                    {
+                        "path": str(repo),
+                    }
+                ],
+            },
+        )
+
+        result = run_command(
+            [
+                str(REPO_ROOT / "scripts/sync-managed-git-hooks.sh"),
+                "--apply",
+                "--registry",
+                str(registry),
+                "--hooks-path",
+                str(hooks_path),
+            ],
+            env={"PATH": "/usr/bin:/bin"},
+            check=False,
+        )
+
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(
+            str(hooks_path),
+            run_command(["git", "-C", str(repo), "config", "--local", "--get", "core.hooksPath"]).stdout.strip(),
+        )
+
     def test_shared_git_hook_runs_repo_check_fast_when_present(self) -> None:
         repo = init_git_repo(self.temp_path / "repo")
         log_path = self.temp_path / "check-fast.log"

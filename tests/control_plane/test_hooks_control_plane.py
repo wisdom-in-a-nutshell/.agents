@@ -89,20 +89,55 @@ class HooksControlPlaneTests(TempDirTestCase):
 
         copilot_hooks = render_copilot_hooks(registry)
         self.assertEqual(
-            set(copilot_hooks["hooks"].keys()),
-            {"sessionStart", "userPromptSubmitted", "agentStop", "sessionEnd"},
-        )
-        self.assertEqual(copilot_hooks["version"], 1)
-        self.assertEqual(
-            copilot_hooks["hooks"]["agentStop"][0],
+            copilot_hooks,
             {
-                "bash": (
-                    'if [ -f "$HOME/.agents/hooks/scripts/stop.py" ]; '
-                    'then python3 "$HOME/.agents/hooks/scripts/stop.py" --runtime copilot; fi'
-                ),
-                "cwd": ".",
-                "timeoutSec": 900,
-                "type": "command",
+                "hooks": {
+                    "agentStop": [
+                        {
+                            "bash": (
+                                'if [ -f "$HOME/.agents/hooks/scripts/stop.py" ]; '
+                                'then python3 "$HOME/.agents/hooks/scripts/stop.py" --runtime copilot; fi'
+                            ),
+                            "cwd": ".",
+                            "timeoutSec": 900,
+                            "type": "command",
+                        }
+                    ],
+                    "sessionEnd": [
+                        {
+                            "bash": (
+                                'if [ -f "$HOME/.agents/hooks/scripts/session_end.py" ]; '
+                                'then python3 "$HOME/.agents/hooks/scripts/session_end.py" --runtime copilot; fi'
+                            ),
+                            "cwd": ".",
+                            "timeoutSec": 5,
+                            "type": "command",
+                        }
+                    ],
+                    "sessionStart": [
+                        {
+                            "bash": (
+                                'if [ -f "$HOME/.agents/hooks/scripts/session_start.py" ]; '
+                                'then python3 "$HOME/.agents/hooks/scripts/session_start.py" --runtime copilot; fi'
+                            ),
+                            "cwd": ".",
+                            "timeoutSec": 5,
+                            "type": "command",
+                        }
+                    ],
+                    "userPromptSubmitted": [
+                        {
+                            "bash": (
+                                'if [ -f "$HOME/.agents/hooks/scripts/user_prompt_submit.py" ]; '
+                                'then python3 "$HOME/.agents/hooks/scripts/user_prompt_submit.py" --runtime copilot; fi'
+                            ),
+                            "cwd": ".",
+                            "timeoutSec": 5,
+                            "type": "command",
+                        }
+                    ],
+                },
+                "version": 1,
             },
         )
 
@@ -140,6 +175,84 @@ class HooksControlPlaneTests(TempDirTestCase):
                         "enabled": True,
                         "event": "SessionEnd",
                         "id": "bad-event-runtime",
+                        "runtimes": ["codex"],
+                        "scope": "global",
+                        "timeout": 5,
+                    }
+                ],
+                "version": 1,
+            },
+        )
+
+        with self.assertRaises(HookRegistryError):
+            load_hooks_registry(registry_path)
+
+    def test_registry_rejects_matcher_runtime_not_in_hook_runtimes(self) -> None:
+        registry_path = self.temp_path / "hooks/registry.json"
+        write_json(
+            registry_path,
+            {
+                "managed_hooks": [
+                    {
+                        "command": "python3 hook.py --runtime {runtime}",
+                        "enabled": True,
+                        "event": "SessionStart",
+                        "id": "bad-matcher-runtime",
+                        "matchers": {
+                            "codex": "startup",
+                        },
+                        "runtimes": ["claude"],
+                        "scope": "global",
+                        "timeout": 5,
+                    }
+                ],
+                "version": 1,
+            },
+        )
+
+        with self.assertRaises(HookRegistryError):
+            load_hooks_registry(registry_path)
+
+    def test_registry_rejects_matcher_for_unsupported_event_runtime(self) -> None:
+        registry_path = self.temp_path / "hooks/registry.json"
+        write_json(
+            registry_path,
+            {
+                "managed_hooks": [
+                    {
+                        "command": "python3 hook.py --runtime {runtime}",
+                        "enabled": True,
+                        "event": "SessionEnd",
+                        "id": "bad-event-matcher-runtime",
+                        "matchers": {
+                            "codex": "logout",
+                        },
+                        "runtimes": ["claude"],
+                        "scope": "global",
+                        "timeout": 5,
+                    }
+                ],
+                "version": 1,
+            },
+        )
+
+        with self.assertRaises(HookRegistryError):
+            load_hooks_registry(registry_path)
+
+    def test_registry_rejects_matchers_for_events_without_matchers(self) -> None:
+        registry_path = self.temp_path / "hooks/registry.json"
+        write_json(
+            registry_path,
+            {
+                "managed_hooks": [
+                    {
+                        "command": "python3 hook.py --runtime {runtime}",
+                        "enabled": True,
+                        "event": "Stop",
+                        "id": "bad-stop-matcher",
+                        "matchers": {
+                            "codex": "anything",
+                        },
                         "runtimes": ["codex"],
                         "scope": "global",
                         "timeout": 5,
@@ -501,17 +614,8 @@ class HooksControlPlaneTests(TempDirTestCase):
         )
 
         rendered = read_json(repo / ".github/hooks/agent-control-plane.json")
-        self.assertEqual(
-            set(rendered["hooks"].keys()),
-            {"sessionStart", "userPromptSubmitted", "agentStop", "sessionEnd"},
-        )
-        self.assertEqual(
-            rendered["hooks"]["sessionStart"][0]["bash"],
-            (
-                'if [ -f "$HOME/.agents/hooks/scripts/session_start.py" ]; '
-                'then python3 "$HOME/.agents/hooks/scripts/session_start.py" --runtime copilot; fi'
-            ),
-        )
+        expected = render_copilot_hooks(load_hooks_registry(REPO_ROOT / "hooks/registry.json"))
+        self.assertEqual(rendered, expected)
 
         run_command(
             [
@@ -559,6 +663,39 @@ class HooksControlPlaneTests(TempDirTestCase):
         self.assertIn("repo-local Copilot hook files are out of sync", result.stderr)
         self.assertFalse((repo / ".github/hooks/agent-control-plane.json").exists())
 
+    def test_sync_copilot_hooks_runs_under_macos_system_bash(self) -> None:
+        repo = init_git_repo(self.temp_path / "repo")
+        registry = self.temp_path / "repo-bootstrap.json"
+        write_json(
+            registry,
+            {
+                "defaults": {},
+                "repos": [
+                    {
+                        "path": str(repo),
+                    }
+                ],
+            },
+        )
+
+        result = run_command(
+            [
+                str(REPO_ROOT / "scripts/sync-copilot-hooks.sh"),
+                "--apply",
+                "--registry",
+                str(registry),
+                "--hooks-registry",
+                str(REPO_ROOT / "hooks/registry.json"),
+                "--repo",
+                str(repo),
+            ],
+            env={"PATH": "/usr/bin:/bin"},
+            check=False,
+        )
+
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertTrue((repo / ".github/hooks/agent-control-plane.json").is_file())
+
     def test_stop_hook_has_tracking_upstream_false_for_new_local_branch(self) -> None:
         module = self.load_stop_module()
         remote = init_git_repo(self.temp_path / "remote.git")
@@ -570,14 +707,15 @@ class HooksControlPlaneTests(TempDirTestCase):
 
         self.assertFalse(module.has_tracking_upstream(str(repo)))
 
-    def test_stop_hook_suppresses_unsupported_copilot_warning_output(self) -> None:
+    def test_stop_hook_normalizes_copilot_warning_output(self) -> None:
         module = self.load_stop_module()
 
-        self.assertIsNone(
+        self.assertEqual(
             module.normalize_output_for_runtime(
                 {"systemMessage": "push failed"},
                 runtime="copilot",
-            )
+            ),
+            {"decision": "allow", "reason": "push failed"},
         )
         self.assertEqual(
             module.normalize_output_for_runtime(

@@ -101,8 +101,13 @@ HOOKS_PATH="$(python3 -c 'from pathlib import Path; import sys; print(Path(sys.a
 [[ -d "$HOOKS_PATH" ]] || die "Missing shared hooks directory: $HOOKS_PATH"
 [[ -x "$HOOKS_PATH/pre-commit" ]] || die "Missing executable shared pre-commit hook: $HOOKS_PATH/pre-commit"
 
-mapfile -t REPOS < <(
-  python3 - "$REGISTRY_FILE" "${REPO_FILTERS[@]}" <<'PY'
+REPOS=()
+while IFS= read -r repo; do
+  if [[ -n "$repo" ]]; then
+    REPOS+=("$repo")
+  fi
+done < <(
+  python3 - "$REGISTRY_FILE" ${REPO_FILTERS[@]+"${REPO_FILTERS[@]}"} <<'PY'
 from __future__ import annotations
 
 import json
@@ -138,7 +143,7 @@ checked_count=0
 updated_count=0
 skipped_count=0
 
-for repo in "${REPOS[@]}"; do
+for repo in ${REPOS[@]+"${REPOS[@]}"}; do
   if [[ ! -d "$repo" ]]; then
     log "SKIP missing repo: $repo"
     (( skipped_count += 1 ))

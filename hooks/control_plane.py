@@ -126,10 +126,20 @@ def validate_hooks_registry_data(registry: dict[str, Any], *, label: str) -> Non
             matchers = {}
         if not isinstance(matchers, dict):
             raise HookRegistryError(f"{prefix}.matchers must be an object")
+        if event not in EVENTS_WITH_MATCHERS and matchers:
+            raise HookRegistryError(f"{prefix}.matchers is not supported for event `{event}`")
         for runtime, matcher in matchers.items():
             if runtime not in VALID_RUNTIMES:
                 raise HookRegistryError(
                     f"{prefix}.matchers contains unsupported runtime `{runtime}`"
+                )
+            if runtime not in EVENT_RUNTIME_SUPPORT[event]:
+                raise HookRegistryError(
+                    f"{prefix}.event `{event}` does not support matcher runtime `{runtime}`"
+                )
+            if runtime not in runtime_values:
+                raise HookRegistryError(
+                    f"{prefix}.matchers contains runtime `{runtime}` that is not listed in runtimes"
                 )
             if not isinstance(matcher, str) or not matcher.strip():
                 raise HookRegistryError(

@@ -249,7 +249,7 @@ collect_all_repo_roots() {
   local root repo existing_repo already_seen
   local -a seen=()
 
-  for root in "${ROOTS[@]}"; do
+  for root in ${ROOTS[@]+"${ROOTS[@]}"}; do
     if [[ -z "$root" ]]; then
       continue
     fi
@@ -357,16 +357,31 @@ sync_target() {
 }
 
 if (( ROOTS_EXPLICIT == 0 )); then
-  mapfile -t REPO_ROOTS < <(collect_registry_repos)
+  REPO_ROOTS=()
+  while IFS= read -r repo; do
+    if [[ -n "$repo" ]]; then
+      REPO_ROOTS+=("$repo")
+    fi
+  done < <(collect_registry_repos)
 fi
 
 if (( ROOTS_EXPLICIT == 1 )); then
-  mapfile -t REPO_ROOTS < <(collect_all_repo_roots)
+  REPO_ROOTS=()
+  while IFS= read -r repo; do
+    if [[ -n "$repo" ]]; then
+      REPO_ROOTS+=("$repo")
+    fi
+  done < <(collect_all_repo_roots)
 fi
 
 if (( ${#REPO_ROOTS[@]} == 0 )); then
   ROOTS=("${HOME}/GitHub")
-  mapfile -t REPO_ROOTS < <(collect_all_repo_roots)
+  REPO_ROOTS=()
+  while IFS= read -r repo; do
+    if [[ -n "$repo" ]]; then
+      REPO_ROOTS+=("$repo")
+    fi
+  done < <(collect_all_repo_roots)
 fi
 
 if (( ${#REPO_ROOTS[@]} == 0 )); then
@@ -374,14 +389,14 @@ if (( ${#REPO_ROOTS[@]} == 0 )); then
 fi
 
 log "Discovered ${#REPO_ROOTS[@]} trusted repo roots."
-for repo in "${REPO_ROOTS[@]}"; do
+for repo in ${REPO_ROOTS[@]+"${REPO_ROOTS[@]}"}; do
   log "  - $repo"
 done
 
 if (( SYNC_GLOBAL == 1 )); then
-  sync_target "global" "$GLOBAL_CONFIG" "${REPO_ROOTS[@]}"
+  sync_target "global" "$GLOBAL_CONFIG" ${REPO_ROOTS[@]+"${REPO_ROOTS[@]}"}
 fi
 
 if (( SYNC_XCODE == 1 )); then
-  sync_target "xcode" "$XCODE_CONFIG" "${REPO_ROOTS[@]}"
+  sync_target "xcode" "$XCODE_CONFIG" ${REPO_ROOTS[@]+"${REPO_ROOTS[@]}"}
 fi
