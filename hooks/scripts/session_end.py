@@ -19,7 +19,7 @@ MAX_LOG_BYTES = 5 * 1024 * 1024
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Shared Claude SessionEnd hook.")
+    parser = argparse.ArgumentParser(description="Shared SessionEnd hook.")
     parser.add_argument("--runtime", choices=sorted(VALID_RUNTIMES), required=True)
     parser.add_argument(
         "--no-input",

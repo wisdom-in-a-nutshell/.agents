@@ -526,6 +526,39 @@ class HooksControlPlaneTests(TempDirTestCase):
             ]
         )
 
+    def test_sync_copilot_hooks_check_fails_when_repo_file_is_missing(self) -> None:
+        repo = init_git_repo(self.temp_path / "repo")
+        registry = self.temp_path / "repo-bootstrap.json"
+        write_json(
+            registry,
+            {
+                "defaults": {},
+                "repos": [
+                    {
+                        "path": str(repo),
+                    }
+                ],
+            },
+        )
+
+        result = run_command(
+            [
+                str(REPO_ROOT / "scripts/sync-copilot-hooks.sh"),
+                "--check",
+                "--registry",
+                str(registry),
+                "--hooks-registry",
+                str(REPO_ROOT / "hooks/registry.json"),
+                "--repo",
+                str(repo),
+            ],
+            check=False,
+        )
+
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("repo-local Copilot hook files are out of sync", result.stderr)
+        self.assertFalse((repo / ".github/hooks/agent-control-plane.json").exists())
+
     def test_stop_hook_has_tracking_upstream_false_for_new_local_branch(self) -> None:
         module = self.load_stop_module()
         remote = init_git_repo(self.temp_path / "remote.git")
