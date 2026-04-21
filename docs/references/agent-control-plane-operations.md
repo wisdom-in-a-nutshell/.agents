@@ -4,6 +4,9 @@ Use this page for the shared machine-facing apply and validation entrypoints tha
 
 These wrappers exist so external machine bootstrap repos such as `~/GitHub/scripts` can call one stable `.agents` surface instead of reaching into Codex- or Claude-specific internals directly.
 
+For repo authors adding `scripts/hooks/*.py`, start with
+[`repo-lifecycle-hook-adapter.md`](/Users/dobby/.agents/docs/references/repo-lifecycle-hook-adapter.md).
+
 ## Canonical Shared Entry Points
 
 - `scripts/bootstrap-machine-agent-control-planes.sh`

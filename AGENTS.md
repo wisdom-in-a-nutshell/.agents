@@ -68,6 +68,7 @@ Personal agent, Codex, Claude, and repo-local Copilot hook control plane.
 Detailed operations live in:
 
 - `docs/references/agent-control-plane-operations.md`
+- `docs/references/repo-lifecycle-hook-adapter.md`
 - `docs/references/codex-control-plane-operations.md`
 - `docs/references/claude-control-plane-operations.md`
 - `docs/references/cli-interface-contract.md`
