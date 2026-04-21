@@ -109,60 +109,14 @@ Preferred rule for repo bootstrap or MCP changes:
 - Codex- and Claude-specific scripts remain the low-level component entrypoints owned by `codex/` and `claude/`.
 - Update this page and the component docs together when the shared machine-facing flow changes.
 
-## Agent Session Start Contract
+## Agent Lifecycle Hook Contract
 
-- The global lifecycle `SessionStart` hook is defined once in [`hooks/registry.json`](/Users/dobby/.agents/hooks/registry.json) and rendered into Codex, Claude, and managed repo-local GitHub Copilot hook config.
-- The `SessionStart` hook runs [`hooks/scripts/session_start.py`](/Users/dobby/.agents/hooks/scripts/session_start.py).
-- `session_start.py`, `user_prompt_submit.py`, and `session_end.py` share the
-  common dispatcher in [`hooks/scripts/hook_runtime.py`](/Users/dobby/.agents/hooks/scripts/hook_runtime.py)
-  for payload parsing, repo-root resolution, env setup, repo script execution,
-  context forwarding, and session-end logging.
-- The dispatcher resolves the current git root from the hook payload `cwd`.
-- If the repo contains `scripts/hooks/session_start.py`, the dispatcher runs that Python hook from the repo root.
-- The repo script receives a normalized JSON adapter payload on stdin. The original runtime payload is preserved under `raw_payload`.
-- Common adapter fields include:
-  - `schema_version=1.0`
-  - `hook_event_name`
-  - `runtime`
-  - `cwd`
-  - `repo_root`
-  - `session_id`
-  - `turn_id`
-  - `model`
-  - `timestamp`
-  - `source`
-  - `prompt`
-  - `initial_prompt`
-  - `final_message`
-  - `reason`
-  - `error`
-  - `transcript_path`
-  - `transcript_format`
-  - `raw_payload`
-- The repo script also receives these environment variables:
-  - `AGENT_HOOK_EVENT=SessionStart`
-  - `AGENT_HOOK_RUNTIME=codex`, `claude`, or `copilot`
-  - `AGENT_REPO_ROOT=<repo root>`
-  - `AGENT_HOOK_SCHEMA_VERSION=1.0`
-- For Codex and Claude, the repo hook's stdout is forwarded as startup context for the agent. The dispatcher caps forwarded context at a rough `30000` token budget, implemented as `120000` characters because hook scripts do not know the runtime model tokenizer. GitHub Copilot currently ignores `sessionStart` output, so use this hook there only for local setup or logging.
-- Keep repo hook output concise, deterministic, and non-interactive.
-- If the repo has no `scripts/hooks/session_start.py`, the hook exits silently and successfully.
-
-## Agent Prompt Submit Contract
-
-- The global lifecycle `UserPromptSubmit` hook is defined once in [`hooks/registry.json`](/Users/dobby/.agents/hooks/registry.json) and rendered into Codex, Claude, and managed repo-local GitHub Copilot hook config.
-- The `UserPromptSubmit` hook runs [`hooks/scripts/user_prompt_submit.py`](/Users/dobby/.agents/hooks/scripts/user_prompt_submit.py).
-- `user_prompt_submit.py` resolves the current git root from the hook payload `cwd`.
-- If the repo contains `scripts/hooks/user_prompt_submit.py`, the dispatcher runs that Python hook from the repo root.
-- The repo script receives the same normalized JSON adapter payload described in the session-start contract, with `hook_event_name=UserPromptSubmit` and `prompt` populated when the runtime provides it.
-- The repo script also receives these environment variables:
-  - `AGENT_HOOK_EVENT=UserPromptSubmit`
-  - `AGENT_HOOK_RUNTIME=codex`, `claude`, or `copilot`
-  - `AGENT_REPO_ROOT=<repo root>`
-  - `AGENT_HOOK_SCHEMA_VERSION=1.0`
-- For Codex and Claude, the repo hook's stdout is forwarded as additional prompt context. The dispatcher caps forwarded context at a rough `30000` token budget, implemented as `120000` characters because hook scripts do not know the runtime model tokenizer. GitHub Copilot currently ignores `userPromptSubmitted` output.
-- Keep repo hook output concise, deterministic, and non-interactive.
-- If the repo has no `scripts/hooks/user_prompt_submit.py`, the hook exits silently and successfully.
+- Lifecycle hooks are defined once in [`hooks/registry.json`](/Users/dobby/.agents/hooks/registry.json) and rendered into the supported Codex, Claude, and managed repo-local GitHub Copilot config surfaces.
+- Event entrypoints live in [`hooks/scripts/session_start.py`](/Users/dobby/.agents/hooks/scripts/session_start.py), [`hooks/scripts/user_prompt_submit.py`](/Users/dobby/.agents/hooks/scripts/user_prompt_submit.py), and [`hooks/scripts/session_end.py`](/Users/dobby/.agents/hooks/scripts/session_end.py).
+- Shared dispatch plumbing lives in [`hooks/scripts/hook_runtime.py`](/Users/dobby/.agents/hooks/scripts/hook_runtime.py); runtime-specific payload normalization lives in [`hooks/scripts/hook_adapter.py`](/Users/dobby/.agents/hooks/scripts/hook_adapter.py).
+- The canonical repo hook authoring contract is [`repo-lifecycle-hook-adapter.md`](/Users/dobby/.agents/docs/references/repo-lifecycle-hook-adapter.md). Keep payload fields, environment variables, stdout semantics, smoke tests, and hand-off guidance there instead of duplicating them on this operations page.
+- Repo-specific lifecycle behavior belongs in optional Python scripts under `scripts/hooks/`. Missing repo scripts are successful no-ops.
+- Codex currently renders `SessionStart` and `UserPromptSubmit`; it does not render a fake `SessionEnd`.
 
 ## Agent Commit Gate Contract
 
@@ -173,22 +127,6 @@ Preferred rule for repo bootstrap or MCP changes:
 - The shared Git hook delegates to repo-owned `scripts/check-fast.sh` when present.
 - Treat `scripts/check-fast.sh` as the repo's fast deterministic commit gate for agent-made changes, not as a general after-turn lifecycle hook.
 - Put slow or broad validation in `scripts/check-full.sh` or another explicit command.
-
-## Agent Session End Contract
-
-- The global lifecycle `SessionEnd` hook is defined once in [`hooks/registry.json`](/Users/dobby/.agents/hooks/registry.json) and currently renders into Claude runtime config and managed repo-local GitHub Copilot hook config.
-- Codex does not currently expose a separate documented `SessionEnd` hook; do not render a fake Codex equivalent.
-- The `SessionEnd` hook runs [`hooks/scripts/session_end.py`](/Users/dobby/.agents/hooks/scripts/session_end.py).
-- If the repo contains `scripts/hooks/session_end.py`, the dispatcher runs that Python hook from the repo root.
-- The repo script receives the same normalized JSON adapter payload described in the session-start contract, with `hook_event_name=SessionEnd`.
-- For Claude, `transcript_path` is populated when Claude provides it. For GitHub Copilot JSON hooks, transcript fields are usually absent. Copilot SDK adapters that own the session loop should provide a repo-local transcript path when they persist one.
-- The repo script also receives these environment variables:
-  - `AGENT_HOOK_EVENT=SessionEnd`
-  - `AGENT_HOOK_RUNTIME=claude` or `copilot`
-  - `AGENT_REPO_ROOT=<repo root>`
-  - `AGENT_HOOK_SCHEMA_VERSION=1.0`
-- The repo hook's stdout is logged under machine-local agent state instead of injected into context because the session is ending.
-- If the repo has no `scripts/hooks/session_end.py`, the hook exits silently and successfully.
 
 ## GitHub Copilot Hook Rendering
 
