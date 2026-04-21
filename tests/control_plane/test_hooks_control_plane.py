@@ -306,20 +306,17 @@ class HooksControlPlaneTests(TempDirTestCase):
         nested = repo / "nested"
         nested.mkdir()
         write_executable(
-            repo / "scripts/hooks/session-start.sh",
+            repo / "scripts/hooks/session_start.py",
             "\n".join(
                 [
-                    "#!/usr/bin/env bash",
-                    "set -euo pipefail",
-                    (
-                        "python3 -c 'import json, os, sys; "
-                        "payload = json.load(sys.stdin); "
-                        'print("repo=" + os.environ["AGENT_REPO_ROOT"]); '
-                        'print("runtime=" + os.environ["AGENT_HOOK_RUNTIME"]); '
-                        'print("cwd=" + os.getcwd()); '
-                        'print("event=" + payload["hook_event_name"])'
-                        "'"
-                    ),
+                    "#!/usr/bin/env python3",
+                    "import json",
+                    "import os",
+                    "payload = json.load(__import__('sys').stdin)",
+                    'print("repo=" + os.environ["AGENT_REPO_ROOT"])',
+                    'print("runtime=" + os.environ["AGENT_HOOK_RUNTIME"])',
+                    'print("cwd=" + os.getcwd())',
+                    'print("event=" + payload["hook_event_name"])',
                     "",
                 ]
             ),
@@ -365,12 +362,11 @@ class HooksControlPlaneTests(TempDirTestCase):
     def test_session_start_suppresses_repo_stdout_for_copilot(self) -> None:
         repo = init_git_repo(self.temp_path / "repo")
         write_executable(
-            repo / "scripts/hooks/session-start.sh",
+            repo / "scripts/hooks/session_start.py",
             "\n".join(
                 [
-                    "#!/usr/bin/env bash",
-                    "set -euo pipefail",
-                    "printf 'copilot startup context\\n'",
+                    "#!/usr/bin/env python3",
+                    "print('copilot startup context')",
                     "",
                 ]
             ),
@@ -432,21 +428,18 @@ class HooksControlPlaneTests(TempDirTestCase):
         nested = repo / "nested"
         nested.mkdir()
         write_executable(
-            repo / "scripts/hooks/user-prompt-submit.sh",
+            repo / "scripts/hooks/user_prompt_submit.py",
             "\n".join(
                 [
-                    "#!/usr/bin/env bash",
-                    "set -euo pipefail",
-                    (
-                        "python3 -c 'import json, os, sys; "
-                        "payload = json.load(sys.stdin); "
-                        'print("repo=" + os.environ["AGENT_REPO_ROOT"]); '
-                        'print("runtime=" + os.environ["AGENT_HOOK_RUNTIME"]); '
-                        'print("cwd=" + os.getcwd()); '
-                        'print("event=" + payload["hook_event_name"]); '
-                        'print("prompt=" + payload["prompt"])'
-                        "'"
-                    ),
+                    "#!/usr/bin/env python3",
+                    "import json",
+                    "import os",
+                    "payload = json.load(__import__('sys').stdin)",
+                    'print("repo=" + os.environ["AGENT_REPO_ROOT"])',
+                    'print("runtime=" + os.environ["AGENT_HOOK_RUNTIME"])',
+                    'print("cwd=" + os.getcwd())',
+                    'print("event=" + payload["hook_event_name"])',
+                    'print("prompt=" + payload["prompt"])',
                     "",
                 ]
             ),
@@ -494,19 +487,22 @@ class HooksControlPlaneTests(TempDirTestCase):
         repo = init_git_repo(self.temp_path / "repo")
         marker = repo / "tmp/session-end-marker.txt"
         write_executable(
-            repo / "scripts/hooks/session-end.sh",
+            repo / "scripts/hooks/session_end.py",
             "\n".join(
                 [
-                    "#!/usr/bin/env bash",
-                    "set -euo pipefail",
-                    "mkdir -p tmp",
-                    "python3 -c 'import json, os, pathlib, sys; "
-                    "payload = json.load(sys.stdin); "
-                    'pathlib.Path("tmp/session-end-marker.txt").write_text('
-                    '"runtime=" + os.environ["AGENT_HOOK_RUNTIME"] + "\\n" + '
-                    '"event=" + payload["hook_event_name"] + "\\n", encoding="utf-8"); '
-                    'print("debug only")'
-                    "'",
+                    "#!/usr/bin/env python3",
+                    "import json",
+                    "import os",
+                    "import pathlib",
+                    "import sys",
+                    "pathlib.Path('tmp').mkdir(exist_ok=True)",
+                    "payload = json.load(sys.stdin)",
+                    "pathlib.Path('tmp/session-end-marker.txt').write_text(",
+                    "    'runtime=' + os.environ['AGENT_HOOK_RUNTIME'] + '\\n'",
+                    "    + 'event=' + payload['hook_event_name'] + '\\n',",
+                    "    encoding='utf-8',",
+                    ")",
+                    "print('debug only')",
                     "",
                 ]
             ),

@@ -34,7 +34,7 @@ This file is machine-wide baseline guidance. Keep it generic and avoid portfolio
 ## Git Automation (Agent Stop Hook)
 - This environment runs a Stop hook after each agent turn that auto-stages, commits, runs repo-owned fast checks through `git commit`, rebases, and pushes.
 - If repo-owned checks fail, the hook returns the failure details to the current agent so it can fix the issue in the same session.
-- Shared hook dispatch also supports repo-owned `scripts/hooks/session-start.sh`, `scripts/hooks/user-prompt-submit.sh`, and `scripts/hooks/session-end.sh` when those files exist. `SessionEnd` currently renders for Claude and GitHub Copilot, not Codex.
+- Shared hook dispatch also supports repo-owned Python lifecycle hooks at `scripts/hooks/session_start.py`, `scripts/hooks/user_prompt_submit.py`, and `scripts/hooks/session_end.py` when those files exist. `SessionEnd` currently renders for Claude and GitHub Copilot, not Codex.
 - Managed repos use a shared local Git hook from `~/.agents/hooks/git/`; repo-specific commit-time checks live in `scripts/check-fast.sh` when a repo needs fast validation.
 - Keep `scripts/check-fast.sh` deterministic, local, quick, and actionable. Use a separate command such as `scripts/check-full.sh` for slower validation.
 - Do not run `git commit` or `git push` unless the user explicitly asks.

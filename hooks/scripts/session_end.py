@@ -13,7 +13,7 @@ from typing import Any
 
 VALID_RUNTIMES = {"claude", "copilot"}
 HOOK_EVENT = "SessionEnd"
-REPO_SESSION_END = Path("scripts/hooks/session-end.sh")
+REPO_SESSION_END = Path("scripts/hooks/session_end.py")
 GIT_ROOT_TIMEOUT_SEC = 5
 MAX_LOG_BYTES = 5 * 1024 * 1024
 
@@ -111,7 +111,7 @@ def run_repo_session_end(
     )
     try:
         result = subprocess.run(
-            ["bash", str(script)],
+            [sys.executable, str(script)],
             cwd=str(root),
             env=env,
             input=raw_payload,

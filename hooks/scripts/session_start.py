@@ -11,7 +11,7 @@ from typing import Any
 
 
 VALID_RUNTIMES = {"codex", "claude", "copilot"}
-REPO_SESSION_START = Path("scripts/hooks/session-start.sh")
+REPO_SESSION_START = Path("scripts/hooks/session_start.py")
 GIT_ROOT_TIMEOUT_SEC = 5
 MAX_CONTEXT_TOKENS = 30000
 APPROX_CHARS_PER_TOKEN = 4
@@ -88,7 +88,7 @@ def run_repo_session_start(
     )
     try:
         result = subprocess.run(
-            ["bash", str(script)],
+            [sys.executable, str(script)],
             cwd=str(root),
             env=env,
             input=raw_payload,

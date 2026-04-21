@@ -5,27 +5,6 @@ source "$(dirname "$0")/../lib/assert.sh"
 
 FAIL_COUNT=0
 
-section "memory read --section profile (JSON default)"
-run_dobby memory read --section profile
-assert_exit "exit 0" 0 "$CAPTURED_EXIT"
-assert_envelope_ok "memory.read profile default" "$CAPTURED_STDOUT"
-assert_jq_eq "path=memory/profile.md" '.data.path' "memory/profile.md" "$CAPTURED_STDOUT"
-assert_jq_truthy "content contains # Profile heading" '.data.content | contains("# Profile")' "$CAPTURED_STDOUT"
-
-section "memory read --section profile --plain"
-run_dobby memory read --section profile --plain
-assert_exit "exit 0" 0 "$CAPTURED_EXIT"
-assert_contains "contains # Profile heading" "# Profile" "$CAPTURED_STDOUT"
-assert_not_contains "no JSON envelope" '"schema_version"' "$CAPTURED_STDOUT"
-
-section "memory read --section profile --json"
-run_dobby memory read --section profile --json
-assert_exit "exit 0" 0 "$CAPTURED_EXIT"
-assert_envelope_ok "memory.read profile" "$CAPTURED_STDOUT"
-assert_jq_eq "path=memory/profile.md" '.data.path' "memory/profile.md" "$CAPTURED_STDOUT"
-assert_jq_eq "section=profile" '.data.section' "profile" "$CAPTURED_STDOUT"
-assert_jq_truthy "content non-empty" '.data.content | length > 0' "$CAPTURED_STDOUT"
-
 section "memory read --section now"
 run_dobby memory read --section now --plain
 assert_exit "exit 0" 0 "$CAPTURED_EXIT"
@@ -51,11 +30,6 @@ run_dobby memory read --section bogus
 assert_exit "exit 2 (E_VALIDATION)" 2 "$CAPTURED_EXIT"
 assert_envelope_error "memory.read bogus" "E_VALIDATION" "$CAPTURED_STDOUT"
 assert_jq_truthy "hint is non-empty" '.error.hint | length > 0' "$CAPTURED_STDOUT"
-
-section "memory read — profile with subsection (rejected)"
-run_dobby memory read --section profile.identity
-assert_exit "exit 2 (E_VALIDATION)" 2 "$CAPTURED_EXIT"
-assert_envelope_error "memory.read profile.subsection" "E_VALIDATION" "$CAPTURED_STDOUT"
 
 section "memory read — nonexistent area"
 run_dobby memory read --section area.nope

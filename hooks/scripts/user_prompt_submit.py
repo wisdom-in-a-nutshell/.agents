@@ -12,7 +12,7 @@ from typing import Any
 
 VALID_RUNTIMES = {"codex", "claude", "copilot"}
 HOOK_EVENT = "UserPromptSubmit"
-REPO_USER_PROMPT_SUBMIT = Path("scripts/hooks/user-prompt-submit.sh")
+REPO_USER_PROMPT_SUBMIT = Path("scripts/hooks/user_prompt_submit.py")
 GIT_ROOT_TIMEOUT_SEC = 5
 MAX_CONTEXT_TOKENS = 30000
 APPROX_CHARS_PER_TOKEN = 4
@@ -96,7 +96,7 @@ def run_repo_user_prompt_submit(
     )
     try:
         result = subprocess.run(
-            ["bash", str(script)],
+            [sys.executable, str(script)],
             cwd=str(root),
             env=env,
             input=raw_payload,

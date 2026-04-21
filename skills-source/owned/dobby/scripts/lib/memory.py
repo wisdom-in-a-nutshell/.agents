@@ -78,7 +78,7 @@ def relpath(path: Path) -> str:
 def add_subparsers(parent: argparse.ArgumentParser) -> None:
     sub = parent.add_subparsers(dest="memory_cmd", required=True)
 
-    p_boot = sub.add_parser("boot", help="Load profile + now + becoming + area manifest")
+    p_boot = sub.add_parser("boot", help="Load now + becoming + area manifest")
     _add_format_flags(p_boot)
     p_boot.set_defaults(handler=cmd_boot)
 
@@ -86,7 +86,7 @@ def add_subparsers(parent: argparse.ArgumentParser) -> None:
     p_read.add_argument(
         "--section",
         required=True,
-        help="Section path: profile | now | becoming | area.<name> | area.<name>.<file>",
+        help="Section path: now | becoming | area.<name> | area.<name>.<file>",
     )
     _add_format_flags(p_read)
     p_read.set_defaults(handler=cmd_read)
@@ -145,11 +145,6 @@ def resolve_section(section: str) -> Path:
         raise SectionError("empty section path")
     parts = section.split(".")
     head = parts[0]
-
-    if head == "profile":
-        if len(parts) != 1:
-            raise SectionError(f"profile takes no subsections: {section!r}")
-        return memory_dir() / "profile.md"
 
     if head == "now":
         if len(parts) != 1:
@@ -220,7 +215,6 @@ def _read_dir_concat(path: Path) -> str:
 
 
 def _render_boot_markdown(
-    profile: str,
     now: str,
     becoming: str,
     manifest: list[dict[str, Any]],
@@ -233,10 +227,6 @@ def _render_boot_markdown(
     we wrap them in our own H1s).
     """
     lines: list[str] = []
-    lines.append("<!-- dobby memory boot: profile (memory/profile.md) -->")
-    lines.append("")
-    lines.append(profile.rstrip())
-    lines.append("")
     lines.append("<!-- dobby memory boot: now (memory/now.md) -->")
     lines.append("")
     lines.append(now.rstrip())
@@ -272,7 +262,6 @@ def cmd_boot(args: argparse.Namespace) -> int:
     env = Envelope("memory.boot")
     try:
         root_memory = memory_dir()
-        profile = _read_file(root_memory / "profile.md")
         now = _read_file(root_memory / "now.md")
         becoming_path = root_memory / "becoming.md"
         becoming = becoming_path.read_text(encoding="utf-8") if becoming_path.exists() else ""
@@ -284,7 +273,7 @@ def cmd_boot(args: argparse.Namespace) -> int:
             env.err(
                 "E_NOT_FOUND",
                 str(e),
-                hint="Ensure memory/profile.md and memory/now.md exist",
+                hint="Ensure memory/now.md exists",
             )
         )
     except OSError as e:
@@ -293,12 +282,10 @@ def cmd_boot(args: argparse.Namespace) -> int:
         return emit_json(env.err("E_RUNTIME", f"{type(e).__name__}: {e}"))
 
     payload = {
-        "profile": profile,
         "now": now,
         "becoming": becoming,
         "areas": manifest,
         "counts": {
-            "profile_bytes": len(profile.encode("utf-8")),
             "now_bytes": len(now.encode("utf-8")),
             "becoming_bytes": len(becoming.encode("utf-8")),
             "area_files": sum(len(d["files"]) for d in manifest),
@@ -307,7 +294,7 @@ def cmd_boot(args: argparse.Namespace) -> int:
 
     if args.plain:
         return emit_text(
-            _render_boot_markdown(profile, now, becoming, manifest),
+            _render_boot_markdown(now, becoming, manifest),
             ensure_newline=False,
         )
     return emit_json(env.ok(payload))
@@ -322,7 +309,7 @@ def cmd_read(args: argparse.Namespace) -> int:
             env.err(
                 "E_VALIDATION",
                 str(e),
-                hint="Use: profile | now | becoming | area.<name> | area.<name>.<file>",
+                hint="Use: now | becoming | area.<name> | area.<name>.<file>",
             )
         )
 
@@ -357,7 +344,7 @@ def cmd_write(args: argparse.Namespace) -> int:
             env.err(
                 "E_VALIDATION",
                 str(e),
-                hint="Use: profile | now | becoming | area.<name>.<file>",
+                hint="Use: now | becoming | area.<name>.<file>",
             )
         )
 

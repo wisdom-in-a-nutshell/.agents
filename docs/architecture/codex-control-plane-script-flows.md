@@ -141,8 +141,8 @@ flowchart TD
     E --> F
     Z --> F
     F --> G[resolve git root from hook cwd]
-    G --> H{scripts/hooks/session-start.sh exists?}
-    H -->|yes| I[run script from repo root]
+    G --> H{scripts/hooks/session_start.py exists?}
+    H -->|yes| I[run Python hook from repo root]
     I --> J[forward or ignore stdout per runtime]
     H -->|no| K[silent success]
     B --> L[Codex prompt submitted]
@@ -151,16 +151,16 @@ flowchart TD
     L --> N[hooks/scripts/user_prompt_submit.py]
     M --> N
     M2 --> N
-    N --> O{scripts/hooks/user-prompt-submit.sh exists?}
-    O -->|yes| P[run script from repo root]
+    N --> O{scripts/hooks/user_prompt_submit.py exists?}
+    O -->|yes| P[run Python hook from repo root]
     P --> Q[forward or ignore stdout per runtime]
     O -->|no| R[silent success]
     C --> S[Claude session ends]
     Y --> S2[Copilot session ends]
     S --> T[hooks/scripts/session_end.py]
     S2 --> T
-    T --> U{scripts/hooks/session-end.sh exists?}
-    U -->|yes| V[run cleanup from repo root]
+    T --> U{scripts/hooks/session_end.py exists?}
+    U -->|yes| V[run Python cleanup from repo root]
     V --> W[log stdout; stderr stays visible]
     U -->|no| X[silent success]
 ```
@@ -170,27 +170,27 @@ flowchart TD
 - [`session_start.py`](/Users/dobby/.agents/hooks/scripts/session_start.py)
   - runs as the shared Codex, Claude, and GitHub Copilot `SessionStart` hook
   - resolves the current git root from the hook payload `cwd`
-  - runs repo-owned `scripts/hooks/session-start.sh` when present
-  - passes the original hook JSON to the repo script on stdin
+  - runs repo-owned `scripts/hooks/session_start.py` when present
+  - passes the original hook JSON to the repo Python hook on stdin
   - sets `AGENT_HOOK_EVENT`, `AGENT_HOOK_RUNTIME`, and `AGENT_REPO_ROOT`
   - forwards repo script stdout as startup context for runtimes that process it, capped at a rough `30000` token budget (`120000` characters); Copilot currently ignores `sessionStart` output
 - [`user_prompt_submit.py`](/Users/dobby/.agents/hooks/scripts/user_prompt_submit.py)
   - runs as the shared Codex, Claude, and GitHub Copilot prompt-submit hook
-  - runs repo-owned `scripts/hooks/user-prompt-submit.sh` when present
+  - runs repo-owned `scripts/hooks/user_prompt_submit.py` when present
   - forwards repo script stdout as additional prompt context for runtimes that process it, capped at a rough `30000` token budget (`120000` characters); Copilot currently ignores `userPromptSubmitted` output
 - [`session_end.py`](/Users/dobby/.agents/hooks/scripts/session_end.py)
   - runs as the shared Claude and GitHub Copilot `SessionEnd` hook
-  - runs repo-owned `scripts/hooks/session-end.sh` when present
+  - runs repo-owned `scripts/hooks/session_end.py` when present
   - logs repo script stdout instead of injecting context because the session is ending
-- `scripts/hooks/session-start.sh`
+- `scripts/hooks/session_start.py`
   - optional repo-owned startup context command
   - should stay fast, deterministic, and non-interactive
   - should print only the context the agent should receive at session start
-- `scripts/hooks/user-prompt-submit.sh`
+- `scripts/hooks/user_prompt_submit.py`
   - optional repo-owned prompt context command
   - should stay fast, deterministic, and non-interactive
   - should print only context that should be added before processing that prompt
-- `scripts/hooks/session-end.sh`
+- `scripts/hooks/session_end.py`
   - optional Claude and GitHub Copilot cleanup command
   - should stay fast and local because it runs while the agent exits the session
 
@@ -245,9 +245,9 @@ flowchart TD
   - should contain fast deterministic checks that answer whether the commit is acceptable
   - should not become a general after-turn lifecycle hook; use a future explicit lifecycle hook for non-validation side effects
 - Hook dispatch scripts:
-  - `session_start.py` runs optional repo-owned `scripts/hooks/session-start.sh`
-  - `user_prompt_submit.py` runs optional repo-owned `scripts/hooks/user-prompt-submit.sh`
-  - `session_end.py` runs optional Claude and GitHub Copilot repo-owned `scripts/hooks/session-end.sh`
+  - `session_start.py` runs optional repo-owned `scripts/hooks/session_start.py`
+  - `user_prompt_submit.py` runs optional repo-owned `scripts/hooks/user_prompt_submit.py`
+  - `session_end.py` runs optional Claude and GitHub Copilot repo-owned `scripts/hooks/session_end.py`
 
 ## Figure 6: Optional Machine Policy Script
 

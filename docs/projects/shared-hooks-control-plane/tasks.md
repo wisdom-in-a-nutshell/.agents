@@ -11,11 +11,11 @@ Hooks will become a common agent-native feedback loop across repositories. A sha
 - Global `SessionStart`, `UserPromptSubmit`, and `Stop` hooks for Codex and Claude.
 - Managed repo-local GitHub Copilot hook config rendered to `.github/hooks/agent-control-plane.json`.
 - Claude and GitHub Copilot global/logical `SessionEnd` hook.
-- A shared `SessionStart` hook runner that stays silent unless the current repo defines `scripts/hooks/session-start.sh`.
-- A shared `UserPromptSubmit` hook runner that stays silent unless the current repo defines `scripts/hooks/user-prompt-submit.sh`.
-- A shared `SessionEnd` hook runner that stays silent unless the current repo defines `scripts/hooks/session-end.sh`.
+- A shared `SessionStart` hook runner that stays silent unless the current repo defines `scripts/hooks/session_start.py`.
+- A shared `UserPromptSubmit` hook runner that stays silent unless the current repo defines `scripts/hooks/user_prompt_submit.py`.
+- A shared `SessionEnd` hook runner that stays silent unless the current repo defines `scripts/hooks/session_end.py`.
 - Shared `Stop` hook git finalization that stages, commits, reports repo-owned fast-check failures to the current agent, rebases, and pushes.
-- Optional repo-owned `SessionStart` startup context through `scripts/hooks/session-start.sh`.
+- Optional repo-owned `SessionStart` startup context through `scripts/hooks/session_start.py`.
 - Shared local Git commit-time hook for managed repos.
 - Codex Plan Mode high reasoning in canonical bootstrap config.
 - Validation and docs for the new rendered surfaces.
@@ -40,9 +40,9 @@ Hooks will become a common agent-native feedback loop across repositories. A sha
 - [x] Codex config renders `model = "gpt-5.4"` and `plan_mode_reasoning_effort = "high"`.
 - [x] Control-plane checks and tests pass after notify removal.
 - [x] Managed repos use shared local Git `core.hooksPath`.
-- [x] Repo-owned `scripts/hooks/session-start.sh` runs from the shared `SessionStart` dispatcher when present.
-- [x] Repo-owned `scripts/hooks/user-prompt-submit.sh` runs from the shared `UserPromptSubmit` dispatcher when present.
-- [x] Repo-owned `scripts/hooks/session-end.sh` runs from the shared Claude and GitHub Copilot `SessionEnd` dispatcher when present.
+- [x] Repo-owned `scripts/hooks/session_start.py` runs from the shared `SessionStart` dispatcher when present.
+- [x] Repo-owned `scripts/hooks/user_prompt_submit.py` runs from the shared `UserPromptSubmit` dispatcher when present.
+- [x] Repo-owned `scripts/hooks/session_end.py` runs from the shared Claude and GitHub Copilot `SessionEnd` dispatcher when present.
 - [x] Managed repos get repo-local GitHub Copilot hook config rendered from `hooks/registry.json`.
 
 ## Milestones
@@ -70,9 +70,9 @@ Hooks will become a common agent-native feedback loop across repositories. A sha
 - Replace the legacy Codex post-turn path with the shared `Stop` hook instead of spawning a second agent process.
 - Drop audible completion notification from the post-turn path.
 - Keep local Git hook config machine-local through `core.hooksPath`; do not change GitHub Actions workflows for this.
-- Use `scripts/hooks/session-start.sh` as the repo-owned startup context convention. The shared dispatcher owns discovery and forwarding only.
-- Use `scripts/hooks/user-prompt-submit.sh` as the repo-owned prompt context convention.
-- Use `scripts/hooks/session-end.sh` as the repo-owned session cleanup convention for runtimes that expose `SessionEnd`. The shared dispatcher logs stdout instead of injecting context because the session is ending.
+- Use `scripts/hooks/session_start.py` as the repo-owned startup context convention. The shared dispatcher owns discovery and forwarding only.
+- Use `scripts/hooks/user_prompt_submit.py` as the repo-owned prompt context convention.
+- Use `scripts/hooks/session_end.py` as the repo-owned session cleanup convention for runtimes that expose `SessionEnd`. The shared dispatcher logs stdout instead of injecting context because the session is ending.
 - Render GitHub Copilot's logical turn-stop event as `agentStop`, mapped from the shared `Stop` registry event.
 
 ## Open Questions / Blockers
@@ -101,6 +101,7 @@ Hooks will become a common agent-native feedback loop across repositories. A sha
 - 2026-04-20: [DONE] Implemented v1 global `SessionStart` and `Stop` hooks for Codex and Claude; validation passed with `./scripts/check-agent-control-planes.sh`.
 - 2026-04-20: [DONE] Removed legacy Codex post-turn scripts/config and moved the git conveyor into the shared `Stop` hook; validation passed with `./scripts/test-control-plane.sh` and `./scripts/check-agent-control-planes.sh`.
 - 2026-04-20: [DONE] Consolidated managed repo local commit-time entrypoints through shared `core.hooksPath`; validation passed with `./scripts/sync-managed-git-hooks.sh --check` and `./scripts/check-agent-control-planes.sh`.
-- 2026-04-20: [DONE] Added repo-owned `SessionStart` dispatch through `scripts/hooks/session-start.sh`; Adi now delegates startup context to `dobby-memory boot`.
+- 2026-04-20: [DONE] Added repo-owned `SessionStart` dispatch; Adi delegates startup context to `dobby-memory boot`.
 - 2026-04-21: [DONE] Added shared `UserPromptSubmit` dispatch for Codex and Claude plus `SessionEnd` dispatch; focused hook tests passed with `python3 -m unittest tests.control_plane.test_hooks_control_plane`.
 - 2026-04-21: [DONE] Added GitHub Copilot hook rendering from `hooks/registry.json` into managed repo `.github/hooks/agent-control-plane.json`; focused hook and orchestration tests passed with `python3 -m unittest tests.control_plane.test_hooks_control_plane tests.control_plane.test_orchestration`.
+- 2026-04-21: [DONE] Converted repo-owned lifecycle hook convention from shell scripts to Python files under `scripts/hooks/*.py`.
