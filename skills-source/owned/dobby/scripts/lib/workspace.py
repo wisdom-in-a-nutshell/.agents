@@ -1,8 +1,8 @@
 """Workspace resolution for Dobby skill scripts.
 
 Dobby's executable scripts live inside the `dobby` skill, but operate on a
-Dobby workspace repo (for Adi: `/Users/adi/GitHub/adi`). Resolve that workspace
-from DOBBY_WORKSPACE first, then from the current working directory.
+Dobby workspace repo. Resolve that workspace from DOBBY_WORKSPACE first, then
+from the current working directory.
 """
 
 from __future__ import annotations

@@ -12,9 +12,9 @@ and arrives via the wrapper-composed system prompt.
 ## Read a specific file
 
 ```bash
-/Users/adi/.agents/skills-source/owned/dobby/scripts/dobby-memory read --section now
-/Users/adi/.agents/skills-source/owned/dobby/scripts/dobby-memory read --section area.<name>              # concatenates all .md in that area
-/Users/adi/.agents/skills-source/owned/dobby/scripts/dobby-memory read --section area.<name>.<file>       # single file (without .md)
+$HOME/.agents/skills-source/owned/dobby/scripts/dobby-memory read --section now
+$HOME/.agents/skills-source/owned/dobby/scripts/dobby-memory read --section area.<name>              # concatenates all .md in that area
+$HOME/.agents/skills-source/owned/dobby/scripts/dobby-memory read --section area.<name>.<file>       # single file (without .md)
 ```
 
 Add `--plain` when you want raw markdown content on stdout.
@@ -30,7 +30,7 @@ The CLI auto-stamps a timestamped header — ideal for log-style appends.
 
 ```bash
 echo "- 2026-04-17 — event" | \
-  /Users/adi/.agents/skills-source/owned/dobby/scripts/dobby-memory write --section area.<name>.log --message "short label"
+  $HOME/.agents/skills-source/owned/dobby/scripts/dobby-memory write --section area.<name>.log --message "short label"
 ```
 
 The CLI does NOT create files. The target must already exist. Content must arrive on stdin; commands do not prompt.
@@ -59,23 +59,23 @@ CLI `memory write` does not create files. Use `Write` for:
 No file-based alternative — always via CLI.
 
 ```bash
-/Users/adi/.agents/skills-source/owned/dobby/scripts/dobby-tasks snapshot   # today + overdue + inbox in one JXA call
-/Users/adi/.agents/skills-source/owned/dobby/scripts/dobby-tasks today
-/Users/adi/.agents/skills-source/owned/dobby/scripts/dobby-tasks inbox
-/Users/adi/.agents/skills-source/owned/dobby/scripts/dobby-tasks overdue
-/Users/adi/.agents/skills-source/owned/dobby/scripts/dobby-tasks search "Beach"
-/Users/adi/.agents/skills-source/owned/dobby/scripts/dobby-tasks search "Beach" --verbose  # slower, full fields
+$HOME/.agents/skills-source/owned/dobby/scripts/dobby-tasks snapshot   # today + overdue + inbox in one JXA call
+$HOME/.agents/skills-source/owned/dobby/scripts/dobby-tasks today
+$HOME/.agents/skills-source/owned/dobby/scripts/dobby-tasks inbox
+$HOME/.agents/skills-source/owned/dobby/scripts/dobby-tasks overdue
+$HOME/.agents/skills-source/owned/dobby/scripts/dobby-tasks search "Beach"
+$HOME/.agents/skills-source/owned/dobby/scripts/dobby-tasks search "Beach" --verbose  # slower, full fields
 
-/Users/adi/.agents/skills-source/owned/dobby/scripts/dobby-tasks add "Task title" --when today --area <Area>
-/Users/adi/.agents/skills-source/owned/dobby/scripts/dobby-tasks add "Task title" --when "next monday" --area <Area> \
+$HOME/.agents/skills-source/owned/dobby/scripts/dobby-tasks add "Task title" --when today --area <Area>
+$HOME/.agents/skills-source/owned/dobby/scripts/dobby-tasks add "Task title" --when "next monday" --area <Area> \
   --checklist "step one, step two, step three"
 
-/Users/adi/.agents/skills-source/owned/dobby/scripts/dobby-tasks done <id-prefix>
-/Users/adi/.agents/skills-source/owned/dobby/scripts/dobby-tasks done <id-prefix> --log-now  # optional immediate Logbook move
-/Users/adi/.agents/skills-source/owned/dobby/scripts/dobby-tasks cancel <id-prefix>
-/Users/adi/.agents/skills-source/owned/dobby/scripts/dobby-tasks delete <id-prefix>
+$HOME/.agents/skills-source/owned/dobby/scripts/dobby-tasks done <id-prefix>
+$HOME/.agents/skills-source/owned/dobby/scripts/dobby-tasks done <id-prefix> --log-now  # optional immediate Logbook move
+$HOME/.agents/skills-source/owned/dobby/scripts/dobby-tasks cancel <id-prefix>
+$HOME/.agents/skills-source/owned/dobby/scripts/dobby-tasks delete <id-prefix>
 
-/Users/adi/.agents/skills-source/owned/dobby/scripts/dobby-tasks doctor                    # 5-point health check
+$HOME/.agents/skills-source/owned/dobby/scripts/dobby-tasks doctor                    # 5-point health check
 ```
 
 `--when` accepts natural-language dates: `today`, `tomorrow`, `next monday`, `in 3 days`, specific dates.
@@ -90,13 +90,13 @@ Add `--plain` for compact inspection output.
 Calendar operations use `dobby-calendar` (EventKit via `ical`). Default calendar: `adithyan@wisdominanutshell.academy`. Search/list commands should be date-bounded.
 
 ```bash
-/Users/adi/.agents/skills-source/owned/dobby/scripts/dobby-calendar doctor
-/Users/adi/.agents/skills-source/owned/dobby/scripts/dobby-calendar calendars
-/Users/adi/.agents/skills-source/owned/dobby/scripts/dobby-calendar week
-/Users/adi/.agents/skills-source/owned/dobby/scripts/dobby-calendar search "Birthday" --from 2026-01-01 --to 2026-12-31
-/Users/adi/.agents/skills-source/owned/dobby/scripts/dobby-calendar search "Neha" --from 2025-01-01 --to 2027-12-31 --all-calendars
-/Users/adi/.agents/skills-source/owned/dobby/scripts/dobby-calendar add-event --title "Sassnitz / Rügen trip" --start 2026-04-30 --end 2026-05-06 --all-day --location "Ummanzer Str. 10, 18546 Sassnitz, Germany" --dry-run
-/Users/adi/.agents/skills-source/owned/dobby/scripts/dobby-calendar upsert-event --title "Sassnitz / Rügen trip" --start 2026-04-30 --end 2026-05-06 --all-day --match-from 2026-04-01 --match-to 2026-05-31
+$HOME/.agents/skills-source/owned/dobby/scripts/dobby-calendar doctor
+$HOME/.agents/skills-source/owned/dobby/scripts/dobby-calendar calendars
+$HOME/.agents/skills-source/owned/dobby/scripts/dobby-calendar week
+$HOME/.agents/skills-source/owned/dobby/scripts/dobby-calendar search "Birthday" --from 2026-01-01 --to 2026-12-31
+$HOME/.agents/skills-source/owned/dobby/scripts/dobby-calendar search "Neha" --from 2025-01-01 --to 2027-12-31 --all-calendars
+$HOME/.agents/skills-source/owned/dobby/scripts/dobby-calendar add-event --title "Sassnitz / Rügen trip" --start 2026-04-30 --end 2026-05-06 --all-day --location "Ummanzer Str. 10, 18546 Sassnitz, Germany" --dry-run
+$HOME/.agents/skills-source/owned/dobby/scripts/dobby-calendar upsert-event --title "Sassnitz / Rügen trip" --start 2026-04-30 --end 2026-05-06 --all-day --match-from 2026-04-01 --match-to 2026-05-31
 ```
 
 Do not use AppleScript for broad calendar search/audits; it can hang on Google-backed calendars. Use `dobby-calendar` or export/parse `.ics` for migrations.
@@ -107,17 +107,17 @@ The Dobby skill test runner is cheap/non-mutating by default. Live suites are op
 
 ```bash
 # Default: cheap suites only. Does not run */live.sh.
-bash /Users/adi/.agents/skills-source/owned/dobby/tests/run.sh
+bash $HOME/.agents/skills-source/owned/dobby/tests/run.sh
 
 # Include all live integration/smoke suites.
-RUN_LIVE=1 bash /Users/adi/.agents/skills-source/owned/dobby/tests/run.sh
+RUN_LIVE=1 bash $HOME/.agents/skills-source/owned/dobby/tests/run.sh
 
 # Run only a specific live suite.
-bash /Users/adi/.agents/skills-source/owned/dobby/tests/run.sh tasks live
-bash /Users/adi/.agents/skills-source/owned/dobby/tests/run.sh calendar live
+bash $HOME/.agents/skills-source/owned/dobby/tests/run.sh tasks live
+bash $HOME/.agents/skills-source/owned/dobby/tests/run.sh calendar live
 
 # Cleanup stale Things 3 DOBBY-TEST-* artifacts without running live suites.
-SWEEP_THINGS=1 bash /Users/adi/.agents/skills-source/owned/dobby/tests/run.sh
+SWEEP_THINGS=1 bash $HOME/.agents/skills-source/owned/dobby/tests/run.sh
 ```
 
 Rules for agents:
@@ -130,8 +130,8 @@ Rules for agents:
 ## Diff and history
 
 ```bash
-/Users/adi/.agents/skills-source/owned/dobby/scripts/dobby-memory diff --since "24 hours ago"
-/Users/adi/.agents/skills-source/owned/dobby/scripts/dobby-memory diff --since "1 week ago"
+$HOME/.agents/skills-source/owned/dobby/scripts/dobby-memory diff --since "24 hours ago"
+$HOME/.agents/skills-source/owned/dobby/scripts/dobby-memory diff --since "1 week ago"
 ```
 
 Wraps `git log -p memory/` with date filtering.
@@ -140,10 +140,10 @@ Wraps `git log -p memory/` with date filtering.
 
 Every CLI command defaults to a stable JSON envelope and also accepts explicit `--json`:
 ```bash
-/Users/adi/.agents/skills-source/owned/dobby/scripts/dobby-memory read --section now
-/Users/adi/.agents/skills-source/owned/dobby/scripts/dobby-tasks snapshot
-/Users/adi/.agents/skills-source/owned/dobby/scripts/dobby-tasks today
-/Users/adi/.agents/skills-source/owned/dobby/scripts/dobby-tasks doctor
+$HOME/.agents/skills-source/owned/dobby/scripts/dobby-memory read --section now
+$HOME/.agents/skills-source/owned/dobby/scripts/dobby-tasks snapshot
+$HOME/.agents/skills-source/owned/dobby/scripts/dobby-tasks today
+$HOME/.agents/skills-source/owned/dobby/scripts/dobby-tasks doctor
 ```
 
 The scripts emit the standard Dobby JSON envelope (`schema_version`, `command`, `status`, `data`, `error`, `meta`) by default. Use `--plain` for markdown/text inspection.

@@ -4,6 +4,7 @@ set -euo pipefail
 source "$(dirname "$0")/../lib/assert.sh"
 
 FAIL_COUNT=0
+EXPECTED_DEFAULT_CALENDAR="${DOBBY_CALENDAR_DEFAULT:-Work}"
 
 section "dobby-calendar --help surface"
 run_dobby calendar --help
@@ -17,13 +18,13 @@ run_dobby calendar doctor
 assert_exit "doctor exit 0" 0 "$CAPTURED_EXIT"
 assert_envelope_ok "calendar.doctor" "$CAPTURED_STDOUT"
 assert_jq_eq "command=calendar.doctor" '.command' "calendar.doctor" "$CAPTURED_STDOUT"
-assert_jq_truthy "default calendar set" '.data.default_calendar == "adithyan@wisdominanutshell.academy"' "$CAPTURED_STDOUT"
+assert_jq_eq "default calendar set" '.data.default_calendar' "$EXPECTED_DEFAULT_CALENDAR" "$CAPTURED_STDOUT"
 
 section "calendars lists default calendar"
 run_dobby calendar calendars
 assert_exit "calendars exit 0" 0 "$CAPTURED_EXIT"
 assert_envelope_ok "calendar.calendars" "$CAPTURED_STDOUT"
-assert_jq_truthy "has default calendar" '.data.calendars | any(.title == "adithyan@wisdominanutshell.academy")' "$CAPTURED_STDOUT"
+assert_jq_eq "has default calendar" "([.data.calendars[] | select(.title == \"$EXPECTED_DEFAULT_CALENDAR\")] | length > 0)" "true" "$CAPTURED_STDOUT"
 
 section "search requires date range"
 run_dobby calendar search Neha

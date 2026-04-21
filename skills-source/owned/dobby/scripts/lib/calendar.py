@@ -10,7 +10,8 @@ Design rules:
 - No interactive commands are exposed; --no-input is accepted and honored.
 - Search is date-bounded by requirement.
 - No delete/update commands in v1; writes are add/upsert only.
-- Default calendar is Adi's chosen primary calendar.
+- Default calendar is configurable via DOBBY_CALENDAR_DEFAULT and defaults to
+  the local "Work" calendar.
 """
 
 from __future__ import annotations
@@ -26,7 +27,7 @@ from typing import Any
 
 from lib.contract import Envelope, emit_json, emit_text
 
-DEFAULT_CALENDAR = "adithyan@wisdominanutshell.academy"
+DEFAULT_CALENDAR = os.environ.get("DOBBY_CALENDAR_DEFAULT", "Work")
 
 
 def _int_env(name: str, default: int) -> int:

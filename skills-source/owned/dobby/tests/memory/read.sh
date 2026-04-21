@@ -8,7 +8,7 @@ FAIL_COUNT=0
 section "memory read --section now"
 run_dobby memory read --section now --plain
 assert_exit "exit 0" 0 "$CAPTURED_EXIT"
-assert_contains "contains # Now heading" "# Now" "$CAPTURED_STDOUT"
+assert_contains "contains weekly shape section" "## This week's shape" "$CAPTURED_STDOUT"
 
 section "memory read --section area.<name> (directory concat)"
 # area.builder -> concat all *.md in memory/areas/builder/

@@ -14,7 +14,26 @@
 # Resolve the skill root, workspace root, and split Dobby entrypoints once.
 TESTS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 SKILL_DIR="$(cd "$TESTS_DIR/.." && pwd)"
-REPO_ROOT="${DOBBY_WORKSPACE:-/Users/adi/GitHub/adi}"
+
+resolve_workspace() {
+    if [[ -n "${DOBBY_WORKSPACE:-}" ]]; then
+        printf '%s\n' "$DOBBY_WORKSPACE"
+        return
+    fi
+    if [[ -f "$PWD/soul.md" && -d "$PWD/memory" && -d "$PWD/journal" ]]; then
+        printf '%s\n' "$PWD"
+        return
+    fi
+    local git_root
+    git_root=$(git -C "$PWD" rev-parse --show-toplevel 2>/dev/null || true)
+    if [[ -n "$git_root" && -f "$git_root/soul.md" && -d "$git_root/memory" && -d "$git_root/journal" ]]; then
+        printf '%s\n' "$git_root"
+        return
+    fi
+    printf '%s\n' "$HOME/GitHub/adi"
+}
+
+REPO_ROOT="$(resolve_workspace)"
 export DOBBY_WORKSPACE="$REPO_ROOT"
 DOBBY="$TESTS_DIR/support/dobby-shim"
 DOBBY_MEMORY="$SKILL_DIR/scripts/dobby-memory"
