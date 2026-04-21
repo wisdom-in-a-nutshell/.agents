@@ -6,14 +6,10 @@ Common phrasings mapped to the exact operation. Match intent, not literal words;
 
 **"Remember that I prefer X"** / "Note that I..."
 → Classify:
-- Durable identity/preference? → `Edit memory/profile.md` in the right section.
+- Durable identity/preference? → `Edit soul.md` in the right subsection of `## About Adi`.
 - Per-area canon? → `Edit memory/areas/<area>/<area>.md`.
-- Direction/aspiration? → `memory/becoming.md`.
 
-Confirm in one line: "Added to `profile.md` under Communication preferences."
-
-**"I want to become someone who..."** / "I'm aiming to..."
-→ `Edit memory/becoming.md` under "Active shifts" or "Commitments made to self" (dated).
+Confirm in one line: "Added to `soul.md` `## About Adi` under Communication preferences."
 
 **"Save this for later"** / "Keep this"
 → Actionable? → Things 3 Inbox via `scripts/dobby-tasks add`. Content/reflection? → new file in `journal/daily/<today>/notes-<slug>.md`.
@@ -35,9 +31,6 @@ Confirm in one line: "Added to `profile.md` under Communication preferences."
 **"What do you know about <area>?"**
 → `scripts/dobby-memory read --section area.<area>.<area>` (single main file). Surface "Current state" section first. Load the log only if asked.
 
-**"What am I aiming at?"** / "Remind me of my direction"
-→ `scripts/dobby-memory read --section becoming`. Surface north star + active shifts.
-
 **"What's live right now?"**
 → `scripts/dobby-memory read --section now`.
 
@@ -49,8 +42,7 @@ Confirm in one line: "Added to `profile.md` under Communication preferences."
 **"Where does this go?"**
 → Walk the write-decision tree:
 - Actionable? → Things 3.
-- Durable truth? → `profile.md`.
-- Direction? → `becoming.md`.
+- Durable truth about the user? → `soul.md` `## About Adi`.
 - Per-area? → `memory/areas/<area>/`.
 - Dated reflection? → `journal/daily/<today>/`.
 
@@ -104,10 +96,9 @@ When the route isn't obvious, try in order:
 2. Dated observation? → `journal/daily/<today>/`.
 3. Tied to one area? → `memory/areas/<area>/`.
 4. Cross-cutting, this week? → `memory/now.md`.
-5. Durable and about the user? → `memory/profile.md`.
-6. About direction? → `memory/becoming.md`.
-7. Unsure? → `journal/daily/<today>/notes-<slug>.md` as a safe holding ground; route properly during next consolidation.
+5. Durable and about the user? → `soul.md` `## About Adi`.
+6. Unsure? → `journal/daily/<today>/notes-<slug>.md` as a safe holding ground; route properly during next consolidation.
 
 ## Read-before-write rule
 
-For any substantive write (>2 lines into an existing file, or any edit to `profile.md`, `becoming.md`, or area canon), read the target first. Duplicates are the biggest drift source. Add "see also" pointers instead of restating.
+For any substantive write (>2 lines into an existing file, or any edit to `soul.md` `## About Adi` or area canon), read the target first. Duplicates are the biggest drift source. Add "see also" pointers instead of restating.

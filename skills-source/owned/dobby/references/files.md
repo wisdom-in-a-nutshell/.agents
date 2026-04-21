@@ -11,22 +11,17 @@ What each file is for, how often it changes, and the write pattern (append / edi
 
 ## Root memory
 
-### `memory/profile.md`
-- **Holds:** durable truths about the user — identity, preferences, patterns, values, structural/financial context, risk patterns, support patterns. "Who the user is today."
-- **Clock:** monthly; occasional when something stable shifts.
-- **Write pattern:** edit in place by section. Never append undated logs here — use `journal/daily/` for observations, promote the durable signal once it proves out.
+Durable truths about the user — identity, preferences, patterns, values,
+structural/financial context, risk patterns, support patterns — live in
+`soul.md` under `## About Adi`. Edit in place by section. "Who the user
+is today" arrives at session start via the wrapper-composed system
+prompt; it is not served by the memory CLI.
 
 ### `memory/now.md`
 - **Holds:** this week's active context — week shape, strategic tracks, life timeline, watchouts, session handoff.
 - **Clock:** weekly rewrites; section updates as context shifts.
-- **Write pattern:** rewrite sections in place. Hard cap: ≤60 lines. If a section outgrows its budget, promote stable content to `profile.md` / area canon / `becoming.md` and prune.
+- **Write pattern:** rewrite sections in place. Hard cap: ≤60 lines. If a section outgrows its budget, promote stable content to `soul.md` `## About Adi` or area canon and prune.
 - **Rule:** actionable items live in Things 3, not here.
-
-### `memory/becoming.md`
-- **Holds:** direction — north star, the person the user is moving toward, current-year priorities, active shifts, commitments to self.
-- **Clock:** quarterly reflection + as commitments surface.
-- **Write pattern:** section edits in place; "Commitments made to self" is append-only with dates.
-- **Rule:** this is identity, not a task list. Tasks go to Things 3.
 
 ## Areas (mirror Things 3 Areas)
 
@@ -34,7 +29,7 @@ Each area has a folder under `memory/areas/`. The set of areas is workspace-inst
 
 ### `memory/areas/<area>/<area>.md`
 - **Holds:** durable canon for that area — identity, patterns, active "Current state" section, coaching notes.
-- **Clock:** shifts as the area shifts. Faster than profile, slower than now.
+- **Clock:** shifts as the area shifts. Faster than `soul.md` `## About Adi`, slower than `now.md`.
 - **Write pattern:** edit in place, by section.
 
 ### `memory/areas/<area>/log.md`
@@ -72,9 +67,7 @@ Generated or synced data that is semantically part of an area still lives under 
 
 | File | Clock | Write pattern |
 |---|---|---|
-| `soul.md` | yearly | curated edit |
-| `profile.md` | monthly | section edit |
-| `becoming.md` | quarterly | section edit + append commitments |
+| `soul.md` (incl. `## About Adi`) | yearly; `## About Adi` monthly | curated edit / section edit |
 | `now.md` | weekly | section rewrite, ≤60 lines |
 | `areas/<x>/<x>.md` | as area shifts | section edit |
 | `areas/<x>/log.md` | event-driven | append only |

@@ -13,7 +13,6 @@ and arrives via the wrapper-composed system prompt.
 
 ```bash
 /Users/adi/.agents/skills-source/owned/dobby/scripts/dobby-memory read --section now
-/Users/adi/.agents/skills-source/owned/dobby/scripts/dobby-memory read --section becoming
 /Users/adi/.agents/skills-source/owned/dobby/scripts/dobby-memory read --section area.<name>              # concatenates all .md in that area
 /Users/adi/.agents/skills-source/owned/dobby/scripts/dobby-memory read --section area.<name>.<file>       # single file (without .md)
 ```

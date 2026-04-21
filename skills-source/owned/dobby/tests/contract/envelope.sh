@@ -77,7 +77,7 @@ run_dobby memory read --section now
 assert_eq "memory read now stderr empty" "" "$CAPTURED_STDERR"
 run_dobby memory read --section now --plain
 assert_eq "memory read now --plain stderr empty" "" "$CAPTURED_STDERR"
-run_dobby memory read --section becoming
-assert_eq "memory read becoming stderr empty" "" "$CAPTURED_STDERR"
+run_dobby memory read --section area.builder.builder
+assert_eq "memory read area stderr empty" "" "$CAPTURED_STDERR"
 
 finish_test "contract/envelope.sh"

@@ -7,7 +7,6 @@ Commands:
 
 Section routing (dot notation):
     now                -> memory/now.md
-    becoming           -> memory/becoming.md
     area.<name>        -> memory/areas/<name>/  (concat all .md)
     area.<name>.<file> -> memory/areas/<name>/<file>.md
 
@@ -83,7 +82,7 @@ def add_subparsers(parent: argparse.ArgumentParser) -> None:
     p_read.add_argument(
         "--section",
         required=True,
-        help="Section path: now | becoming | area.<name> | area.<name>.<file>",
+        help="Section path: now | area.<name> | area.<name>.<file>",
     )
     _add_format_flags(p_read)
     p_read.set_defaults(handler=cmd_read)
@@ -148,11 +147,6 @@ def resolve_section(section: str) -> Path:
             raise SectionError(f"now takes no subsections: {section!r}")
         return memory_dir() / "now.md"
 
-    if head == "becoming":
-        if len(parts) != 1:
-            raise SectionError(f"becoming takes no subsections: {section!r}")
-        return memory_dir() / "becoming.md"
-
     if head == "area":
         if len(parts) == 2:
             return memory_dir() / "areas" / parts[1]
@@ -198,7 +192,7 @@ def cmd_read(args: argparse.Namespace) -> int:
             env.err(
                 "E_VALIDATION",
                 str(e),
-                hint="Use: now | becoming | area.<name> | area.<name>.<file>",
+                hint="Use: now | area.<name> | area.<name>.<file>",
             )
         )
 
@@ -233,7 +227,7 @@ def cmd_write(args: argparse.Namespace) -> int:
             env.err(
                 "E_VALIDATION",
                 str(e),
-                hint="Use: now | becoming | area.<name>.<file>",
+                hint="Use: now | area.<name>.<file>",
             )
         )
 

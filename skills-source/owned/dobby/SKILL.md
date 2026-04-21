@@ -15,19 +15,18 @@ Soul lives in `/soul.md` (Dobby's character). Operations live here.
 
 Boot context is delivered by the repo's `SessionStart` hook
 (`scripts/hooks/session_start.py`), not by this skill. The hook reads
-`now.md`, `becoming.md`, walks `memory/areas/`, and calls
-`scripts/dobby-tasks snapshot` + `scripts/dobby-calendar upcoming` in
-parallel. Adi's durable identity is part of `soul.md` under `## About Adi`
-and arrives via the wrapper-composed system prompt.
+`now.md`, walks `memory/areas/`, and calls `scripts/dobby-tasks snapshot`
++ `scripts/dobby-calendar upcoming` in parallel. Adi's durable identity
+is part of `soul.md` under `## About Adi` and arrives via the
+wrapper-composed system prompt.
 
 What you can rely on being in context at session start:
 
 1. `soul.md` (identity, values, voice, `## About Adi`) — from the system prompt.
 2. `now.md` — full contents.
-3. `becoming.md` — full contents.
-4. Task snapshot (overdue / today / inbox counts + top items).
-5. Calendar (next 2 days).
-6. Area manifest (area names + file lists, content on demand).
+3. Task snapshot (overdue / today / inbox counts + top items).
+4. Calendar (next 2 days).
+5. Area manifest (area names + file lists, content on demand).
 
 Surface overdue / today / inbox counts naturally in the first response.
 Read deeper files only when the task actually needs them. Areas under
@@ -40,7 +39,7 @@ The skill-bundled Dobby scripts are the preferred path for reads, appends, tasks
 **Reach for the CLI first.** Fall through to the `Edit`/`Write` tools only when the CLI cannot do what's needed — surgical mid-file section rewrites, or creating a new file. Both are legitimate; the CLI is simply the default.
 
 Examples:
-- Read a file: `scripts/dobby-memory read --section now` / `--section becoming` / `--section area.<name>.<file>`
+- Read a file: `scripts/dobby-memory read --section now` / `--section area.<name>.<file>`
 - Append to a log: `echo "- date — event" | scripts/dobby-memory write --section area.<name>.log --message "label"`
 - Mid-file section edit in `now.md` or an area file: use `Edit` tool (CLI can't replace sections)
 - Edit durable identity (`## About Adi` in `soul.md`): use `Edit` tool directly on `soul.md`
@@ -66,7 +65,6 @@ When new information surfaces, route it to exactly one canonical home. Never dup
 |---|---|---|
 | Actionable item (to do, follow up, remind me) | **Things 3** | `scripts/dobby-tasks add "..." --when ... --area <Area>` |
 | Durable truth about the user (identity, pattern, preference) | `soul.md` `## About Adi` | Edit in place (section) |
-| Direction / future-self / commitment to self | `memory/becoming.md` | Edit in place, or append commitments |
 | This week's active context / session handoff | `memory/now.md` | Rewrite the relevant section, keep ≤60 lines |
 | Per-area durable canon | `memory/areas/<area>/<area>.md` | Edit in place |
 | Per-area event or task completion | `memory/areas/<area>/log.md` | Append (dated one-liner), via CLI |
@@ -113,7 +111,7 @@ Calendar operations go through the skill-bundled EventKit wrapper: `scripts/dobb
 
 - **One canonical home.** Never write the same fact to two places. Use pointers when cross-reference is needed.
 - **Read before you write.** Don't duplicate content that already exists.
-- **Respect the clocks.** `soul.md` (including `## About Adi`) is slow (monthly–yearly). `becoming.md` is quarterly. `now.md` is weekly. Area canon shifts as needed. Don't churn slow files with fast content.
+- **Respect the clocks.** `soul.md` (including `## About Adi`) is slow (monthly–yearly). `now.md` is weekly. Area canon shifts as needed. Don't churn slow files with fast content.
 - **No `current.md` files.** Per-area active state lives as a "Current state" section at the top of the area's main file, or in `now.md` if it's cross-cutting this week.
 - **Actionable ≠ memory.** If it's a to-do, it goes to Things 3, full stop.
 - **Preserve continuity on rewrites.** When slimming or consolidating, don't lose content silently — fold into another file, or append to `journal/daily/YYYY-MM-DD/` before removing.

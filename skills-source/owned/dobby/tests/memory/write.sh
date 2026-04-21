@@ -2,7 +2,7 @@
 # Tests for `dobby memory write`.
 #
 # Uses a temporary scratch file under memory/areas/builder/ so it exercises
-# the real routing logic without touching profile, now, or any durable area
+# the real routing logic without touching now, becoming, or any durable area
 # file. Cleans up on EXIT, even on test failure.
 set -euo pipefail
 source "$(dirname "$0")/../lib/assert.sh"
@@ -19,7 +19,7 @@ trap cleanup EXIT
 echo "# Dobby test scratch (safe to delete)" > "$SCRATCH"
 
 section "memory write — empty stdin rejected"
-run_dobby_stdin "" memory write --section profile
+run_dobby_stdin "" memory write --section area.builder.dobby-test-scratch
 assert_exit "exit 2" 2 "$CAPTURED_EXIT"
 assert_envelope_error "memory.write empty" "E_VALIDATION" "$CAPTURED_STDOUT"
 
