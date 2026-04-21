@@ -13,7 +13,7 @@ The scripts are easier to understand if you split them into three groups:
 - apply scripts that write config and trust state
 - post-sync reconcile scripts that auto-apply new control-plane revisions
 - startup scripts that shape the terminal and Ghostty experience
-- shared hook scripts that run at session start, prompt submit, turn stop, and Claude session end
+- shared hook scripts that run at session start, prompt submit, turn stop, and supported session end events
 
 ## Figure 1: Plugin Source And Apply Scripts
 
@@ -127,31 +127,38 @@ flowchart TD
 
 ## Figure 4: Session And Prompt Dispatch
 
-One global hook registry renders the runtime hook files for both clients. The shared dispatchers stay generic: repo-specific context or cleanup lives in optional repo-owned scripts.
+One global hook registry renders native hook files for each client surface. Codex and Claude use global runtime config; GitHub Copilot uses repo-local `.github/hooks/agent-control-plane.json` files in managed repos. The shared dispatchers stay generic: repo-specific context or cleanup lives in optional repo-owned scripts.
 
 ```mermaid
 flowchart TD
     A[hooks/registry.json<br/>shared hook definitions] --> B[~/.codex/hooks.json]
     A --> C[~/.claude/settings.json]
+    A --> Y[managed repo<br/>.github/hooks/agent-control-plane.json]
     B --> D[Codex session starts]
     C --> E[Claude session starts]
+    Y --> Z[Copilot session starts]
     D --> F[hooks/scripts/session_start.py]
     E --> F
+    Z --> F
     F --> G[resolve git root from hook cwd]
     G --> H{scripts/hooks/session-start.sh exists?}
     H -->|yes| I[run script from repo root]
-    I --> J[forward stdout as startup context]
+    I --> J[forward or ignore stdout per runtime]
     H -->|no| K[silent success]
     B --> L[Codex prompt submitted]
     C --> M[Claude prompt submitted]
+    Y --> M2[Copilot prompt submitted]
     L --> N[hooks/scripts/user_prompt_submit.py]
     M --> N
+    M2 --> N
     N --> O{scripts/hooks/user-prompt-submit.sh exists?}
     O -->|yes| P[run script from repo root]
-    P --> Q[forward stdout as prompt context]
+    P --> Q[forward or ignore stdout per runtime]
     O -->|no| R[silent success]
     C --> S[Claude session ends]
+    Y --> S2[Copilot session ends]
     S --> T[hooks/scripts/session_end.py]
+    S2 --> T
     T --> U{scripts/hooks/session-end.sh exists?}
     U -->|yes| V[run cleanup from repo root]
     V --> W[log stdout; stderr stays visible]
@@ -161,18 +168,18 @@ flowchart TD
 ### What This Group Does
 
 - [`session_start.py`](/Users/dobby/.agents/hooks/scripts/session_start.py)
-  - runs as the shared Codex and Claude `SessionStart` hook
+  - runs as the shared Codex, Claude, and GitHub Copilot `SessionStart` hook
   - resolves the current git root from the hook payload `cwd`
   - runs repo-owned `scripts/hooks/session-start.sh` when present
   - passes the original hook JSON to the repo script on stdin
   - sets `AGENT_HOOK_EVENT`, `AGENT_HOOK_RUNTIME`, and `AGENT_REPO_ROOT`
-  - forwards repo script stdout as startup context
+  - forwards repo script stdout as startup context for runtimes that process it; Copilot currently ignores `sessionStart` output
 - [`user_prompt_submit.py`](/Users/dobby/.agents/hooks/scripts/user_prompt_submit.py)
-  - runs as the shared Codex and Claude `UserPromptSubmit` hook
+  - runs as the shared Codex, Claude, and GitHub Copilot prompt-submit hook
   - runs repo-owned `scripts/hooks/user-prompt-submit.sh` when present
-  - forwards repo script stdout as additional prompt context
+  - forwards repo script stdout as additional prompt context for runtimes that process it; Copilot currently ignores `userPromptSubmitted` output
 - [`session_end.py`](/Users/dobby/.agents/hooks/scripts/session_end.py)
-  - runs as the shared Claude-only `SessionEnd` hook
+  - runs as the shared Claude and GitHub Copilot `SessionEnd` hook
   - runs repo-owned `scripts/hooks/session-end.sh` when present
   - logs repo script stdout instead of injecting context because the session is ending
 - `scripts/hooks/session-start.sh`
@@ -184,21 +191,24 @@ flowchart TD
   - should stay fast, deterministic, and non-interactive
   - should print only context that should be added before processing that prompt
 - `scripts/hooks/session-end.sh`
-  - optional Claude-only cleanup command
-  - should stay fast and local because it runs while Claude exits the session
+  - optional Claude and GitHub Copilot cleanup command
+  - should stay fast and local because it runs while the agent exits the session
 
 ## Figure 5: Post-Turn Automation
 
-One global `Stop` hook definition is rendered into both Codex and Claude. This is the shared turn-stop hook. It owns turn finalization, while each repo owns its fast commit gate through `scripts/check-fast.sh`.
+One global `Stop` hook definition is rendered into Codex and Claude as `Stop`, and into GitHub Copilot as `agentStop`. This is the shared turn-stop hook. It owns turn finalization, while each repo owns its fast commit gate through `scripts/check-fast.sh`.
 
 ```mermaid
 flowchart TD
     A[hooks/registry.json<br/>one global Stop definition] --> B[~/.codex/hooks.json]
     A --> C[~/.claude/settings.json]
+    A --> Y[managed repo<br/>.github/hooks/agent-control-plane.json]
     B --> D[Codex turn reaches Stop]
     C --> E[Claude turn reaches Stop]
+    Y --> E2[Copilot turn reaches agentStop]
     D --> F[hooks/scripts/stop.py]
     E --> F
+    E2 --> F
     F --> G[git add -A]
     G --> H[git commit]
     H --> I[Git uses repo core.hooksPath]
@@ -220,7 +230,7 @@ flowchart TD
 ### What This Group Does
 
 - [`stop.py`](/Users/dobby/.agents/hooks/scripts/stop.py)
-  - runs as the shared Codex and Claude `Stop` hook, which is the runtime name for turn-stop behavior
+  - runs as the shared turn-stop hook for Codex, Claude, and GitHub Copilot
   - stages all repo changes and runs `git commit`
   - does not directly call repo validation; Git calls the shared local hook because managed repos set `core.hooksPath` to [`hooks/git/`](/Users/dobby/.agents/hooks/git)
   - if commit checks fail, returns hook continuation JSON with the failure output so the current agent can fix it
@@ -237,7 +247,7 @@ flowchart TD
 - Hook dispatch scripts:
   - `session_start.py` runs optional repo-owned `scripts/hooks/session-start.sh`
   - `user_prompt_submit.py` runs optional repo-owned `scripts/hooks/user-prompt-submit.sh`
-  - `session_end.py` runs optional Claude-only repo-owned `scripts/hooks/session-end.sh`
+  - `session_end.py` runs optional Claude and GitHub Copilot repo-owned `scripts/hooks/session-end.sh`
 
 ## Figure 6: Optional Machine Policy Script
 

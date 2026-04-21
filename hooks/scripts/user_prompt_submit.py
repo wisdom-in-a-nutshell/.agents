@@ -10,7 +10,7 @@ from pathlib import Path
 from typing import Any
 
 
-VALID_RUNTIMES = {"codex", "claude"}
+VALID_RUNTIMES = {"codex", "claude", "copilot"}
 HOOK_EVENT = "UserPromptSubmit"
 REPO_USER_PROMPT_SUBMIT = Path("scripts/hooks/user-prompt-submit.sh")
 GIT_ROOT_TIMEOUT_SEC = 5
@@ -107,7 +107,7 @@ def run_repo_user_prompt_submit(
             print(f"user_prompt_submit: failed to run {script}: {exc}", file=sys.stderr)
         return 0
 
-    if result.stdout:
+    if result.stdout and runtime != "copilot":
         context = truncate_text(result.stdout, MAX_CONTEXT_CHARS)
         sys.stdout.write(
             json.dumps(

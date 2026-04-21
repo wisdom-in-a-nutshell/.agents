@@ -11,7 +11,8 @@
       },
       "runtimes": [
         "codex",
-        "claude"
+        "claude",
+        "copilot"
       ],
       "scope": "global",
       "timeout": 5
@@ -23,7 +24,8 @@
       "id": "global-user-prompt-submit",
       "runtimes": [
         "codex",
-        "claude"
+        "claude",
+        "copilot"
       ],
       "scope": "global",
       "timeout": 5
@@ -35,7 +37,8 @@
       "id": "global-stop",
       "runtimes": [
         "codex",
-        "claude"
+        "claude",
+        "copilot"
       ],
       "scope": "global",
       "timeout": 900
@@ -49,7 +52,8 @@
         "claude": "clear|resume|logout|prompt_input_exit|bypass_permissions_disabled|other"
       },
       "runtimes": [
-        "claude"
+        "claude",
+        "copilot"
       ],
       "scope": "global",
       "timeout": 5

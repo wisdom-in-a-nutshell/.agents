@@ -33,6 +33,7 @@ Edit the canonical source, run the renderer, then run the validation command.
 | `~/.claude/settings.json` | live Claude runtime settings | `claude/config/settings.json`, `hooks/registry.json` | `claude/scripts/sync-settings.sh --apply` | `claude/scripts/check-claude-control-plane.sh` | No |
 | `~/.claude/agents/*.md` | live Claude global subagents | `agents/registry.json`, `claude/config/agents/*.md` | `claude/scripts/sync-subagents.sh --apply` | `claude/scripts/check-claude-control-plane.sh` | No |
 | managed repo `.git/config` `core.hooksPath` | machine-local Git hook config | `hooks/git/`, `codex/config/repo-bootstrap.json` | `scripts/sync-managed-git-hooks.sh --apply` | `scripts/sync-managed-git-hooks.sh --check` | No |
+| managed repo `.github/hooks/agent-control-plane.json` | repo-local GitHub Copilot hook config | `hooks/registry.json`, `codex/config/repo-bootstrap.json` | `scripts/sync-copilot-hooks.sh --apply --repo <repo>` | `scripts/sync-copilot-hooks.sh --check --repo <repo>` | No |
 
 ## Canonical Source Families
 

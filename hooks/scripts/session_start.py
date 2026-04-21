@@ -10,7 +10,7 @@ from pathlib import Path
 from typing import Any
 
 
-VALID_RUNTIMES = {"codex", "claude"}
+VALID_RUNTIMES = {"codex", "claude", "copilot"}
 REPO_SESSION_START = Path("scripts/hooks/session-start.sh")
 GIT_ROOT_TIMEOUT_SEC = 5
 MAX_CONTEXT_CHARS = 12000
@@ -99,7 +99,7 @@ def run_repo_session_start(
             print(f"session_start: failed to run {script}: {exc}", file=sys.stderr)
         return 0
 
-    if result.stdout:
+    if result.stdout and runtime != "copilot":
         context = truncate_text(result.stdout, MAX_CONTEXT_CHARS)
         sys.stdout.write(
             json.dumps(

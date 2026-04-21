@@ -1,6 +1,6 @@
 # .agents repo
 
-Personal agent, Codex, and Claude control plane.
+Personal agent, Codex, Claude, and repo-local Copilot hook control plane.
 
 ## Purpose
 
@@ -15,7 +15,7 @@ Personal agent, Codex, and Claude control plane.
 - `plugins/registry.json` is the canonical plugin registry.
 - `mcp/config/presets.json` is the canonical shared MCP registry.
 - `agents/registry.json` is the canonical shared agent registry for Codex agents and Claude subagents.
-- `hooks/registry.json` is the canonical shared lifecycle hook registry for Codex and Claude.
+- `hooks/registry.json` is the canonical shared lifecycle hook registry for Codex, Claude, and repo-local GitHub Copilot hooks.
 - `codex/` holds canonical personal Codex control-plane inputs.
 - `codex/config/global.agents.md` is the single canonical machine-wide guidance source for both `~/.codex/AGENTS.md` and `~/.claude/CLAUDE.md`.
 - `codex/config/repo-bootstrap.json` is the canonical shared repo registry for managed repo-local behavior.
@@ -95,15 +95,16 @@ Detailed operations live in:
 - Do not hand-edit rendered runtime hook files. Update `hooks/registry.json` or `hooks/scripts/*`, then rerun the shared bootstrap/check.
 - Repo-specific session-start context lives in `scripts/hooks/session-start.sh`. The shared `SessionStart` dispatcher runs it from the repo root when present and forwards stdout as startup context.
 - Repo-specific prompt-submit context lives in `scripts/hooks/user-prompt-submit.sh`. The shared `UserPromptSubmit` dispatcher runs it from the repo root when present and forwards stdout as additional prompt context.
-- Repo-specific Claude session-end cleanup lives in `scripts/hooks/session-end.sh`. The shared `SessionEnd` dispatcher is Claude-only, runs it from the repo root when present, logs stdout, and does not inject context because the session is ending.
+- Repo-specific session-end cleanup lives in `scripts/hooks/session-end.sh`. The shared `SessionEnd` dispatcher currently renders for Claude and GitHub Copilot, runs it from the repo root when present, logs stdout, and does not inject context because the session is ending.
+- Managed repos get rendered GitHub Copilot hook config at `.github/hooks/agent-control-plane.json`; do not hand-edit it. Update `hooks/registry.json`, `hooks/scripts/*`, or `codex/config/repo-bootstrap.json`, then rerun `./scripts/sync-copilot-hooks.sh --apply --repo <repo>` or the shared bootstrap wrapper.
 - Managed repos use local Git `core.hooksPath` pointing at `hooks/git/`; the shared commit-time hook delegates to repo-owned `scripts/check-fast.sh` when present.
 - Use `scripts/check-fast.sh` as the fast, deterministic, repo-owned validation entrypoint. Keep slower validation in a separate script such as `scripts/check-full.sh`.
 - If `skills/registry.json` changes, run sync/check in the same change.
 - If `plugins/registry.json` changes, run plugin sync/check in the same change.
 - Do not hand-edit generated repo-local `.codex/config.toml` files in managed repos; update `codex/config/repo-bootstrap.json` and re-run the sync scripts.
 - Do not hand-edit generated repo-local `.codex/agents/*.toml` files in managed repos; update `codex/config/repo-bootstrap.json` or `codex/config/agents/*.toml` and re-run the sync scripts.
-- When changing shared bootstrap inputs such as `mcp/config/presets.json`, `codex/config/repo-bootstrap.json`, or repo MCP assignment, prefer `./scripts/bootstrap-machine-agent-control-planes.sh --apply --repo <repo>` so Codex and Claude repo-local state are both re-rendered together. Use component-only Codex or Claude scripts only for intentional single-surface troubleshooting.
+- When changing shared bootstrap inputs such as `mcp/config/presets.json`, `codex/config/repo-bootstrap.json`, or repo MCP assignment, prefer `./scripts/bootstrap-machine-agent-control-planes.sh --apply --repo <repo>` so Codex, Claude, and repo-local Copilot hook state are re-rendered together. Use component-only scripts only for intentional single-surface troubleshooting.
 - If `mcp/config/presets.json` changes, run both Codex and Claude control-plane validation in the same change.
 - If `agents/registry.json` changes, run both Codex and Claude control-plane validation plus `./scripts/test-control-plane.sh` in the same change.
-- If `hooks/registry.json`, `hooks/scripts/*`, `hooks/git/*`, or `scripts/sync-managed-git-hooks.sh` changes, run shared bootstrap/check plus `./scripts/test-control-plane.sh` in the same change.
+- If `hooks/registry.json`, `hooks/scripts/*`, `hooks/git/*`, `scripts/sync-managed-git-hooks.sh`, or `scripts/sync-copilot-hooks.sh` changes, run shared bootstrap/check plus `./scripts/test-control-plane.sh` in the same change.
 - If `codex/config/agents/*.toml`, `codex/config/global.config.toml`, `codex/config/xcode.config.toml`, or `codex/config/repo-bootstrap.json` changes, run the Codex control-plane validation script in the same change.

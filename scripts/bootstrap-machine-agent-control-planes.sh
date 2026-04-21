@@ -10,6 +10,7 @@ ROOT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
 SYNC_SKILLS_SCRIPT="${SCRIPT_DIR}/sync-skills-registry.sh"
 SYNC_PLUGINS_SCRIPT="${SCRIPT_DIR}/sync-plugins-registry.sh"
 SYNC_GIT_HOOKS_SCRIPT="${SCRIPT_DIR}/sync-managed-git-hooks.sh"
+SYNC_COPILOT_HOOKS_SCRIPT="${SCRIPT_DIR}/sync-copilot-hooks.sh"
 CODEX_BOOTSTRAP_SCRIPT="${ROOT_DIR}/codex/scripts/bootstrap-machine-codex.sh"
 CLAUDE_BOOTSTRAP_SCRIPT="${ROOT_DIR}/claude/scripts/bootstrap-machine-claude.sh"
 
@@ -87,6 +88,7 @@ fi
 [[ -x "$SYNC_SKILLS_SCRIPT" ]] || die "Missing executable: $SYNC_SKILLS_SCRIPT"
 [[ -x "$SYNC_PLUGINS_SCRIPT" ]] || die "Missing executable: $SYNC_PLUGINS_SCRIPT"
 [[ -x "$SYNC_GIT_HOOKS_SCRIPT" ]] || die "Missing executable: $SYNC_GIT_HOOKS_SCRIPT"
+[[ -x "$SYNC_COPILOT_HOOKS_SCRIPT" ]] || die "Missing executable: $SYNC_COPILOT_HOOKS_SCRIPT"
 [[ -x "$CODEX_BOOTSTRAP_SCRIPT" ]] || die "Missing executable: $CODEX_BOOTSTRAP_SCRIPT"
 [[ -x "$CLAUDE_BOOTSTRAP_SCRIPT" ]] || die "Missing executable: $CLAUDE_BOOTSTRAP_SCRIPT"
 REPO_ARGS=()
@@ -115,6 +117,14 @@ sync_git_hooks_cmd=(
 )
 log "+ ${sync_git_hooks_cmd[*]}"
 "${sync_git_hooks_cmd[@]}"
+
+sync_copilot_hooks_cmd=(
+  "$SYNC_COPILOT_HOOKS_SCRIPT"
+  "$MODE_FLAG"
+  "${REPO_ARGS[@]}"
+)
+log "+ ${sync_copilot_hooks_cmd[*]}"
+"${sync_copilot_hooks_cmd[@]}"
 
 codex_cmd=(
   "$CODEX_BOOTSTRAP_SCRIPT"

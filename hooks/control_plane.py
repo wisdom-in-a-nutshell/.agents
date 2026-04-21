@@ -7,16 +7,22 @@ from pathlib import Path
 from typing import Any
 
 
-VALID_RUNTIMES = {"codex", "claude"}
+VALID_RUNTIMES = {"codex", "claude", "copilot"}
 VALID_SCOPES = {"global"}
 EVENT_RUNTIME_SUPPORT = {
-    "SessionStart": {"codex", "claude"},
-    "UserPromptSubmit": {"codex", "claude"},
-    "Stop": {"codex", "claude"},
-    "SessionEnd": {"claude"},
+    "SessionStart": {"codex", "claude", "copilot"},
+    "UserPromptSubmit": {"codex", "claude", "copilot"},
+    "Stop": {"codex", "claude", "copilot"},
+    "SessionEnd": {"claude", "copilot"},
 }
 VALID_EVENTS = set(EVENT_RUNTIME_SUPPORT)
 EVENTS_WITH_MATCHERS = {"SessionStart", "SessionEnd"}
+COPILOT_EVENT_NAMES = {
+    "SessionStart": "sessionStart",
+    "UserPromptSubmit": "userPromptSubmitted",
+    "Stop": "agentStop",
+    "SessionEnd": "sessionEnd",
+}
 
 
 class HookRegistryError(RuntimeError):
@@ -184,6 +190,39 @@ def render_codex_hooks(registry: dict[str, Any]) -> dict[str, Any]:
     return render_runtime_hooks(registry, "codex")
 
 
+def _render_copilot_bash_command(hook: dict[str, Any]) -> str:
+    event = str(hook["event"])
+    command = _render_command(str(hook["command"]), runtime="copilot", event=event)
+    managed_prefix = "python3 ~/.agents/"
+    if not command.startswith(managed_prefix):
+        return command
+
+    path_and_args = command.removeprefix(managed_prefix)
+    if " " in path_and_args:
+        script_rel, args = path_and_args.split(" ", 1)
+        args = " " + args
+    else:
+        script_rel = path_and_args
+        args = ""
+    script_path = f"$HOME/.agents/{script_rel}"
+    return f'if [ -f "{script_path}" ]; then python3 "{script_path}"{args}; fi'
+
+
+def render_copilot_hooks(registry: dict[str, Any]) -> dict[str, Any]:
+    events: dict[str, list[dict[str, Any]]] = {}
+    for hook in _managed_hooks_for_runtime(registry, "copilot"):
+        event = str(hook["event"])
+        copilot_event = COPILOT_EVENT_NAMES[event]
+        handler: dict[str, Any] = {
+            "bash": _render_copilot_bash_command(hook),
+            "cwd": ".",
+            "timeoutSec": hook["timeout"],
+            "type": "command",
+        }
+        events.setdefault(copilot_event, []).append(handler)
+    return {"hooks": events, "version": 1}
+
+
 def merge_claude_hooks(settings: dict[str, Any], registry: dict[str, Any]) -> dict[str, Any]:
     rendered = render_runtime_hooks(registry, "claude")["hooks"]
     merged = dict(settings)
@@ -253,6 +292,13 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     codex.add_argument("--registry", required=True)
     codex.add_argument("--output", required=True)
 
+    copilot = subparsers.add_parser(
+        "render-copilot",
+        help="Render GitHub Copilot repo hooks JSON",
+    )
+    copilot.add_argument("--registry", required=True)
+    copilot.add_argument("--output", required=True)
+
     claude = subparsers.add_parser(
         "render-claude-settings",
         help="Render Claude settings with managed hooks merged in",
@@ -272,6 +318,12 @@ def main(argv: list[str] | None = None) -> int:
             return 0
         if args.command == "render-codex":
             _write_output(Path(args.output).expanduser().resolve(), render_codex_hooks(registry))
+            return 0
+        if args.command == "render-copilot":
+            _write_output(
+                Path(args.output).expanduser().resolve(),
+                render_copilot_hooks(registry),
+            )
             return 0
         if args.command == "render-claude-settings":
             settings = _load_json_object(

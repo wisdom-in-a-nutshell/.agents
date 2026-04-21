@@ -12,6 +12,7 @@ from hooks.control_plane import (
     HookRegistryError,
     load_hooks_registry,
     merge_claude_hooks,
+    render_copilot_hooks,
     render_codex_hooks,
 )
 from tests.control_plane.support import (
@@ -86,6 +87,25 @@ class HooksControlPlaneTests(TempDirTestCase):
             "python3 ~/.agents/hooks/scripts/session_end.py --runtime claude",
         )
 
+        copilot_hooks = render_copilot_hooks(registry)
+        self.assertEqual(
+            set(copilot_hooks["hooks"].keys()),
+            {"sessionStart", "userPromptSubmitted", "agentStop", "sessionEnd"},
+        )
+        self.assertEqual(copilot_hooks["version"], 1)
+        self.assertEqual(
+            copilot_hooks["hooks"]["agentStop"][0],
+            {
+                "bash": (
+                    'if [ -f "$HOME/.agents/hooks/scripts/stop.py" ]; '
+                    'then python3 "$HOME/.agents/hooks/scripts/stop.py" --runtime copilot; fi'
+                ),
+                "cwd": ".",
+                "timeoutSec": 900,
+                "type": "command",
+            },
+        )
+
     def test_registry_rejects_unsupported_runtime(self) -> None:
         registry_path = self.temp_path / "hooks/registry.json"
         write_json(
@@ -97,7 +117,7 @@ class HooksControlPlaneTests(TempDirTestCase):
                         "enabled": True,
                         "event": "Stop",
                         "id": "bad-runtime",
-                        "runtimes": ["copilot"],
+                        "runtimes": ["unknown"],
                         "scope": "global",
                         "timeout": 5,
                     }
@@ -140,9 +160,9 @@ class HooksControlPlaneTests(TempDirTestCase):
             "SessionEnd": REPO_ROOT / "hooks/scripts/session_end.py",
         }
         home = self.temp_path / "home"
-        for runtime in ("codex", "claude"):
+        for runtime in ("codex", "claude", "copilot"):
             for event in ("SessionStart", "UserPromptSubmit", "Stop", "SessionEnd"):
-                if event == "SessionEnd" and runtime != "claude":
+                if event == "SessionEnd" and runtime == "codex":
                     continue
                 payload = {
                     "cwd": str(self.temp_path),
@@ -228,6 +248,43 @@ class HooksControlPlaneTests(TempDirTestCase):
                 }
             },
         )
+
+    def test_session_start_suppresses_repo_stdout_for_copilot(self) -> None:
+        repo = init_git_repo(self.temp_path / "repo")
+        write_executable(
+            repo / "scripts/hooks/session-start.sh",
+            "\n".join(
+                [
+                    "#!/usr/bin/env bash",
+                    "set -euo pipefail",
+                    "printf 'copilot startup context\\n'",
+                    "",
+                ]
+            ),
+        )
+        payload = {
+            "cwd": str(repo),
+            "initialPrompt": "hello",
+            "source": "new",
+            "timestamp": 1704614400000,
+        }
+
+        result = subprocess.run(
+            [
+                sys.executable,
+                str(REPO_ROOT / "hooks/scripts/session_start.py"),
+                "--runtime",
+                "copilot",
+            ],
+            input=json.dumps(payload),
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+
+        self.assertEqual(result.returncode, 0)
+        self.assertEqual(result.stdout, "")
+        self.assertEqual(result.stderr, "")
 
     def test_session_start_is_silent_when_repo_script_is_absent(self) -> None:
         repo = init_git_repo(self.temp_path / "repo")
@@ -415,6 +472,60 @@ class HooksControlPlaneTests(TempDirTestCase):
             "python3 ~/.agents/hooks/scripts/stop.py --runtime codex",
         )
 
+    def test_sync_copilot_hooks_renders_repo_local_github_hook_file(self) -> None:
+        repo = init_git_repo(self.temp_path / "repo")
+        registry = self.temp_path / "repo-bootstrap.json"
+        write_json(
+            registry,
+            {
+                "defaults": {},
+                "repos": [
+                    {
+                        "path": str(repo),
+                    }
+                ],
+            },
+        )
+
+        run_command(
+            [
+                str(REPO_ROOT / "scripts/sync-copilot-hooks.sh"),
+                "--apply",
+                "--registry",
+                str(registry),
+                "--hooks-registry",
+                str(REPO_ROOT / "hooks/registry.json"),
+                "--repo",
+                str(repo),
+            ]
+        )
+
+        rendered = read_json(repo / ".github/hooks/agent-control-plane.json")
+        self.assertEqual(
+            set(rendered["hooks"].keys()),
+            {"sessionStart", "userPromptSubmitted", "agentStop", "sessionEnd"},
+        )
+        self.assertEqual(
+            rendered["hooks"]["sessionStart"][0]["bash"],
+            (
+                'if [ -f "$HOME/.agents/hooks/scripts/session_start.py" ]; '
+                'then python3 "$HOME/.agents/hooks/scripts/session_start.py" --runtime copilot; fi'
+            ),
+        )
+
+        run_command(
+            [
+                str(REPO_ROOT / "scripts/sync-copilot-hooks.sh"),
+                "--check",
+                "--registry",
+                str(registry),
+                "--hooks-registry",
+                str(REPO_ROOT / "hooks/registry.json"),
+                "--repo",
+                str(repo),
+            ]
+        )
+
     def test_stop_hook_has_tracking_upstream_false_for_new_local_branch(self) -> None:
         module = self.load_stop_module()
         remote = init_git_repo(self.temp_path / "remote.git")
@@ -425,6 +536,30 @@ class HooksControlPlaneTests(TempDirTestCase):
         run_command(["git", "-C", str(repo), "checkout", "-b", "feature/test"])
 
         self.assertFalse(module.has_tracking_upstream(str(repo)))
+
+    def test_stop_hook_suppresses_unsupported_copilot_warning_output(self) -> None:
+        module = self.load_stop_module()
+
+        self.assertIsNone(
+            module.normalize_output_for_runtime(
+                {"systemMessage": "push failed"},
+                runtime="copilot",
+            )
+        )
+        self.assertEqual(
+            module.normalize_output_for_runtime(
+                {"decision": "block", "reason": "fix checks"},
+                runtime="copilot",
+            ),
+            {"decision": "block", "reason": "fix checks"},
+        )
+        self.assertEqual(
+            module.normalize_output_for_runtime(
+                {"systemMessage": "push failed"},
+                runtime="codex",
+            ),
+            {"systemMessage": "push failed"},
+        )
 
     def test_stop_hook_uses_initial_push_for_branch_without_upstream(self) -> None:
         module = self.load_stop_module()

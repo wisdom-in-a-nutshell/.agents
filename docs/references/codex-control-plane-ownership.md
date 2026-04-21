@@ -78,8 +78,9 @@ Use [Codex Control Plane](/Users/dobby/.agents/docs/architecture/codex-control-p
 
 - [AGENTS.md](/Users/dobby/.agents/AGENTS.md): machine-local guidance for this repo; now includes the canonical Codex control-plane commands.
 - [docs/architecture/codex-control-plane.md](/Users/dobby/.agents/docs/architecture/codex-control-plane.md): canonical high-level design.
-- [scripts/bootstrap-machine-agent-control-planes.sh](/Users/dobby/.agents/scripts/bootstrap-machine-agent-control-planes.sh): canonical machine-facing bootstrap entrypoint for shared skills plus Codex and Claude.
+- [scripts/bootstrap-machine-agent-control-planes.sh](/Users/dobby/.agents/scripts/bootstrap-machine-agent-control-planes.sh): canonical machine-facing bootstrap entrypoint for shared skills, repo-local Copilot hooks, Codex, and Claude.
 - [scripts/auto-apply-agent-control-planes.sh](/Users/dobby/.agents/scripts/auto-apply-agent-control-planes.sh): canonical machine-facing post-sync reconcile entrypoint used for automatic cross-machine apply.
+- [scripts/sync-copilot-hooks.sh](/Users/dobby/.agents/scripts/sync-copilot-hooks.sh): canonical renderer for managed repo `.github/hooks/agent-control-plane.json` files.
 - [codex/scripts/bootstrap-machine-codex.sh](/Users/dobby/.agents/codex/scripts/bootstrap-machine-codex.sh): canonical Codex-specific machine bootstrap entrypoint.
 - [codex/scripts/auto-apply-codex-control-plane.sh](/Users/dobby/.agents/codex/scripts/auto-apply-codex-control-plane.sh): canonical low-level Codex-specific post-sync reconcile helper.
 - [codex/scripts/sync-trusted-projects.sh](/Users/dobby/.agents/codex/scripts/sync-trusted-projects.sh): canonical trusted-repo sync for terminal + Xcode Codex configs.

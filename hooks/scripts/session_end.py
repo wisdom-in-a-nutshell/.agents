@@ -11,7 +11,7 @@ from pathlib import Path
 from typing import Any
 
 
-VALID_RUNTIMES = {"claude"}
+VALID_RUNTIMES = {"claude", "copilot"}
 HOOK_EVENT = "SessionEnd"
 REPO_SESSION_END = Path("scripts/hooks/session-end.sh")
 GIT_ROOT_TIMEOUT_SEC = 5

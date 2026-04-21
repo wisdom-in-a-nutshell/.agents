@@ -12,7 +12,7 @@ from pathlib import Path
 from typing import Any
 
 
-VALID_RUNTIMES = {"codex", "claude"}
+VALID_RUNTIMES = {"codex", "claude", "copilot"}
 
 GIT_STATUS_TIMEOUT_SEC = 60
 GIT_ADD_TIMEOUT_SEC = 120
@@ -113,6 +113,17 @@ def warning(message: str) -> dict[str, Any]:
     return {
         "systemMessage": truncate_text(message, MAX_REASON_CHARS),
     }
+
+
+def normalize_output_for_runtime(
+    output: dict[str, Any] | None,
+    *,
+    runtime: str,
+) -> dict[str, Any] | None:
+    if runtime == "copilot" and output and "systemMessage" in output:
+        log(runtime, "suppress unsupported systemMessage output")
+        return None
+    return output
 
 
 def read_payload(debug: bool) -> dict[str, Any] | None:
@@ -501,6 +512,7 @@ def main() -> int:
         log(args.runtime, f"unexpected-error cwd={cwd} error={exc}")
         output = warning(f"Stop hook failed unexpectedly at {utc_now_iso_z()}: {exc}")
 
+    output = normalize_output_for_runtime(output, runtime=args.runtime)
     if output:
         return emit_json(output)
     return 0
