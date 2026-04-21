@@ -173,11 +173,11 @@ flowchart TD
   - runs repo-owned `scripts/hooks/session-start.sh` when present
   - passes the original hook JSON to the repo script on stdin
   - sets `AGENT_HOOK_EVENT`, `AGENT_HOOK_RUNTIME`, and `AGENT_REPO_ROOT`
-  - forwards repo script stdout as startup context for runtimes that process it; Copilot currently ignores `sessionStart` output
+  - forwards repo script stdout as startup context for runtimes that process it, capped at a rough `30000` token budget (`120000` characters); Copilot currently ignores `sessionStart` output
 - [`user_prompt_submit.py`](/Users/dobby/.agents/hooks/scripts/user_prompt_submit.py)
   - runs as the shared Codex, Claude, and GitHub Copilot prompt-submit hook
   - runs repo-owned `scripts/hooks/user-prompt-submit.sh` when present
-  - forwards repo script stdout as additional prompt context for runtimes that process it; Copilot currently ignores `userPromptSubmitted` output
+  - forwards repo script stdout as additional prompt context for runtimes that process it, capped at a rough `30000` token budget (`120000` characters); Copilot currently ignores `userPromptSubmitted` output
 - [`session_end.py`](/Users/dobby/.agents/hooks/scripts/session_end.py)
   - runs as the shared Claude and GitHub Copilot `SessionEnd` hook
   - runs repo-owned `scripts/hooks/session-end.sh` when present

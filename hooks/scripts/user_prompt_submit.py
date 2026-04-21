@@ -14,7 +14,9 @@ VALID_RUNTIMES = {"codex", "claude", "copilot"}
 HOOK_EVENT = "UserPromptSubmit"
 REPO_USER_PROMPT_SUBMIT = Path("scripts/hooks/user-prompt-submit.sh")
 GIT_ROOT_TIMEOUT_SEC = 5
-MAX_CONTEXT_CHARS = 12000
+MAX_CONTEXT_TOKENS = 30000
+APPROX_CHARS_PER_TOKEN = 4
+MAX_CONTEXT_CHARS = MAX_CONTEXT_TOKENS * APPROX_CHARS_PER_TOKEN
 
 
 def parse_args() -> argparse.Namespace:

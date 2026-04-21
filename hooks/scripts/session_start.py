@@ -13,7 +13,9 @@ from typing import Any
 VALID_RUNTIMES = {"codex", "claude", "copilot"}
 REPO_SESSION_START = Path("scripts/hooks/session-start.sh")
 GIT_ROOT_TIMEOUT_SEC = 5
-MAX_CONTEXT_CHARS = 12000
+MAX_CONTEXT_TOKENS = 30000
+APPROX_CHARS_PER_TOKEN = 4
+MAX_CONTEXT_CHARS = MAX_CONTEXT_TOKENS * APPROX_CHARS_PER_TOKEN
 
 
 def parse_args() -> argparse.Namespace:

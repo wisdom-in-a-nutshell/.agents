@@ -1,17 +1,20 @@
 """Memory commands for the Dobby CLI.
 
 Commands:
-- boot: loads profile + now + becoming + area manifest (with mtimes, no content)
+- boot: loads now + becoming + area manifest (with mtimes, no content)
 - read: loads a specific section by dot-notation path
 - write: appends to a section from stdin, timestamped
 - diff: wraps `git log -p memory/ --since <ref>`
 
 Section routing (dot notation):
-    profile            -> memory/profile.md
     now                -> memory/now.md
     becoming           -> memory/becoming.md
     area.<name>        -> memory/areas/<name>/  (concat all .md)
     area.<name>.<file> -> memory/areas/<name>/<file>.md
+
+Adi's durable identity lives in `soul.md` under `## About Adi` and is loaded
+via the wrapper-composed system prompt. It is intentionally not served by
+this CLI — editing soul.md is a manual `Edit` operation.
 
 Every command defaults to the Dobby JSON envelope for agent reliability.
 `--plain` prints markdown/raw text for operator inspection when needed.

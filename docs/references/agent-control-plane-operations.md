@@ -116,7 +116,7 @@ Preferred rule for repo bootstrap or MCP changes:
   - `AGENT_HOOK_EVENT=SessionStart`
   - `AGENT_HOOK_RUNTIME=codex`, `claude`, or `copilot`
   - `AGENT_REPO_ROOT=<repo root>`
-- For Codex and Claude, the repo script's stdout is forwarded as startup context for the agent. GitHub Copilot currently ignores `sessionStart` output, so use this hook there only for local setup or logging.
+- For Codex and Claude, the repo script's stdout is forwarded as startup context for the agent. The dispatcher caps forwarded context at a rough `30000` token budget, implemented as `120000` characters because hook scripts do not know the runtime model tokenizer. GitHub Copilot currently ignores `sessionStart` output, so use this hook there only for local setup or logging.
 - Keep repo script output concise, deterministic, and non-interactive.
 - If the repo has no `scripts/hooks/session-start.sh`, the hook exits silently and successfully.
 
@@ -130,7 +130,7 @@ Preferred rule for repo bootstrap or MCP changes:
   - `AGENT_HOOK_EVENT=UserPromptSubmit`
   - `AGENT_HOOK_RUNTIME=codex`, `claude`, or `copilot`
   - `AGENT_REPO_ROOT=<repo root>`
-- For Codex and Claude, the repo script's stdout is forwarded as additional prompt context. GitHub Copilot currently ignores `userPromptSubmitted` output.
+- For Codex and Claude, the repo script's stdout is forwarded as additional prompt context. The dispatcher caps forwarded context at a rough `30000` token budget, implemented as `120000` characters because hook scripts do not know the runtime model tokenizer. GitHub Copilot currently ignores `userPromptSubmitted` output.
 - Keep repo script output concise, deterministic, and non-interactive.
 - If the repo has no `scripts/hooks/user-prompt-submit.sh`, the hook exits silently and successfully.
 
