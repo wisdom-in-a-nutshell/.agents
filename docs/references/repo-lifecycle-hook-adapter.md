@@ -8,15 +8,16 @@ repository owns what it wants to do when a lifecycle event arrives.
 ```mermaid
 flowchart TD
     A[Codex / Claude / Copilot] --> B[shared .agents hook dispatcher]
-    B --> C[normalized JSON adapter payload]
-    C --> D{repo hook exists?}
-    D -->|yes| E[scripts/hooks/session_start.py]
-    D -->|yes| F[scripts/hooks/user_prompt_submit.py]
-    D -->|yes| G[scripts/hooks/session_end.py]
-    D -->|no| H[exit successfully]
-    E --> I[stdout can become context]
-    F --> I
-    G --> J[stdout is logged only]
+    B --> C[hooks/scripts/hook_runtime.py]
+    C --> D[normalized JSON adapter payload]
+    D --> E{repo hook exists?}
+    E -->|yes| F[scripts/hooks/session_start.py]
+    E -->|yes| G[scripts/hooks/user_prompt_submit.py]
+    E -->|yes| H[scripts/hooks/session_end.py]
+    E -->|no| I[exit successfully]
+    F --> J[stdout can become context]
+    G --> J
+    H --> K[stdout is logged only]
 ```
 
 ## Rule Of Thumb
@@ -25,6 +26,8 @@ Put repo policy in the repo. Keep the shared control plane boring.
 
 - Shared `.agents` layer:
   - receives runtime-specific hook payloads
+  - runs event-specific entrypoints such as `session_start.py`
+  - keeps common dispatch plumbing in `hooks/scripts/hook_runtime.py`
   - resolves the Git repo root
   - normalizes the payload shape
   - runs a repo hook if it exists
@@ -305,7 +308,12 @@ When changing shared hook dispatchers in `.agents`, run:
 
 ```bash
 cd ~/.agents
-python3 -m py_compile hooks/scripts/hook_adapter.py hooks/scripts/session_start.py hooks/scripts/user_prompt_submit.py hooks/scripts/session_end.py
+python3 -m py_compile \
+  hooks/scripts/hook_adapter.py \
+  hooks/scripts/hook_runtime.py \
+  hooks/scripts/session_start.py \
+  hooks/scripts/user_prompt_submit.py \
+  hooks/scripts/session_end.py
 python3 -m unittest tests.control_plane.test_hooks_control_plane
 ./scripts/test-control-plane.sh
 ./scripts/bootstrap-machine-agent-control-planes.sh --apply

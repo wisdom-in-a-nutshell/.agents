@@ -113,7 +113,11 @@ Preferred rule for repo bootstrap or MCP changes:
 
 - The global lifecycle `SessionStart` hook is defined once in [`hooks/registry.json`](/Users/dobby/.agents/hooks/registry.json) and rendered into Codex, Claude, and managed repo-local GitHub Copilot hook config.
 - The `SessionStart` hook runs [`hooks/scripts/session_start.py`](/Users/dobby/.agents/hooks/scripts/session_start.py).
-- `session_start.py` resolves the current git root from the hook payload `cwd`.
+- `session_start.py`, `user_prompt_submit.py`, and `session_end.py` share the
+  common dispatcher in [`hooks/scripts/hook_runtime.py`](/Users/dobby/.agents/hooks/scripts/hook_runtime.py)
+  for payload parsing, repo-root resolution, env setup, repo script execution,
+  context forwarding, and session-end logging.
+- The dispatcher resolves the current git root from the hook payload `cwd`.
 - If the repo contains `scripts/hooks/session_start.py`, the dispatcher runs that Python hook from the repo root.
 - The repo script receives a normalized JSON adapter payload on stdin. The original runtime payload is preserved under `raw_payload`.
 - Common adapter fields include:

@@ -88,7 +88,7 @@ Hooks will become a common agent-native feedback loop across repositories. A sha
 - [x] Add optional repo-local `UserPromptSubmit` context injection.
 - [x] Add optional repo-local Claude and GitHub Copilot `SessionEnd` cleanup.
 - [x] Render repo-local GitHub Copilot hook files from the shared registry.
-- [ ] Archive or refresh this tracker after the v1 validation result is recorded.
+- [x] Archive or refresh this tracker after the v1 validation result is recorded.
 
 ## Validation / Test Plan
 - `./codex/scripts/check-codex-control-plane.sh`
@@ -105,3 +105,4 @@ Hooks will become a common agent-native feedback loop across repositories. A sha
 - 2026-04-21: [DONE] Added shared `UserPromptSubmit` dispatch for Codex and Claude plus `SessionEnd` dispatch; focused hook tests passed with `python3 -m unittest tests.control_plane.test_hooks_control_plane`.
 - 2026-04-21: [DONE] Added GitHub Copilot hook rendering from `hooks/registry.json` into managed repo `.github/hooks/agent-control-plane.json`; focused hook and orchestration tests passed with `python3 -m unittest tests.control_plane.test_hooks_control_plane tests.control_plane.test_orchestration`.
 - 2026-04-21: [DONE] Converted repo-owned lifecycle hook convention from shell scripts to Python files under `scripts/hooks/*.py`.
+- 2026-04-21: [DONE] Extracted shared lifecycle dispatcher plumbing into `hooks/scripts/hook_runtime.py`; focused hook tests passed with `python3 -m unittest tests.control_plane.test_hooks_control_plane`.

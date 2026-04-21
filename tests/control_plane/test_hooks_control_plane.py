@@ -491,6 +491,45 @@ class HooksControlPlaneTests(TempDirTestCase):
             },
         )
 
+    def test_user_prompt_submit_ignores_mismatched_event_payload(self) -> None:
+        repo = init_git_repo(self.temp_path / "repo")
+        marker = repo / "tmp/user-prompt-ran.txt"
+        write_executable(
+            repo / "scripts/hooks/user_prompt_submit.py",
+            "\n".join(
+                [
+                    "#!/usr/bin/env python3",
+                    "import pathlib",
+                    "pathlib.Path('tmp').mkdir(exist_ok=True)",
+                    "pathlib.Path('tmp/user-prompt-ran.txt').write_text('ran', encoding='utf-8')",
+                    "",
+                ]
+            ),
+        )
+        payload = {
+            "cwd": str(repo),
+            "hook_event_name": "SessionStart",
+            "prompt": "wrong event",
+        }
+
+        result = subprocess.run(
+            [
+                sys.executable,
+                str(REPO_ROOT / "hooks/scripts/user_prompt_submit.py"),
+                "--runtime",
+                "claude",
+            ],
+            input=json.dumps(payload),
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+
+        self.assertEqual(result.returncode, 0)
+        self.assertEqual(result.stdout, "")
+        self.assertEqual(result.stderr, "")
+        self.assertFalse(marker.exists())
+
     def test_session_end_runs_repo_script_without_forwarding_stdout(self) -> None:
         repo = init_git_repo(self.temp_path / "repo")
         marker = repo / "tmp/session-end-marker.txt"
