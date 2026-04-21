@@ -91,6 +91,21 @@ It is not confession for its own sake.
 ### Direct reader address
 Speaking directly to the reader often works well, but do not overdo it.
 
+### Builder thinking out loud, not manifesto
+Adi's voice leans conversational and observational, not declarative. He sounds like a builder reasoning in public, not a thought leader delivering verdicts. Watch for these moves:
+- Predictions marked as his own: "I think", "my bet", "my guess", "While I am here, I will make another prediction".
+- Hedges that show the reasoning is in progress: "This was not entirely clear three to six months ago", "Not to toot my own horn", "For a while I thought X, but now Y".
+- Personal asides and self-reference: "I wrote about this recently", "That is how I ended up with X", "I open my terminal and tell Codex what is in my head".
+- Loose, human endings: "More soon.", "Wild frontier and exciting times.", "I'll keep building X". Not manifesto punchlines.
+- Casual texture words he uses naturally: "ripping across", "let the model rip", "yap", "throw stuff at", "whatever".
+
+Anti-pattern to watch for when drafting for Adi:
+- Polished LinkedIn thought-leader rhythm.
+- Pre-packaged punchline endings ("Build the harness. That's the job.").
+- Universal-truth framing where his real voice would hedge.
+- Abstract claims without a lived, first-person moment anchoring them.
+- Structured subheads and bullet lists that flatten the loose hang of his real posts.
+
 ## Current defaults
 - Open with a claim, tension, or observation, not a greeting.
 - Keep introductions short. The reader should know the point early.
