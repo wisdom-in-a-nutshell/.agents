@@ -4,19 +4,14 @@ The skill-bundled scripts are the preferred path. They are agent-first: JSON env
 
 ## Boot
 
-Pull full context at session start.
-
-```bash
-/Users/adi/.agents/skills-source/owned/dobby/scripts/dobby-memory boot
-```
-Returns: `profile.md` + `now.md` + `becoming.md` content + lazy area manifest (file names, sizes, mtimes — not content).
-
-JSON is the default output contract. Add `--plain` for markdown inspection.
+Boot context is delivered by the repo's `SessionStart` hook
+(`scripts/hooks/session_start.py`). This CLI no longer exposes a `boot`
+subcommand. Adi's durable identity lives in `soul.md` under `## About Adi`
+and arrives via the wrapper-composed system prompt.
 
 ## Read a specific file
 
 ```bash
-/Users/adi/.agents/skills-source/owned/dobby/scripts/dobby-memory read --section profile
 /Users/adi/.agents/skills-source/owned/dobby/scripts/dobby-memory read --section now
 /Users/adi/.agents/skills-source/owned/dobby/scripts/dobby-memory read --section becoming
 /Users/adi/.agents/skills-source/owned/dobby/scripts/dobby-memory read --section area.<name>              # concatenates all .md in that area
@@ -27,7 +22,7 @@ Add `--plain` when you want raw markdown content on stdout.
 
 Fallback (when you only need one file and don't want CLI overhead):
 ```
-Read memory/profile.md
+Read memory/now.md
 ```
 
 ## Append to a file (CLI-preferred)
@@ -43,7 +38,7 @@ The CLI does NOT create files. The target must already exist. Content must arriv
 
 ## Mid-file section rewrite (Edit tool only)
 
-The CLI only appends. For replacing a section in `profile.md`, `now.md`, or an area main file, use `Edit`:
+The CLI only appends. For replacing a section in `now.md`, an area main file, or `## About Adi` in `soul.md`, use `Edit`:
 
 ```
 Edit memory/now.md
@@ -146,7 +141,7 @@ Wraps `git log -p memory/` with date filtering.
 
 Every CLI command defaults to a stable JSON envelope and also accepts explicit `--json`:
 ```bash
-/Users/adi/.agents/skills-source/owned/dobby/scripts/dobby-memory boot
+/Users/adi/.agents/skills-source/owned/dobby/scripts/dobby-memory read --section now
 /Users/adi/.agents/skills-source/owned/dobby/scripts/dobby-tasks snapshot
 /Users/adi/.agents/skills-source/owned/dobby/scripts/dobby-tasks today
 /Users/adi/.agents/skills-source/owned/dobby/scripts/dobby-tasks doctor
@@ -165,11 +160,9 @@ Secrets are never accepted via flags. Things URL auth uses the workspace `.env` 
 
 ## Typical session-start pattern
 
-```bash
-/Users/adi/.agents/skills-source/owned/dobby/scripts/dobby-memory boot                     # full context
-/Users/adi/.agents/skills-source/owned/dobby/scripts/dobby-tasks snapshot                 # today + overdue + inbox
-# then respond with counts surfaced: "Today N, overdue M, inbox K (notes)"
-```
+Boot context is delivered automatically by `scripts/hooks/session_start.py`.
+You do not need to invoke anything manually. Surface the overdue / today /
+inbox counts from the hook's `# tasks` section in your first response.
 
 ## Permissions reminder
 

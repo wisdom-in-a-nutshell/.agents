@@ -10,13 +10,13 @@ source "$(dirname "$0")/../lib/assert.sh"
 FAIL_COUNT=0
 
 section "schema_version stability across commands"
-for cmd in "memory boot" "memory read --section profile" "memory diff" "tasks doctor" "calendar doctor"; do
+for cmd in "memory read --section now" "memory diff" "tasks doctor" "calendar doctor"; do
     run_dobby $cmd
     assert_jq_eq "$cmd: schema_version=1.0" '.schema_version' "1.0" "$CAPTURED_STDOUT"
 done
 
 section "meta fields present on success"
-run_dobby memory boot --json
+run_dobby memory read --section now --json
 assert_jq_truthy "request_id is 32 hex chars" \
     '(.meta.request_id | test("^[a-f0-9]{32}$"))' "$CAPTURED_STDOUT"
 assert_jq_truthy "duration_ms is a number >= 0" \
@@ -52,7 +52,7 @@ run_dobby tasks add ""
 assert_exit "tasks.add empty -> exit 2" 2 "$CAPTURED_EXIT"
 
 section "stdout is clean JSON by default (no prefix/suffix)"
-run_dobby memory boot
+run_dobby memory read --section now
 # First non-whitespace char of stdout should be '{'
 first_char=$(printf '%s' "$CAPTURED_STDOUT" | head -c 1)
 assert_eq "stdout starts with {" "{" "$first_char"
@@ -64,20 +64,20 @@ else
 fi
 
 section "--no-input is accepted and non-interactive"
-run_dobby memory boot --no-input
-assert_exit "memory boot --no-input exit 0" 0 "$CAPTURED_EXIT"
-assert_envelope_ok "memory.boot --no-input" "$CAPTURED_STDOUT"
+run_dobby memory read --section now --no-input
+assert_exit "memory read now --no-input exit 0" 0 "$CAPTURED_EXIT"
+assert_envelope_ok "memory.read --no-input" "$CAPTURED_STDOUT"
 run_dobby tasks doctor --no-input
 assert_envelope_shape "tasks.doctor --no-input" "$CAPTURED_STDOUT"
 run_dobby calendar doctor --no-input
 assert_envelope_shape "calendar.doctor --no-input" "$CAPTURED_STDOUT"
 
 section "stderr stays clean on success"
-run_dobby memory boot
-assert_eq "memory boot stderr empty" "" "$CAPTURED_STDERR"
-run_dobby memory boot --plain
-assert_eq "memory boot --plain stderr empty" "" "$CAPTURED_STDERR"
-run_dobby memory read --section profile
-assert_eq "memory read profile stderr empty" "" "$CAPTURED_STDERR"
+run_dobby memory read --section now
+assert_eq "memory read now stderr empty" "" "$CAPTURED_STDERR"
+run_dobby memory read --section now --plain
+assert_eq "memory read now --plain stderr empty" "" "$CAPTURED_STDERR"
+run_dobby memory read --section becoming
+assert_eq "memory read becoming stderr empty" "" "$CAPTURED_STDERR"
 
 finish_test "contract/envelope.sh"

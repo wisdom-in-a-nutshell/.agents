@@ -31,9 +31,7 @@ import subprocess
 import sys
 from datetime import datetime
 from pathlib import Path
-from typing import Any
-
-from lib.contract import Envelope, emit_json, emit_text, log_stderr
+from lib.contract import Envelope, emit_json, emit_text
 from lib.workspace import WorkspaceError, workspace_root
 
 _REPO_ROOT: Path | None = None
