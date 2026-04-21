@@ -317,6 +317,9 @@ class HooksControlPlaneTests(TempDirTestCase):
                     'print("runtime=" + os.environ["AGENT_HOOK_RUNTIME"])',
                     'print("cwd=" + os.getcwd())',
                     'print("event=" + payload["hook_event_name"])',
+                    'print("schema=" + payload["schema_version"])',
+                    'print("repo_root=" + payload["repo_root"])',
+                    'print("raw_cwd=" + payload["raw_payload"]["cwd"])',
                     "",
                 ]
             ),
@@ -353,6 +356,7 @@ class HooksControlPlaneTests(TempDirTestCase):
                 "hookSpecificOutput": {
                     "additionalContext": (
                         f"repo={expected_repo}\nruntime=codex\ncwd={expected_repo}\nevent=SessionStart\n"
+                        f"schema=1.0\nrepo_root={expected_repo}\nraw_cwd={nested}\n"
                     ),
                     "hookEventName": "SessionStart",
                 }
@@ -440,6 +444,9 @@ class HooksControlPlaneTests(TempDirTestCase):
                     'print("cwd=" + os.getcwd())',
                     'print("event=" + payload["hook_event_name"])',
                     'print("prompt=" + payload["prompt"])',
+                    'print("schema=" + payload["schema_version"])',
+                    'print("repo_root=" + payload["repo_root"])',
+                    'print("raw_turn=" + payload["raw_payload"]["turn_id"])',
                     "",
                 ]
             ),
@@ -477,6 +484,7 @@ class HooksControlPlaneTests(TempDirTestCase):
                 "hookSpecificOutput": {
                     "additionalContext": (
                         f"repo={expected_repo}\nruntime=claude\ncwd={expected_repo}\nevent=UserPromptSubmit\nprompt=ship it\n"
+                        f"schema=1.0\nrepo_root={expected_repo}\nraw_turn=turn\n"
                     ),
                     "hookEventName": "UserPromptSubmit",
                 }
@@ -499,7 +507,10 @@ class HooksControlPlaneTests(TempDirTestCase):
                     "payload = json.load(sys.stdin)",
                     "pathlib.Path('tmp/session-end-marker.txt').write_text(",
                     "    'runtime=' + os.environ['AGENT_HOOK_RUNTIME'] + '\\n'",
-                    "    + 'event=' + payload['hook_event_name'] + '\\n',",
+                    "    + 'event=' + payload['hook_event_name'] + '\\n'",
+                    "    + 'schema=' + payload['schema_version'] + '\\n'",
+                    "    + 'repo_root=' + payload['repo_root'] + '\\n'",
+                    "    + 'transcript_format=' + str(payload['transcript_format']) + '\\n',",
                     "    encoding='utf-8',",
                     ")",
                     "print('debug only')",
@@ -533,7 +544,10 @@ class HooksControlPlaneTests(TempDirTestCase):
         self.assertEqual(result.returncode, 0)
         self.assertEqual(result.stdout, "")
         self.assertEqual(result.stderr, "")
-        self.assertEqual(marker.read_text(encoding="utf-8"), "runtime=claude\nevent=SessionEnd\n")
+        self.assertEqual(
+            marker.read_text(encoding="utf-8"),
+            f"runtime=claude\nevent=SessionEnd\nschema=1.0\nrepo_root={repo.resolve()}\ntranscript_format=None\n",
+        )
 
     def test_codex_sync_config_renders_plan_mode_and_global_hooks(self) -> None:
         root = make_control_plane_root(self.temp_path)

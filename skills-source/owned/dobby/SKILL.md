@@ -15,9 +15,8 @@ Soul lives in `/soul.md` (Dobby's character). Operations live here.
 
 Boot context is delivered by the repo's `SessionStart` hook
 (`scripts/hooks/session_start.py`), not by this skill. The hook reads
-`now.md`, walks `memory/areas/`, and calls
-`scripts/dobby-tasks snapshot --minimal --limit 10` +
-`scripts/dobby-calendar upcoming` in parallel. Adi's durable identity
+`now.md`, walks `memory/areas/`, and calls `scripts/dobby-tasks snapshot`
+and `scripts/dobby-calendar upcoming` in parallel. Adi's durable identity
 is part of `soul.md` under `## About Adi` and arrives via the
 wrapper-composed system prompt.
 
@@ -84,7 +83,7 @@ For user-intent-to-action mappings, see `references/scenarios.md`.
 Tasks always go through the CLI. There is no file-based alternative.
 
 - Add: `scripts/dobby-tasks add "..." --when today|tomorrow|"next monday" --area <Area> --checklist "a,b,c"`
-- Boot snapshot: `scripts/dobby-tasks snapshot --minimal --limit 10`
+- Boot snapshot: `scripts/dobby-tasks snapshot`
 - List: `scripts/dobby-tasks today | inbox | overdue`
 - Search: `scripts/dobby-tasks search "..."` (fast summary by default; add `--verbose` only when full fields are needed)
 - Complete: `scripts/dobby-tasks done <id-prefix>`

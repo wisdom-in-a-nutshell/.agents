@@ -10,6 +10,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+from hook_adapter import normalize_hook_payload
+
 
 VALID_RUNTIMES = {"claude", "copilot"}
 HOOK_EVENT = "SessionEnd"
@@ -92,7 +94,8 @@ def repo_root(cwd: str) -> Path | None:
 
 def run_repo_session_end(
     root: Path,
-    raw_payload: str,
+    payload: dict[str, Any] | None,
+    cwd: str,
     *,
     runtime: str,
     debug: bool,
@@ -107,14 +110,22 @@ def run_repo_session_end(
             "AGENT_HOOK_EVENT": HOOK_EVENT,
             "AGENT_HOOK_RUNTIME": runtime,
             "AGENT_REPO_ROOT": str(root),
+            "AGENT_HOOK_SCHEMA_VERSION": "1.0",
         }
+    )
+    repo_payload = normalize_hook_payload(
+        payload,
+        event=HOOK_EVENT,
+        runtime=runtime,
+        cwd=cwd,
+        repo_root=root,
     )
     try:
         result = subprocess.run(
             [sys.executable, str(script)],
             cwd=str(root),
             env=env,
-            input=raw_payload,
+            input=json.dumps(repo_payload, sort_keys=True),
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             text=True,
@@ -135,14 +146,20 @@ def run_repo_session_end(
 
 def main() -> int:
     args = parse_args()
-    payload, raw_payload = read_payload(args.debug)
+    payload, _raw_payload = read_payload(args.debug)
     if (payload or {}).get("hook_event_name") not in {None, HOOK_EVENT}:
         return 0
     cwd = str((payload or {}).get("cwd") or os.getcwd())
     root = repo_root(cwd)
     if root is None:
         return 0
-    return run_repo_session_end(root, raw_payload, runtime=args.runtime, debug=args.debug)
+    return run_repo_session_end(
+        root,
+        payload,
+        cwd,
+        runtime=args.runtime,
+        debug=args.debug,
+    )
 
 
 if __name__ == "__main__":

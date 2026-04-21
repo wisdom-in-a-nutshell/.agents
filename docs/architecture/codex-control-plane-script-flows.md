@@ -171,16 +171,18 @@ flowchart TD
   - runs as the shared Codex, Claude, and GitHub Copilot `SessionStart` hook
   - resolves the current git root from the hook payload `cwd`
   - runs repo-owned `scripts/hooks/session_start.py` when present
-  - passes the original hook JSON to the repo Python hook on stdin
-  - sets `AGENT_HOOK_EVENT`, `AGENT_HOOK_RUNTIME`, and `AGENT_REPO_ROOT`
+  - passes a normalized JSON adapter payload to the repo Python hook on stdin; the original runtime payload is kept under `raw_payload`
+  - sets `AGENT_HOOK_EVENT`, `AGENT_HOOK_RUNTIME`, `AGENT_REPO_ROOT`, and `AGENT_HOOK_SCHEMA_VERSION`
   - forwards repo script stdout as startup context for runtimes that process it, capped at a rough `30000` token budget (`120000` characters); Copilot currently ignores `sessionStart` output
 - [`user_prompt_submit.py`](/Users/dobby/.agents/hooks/scripts/user_prompt_submit.py)
   - runs as the shared Codex, Claude, and GitHub Copilot prompt-submit hook
   - runs repo-owned `scripts/hooks/user_prompt_submit.py` when present
+  - passes the same normalized JSON adapter payload shape, with `hook_event_name=UserPromptSubmit`
   - forwards repo script stdout as additional prompt context for runtimes that process it, capped at a rough `30000` token budget (`120000` characters); Copilot currently ignores `userPromptSubmitted` output
 - [`session_end.py`](/Users/dobby/.agents/hooks/scripts/session_end.py)
   - runs as the shared Claude and GitHub Copilot `SessionEnd` hook
   - runs repo-owned `scripts/hooks/session_end.py` when present
+  - passes the same normalized JSON adapter payload shape, with `hook_event_name=SessionEnd`
   - logs repo script stdout instead of injecting context because the session is ending
 - `scripts/hooks/session_start.py`
   - optional repo-owned startup context command
