@@ -124,6 +124,17 @@ def add_subparsers(parent: argparse.ArgumentParser) -> None:
         p.set_defaults(handler=lambda a, _n=name: cmd_list(a, _n))
 
     p = sub.add_parser("snapshot", help="One-call boot snapshot: today + overdue + inbox")
+    p.add_argument(
+        "--minimal",
+        action="store_true",
+        help="Return only exact counts plus lightweight task titles (intended for session boot hooks)",
+    )
+    p.add_argument(
+        "--limit",
+        type=int,
+        default=0,
+        help="Max tasks returned per view; counts remain exact. 0 means no limit (default)",
+    )
     _read_fmt(p)
     p.set_defaults(handler=cmd_snapshot)
 
@@ -513,12 +524,65 @@ JSON.stringify(overdue);
 """
 
 
-def _jxa_snapshot(today_iso: str, *, verbose: bool = False) -> str:
+def _jxa_snapshot(today_iso: str, *, verbose: bool = False, minimal: bool = False, limit: int = 0) -> str:
+    if minimal:
+        return f"""
+const things = Application("Things3");
+const today = {json.dumps(today_iso)};
+const limit = {int(limit)};
+
+function shouldCollect(out) {{
+  return limit === 0 || out.length < limit;
+}}
+
+function openList(name) {{
+  const todos = things.lists.byName(name).toDos();
+  const out = [];
+  let count = 0;
+  for (const t of todos) {{
+    if (t.status() !== "open") continue;
+    count += 1;
+    if (shouldCollect(out)) out.push({{name: t.name()}});
+  }}
+  return {{count: count, tasks: out}};
+}}
+
+function overdueList() {{
+  const todos = things.toDos();
+  const out = [];
+  let count = 0;
+  for (const t of todos) {{
+    if (t.status() !== "open") continue;
+    let due = null;
+    try {{
+      const d = t.dueDate();
+      due = d ? d.toISOString() : null;
+    }} catch(e) {{}}
+    if (due && due.slice(0, 10) < today) {{
+      count += 1;
+      if (shouldCollect(out)) out.push({{name: t.name(), dueDate: due}});
+    }}
+  }}
+  return {{count: count, tasks: out}};
+}}
+
+JSON.stringify({{
+  today: openList("Today"),
+  overdue: overdueList(),
+  inbox: openList("Inbox")
+}});
+"""
+
     fields = _task_fields(verbose)
     overdue_fields = _task_fields(verbose, dated=True)
     return f"""
 const things = Application("Things3");
 const today = {json.dumps(today_iso)};
+const limit = {int(limit)};
+
+function shouldCollect(out) {{
+  return limit === 0 || out.length < limit;
+}}
 
 function taskObject(t) {{
   return {{ {fields} }};
@@ -527,15 +591,19 @@ function taskObject(t) {{
 function openList(name) {{
   const todos = things.lists.byName(name).toDos();
   const out = [];
+  let count = 0;
   for (const t of todos) {{
-    if (t.status() === "open") out.push(taskObject(t));
+    if (t.status() !== "open") continue;
+    count += 1;
+    if (shouldCollect(out)) out.push(taskObject(t));
   }}
-  return out;
+  return {{count: count, tasks: out}};
 }}
 
 function overdueList() {{
   const todos = things.toDos();
   const out = [];
+  let count = 0;
   for (const t of todos) {{
     if (t.status() !== "open") continue;
     let due = null;
@@ -543,18 +611,18 @@ function overdueList() {{
       const d = t.dueDate();
       due = d ? d.toISOString() : null;
     }} catch(e) {{}}
-    if (due && due.slice(0, 10) < today) out.push({{ {overdue_fields} }});
+    if (due && due.slice(0, 10) < today) {{
+      count += 1;
+      if (shouldCollect(out)) out.push({{ {overdue_fields} }});
+    }}
   }}
-  return out;
+  return {{count: count, tasks: out}};
 }}
 
-const todayItems = openList("Today");
-const inboxItems = openList("Inbox");
-const overdueItems = overdueList();
 JSON.stringify({{
-  today: {{count: todayItems.length, tasks: todayItems}},
-  overdue: {{count: overdueItems.length, tasks: overdueItems}},
-  inbox: {{count: inboxItems.length, tasks: inboxItems}}
+  today: openList("Today"),
+  overdue: overdueList(),
+  inbox: openList("Inbox")
 }});
 """
 
@@ -683,11 +751,23 @@ def cmd_list(args: argparse.Namespace, name: str) -> int:
 
 def cmd_snapshot(args: argparse.Namespace) -> int:
     env = Envelope("tasks.snapshot")
+    if args.limit < 0:
+        return emit_json(env.err("E_VALIDATION", "--limit must be >= 0"))
     try:
-        snapshot = run_jxa(_jxa_snapshot(date.today().isoformat(), verbose=args.verbose))
+        snapshot = run_jxa(_jxa_snapshot(
+            date.today().isoformat(),
+            verbose=args.verbose,
+            minimal=args.minimal,
+            limit=args.limit,
+        ))
     except Things3Error as e:
         return emit_json(env.err(_err_code(e), str(e)))
-    payload = {"views": snapshot, "verbose": args.verbose}
+    payload = {
+        "views": snapshot,
+        "verbose": args.verbose,
+        "minimal": args.minimal,
+        "limit": args.limit,
+    }
     if not args.plain:
         return emit_json(env.ok(payload))
     return emit_text(_snapshot_text(snapshot))
