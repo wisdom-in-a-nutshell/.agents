@@ -44,13 +44,17 @@ class HooksControlPlaneTests(TempDirTestCase):
         codex_hooks = render_codex_hooks(registry)
         self.assertEqual(
             set(codex_hooks["hooks"].keys()),
-            {"SessionStart", "Stop"},
+            {"SessionStart", "UserPromptSubmit", "Stop"},
         )
         self.assertEqual(
             codex_hooks["hooks"]["SessionStart"][0]["matcher"],
             "startup|resume|clear",
         )
         self.assertNotIn("matcher", codex_hooks["hooks"]["Stop"][0])
+        self.assertEqual(
+            codex_hooks["hooks"]["UserPromptSubmit"][0]["hooks"][0]["command"],
+            "python3 ~/.agents/hooks/scripts/user_prompt_submit.py --runtime codex",
+        )
         self.assertEqual(
             codex_hooks["hooks"]["Stop"][0]["hooks"][0]["command"],
             "python3 ~/.agents/hooks/scripts/stop.py --runtime codex",
@@ -66,8 +70,20 @@ class HooksControlPlaneTests(TempDirTestCase):
             "startup|resume|clear|compact",
         )
         self.assertEqual(
+            claude_settings["hooks"]["UserPromptSubmit"][0]["hooks"][0]["command"],
+            "python3 ~/.agents/hooks/scripts/user_prompt_submit.py --runtime claude",
+        )
+        self.assertEqual(
             claude_settings["hooks"]["Stop"][0]["hooks"][0]["command"],
             "python3 ~/.agents/hooks/scripts/stop.py --runtime claude",
+        )
+        self.assertEqual(
+            claude_settings["hooks"]["SessionEnd"][0]["matcher"],
+            "clear|resume|logout|prompt_input_exit|bypass_permissions_disabled|other",
+        )
+        self.assertEqual(
+            claude_settings["hooks"]["SessionEnd"][0]["hooks"][0]["command"],
+            "python3 ~/.agents/hooks/scripts/session_end.py --runtime claude",
         )
 
     def test_registry_rejects_unsupported_runtime(self) -> None:
@@ -93,14 +109,41 @@ class HooksControlPlaneTests(TempDirTestCase):
         with self.assertRaises(HookRegistryError):
             load_hooks_registry(registry_path)
 
+    def test_registry_rejects_event_on_unsupported_runtime(self) -> None:
+        registry_path = self.temp_path / "hooks/registry.json"
+        write_json(
+            registry_path,
+            {
+                "managed_hooks": [
+                    {
+                        "command": "python3 hook.py --runtime {runtime}",
+                        "enabled": True,
+                        "event": "SessionEnd",
+                        "id": "bad-event-runtime",
+                        "runtimes": ["codex"],
+                        "scope": "global",
+                        "timeout": 5,
+                    }
+                ],
+                "version": 1,
+            },
+        )
+
+        with self.assertRaises(HookRegistryError):
+            load_hooks_registry(registry_path)
+
     def test_hook_runners_are_silent_on_success(self) -> None:
         script_by_event = {
             "SessionStart": REPO_ROOT / "hooks/scripts/session_start.py",
+            "UserPromptSubmit": REPO_ROOT / "hooks/scripts/user_prompt_submit.py",
             "Stop": REPO_ROOT / "hooks/scripts/stop.py",
+            "SessionEnd": REPO_ROOT / "hooks/scripts/session_end.py",
         }
         home = self.temp_path / "home"
         for runtime in ("codex", "claude"):
-            for event in ("SessionStart", "Stop"):
+            for event in ("SessionStart", "UserPromptSubmit", "Stop", "SessionEnd"):
+                if event == "SessionEnd" and runtime != "claude":
+                    continue
                 payload = {
                     "cwd": str(self.temp_path),
                     "hook_event_name": event,
@@ -213,6 +256,118 @@ class HooksControlPlaneTests(TempDirTestCase):
         self.assertEqual(result.returncode, 0)
         self.assertEqual(result.stdout, "")
         self.assertEqual(result.stderr, "")
+
+    def test_user_prompt_submit_runs_repo_script_from_git_root(self) -> None:
+        repo = init_git_repo(self.temp_path / "repo")
+        nested = repo / "nested"
+        nested.mkdir()
+        write_executable(
+            repo / "scripts/hooks/user-prompt-submit.sh",
+            "\n".join(
+                [
+                    "#!/usr/bin/env bash",
+                    "set -euo pipefail",
+                    (
+                        "python3 -c 'import json, os, sys; "
+                        "payload = json.load(sys.stdin); "
+                        'print("repo=" + os.environ["AGENT_REPO_ROOT"]); '
+                        'print("runtime=" + os.environ["AGENT_HOOK_RUNTIME"]); '
+                        'print("cwd=" + os.getcwd()); '
+                        'print("event=" + payload["hook_event_name"]); '
+                        'print("prompt=" + payload["prompt"])'
+                        "'"
+                    ),
+                    "",
+                ]
+            ),
+        )
+        payload = {
+            "cwd": str(nested),
+            "hook_event_name": "UserPromptSubmit",
+            "model": "gpt-5.4",
+            "prompt": "ship it",
+            "session_id": "session",
+            "transcript_path": None,
+            "turn_id": "turn",
+        }
+
+        result = subprocess.run(
+            [
+                sys.executable,
+                str(REPO_ROOT / "hooks/scripts/user_prompt_submit.py"),
+                "--runtime",
+                "claude",
+            ],
+            input=json.dumps(payload),
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+
+        self.assertEqual(result.returncode, 0)
+        self.assertEqual(result.stderr, "")
+        expected_repo = repo.resolve()
+        output = json.loads(result.stdout)
+        self.assertEqual(
+            output,
+            {
+                "hookSpecificOutput": {
+                    "additionalContext": (
+                        f"repo={expected_repo}\nruntime=claude\ncwd={expected_repo}\nevent=UserPromptSubmit\nprompt=ship it\n"
+                    ),
+                    "hookEventName": "UserPromptSubmit",
+                }
+            },
+        )
+
+    def test_session_end_runs_repo_script_without_forwarding_stdout(self) -> None:
+        repo = init_git_repo(self.temp_path / "repo")
+        marker = repo / "tmp/session-end-marker.txt"
+        write_executable(
+            repo / "scripts/hooks/session-end.sh",
+            "\n".join(
+                [
+                    "#!/usr/bin/env bash",
+                    "set -euo pipefail",
+                    "mkdir -p tmp",
+                    "python3 -c 'import json, os, pathlib, sys; "
+                    "payload = json.load(sys.stdin); "
+                    'pathlib.Path("tmp/session-end-marker.txt").write_text('
+                    '"runtime=" + os.environ["AGENT_HOOK_RUNTIME"] + "\\n" + '
+                    '"event=" + payload["hook_event_name"] + "\\n", encoding="utf-8"); '
+                    'print("debug only")'
+                    "'",
+                    "",
+                ]
+            ),
+        )
+        payload = {
+            "cwd": str(repo),
+            "hook_event_name": "SessionEnd",
+            "model": "claude-sonnet-4.5",
+            "reason": "other",
+            "session_id": "session",
+            "transcript_path": None,
+        }
+
+        result = subprocess.run(
+            [
+                sys.executable,
+                str(REPO_ROOT / "hooks/scripts/session_end.py"),
+                "--runtime",
+                "claude",
+            ],
+            input=json.dumps(payload),
+            env={**os.environ, "HOME": str(self.temp_path / "home")},
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+
+        self.assertEqual(result.returncode, 0)
+        self.assertEqual(result.stdout, "")
+        self.assertEqual(result.stderr, "")
+        self.assertEqual(marker.read_text(encoding="utf-8"), "runtime=claude\nevent=SessionEnd\n")
 
     def test_codex_sync_config_renders_plan_mode_and_global_hooks(self) -> None:
         root = make_control_plane_root(self.temp_path)

@@ -8,8 +8,11 @@ Hooks will become a common agent-native feedback loop across repositories. A sha
 
 ## Scope / Non-Goals
 ### In Scope
-- Global `SessionStart` and `Stop` hooks for Codex and Claude.
+- Global `SessionStart`, `UserPromptSubmit`, and `Stop` hooks for Codex and Claude.
+- Claude-only global `SessionEnd` hook.
 - A shared `SessionStart` hook runner that stays silent unless the current repo defines `scripts/hooks/session-start.sh`.
+- A shared `UserPromptSubmit` hook runner that stays silent unless the current repo defines `scripts/hooks/user-prompt-submit.sh`.
+- A shared Claude `SessionEnd` hook runner that stays silent unless the current repo defines `scripts/hooks/session-end.sh`.
 - Shared `Stop` hook git finalization that stages, commits, reports repo-owned fast-check failures to the current agent, rebases, and pushes.
 - Optional repo-owned `SessionStart` startup context through `scripts/hooks/session-start.sh`.
 - Shared local Git commit-time hook for managed repos.
@@ -18,7 +21,7 @@ Hooks will become a common agent-native feedback loop across repositories. A sha
 
 ### Out of Scope
 - Repo-local hook rendering.
-- Claude-only `SessionEnd`.
+- Copilot hook rendering.
 
 ## Context / Constraints
 - Date started: 2026-04-20
@@ -36,6 +39,8 @@ Hooks will become a common agent-native feedback loop across repositories. A sha
 - [x] Control-plane checks and tests pass after notify removal.
 - [x] Managed repos use shared local Git `core.hooksPath`.
 - [x] Repo-owned `scripts/hooks/session-start.sh` runs from the shared `SessionStart` dispatcher when present.
+- [x] Repo-owned `scripts/hooks/user-prompt-submit.sh` runs from the shared `UserPromptSubmit` dispatcher when present.
+- [x] Repo-owned `scripts/hooks/session-end.sh` runs from the shared Claude-only `SessionEnd` dispatcher when present.
 
 ## Milestones
 - [x] Milestone 1 — V1 shared hooks. Acceptance: Codex and Claude render global `SessionStart` and `Stop` from one registry. Validate: `./scripts/test-control-plane.sh`.
@@ -46,6 +51,8 @@ Hooks will become a common agent-native feedback loop across repositories. A sha
 ## Execution Rules
 - Keep `SessionStart` behavior no-op and successful when no repo script exists.
 - Keep `SessionStart` stdout empty when no repo script exists; when a repo script exists, stdout is intentional startup context.
+- Keep `UserPromptSubmit` behavior no-op and successful when no repo script exists; when a repo script exists, stdout is intentional prompt context.
+- Keep `SessionEnd` Claude-only until Codex exposes a documented equivalent.
 - Only write runtime hook protocol JSON when `Stop` needs to continue/block.
 - Keep runtime config native to each client; the shared layer owns intent, not runtime schema replacement.
 - Update this tracker when scope or hook behavior changes materially.
@@ -59,6 +66,8 @@ Hooks will become a common agent-native feedback loop across repositories. A sha
 - Drop audible completion notification from the post-turn path.
 - Keep local Git hook config machine-local through `core.hooksPath`; do not change GitHub Actions workflows for this.
 - Use `scripts/hooks/session-start.sh` as the repo-owned startup context convention. The shared dispatcher owns discovery and forwarding only.
+- Use `scripts/hooks/user-prompt-submit.sh` as the repo-owned prompt context convention.
+- Use `scripts/hooks/session-end.sh` as the repo-owned Claude session cleanup convention. The shared dispatcher logs stdout instead of injecting context because the session is ending.
 
 ## Open Questions / Blockers
 - None.
@@ -70,7 +79,8 @@ Hooks will become a common agent-native feedback loop across repositories. A sha
 
 ## Backlog / Remaining Work
 - [x] Add optional repo-local `SessionStart` context injection.
-- [ ] Decide whether Claude-only `SessionEnd` belongs in a runtime-specific extension layer.
+- [x] Add optional repo-local `UserPromptSubmit` context injection.
+- [x] Add optional repo-local Claude-only `SessionEnd` cleanup.
 - [ ] Archive or refresh this tracker after the v1 validation result is recorded.
 
 ## Validation / Test Plan
@@ -85,3 +95,4 @@ Hooks will become a common agent-native feedback loop across repositories. A sha
 - 2026-04-20: [DONE] Removed legacy Codex post-turn scripts/config and moved the git conveyor into the shared `Stop` hook; validation passed with `./scripts/test-control-plane.sh` and `./scripts/check-agent-control-planes.sh`.
 - 2026-04-20: [DONE] Consolidated managed repo local commit-time entrypoints through shared `core.hooksPath`; validation passed with `./scripts/sync-managed-git-hooks.sh --check` and `./scripts/check-agent-control-planes.sh`.
 - 2026-04-20: [DONE] Added repo-owned `SessionStart` dispatch through `scripts/hooks/session-start.sh`; Adi now delegates startup context to `dobby-memory boot`.
+- 2026-04-21: [DONE] Added shared `UserPromptSubmit` dispatch for Codex and Claude plus Claude-only `SessionEnd` dispatch; focused hook tests passed with `python3 -m unittest tests.control_plane.test_hooks_control_plane`.

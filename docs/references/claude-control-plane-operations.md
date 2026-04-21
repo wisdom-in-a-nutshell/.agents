@@ -102,7 +102,7 @@ The Claude control plane follows the same sync/check pattern as Codex, with scri
 ## Current Global Settings Baseline
 
 - `claude/config/settings.json` is the source of truth for `~/.claude/settings.json`.
-- `hooks/registry.json` is the source of truth for managed global `SessionStart` and `Stop` hook entries inside `~/.claude/settings.json`.
+- `hooks/registry.json` is the source of truth for managed global `SessionStart`, `UserPromptSubmit`, `Stop`, and Claude-only `SessionEnd` hook entries inside `~/.claude/settings.json`.
 - The canonical global baseline is provider-neutral by default.
 - Provider-specific opt-ins such as AWS Bedrock should live in explicit shell wrappers, not in the machine-wide Claude settings baseline.
 

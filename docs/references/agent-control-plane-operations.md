@@ -108,11 +108,37 @@ Preferred rule for repo bootstrap or MCP changes:
 - The repo script's stdout is forwarded as startup context for the agent. Keep it concise, deterministic, and non-interactive.
 - If the repo has no `scripts/hooks/session-start.sh`, the hook exits silently and successfully.
 
+## Agent Prompt Submit Contract
+
+- The global lifecycle `UserPromptSubmit` hook is defined once in [`hooks/registry.json`](/Users/dobby/.agents/hooks/registry.json) and rendered into both Codex and Claude runtime config.
+- The `UserPromptSubmit` hook runs [`hooks/scripts/user_prompt_submit.py`](/Users/dobby/.agents/hooks/scripts/user_prompt_submit.py).
+- `user_prompt_submit.py` resolves the current git root from the hook payload `cwd`.
+- If the repo contains `scripts/hooks/user-prompt-submit.sh`, the dispatcher runs that script from the repo root.
+- The repo script receives the original hook JSON on stdin and these environment variables:
+  - `AGENT_HOOK_EVENT=UserPromptSubmit`
+  - `AGENT_HOOK_RUNTIME=codex` or `claude`
+  - `AGENT_REPO_ROOT=<repo root>`
+- The repo script's stdout is forwarded as additional prompt context. Keep it concise, deterministic, and non-interactive.
+- If the repo has no `scripts/hooks/user-prompt-submit.sh`, the hook exits silently and successfully.
+
 ## Agent Commit Gate Contract
 
-- The global lifecycle `Stop` hook is defined once in [`hooks/registry.json`](/Users/dobby/.agents/hooks/registry.json) and rendered into both Codex and Claude runtime config.
+- The global lifecycle `Stop` hook is defined once in [`hooks/registry.json`](/Users/dobby/.agents/hooks/registry.json) and rendered into both Codex and Claude runtime config. In this repo, `Stop` is the official runtime event for turn-stop behavior.
 - The `Stop` hook runs [`hooks/scripts/stop.py`](/Users/dobby/.agents/hooks/scripts/stop.py), stages changes, and runs `git commit`.
 - Git invokes the shared local hook from [`hooks/git/pre-commit`](/Users/dobby/.agents/hooks/git/pre-commit) because managed repos have local `core.hooksPath` set to `~/.agents/hooks/git`.
 - The shared Git hook delegates to repo-owned `scripts/check-fast.sh` when present.
 - Treat `scripts/check-fast.sh` as the repo's fast deterministic commit gate for agent-made changes, not as a general after-turn lifecycle hook.
 - Put slow or broad validation in `scripts/check-full.sh` or another explicit command.
+
+## Agent Session End Contract
+
+- The global lifecycle `SessionEnd` hook is defined once in [`hooks/registry.json`](/Users/dobby/.agents/hooks/registry.json) and currently renders only into Claude runtime config.
+- Codex does not currently expose a separate documented `SessionEnd` hook; do not render a fake Codex equivalent.
+- The `SessionEnd` hook runs [`hooks/scripts/session_end.py`](/Users/dobby/.agents/hooks/scripts/session_end.py).
+- If the repo contains `scripts/hooks/session-end.sh`, the dispatcher runs that script from the repo root.
+- The repo script receives the original hook JSON on stdin and these environment variables:
+  - `AGENT_HOOK_EVENT=SessionEnd`
+  - `AGENT_HOOK_RUNTIME=claude`
+  - `AGENT_REPO_ROOT=<repo root>`
+- The repo script's stdout is logged under machine-local agent state instead of injected into context because the session is ending.
+- If the repo has no `scripts/hooks/session-end.sh`, the hook exits silently and successfully.

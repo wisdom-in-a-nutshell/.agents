@@ -92,7 +92,7 @@ Use [Codex Control Plane Ownership](/Users/dobby/.agents/docs/references/codex-c
   - expected target: `~/GitHub/scripts/setup/codex/zprofile.shared`
 - Ghostty points at the canonical Codex startup wrapper:
   - `initial-command = direct:$HOME/.agents/codex/scripts/ghostty-codex-then-shell.sh`
-- `~/.codex/config.toml` does not use Codex `notify`; post-turn automation is rendered into `~/.codex/hooks.json` from `hooks/registry.json`.
+- `~/.codex/config.toml` does not use Codex `notify`; hook automation is rendered into `~/.codex/hooks.json` from `hooks/registry.json`.
 - The shared `Stop` hook owns the machine-wide git conveyor:
   - stages all changes with `git add -A`
   - commits so each repo's own `scripts/check-fast.sh` checks decide whether the change is acceptable
@@ -102,7 +102,7 @@ Use [Codex Control Plane Ownership](/Users/dobby/.agents/docs/references/codex-c
   - brand-new branches without upstream tracking use an initial `git push -u <remote> HEAD`, so the hook can publish the branch before future tracked-branch pulls
 - `~/.codex/config.toml` and Xcode Codex config contain exact trusted repo entries for local repos such as `focus`
 - `~/.codex/config.toml` enables Codex hooks through `[features].codex_hooks = true`
-- `~/.codex/hooks.json` is rendered from `hooks/registry.json`
+- `~/.codex/hooks.json` is rendered from `hooks/registry.json` and currently includes shared `SessionStart`, `UserPromptSubmit`, and `Stop` hooks. Codex does not currently expose a separate documented `SessionEnd` hook.
 - `~/.codex/config.toml` contains no Git conflict markers
 - `~/.codex/vendor_imports/skills` is a valid Git checkout:
   - `git -C ~/.codex/vendor_imports/skills rev-parse --show-toplevel`

@@ -13,7 +13,7 @@ The scripts are easier to understand if you split them into three groups:
 - apply scripts that write config and trust state
 - post-sync reconcile scripts that auto-apply new control-plane revisions
 - startup scripts that shape the terminal and Ghostty experience
-- post-turn scripts that run after Codex finishes a turn
+- shared hook scripts that run at session start, prompt submit, turn stop, and Claude session end
 
 ## Figure 1: Plugin Source And Apply Scripts
 
@@ -125,13 +125,13 @@ flowchart TD
 - [`link-shared-zprofile.sh`](/Users/dobby/GitHub/scripts/setup/codex/link-shared-zprofile.sh)
   - links `~/.zprofile` to the tracked shared login-shell file
 
-## Figure 4: Session Start Dispatch
+## Figure 4: Session And Prompt Dispatch
 
-One global `SessionStart` hook definition is rendered into both Codex and Claude. It stays generic: repo-specific startup context lives in an optional repo-owned script.
+One global hook registry renders the runtime hook files for both clients. The shared dispatchers stay generic: repo-specific context or cleanup lives in optional repo-owned scripts.
 
 ```mermaid
 flowchart TD
-    A[hooks/registry.json<br/>one global SessionStart definition] --> B[~/.codex/hooks.json]
+    A[hooks/registry.json<br/>shared hook definitions] --> B[~/.codex/hooks.json]
     A --> C[~/.claude/settings.json]
     B --> D[Codex session starts]
     C --> E[Claude session starts]
@@ -142,6 +142,20 @@ flowchart TD
     H -->|yes| I[run script from repo root]
     I --> J[forward stdout as startup context]
     H -->|no| K[silent success]
+    B --> L[Codex prompt submitted]
+    C --> M[Claude prompt submitted]
+    L --> N[hooks/scripts/user_prompt_submit.py]
+    M --> N
+    N --> O{scripts/hooks/user-prompt-submit.sh exists?}
+    O -->|yes| P[run script from repo root]
+    P --> Q[forward stdout as prompt context]
+    O -->|no| R[silent success]
+    C --> S[Claude session ends]
+    S --> T[hooks/scripts/session_end.py]
+    T --> U{scripts/hooks/session-end.sh exists?}
+    U -->|yes| V[run cleanup from repo root]
+    V --> W[log stdout; stderr stays visible]
+    U -->|no| X[silent success]
 ```
 
 ### What This Group Does
@@ -153,14 +167,29 @@ flowchart TD
   - passes the original hook JSON to the repo script on stdin
   - sets `AGENT_HOOK_EVENT`, `AGENT_HOOK_RUNTIME`, and `AGENT_REPO_ROOT`
   - forwards repo script stdout as startup context
+- [`user_prompt_submit.py`](/Users/dobby/.agents/hooks/scripts/user_prompt_submit.py)
+  - runs as the shared Codex and Claude `UserPromptSubmit` hook
+  - runs repo-owned `scripts/hooks/user-prompt-submit.sh` when present
+  - forwards repo script stdout as additional prompt context
+- [`session_end.py`](/Users/dobby/.agents/hooks/scripts/session_end.py)
+  - runs as the shared Claude-only `SessionEnd` hook
+  - runs repo-owned `scripts/hooks/session-end.sh` when present
+  - logs repo script stdout instead of injecting context because the session is ending
 - `scripts/hooks/session-start.sh`
   - optional repo-owned startup context command
   - should stay fast, deterministic, and non-interactive
   - should print only the context the agent should receive at session start
+- `scripts/hooks/user-prompt-submit.sh`
+  - optional repo-owned prompt context command
+  - should stay fast, deterministic, and non-interactive
+  - should print only context that should be added before processing that prompt
+- `scripts/hooks/session-end.sh`
+  - optional Claude-only cleanup command
+  - should stay fast and local because it runs while Claude exits the session
 
 ## Figure 5: Post-Turn Automation
 
-One global `Stop` hook definition is rendered into both Codex and Claude. The `Stop` hook owns turn finalization, while each repo owns its fast commit gate through `scripts/check-fast.sh`.
+One global `Stop` hook definition is rendered into both Codex and Claude. This is the shared turn-stop hook. It owns turn finalization, while each repo owns its fast commit gate through `scripts/check-fast.sh`.
 
 ```mermaid
 flowchart TD
@@ -191,7 +220,7 @@ flowchart TD
 ### What This Group Does
 
 - [`stop.py`](/Users/dobby/.agents/hooks/scripts/stop.py)
-  - runs as the shared Codex and Claude `Stop` hook
+  - runs as the shared Codex and Claude `Stop` hook, which is the runtime name for turn-stop behavior
   - stages all repo changes and runs `git commit`
   - does not directly call repo validation; Git calls the shared local hook because managed repos set `core.hooksPath` to [`hooks/git/`](/Users/dobby/.agents/hooks/git)
   - if commit checks fail, returns hook continuation JSON with the failure output so the current agent can fix it
@@ -205,8 +234,10 @@ flowchart TD
   - repo-owned fast commit gate for agent-made changes
   - should contain fast deterministic checks that answer whether the commit is acceptable
   - should not become a general after-turn lifecycle hook; use a future explicit lifecycle hook for non-validation side effects
-- [`session_start.py`](/Users/dobby/.agents/hooks/scripts/session_start.py)
-  - shared `SessionStart` hook dispatcher; runs optional repo-owned `scripts/hooks/session-start.sh`
+- Hook dispatch scripts:
+  - `session_start.py` runs optional repo-owned `scripts/hooks/session-start.sh`
+  - `user_prompt_submit.py` runs optional repo-owned `scripts/hooks/user-prompt-submit.sh`
+  - `session_end.py` runs optional Claude-only repo-owned `scripts/hooks/session-end.sh`
 
 ## Figure 6: Optional Machine Policy Script
 

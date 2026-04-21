@@ -7,9 +7,16 @@ from pathlib import Path
 from typing import Any
 
 
-VALID_EVENTS = {"SessionStart", "Stop"}
 VALID_RUNTIMES = {"codex", "claude"}
 VALID_SCOPES = {"global"}
+EVENT_RUNTIME_SUPPORT = {
+    "SessionStart": {"codex", "claude"},
+    "UserPromptSubmit": {"codex", "claude"},
+    "Stop": {"codex", "claude"},
+    "SessionEnd": {"claude"},
+}
+VALID_EVENTS = set(EVENT_RUNTIME_SUPPORT)
+EVENTS_WITH_MATCHERS = {"SessionStart", "SessionEnd"}
 
 
 class HookRegistryError(RuntimeError):
@@ -85,6 +92,11 @@ def validate_hooks_registry_data(registry: dict[str, Any], *, label: str) -> Non
                 raise HookRegistryError(
                     f"{prefix}.runtimes contains unsupported runtime `{runtime}`"
                 )
+            supported_runtimes = EVENT_RUNTIME_SUPPORT[event]
+            if runtime not in supported_runtimes:
+                raise HookRegistryError(
+                    f"{prefix}.event `{event}` is not supported for runtime `{runtime}`"
+                )
             if runtime in runtime_values:
                 raise HookRegistryError(
                     f"{prefix}.runtimes contains duplicate runtime `{runtime}`"
@@ -155,7 +167,7 @@ def _render_matcher_group(hook: dict[str, Any], runtime: str) -> dict[str, Any]:
     group: dict[str, Any] = {"hooks": [handler]}
     matchers = hook.get("matchers", {})
     matcher = matchers.get(runtime) if isinstance(matchers, dict) else None
-    if event == "SessionStart" and isinstance(matcher, str) and matcher.strip():
+    if event in EVENTS_WITH_MATCHERS and isinstance(matcher, str) and matcher.strip():
         group["matcher"] = matcher
     return group
 
@@ -200,7 +212,9 @@ def _without_managed_groups(groups: list[Any]) -> list[Any]:
     markers = {
         "~/.agents/hooks/scripts/lifecycle.py",
         "~/.agents/hooks/scripts/session_start.py",
+        "~/.agents/hooks/scripts/user_prompt_submit.py",
         "~/.agents/hooks/scripts/stop.py",
+        "~/.agents/hooks/scripts/session_end.py",
     }
     for group in groups:
         if not isinstance(group, dict):

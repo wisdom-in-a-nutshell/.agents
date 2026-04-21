@@ -17,6 +17,18 @@
       "timeout": 5
     },
     {
+      "command": "python3 ~/.agents/hooks/scripts/user_prompt_submit.py --runtime {runtime}",
+      "enabled": true,
+      "event": "UserPromptSubmit",
+      "id": "global-user-prompt-submit",
+      "runtimes": [
+        "codex",
+        "claude"
+      ],
+      "scope": "global",
+      "timeout": 5
+    },
+    {
       "command": "python3 ~/.agents/hooks/scripts/stop.py --runtime {runtime}",
       "enabled": true,
       "event": "Stop",
@@ -27,6 +39,20 @@
       ],
       "scope": "global",
       "timeout": 900
+    },
+    {
+      "command": "python3 ~/.agents/hooks/scripts/session_end.py --runtime {runtime}",
+      "enabled": true,
+      "event": "SessionEnd",
+      "id": "global-session-end",
+      "matchers": {
+        "claude": "clear|resume|logout|prompt_input_exit|bypass_permissions_disabled|other"
+      },
+      "runtimes": [
+        "claude"
+      ],
+      "scope": "global",
+      "timeout": 5
     }
   ],
   "version": 1

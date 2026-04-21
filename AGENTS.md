@@ -94,6 +94,8 @@ Detailed operations live in:
 - New or promoted agent-facing CLI clients must follow `docs/references/cli-interface-contract.md`.
 - Do not hand-edit rendered runtime hook files. Update `hooks/registry.json` or `hooks/scripts/*`, then rerun the shared bootstrap/check.
 - Repo-specific session-start context lives in `scripts/hooks/session-start.sh`. The shared `SessionStart` dispatcher runs it from the repo root when present and forwards stdout as startup context.
+- Repo-specific prompt-submit context lives in `scripts/hooks/user-prompt-submit.sh`. The shared `UserPromptSubmit` dispatcher runs it from the repo root when present and forwards stdout as additional prompt context.
+- Repo-specific Claude session-end cleanup lives in `scripts/hooks/session-end.sh`. The shared `SessionEnd` dispatcher is Claude-only, runs it from the repo root when present, logs stdout, and does not inject context because the session is ending.
 - Managed repos use local Git `core.hooksPath` pointing at `hooks/git/`; the shared commit-time hook delegates to repo-owned `scripts/check-fast.sh` when present.
 - Use `scripts/check-fast.sh` as the fast, deterministic, repo-owned validation entrypoint. Keep slower validation in a separate script such as `scripts/check-full.sh`.
 - If `skills/registry.json` changes, run sync/check in the same change.

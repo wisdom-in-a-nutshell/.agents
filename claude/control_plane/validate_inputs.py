@@ -5,6 +5,7 @@ import json
 from pathlib import Path
 
 from .common import ControlPlaneError, main_guard
+from hooks.control_plane import HookRegistryError, validate_hooks_registry_data
 
 
 def parse_args() -> argparse.Namespace:
@@ -193,28 +194,10 @@ def main() -> int:
     if not isinstance(managed_agents, list):
         raise ControlPlaneError(f"managed_agents must be an array in {agent_registry}")
 
-    if hooks_data.get("version") != 1:
-        raise ControlPlaneError(f"hooks registry version must be 1 in {hooks_registry}")
-    managed_hooks = hooks_data.get("managed_hooks", [])
-    if not isinstance(managed_hooks, list):
-        raise ControlPlaneError(f"managed_hooks must be an array in {hooks_registry}")
-    for idx, hook in enumerate(managed_hooks):
-        if not isinstance(hook, dict):
-            raise ControlPlaneError(f"managed_hooks[{idx}] must be an object in {hooks_registry}")
-        if hook.get("event") not in {"SessionStart", "Stop"}:
-            raise ControlPlaneError(
-                f"managed_hooks[{idx}].event must be SessionStart or Stop in {hooks_registry}"
-            )
-        runtimes = hook.get("runtimes", [])
-        if not isinstance(runtimes, list) or not runtimes:
-            raise ControlPlaneError(
-                f"managed_hooks[{idx}].runtimes must be a non-empty array in {hooks_registry}"
-            )
-        for runtime in runtimes:
-            if runtime not in {"codex", "claude"}:
-                raise ControlPlaneError(
-                    f"managed_hooks[{idx}] has unsupported runtime `{runtime}` in {hooks_registry}"
-                )
+    try:
+        validate_hooks_registry_data(hooks_data, label=str(hooks_registry))
+    except HookRegistryError as exc:
+        raise ControlPlaneError(str(exc)) from exc
 
     _ = settings
     return 0
