@@ -1,0 +1,85 @@
+from __future__ import annotations
+
+import json
+
+from tests.control_plane.support import REPO_ROOT, TempDirTestCase, run_command, write_json, write_text
+
+
+class AgentRuntimeDriftAuditTests(TempDirTestCase):
+    def _write_live_codex_config(self, home):  # noqa: ANN001
+        write_text(
+            home / ".codex/config.toml",
+            '[plugins."computer-use@openai-bundled"]\n'
+            "enabled = true\n",
+        )
+
+    def _write_plugin(self, home, marketplace: str, name: str, version: str = "1.0.0") -> None:  # noqa: ANN001
+        write_json(
+            home / ".codex/plugins/cache" / marketplace / name / version / ".codex-plugin/plugin.json",
+            {
+                "name": name,
+                "version": version,
+                "interface": {
+                    "displayName": name,
+                },
+            },
+        )
+
+    def test_audit_passes_for_known_required_codex_plugin(self) -> None:
+        home = self.temp_path / "home"
+        self._write_live_codex_config(home)
+        self._write_plugin(home, "openai-bundled", "computer-use")
+
+        result = run_command(
+            [
+                str(REPO_ROOT / "scripts/audit-agent-runtime-drift.py"),
+                "--json",
+                "--skip-control-plane-check",
+                "--home",
+                str(home),
+            ]
+        )
+
+        payload = json.loads(result.stdout)
+        self.assertEqual(payload["status"], "ok")
+        self.assertEqual(payload["data"]["summary"]["errors"], 0)
+
+    def test_audit_fails_for_unknown_openai_plugin(self) -> None:
+        home = self.temp_path / "home"
+        self._write_live_codex_config(home)
+        self._write_plugin(home, "openai-bundled", "computer-use")
+        self._write_plugin(home, "openai-curated", "surprise-plugin")
+
+        result = run_command(
+            [
+                str(REPO_ROOT / "scripts/audit-agent-runtime-drift.py"),
+                "--plain",
+                "--skip-control-plane-check",
+                "--home",
+                str(home),
+            ],
+            check=False,
+        )
+
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("unclassified OpenAI Codex plugin", result.stdout)
+        self.assertIn("surprise-plugin@openai-curated", result.stdout)
+
+    def test_audit_fails_when_required_plugin_is_not_enabled_live(self) -> None:
+        home = self.temp_path / "home"
+        self._write_plugin(home, "openai-bundled", "computer-use")
+
+        result = run_command(
+            [
+                str(REPO_ROOT / "scripts/audit-agent-runtime-drift.py"),
+                "--plain",
+                "--skip-control-plane-check",
+                "--home",
+                str(home),
+            ],
+            check=False,
+        )
+
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("required Codex plugin availability check failed", result.stdout)
+        self.assertIn("computer-use@openai-bundled is not enabled", result.stdout)

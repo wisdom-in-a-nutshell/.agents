@@ -24,6 +24,11 @@ For repo authors adding `scripts/hooks/*.py`, start with
   - shared validation entrypoint
   - validates skills registry artifacts, managed repo local Git hook config, repo-local hook config, plus Codex and Claude rendered runtime state
   - runs the hermetic control-plane regression suite in `tests/control_plane/`
+- `scripts/audit-agent-runtime-drift.py`
+  - read-only machine-health audit entrypoint
+  - calls the shared control-plane validation, then checks local runtime-only drift such as unclassified OpenAI Codex plugins and required Computer Use availability
+  - defaults to a stable JSON result contract; use `--plain` for operator-readable health-check logs
+  - is intended to be scheduled and notified by `~/GitHub/scripts`, not by launchd directly from this repo
 - `scripts/sync-managed-git-hooks.sh`
   - machine-facing local-only sync for managed repo Git hooks
   - sets repo-local `core.hooksPath` to `~/.agents/hooks/git`
@@ -82,6 +87,7 @@ cd ~/.agents
 ./scripts/bootstrap-machine-agent-control-planes.sh --apply
 ./scripts/auto-apply-agent-control-planes.sh --dry-run
 ./scripts/auto-apply-agent-control-planes.sh --apply
+./scripts/audit-agent-runtime-drift.py --plain
 ./scripts/check-agent-control-planes.sh
 ./scripts/test-control-plane.sh
 ./scripts/sync-managed-git-hooks.sh --apply

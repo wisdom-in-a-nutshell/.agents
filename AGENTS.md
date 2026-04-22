@@ -61,6 +61,7 @@ Personal agent, Codex, Claude, and repo-local lifecycle hook control plane.
 - Apply all shared agent control planes: `./scripts/bootstrap-machine-agent-control-planes.sh --apply`
 - Reconcile after git sync: `./scripts/auto-apply-agent-control-planes.sh --apply`
 - Validate shared skills, plugins, Codex, Claude, and regression tests: `./scripts/check-agent-control-planes.sh`
+- Audit applied local agent runtime drift for machine health checks: `./scripts/audit-agent-runtime-drift.py --plain`
 - Run hermetic regression tests only: `./scripts/test-control-plane.sh`
 - Bootstrap external skills/plugins through the agent-facing clients:
   - `./scripts/bootstrap-skill.sh <skills.sh-url-or-upstream-ref> --repo <repo>`
