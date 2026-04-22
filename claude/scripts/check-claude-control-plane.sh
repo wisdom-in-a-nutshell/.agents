@@ -159,7 +159,7 @@ run_and_require_clean "Claude subagent sync" \
 run_and_require_clean "Claude skills sync" \
   bash "${SCRIPT_DIR}/sync-skills.sh" --dry-run --registry "$SKILLS_REGISTRY" "${REPO_ARGS[@]}"
 run_and_require_clean "repo Claude config sync" \
-  bash "${SCRIPT_DIR}/sync-repo-claude-configs.sh" --dry-run --registry "$REPO_REGISTRY" --bootstrap "$BOOTSTRAP_FILE" --mcp-registry "$MCP_REGISTRY" "${REPO_ARGS[@]}"
+  bash "${SCRIPT_DIR}/sync-repo-claude-configs.sh" --dry-run --registry "$REPO_REGISTRY" --bootstrap "$BOOTSTRAP_FILE" --mcp-registry "$MCP_REGISTRY" --hooks-registry "$HOOKS_REGISTRY" "${REPO_ARGS[@]}"
 python3 -m claude.control_plane.check_repo_git_state \
   --registry "$REPO_REGISTRY" \
   "${REPO_ARGS[@]}"

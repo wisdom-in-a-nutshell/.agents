@@ -83,6 +83,7 @@ class CodexRepoSyncTests(TempDirTestCase):
         )
 
         repo_config = (adi / ".codex/config.toml").read_text(encoding="utf-8")
+        repo_hooks = (adi / ".codex/hooks.json").read_text(encoding="utf-8")
         repo_role = (adi / ".codex/agents/visual_reviewer.toml").read_text(encoding="utf-8")
 
         self.assertIn('model = "gpt-5.4"', repo_config)
@@ -94,6 +95,8 @@ class CodexRepoSyncTests(TempDirTestCase):
         self.assertIn("[agents.visual_reviewer]", repo_config)
         self.assertIn('config_file = "agents/visual_reviewer.toml"', repo_config)
         self.assertIn('nickname_candidates = ["Lens", "Critic", "Review"]', repo_config)
+        self.assertIn('"Stop"', repo_hooks)
+        self.assertIn('"SessionStart"', repo_hooks)
 
         self.assertIn("# Managed by ~/.agents/codex/scripts/sync-repo-codex-configs.sh.", repo_role)
         self.assertIn('name = "visual_reviewer"', repo_role)

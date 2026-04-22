@@ -35,6 +35,7 @@ Shared inputs Claude reads from outside `claude/`:
 - `../codex/config/global.agents.md`
 - `../codex/config/repo-bootstrap.json`
 - `../agents/registry.json`
+- `../hooks/registry.json`
 - `../mcp/config/presets.json`
 - `../skills/registry.json`
 - shared machine-facing wrappers in `../scripts/`
@@ -76,6 +77,10 @@ Claude has both global and project layers:
 - project `.claude/skills/`
 - global `~/.claude/agents/`
 - project `.claude/agents/`
+
+Managed lifecycle hooks render into project `.claude/settings.json` when
+`hooks/registry.json` assigns them to that repo. Current global Claude settings
+stay generic.
 
 The baseline keeps the same permissive default posture at both scopes where Anthropic allows it:
 

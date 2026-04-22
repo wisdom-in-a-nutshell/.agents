@@ -1,16 +1,16 @@
 # Shared Hooks Control Plane
 
 ## Goal
-Create a shared, validated hook control plane that renders Codex, Claude, and managed repo-local GitHub Copilot hooks from one canonical registry.
+Create a shared, validated hook control plane that renders repo-local Codex, Claude, and GitHub Copilot hooks from one canonical registry.
 
 ## Why / Impact
 Hooks will become a common agent-native feedback loop across repositories. A shared registry and renderer keeps Codex, Claude, and GitHub Copilot behavior aligned while preserving each runtime's native config shape.
 
 ## Scope / Non-Goals
 ### In Scope
-- Global `SessionStart`, `UserPromptSubmit`, and `Stop` hooks for Codex and Claude.
+- Repo-local `SessionStart`, `UserPromptSubmit`, and `Stop` hooks for Codex and Claude.
 - Managed repo-local GitHub Copilot hook config rendered to `.github/hooks/agent-control-plane.json`.
-- Claude and GitHub Copilot global/logical `SessionEnd` hook.
+- Claude and GitHub Copilot repo-local/logical `SessionEnd` hook.
 - A shared `SessionStart` hook runner that stays silent unless the current repo defines `scripts/hooks/session_start.py`.
 - A shared `UserPromptSubmit` hook runner that stays silent unless the current repo defines `scripts/hooks/user_prompt_submit.py`.
 - A shared `SessionEnd` hook runner that stays silent unless the current repo defines `scripts/hooks/session_end.py`.
@@ -27,14 +27,14 @@ Hooks will become a common agent-native feedback loop across repositories. A sha
 ## Context / Constraints
 - Date started: 2026-04-20
 - Codex hooks require `[features].codex_hooks = true`.
-- Codex global hooks render to `~/.codex/hooks.json`.
-- Claude global hooks render into `~/.claude/settings.json`.
+- Codex global hooks render to `~/.codex/hooks.json`; repo-assigned hooks render to repo `.codex/hooks.json`.
+- Claude global hooks render into `~/.claude/settings.json`; repo-assigned hooks render into repo `.claude/settings.json`.
 - GitHub Copilot hook files render into managed repos under `.github/hooks/agent-control-plane.json`.
 - `Stop` is turn-scoped, so it must stay silent and fast when the repo is clean.
 - Hook stdout is runtime protocol output, so hook runners print nothing on success.
 
 ## Done When
-- [x] Codex and Claude global lifecycle hooks render from `hooks/registry.json`.
+- [x] Codex and Claude lifecycle hooks render from `hooks/registry.json`.
 - [x] The shared hook runners exit successfully and emit no stdout on success.
 - [x] `Stop` hook replaces the legacy Codex post-turn path and blocks with useful failure context when repo checks fail.
 - [x] Codex config renders `model = "gpt-5.4"` and `plan_mode_reasoning_effort = "high"`.
@@ -44,13 +44,16 @@ Hooks will become a common agent-native feedback loop across repositories. A sha
 - [x] Repo-owned `scripts/hooks/user_prompt_submit.py` runs from the shared `UserPromptSubmit` dispatcher when present.
 - [x] Repo-owned `scripts/hooks/session_end.py` runs from the shared Claude and GitHub Copilot `SessionEnd` dispatcher when present.
 - [x] Managed repos get repo-local GitHub Copilot hook config rendered from `hooks/registry.json`.
+- [x] Managed repos get repo-local Codex hook config rendered from `hooks/registry.json`.
+- [x] Managed repos get repo-local Claude hook config rendered from `hooks/registry.json`.
 
 ## Milestones
-- [x] Milestone 1 — V1 shared hooks. Acceptance: Codex and Claude render global `SessionStart` and `Stop` from one registry. Validate: `./scripts/test-control-plane.sh`.
+- [x] Milestone 1 — V1 shared hooks. Acceptance: Codex and Claude render `SessionStart` and `Stop` from one registry. Validate: `./scripts/test-control-plane.sh`.
 - [x] Milestone 2 — Bootstrap/check integration. Acceptance: machine bootstrap applies hooks and checks detect drift. Validate: `./scripts/check-agent-control-planes.sh`.
 - [x] Milestone 3 — Stop hook git conveyor. Acceptance: legacy post-turn scripts/config are gone, `Stop` commits/pushes, and failed repo checks block the current agent with actionable output. Validate: `./scripts/test-control-plane.sh` and `./scripts/check-agent-control-planes.sh`.
 - [x] Milestone 4 — Managed repo local commit-time check consolidation. Acceptance: managed repos point local `core.hooksPath` at `hooks/git`, and the shared hook delegates to repo-owned `scripts/check-fast.sh` when present. Validate: `./scripts/sync-managed-git-hooks.sh --check` and `./scripts/check-agent-control-planes.sh`.
 - [x] Milestone 5 — GitHub Copilot hook rendering. Acceptance: managed repos render `.github/hooks/agent-control-plane.json` from the shared hook registry. Validate: `./scripts/sync-copilot-hooks.sh --check` and `./scripts/check-agent-control-planes.sh`.
+- [x] Milestone 6 — Repo-scoped lifecycle hook rendering. Acceptance: managed repos render only their assigned Codex, Claude, and GitHub Copilot hooks. Validate: `./scripts/check-agent-control-planes.sh`.
 
 ## Execution Rules
 - Keep `SessionStart` behavior no-op and successful when no repo script exists.
@@ -65,7 +68,7 @@ Hooks will become a common agent-native feedback loop across repositories. A sha
 ## Decisions
 - Use a neutral `hooks/registry.json` instead of `owned` / `external` source buckets for v1.
 - Render native Codex `hooks.json` and merge native Claude `settings.json` hook entries.
-- Keep both hooks global in v1.
+- Render managed lifecycle hooks repo-locally. `Stop` is assigned to all managed repos; `SessionStart`, `UserPromptSubmit`, and `SessionEnd` are currently assigned only to `adi` and `angie`.
 - Add Codex `plan_mode_reasoning_effort = "high"`; there is no separate supported `plan_mode_model` key.
 - Replace the legacy Codex post-turn path with the shared `Stop` hook instead of spawning a second agent process.
 - Drop audible completion notification from the post-turn path.
@@ -88,6 +91,7 @@ Hooks will become a common agent-native feedback loop across repositories. A sha
 - [x] Add optional repo-local `UserPromptSubmit` context injection.
 - [x] Add optional repo-local Claude and GitHub Copilot `SessionEnd` cleanup.
 - [x] Render repo-local GitHub Copilot hook files from the shared registry.
+- [x] Render repo-local Codex and Claude hook config from the shared registry.
 - [x] Archive or refresh this tracker after the v1 validation result is recorded.
 
 ## Validation / Test Plan
@@ -107,3 +111,4 @@ Hooks will become a common agent-native feedback loop across repositories. A sha
 - 2026-04-21: [DONE] Converted repo-owned lifecycle hook convention from shell scripts to Python files under `scripts/hooks/*.py`.
 - 2026-04-21: [DONE] Extracted shared lifecycle dispatcher plumbing into `hooks/scripts/hook_runtime.py`; focused hook tests passed with `python3 -m unittest tests.control_plane.test_hooks_control_plane`.
 - 2026-04-22: [DONE] Added Stop hook phase timing logs and switched tracked branches to optimistic push with pull/rebase fallback only when the remote is ahead.
+- 2026-04-22: [DONE] Moved managed lifecycle hooks to repo-scoped rendering; `Stop` renders for all managed repos, and context/session-end hooks render only for `adi` and `angie`.

@@ -178,7 +178,6 @@ if not isinstance(repos, list):
     raise SystemExit(f"{registry_path}: repos must be an array")
 
 hooks_registry = load_hooks_registry(hooks_registry_path)
-rendered_hooks = render_copilot_hooks(hooks_registry)
 
 manifest_lines: list[str] = []
 for item in repos:
@@ -201,9 +200,11 @@ for item in repos:
 
     actual_repo_path = Path(actual_repo).resolve()
     actual_repo = str(actual_repo_path)
+    repo_name = actual_repo_path.name or actual_repo
     if filters and actual_repo not in filters:
         continue
 
+    rendered_hooks = render_copilot_hooks(hooks_registry, repo_name=repo_name)
     rendered_path = tmp_dir / f"{hashlib.sha256(actual_repo.encode()).hexdigest()}.json"
     rendered_path.write_text(
         json.dumps(rendered_hooks, indent=2, sort_keys=True) + "\n",

@@ -445,6 +445,7 @@ if ! drift_output="$(
     --registry "$REGISTRY_FILE" \
     --mcp-registry "$MCP_REGISTRY_FILE" \
     --agent-registry "$AGENT_REGISTRY_FILE" \
+    --hooks-registry "$HOOKS_REGISTRY_FILE" \
     "${REPO_ARGS[@]}" \
     2>&1
 )"; then

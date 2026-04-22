@@ -13,7 +13,7 @@ For repo authors adding `scripts/hooks/*.py`, start with
   - machine-facing full bootstrap batch
   - syncs managed skill links from `skills/registry.json`
   - syncs managed repo local Git `core.hooksPath` to the shared Git hooks directory
-  - renders repo-local GitHub Copilot hook files from the shared hook registry
+  - renders repo-local hook files from the shared hook registry through the Codex, Claude, and GitHub Copilot control planes
   - applies the Codex runtime via `codex/scripts/bootstrap-machine-codex.sh`
   - applies the Claude runtime via `claude/scripts/bootstrap-machine-claude.sh`
 - `scripts/auto-apply-agent-control-planes.sh`
@@ -22,7 +22,7 @@ For repo authors adding `scripts/hooks/*.py`, start with
   - runs the minimum shared apply steps needed for runtime-relevant changes
 - `scripts/check-agent-control-planes.sh`
   - shared validation entrypoint
-  - validates skills registry artifacts, managed repo local Git hook config, managed repo Copilot hook config, plus Codex and Claude rendered runtime state
+  - validates skills registry artifacts, managed repo local Git hook config, repo-local hook config, plus Codex and Claude rendered runtime state
   - runs the hermetic control-plane regression suite in `tests/control_plane/`
 - `scripts/sync-managed-git-hooks.sh`
   - machine-facing local-only sync for managed repo Git hooks
@@ -58,7 +58,7 @@ Current apply rules:
 - `mcp/` changes:
   - run both Codex and Claude bootstrap batches
 - `hooks/` changes:
-  - sync repo-local Copilot hook files
+  - sync repo-local GitHub Copilot hook files
   - run both Codex and Claude bootstrap batches
 - `hooks/git/`, `scripts/sync-managed-git-hooks.sh`, or repo-bootstrap registry changes:
   - sync managed repo local Git hook config
@@ -111,16 +111,20 @@ Preferred rule for repo bootstrap or MCP changes:
 
 ## Agent Lifecycle Hook Contract
 
-- Lifecycle hooks are defined once in [`hooks/registry.json`](/Users/dobby/.agents/hooks/registry.json) and rendered into the supported Codex, Claude, and managed repo-local GitHub Copilot config surfaces.
+- Lifecycle hooks are defined once in [`hooks/registry.json`](/Users/dobby/.agents/hooks/registry.json) and rendered into repo-local Codex, Claude, and GitHub Copilot config surfaces for the repos assigned there.
+- Current assignment policy:
+  - `Stop` is repo-scoped to all managed repos.
+  - `SessionStart`, `UserPromptSubmit`, and `SessionEnd` are repo-scoped to `adi` and `angie`.
+- Rendered repo-local hook surfaces are `.codex/hooks.json`, `.claude/settings.json`, and `.github/hooks/agent-control-plane.json`.
 - Event entrypoints live in [`hooks/scripts/session_start.py`](/Users/dobby/.agents/hooks/scripts/session_start.py), [`hooks/scripts/user_prompt_submit.py`](/Users/dobby/.agents/hooks/scripts/user_prompt_submit.py), and [`hooks/scripts/session_end.py`](/Users/dobby/.agents/hooks/scripts/session_end.py).
 - Shared dispatch plumbing lives in [`hooks/scripts/hook_runtime.py`](/Users/dobby/.agents/hooks/scripts/hook_runtime.py); runtime-specific payload normalization lives in [`hooks/scripts/hook_adapter.py`](/Users/dobby/.agents/hooks/scripts/hook_adapter.py).
 - The canonical repo hook authoring contract is [`repo-lifecycle-hook-adapter.md`](/Users/dobby/.agents/docs/references/repo-lifecycle-hook-adapter.md). Keep payload fields, environment variables, stdout semantics, smoke tests, and hand-off guidance there instead of duplicating them on this operations page.
 - Repo-specific lifecycle behavior belongs in optional Python scripts under `scripts/hooks/`. Missing repo scripts are successful no-ops.
-- Codex currently renders `SessionStart` and `UserPromptSubmit`; it does not render a fake `SessionEnd`.
+- Codex renders assigned `SessionStart`, `UserPromptSubmit`, and `Stop` events; it does not render a fake `SessionEnd`.
 
 ## Agent Commit Gate Contract
 
-- The global lifecycle `Stop` hook is defined once in [`hooks/registry.json`](/Users/dobby/.agents/hooks/registry.json) and rendered into Codex, Claude, and managed repo-local GitHub Copilot hook config.
+- The repo-scoped `Stop` hook is defined once in [`hooks/registry.json`](/Users/dobby/.agents/hooks/registry.json) with `repos: ["*"]` and rendered into each managed repo's Codex, Claude, and GitHub Copilot hook config.
 - In Codex and Claude, `Stop` is the native runtime event for turn-stop behavior. In GitHub Copilot, the same logical hook renders as `agentStop`.
 - The `Stop` hook runs [`hooks/scripts/stop.py`](/Users/dobby/.agents/hooks/scripts/stop.py), stages changes, and runs `git commit`.
 - Git invokes the shared local hook from [`hooks/git/pre-commit`](/Users/dobby/.agents/hooks/git/pre-commit) because managed repos have local `core.hooksPath` set to `~/.agents/hooks/git`.
@@ -134,9 +138,9 @@ Preferred rule for repo bootstrap or MCP changes:
 ## GitHub Copilot Hook Rendering
 
 - GitHub Copilot loads hook files from `.github/hooks/*.json` in the repository.
-- This control plane renders one managed file per repo: `.github/hooks/agent-control-plane.json`.
+- This control plane renders one managed file per assigned repo: `.github/hooks/agent-control-plane.json`.
 - Local Copilot CLI can read the rendered file from the worktree. Copilot cloud agent needs the file committed on the repo's default branch.
-- The rendered file uses GitHub's native event names:
+- The rendered file includes only the events assigned to that repo and uses GitHub's native event names:
   - `sessionStart`
   - `userPromptSubmitted`
   - `agentStop`

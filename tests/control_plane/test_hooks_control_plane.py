@@ -42,7 +42,9 @@ class HooksControlPlaneTests(TempDirTestCase):
     def test_registry_renders_codex_and_claude_hooks(self) -> None:
         registry = load_hooks_registry(REPO_ROOT / "hooks/registry.json")
 
-        codex_hooks = render_codex_hooks(registry)
+        self.assertEqual(render_codex_hooks(registry), {"hooks": {}})
+
+        codex_hooks = render_codex_hooks(registry, repo_name="adi")
         self.assertEqual(
             set(codex_hooks["hooks"].keys()),
             {"SessionStart", "UserPromptSubmit", "Stop"},
@@ -64,8 +66,19 @@ class HooksControlPlaneTests(TempDirTestCase):
             codex_hooks["hooks"]["Stop"][0]["hooks"][0]["timeout"],
             900,
         )
+        self.assertEqual(
+            set(render_codex_hooks(registry, repo_name="win")["hooks"].keys()),
+            {"Stop"},
+        )
 
         claude_settings = merge_claude_hooks({"permissions": {"defaultMode": "bypassPermissions"}}, registry)
+        self.assertNotIn("hooks", claude_settings)
+
+        claude_settings = merge_claude_hooks(
+            {"permissions": {"defaultMode": "bypassPermissions"}},
+            registry,
+            repo_name="adi",
+        )
         self.assertEqual(
             claude_settings["hooks"]["SessionStart"][0]["matcher"],
             "startup|resume|clear|compact",
@@ -86,8 +99,14 @@ class HooksControlPlaneTests(TempDirTestCase):
             claude_settings["hooks"]["SessionEnd"][0]["hooks"][0]["command"],
             "python3 ~/.agents/hooks/scripts/session_end.py --runtime claude",
         )
+        self.assertEqual(
+            set(merge_claude_hooks({}, registry, repo_name="win")["hooks"].keys()),
+            {"Stop"},
+        )
 
-        copilot_hooks = render_copilot_hooks(registry)
+        self.assertEqual(render_copilot_hooks(registry), {"hooks": {}, "version": 1})
+
+        copilot_hooks = render_copilot_hooks(registry, repo_name="adi")
         self.assertEqual(
             copilot_hooks,
             {
@@ -139,6 +158,10 @@ class HooksControlPlaneTests(TempDirTestCase):
                 },
                 "version": 1,
             },
+        )
+        self.assertEqual(
+            set(render_copilot_hooks(registry, repo_name="win")["hooks"].keys()),
+            {"agentStop"},
         )
 
     def test_registry_rejects_unsupported_runtime(self) -> None:
@@ -588,7 +611,7 @@ class HooksControlPlaneTests(TempDirTestCase):
             f"runtime=claude\nevent=SessionEnd\nschema=1.0\nrepo_root={repo.resolve()}\ntranscript_format=None\n",
         )
 
-    def test_codex_sync_config_renders_plan_mode_and_global_hooks(self) -> None:
+    def test_codex_sync_config_renders_plan_mode_and_empty_global_hooks(self) -> None:
         root = make_control_plane_root(self.temp_path)
         home = self.temp_path / "home"
         write_json(root / "mcp/config/presets.json", default_mcp_registry())
@@ -629,10 +652,7 @@ class HooksControlPlaneTests(TempDirTestCase):
         self.assertNotIn("notify =", rendered_config)
 
         hooks = read_json(home / ".codex/hooks.json")
-        self.assertEqual(
-            hooks["hooks"]["Stop"][0]["hooks"][0]["command"],
-            "python3 ~/.agents/hooks/scripts/stop.py --runtime codex",
-        )
+        self.assertEqual(hooks, {"hooks": {}})
 
     def test_sync_copilot_hooks_renders_repo_local_github_hook_file(self) -> None:
         repo = init_git_repo(self.temp_path / "repo")
@@ -663,7 +683,10 @@ class HooksControlPlaneTests(TempDirTestCase):
         )
 
         rendered = read_json(repo / ".github/hooks/agent-control-plane.json")
-        expected = render_copilot_hooks(load_hooks_registry(REPO_ROOT / "hooks/registry.json"))
+        expected = render_copilot_hooks(
+            load_hooks_registry(REPO_ROOT / "hooks/registry.json"),
+            repo_name=repo.name,
+        )
         self.assertEqual(rendered, expected)
 
         run_command(

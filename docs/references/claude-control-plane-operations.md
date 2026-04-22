@@ -13,7 +13,7 @@ Use [Claude Control Plane](/Users/dobby/.agents/docs/architecture/claude-control
 - `claude/config/settings.json`
   - canonical source for `~/.claude/settings.json`
 - `hooks/registry.json`
-  - shared lifecycle hook registry merged into global Claude settings
+  - shared lifecycle hook registry rendered into Claude settings at the scopes assigned by the registry
 - `claude/control_plane/*.py`
   - importable Python implementation for the Claude sync/render/validation entrypoints
 - `claude/config/bootstrap.json`
@@ -40,7 +40,7 @@ Use [Claude Control Plane](/Users/dobby/.agents/docs/architecture/claude-control
 - `~/.claude/CLAUDE.md`
   - global guidance file
 - `~/.claude/settings.json`
-  - permissive user/global defaults plus managed lifecycle hooks
+  - permissive user/global defaults
 - `~/.claude.json`
   - user runtime state and global MCP store
 - `~/.claude/agents/*.md`
@@ -48,7 +48,7 @@ Use [Claude Control Plane](/Users/dobby/.agents/docs/architecture/claude-control
 - repo `CLAUDE.md`
   - usually a tiny file containing only `@AGENTS.md`
 - repo `.claude/settings.json`
-  - project settings
+  - project settings plus managed repo-assigned lifecycle hooks
 - repo `.mcp.json`
   - project MCP
 - repo `.claude/skills/`
@@ -75,7 +75,7 @@ The Claude control plane follows the same sync/check pattern as Codex, with scri
 - `sync-global-claude-md.sh`
   - link `~/.claude/CLAUDE.md` to `claude/config/global.claude.md`, which resolves to `codex/config/global.agents.md`
 - `sync-settings.sh`
-  - install the permissive global `settings.json` into `~/.claude/settings.json` and merge managed lifecycle hooks from `hooks/registry.json`
+  - install the permissive global `settings.json` into `~/.claude/settings.json` and merge only hook registry entries assigned to global scope
 - `sync-global-mcp.sh`
   - merge global MCP entries from `mcp/config/presets.json` into `~/.claude.json`
 - `sync-subagents.sh`
@@ -83,7 +83,7 @@ The Claude control plane follows the same sync/check pattern as Codex, with scri
 - `sync-skills.sh`
   - materialize global and project Claude skills from `skills/registry.json`
 - `sync-repo-claude-configs.sh`
-  - render root and nested `CLAUDE.md` compatibility files, `.claude/settings.json`, and `.mcp.json` from the shared repo registry plus Claude bootstrap overlay
+  - render root and nested `CLAUDE.md` compatibility files, `.claude/settings.json`, and `.mcp.json` from the shared repo registry plus Claude bootstrap overlay and repo-assigned hooks
 - `bootstrap-machine-claude.sh`
   - run the full Claude apply batch and validate rendered outputs at the end
 - `check-claude-control-plane.sh`
@@ -102,7 +102,7 @@ The Claude control plane follows the same sync/check pattern as Codex, with scri
 ## Current Global Settings Baseline
 
 - `claude/config/settings.json` is the source of truth for `~/.claude/settings.json`.
-- `hooks/registry.json` is the source of truth for managed global `SessionStart`, `UserPromptSubmit`, `Stop`, and Claude-only `SessionEnd` hook entries inside `~/.claude/settings.json`.
+- `hooks/registry.json` is the source of truth for managed hook entries. Current managed lifecycle hooks are repo-scoped, so Claude receives them through repo `.claude/settings.json` rather than global `~/.claude/settings.json`.
 - The canonical global baseline is provider-neutral by default.
 - Provider-specific opt-ins such as AWS Bedrock should live in explicit shell wrappers, not in the machine-wide Claude settings baseline.
 

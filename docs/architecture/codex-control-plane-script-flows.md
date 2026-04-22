@@ -127,14 +127,14 @@ flowchart TD
 
 ## Figure 4: Session And Prompt Dispatch
 
-One global hook registry renders native hook files for each client surface. Codex and Claude use global runtime config; GitHub Copilot uses repo-local `.github/hooks/agent-control-plane.json` files in managed repos. The shared dispatchers stay generic: repo-specific context or cleanup lives in optional repo-owned scripts.
+One hook registry defines the shared event implementations and the repo assignment policy. Session and prompt context hooks are rendered repo-locally only for repos that need them. Today that means `adi` and `angie`; other managed repos do not get these extra context hooks.
 
 ```mermaid
 flowchart TD
-    A[hooks/registry.json<br/>shared hook definitions] --> B[~/.codex/hooks.json]
-    A --> C[~/.claude/settings.json]
+    A[hooks/registry.json<br/>shared hook definitions] --> B2[managed repo<br/>.codex/hooks.json]
+    A --> C[managed repo<br/>.claude/settings.json]
     A --> Y[managed repo<br/>.github/hooks/agent-control-plane.json]
-    B --> D[Codex session starts]
+    B2 --> D[Codex session starts]
     C --> E[Claude session starts]
     Y --> Z[Copilot session starts]
     D --> F[hooks/scripts/session_start.py]
@@ -145,7 +145,7 @@ flowchart TD
     H -->|yes| I[run Python hook from repo root]
     I --> J[forward or ignore stdout per runtime]
     H -->|no| K[silent success]
-    B --> L[Codex prompt submitted]
+    B2 --> L[Codex prompt submitted]
     C --> M[Claude prompt submitted]
     Y --> M2[Copilot prompt submitted]
     L --> N[hooks/scripts/user_prompt_submit.py]
@@ -167,20 +167,23 @@ flowchart TD
 
 ### What This Group Does
 
+- `hooks/registry.json`
+  - owns which repos receive each lifecycle event
+  - currently assigns `SessionStart`, `UserPromptSubmit`, and `SessionEnd` only to `adi` and `angie`
 - [`session_start.py`](/Users/dobby/.agents/hooks/scripts/session_start.py)
-  - runs as the shared Codex, Claude, and GitHub Copilot `SessionStart` hook
+  - runs as the shared Codex, Claude, and GitHub Copilot `SessionStart` hook when that event is assigned to the repo
   - resolves the current git root from the hook payload `cwd`
   - runs repo-owned `scripts/hooks/session_start.py` when present
   - passes a normalized JSON adapter payload to the repo Python hook on stdin; the original runtime payload is kept under `raw_payload`
   - sets `AGENT_HOOK_EVENT`, `AGENT_HOOK_RUNTIME`, `AGENT_REPO_ROOT`, and `AGENT_HOOK_SCHEMA_VERSION`
   - forwards repo script stdout as startup context for runtimes that process it, capped at a rough `30000` token budget (`120000` characters); Copilot currently ignores `sessionStart` output
 - [`user_prompt_submit.py`](/Users/dobby/.agents/hooks/scripts/user_prompt_submit.py)
-  - runs as the shared Codex, Claude, and GitHub Copilot prompt-submit hook
+  - runs as the shared Codex, Claude, and GitHub Copilot prompt-submit hook when that event is assigned to the repo
   - runs repo-owned `scripts/hooks/user_prompt_submit.py` when present
   - passes the same normalized JSON adapter payload shape, with `hook_event_name=UserPromptSubmit`
   - forwards repo script stdout as additional prompt context for runtimes that process it, capped at a rough `30000` token budget (`120000` characters); Copilot currently ignores `userPromptSubmitted` output
 - [`session_end.py`](/Users/dobby/.agents/hooks/scripts/session_end.py)
-  - runs as the shared Claude and GitHub Copilot `SessionEnd` hook
+  - runs as the shared Claude and GitHub Copilot `SessionEnd` hook when that event is assigned to the repo
   - runs repo-owned `scripts/hooks/session_end.py` when present
   - passes the same normalized JSON adapter payload shape, with `hook_event_name=SessionEnd`
   - logs repo script stdout instead of injecting context because the session is ending
@@ -198,12 +201,12 @@ flowchart TD
 
 ## Figure 5: Post-Turn Automation
 
-One global `Stop` hook definition is rendered into Codex and Claude as `Stop`, and into GitHub Copilot as `agentStop`. This is the shared turn-stop hook. It owns turn finalization, while each repo owns its fast commit gate through `scripts/check-fast.sh`.
+The `Stop` hook is a repo-scoped registry entry assigned to all managed repos. It renders into each repo's Codex, Claude, and GitHub Copilot hook config, then delegates commit-time validation to the repo's own `scripts/check-fast.sh`.
 
 ```mermaid
 flowchart TD
-    A[hooks/registry.json<br/>one global Stop definition] --> B[~/.codex/hooks.json]
-    A --> C[~/.claude/settings.json]
+    A[hooks/registry.json<br/>Stop assigned to repos: *] --> B[managed repo<br/>.codex/hooks.json]
+    A --> C[managed repo<br/>.claude/settings.json]
     A --> Y[managed repo<br/>.github/hooks/agent-control-plane.json]
     B --> D[Codex turn reaches Stop]
     C --> E[Claude turn reaches Stop]
@@ -235,7 +238,7 @@ flowchart TD
 ### What This Group Does
 
 - [`stop.py`](/Users/dobby/.agents/hooks/scripts/stop.py)
-  - runs as the shared turn-stop hook for Codex, Claude, and GitHub Copilot
+  - runs as the shared turn-stop hook for Codex, Claude, and GitHub Copilot in each managed repo
   - stages all repo changes and runs `git commit`
   - does not directly call repo validation; Git calls the shared local hook because managed repos set `core.hooksPath` to [`hooks/git/`](/Users/dobby/.agents/hooks/git)
   - if commit checks fail, returns hook continuation JSON with the failure output so the current agent can fix it
@@ -251,9 +254,9 @@ flowchart TD
   - should contain fast deterministic checks that answer whether the commit is acceptable
   - should not become a general after-turn lifecycle hook; use a future explicit lifecycle hook for non-validation side effects
 - Hook dispatch scripts:
-  - `session_start.py` runs optional repo-owned `scripts/hooks/session_start.py`
-  - `user_prompt_submit.py` runs optional repo-owned `scripts/hooks/user_prompt_submit.py`
-  - `session_end.py` runs optional Claude and GitHub Copilot repo-owned `scripts/hooks/session_end.py`
+  - `session_start.py` runs optional repo-owned `scripts/hooks/session_start.py` where the registry assigns `SessionStart`
+  - `user_prompt_submit.py` runs optional repo-owned `scripts/hooks/user_prompt_submit.py` where the registry assigns `UserPromptSubmit`
+  - `session_end.py` runs optional Claude and GitHub Copilot repo-owned `scripts/hooks/session_end.py` where the registry assigns `SessionEnd`
 
 ## Figure 6: Optional Machine Policy Script
 

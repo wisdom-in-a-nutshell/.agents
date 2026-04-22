@@ -77,7 +77,8 @@ flowchart TD
     I --> J[Codex CLI]
     D[~/.codex/config.toml] --> J
     E[Repo-local .codex/config.toml] --> J
-    K[~/.codex/hooks.json] --> J
+    K[~/.codex/hooks.json<br/>global hooks] --> J
+    L[Repo-local .codex/hooks.json] --> J
     J --> F[Stop hook]
     F --> G[git add / commit / pull --rebase / push]
 ```
@@ -90,6 +91,7 @@ Owns the durable, synced source of truth for Codex-specific setup:
 
 - managed config fragments and presets
 - repo bootstrap registry
+- hook registry and shared hook dispatch scripts
 - plugin source registry and plugin source packages
 - Codex-specific scripts and wrappers
 - skills, references, and architecture docs
@@ -124,6 +126,7 @@ It is now treated as runtime-only rather than as a git-tracked control-plane rep
 Owns project-specific Codex overrides when a repo needs different behavior:
 
 - generated or hand-owned repo-local config
+- generated repo-local hook config
 - repo MCP enablement
 - repo-local tool or app toggles
 - project-specific model or trust settings
@@ -137,8 +140,9 @@ These settings stay close to the repo because they describe how Codex should beh
 3. The global templates drive machine config in `~/.codex` and Xcode Codex config.
 4. Managed plugin source is refreshed under `plugins-source/`, then extracted into shared skills and MCP registries.
 5. The repo bootstrap registry drives both trusted repo discovery and managed repo-local `.codex/config.toml` generation.
-6. Codex starts from `~/.codex/config.toml` and any trusted repo-local `.codex/config.toml` in real project repos.
-7. Repo-local overrides refine behavior for one project without changing the global control plane.
+6. The hook registry drives managed repo-local `.codex/hooks.json` generation.
+7. Codex starts from `~/.codex/config.toml` and any trusted repo-local `.codex/config.toml` and `.codex/hooks.json` in real project repos.
+8. Repo-local overrides refine behavior for one project without changing the global control plane.
 
 ## Key Boundaries
 

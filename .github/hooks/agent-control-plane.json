@@ -7,30 +7,6 @@
         "timeoutSec": 900,
         "type": "command"
       }
-    ],
-    "sessionEnd": [
-      {
-        "bash": "if [ -f \"$HOME/.agents/hooks/scripts/session_end.py\" ]; then python3 \"$HOME/.agents/hooks/scripts/session_end.py\" --runtime copilot; fi",
-        "cwd": ".",
-        "timeoutSec": 5,
-        "type": "command"
-      }
-    ],
-    "sessionStart": [
-      {
-        "bash": "if [ -f \"$HOME/.agents/hooks/scripts/session_start.py\" ]; then python3 \"$HOME/.agents/hooks/scripts/session_start.py\" --runtime copilot; fi",
-        "cwd": ".",
-        "timeoutSec": 5,
-        "type": "command"
-      }
-    ],
-    "userPromptSubmitted": [
-      {
-        "bash": "if [ -f \"$HOME/.agents/hooks/scripts/user_prompt_submit.py\" ]; then python3 \"$HOME/.agents/hooks/scripts/user_prompt_submit.py\" --runtime copilot; fi",
-        "cwd": ".",
-        "timeoutSec": 5,
-        "type": "command"
-      }
     ]
   },
   "version": 1

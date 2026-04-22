@@ -4,58 +4,73 @@
       "command": "python3 ~/.agents/hooks/scripts/session_start.py --runtime {runtime}",
       "enabled": true,
       "event": "SessionStart",
-      "id": "global-session-start",
+      "id": "repo-session-start",
       "matchers": {
         "claude": "startup|resume|clear|compact",
         "codex": "startup|resume|clear"
       },
+      "repos": [
+        "adi",
+        "angie"
+      ],
       "runtimes": [
         "codex",
         "claude",
         "copilot"
       ],
-      "scope": "global",
+      "scope": "repo",
       "timeout": 5
     },
     {
       "command": "python3 ~/.agents/hooks/scripts/user_prompt_submit.py --runtime {runtime}",
       "enabled": true,
       "event": "UserPromptSubmit",
-      "id": "global-user-prompt-submit",
+      "id": "repo-user-prompt-submit",
+      "repos": [
+        "adi",
+        "angie"
+      ],
       "runtimes": [
         "codex",
         "claude",
         "copilot"
       ],
-      "scope": "global",
+      "scope": "repo",
       "timeout": 5
     },
     {
       "command": "python3 ~/.agents/hooks/scripts/stop.py --runtime {runtime}",
       "enabled": true,
       "event": "Stop",
-      "id": "global-stop",
+      "id": "repo-stop",
+      "repos": [
+        "*"
+      ],
       "runtimes": [
         "codex",
         "claude",
         "copilot"
       ],
-      "scope": "global",
+      "scope": "repo",
       "timeout": 900
     },
     {
       "command": "python3 ~/.agents/hooks/scripts/session_end.py --runtime {runtime}",
       "enabled": true,
       "event": "SessionEnd",
-      "id": "global-session-end",
+      "id": "repo-session-end",
       "matchers": {
         "claude": "clear|resume|logout|prompt_input_exit|bypass_permissions_disabled|other"
       },
+      "repos": [
+        "adi",
+        "angie"
+      ],
       "runtimes": [
         "claude",
         "copilot"
       ],
-      "scope": "global",
+      "scope": "repo",
       "timeout": 5
     }
   ],

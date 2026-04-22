@@ -40,6 +40,11 @@ Put repo policy in the repo. Keep the shared control plane boring.
 
 ## Repo Hook Locations
 
+Lifecycle events are not enabled just because a script exists. The shared
+[`hooks/registry.json`](/Users/dobby/.agents/hooks/registry.json) decides which
+managed repos receive which events, and the repo script only runs when the
+event is assigned to that repo.
+
 Create these files only when a repo needs them:
 
 ```text

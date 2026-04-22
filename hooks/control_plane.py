@@ -8,7 +8,8 @@ from typing import Any
 
 
 VALID_RUNTIMES = {"codex", "claude", "copilot"}
-VALID_SCOPES = {"global"}
+VALID_SCOPES = {"global", "repo"}
+ALL_REPOS = "*"
 EVENT_RUNTIME_SUPPORT = {
     "SessionStart": {"codex", "claude", "copilot"},
     "UserPromptSubmit": {"codex", "claude", "copilot"},
@@ -84,6 +85,24 @@ def validate_hooks_registry_data(registry: dict[str, Any], *, label: str) -> Non
             raise HookRegistryError(
                 f"{prefix}.scope must be one of {sorted(VALID_SCOPES)}"
             )
+        repos = hook.get("repos", [])
+        if repos is None:
+            repos = []
+        if scope == "global":
+            if repos:
+                raise HookRegistryError(f"{prefix}.repos is only supported for repo-scoped hooks")
+        else:
+            if not isinstance(repos, list) or not repos:
+                raise HookRegistryError(f"{prefix}.repos must be a non-empty array for repo-scoped hooks")
+            repo_values: list[str] = []
+            for repo in repos:
+                if not isinstance(repo, str) or not repo.strip():
+                    raise HookRegistryError(f"{prefix}.repos must contain non-empty strings")
+                if repo in repo_values:
+                    raise HookRegistryError(
+                        f"{prefix}.repos contains duplicate repo `{repo}`"
+                    )
+                repo_values.append(repo)
 
         enabled = hook.get("enabled", True)
         if not isinstance(enabled, bool):
@@ -147,7 +166,22 @@ def validate_hooks_registry_data(registry: dict[str, Any], *, label: str) -> Non
                 )
 
 
-def _managed_hooks_for_runtime(registry: dict[str, Any], runtime: str) -> list[dict[str, Any]]:
+def _hook_matches_scope(hook: dict[str, Any], repo_name: str | None) -> bool:
+    scope = hook.get("scope")
+    if repo_name is None:
+        return scope == "global"
+    if scope != "repo":
+        return False
+    repos = hook.get("repos", [])
+    return ALL_REPOS in repos or repo_name in repos
+
+
+def _managed_hooks_for_runtime(
+    registry: dict[str, Any],
+    runtime: str,
+    *,
+    repo_name: str | None = None,
+) -> list[dict[str, Any]]:
     if runtime not in VALID_RUNTIMES:
         raise HookRegistryError(f"unsupported runtime `{runtime}`")
     hooks = registry.get("managed_hooks", [])
@@ -157,7 +191,7 @@ def _managed_hooks_for_runtime(registry: dict[str, Any], runtime: str) -> list[d
             continue
         if not hook.get("enabled", True):
             continue
-        if hook.get("scope") != "global":
+        if not _hook_matches_scope(hook, repo_name):
             continue
         runtimes = hook.get("runtimes", [])
         if runtime in runtimes:
@@ -188,16 +222,25 @@ def _render_matcher_group(hook: dict[str, Any], runtime: str) -> dict[str, Any]:
     return group
 
 
-def render_runtime_hooks(registry: dict[str, Any], runtime: str) -> dict[str, Any]:
+def render_runtime_hooks(
+    registry: dict[str, Any],
+    runtime: str,
+    *,
+    repo_name: str | None = None,
+) -> dict[str, Any]:
     events: dict[str, list[dict[str, Any]]] = {}
-    for hook in _managed_hooks_for_runtime(registry, runtime):
+    for hook in _managed_hooks_for_runtime(registry, runtime, repo_name=repo_name):
         event = str(hook["event"])
         events.setdefault(event, []).append(_render_matcher_group(hook, runtime))
     return {"hooks": events}
 
 
-def render_codex_hooks(registry: dict[str, Any]) -> dict[str, Any]:
-    return render_runtime_hooks(registry, "codex")
+def render_codex_hooks(
+    registry: dict[str, Any],
+    *,
+    repo_name: str | None = None,
+) -> dict[str, Any]:
+    return render_runtime_hooks(registry, "codex", repo_name=repo_name)
 
 
 def _render_copilot_bash_command(hook: dict[str, Any]) -> str:
@@ -218,9 +261,13 @@ def _render_copilot_bash_command(hook: dict[str, Any]) -> str:
     return f'if [ -f "{script_path}" ]; then python3 "{script_path}"{args}; fi'
 
 
-def render_copilot_hooks(registry: dict[str, Any]) -> dict[str, Any]:
+def render_copilot_hooks(
+    registry: dict[str, Any],
+    *,
+    repo_name: str | None = None,
+) -> dict[str, Any]:
     events: dict[str, list[dict[str, Any]]] = {}
-    for hook in _managed_hooks_for_runtime(registry, "copilot"):
+    for hook in _managed_hooks_for_runtime(registry, "copilot", repo_name=repo_name):
         event = str(hook["event"])
         copilot_event = COPILOT_EVENT_NAMES[event]
         handler: dict[str, Any] = {
@@ -233,8 +280,13 @@ def render_copilot_hooks(registry: dict[str, Any]) -> dict[str, Any]:
     return {"hooks": events, "version": 1}
 
 
-def merge_claude_hooks(settings: dict[str, Any], registry: dict[str, Any]) -> dict[str, Any]:
-    rendered = render_runtime_hooks(registry, "claude")["hooks"]
+def merge_claude_hooks(
+    settings: dict[str, Any],
+    registry: dict[str, Any],
+    *,
+    repo_name: str | None = None,
+) -> dict[str, Any]:
+    rendered = render_runtime_hooks(registry, "claude", repo_name=repo_name)["hooks"]
     merged = dict(settings)
     existing_hooks = merged.get("hooks", {})
     if existing_hooks is None:
@@ -242,17 +294,24 @@ def merge_claude_hooks(settings: dict[str, Any], registry: dict[str, Any]) -> di
     if not isinstance(existing_hooks, dict):
         raise HookRegistryError("Claude settings `hooks` must be an object when present")
 
-    hook_events = dict(existing_hooks)
-    for event, groups in rendered.items():
-        existing_groups = hook_events.get(event, [])
+    hook_events: dict[str, list[Any]] = {}
+    for event, existing_groups in existing_hooks.items():
         if existing_groups is None:
             existing_groups = []
         if not isinstance(existing_groups, list):
             raise HookRegistryError(f"Claude settings hooks.{event} must be an array")
-        hook_events[event] = _without_managed_groups(existing_groups) + groups
+        kept = _without_managed_groups(existing_groups)
+        if kept:
+            hook_events[event] = kept
+
+    for event, groups in rendered.items():
+        existing_groups = hook_events.get(event, [])
+        hook_events[event] = existing_groups + groups
 
     if hook_events:
         merged["hooks"] = hook_events
+    else:
+        merged.pop("hooks", None)
     return merged
 
 
@@ -301,6 +360,7 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     codex = subparsers.add_parser("render-codex", help="Render Codex hooks.json")
     codex.add_argument("--registry", required=True)
     codex.add_argument("--output", required=True)
+    codex.add_argument("--repo-name")
 
     copilot = subparsers.add_parser(
         "render-copilot",
@@ -308,6 +368,7 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     )
     copilot.add_argument("--registry", required=True)
     copilot.add_argument("--output", required=True)
+    copilot.add_argument("--repo-name")
 
     claude = subparsers.add_parser(
         "render-claude-settings",
@@ -316,6 +377,7 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     claude.add_argument("--registry", required=True)
     claude.add_argument("--settings", required=True)
     claude.add_argument("--output", required=True)
+    claude.add_argument("--repo-name")
 
     return parser.parse_args(argv)
 
@@ -327,12 +389,15 @@ def main(argv: list[str] | None = None) -> int:
         if args.command == "validate":
             return 0
         if args.command == "render-codex":
-            _write_output(Path(args.output).expanduser().resolve(), render_codex_hooks(registry))
+            _write_output(
+                Path(args.output).expanduser().resolve(),
+                render_codex_hooks(registry, repo_name=args.repo_name),
+            )
             return 0
         if args.command == "render-copilot":
             _write_output(
                 Path(args.output).expanduser().resolve(),
-                render_copilot_hooks(registry),
+                render_copilot_hooks(registry, repo_name=args.repo_name),
             )
             return 0
         if args.command == "render-claude-settings":
@@ -342,7 +407,7 @@ def main(argv: list[str] | None = None) -> int:
             )
             _write_output(
                 Path(args.output).expanduser().resolve(),
-                merge_claude_hooks(settings, registry),
+                merge_claude_hooks(settings, registry, repo_name=args.repo_name),
             )
             return 0
     except HookRegistryError as exc:

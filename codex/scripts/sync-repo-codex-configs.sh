@@ -6,6 +6,7 @@ CHECK=0
 REGISTRY_FILE=""
 MCP_REGISTRY_FILE=""
 AGENT_REGISTRY_FILE=""
+HOOKS_REGISTRY_FILE=""
 REPO_FILTERS=()
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -14,6 +15,7 @@ ROOT_DIR="$(cd "$CONTROL_PLANE_DIR/.." && pwd)"
 DEFAULT_REGISTRY_FILE="${CONTROL_PLANE_DIR}/config/repo-bootstrap.json"
 DEFAULT_MCP_REGISTRY_FILE="${ROOT_DIR}/mcp/config/presets.json"
 DEFAULT_AGENT_REGISTRY_FILE="${ROOT_DIR}/agents/registry.json"
+DEFAULT_HOOKS_REGISTRY_FILE="${ROOT_DIR}/hooks/registry.json"
 
 usage() {
   cat <<USAGE
@@ -33,6 +35,9 @@ Options:
   --agent-registry <path>
                          Override shared agent registry
                          (default: agents/registry.json)
+  --hooks-registry <path>
+                         Override shared hooks registry
+                         (default: hooks/registry.json)
   --repo <path>          Limit sync to an exact repo path (repeatable)
   -h, --help             Show this help
 
@@ -90,6 +95,10 @@ while [[ $# -gt 0 ]]; do
       AGENT_REGISTRY_FILE="${2:-}"
       shift 2
       ;;
+    --hooks-registry)
+      HOOKS_REGISTRY_FILE="${2:-}"
+      shift 2
+      ;;
     --repo)
       REPO_FILTERS+=("${2:-}")
       shift 2
@@ -113,12 +122,17 @@ fi
 if [[ -z "$AGENT_REGISTRY_FILE" ]]; then
   AGENT_REGISTRY_FILE="$DEFAULT_AGENT_REGISTRY_FILE"
 fi
+if [[ -z "$HOOKS_REGISTRY_FILE" ]]; then
+  HOOKS_REGISTRY_FILE="$DEFAULT_HOOKS_REGISTRY_FILE"
+fi
 [[ -f "$REGISTRY_FILE" ]] || die "Missing registry file: $REGISTRY_FILE"
 [[ -r "$REGISTRY_FILE" ]] || die "Registry file is not readable: $REGISTRY_FILE"
 [[ -f "$MCP_REGISTRY_FILE" ]] || die "Missing MCP registry file: $MCP_REGISTRY_FILE"
 [[ -r "$MCP_REGISTRY_FILE" ]] || die "MCP registry file is not readable: $MCP_REGISTRY_FILE"
 [[ -f "$AGENT_REGISTRY_FILE" ]] || die "Missing agent registry file: $AGENT_REGISTRY_FILE"
 [[ -r "$AGENT_REGISTRY_FILE" ]] || die "Agent registry file is not readable: $AGENT_REGISTRY_FILE"
+[[ -f "$HOOKS_REGISTRY_FILE" ]] || die "Missing hooks registry file: $HOOKS_REGISTRY_FILE"
+[[ -r "$HOOKS_REGISTRY_FILE" ]] || die "Hooks registry file is not readable: $HOOKS_REGISTRY_FILE"
 
 ensure_parent_dir() {
   local file="$1"
@@ -161,7 +175,7 @@ is_drifted() {
 }
 
 MANIFEST_FILE="${TMP_DIR}/manifest.tsv"
-python3 - "$REGISTRY_FILE" "$MCP_REGISTRY_FILE" "$AGENT_REGISTRY_FILE" "$TMP_DIR" ${REPO_FILTERS[@]+"${REPO_FILTERS[@]}"} >"$MANIFEST_FILE" <<'PY'
+python3 - "$REGISTRY_FILE" "$MCP_REGISTRY_FILE" "$AGENT_REGISTRY_FILE" "$HOOKS_REGISTRY_FILE" "$TMP_DIR" ${REPO_FILTERS[@]+"${REPO_FILTERS[@]}"} >"$MANIFEST_FILE" <<'PY'
 from __future__ import annotations
 
 import hashlib
@@ -453,19 +467,22 @@ def render_repo_config(
 registry_path = Path(sys.argv[1]).expanduser().resolve()
 mcp_registry_path = Path(sys.argv[2]).expanduser().resolve()
 agent_registry_path = Path(sys.argv[3]).expanduser().resolve()
-tmp_dir = Path(sys.argv[4]).resolve()
-filters = {normalize_path(path) for path in sys.argv[5:] if path}
+hooks_registry_path = Path(sys.argv[4]).expanduser().resolve()
+tmp_dir = Path(sys.argv[5]).resolve()
+filters = {normalize_path(path) for path in sys.argv[6:] if path}
 
 root_dir = agent_registry_path.parent.parent.resolve()
 sys.path.insert(0, str(root_dir))
 
 from agents.registry import load_agent_registry
+from hooks.control_plane import load_hooks_registry, render_codex_hooks
 
 
 data = json.loads(registry_path.read_text(encoding="utf-8"))
 defaults = data.get("defaults", {})
 repos_raw = data.get("repos", [])
 presets, _global_presets = validate_mcp_registry(mcp_registry_path)
+hooks_registry = load_hooks_registry(hooks_registry_path)
 
 if not isinstance(defaults, dict):
     raise TypeError("defaults must be an object")
@@ -545,6 +562,15 @@ for item in repo_items_all:
     rendered_path.write_text(rendered, encoding="utf-8")
     target_path = Path(actual_repo) / ".codex" / "config.toml"
     manifest_lines.append(f"{actual_repo}\t{target_path}\t{rendered_path}")
+
+    rendered_hooks = render_codex_hooks(hooks_registry, repo_name=item["_repo_name"])
+    rendered_hooks_path = tmp_dir / f"{hashlib.sha256((actual_repo + ':hooks').encode()).hexdigest()}.json"
+    rendered_hooks_path.write_text(
+        json.dumps(rendered_hooks, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
+    target_hooks_path = Path(actual_repo) / ".codex" / "hooks.json"
+    manifest_lines.append(f"{actual_repo}\t{target_hooks_path}\t{rendered_hooks_path}")
 
     for agent_name in repo_agent_names:
         preset = agent_presets.get(agent_name)

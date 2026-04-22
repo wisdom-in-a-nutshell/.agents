@@ -146,6 +146,8 @@ class ClaudeControlPlaneCheckTests(TempDirTestCase):
                 str(root / "claude/config/bootstrap.json"),
                 "--mcp-registry",
                 str(root / "mcp/config/presets.json"),
+                "--hooks-registry",
+                str(root / "hooks/registry.json"),
             ],
             env=env,
         )

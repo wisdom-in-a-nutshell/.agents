@@ -21,6 +21,7 @@ from .common import (
     show_diff,
     sync_relative_symlink,
 )
+from hooks.control_plane import HookRegistryError, load_hooks_registry, merge_claude_hooks
 
 
 def deep_merge(base: Any, override: Any) -> Any:
@@ -125,6 +126,11 @@ def parse_args() -> argparse.Namespace:
         help="Override shared MCP registry",
     )
     parser.add_argument(
+        "--hooks-registry",
+        default=str(repo_root() / "hooks" / "registry.json"),
+        help="Override shared hooks registry",
+    )
+    parser.add_argument(
         "--repo",
         action="append",
         default=[],
@@ -138,12 +144,17 @@ def build_actions(
     repo_registry_path: Path,
     bootstrap_path: Path,
     mcp_registry_path: Path,
+    hooks_registry_path: Path,
     repo_filters: list[str],
     temp_dir: Path,
 ) -> list[RenderAction]:
     repo_data = json.loads(repo_registry_path.read_text(encoding="utf-8"))
     bootstrap_data = json.loads(bootstrap_path.read_text(encoding="utf-8"))
     mcp_data = json.loads(mcp_registry_path.read_text(encoding="utf-8"))
+    try:
+        hooks_data = load_hooks_registry(hooks_registry_path)
+    except HookRegistryError as exc:
+        raise ControlPlaneError(str(exc)) from exc
 
     repos_raw = repo_data.get("repos", [])
     if not isinstance(repos_raw, list):
@@ -210,6 +221,7 @@ def build_actions(
             continue
 
         actual_repo = str(actual_repo_path)
+        repo_name = actual_repo_path.name or actual_repo
         if filters and actual_repo not in filters:
             continue
 
@@ -227,6 +239,14 @@ def build_actions(
         rendered_settings = deep_merge(default_settings, repo_settings)
         if not isinstance(rendered_settings, dict):
             raise ControlPlaneError(f"merged settings for {actual_repo} must be an object")
+        try:
+            rendered_settings = merge_claude_hooks(
+                rendered_settings,
+                hooks_data,
+                repo_name=repo_name,
+            )
+        except HookRegistryError as exc:
+            raise ControlPlaneError(str(exc)) from exc
 
         settings_path = temp_dir / (
             f"{hashlib.sha256((actual_repo + ':settings').encode()).hexdigest()}.json"
@@ -354,6 +374,7 @@ def main() -> int:
     repo_registry_path = Path(args.registry).expanduser().resolve()
     bootstrap_path = Path(args.bootstrap).expanduser().resolve()
     mcp_registry_path = Path(args.mcp_registry).expanduser().resolve()
+    hooks_registry_path = Path(args.hooks_registry).expanduser().resolve()
 
     if not repo_registry_path.is_file():
         raise ControlPlaneError(f"Missing repo registry file: {repo_registry_path}")
@@ -361,12 +382,15 @@ def main() -> int:
         raise ControlPlaneError(f"Missing Claude bootstrap file: {bootstrap_path}")
     if not mcp_registry_path.is_file():
         raise ControlPlaneError(f"Missing MCP registry file: {mcp_registry_path}")
+    if not hooks_registry_path.is_file():
+        raise ControlPlaneError(f"Missing hooks registry file: {hooks_registry_path}")
 
     with tempfile.TemporaryDirectory() as temp_dir_raw:
         actions = build_actions(
             repo_registry_path=repo_registry_path,
             bootstrap_path=bootstrap_path,
             mcp_registry_path=mcp_registry_path,
+            hooks_registry_path=hooks_registry_path,
             repo_filters=args.repo,
             temp_dir=Path(temp_dir_raw),
         )

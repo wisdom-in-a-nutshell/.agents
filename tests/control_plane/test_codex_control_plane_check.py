@@ -92,6 +92,8 @@ class CodexControlPlaneCheckTests(TempDirTestCase):
                 str(root / "mcp/config/presets.json"),
                 "--agent-registry",
                 str(root / "agents/registry.json"),
+                "--hooks-registry",
+                str(root / "hooks/registry.json"),
             ],
             env={"HOME": str(home)},
         )
@@ -109,6 +111,7 @@ class CodexControlPlaneCheckTests(TempDirTestCase):
 
         self.assertIn("OK: Codex control plane validation passed", result.stdout)
         self.assertTrue((adi / ".codex/config.toml").is_file())
+        self.assertTrue((adi / ".codex/hooks.json").is_file())
         self.assertTrue((adi / ".codex/agents/visual_reviewer.toml").is_file())
 
     def test_check_script_fails_when_repo_config_missing_for_managed_repo(self) -> None:
