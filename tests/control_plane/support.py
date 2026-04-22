@@ -99,6 +99,7 @@ def make_control_plane_root(base_dir: Path) -> Path:
         "agents/__init__.py",
         "agents/registry.py",
         "codex/config/agents/external_researcher.toml",
+        "codex/config/bundled-skills-policy.json",
         "codex/config/global.agents.md",
         "codex/config/global.config.toml",
         "codex/config/agents/visual_reviewer.toml",

@@ -21,6 +21,8 @@ The repo bootstrap registry in `~/.agents/codex/config/repo-bootstrap.json` then
 
 Shared MCP preset definitions themselves now live in `~/.agents/mcp/config/presets.json`.
 
+OpenAI-bundled Codex runtime skills are handled separately by `~/.agents/codex/config/bundled-skills-policy.json`. That file classifies runtime-installed bundled skills as either allowed or disabled so new upstream bundled skills do not silently become part of the local control plane without review.
+
 At the machine boundary, external repos such as `~/GitHub/scripts` should call the shared root wrappers in `~/.agents/scripts/` rather than reaching into Codex internals directly. The low-level Codex scripts still live in `codex/scripts/`, but machine-facing orchestration now happens one layer up.
 
 ## Figure 1: Ownership Layout
@@ -46,6 +48,7 @@ flowchart TD
     A --> R[repo-bootstrap.json]
     P --> Q[sync-plugins-registry.sh]
     P --> S[plugins-source/external or owned]
+    A --> V[bundled-skills-policy.json]
     S --> Q
     B --> C[sync-config.sh]
     B --> D[sync-trusted-projects.sh]
@@ -56,6 +59,7 @@ flowchart TD
     Q --> R
     C --> G[~/.codex/config.toml]
     C --> H[Xcode Codex config]
+    V --> C
     R --> D
     R --> E
     T --> E
@@ -90,6 +94,7 @@ flowchart TD
 Owns the durable, synced source of truth for Codex-specific setup:
 
 - managed config fragments and presets
+- bundled Codex skill allow/disable policy
 - repo bootstrap registry
 - hook registry and shared hook dispatch scripts
 - plugin source registry and plugin source packages

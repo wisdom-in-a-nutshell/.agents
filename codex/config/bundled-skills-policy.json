@@ -1,0 +1,24 @@
+{
+  "roots": {
+    ".system": {
+      "allowed": [],
+      "disabled": [
+        "imagegen",
+        "openai-docs",
+        "plugin-creator",
+        "skill-creator",
+        "skill-installer"
+      ],
+      "path": "~/.codex/skills/.system"
+    },
+    "codex-primary-runtime": {
+      "allowed": [],
+      "disabled": [
+        "slides",
+        "spreadsheets"
+      ],
+      "path": "~/.codex/skills/codex-primary-runtime"
+    }
+  },
+  "version": 1
+}

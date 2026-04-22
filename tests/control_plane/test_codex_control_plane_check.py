@@ -9,6 +9,7 @@ from tests.control_plane.support import (
     run_command,
     visual_reviewer_agent,
     write_json,
+    write_text,
 )
 
 
@@ -173,3 +174,21 @@ class CodexControlPlaneCheckTests(TempDirTestCase):
         self.assertIn("visual_reviewer.toml", result.stderr)
         self.assertIn('-sandbox_mode = "workspace-write"', result.stderr)
         self.assertIn('+sandbox_mode = "read-only"', result.stderr)
+
+    def test_check_script_fails_for_unclassified_bundled_codex_skill(self) -> None:
+        root, home, adi = self._make_codex_repo_fixture()
+        write_text(
+            home / ".codex/skills/.system/new-bundled-skill/SKILL.md",
+            "---\nname: new-bundled-skill\ndescription: Fixture.\n---\n",
+        )
+
+        result = run_command(
+            self._check_command(root, home, adi),
+            env={"HOME": str(home)},
+            check=False,
+        )
+
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("unclassified bundled Codex skill(s)", result.stderr)
+        self.assertIn("new-bundled-skill", result.stderr)
+        self.assertIn("bundled-skills-policy.json", result.stderr)

@@ -23,14 +23,7 @@ CANONICAL_GLOBAL_TEMPLATE="${CANONICAL_DIR}/global.config.toml"
 CANONICAL_AGENTS_DIR="${CANONICAL_DIR}/agents"
 CANONICAL_XCODE_TEMPLATE="${CANONICAL_DIR}/xcode.config.toml"
 CANONICAL_XCODE_RULES_TEMPLATE="${CANONICAL_DIR}/xcode.rules"
-CODEX_SKILLS_DISABLE_PATHS=(
-  "${HOME}/.codex/skills/.system/imagegen/SKILL.md"
-  "${HOME}/.codex/skills/.system/openai-docs/SKILL.md"
-  "${HOME}/.codex/skills/.system/skill-creator/SKILL.md"
-  "${HOME}/.codex/skills/.system/skill-installer/SKILL.md"
-  "${HOME}/.codex/skills/codex-primary-runtime/slides/SKILL.md"
-  "${HOME}/.codex/skills/codex-primary-runtime/spreadsheets/SKILL.md"
-)
+BUNDLED_SKILLS_POLICY="${CANONICAL_DIR}/bundled-skills-policy.json"
 
 usage() {
   cat <<USAGE
@@ -54,6 +47,7 @@ Options:
   --xcode-rules <path>       Override Xcode rules target
   --canonical-dir <path>     Directory containing canonical templates:
                              global.config.toml, xcode.config.toml, xcode.rules
+                             bundled-skills-policy.json
   --mcp-registry <path>      Shared MCP registry
                              (default: mcp/config/presets.json)
   --agent-registry <path>    Shared agent registry
@@ -132,6 +126,7 @@ while [[ $# -gt 0 ]]; do
       CANONICAL_GLOBAL_TEMPLATE="${CANONICAL_DIR}/global.config.toml"
       CANONICAL_XCODE_TEMPLATE="${CANONICAL_DIR}/xcode.config.toml"
       CANONICAL_XCODE_RULES_TEMPLATE="${CANONICAL_DIR}/xcode.rules"
+      BUNDLED_SKILLS_POLICY="${CANONICAL_DIR}/bundled-skills-policy.json"
       shift 2
       ;;
     --mcp-registry)
@@ -180,6 +175,52 @@ require_readable_file() {
   local file="$1"
   [[ -f "$file" ]] || die "Missing required file: $file"
   [[ -r "$file" ]] || die "File is not readable: $file"
+}
+
+load_codex_skill_disable_paths() {
+  local policy_file="$1"
+  python3 - "$policy_file" "$HOME" <<'PY'
+from __future__ import annotations
+
+import json
+import sys
+from pathlib import Path
+
+
+policy_path = Path(sys.argv[1]).expanduser().resolve()
+home = sys.argv[2].rstrip("/")
+
+try:
+    data = json.loads(policy_path.read_text(encoding="utf-8"))
+except Exception as exc:
+    raise SystemExit(f"ERROR: invalid JSON in bundled skills policy {policy_path}: {exc}")
+
+roots = data.get("roots")
+if not isinstance(roots, dict):
+    raise SystemExit(f"ERROR: bundled skills policy roots must be an object: {policy_path}")
+
+seen_paths: set[str] = set()
+for root_name, root_config in roots.items():
+    if not isinstance(root_config, dict):
+        raise SystemExit(f"ERROR: bundled skills policy roots.{root_name} must be an object")
+    root_path = root_config.get("path")
+    disabled = root_config.get("disabled", [])
+    if not isinstance(root_path, str) or not root_path.strip():
+        raise SystemExit(f"ERROR: bundled skills policy roots.{root_name}.path must be a non-empty string")
+    if not isinstance(disabled, list):
+        raise SystemExit(f"ERROR: bundled skills policy roots.{root_name}.disabled must be an array")
+    expanded_root = root_path.replace("~", home, 1) if root_path == "~" or root_path.startswith("~/") else root_path
+    for skill_name in disabled:
+        if not isinstance(skill_name, str) or not skill_name.strip() or "/" in skill_name:
+            raise SystemExit(
+                f"ERROR: bundled skills policy roots.{root_name}.disabled contains invalid skill name: {skill_name!r}"
+            )
+        skill_path = str(Path(expanded_root) / skill_name / "SKILL.md")
+        if skill_path in seen_paths:
+            continue
+        seen_paths.add(skill_path)
+        print(skill_path)
+PY
 }
 
 extract_global_mcp_entries() {
@@ -646,8 +687,8 @@ lines = text.splitlines(keepends=True)
 
 project_re = re.compile(r'^\[projects\."([^"]+)"\]\s*$')
 path_re = re.compile(r'^\s*path\s*=\s*"([^"]*)"\s*$')
-system_skill_re = re.compile(
-    r"^/Users/[^/]+/\.codex/skills/\.system/(imagegen|openai-docs|skill-creator|skill-installer)/SKILL\.md$"
+managed_skill_re = re.compile(
+    r"^/Users/[^/]+/\.codex/skills/(?:(?:\.system/(imagegen|openai-docs|plugin-creator|skill-creator|skill-installer))|(?:codex-primary-runtime/(slides|spreadsheets)))/SKILL\.md$"
 )
 
 
@@ -665,7 +706,7 @@ def keep_skill_block(block: list[str]) -> bool:
         if not m:
             continue
         path = m.group(1)
-        if system_skill_re.match(path):
+        if managed_skill_re.match(path):
             return path.startswith(f"{current_home}/.codex/")
     return True
 
@@ -711,7 +752,17 @@ PY
 
 ensure_system_skills_disabled() {
   local target_file="$1"
-  python3 - "$target_file" "${CODEX_SKILLS_DISABLE_PATHS[@]}" <<'PY'
+  local policy_file="$2"
+  local paths_file="${TMP_DIR}/codex-skill-disable-paths.txt"
+  local -a skill_paths=()
+
+  load_codex_skill_disable_paths "$policy_file" > "$paths_file"
+  while IFS= read -r skill_path; do
+    [[ -n "$skill_path" ]] || continue
+    skill_paths+=("$skill_path")
+  done < "$paths_file"
+
+  python3 - "$target_file" "${skill_paths[@]}" <<'PY'
 from __future__ import annotations
 
 import re
@@ -1167,6 +1218,7 @@ sync_global() {
   local hooks_rendered="${TMP_DIR}/hooks.json"
 
   require_readable_file "$CANONICAL_GLOBAL_TEMPLATE"
+  require_readable_file "$BUNDLED_SKILLS_POLICY"
   require_readable_file "$MCP_REGISTRY"
   require_readable_file "$AGENT_REGISTRY"
   require_readable_file "$HOOKS_REGISTRY"
@@ -1175,7 +1227,7 @@ sync_global() {
   prepare_work_file "$original" "$rendered"
   sanitize_machine_specific_entries "$rendered"
   render_global_config "$rendered" "$CANONICAL_GLOBAL_TEMPLATE" "$MCP_REGISTRY" "$AGENT_REGISTRY"
-  ensure_system_skills_disabled "$rendered"
+  ensure_system_skills_disabled "$rendered" "$BUNDLED_SKILLS_POLICY"
   render_codex_hooks "$HOOKS_REGISTRY" "$hooks_rendered"
 
   log ""

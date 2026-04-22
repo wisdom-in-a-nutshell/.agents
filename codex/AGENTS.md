@@ -14,6 +14,7 @@ Canonical personal Codex control-plane assets live here.
 - `config/`: canonical Codex config fragments and templates.
   - `config/global.agents.md`: canonical machine-wide guidance source for `~/.codex/AGENTS.md`.
   - `config/agents/*.toml`: canonical multi-agent role config files synced into live Codex runtimes.
+  - `config/bundled-skills-policy.json`: allow/disable policy for OpenAI-bundled Codex runtime skills.
 - `scripts/`: canonical Codex-specific automation scripts.
   - includes Ghostty/Codex helper scripts and any thin helper invoked by Keyboard Maestro for Codex workflows.
 - `shell/`: Codex-specific shell and Ghostty integration fragments.
@@ -31,6 +32,7 @@ Canonical personal Codex control-plane assets live here.
 ## Key Boundaries
 
 - `config/repo-bootstrap.json` decides managed repo inventory plus per-repo Codex defaults and overrides.
+- `config/bundled-skills-policy.json` decides which OpenAI-bundled Codex skills are allowed to remain available and which are disabled in managed runtime config.
 - `../agents/registry.json` decides where managed agents are exposed across Codex and Claude.
 - Codex role behavior belongs in `config/agents/*.toml`; the shared agent registry should not redefine what a role can do.
 - MCP preset definitions belong in `../mcp/config/presets.json`, not in `repo-bootstrap.json`.

@@ -18,6 +18,7 @@ Personal agent, Codex, Claude, and repo-local lifecycle hook control plane.
 - `hooks/registry.json` is the canonical shared lifecycle hook registry for Codex, Claude, and GitHub Copilot.
 - `codex/` holds canonical personal Codex control-plane inputs.
 - `codex/config/global.agents.md` is the single canonical machine-wide guidance source for both `~/.codex/AGENTS.md` and `~/.claude/CLAUDE.md`.
+- `codex/config/bundled-skills-policy.json` is the canonical policy for classifying OpenAI-bundled Codex skills that appear under `~/.codex/skills/.system` or `~/.codex/skills/codex-primary-runtime`.
 - `codex/config/repo-bootstrap.json` is the canonical shared repo registry for managed repo-local behavior.
   - Per repo it can define:
     - `mcp_presets`
@@ -104,6 +105,7 @@ Detailed operations live in:
 - Do not hand-edit generated repo-local `.codex/config.toml` files in managed repos; update `codex/config/repo-bootstrap.json` and re-run the sync scripts.
 - Do not hand-edit generated repo-local `.codex/hooks.json` files in managed repos; update `hooks/registry.json` and re-run the sync scripts.
 - Do not hand-edit generated repo-local `.codex/agents/*.toml` files in managed repos; update `codex/config/repo-bootstrap.json` or `codex/config/agents/*.toml` and re-run the sync scripts.
+- When a new OpenAI-bundled Codex skill appears locally, classify it in `codex/config/bundled-skills-policy.json` as either `allowed` or `disabled`; do not leave it as untracked local runtime drift.
 - When changing shared bootstrap inputs such as `mcp/config/presets.json`, `codex/config/repo-bootstrap.json`, or repo MCP assignment, prefer `./scripts/bootstrap-machine-agent-control-planes.sh --apply --repo <repo>` so Codex, Claude, and repo-local Copilot hook state are re-rendered together. Use component-only scripts only for intentional single-surface troubleshooting.
 - If `mcp/config/presets.json` changes, run both Codex and Claude control-plane validation in the same change.
 - If `agents/registry.json` changes, run both Codex and Claude control-plane validation plus `./scripts/test-control-plane.sh` in the same change.

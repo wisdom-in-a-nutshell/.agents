@@ -17,6 +17,9 @@ codex_hooks = true
 js_repl = true
 apps = false
 
+[plugins."computer-use@openai-bundled"]
+enabled = true
+
 [plugins."gmail@openai-curated"]
 enabled = false
 

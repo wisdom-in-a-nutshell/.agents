@@ -11,6 +11,7 @@ Use [Codex Control Plane Ownership](/Users/dobby/.agents/docs/references/codex-c
 - `~/.agents`
   - canonical Codex control-plane source
   - config templates in [`codex/config/`](/Users/dobby/.agents/codex/config)
+  - bundled Codex skill allow/disable policy in [`codex/config/bundled-skills-policy.json`](/Users/dobby/.agents/codex/config/bundled-skills-policy.json)
   - Codex-specific scripts in [`codex/scripts/`](/Users/dobby/.agents/codex/scripts)
   - Codex shell fragment in [`codex/shell/codex-shell.zsh`](/Users/dobby/.agents/codex/shell/codex-shell.zsh)
 - `~/GitHub/scripts`
@@ -104,6 +105,7 @@ Use [Codex Control Plane Ownership](/Users/dobby/.agents/docs/references/codex-c
   - logs phase timing to `~/.local/state/agents-control-plane/log/hooks-stop.log`
 - `~/.codex/config.toml` and Xcode Codex config contain exact trusted repo entries for local repos such as `focus`
 - `~/.codex/config.toml` enables Codex hooks through `[features].codex_hooks = true`
+- `~/.codex/config.toml` explicitly preserves `computer-use@openai-bundled` and disables bundled Codex skills classified as `disabled` in [`bundled-skills-policy.json`](/Users/dobby/.agents/codex/config/bundled-skills-policy.json)
 - `~/.codex/hooks.json` is rendered from `hooks/registry.json` for global Codex hooks. Current managed hooks are repo-scoped, so they render into repo `.codex/hooks.json`. Codex does not currently expose a separate documented `SessionEnd` hook.
 - `~/.codex/config.toml` contains no Git conflict markers
 - `~/.codex/vendor_imports/skills` is a valid Git checkout:
@@ -118,7 +120,8 @@ Use [Codex Control Plane Ownership](/Users/dobby/.agents/docs/references/codex-c
   - keeps the current role setup explicit: built-in `explorer` for local repo/runtime exploration, managed `external_researcher` for information outside the local repo/runtime
   - leaves repo-scoped custom roles to the repo bootstrap path instead of enabling them globally by default
   - keeps Apps/connectors globally disabled through the managed `features.apps = false` baseline and explicit static `plugins.*.enabled = false` entries in the canonical template where desired
-  - disables selected built-in system skills in `~/.codex/config.toml` when the control plane should prefer managed skill copies instead, including currently `imagegen`, `openai-docs`, `skill-creator`, and `skill-installer`
+  - explicitly preserves the OpenAI-bundled Computer Use plugin with `computer-use@openai-bundled.enabled = true`
+  - disables selected bundled Codex skills in `~/.codex/config.toml` from [`bundled-skills-policy.json`](/Users/dobby/.agents/codex/config/bundled-skills-policy.json) when the control plane should prefer managed skill copies or avoid duplicate runtime surfaces
   - rewrites machine-specific system-skill paths for the current `$HOME`
   - renders only global Codex lifecycle hooks from [`hooks/registry.json`](/Users/dobby/.agents/hooks/registry.json) into `~/.codex/hooks.json`
   - strips foreign-user project and system-skill entries before writing
@@ -155,6 +158,8 @@ Use [Codex Control Plane Ownership](/Users/dobby/.agents/docs/references/codex-c
   - supports `--check` to fail when rendered repo-local Copilot hook files are missing or stale
 - [`check-codex-control-plane.sh`](/Users/dobby/.agents/codex/scripts/check-codex-control-plane.sh)
   - validates canonical `global.config.toml`, `xcode.config.toml`, `repo-bootstrap.json`, `agents/registry.json`, and `mcp/config/presets.json`
+  - validates [`bundled-skills-policy.json`](/Users/dobby/.agents/codex/config/bundled-skills-policy.json) and fails if a local OpenAI-bundled Codex skill exists under `~/.codex/skills/.system` or `~/.codex/skills/codex-primary-runtime` without being classified as `allowed` or `disabled`
+  - validates that the live global Codex config disables each skill classified as `disabled`
   - validates [`hooks/registry.json`](/Users/dobby/.agents/hooks/registry.json), rendered global `~/.codex/hooks.json`, and rendered repo-local `.codex/hooks.json` files when hooks are enabled
   - validates canonical role TOMLs and rendered runtime role TOMLs
   - catches missing or malformed `name` / `description` in role files

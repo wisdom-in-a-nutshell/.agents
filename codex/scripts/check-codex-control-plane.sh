@@ -232,6 +232,119 @@ from hooks.control_plane import load_hooks_registry, render_codex_hooks
 canonical_agents_dir = canonical_dir / "agents"
 global_template = canonical_dir / "global.config.toml"
 xcode_template = canonical_dir / "xcode.config.toml"
+bundled_skills_policy_path = canonical_dir / "bundled-skills-policy.json"
+
+
+def load_bundled_skills_policy(path: Path) -> dict[str, dict[str, object]]:
+    if not path.is_file():
+        fail(f"missing bundled skills policy file: {path}")
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except Exception as exc:
+        fail(f"invalid JSON in {path}: {exc}")
+    if not isinstance(data, dict):
+        fail(f"bundled skills policy root must be an object: {path}")
+    if data.get("version") != 1:
+        fail(f"bundled skills policy version must be 1 in {path}")
+    roots = data.get("roots")
+    if not isinstance(roots, dict):
+        fail(f"bundled skills policy roots must be an object in {path}")
+
+    normalized: dict[str, dict[str, object]] = {}
+    for root_name, root_config in sorted(roots.items()):
+        if not isinstance(root_name, str) or not root_name.strip():
+            fail(f"bundled skills policy has an invalid root name in {path}")
+        if not isinstance(root_config, dict):
+            fail(f"bundled skills policy roots.{root_name} must be an object in {path}")
+        root_path = root_config.get("path")
+        allowed = root_config.get("allowed", [])
+        disabled = root_config.get("disabled", [])
+        if not isinstance(root_path, str) or not root_path.strip():
+            fail(f"bundled skills policy roots.{root_name}.path must be a non-empty string in {path}")
+        if not isinstance(allowed, list) or not all(isinstance(item, str) and item.strip() and "/" not in item for item in allowed):
+            fail(f"bundled skills policy roots.{root_name}.allowed must be an array of skill names in {path}")
+        if not isinstance(disabled, list) or not all(isinstance(item, str) and item.strip() and "/" not in item for item in disabled):
+            fail(f"bundled skills policy roots.{root_name}.disabled must be an array of skill names in {path}")
+        allowed_set = set(allowed)
+        disabled_set = set(disabled)
+        overlap = sorted(allowed_set & disabled_set)
+        if overlap:
+            fail(
+                f"bundled skills policy roots.{root_name} classifies skill(s) as both allowed and disabled: "
+                f"{', '.join(overlap)}"
+            )
+        normalized[root_name] = {
+            "allowed": allowed_set,
+            "disabled": disabled_set,
+            "path": root_path,
+        }
+    return normalized
+
+
+def expand_policy_path(raw_path: str) -> Path:
+    home = os.environ.get("HOME")
+    if home and (raw_path == "~" or raw_path.startswith("~/")):
+        return Path(home + raw_path[1:]).resolve()
+    return Path(raw_path).expanduser().resolve()
+
+
+def audit_installed_bundled_skills(policy: dict[str, dict[str, object]]) -> None:
+    for root_name, root_config in sorted(policy.items()):
+        root_path = expand_policy_path(str(root_config["path"]))
+        allowed = root_config["allowed"]
+        disabled = root_config["disabled"]
+        if not isinstance(allowed, set) or not isinstance(disabled, set):
+            fail(f"internal bundled skills policy normalization error for {root_name}")
+        if not root_path.exists():
+            continue
+        installed = sorted(path.parent.name for path in root_path.glob("*/SKILL.md"))
+        unclassified = sorted(set(installed) - allowed - disabled)
+        if unclassified:
+            fail(
+                f"unclassified bundled Codex skill(s) under {root_path}: {', '.join(unclassified)}. "
+                f"Classify each in {bundled_skills_policy_path} as allowed or disabled."
+            )
+
+
+def expected_disabled_skill_paths(policy: dict[str, dict[str, object]]) -> set[str]:
+    paths: set[str] = set()
+    for root_config in policy.values():
+        root_path = expand_policy_path(str(root_config["path"]))
+        disabled = root_config["disabled"]
+        if not isinstance(disabled, set):
+            fail("internal bundled skills policy normalization error")
+        for skill_name in disabled:
+            paths.add(str(root_path / str(skill_name) / "SKILL.md"))
+    return paths
+
+
+def validate_disabled_skill_entries(config_path: Path, policy: dict[str, dict[str, object]]) -> None:
+    data = load_toml(config_path)
+    skills = data.get("skills", {})
+    configs = skills.get("config", []) if isinstance(skills, dict) else []
+    if not isinstance(configs, list):
+        fail(f"skills.config must be an array of tables in {config_path}")
+
+    disabled_paths = expected_disabled_skill_paths(policy)
+    actual_disabled_paths: set[str] = set()
+    for item in configs:
+        if not isinstance(item, dict):
+            fail(f"skills.config entries must be TOML tables in {config_path}")
+        path = item.get("path")
+        enabled = item.get("enabled")
+        if isinstance(path, str) and enabled is False:
+            actual_disabled_paths.add(path)
+
+    missing = sorted(disabled_paths - actual_disabled_paths)
+    if missing:
+        fail(
+            f"runtime config {config_path} is missing disabled bundled-skill entries: "
+            f"{', '.join(missing)}. Re-run codex/scripts/sync-config.sh --apply."
+        )
+
+
+bundled_skills_policy = load_bundled_skills_policy(bundled_skills_policy_path)
+audit_installed_bundled_skills(bundled_skills_policy)
 
 validate_agent_declarations(
     global_template,
@@ -388,6 +501,7 @@ if xcode_config.exists():
 
 if global_config.exists():
     global_data = load_toml(global_config)
+    validate_disabled_skill_entries(global_config, bundled_skills_policy)
     features = global_data.get("features", {})
     codex_hooks_enabled = isinstance(features, dict) and features.get("codex_hooks") is True
     if codex_hooks_enabled and not global_hooks.is_file():

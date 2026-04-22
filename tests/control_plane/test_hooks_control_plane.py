@@ -649,6 +649,11 @@ class HooksControlPlaneTests(TempDirTestCase):
         self.assertIn('model_reasoning_effort = "high"', rendered_config)
         self.assertIn('plan_mode_reasoning_effort = "high"', rendered_config)
         self.assertIn("codex_hooks = true", rendered_config)
+        self.assertIn('[plugins."computer-use@openai-bundled"]', rendered_config)
+        self.assertIn(
+            f'path = "{home}/.codex/skills/.system/plugin-creator/SKILL.md"',
+            rendered_config,
+        )
         self.assertNotIn("notify =", rendered_config)
 
         hooks = read_json(home / ".codex/hooks.json")

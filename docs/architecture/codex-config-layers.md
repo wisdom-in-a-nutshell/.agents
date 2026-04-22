@@ -12,6 +12,7 @@ flowchart TD
     B[~/.agents/codex/config/xcode.config.toml]
     C[~/.agents/codex/config/repo-bootstrap.json]
     D[~/.agents/mcp/config/presets.json]
+    L[~/.agents/codex/config/bundled-skills-policy.json]
     E[sync-trusted-projects.sh]
     F[sync-repo-codex-configs.sh]
     K[sync-config.sh]
@@ -22,6 +23,7 @@ flowchart TD
 
     A --> K
     B --> K
+    L --> K
     C --> E
     C --> F
     D --> K
@@ -41,6 +43,7 @@ flowchart TD
 
 - `global.config.toml` defines the managed baseline for terminal Codex.
 - `xcode.config.toml` defines the managed baseline for Xcode Codex.
+- `bundled-skills-policy.json` classifies OpenAI-bundled runtime skills as allowed or disabled so new upstream bundled skills cannot silently drift into the local control plane.
 - `../mcp/config/presets.json` defines the shared MCP presets and machine-wide global MCP defaults.
 - `config/agents/*.toml` defines managed role-specific overrides for custom multi-agent roles such as `external_researcher`, plus the canonical role behavior files reused by repo-scoped roles.
   - built-in `explorer` remains available upstream for local repo and runtime exploration.
@@ -58,6 +61,7 @@ These files are the source of truth.
 - `sync-config.sh` writes the managed baseline into `~/.codex/config.toml` and Xcode Codex config.
 - `sync-config.sh` also syncs managed role config files into `~/.codex/agents/` and the Xcode Codex runtime `agents/` folder so relative `config_file` paths resolve from the live runtime config.
 - It preserves machine-specific/runtime-specific state that should not live in git.
+- It explicitly preserves the OpenAI-bundled Computer Use plugin and writes disabled bundled-skill entries from `bundled-skills-policy.json`.
 - It also prunes stale managed keys when the canonical templates no longer want them, while preserving unrelated runtime MCP sections and only injecting the shared global MCP defaults.
 
 Example:
@@ -97,6 +101,8 @@ Current per-repo fields in `repo-bootstrap.json`:
 Additional shared agent metadata now lives in `agents/registry.json`.
 
 Shared MCP definitions live in `mcp/config/presets.json`.
+
+Bundled Codex runtime skill policy lives in `codex/config/bundled-skills-policy.json`.
 
 ## Main Flow
 
