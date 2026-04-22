@@ -128,7 +128,8 @@ Preferred rule for repo bootstrap or MCP changes:
 - For tracked branches, the Stop hook optimistically pushes first and only runs `git pull --rebase` when the push shows the remote is ahead.
 - Stop hook timing is logged to `~/.local/state/agents-control-plane/log/hooks-stop.log` with phase durations such as status, add, commit/check, push, and pull/rebase fallback.
 - Treat `scripts/check-fast.sh` as the repo's fast deterministic commit gate for agent-made changes, not as a general after-turn lifecycle hook.
-- Put slow or broad validation in `scripts/check-full.sh` or another explicit command.
+- Prefer staged/affected checks in `scripts/check-fast.sh`; only keep broad checks there when they are cheap and protect a repo-level invariant.
+- Put slow or broad repo-wide validation in `scripts/check-full.sh` or another explicit command.
 
 ## GitHub Copilot Hook Rendering
 

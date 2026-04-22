@@ -98,7 +98,7 @@ Detailed operations live in:
 - Repo-specific lifecycle behavior belongs in optional Python scripts under `scripts/hooks/session_start.py`, `scripts/hooks/user_prompt_submit.py`, and `scripts/hooks/session_end.py`.
 - Managed repos get rendered GitHub Copilot hook config at `.github/hooks/agent-control-plane.json`; do not hand-edit it. Update `hooks/registry.json`, `hooks/scripts/*`, or `codex/config/repo-bootstrap.json`, then rerun `./scripts/sync-copilot-hooks.sh --apply --repo <repo>` or the shared bootstrap wrapper.
 - Managed repos use local Git `core.hooksPath` pointing at `hooks/git/`; the shared commit-time hook delegates to repo-owned `scripts/check-fast.sh` when present.
-- Use `scripts/check-fast.sh` as the fast, deterministic, repo-owned validation entrypoint. Keep slower validation in a separate script such as `scripts/check-full.sh`.
+- Use `scripts/check-fast.sh` as the fast, deterministic, repo-owned validation entrypoint. Prefer staged/affected checks there; keep slower repo-wide validation in `scripts/check-full.sh`.
 - If `skills/registry.json` changes, run sync/check in the same change.
 - If `plugins/registry.json` changes, run plugin sync/check in the same change.
 - Do not hand-edit generated repo-local `.codex/config.toml` files in managed repos; update `codex/config/repo-bootstrap.json` and re-run the sync scripts.

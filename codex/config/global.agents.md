@@ -37,7 +37,7 @@ This file is machine-wide baseline guidance. Keep it generic and avoid portfolio
 - Shared hook dispatch also supports repo-owned Python lifecycle hooks at `scripts/hooks/session_start.py`, `scripts/hooks/user_prompt_submit.py`, and `scripts/hooks/session_end.py` when those files exist. `SessionEnd` currently renders for Claude and GitHub Copilot, not Codex.
 - Repo-owned lifecycle hook scripts receive a normalized JSON adapter payload on stdin with the original runtime payload preserved under `raw_payload`.
 - Managed repos use a shared local Git hook from `~/.agents/hooks/git/`; repo-specific commit-time checks live in `scripts/check-fast.sh` when a repo needs fast validation.
-- Keep `scripts/check-fast.sh` deterministic, local, quick, and actionable. Use a separate command such as `scripts/check-full.sh` for slower validation.
+- Keep `scripts/check-fast.sh` deterministic, local, quick, and actionable. Prefer staged/affected checks there; use `scripts/check-full.sh` for slower repo-wide validation.
 - Do not run `git commit` or `git push` unless the user explicitly asks.
 - Focus on making changes and reporting what changed; the hook handles the rest.
 
