@@ -98,8 +98,9 @@ Use [Codex Control Plane Ownership](/Users/dobby/.agents/docs/references/codex-c
   - commits so each repo's own `scripts/check-fast.sh` checks decide whether the change is acceptable
   - relies on managed repo local `core.hooksPath` pointing at `~/.agents/hooks/git`
   - returns hook continuation JSON with commit/check failures so the current agent can fix them
-  - tracked branches use the normal `commit -> pull --rebase -> push` path
+  - tracked branches use an optimistic `commit -> push` path and only run `git pull --rebase` when push reports that the remote is ahead
   - brand-new branches without upstream tracking use an initial `git push -u <remote> HEAD`, so the hook can publish the branch before future tracked-branch pulls
+  - logs phase timing to `~/.local/state/agents-control-plane/log/hooks-stop.log`
 - `~/.codex/config.toml` and Xcode Codex config contain exact trusted repo entries for local repos such as `focus`
 - `~/.codex/config.toml` enables Codex hooks through `[features].codex_hooks = true`
 - `~/.codex/hooks.json` is rendered from `hooks/registry.json` and currently includes shared `SessionStart`, `UserPromptSubmit`, and `Stop` hooks. Codex does not currently expose a separate documented `SessionEnd` hook.

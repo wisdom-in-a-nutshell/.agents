@@ -7,6 +7,7 @@ import os
 import shutil
 import subprocess
 import sys
+import time
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -47,6 +48,31 @@ NON_ACTIONABLE_COMMIT_PATTERNS = {
     "failed to sign the data": "gpg signing failed",
     "no signing key": "gpg signing failed",
 }
+
+
+def record_timing(timings: list[tuple[str, float]], phase: str, started_at: float) -> None:
+    timings.append((phase, max(0.0, time.monotonic() - started_at)))
+
+
+def format_ms(seconds: float) -> str:
+    return f"{seconds * 1000:.1f}"
+
+
+def log_timing(
+    runtime: str,
+    *,
+    repo: str,
+    outcome: str,
+    total_started_at: float,
+    timings: list[tuple[str, float]],
+) -> None:
+    parts = [
+        f"outcome={outcome}",
+        f"repo={repo}",
+        f"total_ms={format_ms(max(0.0, time.monotonic() - total_started_at))}",
+    ]
+    parts.extend(f"{phase}_ms={format_ms(duration)}" for phase, duration in timings)
+    log(runtime, "timing " + " ".join(parts))
 
 
 def parse_args() -> argparse.Namespace:
@@ -398,6 +424,20 @@ def is_non_actionable_failure(command: list[str], result: subprocess.CompletedPr
     return False, ""
 
 
+def push_needs_rebase(result: subprocess.CompletedProcess[str]) -> bool:
+    output = f"{result.stdout}\n{result.stderr}".lower()
+    return any(
+        pattern in output
+        for pattern in (
+            "non-fast-forward",
+            "fetch first",
+            "remote contains work",
+            "updates were rejected because",
+            "tip of your current branch is behind",
+        )
+    )
+
+
 def maybe_continue(
     payload: dict[str, Any],
     reason: str,
@@ -411,29 +451,72 @@ def maybe_continue(
 
 
 def process_repo(cwd: str, payload: dict[str, Any], *, runtime: str) -> dict[str, Any] | None:
-    if not is_git_repo(cwd):
+    total_started_at = time.monotonic()
+    timings: list[tuple[str, float]] = []
+    log_repo = cwd
+
+    def finish(outcome: str, output: dict[str, Any] | None) -> dict[str, Any] | None:
+        log_timing(
+            runtime,
+            repo=log_repo,
+            outcome=outcome,
+            total_started_at=total_started_at,
+            timings=timings,
+        )
+        return output
+
+    started_at = time.monotonic()
+    is_repo = is_git_repo(cwd)
+    record_timing(timings, "is_git_repo", started_at)
+    if not is_repo:
         log(runtime, f"skip not-git cwd={cwd}")
-        return None
+        return finish("not_git", None)
+
+    started_at = time.monotonic()
     root = repo_root(cwd) or cwd
-    if has_in_progress_ops(root):
+    record_timing(timings, "repo_root", started_at)
+    log_repo = root
+
+    started_at = time.monotonic()
+    in_progress = has_in_progress_ops(root)
+    lock_clear = clear_stale_index_lock(root) if not in_progress else True
+    record_timing(timings, "state", started_at)
+    if in_progress:
         log(runtime, f"block in-progress-git-op repo={root}")
-        return maybe_continue(payload, state_failure_reason(root, "a merge, rebase, cherry-pick, or revert is in progress"))
-    if not clear_stale_index_lock(root):
+        return finish(
+            "block_in_progress_git_op",
+            maybe_continue(payload, state_failure_reason(root, "a merge, rebase, cherry-pick, or revert is in progress")),
+        )
+    if not lock_clear:
         log(runtime, f"block active-index-lock repo={root}")
-        return maybe_continue(payload, state_failure_reason(root, "git index.lock appears active"))
-    if not has_changes(root):
+        return finish(
+            "block_active_index_lock",
+            maybe_continue(payload, state_failure_reason(root, "git index.lock appears active")),
+        )
+
+    started_at = time.monotonic()
+    changed = has_changes(root)
+    record_timing(timings, "status", started_at)
+    if not changed:
         log(runtime, f"skip clean repo={root}")
-        return None
+        return finish("clean", None)
 
     message = build_commit_message(payload)
+    started_at = time.monotonic()
     add = run(["git", "add", "-A"], root, timeout=GIT_ADD_TIMEOUT_SEC)
     if add.returncode != 0:
         if "index.lock" in f"{add.stdout}\n{add.stderr}".lower() and clear_stale_index_lock(root):
             add = run(["git", "add", "-A"], root, timeout=GIT_ADD_TIMEOUT_SEC)
         if add.returncode != 0:
+            record_timing(timings, "add", started_at)
             log(runtime, f"block git-add repo={root} exit={add.returncode}")
-            return maybe_continue(payload, command_failure_reason(root, "git add", ["git", "add", "-A"], add))
+            return finish(
+                "block_git_add",
+                maybe_continue(payload, command_failure_reason(root, "git add", ["git", "add", "-A"], add)),
+            )
+    record_timing(timings, "add", started_at)
 
+    started_at = time.monotonic()
     pre_commit_status = run(
         ["git", "status", "--porcelain"],
         root,
@@ -441,57 +524,88 @@ def process_repo(cwd: str, payload: dict[str, Any], *, runtime: str) -> dict[str
     )
     pre_commit_snapshot = pre_commit_status.stdout if pre_commit_status.returncode == 0 else ""
     commit, _retried = commit_with_retry(root, message, pre_commit_snapshot)
+    record_timing(timings, "commit_check", started_at)
     if commit.returncode != 0:
         skip, skip_reason = is_non_actionable_failure(["git", "commit", "-m", message], commit)
         if skip and skip_reason == "nothing to commit":
             log(runtime, f"skip nothing-to-commit repo={root}")
-            return None
+            return finish("nothing_to_commit", None)
         if skip:
             log(runtime, f"warn git-commit repo={root} reason={skip_reason} exit={commit.returncode}")
-            return warning(
-                command_failure_reason(
-                    root,
-                    f"git commit ({skip_reason})",
-                    ["git", "commit", "-m", message],
-                    commit,
-                    retryable=False,
-                )
+            return finish(
+                "warn_git_commit",
+                warning(
+                    command_failure_reason(
+                        root,
+                        f"git commit ({skip_reason})",
+                        ["git", "commit", "-m", message],
+                        commit,
+                        retryable=False,
+                    )
+                ),
             )
         log(runtime, f"block git-commit repo={root} exit={commit.returncode}")
-        return maybe_continue(
-            payload,
-            command_failure_reason(root, "git commit / pre-commit checks", ["git", "commit", "-m", message], commit),
+        return finish(
+            "block_git_commit",
+            maybe_continue(
+                payload,
+                command_failure_reason(root, "git commit / pre-commit checks", ["git", "commit", "-m", message], commit),
+            ),
         )
 
+    started_at = time.monotonic()
     remote = resolve_push_remote(root)
+    tracked_branch = has_tracking_upstream(root) if remote else False
+    record_timing(timings, "remote", started_at)
     if not remote:
         log(runtime, f"warn no-remote repo={root}")
-        return warning(f"Committed changes in {root}, but no push remote could be resolved.")
+        return finish(
+            "warn_no_remote",
+            warning(f"Committed changes in {root}, but no push remote could be resolved."),
+        )
 
-    if has_tracking_upstream(root):
-        pull_cmd = ["git", "pull", "--rebase"]
-        pull = run(pull_cmd, root, timeout=GIT_PULL_TIMEOUT_SEC)
-        if pull.returncode != 0:
-            log(runtime, f"block git-pull-rebase repo={root} exit={pull.returncode}")
-            return maybe_continue(payload, command_failure_reason(root, "git pull --rebase", pull_cmd, pull))
+    if tracked_branch:
         push_cmd = ["git", "push", remote, "HEAD"]
     else:
         log(runtime, f"initial-push repo={root} remote={remote} branch={current_branch_name(root)}")
         push_cmd = ["git", "push", "-u", remote, "HEAD"]
 
+    started_at = time.monotonic()
     push = run(push_cmd, root, timeout=GIT_PUSH_TIMEOUT_SEC)
+    record_timing(timings, "push", started_at)
+    if push.returncode != 0 and tracked_branch and push_needs_rebase(push):
+        pull_cmd = ["git", "pull", "--rebase"]
+        started_at = time.monotonic()
+        pull = run(pull_cmd, root, timeout=GIT_PULL_TIMEOUT_SEC)
+        record_timing(timings, "pull_rebase", started_at)
+        if pull.returncode != 0:
+            log(runtime, f"block git-pull-rebase repo={root} exit={pull.returncode}")
+            return finish(
+                "block_git_pull_rebase",
+                maybe_continue(payload, command_failure_reason(root, "git pull --rebase", pull_cmd, pull)),
+            )
+        started_at = time.monotonic()
+        push = run(push_cmd, root, timeout=GIT_PUSH_TIMEOUT_SEC)
+        record_timing(timings, "push_retry", started_at)
+
     if push.returncode != 0:
         skip, skip_reason = is_non_actionable_failure(push_cmd, push)
         if skip:
             log(runtime, f"warn git-push repo={root} reason={skip_reason} exit={push.returncode}")
-            return warning(
-                command_failure_reason(root, f"git push ({skip_reason})", push_cmd, push, retryable=False)
+            return finish(
+                "warn_git_push",
+                warning(
+                    command_failure_reason(root, f"git push ({skip_reason})", push_cmd, push, retryable=False)
+                ),
             )
         log(runtime, f"block git-push repo={root} exit={push.returncode}")
-        return maybe_continue(payload, command_failure_reason(root, "git push", push_cmd, push))
+        return finish(
+            "block_git_push",
+            maybe_continue(payload, command_failure_reason(root, "git push", push_cmd, push)),
+        )
 
     log(runtime, f"ok committed-and-pushed repo={root} branch={current_branch_name(root)} remote={remote}")
-    return None
+    return finish("committed_pushed", None)
 
 
 def main() -> int:

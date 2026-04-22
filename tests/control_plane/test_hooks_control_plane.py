@@ -808,7 +808,7 @@ class HooksControlPlaneTests(TempDirTestCase):
         )
         self.assertEqual(upstream.stdout.strip(), "origin/feature/test")
 
-    def test_stop_hook_uses_pull_for_branch_with_upstream(self) -> None:
+    def test_stop_hook_uses_optimistic_push_for_branch_with_upstream(self) -> None:
         module = self.load_stop_module()
         repo = init_git_repo(self.temp_path / "repo", with_initial_commit=True)
         captured_commands: list[list[str]] = []
@@ -837,9 +837,53 @@ class HooksControlPlaneTests(TempDirTestCase):
                             )
 
         self.assertIsNone(output)
-        self.assertIn(["git", "pull", "--rebase"], captured_commands)
         self.assertIn(["git", "push", "origin", "HEAD"], captured_commands)
+        self.assertNotIn(["git", "pull", "--rebase"], captured_commands)
         self.assertNotIn(["git", "push", "-u", "origin", "HEAD"], captured_commands)
+
+    def test_stop_hook_rebases_and_retries_push_when_remote_is_ahead(self) -> None:
+        module = self.load_stop_module()
+        repo = init_git_repo(self.temp_path / "repo", with_initial_commit=True)
+        captured_commands: list[list[str]] = []
+        push_attempts = 0
+
+        def fake_run(args, cwd, *, timeout, env=None):  # noqa: ANN001, ARG001
+            nonlocal push_attempts
+            captured_commands.append(list(args))
+            if args[:3] == ["git", "status", "--porcelain"]:
+                return SimpleNamespace(returncode=0, stdout=" M file.txt\n", stderr="")
+            if args[:4] == ["git", "symbolic-ref", "--quiet", "--short"]:
+                return SimpleNamespace(returncode=0, stdout="main\n", stderr="")
+            if args[:3] == ["git", "config", "--get"]:
+                return SimpleNamespace(returncode=0, stdout="origin\n", stderr="")
+            if args[:4] == ["git", "rev-parse", "--abbrev-ref", "--symbolic-full-name"]:
+                return SimpleNamespace(returncode=0, stdout="origin/main\n", stderr="")
+            if args == ["git", "push", "origin", "HEAD"]:
+                push_attempts += 1
+                if push_attempts == 1:
+                    return SimpleNamespace(
+                        returncode=1,
+                        stdout="",
+                        stderr="! [rejected] HEAD -> main (fetch first)\n"
+                        "hint: Updates were rejected because the remote contains work.\n",
+                    )
+                return SimpleNamespace(returncode=0, stdout="", stderr="")
+            return SimpleNamespace(returncode=0, stdout="", stderr="")
+
+        with patch.object(module, "run", side_effect=fake_run):
+            with patch.object(module, "is_git_repo", return_value=True):
+                with patch.object(module, "has_in_progress_ops", return_value=False):
+                    with patch.object(module, "clear_stale_index_lock", return_value=True):
+                        with patch.object(module, "log"):
+                            output = module.process_repo(
+                                str(repo),
+                                {"hook_event_name": "Stop"},
+                                runtime="codex",
+                            )
+
+        self.assertIsNone(output)
+        self.assertEqual(push_attempts, 2)
+        self.assertIn(["git", "pull", "--rebase"], captured_commands)
 
     def test_stop_hook_blocks_on_pre_commit_failure(self) -> None:
         module = self.load_stop_module()

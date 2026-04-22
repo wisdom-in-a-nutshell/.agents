@@ -224,8 +224,11 @@ flowchart TD
     N -->|yes| Q[commit succeeds]
     M --> Q
     Q --> R{tracked branch?}
-    R -->|yes| S[git pull --rebase]
-    S --> T[git push remote HEAD]
+    R -->|yes| S[git push remote HEAD]
+    S --> T{remote ahead?}
+    T -->|no| V[done]
+    T -->|yes| W[git pull --rebase]
+    W --> X[git push remote HEAD again]
     R -->|no upstream| U[git push -u remote HEAD]
 ```
 
@@ -236,8 +239,9 @@ flowchart TD
   - stages all repo changes and runs `git commit`
   - does not directly call repo validation; Git calls the shared local hook because managed repos set `core.hooksPath` to [`hooks/git/`](/Users/dobby/.agents/hooks/git)
   - if commit checks fail, returns hook continuation JSON with the failure output so the current agent can fix it
-  - for tracked branches, commits then runs `git pull --rebase` followed by push
+  - for tracked branches, commits then pushes first and only runs `git pull --rebase` if the push reports that the remote is ahead
   - for brand-new local branches without upstream tracking, uses `git push -u <remote> HEAD` to establish upstream automatically
+  - logs phase timing to `~/.local/state/agents-control-plane/log/hooks-stop.log`
 - [`hooks/git/pre-commit`](/Users/dobby/.agents/hooks/git/pre-commit)
   - shared local Git hook used by managed repos
   - delegates to repo-owned `scripts/check-fast.sh` when present

@@ -125,6 +125,8 @@ Preferred rule for repo bootstrap or MCP changes:
 - The `Stop` hook runs [`hooks/scripts/stop.py`](/Users/dobby/.agents/hooks/scripts/stop.py), stages changes, and runs `git commit`.
 - Git invokes the shared local hook from [`hooks/git/pre-commit`](/Users/dobby/.agents/hooks/git/pre-commit) because managed repos have local `core.hooksPath` set to `~/.agents/hooks/git`.
 - The shared Git hook delegates to repo-owned `scripts/check-fast.sh` when present.
+- For tracked branches, the Stop hook optimistically pushes first and only runs `git pull --rebase` when the push shows the remote is ahead.
+- Stop hook timing is logged to `~/.local/state/agents-control-plane/log/hooks-stop.log` with phase durations such as status, add, commit/check, push, and pull/rebase fallback.
 - Treat `scripts/check-fast.sh` as the repo's fast deterministic commit gate for agent-made changes, not as a general after-turn lifecycle hook.
 - Put slow or broad validation in `scripts/check-full.sh` or another explicit command.
 

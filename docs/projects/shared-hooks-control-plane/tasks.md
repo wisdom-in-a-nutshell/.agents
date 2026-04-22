@@ -106,3 +106,4 @@ Hooks will become a common agent-native feedback loop across repositories. A sha
 - 2026-04-21: [DONE] Added GitHub Copilot hook rendering from `hooks/registry.json` into managed repo `.github/hooks/agent-control-plane.json`; focused hook and orchestration tests passed with `python3 -m unittest tests.control_plane.test_hooks_control_plane tests.control_plane.test_orchestration`.
 - 2026-04-21: [DONE] Converted repo-owned lifecycle hook convention from shell scripts to Python files under `scripts/hooks/*.py`.
 - 2026-04-21: [DONE] Extracted shared lifecycle dispatcher plumbing into `hooks/scripts/hook_runtime.py`; focused hook tests passed with `python3 -m unittest tests.control_plane.test_hooks_control_plane`.
+- 2026-04-22: [DONE] Added Stop hook phase timing logs and switched tracked branches to optimistic push with pull/rebase fallback only when the remote is ahead.
