@@ -64,9 +64,11 @@ done
 [[ -x "$TEST_CONTROL_PLANE_SCRIPT" ]] || die "Missing executable: $TEST_CONTROL_PLANE_SCRIPT"
 
 REPO_ARGS=()
-for repo in "${REPO_FILTERS[@]}"; do
-  REPO_ARGS+=(--repo "$repo")
-done
+if (( ${#REPO_FILTERS[@]} > 0 )); then
+  for repo in "${REPO_FILTERS[@]}"; do
+    REPO_ARGS+=(--repo "$repo")
+  done
+fi
 
 hygiene_cmd=("$CHECK_HYGIENE_SCRIPT")
 log "+ ${hygiene_cmd[*]}"
@@ -83,30 +85,38 @@ log "+ ${plugins_cmd[*]}"
 git_hooks_cmd=(
   "$CHECK_GIT_HOOKS_SCRIPT"
   --check
-  "${REPO_ARGS[@]}"
 )
+if (( ${#REPO_ARGS[@]} > 0 )); then
+  git_hooks_cmd+=("${REPO_ARGS[@]}")
+fi
 log "+ ${git_hooks_cmd[*]}"
 "${git_hooks_cmd[@]}"
 
 copilot_hooks_cmd=(
   "$CHECK_COPILOT_HOOKS_SCRIPT"
   --check
-  "${REPO_ARGS[@]}"
 )
+if (( ${#REPO_ARGS[@]} > 0 )); then
+  copilot_hooks_cmd+=("${REPO_ARGS[@]}")
+fi
 log "+ ${copilot_hooks_cmd[*]}"
 "${copilot_hooks_cmd[@]}"
 
 codex_cmd=(
   "$CHECK_CODEX_SCRIPT"
-  "${REPO_ARGS[@]}"
 )
+if (( ${#REPO_ARGS[@]} > 0 )); then
+  codex_cmd+=("${REPO_ARGS[@]}")
+fi
 log "+ ${codex_cmd[*]}"
 "${codex_cmd[@]}"
 
 claude_cmd=(
   "$CHECK_CLAUDE_SCRIPT"
-  "${REPO_ARGS[@]}"
 )
+if (( ${#REPO_ARGS[@]} > 0 )); then
+  claude_cmd+=("${REPO_ARGS[@]}")
+fi
 log "+ ${claude_cmd[*]}"
 "${claude_cmd[@]}"
 
