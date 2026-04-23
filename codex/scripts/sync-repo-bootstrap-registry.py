@@ -917,10 +917,11 @@ def validate_registry(
             raise ValueError(f"duplicate repo path: {path_str}")
         seen.add(str(repo_path))
 
-        repo_root = _resolve_repo_root(repo_path)
-        if repo_root == repo_path.resolve() and not (repo_root / ".git").exists():
-            print(f"WARNING: skipping non-git path: {path_str}", file=sys.stderr)
-            continue
+        repo_root = (
+            _resolve_repo_root(repo_path)
+            if (repo_path / ".git").exists()
+            else repo_path.resolve()
+        )
 
         repo_mcp_presets = item.get("mcp_presets", [])
         if not isinstance(repo_mcp_presets, list):
