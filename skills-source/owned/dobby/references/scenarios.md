@@ -62,7 +62,7 @@ Propose the destination; do the write.
 ## Calendar
 
 **"Add this to calendar"** / "Block this time" / "Schedule this trip"
-→ Use `scripts/dobby-calendar upsert-event` when an event may already exist; include a match range to avoid duplicates. Default calendar is `adithyan@wisdominanutshell.academy` unless the user explicitly chooses another.
+→ Use `scripts/dobby-calendar upsert-event` when an event may already exist; include a match range to avoid duplicates. Default calendar comes from `DOBBY_CALENDAR_DEFAULT` (required; no fallback); override per-call with `--calendar`.
 
 **"Search my calendar for X"**
 → Use `scripts/dobby-calendar search "X" --from <date> --to <date>`. Calendar searches must be date-bounded; use `--all-calendars` for migration/audit work.

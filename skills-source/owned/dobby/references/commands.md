@@ -87,7 +87,7 @@ Add `--plain` for compact inspection output.
 
 ## Calendar
 
-Calendar operations use `dobby-calendar` (EventKit via `ical`). Default calendar: `adithyan@wisdominanutshell.academy`. Search/list commands should be date-bounded.
+Calendar operations use `dobby-calendar` (EventKit via `ical`). The default calendar name is required via the `DOBBY_CALENDAR_DEFAULT` env var (set per-workspace in `scripts/local/secrets/static_env_defaults.env`); there is no hardcoded fallback. Commands that need a specific calendar fail fast with a clear error when unset. Search/list commands must be date-bounded.
 
 ```bash
 $HOME/.agents/skills-source/owned/dobby/scripts/dobby-calendar doctor

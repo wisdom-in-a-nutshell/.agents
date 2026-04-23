@@ -4,7 +4,12 @@ set -euo pipefail
 source "$(dirname "$0")/../lib/assert.sh"
 
 FAIL_COUNT=0
-EXPECTED_DEFAULT_CALENDAR="${DOBBY_CALENDAR_DEFAULT:-Work}"
+# Calendar tests need a calendar to target. If the caller doesn't set one,
+# fall back to the common macOS "Work" calendar so the suite runs out of
+# the box on a typical dev Mac. Override with DOBBY_CALENDAR_DEFAULT when
+# running on a machine where that calendar doesn't exist.
+export DOBBY_CALENDAR_DEFAULT="${DOBBY_CALENDAR_DEFAULT:-Work}"
+EXPECTED_DEFAULT_CALENDAR="$DOBBY_CALENDAR_DEFAULT"
 
 section "dobby-calendar --help surface"
 run_dobby calendar --help

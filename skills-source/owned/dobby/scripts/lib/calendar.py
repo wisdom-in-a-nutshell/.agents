@@ -10,8 +10,9 @@ Design rules:
 - No interactive commands are exposed; --no-input is accepted and honored.
 - Search is date-bounded by requirement.
 - No delete/update commands in v1; writes are add/upsert only.
-- Default calendar is configurable via DOBBY_CALENDAR_DEFAULT and defaults to
-  the local "Work" calendar.
+- Default calendar is required via DOBBY_CALENDAR_DEFAULT env var (no fallback).
+  Commands that need a specific calendar fail fast when it is unset and
+  --calendar is not passed.
 """
 
 from __future__ import annotations
@@ -27,7 +28,13 @@ from typing import Any
 
 from lib.contract import Envelope, emit_json, emit_text
 
-DEFAULT_CALENDAR = os.environ.get("DOBBY_CALENDAR_DEFAULT", "Work")
+DEFAULT_CALENDAR = os.environ.get("DOBBY_CALENDAR_DEFAULT")  # None when unset — fail fast downstream
+
+_CALENDAR_HELP = (
+    f"Calendar name (default: {DEFAULT_CALENDAR})"
+    if DEFAULT_CALENDAR
+    else "Calendar name (required — set DOBBY_CALENDAR_DEFAULT or pass --calendar)"
+)
 
 
 def _int_env(name: str, default: int) -> int:
@@ -108,7 +115,7 @@ def add_subparsers(parent: argparse.ArgumentParser) -> None:
     p.add_argument("--title", required=True)
     p.add_argument("--start", required=True, help="Start date/time, natural language or ISO")
     p.add_argument("--end", help="End date/time, natural language or ISO")
-    p.add_argument("--calendar", default=DEFAULT_CALENDAR, help=f"Calendar name (default: {DEFAULT_CALENDAR})")
+    p.add_argument("--calendar", default=DEFAULT_CALENDAR, help=_CALENDAR_HELP)
     p.add_argument("--all-day", action="store_true")
     p.add_argument("--location")
     p.add_argument("--notes")
@@ -124,7 +131,7 @@ def add_subparsers(parent: argparse.ArgumentParser) -> None:
     p.add_argument("--title", required=True)
     p.add_argument("--start", required=True)
     p.add_argument("--end")
-    p.add_argument("--calendar", default=DEFAULT_CALENDAR, help=f"Calendar name (default: {DEFAULT_CALENDAR})")
+    p.add_argument("--calendar", default=DEFAULT_CALENDAR, help=_CALENDAR_HELP)
     p.add_argument("--match-from", required=True, help="Search start for duplicate detection")
     p.add_argument("--match-to", required=True, help="Search end for duplicate detection")
     p.add_argument("--all-day", action="store_true")
@@ -147,7 +154,7 @@ def _fmt(p: argparse.ArgumentParser) -> None:
 
 
 def _calendar_filter_flags(p: argparse.ArgumentParser) -> None:
-    p.add_argument("--calendar", default=DEFAULT_CALENDAR, help=f"Calendar name (default: {DEFAULT_CALENDAR})")
+    p.add_argument("--calendar", default=DEFAULT_CALENDAR, help=_CALENDAR_HELP)
     p.add_argument("--all-calendars", action="store_true", help="Search/list all visible calendars instead of the default calendar")
 
 
@@ -250,7 +257,7 @@ def _err_code(e: CalendarError) -> str:
         return "E_TIMEOUT"
     if "permission" in msg or "access" in msg or "not authorized" in msg or "denied" in msg:
         return "E_AUTH"
-    if "required" in msg or "invalid json" in msg or "invalid" in msg:
+    if "no calendar configured" in msg or "required" in msg or "invalid json" in msg or "invalid" in msg:
         return "E_VALIDATION"
     return "E_RUNTIME"
 
@@ -287,9 +294,20 @@ def _plain_summary(data: Any) -> str:
     return str(data)
 
 
+def _require_calendar(value: str | None) -> str:
+    if not value:
+        raise CalendarError(
+            "no calendar configured: set DOBBY_CALENDAR_DEFAULT "
+            "(via scripts/local/secrets/static_env_defaults.env + "
+            "bootstrap_local_env_from_keyvault.sh) or pass --calendar explicitly"
+        )
+    return value
+
+
 def _with_calendar(cmd: list[str], args: argparse.Namespace) -> list[str]:
-    if not getattr(args, "all_calendars", False):
-        cmd.extend(["-c", args.calendar])
+    if getattr(args, "all_calendars", False):
+        return cmd
+    cmd.extend(["-c", _require_calendar(getattr(args, "calendar", None))])
     return cmd
 
 
@@ -298,7 +316,8 @@ def _event_args(args: argparse.Namespace) -> list[str]:
         raise CalendarError("title is required")
     if not args.start.strip():
         raise CalendarError("start is required")
-    cmd = ["-o", "json", "add", args.title, "-s", args.start, "-c", args.calendar]
+    calendar = _require_calendar(getattr(args, "calendar", None))
+    cmd = ["-o", "json", "add", args.title, "-s", args.start, "-c", calendar]
     if args.end:
         cmd.extend(["-e", args.end])
     if args.all_day:
@@ -349,13 +368,20 @@ def cmd_doctor(args: argparse.Namespace) -> int:
     else:
         checks.append({"name": "eventkit_calendars", "ok": False, "detail": "skipped"})
 
-    default_matches = [c for c in calendars if c.get("title") == DEFAULT_CALENDAR]
-    default_ok = bool(default_matches) and not default_matches[0].get("readOnly", True)
-    checks.append({
-        "name": "default_calendar_writable",
-        "ok": default_ok,
-        "detail": DEFAULT_CALENDAR if default_ok else f"{DEFAULT_CALENDAR} not found or read-only",
-    })
+    if DEFAULT_CALENDAR is None:
+        checks.append({
+            "name": "default_calendar_writable",
+            "ok": False,
+            "detail": "DOBBY_CALENDAR_DEFAULT not set — configure via static_env_defaults.env",
+        })
+    else:
+        default_matches = [c for c in calendars if c.get("title") == DEFAULT_CALENDAR]
+        default_ok = bool(default_matches) and not default_matches[0].get("readOnly", True)
+        checks.append({
+            "name": "default_calendar_writable",
+            "ok": default_ok,
+            "detail": DEFAULT_CALENDAR if default_ok else f"{DEFAULT_CALENDAR} not found or read-only",
+        })
 
     report = {
         "ok": all(c["ok"] for c in checks),

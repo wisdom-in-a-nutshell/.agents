@@ -99,7 +99,7 @@ Dobby owns routing to `journal/`; the dedicated `journal-checkin` skill owns str
 
 ## Calendar
 
-Calendar operations go through the skill-bundled EventKit wrapper: `scripts/dobby-calendar`. It uses `ical` as the backend and defaults to `adithyan@wisdominanutshell.academy`. Use it for date-bounded reads and safe writes. Do not use AppleScript for broad calendar search/audits.
+Calendar operations go through the skill-bundled EventKit wrapper: `scripts/dobby-calendar`. It uses `ical` as the backend. The default calendar is required via the `DOBBY_CALENDAR_DEFAULT` env var (no hardcoded fallback) — set it per-workspace via `scripts/local/secrets/static_env_defaults.env` so it lands in `.env` on bootstrap. Commands that need a specific calendar fail fast with a clear message when unset. Use this CLI for date-bounded reads and safe writes; do not use AppleScript for broad calendar search/audits.
 
 - List calendars: `scripts/dobby-calendar calendars`
 - Week view: `scripts/dobby-calendar week`

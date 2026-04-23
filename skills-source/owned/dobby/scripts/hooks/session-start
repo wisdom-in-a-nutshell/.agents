@@ -1,0 +1,285 @@
+#!/usr/bin/env python3
+"""Dobby session-start hook.
+
+Emits situational boot context to stdout; the shared dispatcher at
+`~/.agents/hooks/scripts/session_start.py` forwards it to the agent as
+`hookSpecificOutput.additionalContext`.
+
+Section order (identity-first so later sections read through the right lens):
+
+    now | tasks | calendar | areas
+
+Memory reads (`now.md`, area manifest) happen inline via
+file I/O — trivial work, no reason to round-trip through a CLI. Task and
+calendar snapshots go through `dobby-tasks` and `dobby-calendar`
+because those wrap non-trivial integrations (JXA into Things 3, EventKit
+via `ical`) and are worth the CLI contract.
+
+The user's durable identity lives in `soul.md` under `## About <User>`
+and is loaded via the wrapper-composed system prompt. It is intentionally
+not re-emitted here.
+
+Workspace-agnostic: resolves the active workspace via `AGENT_REPO_ROOT`,
+`DOBBY_REPO_ROOT`, or `git rev-parse --show-toplevel`, in that order.
+"""
+
+from __future__ import annotations
+
+import json
+import os
+import re
+import subprocess
+import sys
+from concurrent.futures import ThreadPoolExecutor
+from datetime import datetime, timezone
+from pathlib import Path
+
+PER_CALL_TIMEOUT_SEC = 4
+
+
+# ---------------------------------------------------------------------------
+# paths
+# ---------------------------------------------------------------------------
+
+
+def git_root() -> Path:
+    env_root = os.environ.get("AGENT_REPO_ROOT") or os.environ.get("DOBBY_REPO_ROOT")
+    if env_root:
+        return Path(env_root).expanduser().resolve()
+
+    result = subprocess.run(
+        ["git", "rev-parse", "--show-toplevel"],
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    return Path(result.stdout.strip()).resolve()
+
+
+REPO_ROOT = git_root()
+SCRIPTS_DIR = Path(
+    os.environ.get(
+        "DOBBY_SCRIPTS_DIR",
+        str(Path.home() / ".agents/skills-source/owned/dobby/scripts"),
+    )
+).expanduser()
+
+
+# ---------------------------------------------------------------------------
+# subprocess helpers (for non-trivial CLIs: tasks via JXA, calendar via ical)
+# ---------------------------------------------------------------------------
+
+
+def run_json(cmd: list[str]) -> dict:
+    """Run a Dobby CLI; return parsed JSON envelope or synthetic error."""
+    executable = Path(cmd[0])
+    if not executable.is_file() or not os.access(executable, os.X_OK):
+        return {
+            "status": "error",
+            "error": {"message": f"missing executable: {executable}"},
+        }
+
+    try:
+        result = subprocess.run(
+            cmd,
+            capture_output=True,
+            text=True,
+            timeout=PER_CALL_TIMEOUT_SEC,
+        )
+    except subprocess.TimeoutExpired:
+        return {
+            "status": "error",
+            "error": {"message": f"timeout after {PER_CALL_TIMEOUT_SEC}s"},
+        }
+    except Exception as exc:
+        return {"status": "error", "error": {"message": f"exec failed: {exc}"}}
+
+    if result.returncode != 0 and not result.stdout.strip():
+        return {
+            "status": "error",
+            "error": {
+                "message": result.stderr.strip() or "non-zero exit, empty stdout"
+            },
+        }
+
+    try:
+        return json.loads(result.stdout)
+    except json.JSONDecodeError as exc:
+        return {"status": "error", "error": {"message": f"invalid JSON: {exc}"}}
+
+
+# ---------------------------------------------------------------------------
+# memory (inlined — trivial file I/O, no CLI round-trip)
+# ---------------------------------------------------------------------------
+
+
+def read_memory_file(path: Path) -> str:
+    """Read a memory file; return empty string if missing or unreadable."""
+    try:
+        return path.read_text(encoding="utf-8")
+    except OSError:
+        return ""
+
+
+def build_area_manifest(areas_dir: Path) -> list[dict]:
+    """Walk memory/areas/ → [{area, files: [filename, ...]}, ...]."""
+    if not areas_dir.exists():
+        return []
+    out: list[dict] = []
+    for area_dir in sorted(d for d in areas_dir.iterdir() if d.is_dir()):
+        files = [md.name for md in sorted(area_dir.glob("*.md"))]
+        out.append({"area": area_dir.name, "files": files})
+    return out
+
+
+# ---------------------------------------------------------------------------
+# rendering helpers
+# ---------------------------------------------------------------------------
+
+
+def strip_leading_h1(content: str) -> str:
+    """Drop a leading `# Heading\\n` so hook-level h1 markers don't collide
+    with file-embedded h1s. Idempotent on already-clean files."""
+    if not content:
+        return content
+    return re.sub(r"^#\s[^\n]*\n+", "", content, count=1).strip()
+
+
+def file_mtime_iso(rel_path: str) -> str | None:
+    path = REPO_ROOT / rel_path
+    if not path.exists():
+        return None
+    return datetime.fromtimestamp(path.stat().st_mtime, tz=timezone.utc).strftime(
+        "%Y-%m-%dT%H:%MZ"
+    )
+
+
+def section(name: str) -> None:
+    print("")
+    print(f"# {name}")
+
+
+def print_tasks(tasks: dict) -> None:
+    section("tasks")
+    if tasks.get("status") != "ok":
+        err = (tasks.get("error") or {}).get("message", "tasks unavailable")
+        print(f"unavailable: {err}")
+        return
+
+    views = (tasks.get("data") or {}).get("views", {}) or {}
+    overdue_v = views.get("overdue", {}) or {}
+    today_v = views.get("today", {}) or {}
+    inbox_v = views.get("inbox", {}) or {}
+
+    print(
+        f"counts: overdue={overdue_v.get('count', 0)} "
+        f"today={today_v.get('count', 0)} "
+        f"inbox={inbox_v.get('count', 0)}"
+    )
+
+    def fmt_task(task: object) -> str:
+        if isinstance(task, dict):
+            title = str(task.get("title") or task.get("name") or "").strip()
+            return f"- {title}" if title else f"- {task}"
+        return f"- {task}"
+
+    for label, view in [("overdue", overdue_v), ("today", today_v), ("inbox", inbox_v)]:
+        items = view.get("tasks", []) or []
+        if items:
+            print("")
+            print(f"## {label}")
+            for task in items[:10]:
+                print(fmt_task(task))
+
+
+def print_calendar(calendar: dict) -> None:
+    section("calendar (next 2d)")
+    if calendar.get("status") != "ok":
+        error = calendar.get("error") or {}
+        err = error.get("hint") or error.get("message", "calendar unavailable")
+        print(f"unavailable: {err}")
+        return
+
+    data = calendar.get("data") or {}
+    events = data.get("events") if isinstance(data, dict) else None
+    if not events:
+        print("(no events)")
+        return
+
+    for event in events[:20]:
+        start = str(event.get("start") or "").strip()
+        title = str(event.get("title") or "").strip()
+        loc = str(event.get("location") or "").strip()
+        suffix = f" @ {loc}" if loc else ""
+        print(f"- {start} - {title}{suffix}")
+
+
+def print_areas(areas: list[dict]) -> None:
+    if not areas:
+        return
+
+    section("areas")
+    max_name = max((len(area.get("area", "")) for area in areas), default=0)
+    for area in areas:
+        name = area.get("area", "")
+        files_str = ", ".join(area.get("files", []))
+        print(f"- {name.ljust(max_name)}  {files_str}")
+
+
+# ---------------------------------------------------------------------------
+# main
+# ---------------------------------------------------------------------------
+
+
+def main() -> int:
+    tasks_cli = SCRIPTS_DIR / "dobby-tasks"
+    cal_cli = SCRIPTS_DIR / "dobby-calendar"
+
+    os.chdir(REPO_ROOT)
+
+    # Parallelize the two CLI calls that do real external work.
+    # Memory reads stay on the main thread — they're fast local file I/O.
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        tasks_future = pool.submit(run_json, [str(tasks_cli), "snapshot"])
+        cal_future = pool.submit(
+            run_json,
+            [
+                str(cal_cli),
+                "upcoming",
+                "--days",
+                "2",
+                "--all-calendars",
+            ],
+        )
+
+        memory_dir = REPO_ROOT / "memory"
+        now_content = read_memory_file(memory_dir / "now.md")
+        areas = build_area_manifest(memory_dir / "areas")
+
+        tasks = tasks_future.result()
+        calendar = cal_future.result()
+
+    # --- Header (# session) --------------------------------------------------
+    session_started = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%MZ")
+    now_mtime = file_mtime_iso("memory/now.md") or "?"
+    areas_count = sum(len(a["files"]) for a in areas)
+
+    print("# session")
+    print(f"started:  {session_started}")
+    print(f"now.md:   modified {now_mtime}")
+    print(f"areas:    {areas_count} files")
+
+    # --- Sections ------------------------------------------------------------
+    now = strip_leading_h1(now_content.strip())
+    if now:
+        section("now")
+        print(now)
+
+    print_tasks(tasks)
+    print_calendar(calendar)
+    print_areas(areas)
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

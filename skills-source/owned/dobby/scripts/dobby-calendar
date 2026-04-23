@@ -11,6 +11,7 @@ if str(SCRIPT_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPT_DIR))
 
 from lib import calendar  # noqa: E402
+from lib.calendar import CalendarError  # noqa: E402
 from lib.contract import DobbyArgumentParser, emit_json, err_envelope  # noqa: E402
 from lib.workspace import WorkspaceError  # noqa: E402
 
@@ -32,6 +33,8 @@ def main(argv: list[str] | None = None) -> int:
         return args.handler(args)
     except WorkspaceError as e:
         return emit_json(err_envelope("calendar.workspace", "E_VALIDATION", str(e)))
+    except CalendarError as e:
+        return emit_json(err_envelope("calendar.config", "E_VALIDATION", str(e)))
 
 
 if __name__ == "__main__":
