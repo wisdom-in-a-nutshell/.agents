@@ -1,7 +1,12 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-export PATH="/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:${PATH:-}"
+if [[ -f "${HOME}/GitHub/scripts/setup/python-toolchain-env.sh" ]]; then
+  # shellcheck disable=SC1091
+  source "${HOME}/GitHub/scripts/setup/python-toolchain-env.sh"
+else
+  export PATH="/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:${PATH:-}"
+fi
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
