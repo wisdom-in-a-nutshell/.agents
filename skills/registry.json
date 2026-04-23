@@ -92,17 +92,6 @@
       "upstream_ref": "vercel-labs/skills:skills/find-skills@main"
     },
     {
-      "skill": "frontend-skill",
-      "origin": "external",
-      "scope": "repo",
-      "repos": [
-        "adi",
-        "blog-personal"
-      ],
-      "source_path": "skills-source/external/frontend-skill",
-      "upstream_ref": "openai/skills:skills/.curated/frontend-skill@main"
-    },
-    {
       "skill": "pretty-mermaid",
       "origin": "owned",
       "scope": "repo",
@@ -453,44 +442,8 @@
       "skill": "creating-video"
     },
     {
-      "repo": "aipodcasting-public-website",
-      "skill": "designer-workflow"
-    },
-    {
-      "repo": "aipodcasting-public-website",
-      "skill": "visual-audit-loop"
-    },
-    {
       "repo": "blog-personal",
       "skill": "blog-posting"
-    },
-    {
-      "repo": "modal_functions",
-      "skill": "modal-function-intake"
-    },
-    {
-      "repo": "win",
-      "skill": "add-env-var"
-    },
-    {
-      "repo": "win",
-      "skill": "channel-create"
-    },
-    {
-      "repo": "win",
-      "skill": "contact-form-automation"
-    },
-    {
-      "repo": "win",
-      "skill": "descript-api-docs-sync"
-    },
-    {
-      "repo": "win",
-      "skill": "log-investigation"
-    },
-    {
-      "repo": "win",
-      "skill": "scheduled-jobs"
     }
   ],
   "managed_plugin_skills": [
