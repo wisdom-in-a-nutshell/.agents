@@ -1,7 +1,8 @@
 # Key Paths (repo-root relative)
 
 ## modal_functions
-- AGENTS: `AGENTS.md`, `src/AGENTS.md`, `src/functions/AGENTS.md`, `docs/AGENTS.md`, `docs/projects/AGENTS.md`
+- AGENTS: `AGENTS.md`
+- Repo-local Modal skill: `.agents/skills/modal-function-intake/SKILL.md`
 - Registry: `src/registry.py`
 - Functions: `src/functions/`
 - Shared helpers: `src/common/`
@@ -16,7 +17,8 @@
 - Secret flow doc: `docs/architecture/modal-secret-sync-flow.md`
 
 ## win
-- AGENTS: `AGENTS.md`, `services/modal/AGENTS.md`, `docs/AGENTS.md`
+- AGENTS: `AGENTS.md`
 - Generated client: `services/modal/client_generated.py` (do not edit)
 - Wrapper client: `services/modal/client.py`
 - Tests: `tests/services/modal/test_client.py`
+- Modal integration guidance: `docs/references/modal-service-integration-guidance.md`

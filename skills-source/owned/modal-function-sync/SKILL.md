@@ -13,6 +13,8 @@ Use this skill to add or modify Modal functions in `modal_functions`, register t
 - `services/modal/client_generated.py` is CI-generated; do not edit it by hand.
 - Sync happens on push to `main` (non-doc changes) via `.github/workflows/deploy-on-main.yml`.
 - Use `workflow_dispatch` only when you need to trigger deploy/sync without code changes.
+- Generate locally to `tmp/client_generated.py` for fast validation without dirtying `win`.
+- Generate locally into `../win/services/modal/client_generated.py` only when actively testing `win` wrappers/call sites or when CI is unavailable.
 - Stable Modal runtime secrets should default to the Key Vault -> manifest -> Modal sync flow, not one-off manual Modal secret updates.
 
 ## Workflow
@@ -27,6 +29,7 @@ Use this skill to add or modify Modal functions in `modal_functions`, register t
 ### 3) Implement in modal_functions (source of truth)
 - Add or modify code under `src/functions/...`.
 - Update `src/registry.py` to expose the function.
+- Update `src/deploy.py` so Modal actually ships the symbol.
 - Update shared helpers in `src/common/` if needed.
 - Run `python tools/validate_registry.py` when changing the registry.
 - Keep the Modal app name consistent with `src/common/containers.py`.
@@ -45,7 +48,8 @@ Use this skill to add or modify Modal functions in `modal_functions`, register t
 ### 5) Client sync (automatic)
 - The deploy workflow in `.github/workflows/deploy-on-main.yml` generates and pushes `services/modal/client_generated.py` into `win` on push to `main`.
 - Do not hand-edit `services/modal/client_generated.py`.
-- Only generate locally when CI is unavailable or you need to validate before pushing.
+- Use `python tools/generate_modal_client.py --output tmp/client_generated.py` for local validation without touching `win`.
+- Generate into `../win/services/modal/client_generated.py` only when you need the new generated methods to run `win` tests before CI syncs, or when CI is unavailable.
 
 ### 6) Win integration
 - Use `ModalClientGenerated` from `services/modal/client_generated.py`.
@@ -61,10 +65,10 @@ Use this skill to add or modify Modal functions in `modal_functions`, register t
 ## Common pitfalls
 - Docs-only changes won't trigger deploy or sync (workflow ignores `docs/**` and `*.md`).
 - Missing registry entries means the client will not include the function.
-- Missing `MODAL_WIN_SYNC_PAT` breaks sync; CI will fail.
+- Missing `CROSS_REPO_SYNC_PAT` breaks sync; CI will fail.
 - Adding `modal.Secret.from_name(...)` in code without updating the manifest reintroduces secret drift.
 - Adding a manifest entry without a real Key Vault backing secret will make deploy-time secret sync fail.
-- Manual local client generation is only for validation or CI-breakglass use; the normal path is CI-driven sync.
+- Manual local client generation is for validation, same-task `win` integration tests, or CI-breakglass use; the normal authoritative path is CI-driven sync.
 
 ## References
 - See `references/paths.md` for key files and repo entry points.
