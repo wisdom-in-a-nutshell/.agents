@@ -59,12 +59,13 @@ CLI `memory write` does not create files. Use `Write` for:
 No file-based alternative — always via CLI.
 
 ```bash
-$HOME/.agents/skills-source/owned/dobby/scripts/dobby-tasks snapshot   # today + overdue + inbox in one JXA call
+$HOME/.agents/skills-source/owned/dobby/scripts/dobby-tasks snapshot   # today + overdue + inbox
 $HOME/.agents/skills-source/owned/dobby/scripts/dobby-tasks today
 $HOME/.agents/skills-source/owned/dobby/scripts/dobby-tasks inbox
 $HOME/.agents/skills-source/owned/dobby/scripts/dobby-tasks overdue
 $HOME/.agents/skills-source/owned/dobby/scripts/dobby-tasks search "Beach"
 $HOME/.agents/skills-source/owned/dobby/scripts/dobby-tasks search "Beach" --verbose  # slower, full fields
+$HOME/.agents/skills-source/owned/dobby/scripts/dobby-tasks inspect "Personal AI / agent system"
 
 $HOME/.agents/skills-source/owned/dobby/scripts/dobby-tasks add "Task title" --when today --area <Area>
 $HOME/.agents/skills-source/owned/dobby/scripts/dobby-tasks add "Task title" --when "next monday" --area <Area> \
@@ -75,13 +76,17 @@ $HOME/.agents/skills-source/owned/dobby/scripts/dobby-tasks done <id-prefix> --l
 $HOME/.agents/skills-source/owned/dobby/scripts/dobby-tasks cancel <id-prefix>
 $HOME/.agents/skills-source/owned/dobby/scripts/dobby-tasks delete <id-prefix>
 
-$HOME/.agents/skills-source/owned/dobby/scripts/dobby-tasks doctor                    # 5-point health check
+$HOME/.agents/skills-source/owned/dobby/scripts/dobby-tasks doctor                    # Things integration health check
 ```
 
 `--when` accepts natural-language dates: `today`, `tomorrow`, `next monday`, `in 3 days`, specific dates.
 `--area` is case-sensitive and must match an existing Things 3 Area.
 Read commands return a fast summary shape by default. Use `--verbose` only when full fields such as notes and timestamps are needed. Create commands avoid slow read-back by default; pass `--resolve` when full created-object data is worth the latency.
 Add `--plain` for compact inspection output.
+
+Read commands use `--backend auto` by default: read-only SQLite first, JXA
+fallback only if the local database is unavailable. Agents should normally not
+set this flag; use `--backend sqlite|jxa|auto` only for diagnostics.
 
 `delete` can remove open tasks by name/ID and completed Logbook tasks by exact ID. Use `search --include-completed` first when cleaning old test artifacts.
 
@@ -151,8 +156,12 @@ The scripts emit the standard Dobby JSON envelope (`schema_version`, `command`, 
 Timeout configuration:
 - `DOBBY_MEMORY_GIT_TIMEOUT_SECS` — memory diff git timeout, default `15`
 - `DOBBY_THINGS_OSASCRIPT_TIMEOUT_SECS` — Things JXA/AppleScript timeout, default `15`
+- `DOBBY_THINGS_JXA_READ_TIMEOUT_SECS` — task read JXA backend/fallback timeout, default `5`
+- `DOBBY_THINGS_JXA_PROBE_TIMEOUT_SECS` — doctor JXA health probe timeout, default `3`
 - `DOBBY_THINGS_OPEN_TIMEOUT_SECS` — Things URL open timeout, default `10`
 - `DOBBY_THINGS_URL_SETTLE_SECS` — post-URL settle delay, default `0.5`
+- `DOBBY_THINGS_READ_BACKEND` — task read backend, `auto|sqlite|jxa`, default `auto`
+- `DOBBY_THINGS_SQLITE_PATH` — optional explicit Things `main.sqlite` path for diagnostics
 - `DOBBY_CALENDAR_TIMEOUT_SECS` — calendar `ical` timeout, default `20`
 
 Secrets are never accepted via flags. Things URL auth uses the workspace `.env` file provisioned by the local secret bootstrap; the token is not emitted in outputs.

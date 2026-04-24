@@ -86,8 +86,13 @@ Tasks always go through the CLI. There is no file-based alternative.
 - Boot snapshot: `scripts/dobby-tasks snapshot`
 - List: `scripts/dobby-tasks today | inbox | overdue`
 - Search: `scripts/dobby-tasks search "..."` (fast summary by default; add `--verbose` only when full fields are needed)
+- Inspect a task/project: `scripts/dobby-tasks inspect "Personal AI / agent system"`
 - Complete: `scripts/dobby-tasks done <id-prefix>`
-- Doctor: `scripts/dobby-tasks doctor` (5-point health check)
+- Doctor: `scripts/dobby-tasks doctor` (health check)
+
+Read commands default to an `auto` backend: fast read-only SQLite first, then
+JXA fallback if the local database is unavailable. Agents should not choose a
+backend in normal use. Use `--backend sqlite|jxa|auto` only for diagnostics.
 
 Habits are not Things 3 tasks. Structured check-ins are handled by a journaling skill if one is installed; recurring physical habits (running, etc.) are Things 3 recurring tasks set once in the UI; behavioral nudges happen inside conversation.
 

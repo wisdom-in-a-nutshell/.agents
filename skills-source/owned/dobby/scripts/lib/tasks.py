@@ -51,11 +51,14 @@ from datetime import date
 from pathlib import Path
 from typing import Any
 
+from lib import things_read
 from lib.contract import Envelope, emit_json, emit_text, log_stderr
 from lib.workspace import workspace_root
 
 THINGS3_BUNDLE = "com.culturedcode.ThingsMac"
 AUTH_TOKEN_ENV_VAR = "THINGS3_AUTH_TOKEN"
+READ_BACKEND_ENV_VAR = "DOBBY_THINGS_READ_BACKEND"
+READ_BACKENDS = ("auto", "sqlite", "jxa")
 
 
 def _int_env(name: str, default: int) -> int:
@@ -81,6 +84,8 @@ def _float_env(name: str, default: float) -> float:
 
 
 OSASCRIPT_TIMEOUT = _int_env("DOBBY_THINGS_OSASCRIPT_TIMEOUT_SECS", 15)
+JXA_READ_TIMEOUT = _int_env("DOBBY_THINGS_JXA_READ_TIMEOUT_SECS", 5)
+JXA_PROBE_TIMEOUT = _int_env("DOBBY_THINGS_JXA_PROBE_TIMEOUT_SECS", 3)
 URL_SCHEME_OPEN_TIMEOUT = _int_env("DOBBY_THINGS_OPEN_TIMEOUT_SECS", 10)
 URL_SCHEME_SETTLE_SECS = _float_env("DOBBY_THINGS_URL_SETTLE_SECS", 0.5)  # let Things 3 process the URL before reading back
 
@@ -148,16 +153,25 @@ def add_subparsers(parent: argparse.ArgumentParser) -> None:
     _read_fmt(p)
     p.set_defaults(handler=cmd_search)
 
+    p = sub.add_parser("inspect", help="Inspect a task/project by exact title or ID prefix")
+    p.add_argument("target")
+    p.add_argument("--include-completed", action="store_true", help="Include completed/canceled project items")
+    _read_fmt(p)
+    p.set_defaults(handler=cmd_inspect)
+
     p = sub.add_parser("projects", help="List projects")
     _fmt(p)
+    _backend_arg(p)
     p.set_defaults(handler=cmd_projects)
 
     p = sub.add_parser("areas", help="List areas")
     _fmt(p)
+    _backend_arg(p)
     p.set_defaults(handler=cmd_areas)
 
     p = sub.add_parser("tags", help="List tags")
     _fmt(p)
+    _backend_arg(p)
     p.set_defaults(handler=cmd_tags)
 
     # --- create commands (URL scheme) ---
@@ -268,6 +282,19 @@ def _fmt(p: argparse.ArgumentParser) -> None:
 def _read_fmt(p: argparse.ArgumentParser) -> None:
     _fmt(p)
     p.add_argument("--verbose", action="store_true", help="Return full task fields; default is a faster summary shape")
+    _backend_arg(p)
+
+
+def _backend_arg(p: argparse.ArgumentParser) -> None:
+    p.add_argument(
+        "--backend",
+        choices=READ_BACKENDS,
+        default=None,
+        help=(
+            "Read backend for Things data. Default: env "
+            f"{READ_BACKEND_ENV_VAR} or auto. auto prefers read-only SQLite and falls back to JXA."
+        ),
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -667,6 +694,12 @@ def _resolve_id(target: str) -> str:
     """Resolve a target (name or ID) to a Things 3 task ID."""
     if re.match(r"^[A-Za-z0-9]{15,}$", target):
         return target
+    try:
+        return things_read.resolve_id(target)
+    except things_read.ThingsReadError:
+        # Keep AppleScript as a fallback because Things can sometimes know
+        # about very recent writes before the SQLite file has settled.
+        pass
     # Look up by name via AppleScript (simpler than JXA for single-value returns)
     try:
         return run_applescript(
@@ -703,7 +736,7 @@ def _snapshot_text(snapshot: dict[str, Any]) -> str:
     for key, title in [("overdue", "Overdue"), ("today", "Today"), ("inbox", "Inbox")]:
         section = snapshot.get(key, {})
         tasks = section.get("tasks", [])
-        parts.append(f"{title} ({len(tasks)})")
+        parts.append(f"{title} ({section.get('count', len(tasks))})")
         parts.append("\n".join(_task_line(t) for t in tasks) if tasks else "  (empty)")
     return "\n\n".join(parts)
 
@@ -716,6 +749,8 @@ def _err_code(e: Things3Error) -> str:
     m = str(e).lower()
     if "not running" in m or "connection" in m:
         return "E_DEPENDENCY"
+    if "invalid" in m and READ_BACKEND_ENV_VAR.lower() in m:
+        return "E_VALIDATION"
     if "timed out" in m:
         return "E_TIMEOUT"
     if "not found" in m or "can't get" in m:
@@ -726,18 +761,83 @@ def _err_code(e: Things3Error) -> str:
 
 
 # ---------------------------------------------------------------------------
-# read commands (JXA)
+# read backend abstraction
+# ---------------------------------------------------------------------------
+
+def _selected_read_backend(args: argparse.Namespace) -> str:
+    raw = (getattr(args, "backend", None) or os.environ.get(READ_BACKEND_ENV_VAR) or "auto").strip().lower()
+    if raw not in READ_BACKENDS:
+        raise Things3Error(f"invalid {READ_BACKEND_ENV_VAR}: {raw!r}; expected one of {', '.join(READ_BACKENDS)}")
+    return raw
+
+
+def _sqlite_backend_meta(*, fallback_from: str | None = None, fallback_reason: str | None = None) -> dict[str, Any]:
+    meta: dict[str, Any] = {"name": "sqlite"}
+    if fallback_from:
+        meta["fallback_from"] = fallback_from
+    if fallback_reason:
+        meta["fallback_reason"] = fallback_reason
+    return meta
+
+
+def _jxa_backend_meta(*, fallback_from: str | None = None, fallback_reason: str | None = None) -> dict[str, Any]:
+    meta: dict[str, Any] = {"name": "jxa"}
+    if fallback_from:
+        meta["fallback_from"] = fallback_from
+    if fallback_reason:
+        meta["fallback_reason"] = fallback_reason
+    return meta
+
+
+def _read_backend(
+    args: argparse.Namespace,
+    *,
+    sqlite_call,
+    jxa_script: str,
+) -> tuple[Any, dict[str, Any]]:
+    """Run a read through the selected backend.
+
+    Default `auto` avoids the fragile Apple automation path for normal reads.
+    If the local database is unavailable, it falls back to the old JXA path.
+    """
+    selected = _selected_read_backend(args)
+
+    if selected in ("auto", "sqlite"):
+        try:
+            return sqlite_call(), _sqlite_backend_meta()
+        except things_read.ThingsReadError as sqlite_error:
+            if selected == "sqlite":
+                raise Things3Error(str(sqlite_error)) from sqlite_error
+            try:
+                return run_jxa(jxa_script, timeout=JXA_READ_TIMEOUT), _jxa_backend_meta(
+                    fallback_from="sqlite",
+                    fallback_reason=str(sqlite_error),
+                )
+            except Things3Error as jxa_error:
+                raise Things3Error(
+                    f"SQLite read failed: {sqlite_error}; JXA fallback failed: {jxa_error}"
+                ) from jxa_error
+
+    return run_jxa(jxa_script, timeout=JXA_READ_TIMEOUT), _jxa_backend_meta()
+
+
+# ---------------------------------------------------------------------------
+# read commands (SQLite/JXA abstraction)
 # ---------------------------------------------------------------------------
 
 def cmd_list(args: argparse.Namespace, name: str) -> int:
     env = Envelope(f"tasks.{name}")
     try:
         list_name = name.capitalize() if name != "logbook" else "Logbook"
-        tasks = run_jxa(_jxa_list(
-            list_name,
-            verbose=args.verbose,
-            open_only=name != "logbook",
-        ))
+        tasks, backend = _read_backend(
+            args,
+            sqlite_call=lambda: things_read.list_view(name, verbose=args.verbose),
+            jxa_script=_jxa_list(
+                list_name,
+                verbose=args.verbose,
+                open_only=name != "logbook",
+            ),
+        )
     except Things3Error as e:
         return emit_json(env.err(_err_code(e), str(e)))
     # Defensive fallback: active lists are already filtered inside JXA before
@@ -745,7 +845,7 @@ def cmd_list(args: argparse.Namespace, name: str) -> int:
     if name != "logbook":
         tasks = [t for t in tasks if t.get("status") == "open"]
     if not args.plain:
-        return emit_json(env.ok({"count": len(tasks), "tasks": tasks, "verbose": args.verbose}))
+        return emit_json(env.ok({"count": len(tasks), "tasks": tasks, "verbose": args.verbose, "backend": backend}))
     return emit_text("\n".join(_task_line(t) for t in tasks) if tasks else "(empty)")
 
 
@@ -754,12 +854,22 @@ def cmd_snapshot(args: argparse.Namespace) -> int:
     if args.limit < 0:
         return emit_json(env.err("E_VALIDATION", "--limit must be >= 0"))
     try:
-        snapshot = run_jxa(_jxa_snapshot(
-            date.today().isoformat(),
-            verbose=args.verbose,
-            minimal=args.minimal,
-            limit=args.limit,
-        ))
+        today_iso = date.today().isoformat()
+        snapshot, backend = _read_backend(
+            args,
+            sqlite_call=lambda: things_read.snapshot(
+                today_iso=today_iso,
+                verbose=args.verbose,
+                minimal=args.minimal,
+                limit=args.limit,
+            ),
+            jxa_script=_jxa_snapshot(
+                today_iso,
+                verbose=args.verbose,
+                minimal=args.minimal,
+                limit=args.limit,
+            ),
+        )
     except Things3Error as e:
         return emit_json(env.err(_err_code(e), str(e)))
     payload = {
@@ -767,6 +877,7 @@ def cmd_snapshot(args: argparse.Namespace) -> int:
         "verbose": args.verbose,
         "minimal": args.minimal,
         "limit": args.limit,
+        "backend": backend,
     }
     if not args.plain:
         return emit_json(env.ok(payload))
@@ -776,22 +887,35 @@ def cmd_snapshot(args: argparse.Namespace) -> int:
 def cmd_overdue(args: argparse.Namespace) -> int:
     env = Envelope("tasks.overdue")
     try:
-        overdue = run_jxa(_jxa_overdue(date.today().isoformat(), verbose=args.verbose))
+        today_iso = date.today().isoformat()
+        overdue, backend = _read_backend(
+            args,
+            sqlite_call=lambda: things_read.overdue(today_iso=today_iso, verbose=args.verbose),
+            jxa_script=_jxa_overdue(today_iso, verbose=args.verbose),
+        )
     except Things3Error as e:
         return emit_json(env.err(_err_code(e), str(e)))
     if not args.plain:
-        return emit_json(env.ok({"count": len(overdue), "tasks": overdue, "verbose": args.verbose}))
+        return emit_json(env.ok({"count": len(overdue), "tasks": overdue, "verbose": args.verbose, "backend": backend}))
     return emit_text("\n".join(_task_line(t) for t in overdue) if overdue else "(no overdue tasks)")
 
 
 def cmd_search(args: argparse.Namespace) -> int:
     env = Envelope("tasks.search")
     try:
-        matches = run_jxa(_jxa_search(
-            args.query,
-            include_completed=args.include_completed,
-            verbose=args.verbose,
-        ))
+        matches, backend = _read_backend(
+            args,
+            sqlite_call=lambda: things_read.search(
+                args.query,
+                include_completed=args.include_completed,
+                verbose=args.verbose,
+            ),
+            jxa_script=_jxa_search(
+                args.query,
+                include_completed=args.include_completed,
+                verbose=args.verbose,
+            ),
+        )
     except Things3Error as e:
         return emit_json(env.err(_err_code(e), str(e)))
     if not args.plain:
@@ -801,40 +925,98 @@ def cmd_search(args: argparse.Namespace) -> int:
             "query": args.query,
             "include_completed": args.include_completed,
             "verbose": args.verbose,
+            "backend": backend,
         }))
     return emit_text("\n".join(_task_line(t) for t in matches) if matches else "(no matches)")
+
+
+def cmd_inspect(args: argparse.Namespace) -> int:
+    env = Envelope("tasks.inspect")
+    try:
+        data, backend = _read_backend(
+            args,
+            sqlite_call=lambda: things_read.inspect(
+                args.target,
+                include_completed=args.include_completed,
+                verbose=args.verbose,
+            ),
+            jxa_script=_jxa_search(
+                args.target,
+                include_completed=args.include_completed,
+                verbose=True,
+            ),
+        )
+        if backend.get("name") == "jxa":
+            # JXA fallback cannot reliably expand project children. Preserve a
+            # deterministic inspection shape rather than leaking raw search
+            # results as if they were a fully resolved project.
+            data = {
+                "type": "search-results",
+                "target": args.target,
+                "count": len(data),
+                "items": data,
+                "note": "JXA fallback cannot expand project children; retry with SQLite backend available.",
+            }
+    except Things3Error as e:
+        return emit_json(env.err(_err_code(e), str(e)))
+
+    if not args.plain:
+        return emit_json(env.ok({"target": args.target, "result": data, "backend": backend}))
+
+    result_type = data.get("type")
+    if result_type == "project":
+        project = data.get("project", {})
+        lines = [f"Project: {project.get('name', args.target)}", f"Open items ({data.get('count', 0)}):"]
+        lines.extend(_task_line(t) for t in data.get("items", []))
+        return emit_text("\n".join(lines))
+    if result_type in ("to-do", "heading"):
+        return emit_text(_task_line(data.get("task", {})))
+    return emit_text("\n".join(_task_line(t) for t in data.get("items", [])) if data.get("items") else "(empty)")
 
 
 def cmd_projects(args: argparse.Namespace) -> int:
     env = Envelope("tasks.projects")
     try:
-        projects = [p for p in run_jxa(_jxa_projects()) if p.get("status") == "open"]
+        projects, backend = _read_backend(
+            args,
+            sqlite_call=things_read.projects,
+            jxa_script=_jxa_projects(),
+        )
+        projects = [p for p in projects if p.get("status") == "open"]
     except Things3Error as e:
         return emit_json(env.err(_err_code(e), str(e)))
     if not args.plain:
-        return emit_json(env.ok({"count": len(projects), "projects": projects}))
+        return emit_json(env.ok({"count": len(projects), "projects": projects, "backend": backend}))
     return emit_text("\n".join(_proj_line(p) for p in projects) if projects else "(no projects)")
 
 
 def cmd_areas(args: argparse.Namespace) -> int:
     env = Envelope("tasks.areas")
     try:
-        areas = run_jxa(_jxa_areas())
+        areas, backend = _read_backend(
+            args,
+            sqlite_call=things_read.areas,
+            jxa_script=_jxa_areas(),
+        )
     except Things3Error as e:
         return emit_json(env.err(_err_code(e), str(e)))
     if not args.plain:
-        return emit_json(env.ok({"count": len(areas), "areas": areas}))
+        return emit_json(env.ok({"count": len(areas), "areas": areas, "backend": backend}))
     return emit_text("\n".join(f"  {a.get('name','')}" for a in areas) if areas else "(no areas)")
 
 
 def cmd_tags(args: argparse.Namespace) -> int:
     env = Envelope("tasks.tags")
     try:
-        tags = run_jxa(_jxa_tags())
+        tags, backend = _read_backend(
+            args,
+            sqlite_call=things_read.tags,
+            jxa_script=_jxa_tags(),
+        )
     except Things3Error as e:
         return emit_json(env.err(_err_code(e), str(e)))
     if not args.plain:
-        return emit_json(env.ok({"count": len(tags), "tags": tags}))
+        return emit_json(env.ok({"count": len(tags), "tags": tags, "backend": backend}))
     return emit_text("\n".join(t.get("name", "") for t in tags) if tags else "(no tags)")
 
 
@@ -875,7 +1057,10 @@ def cmd_add(args: argparse.Namespace) -> int:
         if args.resolve:
             try:
                 time.sleep(0.3)  # extra settle time for JSON response
-                matches = run_jxa(_jxa_search(args.title, verbose=True))
+                try:
+                    matches = things_read.search(args.title, verbose=True)
+                except things_read.ThingsReadError:
+                    matches = run_jxa(_jxa_search(args.title, verbose=True), timeout=JXA_READ_TIMEOUT)
                 exact = [t for t in matches if t.get("name") == args.title]
                 task_data = (exact[-1] if exact else {"name": args.title}) | {"resolved": bool(exact)}
             except Things3Error:
@@ -909,7 +1094,10 @@ def cmd_project_new(args: argparse.Namespace) -> int:
         if args.resolve:
             try:
                 time.sleep(0.3)
-                projects = run_jxa(_jxa_projects())
+                try:
+                    projects = things_read.projects()
+                except things_read.ThingsReadError:
+                    projects = run_jxa(_jxa_projects(), timeout=JXA_READ_TIMEOUT)
                 match = [p for p in projects if p.get("name") == args.title]
                 proj_data = (match[-1] if match else {"name": args.title}) | {"resolved": bool(match)}
             except Things3Error:
@@ -1154,25 +1342,57 @@ def cmd_doctor(args: argparse.Namespace) -> int:
     checks.append({"name": "osascript", "ok": osa is not None, "detail": osa or "not found"})
 
     things_installed = False
+    running_pid = ""
+    try:
+        running_pid = subprocess.run(["pgrep", "-x", "Things3"], capture_output=True, text=True, timeout=5).stdout.strip()
+    except Exception:
+        running_pid = ""
     try:
         r = subprocess.run(["mdfind", f"kMDItemCFBundleIdentifier == '{THINGS3_BUNDLE}'"], capture_output=True, text=True, timeout=5)
         things_installed = bool(r.stdout.strip())
-        checks.append({"name": "things3_installed", "ok": things_installed, "detail": r.stdout.strip().split("\n")[0] if things_installed else "not found"})
+        if things_installed:
+            installed_detail = r.stdout.strip().split("\n")[0]
+        elif running_pid:
+            # Spotlight/mdfind can be unavailable or stale. A running app is
+            # sufficient proof for this health check and avoids a false
+            # degraded state.
+            things_installed = True
+            installed_detail = f"running process pid {running_pid.splitlines()[0]}"
+        else:
+            installed_detail = "not found"
+        checks.append({"name": "things3_installed", "ok": things_installed, "detail": installed_detail})
     except Exception as e:
-        checks.append({"name": "things3_installed", "ok": False, "detail": str(e)})
+        if running_pid:
+            things_installed = True
+            checks.append({"name": "things3_installed", "ok": True, "detail": f"running process pid {running_pid.splitlines()[0]}"})
+        else:
+            checks.append({"name": "things3_installed", "ok": False, "detail": str(e)})
 
     things_running = False
-    try:
-        things_running = subprocess.run(["pgrep", "-x", "Things3"], capture_output=True, timeout=5).returncode == 0
-    except Exception:
-        pass
+    things_running = bool(running_pid)
     checks.append({"name": "things3_running", "ok": things_running, "detail": "running" if things_running else "not running"})
+
+    sqlite_ok = False
+    sqlite_detail = ""
+    try:
+        db_info = things_read.find_database()
+        # Run a tiny query through the read backend to prove the chosen file is
+        # readable and schema-compatible.
+        _ = things_read.areas()
+        sqlite_ok = True
+        sqlite_detail = str(db_info.path)
+    except things_read.ThingsReadError as e:
+        sqlite_detail = str(e)
+    checks.append({"name": "sqlite_read_backend", "ok": sqlite_ok, "detail": sqlite_detail})
 
     jxa_ok = False
     jxa_detail = "skipped"
     if things_running:
         try:
-            result = run_jxa('JSON.stringify({ok: true, app: Application("Things3").name()});')
+            result = run_jxa(
+                'JSON.stringify({ok: true, app: Application("Things3").name()});',
+                timeout=JXA_PROBE_TIMEOUT,
+            )
             jxa_ok = isinstance(result, dict) and result.get("ok") is True
             jxa_detail = f"connected to {result.get('app', '?')}" if jxa_ok else f"unexpected: {result}"
         except Things3Error as e:
@@ -1197,9 +1417,12 @@ def cmd_doctor(args: argparse.Namespace) -> int:
         "checks": checks,
         "timeouts": {
             "osascript_secs": OSASCRIPT_TIMEOUT,
+            "jxa_read_secs": JXA_READ_TIMEOUT,
+            "jxa_probe_secs": JXA_PROBE_TIMEOUT,
             "url_open_secs": URL_SCHEME_OPEN_TIMEOUT,
             "url_settle_secs": URL_SCHEME_SETTLE_SECS,
         },
+        "read_backend": os.environ.get(READ_BACKEND_ENV_VAR, "auto"),
     }
 
     if not args.plain:
