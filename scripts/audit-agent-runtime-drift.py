@@ -21,6 +21,11 @@ except ModuleNotFoundError:  # pragma: no cover
 SCHEMA_VERSION = "1.0"
 COMMAND = "audit-agent-runtime-drift"
 REQUIRED_PLUGIN_IDS = {"computer-use@openai-bundled"}
+APP_MANAGED_PLUGIN_IDS = {
+    "documents@openai-primary-runtime",
+    "presentations@openai-primary-runtime",
+    "spreadsheets@openai-primary-runtime",
+}
 REVIEW_MARKETPLACE_PREFIXES = ("openai-",)
 
 
@@ -219,6 +224,7 @@ def audit_codex_plugins(agents_repo: Path, home: Path) -> dict[str, Any]:
         for plugin in installed
         if str(plugin["marketplace"]).startswith(REVIEW_MARKETPLACE_PREFIXES)
         and plugin["id"] not in configured_ids
+        and plugin["id"] not in APP_MANAGED_PLUGIN_IDS
         and plugin["name"] not in managed_names
     ]
     if unknown_review_plugins:

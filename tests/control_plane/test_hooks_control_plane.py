@@ -303,7 +303,7 @@ class HooksControlPlaneTests(TempDirTestCase):
                 payload = {
                     "cwd": str(self.temp_path),
                     "hook_event_name": event,
-                    "model": "gpt-5.4",
+                    "model": "gpt-5.5",
                     "session_id": "session",
                     "transcript_path": None,
                 }
@@ -350,7 +350,7 @@ class HooksControlPlaneTests(TempDirTestCase):
         payload = {
             "cwd": str(nested),
             "hook_event_name": "SessionStart",
-            "model": "gpt-5.4",
+            "model": "gpt-5.5",
             "session_id": "session",
             "source": "startup",
             "transcript_path": None,
@@ -427,7 +427,7 @@ class HooksControlPlaneTests(TempDirTestCase):
         payload = {
             "cwd": str(repo),
             "hook_event_name": "SessionStart",
-            "model": "gpt-5.4",
+            "model": "gpt-5.5",
             "session_id": "session",
             "source": "startup",
             "transcript_path": None,
@@ -477,7 +477,7 @@ class HooksControlPlaneTests(TempDirTestCase):
         payload = {
             "cwd": str(nested),
             "hook_event_name": "UserPromptSubmit",
-            "model": "gpt-5.4",
+            "model": "gpt-5.5",
             "prompt": "ship it",
             "session_id": "session",
             "transcript_path": None,
@@ -645,7 +645,7 @@ class HooksControlPlaneTests(TempDirTestCase):
         )
 
         rendered_config = (home / ".codex/config.toml").read_text(encoding="utf-8")
-        self.assertIn('model = "gpt-5.4"', rendered_config)
+        self.assertIn('model = "gpt-5.5"', rendered_config)
         self.assertIn('model_reasoning_effort = "high"', rendered_config)
         self.assertIn('plan_mode_reasoning_effort = "high"', rendered_config)
         self.assertIn("codex_hooks = true", rendered_config)

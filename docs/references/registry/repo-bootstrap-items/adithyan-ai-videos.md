@@ -7,7 +7,7 @@ repo_local_skill_count: 1
 global_agent_count: 1
 custom_agent_count: 1
 agent_count: 2
-model: "gpt-5.4"
+model: "gpt-5.5"
 reasoning: "high"
 service_tier: "-"
 mcps: []

@@ -58,7 +58,7 @@ class RegistryViewsGenerationTests(TempDirTestCase):
             root / "codex/config/repo-bootstrap.json",
             {
                 "defaults": {
-                    "model": "gpt-5.4",
+                    "model": "gpt-5.5",
                     "model_reasoning_effort": "high",
                     "service_tier": None,
                 },
@@ -181,7 +181,7 @@ class RegistryViewsGenerationTests(TempDirTestCase):
             root / "codex/config/repo-bootstrap.json",
             {
                 "defaults": {
-                    "model": "gpt-5.4",
+                    "model": "gpt-5.5",
                     "model_reasoning_effort": "high",
                     "service_tier": None,
                 },

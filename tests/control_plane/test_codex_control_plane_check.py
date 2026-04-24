@@ -24,7 +24,7 @@ class CodexControlPlaneCheckTests(TempDirTestCase):
             root / "codex/config/repo-bootstrap.json",
             {
                 "defaults": {
-                    "model": "gpt-5.4",
+                    "model": "gpt-5.5",
                     "model_reasoning_effort": "high",
                     "service_tier": None,
                 },
@@ -134,7 +134,7 @@ class CodexControlPlaneCheckTests(TempDirTestCase):
         config_path = adi / ".codex/config.toml"
         config_path.write_text(
             config_path.read_text(encoding="utf-8").replace(
-                'model = "gpt-5.4"',
+                'model = "gpt-5.5"',
                 'model = "gpt-5.3"',
             ),
             encoding="utf-8",
@@ -149,7 +149,7 @@ class CodexControlPlaneCheckTests(TempDirTestCase):
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("repo-local Codex files are out of sync", result.stderr)
         self.assertIn('-model = "gpt-5.3"', result.stderr)
-        self.assertIn('+model = "gpt-5.4"', result.stderr)
+        self.assertIn('+model = "gpt-5.5"', result.stderr)
 
     def test_check_script_fails_when_repo_agent_file_drifted_from_role_source(self) -> None:
         root, home, adi = self._make_codex_repo_fixture()

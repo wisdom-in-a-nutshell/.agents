@@ -65,6 +65,28 @@ class AgentRuntimeDriftAuditTests(TempDirTestCase):
         self.assertIn("unclassified OpenAI Codex plugin", result.stdout)
         self.assertIn("surprise-plugin@openai-curated", result.stdout)
 
+    def test_audit_allows_primary_runtime_artifact_plugins(self) -> None:
+        home = self.temp_path / "home"
+        self._write_live_codex_config(home)
+        self._write_plugin(home, "openai-bundled", "computer-use")
+        self._write_plugin(home, "openai-primary-runtime", "documents")
+        self._write_plugin(home, "openai-primary-runtime", "presentations")
+        self._write_plugin(home, "openai-primary-runtime", "spreadsheets")
+
+        result = run_command(
+            [
+                str(REPO_ROOT / "scripts/audit-agent-runtime-drift.py"),
+                "--json",
+                "--skip-control-plane-check",
+                "--home",
+                str(home),
+            ]
+        )
+
+        payload = json.loads(result.stdout)
+        self.assertEqual(payload["status"], "ok")
+        self.assertEqual(payload["data"]["summary"]["errors"], 0)
+
     def test_audit_fails_when_required_plugin_is_not_enabled_live(self) -> None:
         home = self.temp_path / "home"
         self._write_plugin(home, "openai-bundled", "computer-use")

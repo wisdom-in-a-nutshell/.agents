@@ -37,7 +37,7 @@ class CodexRepoSyncTests(TempDirTestCase):
             repo_registry_path,
             {
                 "defaults": {
-                    "model": "gpt-5.4",
+                    "model": "gpt-5.5",
                     "model_reasoning_effort": "high",
                     "service_tier": None,
                 },
@@ -86,7 +86,7 @@ class CodexRepoSyncTests(TempDirTestCase):
         repo_hooks = (adi / ".codex/hooks.json").read_text(encoding="utf-8")
         repo_role = (adi / ".codex/agents/visual_reviewer.toml").read_text(encoding="utf-8")
 
-        self.assertIn('model = "gpt-5.4"', repo_config)
+        self.assertIn('model = "gpt-5.5"', repo_config)
         self.assertIn('model_reasoning_effort = "high"', repo_config)
         self.assertIn("[mcp_servers.cloudflare-docs]", repo_config)
         self.assertIn('url = "https://docs.mcp.cloudflare.com/mcp"', repo_config)
