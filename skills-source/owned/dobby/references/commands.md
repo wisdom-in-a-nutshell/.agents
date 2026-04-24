@@ -89,6 +89,8 @@ fallback only if the local database is unavailable. Agents should normally not
 set this flag; use `--backend sqlite|jxa|auto` only for diagnostics.
 
 `delete` can remove open tasks by name/ID and completed Logbook tasks by exact ID. Use `search --include-completed` first when cleaning old test artifacts.
+`done` and `cancel` use the Things URL scheme and are the reliable status-change path.
+`delete` still requires Things AppleScript because the URL scheme does not expose Trash/delete; if `doctor` reports `applescript_task_access` degraded, prefer `cancel` unless true deletion is required.
 
 ## Calendar
 

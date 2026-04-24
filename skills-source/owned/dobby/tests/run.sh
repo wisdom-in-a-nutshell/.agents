@@ -45,21 +45,25 @@ resolve_workspace() {
 REPO_ROOT="$(resolve_workspace)"
 export DOBBY_WORKSPACE="$REPO_ROOT"
 
-# Sweep any stale Things 3 test artifacts, including completed Logbook items.
+# Sweep stale open Things 3 test artifacts.
+#
+# Things URL writes can cancel tasks reliably; AppleScript deletion can hang on
+# some machines, so the sweep intentionally removes artifacts from open lists
+# without trying to purge already-canceled/completed Logbook history.
 sweep_things3() {
     [[ "${SKIP_SWEEP:-0}" == "1" ]] && return 0
-    # Uses the Dobby CLI itself (AppleScript-backed) — no external task binary.
+    # Uses the Dobby CLI itself — no external task binary.
     local found=0
     local ids
-    ids=$("$DOBBY_BIN" tasks search "DOBBY-TEST-" --include-completed --json 2>/dev/null \
+    ids=$("$DOBBY_BIN" tasks search "DOBBY-TEST-" --json 2>/dev/null \
         | jq -r '.data.tasks[]?.id' 2>/dev/null || true)
     for id in $ids; do
         [[ -z "$id" ]] && continue
-        "$DOBBY_BIN" tasks delete "$id" --yes > /dev/null 2>&1 || true
+        "$DOBBY_BIN" tasks cancel "$id" > /dev/null 2>&1 || true
         found=$((found + 1))
     done
     if (( found > 0 )); then
-        printf "\033[33m[sweep] removed %d stale DOBBY-TEST-* artifact(s)\033[0m\n" "$found"
+        printf "\033[33m[sweep] canceled %d stale open DOBBY-TEST-* artifact(s)\033[0m\n" "$found"
     fi
 }
 

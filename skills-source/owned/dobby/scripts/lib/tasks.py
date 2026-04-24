@@ -7,15 +7,15 @@ Three access methods, each used where it's strongest:
         Why: only method that returns structured JSON data
 
     URL scheme (things:///...)
-        Used for: creates and updates that need `when`, checklists, or headings
+        Used for: creates, updates, scheduling, completing, and canceling
         Why: AppleScript can't set start dates, create checklists, or use
              natural language dates — the URL scheme can
         Auth: `add` needs no token; `update` needs THINGS3_AUTH_TOKEN from
               the environment or this repo's generated .env
 
     AppleScript
-        Used for: status changes (done, cancel), delete, show, log-completed,
-                  empty-trash, and simple creates when URL scheme isn't needed
+        Used for: delete, area creation, log-completed, empty-trash, and
+                  other operations the URL scheme does not expose
         Why: two-way IPC, returns confirmation, handles operations the URL
              scheme doesn't support (delete, move to Trash)
 
@@ -696,17 +696,8 @@ def _resolve_id(target: str) -> str:
         return target
     try:
         return things_read.resolve_id(target)
-    except things_read.ThingsReadError:
-        # Keep AppleScript as a fallback because Things can sometimes know
-        # about very recent writes before the SQLite file has settled.
-        pass
-    # Look up by name via AppleScript (simpler than JXA for single-value returns)
-    try:
-        return run_applescript(
-            f'tell application "Things3" to return id of (to do named "{_esc_as(target)}")'
-        )
-    except Things3Error:
-        raise Things3Error(f"Task not found: {target}")
+    except things_read.ThingsReadError as e:
+        raise Things3Error(str(e)) from e
 
 
 # ---------------------------------------------------------------------------
@@ -1207,38 +1198,43 @@ def cmd_schedule(args: argparse.Namespace) -> int:
 
 def cmd_done(args: argparse.Namespace) -> int:
     env = Envelope("tasks.done")
-    ref = _as_ref(args.target)
-    script = f'''tell application "Things3"
-    set t to {ref}
-    set status of t to completed'''
-    if args.log_now:
-        script += "\n    log completed now"
-    script += '''
-    return name of t
-end tell'''
     try:
-        name = run_applescript(script)
+        token = read_auth_token()
+        task_id = _resolve_id(args.target)
+        before = things_read.inspect(task_id, verbose=False).get("task", {})
+        run_url_scheme("update", {"auth-token": token, "id": task_id, "completed": "true"})
+        logged = False
+        if args.log_now:
+            try:
+                run_applescript('tell application "Things3" to log completed now', timeout=5)
+                logged = True
+            except Things3Error:
+                logged = False
     except Things3Error as e:
         return emit_json(env.err(_err_code(e), str(e)))
+    except things_read.ThingsReadError as e:
+        return emit_json(env.err(_err_code(Things3Error(str(e))), str(e)))
+    name = before.get("name") or args.target
     if not args.plain:
-        return emit_json(env.ok({"target": args.target, "name": name, "status": "completed", "logged": bool(args.log_now)}))
-    suffix = " (logged)" if args.log_now else ""
+        return emit_json(env.ok({"target": args.target, "id": task_id, "name": name, "status": "completed", "logged": logged}))
+    suffix = " (logged)" if logged else ""
     return emit_text(f"done: {name}{suffix}")
 
 
 def cmd_cancel(args: argparse.Namespace) -> int:
     env = Envelope("tasks.cancel")
-    ref = _as_ref(args.target)
     try:
-        name = run_applescript(f'''tell application "Things3"
-    set t to {ref}
-    set status of t to canceled
-    return name of t
-end tell''')
+        token = read_auth_token()
+        task_id = _resolve_id(args.target)
+        before = things_read.inspect(task_id, verbose=False).get("task", {})
+        run_url_scheme("update", {"auth-token": token, "id": task_id, "canceled": "true"})
     except Things3Error as e:
         return emit_json(env.err(_err_code(e), str(e)))
+    except things_read.ThingsReadError as e:
+        return emit_json(env.err(_err_code(Things3Error(str(e))), str(e)))
+    name = before.get("name") or args.target
     if not args.plain:
-        return emit_json(env.ok({"target": args.target, "name": name, "status": "canceled"}))
+        return emit_json(env.ok({"target": args.target, "id": task_id, "name": name, "status": "canceled"}))
     return emit_text(f"canceled: {name}")
 
 
@@ -1246,7 +1242,11 @@ def cmd_delete(args: argparse.Namespace) -> int:
     env = Envelope("tasks.delete")
     if not args.yes:
         return emit_json(env.err("E_VALIDATION", "delete is destructive; pass --yes to confirm", hint="Deliberate safety gate"))
-    ref = _as_ref(args.target)
+    try:
+        task_id = _resolve_id(args.target)
+    except Things3Error:
+        task_id = args.target
+    ref = f'to do id "{_esc_as(task_id)}"' if _looks_like_things_id(task_id) else _as_ref(args.target)
     script = f'''tell application "Things3"
     set t to {ref}
     set n to name of t
@@ -1254,50 +1254,50 @@ def cmd_delete(args: argparse.Namespace) -> int:
     return n
 end tell'''
     try:
-        name = run_applescript(script)
+        name = run_applescript(script, timeout=5)
     except Things3Error as e:
-        if not _looks_like_things_id(args.target):
-            return emit_json(env.err(_err_code(e), str(e)))
-        logbook_ref = f'to do id "{_esc_as(args.target)}" of list "Logbook"'
+        if _err_code(e) == "E_TIMEOUT":
+            return emit_json(env.err(
+                _err_code(e),
+                str(e),
+                hint="Things AppleScript delete is unavailable. Use `dobby-tasks cancel <target>` to remove the task from open lists.",
+            ))
+        if not _looks_like_things_id(task_id):
+            return emit_json(env.err(
+                _err_code(e),
+                str(e),
+                hint="Things AppleScript delete is unavailable. Use `dobby-tasks cancel <target>` to remove the task from open lists.",
+            ))
+        logbook_ref = f'to do id "{_esc_as(task_id)}" of list "Logbook"'
         logbook_script = f'''tell application "Things3"
     set n to name of ({logbook_ref})
     delete ({logbook_ref})
     return n
 end tell'''
         try:
-            name = run_applescript(logbook_script)
+            name = run_applescript(logbook_script, timeout=5)
         except Things3Error:
-            return emit_json(env.err(_err_code(e), str(e)))
+            return emit_json(env.err(
+                _err_code(e),
+                str(e),
+                hint="Things AppleScript delete is unavailable. Use `dobby-tasks cancel <target>` to remove the task from open lists.",
+            ))
     if not args.plain:
-        return emit_json(env.ok({"target": args.target, "name": name}))
+        return emit_json(env.ok({"target": args.target, "id": task_id, "name": name}))
     return emit_text(f"deleted: {name}")
 
 
 def cmd_show(args: argparse.Namespace) -> int:
     """Open Things 3 and navigate to a task, project, or area."""
     env = Envelope("tasks.show")
-    target = _esc_as(args.target)
-    # Try task first, then project, then area
-    script = f'''tell application "Things3"
-    try
-        show to do named "{target}"
-        return "to-do: {target}"
-    on error
-        try
-            show project "{target}"
-            return "project: {target}"
-        on error
-            try
-                show area "{target}"
-                return "area: {target}"
-            on error
-                error "Not found: {target}"
-            end try
-        end try
-    end try
-end tell'''
     try:
-        result = run_applescript(script)
+        try:
+            task_id = _resolve_id(args.target)
+            run_url_scheme("show", {"id": task_id})
+            result = f"id: {task_id}"
+        except Things3Error:
+            run_url_scheme("show", {"query": args.target})
+            result = f"query: {args.target}"
     except Things3Error as e:
         return emit_json(env.err(_err_code(e), str(e)))
     if not args.plain:
@@ -1398,6 +1398,17 @@ def cmd_doctor(args: argparse.Namespace) -> int:
         except Things3Error as e:
             jxa_detail = str(e)
     checks.append({"name": "jxa_roundtrip", "ok": jxa_ok, "detail": jxa_detail})
+
+    applescript_task_ok = False
+    applescript_task_detail = "skipped"
+    if things_running:
+        try:
+            count = run_applescript('tell application "Things3" to return count of to dos', timeout=JXA_PROBE_TIMEOUT)
+            applescript_task_ok = str(count).strip().isdigit()
+            applescript_task_detail = f"{count} to-dos visible via AppleScript" if applescript_task_ok else f"unexpected: {count}"
+        except Things3Error as e:
+            applescript_task_detail = str(e)
+    checks.append({"name": "applescript_task_access", "ok": applescript_task_ok, "detail": applescript_task_detail})
 
     env_path = repo_env_path()
     token_source = str(env_path)

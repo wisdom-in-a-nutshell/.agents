@@ -13,8 +13,13 @@ FAIL_COUNT=0
 
 # Preflight
 run_dobby tasks doctor --json
-if [[ "$(printf '%s' "$CAPTURED_STDOUT" | jq -r '.data.ok // false')" != "true" ]]; then
-    printf "\033[33mSKIP tasks/live.sh — Things 3 doctor reports unhealthy\033[0m\n"
+if ! printf '%s' "$CAPTURED_STDOUT" | jq -e '
+    (.data.checks // [] | map({(.name): .ok}) | add) as $checks
+    | ($checks.things3_running == true)
+      and ($checks.sqlite_read_backend == true)
+      and ($checks.auth_token_file == true)
+' >/dev/null 2>&1; then
+    printf "\033[33mSKIP tasks/live.sh — Things 3 URL/SQLite path not healthy enough\033[0m\n"
     exit 0
 fi
 
@@ -23,7 +28,7 @@ CREATED_NAMES=()
 
 cleanup() {
     for name in "${CREATED_NAMES[@]}"; do
-        "$DOBBY" tasks delete "$name" --yes > /dev/null 2>&1 || true
+        "$DOBBY" tasks cancel "$name" > /dev/null 2>&1 || true
     done
 }
 trap cleanup EXIT
@@ -69,12 +74,12 @@ run_dobby tasks search "$PREFIX" --json
 assert_envelope_ok "tasks.search" "$CAPTURED_STDOUT"
 assert_jq_truthy "count >= 3" '.data.count >= 3' "$CAPTURED_STDOUT"
 
-section "delete beta"
-run_dobby tasks delete "$PREFIX beta" --yes
+section "cancel beta"
+run_dobby tasks cancel "$PREFIX beta"
 assert_exit "exit 0" 0 "$CAPTURED_EXIT"
-assert_envelope_ok "tasks.delete beta" "$CAPTURED_STDOUT"
-assert_jq_eq "deleted name" '.data.name' "$PREFIX beta" "$CAPTURED_STDOUT"
-# Remove beta from cleanup list since it's already deleted.
+assert_envelope_ok "tasks.cancel beta" "$CAPTURED_STDOUT"
+assert_jq_eq "canceled name" '.data.name' "$PREFIX beta" "$CAPTURED_STDOUT"
+# Remove beta from cleanup list since it's already canceled.
 CREATED_NAMES=("$PREFIX alpha" "$PREFIX natural language")
 
 section "delete without --yes is rejected"
@@ -83,14 +88,14 @@ assert_exit "exit 2" 2 "$CAPTURED_EXIT"
 assert_envelope_error "tasks.delete no --yes" "E_VALIDATION" "$CAPTURED_STDOUT"
 
 section "cleanup alpha"
-run_dobby tasks delete "$PREFIX alpha" --yes
+run_dobby tasks cancel "$PREFIX alpha"
 assert_exit "alpha cleanup exit 0" 0 "$CAPTURED_EXIT"
-assert_envelope_ok "tasks.delete alpha" "$CAPTURED_STDOUT"
+assert_envelope_ok "tasks.cancel alpha" "$CAPTURED_STDOUT"
 
 section "cleanup natural-language task"
-run_dobby tasks delete "$PREFIX natural language" --yes
+run_dobby tasks cancel "$PREFIX natural language"
 assert_exit "natural-language cleanup exit 0" 0 "$CAPTURED_EXIT"
-assert_envelope_ok "tasks.delete natural-language" "$CAPTURED_STDOUT"
+assert_envelope_ok "tasks.cancel natural-language" "$CAPTURED_STDOUT"
 CREATED_NAMES=()
 
 section "post-cleanup: no open test tasks remain"
@@ -98,9 +103,9 @@ run_dobby tasks search "$PREFIX"
 assert_envelope_ok "tasks.search cleanup" "$CAPTURED_STDOUT"
 assert_jq_eq "no open tasks remain" '.data.count' "0" "$CAPTURED_STDOUT"
 
-section "post-cleanup: no completed test tasks remain"
+section "post-cleanup: completed/canceled lookup remains structured"
 run_dobby tasks search "$PREFIX" --include-completed
 assert_envelope_ok "tasks.search cleanup include-completed" "$CAPTURED_STDOUT"
-assert_jq_eq "no completed/logbook tasks remain" '.data.count' "0" "$CAPTURED_STDOUT"
+assert_jq_truthy "completed/canceled query returns count" '.data.count >= 3' "$CAPTURED_STDOUT"
 
 finish_test "tasks/live.sh"

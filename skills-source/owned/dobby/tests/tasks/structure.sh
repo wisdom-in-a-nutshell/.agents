@@ -96,12 +96,13 @@ assert_contains "doctor checks things3_installed" "things3_installed" "$CAPTURED
 assert_contains "doctor checks things3_running" "things3_running" "$CAPTURED_STDOUT"
 assert_contains "doctor checks sqlite backend" "sqlite_read_backend" "$CAPTURED_STDOUT"
 assert_contains "doctor checks jxa_roundtrip" "jxa_roundtrip" "$CAPTURED_STDOUT"
+assert_contains "doctor checks AppleScript task access" "applescript_task_access" "$CAPTURED_STDOUT"
 
 section "doctor default returns structured report"
 run_dobby tasks doctor
 assert_envelope_shape "tasks.doctor" "$CAPTURED_STDOUT"
 assert_jq_truthy "data.checks is array" '(.data.checks | type) == "array"' "$CAPTURED_STDOUT"
-assert_jq_truthy "6 checks" '(.data.checks | length) == 6' "$CAPTURED_STDOUT"
+assert_jq_truthy "at least 6 checks" '(.data.checks | length) >= 6' "$CAPTURED_STDOUT"
 assert_jq_truthy "timeouts exposed" '(.data.timeouts.osascript_secs | type) == "number"' "$CAPTURED_STDOUT"
 assert_jq_truthy "read backend exposed" '.data.read_backend == "auto" or .data.read_backend == "sqlite" or .data.read_backend == "jxa"' "$CAPTURED_STDOUT"
 
