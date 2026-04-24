@@ -21,6 +21,9 @@ external_migration = false
 [notice.external_config_migration_prompts]
 home = true
 
+[plugins."browser-use@openai-bundled"]
+enabled = true
+
 [plugins."computer-use@openai-bundled"]
 enabled = true
 
