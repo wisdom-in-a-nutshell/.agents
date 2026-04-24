@@ -32,6 +32,29 @@ LINKEDIN_CLIENT_SECRET=...
 
 The script defaults the redirect URI and scope, so those do not need to be stored as secrets.
 
+## App credentials vs user OAuth
+
+There are two separate auth layers:
+
+1. `LINKEDIN_CLIENT_ID` / `LINKEDIN_CLIENT_SECRET` identify the LinkedIn app. These are stable app credentials and are generated from Azure Key Vault into `~/.secrets/linkedin/env`.
+2. `posting.tokens.json` is Adi's user OAuth authorization. This is the permission to post as Adi's LinkedIn profile.
+
+On Adi's own encrypted Macs, the current convenience setup shares the OAuth token through Syncthing:
+
+```bash
+cd ~/GitHub/scripts
+./setup/social/link-shared-linkedin-token.sh --apply
+```
+
+That links:
+
+```text
+~/.secrets/linkedin/posting.tokens.json
+  -> ~/Syncthing/AppConfigs/LinkedIn/posting.tokens.json
+```
+
+This is intentionally not Key Vault-backed because it is mutable runtime session state. Do not use this shared-token setup on temporary, shared, or cloud machines.
+
 ## One-time LinkedIn app setup
 
 1. Go to the LinkedIn Developer Portal and create an app.
