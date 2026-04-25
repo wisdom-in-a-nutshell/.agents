@@ -14,9 +14,10 @@ Soul lives in `/soul.md` (Dobby's character). Operations live here.
 ## Boot
 
 Boot context is delivered by the repo's `SessionStart` hook
-(`scripts/hooks/session_start.py`), not by this skill. The hook reads
-`now.md`, walks `memory/areas/`, and calls `scripts/dobby-tasks snapshot`
-and `scripts/dobby-calendar upcoming` in parallel. Adi's durable identity
+(`scripts/hooks/session_start.py`), not by this skill. That repo hook is a
+thin delegate to the skill-bundled hook, which reads `now.md`, walks
+`memory/areas/`, and calls the skill-bundled `dobby-tasks snapshot`
+and `dobby-calendar upcoming` in parallel. Adi's durable identity
 is part of `soul.md` under `## About Adi` and arrives via the
 wrapper-composed system prompt.
 
@@ -34,13 +35,13 @@ Read deeper files only when the task actually needs them. Areas under
 
 ## Prefer the CLI
 
-The skill-bundled Dobby scripts are the preferred path for reads, appends, tasks, and calendar operations. They live beside this file under `scripts/`: `dobby-memory`, `dobby-tasks`, and `dobby-calendar`. They are deterministic, timestamped, tested, and agent-first: JSON envelopes by default, `--plain` only for operator inspection. Run them from a Dobby workspace root, or set `DOBBY_WORKSPACE=/path/to/workspace`.
+The skill-bundled Dobby scripts are the preferred path for reads, appends, tasks, and calendar operations. They live beside this skill file under `$HOME/.agents/skills-source/owned/dobby/scripts/`: `dobby-memory`, `dobby-tasks`, and `dobby-calendar`. They are deterministic, timestamped, tested, and agent-first: JSON envelopes by default, `--plain` only for operator inspection. **Do not first look for repo-local `scripts/dobby-*` wrappers.** Invoke the skill-bundled scripts directly, from a Dobby workspace root, or set `DOBBY_WORKSPACE=/path/to/workspace`.
 
 **Reach for the CLI first.** Fall through to the `Edit`/`Write` tools only when the CLI cannot do what's needed — surgical mid-file section rewrites, or creating a new file. Both are legitimate; the CLI is simply the default.
 
 Examples:
-- Read a file: `scripts/dobby-memory read --section now` / `--section area.<name>.<file>`
-- Append to a log: `echo "- date — event" | scripts/dobby-memory write --section area.<name>.log --message "label"`
+- Read a file: `$HOME/.agents/skills-source/owned/dobby/scripts/dobby-memory read --section now` / `--section area.<name>.<file>`
+- Append to a log: `echo "- date — event" | $HOME/.agents/skills-source/owned/dobby/scripts/dobby-memory write --section area.<name>.log --message "label"`
 - Mid-file section edit in `now.md` or an area file: use `Edit` tool (CLI can't replace sections)
 - Edit durable identity (`## About Adi` in `soul.md`): use `Edit` tool directly on `soul.md`
 - New journal file: use `Write` tool (CLI `write` appends, doesn't create)
@@ -63,7 +64,7 @@ When new information surfaces, route it to exactly one canonical home. Never dup
 
 | Signal | Home | Operation |
 |---|---|---|
-| Actionable item (to do, follow up, remind me) | **Things 3** | `scripts/dobby-tasks add "..." --when ... --area <Area>` |
+| Actionable item (to do, follow up, remind me) | **Things 3** | `$HOME/.agents/skills-source/owned/dobby/scripts/dobby-tasks add "..." --when ... --area <Area>` |
 | Durable truth about the user (identity, pattern, preference) | `soul.md` `## About Adi` | Edit in place (section) |
 | This week's active context / session handoff | `memory/now.md` | Rewrite the relevant section, keep ≤60 lines |
 | Per-area durable canon | `memory/areas/<area>/<area>.md` | Edit in place |
@@ -82,13 +83,13 @@ For user-intent-to-action mappings, see `references/scenarios.md`.
 
 Tasks always go through the CLI. There is no file-based alternative.
 
-- Add: `scripts/dobby-tasks add "..." --when today|tomorrow|"next monday" --area <Area> --checklist "a,b,c"`
-- Boot snapshot: `scripts/dobby-tasks snapshot`
-- List: `scripts/dobby-tasks today | inbox | overdue`
-- Search: `scripts/dobby-tasks search "..."` (fast summary by default; add `--verbose` only when full fields are needed)
-- Inspect a task/project: `scripts/dobby-tasks inspect "Personal AI / agent system"`
-- Complete: `scripts/dobby-tasks done <id-prefix>`
-- Doctor: `scripts/dobby-tasks doctor` (health check)
+- Add: `$HOME/.agents/skills-source/owned/dobby/scripts/dobby-tasks add "..." --when today|tomorrow|"next monday" --area <Area> --checklist "a,b,c"`
+- Boot snapshot: `$HOME/.agents/skills-source/owned/dobby/scripts/dobby-tasks snapshot`
+- List: `$HOME/.agents/skills-source/owned/dobby/scripts/dobby-tasks today | inbox | overdue`
+- Search: `$HOME/.agents/skills-source/owned/dobby/scripts/dobby-tasks search "..."` (fast summary by default; add `--verbose` only when full fields are needed)
+- Inspect a task/project: `$HOME/.agents/skills-source/owned/dobby/scripts/dobby-tasks inspect "Personal AI / agent system"`
+- Complete: `$HOME/.agents/skills-source/owned/dobby/scripts/dobby-tasks done <id-prefix>`
+- Doctor: `$HOME/.agents/skills-source/owned/dobby/scripts/dobby-tasks doctor` (health check)
 
 Read commands default to an `auto` backend: fast read-only SQLite first, then
 JXA fallback if the local database is unavailable. Agents should not choose a
@@ -104,13 +105,13 @@ Dobby owns routing to `journal/`; the dedicated `journal-checkin` skill owns str
 
 ## Calendar
 
-Calendar operations go through the skill-bundled EventKit wrapper: `scripts/dobby-calendar`. It uses `ical` as the backend. The default calendar is required via the `DOBBY_CALENDAR_DEFAULT` env var (no hardcoded fallback) — set it per-workspace via `scripts/local/secrets/static_env_defaults.env` so it lands in `.env` on bootstrap. Commands that need a specific calendar fail fast with a clear message when unset. Use this CLI for date-bounded reads and safe writes; do not use AppleScript for broad calendar search/audits.
+Calendar operations go through the skill-bundled EventKit wrapper: `$HOME/.agents/skills-source/owned/dobby/scripts/dobby-calendar`. It uses `ical` as the backend. The default calendar is required via the `DOBBY_CALENDAR_DEFAULT` env var (no hardcoded fallback) — set it per-workspace via `scripts/local/secrets/static_env_defaults.env` so it lands in `.env` on bootstrap. Commands that need a specific calendar fail fast with a clear message when unset. Use this CLI for date-bounded reads and safe writes; do not use AppleScript for broad calendar search/audits.
 
-- List calendars: `scripts/dobby-calendar calendars`
-- Week view: `scripts/dobby-calendar week`
-- Date-bounded search: `scripts/dobby-calendar search "Neha" --from 2026-01-01 --to 2026-12-31 --all-calendars`
-- Safe write: `scripts/dobby-calendar upsert-event --title "Trip" --start 2026-04-30 --end 2026-05-06 --all-day --match-from 2026-04-01 --match-to 2026-05-31`
-- Doctor: `scripts/dobby-calendar doctor`
+- List calendars: `$HOME/.agents/skills-source/owned/dobby/scripts/dobby-calendar calendars`
+- Week view: `$HOME/.agents/skills-source/owned/dobby/scripts/dobby-calendar week`
+- Date-bounded search: `$HOME/.agents/skills-source/owned/dobby/scripts/dobby-calendar search "Neha" --from 2026-01-01 --to 2026-12-31 --all-calendars`
+- Safe write: `$HOME/.agents/skills-source/owned/dobby/scripts/dobby-calendar upsert-event --title "Trip" --start 2026-04-30 --end 2026-05-06 --all-day --match-from 2026-04-01 --match-to 2026-05-31`
+- Doctor: `$HOME/.agents/skills-source/owned/dobby/scripts/dobby-calendar doctor`
 
 ## Hygiene
 

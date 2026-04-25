@@ -12,7 +12,7 @@ Common phrasings mapped to the exact operation. Match intent, not literal words;
 Confirm in one line: "Added to `soul.md` `## About Adi` under Communication preferences."
 
 **"Save this for later"** / "Keep this"
-→ Actionable? → Things 3 Inbox via `scripts/dobby-tasks add`. Content/reflection? → new file in `journal/daily/<today>/notes-<slug>.md`.
+→ Actionable? → Things 3 Inbox via `$HOME/.agents/skills-source/owned/dobby/scripts/dobby-tasks add`. Content/reflection? → new file in `journal/daily/<today>/notes-<slug>.md`.
 
 **"Add this to <area>"**
 → Durable canon? → `Edit memory/areas/<area>/<area>.md`. Event/completion? → append to `memory/areas/<area>/log.md` via CLI.
@@ -20,19 +20,19 @@ Confirm in one line: "Added to `soul.md` `## About Adi` under Communication pref
 ## Read
 
 **"What's on today?"** / "What's my day look like?"
-→ `scripts/dobby-tasks snapshot` for today + overdue + inbox in one call. Surface counts and the live list.
+→ `$HOME/.agents/skills-source/owned/dobby/scripts/dobby-tasks snapshot` for today + overdue + inbox in one call. Surface counts and the live list.
 
 **"What's on my calendar / week?"**
-→ `scripts/dobby-calendar week` or `scripts/dobby-calendar today`. Use `--all-calendars` only when the user asks for an audit or cross-account search.
+→ `$HOME/.agents/skills-source/owned/dobby/scripts/dobby-calendar week` or `$HOME/.agents/skills-source/owned/dobby/scripts/dobby-calendar today`. Use `--all-calendars` only when the user asks for an audit or cross-account search.
 
 **"What's in my inbox?"**
-→ `scripts/dobby-tasks inbox`. Flag anything stale.
+→ `$HOME/.agents/skills-source/owned/dobby/scripts/dobby-tasks inbox`. Flag anything stale.
 
 **"What do you know about <area>?"**
-→ `scripts/dobby-memory read --section area.<area>.<area>` (single main file). Surface "Current state" section first. Load the log only if asked.
+→ `$HOME/.agents/skills-source/owned/dobby/scripts/dobby-memory read --section area.<area>.<area>` (single main file). Surface "Current state" section first. Load the log only if asked.
 
 **"What's live right now?"**
-→ `scripts/dobby-memory read --section now`.
+→ `$HOME/.agents/skills-source/owned/dobby/scripts/dobby-memory read --section now`.
 
 **"What happened yesterday / last week?"**
 → `ls journal/daily/` for recent dates; `Read` the relevant folder's `checkin.md` or reflections.
@@ -51,21 +51,21 @@ Propose the destination; do the write.
 ## Tasks
 
 **"Add a task to X"** / "Remind me to X" / "I need to X"
-→ `scripts/dobby-tasks add "X" --when <default: today> --area <best guess; ask if unclear>`.
+→ `$HOME/.agents/skills-source/owned/dobby/scripts/dobby-tasks add "X" --when <default: today> --area <best guess; ask if unclear>`.
 
 **"Mark X done"**
-→ `scripts/dobby-tasks done <id-prefix>`. If no id, use `scripts/dobby-tasks search "X"` first.
+→ `$HOME/.agents/skills-source/owned/dobby/scripts/dobby-tasks done <id-prefix>`. If no id, use `$HOME/.agents/skills-source/owned/dobby/scripts/dobby-tasks search "X"` first.
 
 **"What's overdue?"**
-→ `scripts/dobby-tasks overdue`. Name any drift from stated commitments directly.
+→ `$HOME/.agents/skills-source/owned/dobby/scripts/dobby-tasks overdue`. Name any drift from stated commitments directly.
 
 ## Calendar
 
 **"Add this to calendar"** / "Block this time" / "Schedule this trip"
-→ Use `scripts/dobby-calendar upsert-event` when an event may already exist; include a match range to avoid duplicates. Default calendar comes from `DOBBY_CALENDAR_DEFAULT` (required; no fallback); override per-call with `--calendar`.
+→ Use `$HOME/.agents/skills-source/owned/dobby/scripts/dobby-calendar upsert-event` when an event may already exist; include a match range to avoid duplicates. Default calendar comes from `DOBBY_CALENDAR_DEFAULT` (required; no fallback); override per-call with `--calendar`.
 
 **"Search my calendar for X"**
-→ Use `scripts/dobby-calendar search "X" --from <date> --to <date>`. Calendar searches must be date-bounded; use `--all-calendars` for migration/audit work.
+→ Use `$HOME/.agents/skills-source/owned/dobby/scripts/dobby-calendar search "X" --from <date> --to <date>`. Calendar searches must be date-bounded; use `--all-calendars` for migration/audit work.
 
 ## Reflect
 
