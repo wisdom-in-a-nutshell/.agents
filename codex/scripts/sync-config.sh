@@ -1353,6 +1353,73 @@ sync_agent_role_configs() {
   shopt -u nullglob
 }
 
+ensure_required_openai_bundled_plugins() {
+  python3 - "$CANONICAL_GLOBAL_TEMPLATE" "$CANONICAL_XCODE_TEMPLATE" "$HOME" <<'PY'
+from __future__ import annotations
+
+import json
+import shutil
+import sys
+from pathlib import Path
+
+try:
+    import tomllib
+except ModuleNotFoundError:  # pragma: no cover
+    import tomli as tomllib  # type: ignore
+
+
+global_template = Path(sys.argv[1])
+xcode_template = Path(sys.argv[2])
+home = Path(sys.argv[3])
+bundle_marketplace = Path("/Applications/Codex.app/Contents/Resources/plugins/openai-bundled")
+runtime_marketplace = home / ".codex/.tmp/bundled-marketplaces/openai-bundled"
+runtime_cache = home / ".codex/plugins/cache/openai-bundled"
+required_plugin_names = ["computer-use"]
+
+
+def plugin_enabled(config_path: Path, plugin_id: str) -> bool:
+    if not config_path.is_file():
+        return False
+    data = tomllib.loads(config_path.read_text(encoding="utf-8"))
+    plugins = data.get("plugins", {})
+    plugin_config = plugins.get(plugin_id) if isinstance(plugins, dict) else None
+    return isinstance(plugin_config, dict) and plugin_config.get("enabled") is True
+
+
+def copy_plugin_tree(source: Path, target: Path) -> None:
+    target.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copytree(source, target, dirs_exist_ok=True)
+
+
+for plugin_name in required_plugin_names:
+    plugin_id = f"{plugin_name}@openai-bundled"
+    if not (
+        plugin_enabled(global_template, plugin_id)
+        or plugin_enabled(xcode_template, plugin_id)
+    ):
+        continue
+
+    source = bundle_marketplace / "plugins" / plugin_name
+    manifest_path = source / ".codex-plugin/plugin.json"
+    if not manifest_path.is_file():
+        print(f"Warning: required bundled plugin source is missing: {source}", file=sys.stderr)
+        continue
+
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    version = str(manifest.get("version") or "unknown")
+    copy_plugin_tree(source, runtime_marketplace / "plugins" / plugin_name)
+    copy_plugin_tree(source, runtime_cache / plugin_name / version)
+
+    marketplace_manifest = bundle_marketplace / ".agents/plugins/marketplace.json"
+    if marketplace_manifest.is_file():
+        target_manifest = runtime_marketplace / ".agents/plugins/marketplace.json"
+        target_manifest.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(marketplace_manifest, target_manifest)
+
+    print(f"Ensured: {plugin_id} {version}")
+PY
+}
+
 log "Control Plane: $CONTROL_PLANE_DIR"
 log "Canonical Dir: $CANONICAL_DIR"
 if (( APPLY == 1 )); then
@@ -1366,6 +1433,9 @@ if (( SYNC_GLOBAL == 1 )); then
 fi
 if (( SYNC_XCODE == 1 )); then
   sync_xcode
+fi
+if (( APPLY == 1 )); then
+  ensure_required_openai_bundled_plugins
 fi
 
 log ""
