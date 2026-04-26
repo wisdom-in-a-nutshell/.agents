@@ -470,6 +470,28 @@
       "source_plugin": "build-ios-apps"
     },
     {
+      "skill": "ios-ettrace-performance",
+      "origin": "external",
+      "scope": "repo",
+      "repos": [
+        "codexclaw"
+      ],
+      "source_path": "plugins-source/external/build-ios-apps/skills/ios-ettrace-performance",
+      "upstream_ref": "-",
+      "source_plugin": "build-ios-apps"
+    },
+    {
+      "skill": "ios-memgraph-leaks",
+      "origin": "external",
+      "scope": "repo",
+      "repos": [
+        "codexclaw"
+      ],
+      "source_path": "plugins-source/external/build-ios-apps/skills/ios-memgraph-leaks",
+      "upstream_ref": "-",
+      "source_plugin": "build-ios-apps"
+    },
+    {
       "skill": "swiftui-liquid-glass",
       "origin": "external",
       "scope": "repo",
