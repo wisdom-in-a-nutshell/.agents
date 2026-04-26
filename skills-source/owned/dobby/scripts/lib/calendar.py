@@ -24,6 +24,7 @@ import re
 import shutil
 import subprocess
 from datetime import date, datetime, timedelta
+from pathlib import Path
 from typing import Any
 
 from lib.contract import Envelope, emit_json, emit_text
@@ -49,10 +50,68 @@ def _int_env(name: str, default: int) -> int:
 
 
 ICAL_TIMEOUT_SECS = _int_env("DOBBY_CALENDAR_TIMEOUT_SECS", 20)
+BRIDGE_TIMEOUT_SECS = _int_env("DOBBY_CALENDAR_BRIDGE_TIMEOUT_SECS", 20)
+BACKEND_ENV = "DOBBY_CALENDAR_BACKEND"
+BRIDGE_BIN_ENV = "DOBBY_CALENDAR_BRIDGE_BIN"
+BACKENDS = ("auto", "bridge", "ical")
 
 
 class CalendarError(RuntimeError):
-    pass
+    def __init__(self, message: str, *, code: str | None = None, hint: str = "", retryable: bool = False) -> None:
+        super().__init__(message)
+        self.code = code
+        self.hint = hint
+        self.retryable = retryable
+
+
+def _backend_preference() -> str:
+    value = os.environ.get(BACKEND_ENV, "auto").strip().lower() or "auto"
+    if value not in BACKENDS:
+        raise CalendarError(
+            f"invalid {BACKEND_ENV}: {value}",
+            code="E_VALIDATION",
+            hint=f"Use one of: {', '.join(BACKENDS)}",
+        )
+    return value
+
+
+def _backend_order() -> list[str]:
+    pref = _backend_preference()
+    if pref == "auto":
+        # Prefer the native Dobby EventKit helper. It has its own stable macOS
+        # Calendar permission identity, so it works from Codex.app/Claude/etc.
+        # Fall back to Homebrew `ical` for machines that have not installed the
+        # helper yet or when terminal-granted ical access is the only available
+        # path.
+        return ["bridge", "ical"]
+    return [pref]
+
+
+def _bridge_candidates() -> list[Path]:
+    configured = os.environ.get(BRIDGE_BIN_ENV)
+    candidates: list[Path] = []
+    if configured:
+        candidates.append(Path(configured).expanduser())
+    candidates.extend([
+        Path.home() / "Applications/Dobby Calendar Bridge.app/Contents/MacOS/DobbyCalendarBridge",
+        Path("/Applications/Dobby Calendar Bridge.app/Contents/MacOS/DobbyCalendarBridge"),
+        Path.home() / "Library/Application Support/DobbyCalendarBridge/Dobby Calendar Bridge.app/Contents/MacOS/DobbyCalendarBridge",
+    ])
+    return candidates
+
+
+def _find_bridge_bin() -> Path | None:
+    for candidate in _bridge_candidates():
+        if candidate.exists() and os.access(candidate, os.X_OK):
+            return candidate
+    return None
+
+
+def _bridge_install_hint() -> str:
+    return (
+        "Install or repair the native helper with: "
+        "~/GitHub/scripts/setup/calendar/install-dobby-calendar-bridge.sh --request-access"
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -249,7 +308,95 @@ def _run_ical_text(args: list[str], *, timeout: int = ICAL_TIMEOUT_SECS) -> str:
     return r.stdout.strip()
 
 
+def _run_bridge(command: str, args: list[str] | None = None, *, timeout: int = BRIDGE_TIMEOUT_SECS) -> Any:
+    bridge = _find_bridge_bin()
+    if bridge is None:
+        raise CalendarError(
+            "Dobby Calendar Bridge helper is not installed",
+            code="E_DEPENDENCY",
+            hint=_bridge_install_hint(),
+        )
+    cmd = [str(bridge), command, *(args or []), "--no-input"]
+    try:
+        r = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout)
+    except subprocess.TimeoutExpired:
+        raise CalendarError(
+            f"Dobby Calendar Bridge timed out after {timeout}s",
+            code="E_TIMEOUT",
+            retryable=True,
+            hint="Retry once; if it repeats, reinstall the bridge or check macOS Calendar privacy.",
+        )
+    except FileNotFoundError:
+        raise CalendarError(
+            "Dobby Calendar Bridge executable not found",
+            code="E_DEPENDENCY",
+            hint=_bridge_install_hint(),
+        )
+
+    raw = (r.stdout or "").strip()
+    try:
+        envelope = json.loads(raw) if raw else {}
+    except json.JSONDecodeError as e:
+        raise CalendarError(
+            f"Dobby Calendar Bridge returned invalid JSON: {e}: {raw[:300]}",
+            code="E_RUNTIME",
+            hint="Reinstall the bridge helper from ~/GitHub/scripts.",
+        )
+
+    if r.returncode != 0 or envelope.get("status") == "error":
+        err = envelope.get("error") if isinstance(envelope, dict) else None
+        if isinstance(err, dict):
+            raise CalendarError(
+                err.get("message") or f"Dobby Calendar Bridge exited {r.returncode}",
+                code=err.get("code") or "E_RUNTIME",
+                hint=err.get("hint") or "",
+                retryable=bool(err.get("retryable", False)),
+            )
+        msg = (r.stderr or raw or f"Dobby Calendar Bridge exited {r.returncode}").strip()
+        raise CalendarError(msg, code="E_RUNTIME")
+
+    return envelope.get("data")
+
+
+def _run_backend(
+    op: str,
+    ical_call: Any,
+    bridge_call: Any,
+    *,
+    state_changing: bool = False,
+) -> tuple[Any, str]:
+    """Run a calendar operation through the preferred backend order.
+
+    In auto mode, bridge is preferred because it has a stable Calendar
+    permission identity. For state-changing operations, only fall back after
+    pre-flight classes that cannot have partially created an event.
+    """
+    errors: list[tuple[str, CalendarError]] = []
+    for backend in _backend_order():
+        try:
+            if backend == "bridge":
+                return bridge_call(), "bridge"
+            return ical_call(), "ical"
+        except CalendarError as e:
+            errors.append((backend, e))
+            if _backend_preference() != "auto":
+                raise
+            if state_changing and _err_code(e) not in {"E_AUTH", "E_DEPENDENCY"}:
+                raise
+            continue
+    if errors:
+        # Prefer surfacing auth failures because that is the common Codex.app
+        # issue and the hint is actionable.
+        for _, err in errors:
+            if _err_code(err) == "E_AUTH":
+                raise err
+        raise errors[-1][1]
+    raise CalendarError(f"no calendar backend available for {op}", code="E_DEPENDENCY")
+
+
 def _err_code(e: CalendarError) -> str:
+    if e.code:
+        return e.code
     msg = str(e).lower()
     if "not installed" in msg or "not found" in msg:
         return "E_DEPENDENCY"
@@ -257,6 +404,8 @@ def _err_code(e: CalendarError) -> str:
         return "E_TIMEOUT"
     if "permission" in msg or "access" in msg or "not authorized" in msg or "denied" in msg:
         return "E_AUTH"
+    if "not found" in msg:
+        return "E_NOT_FOUND"
     if "no calendar configured" in msg or "required" in msg or "invalid json" in msg or "invalid" in msg:
         return "E_VALIDATION"
     return "E_RUNTIME"
@@ -337,6 +486,77 @@ def _event_args(args: argparse.Namespace) -> list[str]:
     return cmd
 
 
+def _bridge_event_args(args: argparse.Namespace) -> list[str]:
+    calendar = _require_calendar(getattr(args, "calendar", None))
+    cmd = ["--title", args.title, "--start", args.start, "--calendar", calendar]
+    if args.end:
+        cmd.extend(["--end", args.end])
+    if args.all_day:
+        cmd.append("--all-day")
+    if args.location:
+        cmd.extend(["--location", args.location])
+    if args.notes:
+        cmd.extend(["--notes", args.notes])
+    if args.url:
+        cmd.extend(["--url", args.url])
+    if args.repeat:
+        cmd.extend(["--repeat", args.repeat])
+    if args.repeat_until:
+        cmd.extend(["--repeat-until", args.repeat_until])
+    if args.no_alert:
+        cmd.append("--no-alert")
+    return cmd
+
+
+def _bridge_list_args(
+    from_date: str,
+    to_date: str,
+    *,
+    query: str | None = None,
+    limit: int | None = None,
+    no_recurring: bool = False,
+    calendar_name: str | None = None,
+    all_calendars: bool = False,
+) -> list[str]:
+    cmd = ["--from", from_date, "--to", to_date]
+    if query:
+        cmd.extend(["--query", query])
+    if limit is not None:
+        cmd.extend(["--limit", str(limit)])
+    if no_recurring:
+        cmd.append("--no-recurring")
+    if all_calendars:
+        cmd.append("--all-calendars")
+    else:
+        cmd.extend(["--calendar", _require_calendar(calendar_name)])
+    return cmd
+
+
+def _iso_date(d: date) -> str:
+    return d.isoformat()
+
+
+def _list_via_backends(
+    ical_cmd: list[str],
+    bridge_args: list[str],
+) -> tuple[list[dict[str, Any]], str]:
+    data, backend = _run_backend(
+        "list",
+        lambda: _run_ical(ical_cmd),
+        lambda: (_run_bridge("list", bridge_args) or {}).get("events", []),
+    )
+    return data or [], backend
+
+
+def _calendars_via_backends() -> tuple[list[dict[str, Any]], str]:
+    data, backend = _run_backend(
+        "calendars",
+        lambda: _run_ical(["calendars", "-o", "json"]),
+        lambda: (_run_bridge("calendars") or {}).get("calendars", []),
+    )
+    return data or [], backend
+
+
 # ---------------------------------------------------------------------------
 # commands
 # ---------------------------------------------------------------------------
@@ -344,6 +564,31 @@ def _event_args(args: argparse.Namespace) -> list[str]:
 def cmd_doctor(args: argparse.Namespace) -> int:
     env = Envelope("calendar.doctor")
     checks: list[dict[str, Any]] = []
+
+    bridge_path = _find_bridge_bin()
+    checks.append({
+        "name": "eventkit_bridge_installed",
+        "ok": bridge_path is not None,
+        "detail": str(bridge_path) if bridge_path else "not found",
+    })
+
+    bridge_calendars: list[dict[str, Any]] = []
+    bridge_ok = False
+    if bridge_path:
+        try:
+            bridge_report = _run_bridge("doctor")
+            bridge_ok = bool((bridge_report or {}).get("ok"))
+            checks.append({
+                "name": "eventkit_bridge_access",
+                "ok": bridge_ok,
+                "detail": (bridge_report or {}).get("authorization_status", "unknown"),
+            })
+            if bridge_ok:
+                bridge_calendars = (_run_bridge("calendars") or {}).get("calendars", [])
+        except CalendarError as e:
+            checks.append({"name": "eventkit_bridge_access", "ok": False, "detail": str(e)})
+    else:
+        checks.append({"name": "eventkit_bridge_access", "ok": False, "detail": _bridge_install_hint()})
 
     path = shutil.which("ical")
     checks.append({"name": "ical_installed", "ok": path is not None, "detail": path or "not found"})
@@ -358,15 +603,20 @@ def cmd_doctor(args: argparse.Namespace) -> int:
     else:
         checks.append({"name": "ical_version", "ok": False, "detail": version})
 
-    calendars: list[dict[str, Any]] = []
+    ical_calendars: list[dict[str, Any]] = []
+    ical_ok = False
     if path:
         try:
-            calendars = _run_ical(["calendars", "-o", "json"])
-            checks.append({"name": "eventkit_calendars", "ok": isinstance(calendars, list), "detail": f"{len(calendars)} calendars"})
+            ical_calendars = _run_ical(["calendars", "-o", "json"])
+            ical_ok = isinstance(ical_calendars, list)
+            checks.append({"name": "ical_eventkit_calendars", "ok": ical_ok, "detail": f"{len(ical_calendars)} calendars"})
         except CalendarError as e:
-            checks.append({"name": "eventkit_calendars", "ok": False, "detail": str(e)})
+            checks.append({"name": "ical_eventkit_calendars", "ok": False, "detail": str(e)})
     else:
-        checks.append({"name": "eventkit_calendars", "ok": False, "detail": "skipped"})
+        checks.append({"name": "ical_eventkit_calendars", "ok": False, "detail": "skipped"})
+
+    active_backend = "bridge" if bridge_ok else ("ical" if ical_ok else None)
+    calendars = bridge_calendars if bridge_ok else ical_calendars
 
     if DEFAULT_CALENDAR is None:
         checks.append({
@@ -380,18 +630,21 @@ def cmd_doctor(args: argparse.Namespace) -> int:
         checks.append({
             "name": "default_calendar_writable",
             "ok": default_ok,
-            "detail": DEFAULT_CALENDAR if default_ok else f"{DEFAULT_CALENDAR} not found or read-only",
+            "detail": DEFAULT_CALENDAR if default_ok else f"{DEFAULT_CALENDAR} not found or read-only via {active_backend or 'no backend'}",
         })
 
     report = {
-        "ok": all(c["ok"] for c in checks),
+        "ok": bool(active_backend) and any(c["name"] == "default_calendar_writable" and c["ok"] for c in checks),
+        "backend": active_backend,
+        "backend_preference": _backend_preference(),
         "default_calendar": DEFAULT_CALENDAR,
         "checks": checks,
-        "timeouts": {"ical_secs": ICAL_TIMEOUT_SECS},
+        "timeouts": {"ical_secs": ICAL_TIMEOUT_SECS, "bridge_secs": BRIDGE_TIMEOUT_SECS},
     }
     if report["ok"]:
-        return _emit(env, report, args, plain="calendar: OK")
-    err = env.err("E_DEPENDENCY", "one or more calendar checks failed")
+        return _emit(env, report, args, plain=f"calendar: OK ({active_backend})")
+    error_code = "E_AUTH" if any((not c["ok"]) and ("access" in c["name"] or "calendar" in c["name"]) for c in checks) else "E_DEPENDENCY"
+    err = env.err(error_code, "one or more calendar checks failed", hint=_bridge_install_hint())
     err["data"] = report
     return emit_json(err)
 
@@ -399,20 +652,27 @@ def cmd_doctor(args: argparse.Namespace) -> int:
 def cmd_calendars(args: argparse.Namespace) -> int:
     env = Envelope("calendar.calendars")
     try:
-        data = _run_ical(["calendars", "-o", "json"])
+        data, backend = _calendars_via_backends()
     except CalendarError as e:
-        return emit_json(env.err(_err_code(e), str(e)))
-    return _emit(env, {"count": len(data), "calendars": data, "default_calendar": DEFAULT_CALENDAR}, args, plain=_plain_summary(data))
+        return emit_json(env.err(_err_code(e), str(e), retryable=e.retryable, hint=e.hint))
+    return _emit(env, {"count": len(data), "calendars": data, "default_calendar": DEFAULT_CALENDAR, "backend": backend}, args, plain=_plain_summary(data))
 
 
 def cmd_today(args: argparse.Namespace) -> int:
     env = Envelope("calendar.today")
     cmd = _with_calendar(["today", "-o", "json"], args)
+    today = date.today()
+    bridge_args = _bridge_list_args(
+        _iso_date(today),
+        _iso_date(today + timedelta(days=1)),
+        calendar_name=args.calendar,
+        all_calendars=args.all_calendars,
+    )
     try:
-        data = _run_ical(cmd)
+        data, backend = _list_via_backends(cmd, bridge_args)
     except CalendarError as e:
-        return emit_json(env.err(_err_code(e), str(e)))
-    return _emit(env, {"count": len(data or []), "events": data or [], "calendar": None if args.all_calendars else args.calendar}, args, plain=_plain_summary(data))
+        return emit_json(env.err(_err_code(e), str(e), retryable=e.retryable, hint=e.hint))
+    return _emit(env, {"count": len(data or []), "events": data or [], "calendar": None if args.all_calendars else args.calendar, "backend": backend}, args, plain=_plain_summary(data))
 
 
 def cmd_upcoming(args: argparse.Namespace) -> int:
@@ -424,11 +684,18 @@ def _cmd_upcoming_days(args: argparse.Namespace, days: int, command: str) -> int
     if days < 1 or days > 366:
         return emit_json(env.err("E_VALIDATION", "--days must be between 1 and 366"))
     cmd = _with_calendar(["upcoming", "-d", str(days), "-o", "json"], args)
+    today = date.today()
+    bridge_args = _bridge_list_args(
+        _iso_date(today),
+        _iso_date(today + timedelta(days=days)),
+        calendar_name=args.calendar,
+        all_calendars=args.all_calendars,
+    )
     try:
-        data = _run_ical(cmd)
+        data, backend = _list_via_backends(cmd, bridge_args)
     except CalendarError as e:
-        return emit_json(env.err(_err_code(e), str(e)))
-    return _emit(env, {"count": len(data or []), "events": data or [], "days": days, "calendar": None if args.all_calendars else args.calendar}, args, plain=_plain_summary(data))
+        return emit_json(env.err(_err_code(e), str(e), retryable=e.retryable, hint=e.hint))
+    return _emit(env, {"count": len(data or []), "events": data or [], "days": days, "calendar": None if args.all_calendars else args.calendar, "backend": backend}, args, plain=_plain_summary(data))
 
 
 def cmd_list(args: argparse.Namespace) -> int:
@@ -441,11 +708,20 @@ def cmd_list(args: argparse.Namespace) -> int:
     if args.no_recurring:
         cmd.append("--no-recurring")
     cmd = _with_calendar(cmd, args)
+    bridge_args = _bridge_list_args(
+        args.from_date,
+        args.to_date,
+        query=args.query,
+        limit=args.limit,
+        no_recurring=args.no_recurring,
+        calendar_name=args.calendar,
+        all_calendars=args.all_calendars,
+    )
     try:
-        data = _run_ical(cmd)
+        data, backend = _list_via_backends(cmd, bridge_args)
     except CalendarError as e:
-        return emit_json(env.err(_err_code(e), str(e)))
-    return _emit(env, {"count": len(data or []), "events": data or [], "from": args.from_date, "to": args.to_date, "calendar": None if args.all_calendars else args.calendar}, args, plain=_plain_summary(data))
+        return emit_json(env.err(_err_code(e), str(e), retryable=e.retryable, hint=e.hint))
+    return _emit(env, {"count": len(data or []), "events": data or [], "from": args.from_date, "to": args.to_date, "calendar": None if args.all_calendars else args.calendar, "backend": backend}, args, plain=_plain_summary(data))
 
 
 def cmd_search(args: argparse.Namespace) -> int:
@@ -458,38 +734,70 @@ def cmd_search(args: argparse.Namespace) -> int:
     if args.no_recurring:
         cmd.append("--no-recurring")
     cmd = _with_calendar(cmd, args)
+    bridge_args = _bridge_list_args(
+        args.from_date,
+        args.to_date,
+        query=args.query,
+        limit=args.limit,
+        no_recurring=args.no_recurring,
+        calendar_name=args.calendar,
+        all_calendars=args.all_calendars,
+    )
     try:
-        data = _run_ical(cmd)
+        data, backend = _list_via_backends(cmd, bridge_args)
     except CalendarError as e:
-        return emit_json(env.err(_err_code(e), str(e)))
-    return _emit(env, {"count": len(data or []), "events": data or [], "query": args.query, "from": args.from_date, "to": args.to_date, "calendar": None if args.all_calendars else args.calendar}, args, plain=_plain_summary(data))
+        return emit_json(env.err(_err_code(e), str(e), retryable=e.retryable, hint=e.hint))
+    return _emit(env, {"count": len(data or []), "events": data or [], "query": args.query, "from": args.from_date, "to": args.to_date, "calendar": None if args.all_calendars else args.calendar, "backend": backend}, args, plain=_plain_summary(data))
 
 
 def cmd_add_event(args: argparse.Namespace) -> int:
     env = Envelope("calendar.add-event")
     try:
         cmd = _event_args(args)
-        planned = {"backend": "ical", "argv": cmd, "calendar": args.calendar, "title": args.title, "start": args.start, "end": args.end, "all_day": args.all_day}
+        bridge_cmd = _bridge_event_args(args)
+        planned = {"backend": _backend_preference(), "argv": cmd, "bridge_argv": bridge_cmd, "calendar": args.calendar, "title": args.title, "start": args.start, "end": args.end, "all_day": args.all_day}
         if args.dry_run:
             return _emit(env, {"created": False, "dry_run": True, "planned": planned}, args, plain=f"dry-run: {args.title}")
-        data = _run_ical_add(cmd)
+        data, backend = _run_backend(
+            "add-event",
+            lambda: _run_ical_add(cmd),
+            lambda: _run_bridge("add", bridge_cmd),
+            state_changing=True,
+        )
     except CalendarError as e:
-        return emit_json(env.err(_err_code(e), str(e)))
-    return _emit(env, {"created": True, "event": data, "calendar": args.calendar}, args, plain=f"created: {args.title}")
+        return emit_json(env.err(_err_code(e), str(e), retryable=e.retryable, hint=e.hint))
+    return _emit(env, {"created": True, "event": data, "calendar": args.calendar, "backend": backend}, args, plain=f"created: {args.title}")
 
 
 def cmd_upsert_event(args: argparse.Namespace) -> int:
     env = Envelope("calendar.upsert-event")
     try:
-        search = _run_ical(["search", args.title, "-f", args.match_from, "-t", args.match_to, "-c", args.calendar, "-o", "json"])
-        matches = [e for e in (search or []) if (e.get("title") or "") == args.title and (e.get("calendar") or "") == args.calendar]
+        calendar = _require_calendar(args.calendar)
+        search_bridge_args = _bridge_list_args(
+            args.match_from,
+            args.match_to,
+            query=args.title,
+            calendar_name=calendar,
+        )
+        search, search_backend = _run_backend(
+            "upsert-search",
+            lambda: _run_ical(["search", args.title, "-f", args.match_from, "-t", args.match_to, "-c", calendar, "-o", "json"]),
+            lambda: (_run_bridge("list", search_bridge_args) or {}).get("events", []),
+        )
+        matches = [e for e in (search or []) if (e.get("title") or "") == args.title and (e.get("calendar") or "") == calendar]
         if matches:
-            return _emit(env, {"created": False, "duplicate": True, "matches": matches, "calendar": args.calendar}, args, plain=f"exists: {args.title}")
+            return _emit(env, {"created": False, "duplicate": True, "matches": matches, "calendar": calendar, "backend": search_backend}, args, plain=f"exists: {args.title}")
         cmd = _event_args(args)
-        planned = {"backend": "ical", "argv": cmd, "calendar": args.calendar, "title": args.title, "start": args.start, "end": args.end, "all_day": args.all_day}
+        bridge_cmd = _bridge_event_args(args)
+        planned = {"backend": _backend_preference(), "argv": cmd, "bridge_argv": bridge_cmd, "calendar": args.calendar, "title": args.title, "start": args.start, "end": args.end, "all_day": args.all_day}
         if args.dry_run:
             return _emit(env, {"created": False, "duplicate": False, "dry_run": True, "planned": planned}, args, plain=f"dry-run create: {args.title}")
-        data = _run_ical_add(cmd)
+        data, backend = _run_backend(
+            "upsert-add",
+            lambda: _run_ical_add(cmd),
+            lambda: _run_bridge("add", bridge_cmd),
+            state_changing=True,
+        )
     except CalendarError as e:
-        return emit_json(env.err(_err_code(e), str(e)))
-    return _emit(env, {"created": True, "duplicate": False, "event": data, "calendar": args.calendar}, args, plain=f"created: {args.title}")
+        return emit_json(env.err(_err_code(e), str(e), retryable=e.retryable, hint=e.hint))
+    return _emit(env, {"created": True, "duplicate": False, "event": data, "calendar": calendar, "backend": backend}, args, plain=f"created: {args.title}")
