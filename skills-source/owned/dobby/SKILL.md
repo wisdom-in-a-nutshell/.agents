@@ -105,7 +105,7 @@ Dobby owns routing to `journal/`; the dedicated `journal-checkin` skill owns str
 
 ## Calendar
 
-Calendar operations go through the skill-bundled CLI: `$HOME/.agents/skills-source/owned/dobby/scripts/dobby-calendar`. It uses `ical`/EventKit first and automatically falls back to the local Calendar SQLite cache for read commands when macOS TCC denies EventKit access in agent/SSH contexts. Writes still require the EventKit backend. The default calendar is required via the `DOBBY_CALENDAR_DEFAULT` env var (no hardcoded fallback) — set it per-workspace via `scripts/local/secrets/static_env_defaults.env` so it lands in `.env` on bootstrap. Commands that need a specific calendar fail fast with a clear message when unset. Use this CLI for date-bounded reads and safe writes; do not use AppleScript for broad calendar search/audits.
+Calendar operations go through the skill-bundled EventKit wrapper: `$HOME/.agents/skills-source/owned/dobby/scripts/dobby-calendar`. It uses `ical` as the backend. The default calendar is required via the `DOBBY_CALENDAR_DEFAULT` env var (no hardcoded fallback) — set it per-workspace via `scripts/local/secrets/static_env_defaults.env` so it lands in `.env` on bootstrap. Commands that need a specific calendar fail fast with a clear message when unset. Use this CLI for date-bounded reads and safe writes; do not use AppleScript for broad calendar search/audits.
 
 - List calendars: `$HOME/.agents/skills-source/owned/dobby/scripts/dobby-calendar calendars`
 - Week view: `$HOME/.agents/skills-source/owned/dobby/scripts/dobby-calendar week`

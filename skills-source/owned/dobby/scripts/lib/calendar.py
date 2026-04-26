@@ -22,10 +22,8 @@ import json
 import os
 import re
 import shutil
-import sqlite3
 import subprocess
 from datetime import date, datetime, timedelta
-from pathlib import Path
 from typing import Any
 
 from lib.contract import Envelope, emit_json, emit_text
@@ -51,8 +49,6 @@ def _int_env(name: str, default: int) -> int:
 
 
 ICAL_TIMEOUT_SECS = _int_env("DOBBY_CALENDAR_TIMEOUT_SECS", 20)
-APPLE_EPOCH_OFFSET = 978307200
-CALENDAR_SQLITE_PATH = Path.home() / "Library/Group Containers/group.com.apple.calendar/Calendar.sqlitedb"
 
 
 class CalendarError(RuntimeError):
@@ -253,210 +249,6 @@ def _run_ical_text(args: list[str], *, timeout: int = ICAL_TIMEOUT_SECS) -> str:
     return r.stdout.strip()
 
 
-# ---------------------------------------------------------------------------
-# SQLite read fallback
-# ---------------------------------------------------------------------------
-
-def _sqlite_connect() -> sqlite3.Connection:
-    """Open macOS Calendar's local cache read-only.
-
-    This is a read backend only. It avoids EventKit/TCC instability seen when
-    Codex runs CLI tools through helper processes, while still using the local
-    Calendar.app sync store. Writes remain routed through EventKit (`ical`) for
-    now.
-    """
-    if not CALENDAR_SQLITE_PATH.exists():
-        raise CalendarError(f"Calendar SQLite database not found: {CALENDAR_SQLITE_PATH}")
-    uri = f"file:{CALENDAR_SQLITE_PATH}?mode=ro"
-    try:
-        con = sqlite3.connect(uri, uri=True, timeout=5)
-    except sqlite3.Error as e:
-        raise CalendarError(f"Calendar SQLite open failed: {e}") from e
-    con.row_factory = sqlite3.Row
-    return con
-
-
-def _parse_dt(value: str) -> datetime:
-    raw = value.strip()
-    lowered = raw.lower()
-    now = datetime.now()
-    if lowered == "today":
-        return datetime(now.year, now.month, now.day)
-    if lowered == "tomorrow":
-        tomorrow = now + timedelta(days=1)
-        return datetime(tomorrow.year, tomorrow.month, tomorrow.day)
-    if lowered in {"now", "current"}:
-        return now
-    try:
-        if re.fullmatch(r"\d{4}-\d{2}-\d{2}", raw):
-            return datetime.fromisoformat(raw)
-        return datetime.fromisoformat(raw.replace("Z", "+00:00"))
-    except ValueError as e:
-        raise CalendarError(f"SQLite fallback only supports ISO dates/times, got: {value}") from e
-
-
-def _apple_ts(dt: datetime) -> float:
-    return dt.timestamp() - APPLE_EPOCH_OFFSET
-
-
-def _from_apple_ts(value: float | None) -> str | None:
-    if value is None:
-        return None
-    return datetime.fromtimestamp(float(value) + APPLE_EPOCH_OFFSET).isoformat(timespec="seconds")
-
-
-def _sqlite_calendars() -> list[dict[str, Any]]:
-    with _sqlite_connect() as con:
-        rows = con.execute(
-            """
-            SELECT ROWID, title, UUID, flags, color, display_order
-            FROM Calendar
-            WHERE title IS NOT NULL AND title != ''
-            ORDER BY display_order, title, ROWID
-            """
-        ).fetchall()
-    return [
-        {
-            "id": row["ROWID"],
-            "title": row["title"],
-            "uuid": row["UUID"],
-            "flags": row["flags"],
-            "color": row["color"],
-            # We cannot reliably infer writeability from Calendar.flags across
-            # macOS releases. Keep this conservative for read fallback output.
-            "readOnly": None,
-            "backend": "sqlite",
-        }
-        for row in rows
-    ]
-
-
-def _row_to_event(row: sqlite3.Row, *, occurrence: bool) -> dict[str, Any]:
-    start_raw = row["occurrence_start_date"] if occurrence else row["start_date"]
-    end_raw = row["occurrence_end_date"] if occurrence else row["end_date"]
-    title = row["summary"] or ""
-    return {
-        "id": row["item_id"],
-        "uid": row["unique_identifier"],
-        "title": title,
-        "summary": title,
-        "calendar": row["calendar_title"],
-        "start": _from_apple_ts(start_raw),
-        "start_date": _from_apple_ts(start_raw),
-        "end": _from_apple_ts(end_raw),
-        "end_date": _from_apple_ts(end_raw),
-        "all_day": bool(row["all_day"]),
-        "location": row["location_title"],
-        "notes": row["description"],
-        "url": row["url"],
-        "backend": "sqlite",
-        "occurrence": occurrence,
-    }
-
-
-def _sqlite_events(
-    from_date: str,
-    to_date: str,
-    *,
-    calendar: str | None = None,
-    query: str | None = None,
-    limit: int | None = None,
-    include_recurring: bool = True,
-) -> list[dict[str, Any]]:
-    start_ts = _apple_ts(_parse_dt(from_date))
-    end_ts = _apple_ts(_parse_dt(to_date))
-    if end_ts <= start_ts:
-        raise CalendarError("--to must be after --from")
-
-    params: list[Any] = [end_ts, start_ts]
-    calendar_clause = ""
-    if calendar:
-        calendar_clause = "AND c.title = ?"
-        params.append(calendar)
-    query_clause = ""
-    if query:
-        query_clause = "AND (ci.summary LIKE ? OR ci.description LIKE ? OR l.title LIKE ?)"
-        like = f"%{query}%"
-        params.extend([like, like, like])
-
-    direct_sql = f"""
-        SELECT
-            ci.ROWID AS item_id,
-            ci.unique_identifier,
-            ci.summary,
-            ci.description,
-            ci.url,
-            ci.start_date,
-            ci.end_date,
-            ci.all_day,
-            c.title AS calendar_title,
-            l.title AS location_title
-        FROM CalendarItem ci
-        JOIN Calendar c ON c.ROWID = ci.calendar_id
-        LEFT JOIN Location l ON l.ROWID = ci.location_id
-        WHERE ci.entity_type = 2
-          AND COALESCE(ci.hidden, 0) = 0
-          AND ci.start_date < ?
-          AND COALESCE(ci.end_date, ci.start_date) >= ?
-          {calendar_clause}
-          {query_clause}
-        ORDER BY ci.start_date, ci.ROWID
-    """
-
-    events: list[dict[str, Any]] = []
-    seen: set[tuple[Any, Any]] = set()
-    with _sqlite_connect() as con:
-        for row in con.execute(direct_sql, params).fetchall():
-            key = (row["item_id"], row["start_date"])
-            seen.add(key)
-            events.append(_row_to_event(row, occurrence=False))
-
-        if include_recurring:
-            occ_params: list[Any] = [end_ts, start_ts]
-            if calendar:
-                occ_params.append(calendar)
-            if query:
-                like = f"%{query}%"
-                occ_params.extend([like, like, like])
-            occ_sql = f"""
-                SELECT
-                    ci.ROWID AS item_id,
-                    ci.unique_identifier,
-                    ci.summary,
-                    ci.description,
-                    ci.url,
-                    ci.start_date,
-                    ci.end_date,
-                    oc.occurrence_start_date,
-                    oc.occurrence_end_date,
-                    ci.all_day,
-                    c.title AS calendar_title,
-                    l.title AS location_title
-                FROM OccurrenceCache oc
-                JOIN CalendarItem ci ON ci.ROWID = oc.event_id
-                JOIN Calendar c ON c.ROWID = oc.calendar_id
-                LEFT JOIN Location l ON l.ROWID = ci.location_id
-                WHERE ci.entity_type = 2
-                  AND COALESCE(ci.hidden, 0) = 0
-                  AND oc.occurrence_start_date < ?
-                  AND COALESCE(oc.occurrence_end_date, oc.occurrence_start_date) >= ?
-                  {calendar_clause}
-                  {query_clause}
-                ORDER BY oc.occurrence_start_date, ci.ROWID
-            """
-            for row in con.execute(occ_sql, occ_params).fetchall():
-                key = (row["item_id"], row["occurrence_start_date"])
-                if key in seen:
-                    continue
-                seen.add(key)
-                events.append(_row_to_event(row, occurrence=True))
-
-    events.sort(key=lambda e: (e.get("start_date") or "", e.get("title") or ""))
-    if limit is not None:
-        events = events[:limit]
-    return events
-
-
 def _err_code(e: CalendarError) -> str:
     msg = str(e).lower()
     if "not installed" in msg or "not found" in msg:
@@ -567,47 +359,33 @@ def cmd_doctor(args: argparse.Namespace) -> int:
         checks.append({"name": "ical_version", "ok": False, "detail": version})
 
     calendars: list[dict[str, Any]] = []
-    read_backend = None
     if path:
         try:
             calendars = _run_ical(["calendars", "-o", "json"])
             checks.append({"name": "eventkit_calendars", "ok": isinstance(calendars, list), "detail": f"{len(calendars)} calendars"})
-            read_backend = "ical"
         except CalendarError as e:
             checks.append({"name": "eventkit_calendars", "ok": False, "detail": str(e)})
     else:
         checks.append({"name": "eventkit_calendars", "ok": False, "detail": "skipped"})
 
-    sqlite_calendars: list[dict[str, Any]] = []
-    try:
-        sqlite_calendars = _sqlite_calendars()
-        checks.append({"name": "sqlite_read_backend", "ok": True, "detail": f"{len(sqlite_calendars)} calendars"})
-        if read_backend is None:
-            calendars = sqlite_calendars
-            read_backend = "sqlite"
-    except CalendarError as e:
-        checks.append({"name": "sqlite_read_backend", "ok": False, "detail": str(e)})
-
     if DEFAULT_CALENDAR is None:
         checks.append({
-            "name": "default_calendar_visible",
+            "name": "default_calendar_writable",
             "ok": False,
             "detail": "DOBBY_CALENDAR_DEFAULT not set — configure via static_env_defaults.env",
         })
     else:
         default_matches = [c for c in calendars if c.get("title") == DEFAULT_CALENDAR]
-        default_ok = bool(default_matches)
+        default_ok = bool(default_matches) and not default_matches[0].get("readOnly", True)
         checks.append({
-            "name": "default_calendar_visible",
+            "name": "default_calendar_writable",
             "ok": default_ok,
-            "detail": DEFAULT_CALENDAR if default_ok else f"{DEFAULT_CALENDAR} not found",
+            "detail": DEFAULT_CALENDAR if default_ok else f"{DEFAULT_CALENDAR} not found or read-only",
         })
 
     report = {
-        "ok": bool(read_backend) and (DEFAULT_CALENDAR is None or bool([c for c in calendars if c.get("title") == DEFAULT_CALENDAR])),
+        "ok": all(c["ok"] for c in checks),
         "default_calendar": DEFAULT_CALENDAR,
-        "read_backend": read_backend,
-        "write_backend": "ical" if any(c["name"] == "eventkit_calendars" and c["ok"] for c in checks) else None,
         "checks": checks,
         "timeouts": {"ical_secs": ICAL_TIMEOUT_SECS},
     }
@@ -623,12 +401,7 @@ def cmd_calendars(args: argparse.Namespace) -> int:
     try:
         data = _run_ical(["calendars", "-o", "json"])
     except CalendarError as e:
-        if _err_code(e) != "E_AUTH":
-            return emit_json(env.err(_err_code(e), str(e)))
-        try:
-            data = _sqlite_calendars()
-        except CalendarError as fallback_e:
-            return emit_json(env.err(_err_code(fallback_e), f"{e}; SQLite fallback failed: {fallback_e}"))
+        return emit_json(env.err(_err_code(e), str(e)))
     return _emit(env, {"count": len(data), "calendars": data, "default_calendar": DEFAULT_CALENDAR}, args, plain=_plain_summary(data))
 
 
@@ -638,14 +411,7 @@ def cmd_today(args: argparse.Namespace) -> int:
     try:
         data = _run_ical(cmd)
     except CalendarError as e:
-        if _err_code(e) != "E_AUTH":
-            return emit_json(env.err(_err_code(e), str(e)))
-        today = date.today()
-        tomorrow = today + timedelta(days=1)
-        try:
-            data = _sqlite_events(today.isoformat(), tomorrow.isoformat(), calendar=None if args.all_calendars else args.calendar)
-        except CalendarError as fallback_e:
-            return emit_json(env.err(_err_code(fallback_e), f"{e}; SQLite fallback failed: {fallback_e}"))
+        return emit_json(env.err(_err_code(e), str(e)))
     return _emit(env, {"count": len(data or []), "events": data or [], "calendar": None if args.all_calendars else args.calendar}, args, plain=_plain_summary(data))
 
 
@@ -661,14 +427,7 @@ def _cmd_upcoming_days(args: argparse.Namespace, days: int, command: str) -> int
     try:
         data = _run_ical(cmd)
     except CalendarError as e:
-        if _err_code(e) != "E_AUTH":
-            return emit_json(env.err(_err_code(e), str(e)))
-        start = date.today()
-        end = start + timedelta(days=days)
-        try:
-            data = _sqlite_events(start.isoformat(), end.isoformat(), calendar=None if args.all_calendars else args.calendar)
-        except CalendarError as fallback_e:
-            return emit_json(env.err(_err_code(fallback_e), f"{e}; SQLite fallback failed: {fallback_e}"))
+        return emit_json(env.err(_err_code(e), str(e)))
     return _emit(env, {"count": len(data or []), "events": data or [], "days": days, "calendar": None if args.all_calendars else args.calendar}, args, plain=_plain_summary(data))
 
 
@@ -685,19 +444,7 @@ def cmd_list(args: argparse.Namespace) -> int:
     try:
         data = _run_ical(cmd)
     except CalendarError as e:
-        if _err_code(e) != "E_AUTH":
-            return emit_json(env.err(_err_code(e), str(e)))
-        try:
-            data = _sqlite_events(
-                args.from_date,
-                args.to_date,
-                calendar=None if args.all_calendars else args.calendar,
-                query=args.query,
-                limit=args.limit,
-                include_recurring=not args.no_recurring,
-            )
-        except CalendarError as fallback_e:
-            return emit_json(env.err(_err_code(fallback_e), f"{e}; SQLite fallback failed: {fallback_e}"))
+        return emit_json(env.err(_err_code(e), str(e)))
     return _emit(env, {"count": len(data or []), "events": data or [], "from": args.from_date, "to": args.to_date, "calendar": None if args.all_calendars else args.calendar}, args, plain=_plain_summary(data))
 
 
@@ -714,19 +461,7 @@ def cmd_search(args: argparse.Namespace) -> int:
     try:
         data = _run_ical(cmd)
     except CalendarError as e:
-        if _err_code(e) != "E_AUTH":
-            return emit_json(env.err(_err_code(e), str(e)))
-        try:
-            data = _sqlite_events(
-                args.from_date,
-                args.to_date,
-                calendar=None if args.all_calendars else args.calendar,
-                query=args.query,
-                limit=args.limit,
-                include_recurring=not args.no_recurring,
-            )
-        except CalendarError as fallback_e:
-            return emit_json(env.err(_err_code(fallback_e), f"{e}; SQLite fallback failed: {fallback_e}"))
+        return emit_json(env.err(_err_code(e), str(e)))
     return _emit(env, {"count": len(data or []), "events": data or [], "query": args.query, "from": args.from_date, "to": args.to_date, "calendar": None if args.all_calendars else args.calendar}, args, plain=_plain_summary(data))
 
 
