@@ -1,0 +1,191 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+INSTALL_ROOT="${HOME}/Applications"
+APP_NAME="Dobby Calendar Bridge.app"
+REQUEST_ACCESS=0
+CHECK_ONLY=0
+FORCE=0
+SOCKET_PATH="${DOBBY_CALENDAR_BRIDGE_SOCKET:-${HOME}/Library/Application Support/DobbyCalendarBridge/bridge.sock}"
+LAUNCH_LABEL="com.${USER}.dobby-calendar-bridge"
+
+usage() {
+  cat <<USAGE
+Usage: $(basename "$0") [options]
+
+Build/install the native Dobby Calendar Bridge helper app.
+
+The bridge is a per-user LaunchAgent/socket EventKit helper with a stable macOS
+bundle identity (io.adithyan.dobby.calendar-bridge). Dobby's calendar CLI can
+call it from Codex.app, Claude, Terminal, or other local agents without
+inheriting the caller app's Calendar permission state.
+
+Options:
+  --install-root <path>     App install root (default: ~/Applications)
+  --request-access          Run a permission request after install/check
+  --check                   Only check existing install and Calendar access
+  --force                   Rebuild/reinstall even if app already exists
+  -h, --help                Show this help
+
+Examples:
+  ~/.agents/skills-source/owned/dobby/scripts/install-dobby-calendar-bridge --request-access
+  ~/.agents/skills-source/owned/dobby/scripts/install-dobby-calendar-bridge --check
+USAGE
+}
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --install-root)
+      INSTALL_ROOT="${2:-}"
+      shift 2
+      ;;
+    --request-access)
+      REQUEST_ACCESS=1
+      shift
+      ;;
+    --check)
+      CHECK_ONLY=1
+      shift
+      ;;
+    --force)
+      FORCE=1
+      shift
+      ;;
+    -h|--help)
+      usage
+      exit 0
+      ;;
+    *)
+      echo "Unknown option: $1" >&2
+      usage >&2
+      exit 2
+      ;;
+  esac
+done
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SOURCE_FILE="$SCRIPT_DIR/calendar_bridge/main.swift"
+INFO_PLIST="$SCRIPT_DIR/calendar_bridge/Info.plist"
+APP_DIR="$INSTALL_ROOT/$APP_NAME"
+CONTENTS_DIR="$APP_DIR/Contents"
+MACOS_DIR="$CONTENTS_DIR/MacOS"
+BIN_PATH="$MACOS_DIR/DobbyCalendarBridge"
+CACHE_DIR="${HOME}/Library/Caches/dobby-calendar-bridge"
+BUILD_BIN="$CACHE_DIR/DobbyCalendarBridge"
+PLIST_PATH="${HOME}/Library/LaunchAgents/${LAUNCH_LABEL}.plist"
+LOG_PATH="${HOME}/Library/Logs/dobby-calendar-bridge.log"
+ERR_PATH="${HOME}/Library/Logs/dobby-calendar-bridge.err.log"
+DOMAIN="gui/$(id -u)"
+
+if [[ ! -f "$SOURCE_FILE" || ! -f "$INFO_PLIST" ]]; then
+  echo "Calendar bridge sources not found under $SCRIPT_DIR/calendar_bridge" >&2
+  exit 1
+fi
+
+if ! command -v swiftc >/dev/null 2>&1; then
+  echo "swiftc not found. Install Xcode Command Line Tools or Xcode." >&2
+  exit 4
+fi
+
+check_installed() {
+  if [[ ! -x "$BIN_PATH" ]]; then
+    echo "missing: $BIN_PATH" >&2
+    return 1
+  fi
+  local output ok
+  set +e
+  output="$("$BIN_PATH" send doctor --no-input --socket "$SOCKET_PATH")"
+  local rc=$?
+  set -e
+  printf '%s\n' "$output"
+  if (( rc != 0 )); then
+    return "$rc"
+  fi
+  ok="$(printf '%s\n' "$output" | /usr/bin/python3 -c 'import json,sys; print(str(bool(json.load(sys.stdin).get("data",{}).get("ok"))).lower())' 2>/dev/null || printf 'false')"
+  [[ "$ok" == "true" ]]
+}
+
+request_access() {
+  echo "+ $BIN_PATH send doctor --request-access --socket $SOCKET_PATH" >&2
+  local output ok
+  set +e
+  output="$("$BIN_PATH" send doctor --request-access --socket "$SOCKET_PATH")"
+  local rc=$?
+  set -e
+  printf '%s\n' "$output"
+  if (( rc != 0 )); then
+    return "$rc"
+  fi
+  ok="$(printf '%s\n' "$output" | /usr/bin/python3 -c 'import json,sys; print(str(bool(json.load(sys.stdin).get("data",{}).get("ok"))).lower())' 2>/dev/null || printf 'false')"
+  [[ "$ok" == "true" ]]
+}
+
+install_launchagent() {
+  mkdir -p "$(dirname "$PLIST_PATH")" "$(dirname "$LOG_PATH")" "$(dirname "$SOCKET_PATH")"
+  /usr/bin/python3 - "$PLIST_PATH" "$LAUNCH_LABEL" "$BIN_PATH" "$SOCKET_PATH" "$LOG_PATH" "$ERR_PATH" <<'PY'
+import plistlib
+import sys
+
+plist_path, label, bin_path, socket_path, log_path, err_path = sys.argv[1:]
+plist = {
+    "Label": label,
+    "ProgramArguments": [bin_path, "serve", "--socket", socket_path],
+    "RunAtLoad": True,
+    "KeepAlive": True,
+    "StandardOutPath": log_path,
+    "StandardErrorPath": err_path,
+}
+with open(plist_path, "wb") as f:
+    plistlib.dump(plist, f)
+PY
+  launchctl bootout "$DOMAIN/$LAUNCH_LABEL" >/dev/null 2>&1 || true
+  launchctl bootout "$DOMAIN" "$PLIST_PATH" >/dev/null 2>&1 || true
+  rm -f "$SOCKET_PATH"
+  echo "+ launchctl bootstrap $DOMAIN $PLIST_PATH" >&2
+  launchctl bootstrap "$DOMAIN" "$PLIST_PATH"
+  launchctl kickstart -k "$DOMAIN/$LAUNCH_LABEL" >/dev/null 2>&1 || true
+  sleep 0.5
+}
+
+if (( CHECK_ONLY == 1 )); then
+  if (( REQUEST_ACCESS == 1 )); then
+    request_access
+  else
+    check_installed
+  fi
+  exit $?
+fi
+
+if [[ -x "$BIN_PATH" && $FORCE -eq 0 ]]; then
+  echo "Dobby Calendar Bridge already installed: $APP_DIR" >&2
+else
+  mkdir -p "$CACHE_DIR" "$MACOS_DIR"
+  echo "+ swiftc $SOURCE_FILE" >&2
+  swiftc "$SOURCE_FILE" \
+    -framework Foundation \
+    -framework EventKit \
+    -Xlinker -sectcreate \
+    -Xlinker __TEXT \
+    -Xlinker __info_plist \
+    -Xlinker "$INFO_PLIST" \
+    -o "$BUILD_BIN"
+
+  mkdir -p "$CONTENTS_DIR/Resources" "$MACOS_DIR"
+  cp "$INFO_PLIST" "$CONTENTS_DIR/Info.plist"
+  cp "$BUILD_BIN" "$BIN_PATH"
+  chmod 755 "$BIN_PATH"
+
+  if command -v codesign >/dev/null 2>&1; then
+    echo "+ codesign --force --deep --sign - $APP_DIR" >&2
+    codesign --force --deep --sign - "$APP_DIR" >/dev/null
+  fi
+  echo "Installed Dobby Calendar Bridge: $APP_DIR" >&2
+fi
+
+install_launchagent
+
+if (( REQUEST_ACCESS == 1 )); then
+  request_access
+else
+  check_installed
+fi

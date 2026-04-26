@@ -132,3 +132,4 @@ Check for and delegate to other installed skills when the user's intent matches 
 - `references/files.md` — file-by-file contract: purpose, edit frequency, append-vs-edit-vs-rewrite.
 - `references/commands.md` — CLI recipes and direct-ops fallbacks.
 - `references/scenarios.md` — user intent → exact action mappings.
+- `references/calendar-bridge.md` — ownership, runtime state, and setup for the native EventKit Calendar Bridge.

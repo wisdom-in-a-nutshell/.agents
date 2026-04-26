@@ -101,7 +101,7 @@ Backend diagnostics:
 ```bash
 DOBBY_CALENDAR_BACKEND=bridge $HOME/.agents/skills-source/owned/dobby/scripts/dobby-calendar doctor
 DOBBY_CALENDAR_BACKEND=ical $HOME/.agents/skills-source/owned/dobby/scripts/dobby-calendar doctor
-~/GitHub/scripts/setup/calendar/install-dobby-calendar-bridge.sh --request-access
+~/.agents/skills-source/owned/dobby/scripts/install-dobby-calendar-bridge --request-access
 ```
 
 ```bash
