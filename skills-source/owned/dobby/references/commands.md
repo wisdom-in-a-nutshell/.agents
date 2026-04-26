@@ -94,7 +94,7 @@ set this flag; use `--backend sqlite|jxa|auto` only for diagnostics.
 
 ## Calendar
 
-Calendar operations use `dobby-calendar` (EventKit via `ical`). The default calendar name is required via the `DOBBY_CALENDAR_DEFAULT` env var (set per-workspace in `scripts/local/secrets/static_env_defaults.env`); there is no hardcoded fallback. Commands that need a specific calendar fail fast with a clear error when unset. Search/list commands must be date-bounded.
+Calendar operations use `dobby-calendar`. It tries EventKit via `ical` first and automatically falls back to the local Calendar SQLite cache for read commands if macOS TCC denies EventKit access in agent/SSH contexts. The fallback is read-only; writes still require EventKit. The default calendar name is required via the `DOBBY_CALENDAR_DEFAULT` env var (set per-workspace in `scripts/local/secrets/static_env_defaults.env`); there is no hardcoded fallback. Commands that need a specific calendar fail fast with a clear error when unset. Search/list commands must be date-bounded.
 
 ```bash
 $HOME/.agents/skills-source/owned/dobby/scripts/dobby-calendar doctor

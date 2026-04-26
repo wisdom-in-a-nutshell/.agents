@@ -2,7 +2,7 @@
 repo_name: "codexclaw"
 path: "~/GitHub/codexclaw"
 mcp_count: 1
-skill_count: 19
+skill_count: 21
 repo_local_skill_count: 0
 global_agent_count: 1
 custom_agent_count: 0
@@ -34,6 +34,8 @@ repo_skills:
   - "copilot-sdk"
   - "ios-app-intents"
   - "ios-debugger-agent"
+  - "ios-ettrace-performance"
+  - "ios-memgraph-leaks"
   - "swiftui-liquid-glass"
   - "swiftui-performance-audit"
   - "swiftui-ui-patterns"
@@ -51,6 +53,8 @@ skills:
   - "find-skills"
   - "ios-app-intents"
   - "ios-debugger-agent"
+  - "ios-ettrace-performance"
+  - "ios-memgraph-leaks"
   - "pdf"
   - "project"
   - "secret-management"
