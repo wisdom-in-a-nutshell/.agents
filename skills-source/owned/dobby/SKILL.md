@@ -105,7 +105,7 @@ Dobby owns routing to `journal/`; the dedicated `journal-checkin` skill owns str
 
 ## Calendar
 
-Calendar operations go through the skill-bundled EventKit wrapper: `$HOME/.agents/skills-source/owned/dobby/scripts/dobby-calendar`. It uses `ical` as the backend. The default calendar is required via the `DOBBY_CALENDAR_DEFAULT` env var (no hardcoded fallback) — set it per-workspace via `scripts/local/secrets/static_env_defaults.env` so it lands in `.env` on bootstrap. Commands that need a specific calendar fail fast with a clear message when unset. Use this CLI for date-bounded reads and safe writes; do not use AppleScript for broad calendar search/audits.
+Calendar operations go through the skill-bundled EventKit wrapper: `$HOME/.agents/skills-source/owned/dobby/scripts/dobby-calendar`. It prefers the native Dobby Calendar Bridge helper (`~/Applications/Dobby Calendar Bridge.app` via its user-only LaunchAgent socket) and falls back to Homebrew `ical`. The bridge is the durable path for Codex.app/Claude/Terminal because macOS grants Calendar access to the bridge's stable bundle identity instead of whichever caller app spawned the command. The default calendar is required via the `DOBBY_CALENDAR_DEFAULT` env var (no hardcoded fallback) — set it per-workspace via `scripts/local/secrets/static_env_defaults.env` so it lands in `.env` on bootstrap. Commands that need a specific calendar fail fast with a clear message when unset. Use this CLI for date-bounded reads and safe writes; do not use AppleScript for broad calendar search/audits.
 
 - List calendars: `$HOME/.agents/skills-source/owned/dobby/scripts/dobby-calendar calendars`
 - Week view: `$HOME/.agents/skills-source/owned/dobby/scripts/dobby-calendar week`

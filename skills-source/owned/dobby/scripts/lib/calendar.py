@@ -1,9 +1,9 @@
-"""Calendar commands for the Dobby CLI — macOS EventKit via `ical`.
+"""Calendar commands for the Dobby CLI — macOS EventKit via bridge/`ical`.
 
-This wrapper keeps Dobby's stable agent contract while using BRO3886/ical as
-an EventKit backend. `ical` talks to the local macOS calendar store, including
-Google calendars synced into Calendar.app, without the AppleScript broad-search
-hangs we hit during birthday migration.
+This wrapper keeps Dobby's stable agent contract while preferring the native
+Dobby Calendar Bridge helper and falling back to BRO3886/ical. Both talk to the
+local macOS calendar store, including Google calendars synced into Calendar.app,
+without the AppleScript broad-search hangs we hit during birthday migration.
 
 Design rules:
 - JSON envelope by default for every calendar command; --plain is inspection.
@@ -22,6 +22,7 @@ import json
 import os
 import re
 import shutil
+import socket
 import subprocess
 from datetime import date, datetime, timedelta
 from pathlib import Path
@@ -53,6 +54,7 @@ ICAL_TIMEOUT_SECS = _int_env("DOBBY_CALENDAR_TIMEOUT_SECS", 20)
 BRIDGE_TIMEOUT_SECS = _int_env("DOBBY_CALENDAR_BRIDGE_TIMEOUT_SECS", 20)
 BACKEND_ENV = "DOBBY_CALENDAR_BACKEND"
 BRIDGE_BIN_ENV = "DOBBY_CALENDAR_BRIDGE_BIN"
+BRIDGE_SOCKET_ENV = "DOBBY_CALENDAR_BRIDGE_SOCKET"
 BACKENDS = ("auto", "bridge", "ical")
 
 
@@ -107,9 +109,16 @@ def _find_bridge_bin() -> Path | None:
     return None
 
 
+def _bridge_socket_path() -> Path:
+    configured = os.environ.get(BRIDGE_SOCKET_ENV)
+    if configured:
+        return Path(configured).expanduser()
+    return Path.home() / "Library/Application Support/DobbyCalendarBridge/bridge.sock"
+
+
 def _bridge_install_hint() -> str:
     return (
-        "Install or repair the native helper with: "
+        "Install/start the native helper with: "
         "~/GitHub/scripts/setup/calendar/install-dobby-calendar-bridge.sh --request-access"
     )
 
@@ -309,31 +318,47 @@ def _run_ical_text(args: list[str], *, timeout: int = ICAL_TIMEOUT_SECS) -> str:
 
 
 def _run_bridge(command: str, args: list[str] | None = None, *, timeout: int = BRIDGE_TIMEOUT_SECS) -> Any:
-    bridge = _find_bridge_bin()
-    if bridge is None:
+    socket_path = _bridge_socket_path()
+    if not socket_path.exists():
         raise CalendarError(
-            "Dobby Calendar Bridge helper is not installed",
+            f"Dobby Calendar Bridge server socket is not available: {socket_path}",
             code="E_DEPENDENCY",
             hint=_bridge_install_hint(),
         )
-    cmd = [str(bridge), command, *(args or []), "--no-input"]
+    request_id = os.urandom(8).hex()
+    request = {
+        "schema_version": "1.0",
+        "request_id": request_id,
+        "command": command,
+        "args": [*(args or []), "--no-input"],
+    }
     try:
-        r = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout)
-    except subprocess.TimeoutExpired:
+        with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as client:
+            client.settimeout(timeout)
+            client.connect(str(socket_path))
+            client.sendall(json.dumps(request, ensure_ascii=False).encode("utf-8") + b"\n")
+            client.shutdown(socket.SHUT_WR)
+            chunks: list[bytes] = []
+            while True:
+                chunk = client.recv(65536)
+                if not chunk:
+                    break
+                chunks.append(chunk)
+        raw = b"".join(chunks).decode("utf-8", errors="replace").strip()
+    except TimeoutError:
         raise CalendarError(
             f"Dobby Calendar Bridge timed out after {timeout}s",
             code="E_TIMEOUT",
             retryable=True,
             hint="Retry once; if it repeats, reinstall the bridge or check macOS Calendar privacy.",
         )
-    except FileNotFoundError:
+    except OSError as e:
         raise CalendarError(
-            "Dobby Calendar Bridge executable not found",
+            f"Dobby Calendar Bridge server is unavailable: {e}",
             code="E_DEPENDENCY",
             hint=_bridge_install_hint(),
         )
 
-    raw = (r.stdout or "").strip()
     try:
         envelope = json.loads(raw) if raw else {}
     except json.JSONDecodeError as e:
@@ -343,16 +368,16 @@ def _run_bridge(command: str, args: list[str] | None = None, *, timeout: int = B
             hint="Reinstall the bridge helper from ~/GitHub/scripts.",
         )
 
-    if r.returncode != 0 or envelope.get("status") == "error":
+    if envelope.get("status") == "error":
         err = envelope.get("error") if isinstance(envelope, dict) else None
         if isinstance(err, dict):
             raise CalendarError(
-                err.get("message") or f"Dobby Calendar Bridge exited {r.returncode}",
+                err.get("message") or "Dobby Calendar Bridge returned an error",
                 code=err.get("code") or "E_RUNTIME",
                 hint=err.get("hint") or "",
                 retryable=bool(err.get("retryable", False)),
             )
-        msg = (r.stderr or raw or f"Dobby Calendar Bridge exited {r.returncode}").strip()
+        msg = (raw or "Dobby Calendar Bridge returned an error").strip()
         raise CalendarError(msg, code="E_RUNTIME")
 
     return envelope.get("data")
@@ -571,10 +596,16 @@ def cmd_doctor(args: argparse.Namespace) -> int:
         "ok": bridge_path is not None,
         "detail": str(bridge_path) if bridge_path else "not found",
     })
+    socket_path = _bridge_socket_path()
+    checks.append({
+        "name": "eventkit_bridge_socket",
+        "ok": socket_path.exists(),
+        "detail": str(socket_path) if socket_path.exists() else f"not found: {socket_path}",
+    })
 
     bridge_calendars: list[dict[str, Any]] = []
     bridge_ok = False
-    if bridge_path:
+    if bridge_path and socket_path.exists():
         try:
             bridge_report = _run_bridge("doctor")
             bridge_ok = bool((bridge_report or {}).get("ok"))

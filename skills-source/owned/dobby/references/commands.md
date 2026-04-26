@@ -94,7 +94,15 @@ set this flag; use `--backend sqlite|jxa|auto` only for diagnostics.
 
 ## Calendar
 
-Calendar operations use `dobby-calendar` (EventKit via `ical`). The default calendar name is required via the `DOBBY_CALENDAR_DEFAULT` env var (set per-workspace in `scripts/local/secrets/static_env_defaults.env`); there is no hardcoded fallback. Commands that need a specific calendar fail fast with a clear error when unset. Search/list commands must be date-bounded.
+Calendar operations use `dobby-calendar` (EventKit via the native Dobby Calendar Bridge LaunchAgent/socket helper, with Homebrew `ical` fallback). The default calendar name is required via the `DOBBY_CALENDAR_DEFAULT` env var (set per-workspace in `scripts/local/secrets/static_env_defaults.env`); there is no hardcoded fallback. Commands that need a specific calendar fail fast with a clear error when unset. Search/list commands must be date-bounded.
+
+Backend diagnostics:
+
+```bash
+DOBBY_CALENDAR_BACKEND=bridge $HOME/.agents/skills-source/owned/dobby/scripts/dobby-calendar doctor
+DOBBY_CALENDAR_BACKEND=ical $HOME/.agents/skills-source/owned/dobby/scripts/dobby-calendar doctor
+~/GitHub/scripts/setup/calendar/install-dobby-calendar-bridge.sh --request-access
+```
 
 ```bash
 $HOME/.agents/skills-source/owned/dobby/scripts/dobby-calendar doctor
@@ -165,6 +173,10 @@ Timeout configuration:
 - `DOBBY_THINGS_READ_BACKEND` — task read backend, `auto|sqlite|jxa`, default `auto`
 - `DOBBY_THINGS_SQLITE_PATH` — optional explicit Things `main.sqlite` path for diagnostics
 - `DOBBY_CALENDAR_TIMEOUT_SECS` — calendar `ical` timeout, default `20`
+- `DOBBY_CALENDAR_BACKEND` — calendar backend, `auto|bridge|ical`, default `auto`
+- `DOBBY_CALENDAR_BRIDGE_BIN` — optional explicit path to `DobbyCalendarBridge` helper for install/doctor discovery
+- `DOBBY_CALENDAR_BRIDGE_SOCKET` — optional explicit Unix socket path for the bridge server
+- `DOBBY_CALENDAR_BRIDGE_TIMEOUT_SECS` — native bridge timeout, default `20`
 
 Secrets are never accepted via flags. Things URL auth uses the workspace `.env` file provisioned by the local secret bootstrap; the token is not emitted in outputs.
 
