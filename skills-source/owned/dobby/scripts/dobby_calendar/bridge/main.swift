@@ -181,7 +181,7 @@ final class CalendarBridge {
                 throw BridgeError(
                     "E_AUTH",
                     "Calendar access has not been granted to Dobby Calendar Bridge",
-                    hint: "Run ~/.agents/skills-source/owned/dobby/scripts/install-dobby-calendar-bridge --request-access, then grant Full Calendar Access in System Settings > Privacy & Security > Calendars."
+                    hint: "Run ~/.agents/skills-source/owned/dobby/scripts/dobby_calendar/bridge/install --request-access, then grant Full Calendar Access in System Settings > Privacy & Security > Calendars."
                 )
             }
             var done = false
@@ -684,7 +684,7 @@ func send(socketPath: String, rawArgs: [String]) throws -> Never {
     }
     guard connectResult == 0 else {
         Darwin.close(fd)
-        throw BridgeError("E_DEPENDENCY", "Dobby Calendar Bridge server is not running", hint: "Run ~/.agents/skills-source/owned/dobby/scripts/install-dobby-calendar-bridge --request-access")
+        throw BridgeError("E_DEPENDENCY", "Dobby Calendar Bridge server is not running", hint: "Run ~/.agents/skills-source/owned/dobby/scripts/dobby_calendar/bridge/install --request-access")
     }
     let req: [String: Any] = [
         "schema_version": schemaVersion,

@@ -28,8 +28,8 @@ Options:
   -h, --help                Show this help
 
 Examples:
-  ~/.agents/skills-source/owned/dobby/scripts/install-dobby-calendar-bridge --request-access
-  ~/.agents/skills-source/owned/dobby/scripts/install-dobby-calendar-bridge --check
+  ~/.agents/skills-source/owned/dobby/scripts/dobby_calendar/bridge/install --request-access
+  ~/.agents/skills-source/owned/dobby/scripts/dobby_calendar/bridge/install --check
 USAGE
 }
 
@@ -64,8 +64,8 @@ while [[ $# -gt 0 ]]; do
 done
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-SOURCE_FILE="$SCRIPT_DIR/calendar_bridge/main.swift"
-INFO_PLIST="$SCRIPT_DIR/calendar_bridge/Info.plist"
+SOURCE_FILE="$SCRIPT_DIR/main.swift"
+INFO_PLIST="$SCRIPT_DIR/Info.plist"
 APP_DIR="$INSTALL_ROOT/$APP_NAME"
 CONTENTS_DIR="$APP_DIR/Contents"
 MACOS_DIR="$CONTENTS_DIR/MacOS"
@@ -78,7 +78,7 @@ ERR_PATH="${HOME}/Library/Logs/dobby-calendar-bridge.err.log"
 DOMAIN="gui/$(id -u)"
 
 if [[ ! -f "$SOURCE_FILE" || ! -f "$INFO_PLIST" ]]; then
-  echo "Calendar bridge sources not found under $SCRIPT_DIR/calendar_bridge" >&2
+  echo "Calendar bridge sources not found under $SCRIPT_DIR" >&2
   exit 1
 fi
 

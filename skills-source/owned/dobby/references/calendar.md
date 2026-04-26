@@ -24,10 +24,10 @@ macOS EventKit / Calendar.app
 
 The implementation lives in the Dobby skill so every Dobby workspace (`adi`, `angie`, future workspaces) uses the same calendar backend:
 
-- source: `scripts/calendar_bridge/main.swift`
-- app metadata: `scripts/calendar_bridge/Info.plist`
-- installer: `scripts/install-dobby-calendar-bridge`
-- client adapter: `scripts/lib/calendar.py`
+- source: `scripts/dobby_calendar/bridge/main.swift`
+- app metadata: `scripts/dobby_calendar/bridge/Info.plist`
+- installer: `scripts/dobby_calendar/bridge/install`
+- client adapter: `scripts/dobby_calendar/cli.py`
 
 The `~/GitHub/scripts` machine-ops repo may call the installer during bootstrap/health checks, but it does not own the bridge implementation.
 
@@ -45,7 +45,7 @@ Per machine, the installer creates runtime artifacts outside the repo:
 Run once per Mac after the Dobby skill is available:
 
 ```bash
-~/.agents/skills-source/owned/dobby/scripts/install-dobby-calendar-bridge --request-access
+~/.agents/skills-source/owned/dobby/scripts/dobby_calendar/bridge/install --request-access
 ```
 
 A human must grant **Full Calendar Access** to **Dobby Calendar Bridge** in System Settings > Privacy & Security > Calendars. This is a macOS TCC requirement; scripts cannot bypass it.
