@@ -7,17 +7,25 @@ Emits situational boot context to stdout; the shared dispatcher at
 
 Section order (identity-first so later sections read through the right lens):
 
-    now | tasks | calendar | areas
+    soul (conditional) | now | tasks | calendar | areas
 
-Memory reads (`now.md`, area manifest) happen inline via
+Memory reads (`now.md`, area manifest, `soul.md`) happen inline via
 file I/O — trivial work, no reason to round-trip through a CLI. Task and
 calendar snapshots go through `dobby-tasks` and `dobby-calendar`
 because those wrap non-trivial integrations (JXA into Things 3, EventKit
 via `ical`) and are worth the CLI contract.
 
-The user's durable identity lives in `soul.md` under `## About <User>`
-and is loaded via the wrapper-composed system prompt. It is intentionally
-not re-emitted here.
+The user's durable identity lives in `soul.md`. It is normally loaded as
+the system prompt by:
+  - codex: via `model_instructions_file` in `.codex/config.toml`
+  - claude (terminal): via the `.claude/bin/claude` wrapper, which uses
+    `--system-prompt-file` and exports `DOBBY_SOUL_ALREADY_LOADED=1` so
+    the hook knows to skip re-emission
+
+For Claude clients without a system-prompt mechanism (e.g. the desktop
+app), the hook emits soul.md as additional context so the identity is
+still loaded. Other runtimes (codex, copilot, future clients) skip
+emission — they either have their own mechanism or are unverified.
 
 Workspace-agnostic: resolves the active workspace via `AGENT_REPO_ROOT`,
 `DOBBY_REPO_ROOT`, or `git rev-parse --show-toplevel`, in that order.
@@ -226,6 +234,29 @@ def print_areas(areas: list[dict]) -> None:
         print(f"- {name.ljust(max_name)}  {files_str}")
 
 
+def should_emit_soul() -> bool:
+    """Emit soul.md as additional context only for Claude clients that have
+    no system-prompt mechanism (e.g. the desktop app). Skip for any other
+    runtime, and skip when `DOBBY_SOUL_ALREADY_LOADED=1` indicates the
+    terminal wrapper has loaded soul.md as the system prompt.
+    """
+    if os.environ.get("AGENT_HOOK_RUNTIME") != "claude":
+        return False
+    if os.environ.get("DOBBY_SOUL_ALREADY_LOADED") == "1":
+        return False
+    return True
+
+
+def print_soul() -> None:
+    if not should_emit_soul():
+        return
+    content = read_memory_file(REPO_ROOT / "soul.md").strip()
+    if not content:
+        return
+    section("soul")
+    print(content)
+
+
 # ---------------------------------------------------------------------------
 # main
 # ---------------------------------------------------------------------------
@@ -270,6 +301,10 @@ def main() -> int:
     print(f"areas:    {areas_count} files")
 
     # --- Sections ------------------------------------------------------------
+    # soul comes first so later sections read through the right identity lens.
+    # Emitted only for Claude clients without a system-prompt mechanism.
+    print_soul()
+
     now = strip_leading_h1(now_content.strip())
     if now:
         section("now")
