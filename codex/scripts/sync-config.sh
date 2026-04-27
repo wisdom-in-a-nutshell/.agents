@@ -1358,6 +1358,7 @@ ensure_required_openai_bundled_plugins() {
 from __future__ import annotations
 
 import json
+import os
 import shutil
 import sys
 from pathlib import Path
@@ -1386,9 +1387,65 @@ def plugin_enabled(config_path: Path, plugin_id: str) -> bool:
     return isinstance(plugin_config, dict) and plugin_config.get("enabled") is True
 
 
+def tree_matches(source: Path, target: Path) -> bool:
+    if source.is_symlink():
+        return target.is_symlink() and os.readlink(source) == os.readlink(target)
+    if source.is_dir():
+        if not target.is_dir():
+            return False
+        return all(tree_matches(child, target / child.name) for child in source.iterdir())
+    if source.is_file():
+        return target.is_file() and source.stat().st_size == target.stat().st_size
+    return True
+
+
+def remove_path(path: Path) -> None:
+    if path.is_symlink() or path.is_file():
+        path.unlink()
+    elif path.is_dir():
+        shutil.rmtree(path)
+
+
+def copy_entry_without_xattrs(source: Path, target: Path) -> None:
+    if tree_matches(source, target):
+        return
+
+    if source.is_symlink():
+        target.parent.mkdir(parents=True, exist_ok=True)
+        if target.exists() or target.is_symlink():
+            remove_path(target)
+        os.symlink(os.readlink(source), target)
+        return
+
+    if source.is_dir():
+        if target.exists() and not target.is_dir():
+            remove_path(target)
+        target.mkdir(parents=True, exist_ok=True)
+        try:
+            shutil.copymode(source, target, follow_symlinks=False)
+        except OSError:
+            pass
+        for child in source.iterdir():
+            copy_entry_without_xattrs(child, target / child.name)
+        return
+
+    if source.is_file():
+        target.parent.mkdir(parents=True, exist_ok=True)
+        if target.exists() and target.is_dir():
+            remove_path(target)
+        if target.exists() or target.is_symlink():
+            target.unlink()
+        shutil.copyfile(source, target, follow_symlinks=False)
+        shutil.copymode(source, target, follow_symlinks=False)
+
+
 def copy_plugin_tree(source: Path, target: Path) -> None:
+    if tree_matches(source, target):
+        return
     target.parent.mkdir(parents=True, exist_ok=True)
-    shutil.copytree(source, target, dirs_exist_ok=True)
+    copy_entry_without_xattrs(source, target)
+    if not tree_matches(source, target):
+        raise RuntimeError(f"plugin copy incomplete: {source} -> {target}")
 
 
 for plugin_name in required_plugin_names:
