@@ -485,6 +485,20 @@ def _with_calendar(cmd: list[str], args: argparse.Namespace) -> list[str]:
     return cmd
 
 
+def _decode_escapes(s: str | None) -> str | None:
+    """Decode common shell-passed escape sequences in user-supplied free text.
+
+    Agents and shell callers frequently pass ``\\n`` (literal backslash-n)
+    when they mean a newline. Calendar.app then renders the literal escape
+    in the notes field, which looks broken. We normalize the common cases
+    (``\\n``, ``\\t``, ``\\r``) at the CLI boundary so the rest of the
+    pipeline always sees real whitespace characters.
+    """
+    if not s:
+        return s
+    return s.replace("\\n", "\n").replace("\\t", "\t").replace("\\r", "\r")
+
+
 def _event_args(args: argparse.Namespace) -> list[str]:
     if not args.title.strip():
         raise CalendarError("title is required")
@@ -499,7 +513,7 @@ def _event_args(args: argparse.Namespace) -> list[str]:
     if args.location:
         cmd.extend(["-l", args.location])
     if args.notes:
-        cmd.extend(["-n", args.notes])
+        cmd.extend(["-n", _decode_escapes(args.notes)])
     if args.url:
         cmd.extend(["-u", args.url])
     if args.repeat:
@@ -521,7 +535,7 @@ def _bridge_event_args(args: argparse.Namespace) -> list[str]:
     if args.location:
         cmd.extend(["--location", args.location])
     if args.notes:
-        cmd.extend(["--notes", args.notes])
+        cmd.extend(["--notes", _decode_escapes(args.notes)])
     if args.url:
         cmd.extend(["--url", args.url])
     if args.repeat:
