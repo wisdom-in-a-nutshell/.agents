@@ -1,0 +1,4 @@
+interface:
+  display_name: "Things Client"
+  short_description: "Reusable Things 3 task client."
+  default_prompt: "Use things-client to inspect or update Things 3 tasks with stable JSON output."

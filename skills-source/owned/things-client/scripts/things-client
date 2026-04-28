@@ -1,0 +1,599 @@
+#!/usr/bin/env python3
+from __future__ import annotations
+
+import argparse
+import glob
+import json
+import os
+import re
+import shlex
+import sqlite3
+import subprocess
+import sys
+import time
+import urllib.parse
+import uuid
+from dataclasses import dataclass
+from datetime import datetime, timezone
+from pathlib import Path
+from typing import Any, Iterable
+
+
+SCHEMA_VERSION = "1.0"
+AUTH_TOKEN_ENV = "THINGS3_AUTH_TOKEN"
+SQLITE_PATH_ENVS = ("THINGS_CLIENT_SQLITE_PATH", "THINGS_SQLITE_PATH", "DOBBY_THINGS_SQLITE_PATH")
+THINGS_BUNDLE_ID = "com.culturedcode.ThingsMac"
+THINGS_SQLITE_PATTERNS = (
+    "~/Library/Group Containers/JLMPQHK86H.com.culturedcode.ThingsMac/ThingsData-*/Things Database.thingsdatabase/main.sqlite",
+    "~/Library/Group Containers/JLMPQHK86H.com.culturedcode.ThingsMac/Things Database.thingsdatabase/main.sqlite",
+)
+
+STATUS_OPEN = 0
+STATUS_CANCELED = 2
+STATUS_COMPLETED = 3
+TYPE_TODO = 0
+TYPE_PROJECT = 1
+TYPE_HEADING = 2
+
+ERROR_EXIT_CODES = {
+    "E_VALIDATION": 2,
+    "E_NOT_FOUND": 1,
+    "E_IO": 1,
+    "E_RUNTIME": 1,
+    "E_DEPENDENCY": 4,
+    "E_AUTH": 3,
+    "E_TIMEOUT": 5,
+}
+
+
+class ThingsError(RuntimeError):
+    def __init__(self, code: str, message: str, *, hint: str = "", retryable: bool = False) -> None:
+        super().__init__(message)
+        self.code = code
+        self.message = message
+        self.hint = hint
+        self.retryable = retryable
+
+
+@dataclass(frozen=True)
+class DatabaseInfo:
+    path: Path
+
+
+class ThingsArgumentParser(argparse.ArgumentParser):
+    def error(self, message: str) -> None:
+        emit_json(error_envelope(command_from_prog(self.prog), "E_VALIDATION", message, hint=f"Run `{self.prog} --help`."))
+        raise SystemExit(ERROR_EXIT_CODES["E_VALIDATION"])
+
+
+def now_utc() -> str:
+    return datetime.now(timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z")
+
+
+def command_from_prog(prog: str) -> str:
+    parts = prog.split()
+    return f"things-client.{parts[1]}" if len(parts) > 1 else "things-client.cli"
+
+
+def envelope(command: str, status: str, *, data: Any = None, error: dict[str, Any] | None = None, started: float | None = None) -> dict[str, Any]:
+    started = started or time.perf_counter()
+    return {
+        "schema_version": SCHEMA_VERSION,
+        "command": command,
+        "status": status,
+        "data": data,
+        "error": error,
+        "meta": {
+            "request_id": uuid.uuid4().hex,
+            "duration_ms": int((time.perf_counter() - started) * 1000),
+            "timestamp_utc": now_utc(),
+        },
+    }
+
+
+def error_envelope(command: str, code: str, message: str, *, hint: str = "", retryable: bool = False) -> dict[str, Any]:
+    return envelope(
+        command,
+        "error",
+        error={"code": code, "message": message, "retryable": retryable, "hint": hint},
+    )
+
+
+def emit_json(payload: dict[str, Any]) -> int:
+    sys.stdout.write(json.dumps(payload, sort_keys=True) + "\n")
+    sys.stdout.flush()
+    if payload["status"] == "error":
+        return ERROR_EXIT_CODES.get(payload["error"]["code"], 1)
+    return 0
+
+
+def emit_text(text: str) -> int:
+    sys.stdout.write(text)
+    if not text.endswith("\n"):
+        sys.stdout.write("\n")
+    sys.stdout.flush()
+    return 0
+
+
+def parse_env_file(path: Path, key: str) -> str | None:
+    if not path.exists():
+        return None
+    for raw_line in path.read_text(encoding="utf-8").splitlines():
+        line = raw_line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        try:
+            parts = shlex.split(line, comments=False, posix=True)
+        except ValueError:
+            parts = [line]
+        if not parts:
+            continue
+        env_key, _, value = parts[0].partition("=")
+        if env_key == key:
+            return value.strip()
+    return None
+
+
+def token_search_paths() -> list[Path]:
+    paths: list[Path] = []
+    for env_name in ("THINGS_CLIENT_ENV_FILE", "THINGS3_ENV_FILE"):
+        raw = os.environ.get(env_name)
+        if raw:
+            paths.append(Path(raw).expanduser())
+    workspace = os.environ.get("DOBBY_WORKSPACE")
+    if workspace:
+        paths.append(Path(workspace).expanduser() / ".env")
+    paths.append(Path.cwd() / ".env")
+    paths.append(Path("/Users/dobby/GitHub/adi/.env"))
+    return paths
+
+
+def read_auth_token() -> str:
+    token = os.environ.get(AUTH_TOKEN_ENV, "").strip()
+    if token:
+        return token
+    for path in token_search_paths():
+        token = (parse_env_file(path, AUTH_TOKEN_ENV) or "").strip()
+        if token:
+            return token
+    raise ThingsError(
+        "E_AUTH",
+        f"{AUTH_TOKEN_ENV} is not configured.",
+        hint="Set THINGS3_AUTH_TOKEN or THINGS_CLIENT_ENV_FILE before using write commands.",
+    )
+
+
+def find_database() -> DatabaseInfo:
+    for env_name in SQLITE_PATH_ENVS:
+        configured = os.environ.get(env_name)
+        if configured:
+            path = Path(configured).expanduser()
+            if not path.exists():
+                raise ThingsError("E_NOT_FOUND", f"{env_name} points to a missing file: {path}")
+            return DatabaseInfo(path=path)
+
+    candidates: list[Path] = []
+    for pattern in THINGS_SQLITE_PATTERNS:
+        candidates.extend(Path(p) for p in glob.glob(os.path.expanduser(pattern)))
+
+    def is_backup(path: Path) -> bool:
+        return any(".bak" in part.lower() or "backup" in part.lower() for part in path.parts)
+
+    candidates = [path for path in candidates if path.exists() and not is_backup(path)]
+    if not candidates:
+        raise ThingsError("E_NOT_FOUND", "Things SQLite database not found.")
+    candidates.sort(key=lambda path: path.stat().st_mtime, reverse=True)
+    return DatabaseInfo(path=candidates[0])
+
+
+def connect_readonly() -> tuple[sqlite3.Connection, DatabaseInfo]:
+    info = find_database()
+    try:
+        conn = sqlite3.connect(f"{info.path.as_uri()}?mode=ro", uri=True, timeout=1.0)
+        conn.row_factory = sqlite3.Row
+        conn.execute("PRAGMA query_only = ON")
+    except sqlite3.Error as exc:
+        raise ThingsError("E_IO", f"failed to open Things SQLite database read-only: {exc}") from exc
+    return conn, info
+
+
+def thingsdate_to_iso(value: int | None) -> str | None:
+    if not value:
+        return None
+    y = (int(value) & 0b111111111110000000000000000) >> 16
+    m = (int(value) & 0b000000000001111000000000000) >> 12
+    d = (int(value) & 0b000000000000000111110000000) >> 7
+    if y <= 0 or not (1 <= m <= 12) or not (1 <= d <= 31):
+        return None
+    return f"{y:04d}-{m:02d}-{d:02d}"
+
+
+def unix_to_iso(value: float | int | None) -> str | None:
+    if value in (None, 0):
+        return None
+    try:
+        return datetime.fromtimestamp(float(value), tz=timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z")
+    except (OSError, ValueError):
+        return None
+
+
+def status_label(value: int | None) -> str:
+    return {STATUS_OPEN: "open", STATUS_CANCELED: "canceled", STATUS_COMPLETED: "completed"}.get(value, "unknown")
+
+
+TASK_SELECT = """
+SELECT
+    TASK.uuid,
+    TASK.title,
+    TASK.notes,
+    TASK.status,
+    TASK.type,
+    TASK.trashed,
+    TASK.start,
+    TASK.startDate,
+    TASK.deadline,
+    TASK.creationDate,
+    TASK.userModificationDate,
+    TASK.stopDate,
+    PROJECT.title AS projectTitle,
+    AREA_DIRECT.title AS areaTitle,
+    (
+        SELECT group_concat(TAG.title, ', ')
+        FROM TMTaskTag TASK_TAG
+        JOIN TMTag TAG ON TAG.uuid = TASK_TAG.tags
+        WHERE TASK_TAG.tasks = TASK.uuid
+    ) AS tagNames
+FROM TMTask TASK
+LEFT JOIN TMTask PROJECT ON TASK.project = PROJECT.uuid
+LEFT JOIN TMArea AREA_DIRECT ON COALESCE(TASK.area, PROJECT.area) = AREA_DIRECT.uuid
+"""
+
+
+def row_to_task(row: sqlite3.Row, *, verbose: bool, include_start: bool = False) -> dict[str, Any]:
+    task: dict[str, Any] = {
+        "id": row["uuid"],
+        "name": row["title"] or "",
+        "status": status_label(row["status"]),
+        "tagNames": row["tagNames"] or "",
+        "project": row["projectTitle"],
+        "area": row["areaTitle"],
+    }
+    start_date = thingsdate_to_iso(row["startDate"])
+    deadline = thingsdate_to_iso(row["deadline"])
+    if include_start:
+        task["startDate"] = start_date
+    if deadline or verbose:
+        task["dueDate"] = deadline
+    if verbose:
+        task.update(
+            {
+                "notes": row["notes"] or "",
+                "creationDate": unix_to_iso(row["creationDate"]),
+                "modificationDate": unix_to_iso(row["userModificationDate"]),
+                "startDate": start_date,
+                "stopDate": unix_to_iso(row["stopDate"]),
+            }
+        )
+    return task
+
+
+def tag_filter_clause(tag: str | None) -> tuple[str, list[Any]]:
+    if not tag:
+        return "", []
+    return (
+        """ AND EXISTS (
+            SELECT 1
+            FROM TMTaskTag FILTER_TASK_TAG
+            JOIN TMTag FILTER_TAG ON FILTER_TAG.uuid = FILTER_TASK_TAG.tags
+            WHERE FILTER_TASK_TAG.tasks = TASK.uuid
+              AND lower(FILTER_TAG.title) = lower(?)
+        )""",
+        [tag],
+    )
+
+
+def fetch_tasks(where: str, params: Iterable[Any], *, verbose: bool, include_start: bool = False, limit: int = 0) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+    conn, info = connect_readonly()
+    limit_sql = " LIMIT ?" if limit > 0 else ""
+    query_params = list(params)
+    if limit > 0:
+        query_params.append(limit)
+    try:
+        rows = conn.execute(
+            f"{TASK_SELECT}\nWHERE {where}\nORDER BY TASK.userModificationDate DESC, TASK.\"index\"{limit_sql}",
+            tuple(query_params),
+        ).fetchall()
+    except sqlite3.Error as exc:
+        raise ThingsError("E_IO", f"Things SQLite query failed: {exc}") from exc
+    finally:
+        conn.close()
+    return [row_to_task(row, verbose=verbose, include_start=include_start) for row in rows], {"name": "sqlite", "path": str(info.path)}
+
+
+def list_tasks(*, tag: str | None, verbose: bool, limit: int) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+    tag_sql, tag_params = tag_filter_clause(tag)
+    return fetch_tasks(
+        f"TASK.type = ? AND TASK.status = ? AND TASK.trashed = 0{tag_sql}",
+        [TYPE_TODO, STATUS_OPEN, *tag_params],
+        verbose=verbose,
+        include_start=verbose,
+        limit=limit,
+    )
+
+
+def search_tasks(query: str, *, tag: str | None, include_completed: bool, verbose: bool, limit: int) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+    tag_sql, tag_params = tag_filter_clause(tag)
+    statuses = (STATUS_OPEN, STATUS_CANCELED, STATUS_COMPLETED) if include_completed else (STATUS_OPEN,)
+    placeholders = ",".join("?" for _ in statuses)
+    needle = f"%{query.lower()}%"
+    return fetch_tasks(
+        f"""TASK.type = ? AND TASK.status IN ({placeholders}) AND TASK.trashed = 0
+        AND (lower(COALESCE(TASK.title, '')) LIKE ? OR lower(COALESCE(TASK.notes, '')) LIKE ?){tag_sql}""",
+        [TYPE_TODO, *statuses, needle, needle, *tag_params],
+        verbose=verbose,
+        include_start=verbose,
+        limit=limit,
+    )
+
+
+def inspect_task(target: str, *, include_completed: bool = False) -> tuple[dict[str, Any], dict[str, Any]]:
+    conn, info = connect_readonly()
+    statuses = (STATUS_OPEN, STATUS_CANCELED, STATUS_COMPLETED) if include_completed else (STATUS_OPEN,)
+    placeholders = ",".join("?" for _ in statuses)
+    target_like = f"{target}%"
+    try:
+        rows = conn.execute(
+            f"""{TASK_SELECT}
+            WHERE TASK.trashed = 0
+              AND TASK.status IN ({placeholders})
+              AND (TASK.uuid = ? OR TASK.uuid LIKE ? OR TASK.title = ?)
+            ORDER BY CASE WHEN TASK.uuid = ? OR TASK.title = ? THEN 0 ELSE 1 END, TASK.userModificationDate DESC""",
+            (*statuses, target, target_like, target, target, target),
+        ).fetchall()
+    except sqlite3.Error as exc:
+        raise ThingsError("E_IO", f"Things SQLite query failed: {exc}") from exc
+    finally:
+        conn.close()
+    if not rows:
+        raise ThingsError("E_NOT_FOUND", f"not found: {target}")
+    row = rows[0]
+    if len(rows) > 1 and not (row["uuid"] == target or row["title"] == target):
+        raise ThingsError("E_VALIDATION", f"ambiguous target prefix: {target}")
+    result_type = "project" if row["type"] == TYPE_PROJECT else "heading" if row["type"] == TYPE_HEADING else "to-do"
+    return {"type": result_type, "task": row_to_task(row, verbose=True, include_start=True)}, {"name": "sqlite", "path": str(info.path)}
+
+
+def resolve_task_id(target: str) -> str:
+    result, _backend = inspect_task(target)
+    return str(result["task"]["id"])
+
+
+def run_url_scheme(command: str, params: dict[str, str]) -> None:
+    clean = {key: value for key, value in params.items() if value is not None and value != ""}
+    url = f"things:///{command}?" + urllib.parse.urlencode(clean, quote_via=urllib.parse.quote)
+    try:
+        proc = subprocess.run(["open", url], capture_output=True, text=True, timeout=10, check=False)
+    except subprocess.TimeoutExpired as exc:
+        raise ThingsError("E_TIMEOUT", "Things URL scheme timed out.", retryable=True) from exc
+    except FileNotFoundError as exc:
+        raise ThingsError("E_DEPENDENCY", "`open` command is not available.") from exc
+    if proc.returncode != 0:
+        raise ThingsError("E_RUNTIME", f"Things URL scheme failed: {proc.stderr.strip()}")
+    time.sleep(float(os.environ.get("THINGS_CLIENT_URL_SETTLE_SECS", "0.5")))
+
+
+def task_line(task: dict[str, Any]) -> str:
+    tags = f" [{task.get('tagNames')}]" if task.get("tagNames") else ""
+    return f"{task.get('id', '')[:8]}  {task.get('name', '')}{tags}"
+
+
+def add_format_args(parser: argparse.ArgumentParser) -> None:
+    group = parser.add_mutually_exclusive_group()
+    group.add_argument("--json", action="store_true", help="Emit JSON envelope (default).")
+    group.add_argument("--plain", action="store_true", help="Emit operator-readable text.")
+    parser.add_argument("--no-input", action="store_true", help="Accepted for agent non-interactive callers; commands never prompt.")
+
+
+def add_read_args(parser: argparse.ArgumentParser) -> None:
+    add_format_args(parser)
+    parser.add_argument("--tag", help="Only return tasks with this exact tag name.")
+    parser.add_argument("--verbose", action="store_true", help="Include notes and date fields.")
+    parser.add_argument("--limit", type=int, default=0, help="Maximum returned tasks. 0 means no limit.")
+
+
+def build_parser() -> argparse.ArgumentParser:
+    parser = ThingsArgumentParser(prog="things-client", description="Reusable Things 3 task client.")
+    sub = parser.add_subparsers(dest="command", required=True, parser_class=ThingsArgumentParser)
+
+    p = sub.add_parser("list", help="List open Things tasks.")
+    add_read_args(p)
+    p.set_defaults(handler=cmd_list)
+
+    p = sub.add_parser("search", help="Search open Things tasks by title or notes.")
+    p.add_argument("query")
+    p.add_argument("--include-completed", action="store_true")
+    add_read_args(p)
+    p.set_defaults(handler=cmd_search)
+
+    p = sub.add_parser("inspect", help="Inspect one task by exact title, ID, or ID prefix.")
+    p.add_argument("target")
+    p.add_argument("--include-completed", action="store_true")
+    add_format_args(p)
+    p.set_defaults(handler=cmd_inspect)
+
+    p = sub.add_parser("edit", help="Update a task via the Things URL scheme.")
+    p.add_argument("target")
+    p.add_argument("--notes")
+    p.add_argument("--append-notes")
+    p.add_argument("--add-tags")
+    add_format_args(p)
+    p.set_defaults(handler=cmd_edit)
+
+    p = sub.add_parser("doctor", help="Check Things client dependencies.")
+    add_format_args(p)
+    p.set_defaults(handler=cmd_doctor)
+
+    return parser
+
+
+def validate_limit(limit: int) -> None:
+    if limit < 0:
+        raise ThingsError("E_VALIDATION", "--limit must be >= 0")
+
+
+def cmd_list(args: argparse.Namespace) -> int:
+    started = time.perf_counter()
+    try:
+        validate_limit(args.limit)
+        tasks, backend = list_tasks(tag=args.tag, verbose=args.verbose, limit=args.limit)
+    except ThingsError as exc:
+        return emit_json(envelope("things-client.list", "error", error=error_payload(exc), started=started))
+    if args.plain:
+        return emit_text("\n".join(task_line(task) for task in tasks) if tasks else "(empty)")
+    return emit_json(
+        envelope(
+            "things-client.list",
+            "ok",
+            data={"count": len(tasks), "tasks": tasks, "tag": args.tag, "verbose": args.verbose, "limit": args.limit, "backend": backend},
+            started=started,
+        )
+    )
+
+
+def cmd_search(args: argparse.Namespace) -> int:
+    started = time.perf_counter()
+    try:
+        validate_limit(args.limit)
+        tasks, backend = search_tasks(
+            args.query,
+            tag=args.tag,
+            include_completed=args.include_completed,
+            verbose=args.verbose,
+            limit=args.limit,
+        )
+    except ThingsError as exc:
+        return emit_json(envelope("things-client.search", "error", error=error_payload(exc), started=started))
+    if args.plain:
+        return emit_text("\n".join(task_line(task) for task in tasks) if tasks else "(no matches)")
+    return emit_json(
+        envelope(
+            "things-client.search",
+            "ok",
+            data={
+                "count": len(tasks),
+                "tasks": tasks,
+                "query": args.query,
+                "tag": args.tag,
+                "include_completed": args.include_completed,
+                "verbose": args.verbose,
+                "limit": args.limit,
+                "backend": backend,
+            },
+            started=started,
+        )
+    )
+
+
+def cmd_inspect(args: argparse.Namespace) -> int:
+    started = time.perf_counter()
+    try:
+        result, backend = inspect_task(args.target, include_completed=args.include_completed)
+    except ThingsError as exc:
+        return emit_json(envelope("things-client.inspect", "error", error=error_payload(exc), started=started))
+    if args.plain:
+        return emit_text(task_line(result["task"]))
+    return emit_json(envelope("things-client.inspect", "ok", data={"target": args.target, "result": result, "backend": backend}, started=started))
+
+
+def cmd_edit(args: argparse.Namespace) -> int:
+    started = time.perf_counter()
+    if args.notes is None and args.append_notes is None and args.add_tags is None:
+        exc = ThingsError("E_VALIDATION", "edit requires --notes, --append-notes, or --add-tags")
+        return emit_json(envelope("things-client.edit", "error", error=error_payload(exc), started=started))
+    try:
+        token = read_auth_token()
+        task_id = resolve_task_id(args.target)
+        params: dict[str, str] = {"auth-token": token, "id": task_id}
+        if args.notes is not None:
+            params["notes"] = args.notes
+        if args.append_notes is not None:
+            params["append-notes"] = args.append_notes
+        if args.add_tags is not None:
+            params["add-tags"] = args.add_tags
+        run_url_scheme("update", params)
+    except ThingsError as exc:
+        return emit_json(envelope("things-client.edit", "error", error=error_payload(exc), started=started))
+    if args.plain:
+        return emit_text(f"edited: {task_id}")
+    return emit_json(envelope("things-client.edit", "ok", data={"target": args.target, "id": task_id}, started=started))
+
+
+def cmd_doctor(args: argparse.Namespace) -> int:
+    started = time.perf_counter()
+    checks: list[dict[str, Any]] = []
+
+    open_ok = shutil_which("open") is not None
+    checks.append({"name": "open_command", "ok": open_ok, "detail": shutil_which("open") or "not found"})
+
+    sqlite_ok = False
+    sqlite_detail = ""
+    try:
+        info = find_database()
+        conn, _ = connect_readonly()
+        conn.execute("SELECT name FROM sqlite_master LIMIT 1").fetchall()
+        conn.close()
+        sqlite_ok = True
+        sqlite_detail = str(info.path)
+    except ThingsError as exc:
+        sqlite_detail = exc.message
+    checks.append({"name": "sqlite_read_backend", "ok": sqlite_ok, "detail": sqlite_detail})
+
+    token_ok = False
+    token_detail = "not configured"
+    try:
+        _ = read_auth_token()
+        token_ok = True
+        token_detail = "configured"
+    except ThingsError:
+        token_ok = False
+    checks.append({"name": "auth_token_configured", "ok": token_ok, "detail": token_detail})
+
+    installed_detail = ""
+    installed_ok = False
+    try:
+        proc = subprocess.run(["mdfind", f"kMDItemCFBundleIdentifier == '{THINGS_BUNDLE_ID}'"], capture_output=True, text=True, timeout=5)
+        installed_detail = proc.stdout.strip().splitlines()[0] if proc.stdout.strip() else "not found"
+        installed_ok = bool(proc.stdout.strip())
+    except Exception as exc:
+        installed_detail = str(exc)
+    checks.append({"name": "things3_installed", "ok": installed_ok, "detail": installed_detail})
+
+    ok = open_ok and sqlite_ok
+    data = {"ok": ok, "checks": checks}
+    if args.plain:
+        lines = [f"ok: {str(ok).lower()}"]
+        lines.extend(f"{check['name']}: {'ok' if check['ok'] else 'fail'} - {check['detail']}" for check in checks)
+        return emit_text("\n".join(lines))
+    return emit_json(envelope("things-client.doctor", "ok", data=data, started=started))
+
+
+def shutil_which(command: str) -> str | None:
+    for dirname in os.environ.get("PATH", "").split(os.pathsep):
+        candidate = Path(dirname) / command
+        if candidate.exists() and os.access(candidate, os.X_OK):
+            return str(candidate)
+    return None
+
+
+def error_payload(exc: ThingsError) -> dict[str, Any]:
+    return {"code": exc.code, "message": exc.message, "retryable": exc.retryable, "hint": exc.hint}
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = build_parser()
+    args = parser.parse_args(argv)
+    return args.handler(args)
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
