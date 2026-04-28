@@ -59,7 +59,7 @@ Good handoffs are specific enough to review without opening every file, but shor
 For the current solo DevWorker workflow, use this mental model:
 
 - Things 3 is the human capture item and default coordination object.
-- The `devworker` tag means the Mac mini worker should pick up the task.
+- The `agent` tag means the Mac mini worker should pick up the task.
 - The `needs-input` tag means the worker is blocked and wants human involvement.
 - The final agent message is the human handoff.
 - The worker agent decides whether the task is complete or needs input.
