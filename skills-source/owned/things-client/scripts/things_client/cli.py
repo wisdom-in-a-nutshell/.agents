@@ -1,7 +1,7 @@
-#!/usr/bin/env python3
 from __future__ import annotations
 
-from things_client.cli import main
+from .commands import main
+
 
 if __name__ == "__main__":
     raise SystemExit(main())

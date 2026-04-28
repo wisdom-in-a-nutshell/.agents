@@ -28,6 +28,16 @@ $THINGS doctor
 
 Output is a stable JSON envelope by default. Use `--plain` only for human inspection.
 
+## Package Structure
+
+The executable path is stable, but the implementation is split underneath it:
+
+- `scripts/things-client` — thin executable wrapper.
+- `scripts/things_client/` — Python package for CLI wiring, envelopes, config, SQLite reads, JXA fallback reads, URL-scheme writes, AppleScript maintenance, and formatting.
+- `tests/contract.sh` — import, wrapper, and token lookup contract.
+- `tests/sqlite.sh` — cheap SQLite-backed behavior tests.
+- `tests/live.sh` — opt-in real Things 3 write smoke.
+
 ## Command Surface
 
 - Read tasks: `snapshot`, `today`, `inbox`, `upcoming`, `anytime`, `someday`, `overdue`, `logbook`, `list`, `search`, `inspect`.
@@ -47,13 +57,18 @@ Output is a stable JSON envelope by default. Use `--plain` only for human inspec
 
 ## Token Lookup
 
-Task note updates need the Things URL-scheme auth token. The CLI looks for `THINGS3_AUTH_TOKEN` first, then simple `.env` files from:
+Task note updates need the Things URL-scheme auth token. Reads do not need this token.
 
-1. `THINGS_CLIENT_ENV_FILE`
-2. `THINGS3_ENV_FILE`
+The lookup order is intentionally small:
+
+1. `THINGS3_AUTH_TOKEN`
+2. `THINGS_CLIENT_ENV_FILE` pointing at a simple `.env` file
 3. `$DOBBY_WORKSPACE/.env`
 4. the current working directory `.env`
-5. `/Users/dobby/GitHub/adi/.env`
+
+`THINGS_CLIENT_ENV_FILE` is only for callers that are not running from the repo
+or Dobby workspace whose `.env` should be used. Most workspace agents should not
+set it.
 
 The token is never printed.
 
@@ -98,7 +113,9 @@ If a command fails, inspect the JSON `error.code` and `error.hint`; do not scrap
 
 ## Testing
 
-- Cheap/non-mutating: `$HOME/.agents/skills-source/owned/things-client/tests/run.sh`
+- Cheap/non-mutating full check: `$HOME/.agents/skills-source/owned/things-client/tests/run.sh`
+- Contract only: `$HOME/.agents/skills-source/owned/things-client/tests/contract.sh`
+- SQLite behavior only: `$HOME/.agents/skills-source/owned/things-client/tests/sqlite.sh`
 - Opt-in live write smoke: `RUN_LIVE=1 $HOME/.agents/skills-source/owned/things-client/tests/run.sh`
 
 The live suite creates uniquely prefixed test tasks and cancels them during cleanup. Do not run it unless real local Things writes are acceptable.
