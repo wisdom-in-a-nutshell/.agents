@@ -62,17 +62,32 @@ For the current solo DevWorker workflow, use this mental model:
 - The `devworker` tag means the Mac mini worker should pick up the task.
 - The `needs-input` tag means the worker is blocked and wants human involvement.
 - The final agent message is the human handoff.
-- DevWorker owns mechanical lifecycle updates.
+- The worker agent decides whether the task is complete or needs input.
 
 This section is the canonical lifecycle contract. Repo docs may reference it, but should not duplicate these rules unless they are documenting exact CLI flags or implementation behavior.
 
-Mechanical lifecycle:
+Task identity:
+
+- DevWorker must pass the Things task id in the worker prompt when the task came from Things.
+- Use the task id for lifecycle updates; do not rely on the title because titles can change or collide.
+- If the prompt provides helper commands, prefer those helpers over hand-rolled Things calls.
+- The reusable Things task lifecycle helper lives at `scripts/work-handoff-task` in this skill.
+
+Things lifecycle:
 
 - On pickup, DevWorker starts a Codex app-server thread and writes the raw run/session id to the Things note.
-- While running, DevWorker may update the Things note with concise state, but should not create noisy receipts.
-- On success, DevWorker writes the agent's final handoff to the Things note and completes the Things task.
-- On blocked or failed work, DevWorker keeps the Things task open, adds `needs-input`, preserves the run/session id in the Things note, and leaves the smallest useful blocked note.
+- While running, avoid noisy receipts; the task note should stay readable.
+- On success, append the human handoff to the Things note and complete the task.
+- On blocked work, keep the Things task open, add `needs-input`, preserve the run/session id already in the Things note, and leave the smallest useful blocked note.
+- If infrastructure fails before the agent can update Things, DevWorker may add `needs-input` mechanically so the task does not disappear.
 - GitHub issues are optional escalation, not the default path. Create or update one only when the task or repo workflow needs durable repo-native discussion, external review, or audit history.
+
+When DevWorker provides helper commands, use this pattern:
+
+```bash
+printf '%s\n' "<human handoff>" | /Users/dobby/.agents/skills-source/owned/work-handoff/scripts/work-handoff-task complete <things-task-id> --note-file - --no-input
+printf '%s\n' "<smallest useful request>" | /Users/dobby/.agents/skills-source/owned/work-handoff/scripts/work-handoff-task needs-input <things-task-id> --note-file - --no-input
+```
 
 On success, the handoff should be just the agent's useful final summary. Do not add a machine receipt, commit/check boilerplate, Things IDs, or "promoted from Things" metadata unless the user or repo specifically asks for it.
 
