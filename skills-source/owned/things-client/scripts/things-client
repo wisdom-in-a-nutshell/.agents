@@ -14,7 +14,7 @@ import time
 import urllib.parse
 import uuid
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 from pathlib import Path
 from typing import Any, Iterable
 
@@ -24,6 +24,11 @@ AUTH_TOKEN_ENV = "THINGS3_AUTH_TOKEN"
 SQLITE_PATH_ENVS = ("THINGS_CLIENT_SQLITE_PATH", "THINGS_SQLITE_PATH", "DOBBY_THINGS_SQLITE_PATH")
 THINGS_BUNDLE_ID = "com.culturedcode.ThingsMac"
 JXA_READ_TIMEOUT = int(os.environ.get("THINGS_CLIENT_JXA_TIMEOUT_SECS", "10"))
+JXA_PROBE_TIMEOUT = int(os.environ.get("THINGS_CLIENT_JXA_PROBE_TIMEOUT_SECS", "3"))
+URL_SCHEME_OPEN_TIMEOUT = int(os.environ.get("THINGS_CLIENT_OPEN_TIMEOUT_SECS", "10"))
+URL_SCHEME_SETTLE_SECS = float(os.environ.get("THINGS_CLIENT_URL_SETTLE_SECS", "0.5"))
+READ_BACKEND_ENV = "THINGS_CLIENT_READ_BACKEND"
+READ_BACKENDS = ("auto", "sqlite", "jxa")
 DEFAULT_DATABASE_GLOBS = (
     "~/Library/Group Containers/JLMPQHK86H.com.culturedcode.ThingsMac/ThingsData-*/Things Database.thingsdatabase/main.sqlite",
     "~/Library/Group Containers/JLMPQHK86H.com.culturedcode.ThingsMac/Things Database.thingsdatabase/main.sqlite",
@@ -35,6 +40,9 @@ STATUS_COMPLETED = 3
 TYPE_TODO = 0
 TYPE_PROJECT = 1
 TYPE_HEADING = 2
+START_INBOX = 0
+START_ANYTIME = 1
+START_SOMEDAY_OR_UPCOMING = 2
 
 ERROR_EXIT_CODES = {
     "E_VALIDATION": 2,
@@ -225,6 +233,34 @@ def add_sqlite_fallback_meta(backend: dict[str, Any], exc: ThingsError) -> dict[
     return updated
 
 
+def selected_read_backend(args: argparse.Namespace | None = None) -> str:
+    raw = ""
+    if args is not None:
+        raw = str(getattr(args, "backend", "") or "")
+    raw = (raw or os.environ.get(READ_BACKEND_ENV) or os.environ.get("DOBBY_THINGS_READ_BACKEND") or "auto").strip().lower()
+    if raw not in READ_BACKENDS:
+        raise ThingsError("E_VALIDATION", f"invalid read backend: {raw!r}; expected one of {', '.join(READ_BACKENDS)}")
+    return raw
+
+
+def read_with_backend(
+    args: argparse.Namespace,
+    *,
+    sqlite_call,
+    jxa_call,
+) -> tuple[Any, dict[str, Any]]:
+    selected = selected_read_backend(args)
+    if selected in ("auto", "sqlite"):
+        try:
+            return sqlite_call()
+        except ThingsError as exc:
+            if selected == "sqlite" or not should_fallback_from_sqlite(exc):
+                raise
+            result, backend = jxa_call()
+            return result, add_sqlite_fallback_meta(backend, exc)
+    return jxa_call()
+
+
 def run_jxa(script: str) -> Any:
     try:
         proc = subprocess.run(
@@ -366,6 +402,87 @@ JSON.stringify(matches);
     return {"type": "to-do", "task": matches[0]}, {"name": "jxa"}
 
 
+def jxa_view_tasks(name: str, *, verbose: bool, limit: int = 0) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+    list_name = "Logbook" if name == "logbook" else name.capitalize()
+    open_guard = "" if name == "logbook" else 'if (t.status() !== "open") continue;'
+    script = f"""
+const things = Application("Things3");
+const limit = {int(limit)};
+const out = [];
+for (const t of things.lists.byName({json.dumps(list_name)}).toDos()) {{
+  {open_guard}
+  out.push({{ {jxa_task_fields(verbose=verbose)} }});
+  if (limit > 0 && out.length >= limit) break;
+}}
+JSON.stringify(out);
+"""
+    return run_jxa(script), {"name": "jxa"}
+
+
+def jxa_overdue_tasks(today_iso: str, *, verbose: bool, limit: int = 0) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+    script = f"""
+const things = Application("Things3");
+const today = {json.dumps(today_iso)};
+const limit = {int(limit)};
+const out = [];
+for (const t of things.toDos()) {{
+  if (t.status() !== "open") continue;
+  let due = null;
+  try {{
+    const d = t.dueDate();
+    due = d ? d.toISOString().slice(0, 10) : null;
+  }} catch(e) {{}}
+  if (due && due < today) {{
+    out.push({{ {jxa_task_fields(verbose=verbose)} }});
+    if (limit > 0 && out.length >= limit) break;
+  }}
+}}
+JSON.stringify(out);
+"""
+    return run_jxa(script), {"name": "jxa"}
+
+
+def jxa_snapshot_tasks(today_iso: str, *, verbose: bool, minimal: bool, limit: int) -> tuple[dict[str, Any], dict[str, Any]]:
+    today, _ = jxa_view_tasks("today", verbose=verbose, limit=0)
+    overdue, _ = jxa_overdue_tasks(today_iso, verbose=verbose, limit=0)
+    inbox, backend = jxa_view_tasks("inbox", verbose=verbose, limit=0)
+    views = {"today": today, "overdue": overdue, "inbox": inbox}
+    out: dict[str, Any] = {}
+    for name, tasks in views.items():
+        selected = tasks[:limit] if limit else tasks
+        if minimal:
+            if name == "overdue":
+                selected = [{"name": task.get("name", ""), "dueDate": task.get("dueDate")} for task in selected]
+            else:
+                selected = [{"name": task.get("name", "")} for task in selected]
+        out[name] = {"count": len(tasks), "tasks": selected}
+    return out, backend
+
+
+def jxa_projects() -> tuple[list[dict[str, Any]], dict[str, Any]]:
+    script = """
+const things = Application("Things3");
+JSON.stringify(things.projects().map(p => {
+  const r = {id: p.id(), name: p.name(), status: p.status()};
+  try { r.area = p.area() ? p.area().name() : null; } catch(e) { r.area = null; }
+  try { r.notes = p.notes() || ""; } catch(e) { r.notes = ""; }
+  try { r.tagNames = p.tagNames() || ""; } catch(e) { r.tagNames = ""; }
+  return r;
+}));
+"""
+    return run_jxa(script), {"name": "jxa"}
+
+
+def jxa_areas() -> tuple[list[dict[str, Any]], dict[str, Any]]:
+    script = 'const things = Application("Things3");\nJSON.stringify(things.areas().map(a => ({id: a.id(), name: a.name(), tagNames: a.tagNames() || ""})));'
+    return run_jxa(script), {"name": "jxa"}
+
+
+def jxa_tags() -> tuple[list[dict[str, Any]], dict[str, Any]]:
+    script = 'const things = Application("Things3");\nJSON.stringify(things.tags().map(t => ({id: t.id(), name: t.name()})));'
+    return run_jxa(script), {"name": "jxa"}
+
+
 def thingsdate_to_iso(value: int | None) -> str | None:
     if not value:
         return None
@@ -375,6 +492,11 @@ def thingsdate_to_iso(value: int | None) -> str | None:
     if y <= 0 or not (1 <= m <= 12) or not (1 <= d <= 31):
         return None
     return f"{y:04d}-{m:02d}-{d:02d}"
+
+
+def thingsdate_from_iso(iso_date: str) -> int:
+    y, m, d = (int(part) for part in iso_date.split("-"))
+    return (y << 16) | (m << 12) | (d << 7)
 
 
 def unix_to_iso(value: float | int | None) -> str | None:
@@ -401,20 +523,52 @@ SELECT
     TASK.start,
     TASK.startDate,
     TASK.deadline,
+    TASK.deadlineSuppressionDate,
     TASK.creationDate,
     TASK.userModificationDate,
     TASK.stopDate,
-    PROJECT.title AS projectTitle,
-    AREA_DIRECT.title AS areaTitle,
+    TASK."index",
+    TASK.todayIndex,
+    COALESCE(PROJECT.uuid, PROJECT_OF_HEADING.uuid) AS projectUuid,
+    COALESCE(PROJECT.title, PROJECT_OF_HEADING.title) AS projectTitle,
+    COALESCE(AREA_DIRECT.uuid, AREA_PROJECT.uuid, AREA_HEADING_PROJECT.uuid) AS areaUuid,
+    COALESCE(AREA_DIRECT.title, AREA_PROJECT.title, AREA_HEADING_PROJECT.title) AS areaTitle,
     (
-        SELECT group_concat(TAG.title, ', ')
-        FROM TMTaskTag TASK_TAG
-        JOIN TMTag TAG ON TAG.uuid = TASK_TAG.tags
-        WHERE TASK_TAG.tasks = TASK.uuid
+        SELECT group_concat(title, ', ')
+        FROM (
+            SELECT TAG.title AS title
+            FROM TMTaskTag TASK_TAG
+            JOIN TMTag TAG ON TAG.uuid = TASK_TAG.tags
+            WHERE TASK_TAG.tasks = TASK.uuid
+            ORDER BY TAG."index"
+        )
     ) AS tagNames
 FROM TMTask TASK
 LEFT JOIN TMTask PROJECT ON TASK.project = PROJECT.uuid
-LEFT JOIN TMArea AREA_DIRECT ON COALESCE(TASK.area, PROJECT.area) = AREA_DIRECT.uuid
+LEFT JOIN TMTask HEADING ON TASK.heading = HEADING.uuid
+LEFT JOIN TMTask PROJECT_OF_HEADING ON HEADING.project = PROJECT_OF_HEADING.uuid
+LEFT JOIN TMArea AREA_DIRECT ON TASK.area = AREA_DIRECT.uuid
+LEFT JOIN TMArea AREA_PROJECT ON PROJECT.area = AREA_PROJECT.uuid
+LEFT JOIN TMArea AREA_HEADING_PROJECT ON PROJECT_OF_HEADING.area = AREA_HEADING_PROJECT.uuid
+"""
+
+AREA_SELECT = """
+SELECT
+    AREA.uuid,
+    AREA.title,
+    AREA.visible,
+    AREA."index",
+    (
+        SELECT group_concat(title, ', ')
+        FROM (
+            SELECT TAG.title AS title
+            FROM TMAreaTag AREA_TAG
+            JOIN TMTag TAG ON TAG.uuid = AREA_TAG.tags
+            WHERE AREA_TAG.areas = AREA.uuid
+            ORDER BY TAG."index"
+        )
+    ) AS tagNames
+FROM TMArea AREA
 """
 
 
@@ -446,6 +600,27 @@ def row_to_task(row: sqlite3.Row, *, verbose: bool, include_start: bool = False)
     return task
 
 
+def row_to_project(row: sqlite3.Row, *, verbose: bool = True) -> dict[str, Any]:
+    project: dict[str, Any] = {
+        "id": row["uuid"],
+        "name": row["title"] or "",
+        "status": status_label(row["status"]),
+        "area": row["areaTitle"],
+        "tagNames": row["tagNames"] or "",
+    }
+    if verbose:
+        project["notes"] = row["notes"] or ""
+    return project
+
+
+def row_to_area(row: sqlite3.Row) -> dict[str, Any]:
+    return {"id": row["uuid"], "name": row["title"] or "", "tagNames": row["tagNames"] or ""}
+
+
+def row_to_tag(row: sqlite3.Row) -> dict[str, Any]:
+    return {"id": row["uuid"], "name": row["title"] or ""}
+
+
 def tag_filter_clause(tag: str | None) -> tuple[str, list[Any]]:
     if not tag:
         return "", []
@@ -461,7 +636,15 @@ def tag_filter_clause(tag: str | None) -> tuple[str, list[Any]]:
     )
 
 
-def fetch_tasks(where: str, params: Iterable[Any], *, verbose: bool, include_start: bool = False, limit: int = 0) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+def fetch_tasks(
+    where: str,
+    params: Iterable[Any],
+    *,
+    verbose: bool,
+    include_start: bool = False,
+    limit: int = 0,
+    order: str = 'TASK.userModificationDate DESC, TASK."index"',
+) -> tuple[list[dict[str, Any]], dict[str, Any]]:
     conn, info = connect_readonly()
     limit_sql = " LIMIT ?" if limit > 0 else ""
     query_params = list(params)
@@ -469,7 +652,7 @@ def fetch_tasks(where: str, params: Iterable[Any], *, verbose: bool, include_sta
         query_params.append(limit)
     try:
         rows = conn.execute(
-            f"{TASK_SELECT}\nWHERE {where}\nORDER BY TASK.userModificationDate DESC, TASK.\"index\"{limit_sql}",
+            f"{TASK_SELECT}\nWHERE {where}\nORDER BY {order}{limit_sql}",
             tuple(query_params),
         ).fetchall()
     except sqlite3.Error as exc:
@@ -517,6 +700,119 @@ def search_tasks(query: str, *, tag: str | None, include_completed: bool, verbos
         return tasks, add_sqlite_fallback_meta(backend, exc)
 
 
+def view_tasks(name: str, *, verbose: bool, limit: int = 0) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+    today = thingsdate_from_iso(date.today().isoformat())
+    base = "TASK.type = ? AND TASK.status = ? AND TASK.trashed = 0"
+    params: list[Any] = [TYPE_TODO, STATUS_OPEN]
+    include_start = False
+    if name == "today":
+        where = f"""{base} AND (
+            (TASK.start = ? AND TASK.startDate IS NOT NULL AND TASK.startDate <= ?)
+            OR (TASK.start = ? AND TASK.startDate IS NOT NULL AND TASK.startDate <= ?)
+            OR (TASK.deadline IS NOT NULL AND TASK.deadline <= ? AND (TASK.deadlineSuppressionDate IS NULL OR TASK.deadlineSuppressionDate = 0))
+        )"""
+        params.extend([START_ANYTIME, today, START_SOMEDAY_OR_UPCOMING, today, today])
+        order = "TASK.todayIndex, TASK.startDate, TASK.deadline, TASK.\"index\""
+        include_start = True
+    elif name == "inbox":
+        where = f"{base} AND TASK.start = ?"
+        params.append(START_INBOX)
+        order = 'TASK."index"'
+    elif name == "upcoming":
+        where = f"{base} AND TASK.start = ? AND TASK.startDate IS NOT NULL AND TASK.startDate > ?"
+        params.extend([START_SOMEDAY_OR_UPCOMING, today])
+        order = 'TASK.startDate, TASK."index"'
+        include_start = True
+    elif name == "anytime":
+        where = f"{base} AND TASK.start = ?"
+        params.append(START_ANYTIME)
+        order = 'TASK."index"'
+    elif name == "someday":
+        where = f"{base} AND TASK.start = ? AND TASK.startDate IS NULL"
+        params.append(START_SOMEDAY_OR_UPCOMING)
+        order = 'TASK."index"'
+    elif name == "logbook":
+        where = "TASK.type = ? AND TASK.status IN (?, ?) AND TASK.trashed = 0"
+        params = [TYPE_TODO, STATUS_CANCELED, STATUS_COMPLETED]
+        order = "TASK.stopDate DESC, TASK.userModificationDate DESC"
+    else:
+        raise ThingsError("E_VALIDATION", f"unsupported Things view: {name}")
+    return fetch_tasks(where, params, verbose=verbose, include_start=include_start, limit=limit, order=order)
+
+
+def overdue_tasks(*, today_iso: str, verbose: bool, limit: int = 0) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+    today = thingsdate_from_iso(today_iso)
+    return fetch_tasks(
+        "TASK.type = ? AND TASK.status = ? AND TASK.trashed = 0 AND TASK.deadline IS NOT NULL AND TASK.deadline < ?",
+        [TYPE_TODO, STATUS_OPEN, today],
+        verbose=verbose,
+        include_start=True,
+        limit=limit,
+        order='TASK.deadline, TASK."index"',
+    )
+
+
+def snapshot_tasks(*, today_iso: str, verbose: bool, minimal: bool, limit: int) -> tuple[dict[str, Any], dict[str, Any]]:
+    today, backend = view_tasks("today", verbose=verbose)
+    overdue, _ = overdue_tasks(today_iso=today_iso, verbose=verbose)
+    inbox, _ = view_tasks("inbox", verbose=verbose)
+    views = {"today": today, "overdue": overdue, "inbox": inbox}
+    out: dict[str, Any] = {}
+    for name, tasks in views.items():
+        selected = tasks[:limit] if limit else tasks
+        if minimal:
+            if name == "overdue":
+                minimal_tasks = [{"name": task.get("name", ""), "dueDate": task.get("dueDate")} for task in selected]
+            else:
+                minimal_tasks = [{"name": task.get("name", "")} for task in selected]
+            out[name] = {"count": len(tasks), "tasks": minimal_tasks}
+        else:
+            out[name] = {"count": len(tasks), "tasks": selected}
+    return out, backend
+
+
+def list_projects() -> tuple[list[dict[str, Any]], dict[str, Any]]:
+    conn, info = connect_readonly()
+    try:
+        rows = conn.execute(
+            f"""{TASK_SELECT}
+            WHERE TASK.type = ? AND TASK.status = ? AND TASK.trashed = 0
+            ORDER BY TASK."index" """,
+            (TYPE_PROJECT, STATUS_OPEN),
+        ).fetchall()
+    except sqlite3.Error as exc:
+        raise ThingsError("E_IO", f"Things SQLite query failed: {exc}") from exc
+    finally:
+        conn.close()
+    return [row_to_project(row) for row in rows], {"name": "sqlite", "path": str(info.path)}
+
+
+def list_areas() -> tuple[list[dict[str, Any]], dict[str, Any]]:
+    conn, info = connect_readonly()
+    try:
+        rows = conn.execute(
+            f"""{AREA_SELECT}
+            WHERE AREA.visible IS NULL OR AREA.visible != 0
+            ORDER BY AREA."index" """
+        ).fetchall()
+    except sqlite3.Error as exc:
+        raise ThingsError("E_IO", f"Things SQLite query failed: {exc}") from exc
+    finally:
+        conn.close()
+    return [row_to_area(row) for row in rows], {"name": "sqlite", "path": str(info.path)}
+
+
+def list_tags() -> tuple[list[dict[str, Any]], dict[str, Any]]:
+    conn, info = connect_readonly()
+    try:
+        rows = conn.execute('SELECT uuid, title FROM TMTag ORDER BY "index"').fetchall()
+    except sqlite3.Error as exc:
+        raise ThingsError("E_IO", f"Things SQLite query failed: {exc}") from exc
+    finally:
+        conn.close()
+    return [row_to_tag(row) for row in rows], {"name": "sqlite", "path": str(info.path)}
+
+
 def inspect_task(target: str, *, include_completed: bool = False) -> tuple[dict[str, Any], dict[str, Any]]:
     statuses = (STATUS_OPEN, STATUS_CANCELED, STATUS_COMPLETED) if include_completed else (STATUS_OPEN,)
     placeholders = ",".join("?" for _ in statuses)
@@ -547,7 +843,31 @@ def inspect_task(target: str, *, include_completed: bool = False) -> tuple[dict[
     row = rows[0]
     if len(rows) > 1 and not (row["uuid"] == target or row["title"] == target):
         raise ThingsError("E_VALIDATION", f"ambiguous target prefix: {target}")
-    result_type = "project" if row["type"] == TYPE_PROJECT else "heading" if row["type"] == TYPE_HEADING else "to-do"
+    if row["type"] == TYPE_PROJECT:
+        item_statuses = (STATUS_OPEN, STATUS_CANCELED, STATUS_COMPLETED) if include_completed else (STATUS_OPEN,)
+        item_placeholders = ",".join("?" for _ in item_statuses)
+        try:
+            conn, _ = connect_readonly()
+            item_rows = conn.execute(
+                f"""{TASK_SELECT}
+                WHERE TASK.type = ?
+                  AND TASK.trashed = 0
+                  AND TASK.status IN ({item_placeholders})
+                  AND (TASK.project = ? OR TASK.heading IN (
+                      SELECT H.uuid FROM TMTask H WHERE H.project = ?
+                  ))
+                ORDER BY TASK.status, TASK."index", TASK.todayIndex""",
+                (TYPE_TODO, *item_statuses, row["uuid"], row["uuid"]),
+            ).fetchall()
+        except sqlite3.Error as exc:
+            raise ThingsError("E_IO", f"Things SQLite query failed: {exc}") from exc
+        finally:
+            if "conn" in locals():
+                conn.close()
+        project = row_to_project(row, verbose=True)
+        items = [row_to_task(item, verbose=True, include_start=True) for item in item_rows]
+        return {"type": "project", "project": project, "items": items, "count": len(items)}, backend
+    result_type = "heading" if row["type"] == TYPE_HEADING else "to-do"
     return {"type": result_type, "task": row_to_task(row, verbose=True, include_start=True)}, backend
 
 
@@ -560,14 +880,43 @@ def run_url_scheme(command: str, params: dict[str, str]) -> None:
     clean = {key: value for key, value in params.items() if value is not None and value != ""}
     url = f"things:///{command}?" + urllib.parse.urlencode(clean, quote_via=urllib.parse.quote)
     try:
-        proc = subprocess.run(["open", url], capture_output=True, text=True, timeout=10, check=False)
+        proc = subprocess.run(["open", url], capture_output=True, text=True, timeout=URL_SCHEME_OPEN_TIMEOUT, check=False)
     except subprocess.TimeoutExpired as exc:
         raise ThingsError("E_TIMEOUT", "Things URL scheme timed out.", retryable=True) from exc
     except FileNotFoundError as exc:
         raise ThingsError("E_DEPENDENCY", "`open` command is not available.") from exc
     if proc.returncode != 0:
         raise ThingsError("E_RUNTIME", f"Things URL scheme failed: {proc.stderr.strip()}")
-    time.sleep(float(os.environ.get("THINGS_CLIENT_URL_SETTLE_SECS", "0.5")))
+    time.sleep(URL_SCHEME_SETTLE_SECS)
+
+
+def run_applescript(script: str, *, timeout: int = JXA_READ_TIMEOUT) -> str:
+    try:
+        proc = subprocess.run(["osascript", "-e", script], capture_output=True, text=True, timeout=timeout, check=False)
+    except subprocess.TimeoutExpired as exc:
+        raise ThingsError("E_TIMEOUT", f"AppleScript timed out after {timeout}s.", retryable=True) from exc
+    except FileNotFoundError as exc:
+        raise ThingsError("E_DEPENDENCY", "osascript is not available.") from exc
+    if proc.returncode != 0:
+        stderr = proc.stderr.strip()
+        if "not running" in stderr or "Connection is invalid" in stderr:
+            raise ThingsError("E_DEPENDENCY", "Things 3 is not running.", hint="Open Things 3 and retry.")
+        raise ThingsError("E_RUNTIME", f"AppleScript failed: {stderr}")
+    return proc.stdout.strip()
+
+
+def escape_applescript(value: str) -> str:
+    return value.replace("\\", "\\\\").replace('"', '\\"').replace("\n", "\\n").replace("\r", "")
+
+
+def looks_like_things_id(target: str) -> bool:
+    return bool(re.match(r"^[A-Za-z0-9]{15,}$", target))
+
+
+def applescript_todo_ref(target: str) -> str:
+    if looks_like_things_id(target):
+        return f'to do id "{escape_applescript(target)}"'
+    return f'to do named "{escape_applescript(target)}"'
 
 
 def task_line(task: dict[str, Any]) -> str:
