@@ -1,41 +1,33 @@
 # DevWorker Orchestration
 
-DevWorker is the planned always-on Mac mini workflow for turning loose human intent into local Codex implementation work. Things 3 stays the capture surface, GitHub Issues becomes the durable execution queue, and Codex app-server runs the actual coding sessions inside isolated workspaces.
+DevWorker is the planned Mac mini workflow for turning loose human intent into local Codex implementation work. Things 3 stays the capture surface, GitHub Issues becomes the durable execution queue, and Codex app-server runs the actual coding session in a target repo checkout.
 
-The main design choice is to keep capture flexible. A Things task can be a short natural-language note. The intake bridge uses an agent-native policy to decide whether it is clear enough to promote, needs clarification, or should be ignored.
+The first implementation should be intentionally small: one issue at a time, existing repo checkout, issue branch, local checks, direct merge to `main`, and GitHub issue updates. Worktrees, SQLite state, launchd, and Things automation are later layers after the core loop works.
 
-## Figure 1: End-To-End Flow
+## Figure 1: MVP Flow
 
 ```mermaid
 flowchart TD
-    A[Human captures loose intent<br/>in Things 3]
-    B[Intake bridge<br/>agent triage]
-    C{Clear enough<br/>to execute?}
-    D[Needs human clarification<br/>update Things item]
-    E[Create GitHub issue<br/>durable work item]
-    F[Mac mini DevWorker daemon<br/>scheduler and runner]
-    G[Per-issue workspace<br/>git worktree or clone]
-    H[Codex app-server thread<br/>local coding session]
-    I[Repo guardrails<br/>AGENTS, WORKFLOW, checks]
-    J[Commit or PR<br/>proof of work]
-    K{Human review<br/>needed?}
-    L[Things review reminder]
-    M[Close or archive<br/>issue and intake item]
+    A[GitHub issue<br/>agent-ready work item]
+    B[devworker CLI<br/>manual run]
+    C[Target repo checkout<br/>/Users/dobby/GitHub/repo]
+    D[Issue branch<br/>devworker/issue-123-slug]
+    E[Codex app-server<br/>runs in repo checkout]
+    F[Repo guardrails<br/>AGENTS and checks]
+    G[Commit on issue branch]
+    H[Merge to main<br/>direct local merge]
+    I[Push main]
+    J[Update or close<br/>GitHub issue]
 
     A --> B
     B --> C
-    C -- no --> D
-    D --> A
-    C -- yes --> E
-    E --> F
-    F --> G
+    C --> D
+    D --> E
+    F --> E
+    E --> G
     G --> H
-    I --> H
-    H --> J
-    J --> K
-    K -- yes --> L
-    L --> M
-    K -- no --> M
+    H --> I
+    I --> J
 ```
 
 ## Main Parts
@@ -44,7 +36,7 @@ flowchart TD
 
 Things is the human attention and capture layer. It should not become a strict ticket form.
 
-The bridge can watch a Things project, a tag, or both. Tags are routing hints, not required schema. A captured item can be rough if the intent is still obvious enough for an agent to turn into a GitHub issue.
+For the MVP, Things automation is deferred. The first durable queue is GitHub Issues. Later, a bridge can watch a Things project, a tag, or both. Tags should be routing hints, not required schema.
 
 ### Intake Bridge
 
@@ -57,7 +49,7 @@ Its job is to answer:
 - Is the task clear enough for autonomous execution?
 - What acceptance signal should the worker use?
 
-If the answer is clear, the bridge promotes the item to GitHub. If not, it updates the Things item with a concise clarification request and leaves it in the human attention loop.
+The intake bridge is not part of the MVP. When added later, if the answer is clear, the bridge promotes the item to GitHub. If not, it updates the Things item with a concise clarification request and leaves it in the human attention loop.
 
 ### GitHub Issues
 
@@ -65,23 +57,23 @@ GitHub Issues is the source of truth after promotion. It carries the durable wor
 
 This replaces Linear for the first version. Symphony is Linear-first in its reference spec, but the useful pattern is the tracker-backed orchestration model, not Linear itself.
 
-### Mac Mini DevWorker
+### DevWorker CLI
 
-The DevWorker daemon runs on the Mac mini and watches eligible GitHub issues. It owns scheduling, claiming, retries, cancellation, and high-level observability.
+The first DevWorker is a manual CLI in `/Users/dobby/GitHub/devworker`. It takes one GitHub issue, prepares the target repo branch, starts Codex app-server, runs checks, merges to `main`, and updates the issue.
 
-It should stay a scheduler and runner. It should not contain detailed repo implementation logic. Repo-specific behavior should live in repo docs, `AGENTS.md`, `WORKFLOW.md`, skills, checks, and the Codex prompt.
+It should stay a runner, not a place for repo-specific implementation rules. Repo-specific behavior should live in repo docs, `AGENTS.md`, checks, and the Codex prompt.
 
-### Per-Issue Workspace
+### Target Repo Checkout
 
-Each issue runs in its own workspace, most likely a `git worktree` under a DevWorker workspace root.
+The MVP runs in the existing target repo checkout under `/Users/dobby/GitHub/<repo>`.
 
-This is the right exception to the normal solo direct-main preference because the Mac mini may run multiple background tasks concurrently.
+That means it is one issue at a time per repo. The checkout must be clean before DevWorker starts. This keeps the first version understandable and avoids adding worktree cleanup before it is needed.
 
 ### Codex App-Server Thread
 
-The worker starts Codex through `codex app-server`, creates a thread for the issue, starts a turn, and streams events back to the worker.
+The worker starts Codex through `codex app-server`, creates a thread for the issue, starts a turn, and streams events until the run finishes.
 
-The GitHub issue or local worker ledger should record the Codex `thread_id`. That should be treated as a debugging and resume handle, not as the primary source of truth.
+For MVP, record the Codex `thread_id` in the GitHub issue comment or local log if easy. It is useful for debugging, but GitHub issue state remains authoritative.
 
 ### Repo Guardrails
 
@@ -99,26 +91,40 @@ Repeated failures should become repo docs, skills, or mechanical checks.
 1. The human captures intent in Things 3 using normal language.
 2. The intake bridge reads candidate Things items and performs agent triage.
 3. If the task is unclear, the bridge asks for clarification in Things and stops.
-4. If the task is clear, the bridge creates a GitHub issue and marks the Things item as promoted.
-5. The Mac mini DevWorker claims eligible GitHub issues.
-6. The worker creates or reuses a per-issue workspace.
-7. The worker starts a Codex app-server thread in that workspace.
-8. Codex implements, validates, and updates the issue or PR according to repo guidance.
-9. If human review is needed, the system creates a Things reminder.
-10. When the issue reaches a terminal state, the worker archives or cleans up the workspace according to policy.
+4. The human or a later bridge creates a GitHub issue and applies the ready label.
+5. The human runs `devworker run <issue-url>` or equivalent.
+6. DevWorker verifies the target repo checkout is clean.
+7. DevWorker creates `devworker/issue-<number>-<slug>` from current `main`.
+8. DevWorker starts a Codex app-server thread in the target repo checkout.
+9. Codex implements and commits on the issue branch.
+10. DevWorker runs the repo fast checks.
+11. DevWorker merges the issue branch to `main`, pushes `main`, and updates or closes the issue.
 
 ## Boundaries
 
-- Things is for capture and human attention.
+- Things is for capture and human attention, later.
 - GitHub Issues is the durable execution queue.
-- DevWorker owns scheduling, retries, workspaces, and Codex process supervision.
-- Codex owns implementation inside the workspace.
+- DevWorker MVP owns one manual issue run at a time.
+- Codex owns implementation inside the target repo checkout.
 - The target repo owns local rules, checks, and acceptance expectations.
 - The Codex app sidebar is useful for observation, but correctness should not depend on it.
 
+## Later Layers
+
+These are useful, but not part of the first implementation:
+
+- Things intake bridge
+- launchd always-on daemon
+- per-issue git worktrees under `~/.devworker/worktrees`
+- SQLite runtime ledger under `~/.devworker/state`
+- retry queue and stale-claim recovery
+- dashboard or status server
+
+Add worktrees when DevWorker needs parallel runs or when modifying the normal repo checkout becomes too disruptive. Add SQLite when local crash recovery needs more than GitHub labels/comments and JSONL logs.
+
 ## Skill Fit
 
-This workflow should eventually become a small DevWorker intake skill. The skill should encode the judgment policy for promotion without forcing the human into a strict template.
+The Things-to-GitHub workflow should eventually become a small DevWorker intake skill. The skill should encode the judgment policy for promotion without forcing the human into a strict template.
 
 Good skill behavior:
 
@@ -130,8 +136,9 @@ Good skill behavior:
 
 ## Notes
 
-- Use GitHub before Linear for the first version because the work is repo-native and GitHub is already authenticated locally.
-- Store Codex thread IDs for recovery and debugging, but keep GitHub issue state authoritative.
+- Use GitHub before Linear because the work is repo-native and GitHub is already authenticated locally.
+- Do not use SQLite or worktrees in the MVP. They are reliability/concurrency layers, not prerequisites.
+- Store Codex thread IDs for recovery and debugging if easy, but keep GitHub issue state authoritative.
 - Verify early whether app-server-created threads appear exactly as desired in the Codex desktop app. The architecture should still work if observation happens through worker logs or an optional local dashboard.
 
 ## References
