@@ -58,7 +58,8 @@ def parse_env_file(path: Path, key: str) -> str | None:
             parts = [line]
         if not parts:
             continue
-        env_key, _, value = parts[0].partition("=")
+        token = parts[1] if parts[0] == "export" and len(parts) > 1 else parts[0]
+        env_key, _, value = token.partition("=")
         if env_key == key:
             return value.strip()
     return None

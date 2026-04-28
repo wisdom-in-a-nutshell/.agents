@@ -49,6 +49,9 @@ try:
 
         explicit.write_text("THINGS3_AUTH_TOKEN=file-secret\n", encoding="utf-8")
         assert read_auth_token() == "file-secret"
+
+        explicit.write_text("export THINGS3_AUTH_TOKEN=exported-file-secret\n", encoding="utf-8")
+        assert read_auth_token() == "exported-file-secret"
 finally:
     os.environ.clear()
     os.environ.update(old_env)
