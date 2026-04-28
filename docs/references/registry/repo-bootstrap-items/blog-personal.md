@@ -2,7 +2,7 @@
 repo_name: "blog-personal"
 path: "~/GitHub/blog-personal"
 mcp_count: 0
-skill_count: 18
+skill_count: 20
 repo_local_skill_count: 1
 global_agent_count: 1
 custom_agent_count: 1
@@ -23,10 +23,12 @@ global_skills:
   - "architecture-docs"
   - "defuddle"
   - "find-skills"
+  - "issue-work-handoff"
   - "pdf"
   - "project"
   - "secret-management"
   - "skill-creator"
+  - "things-client"
 repo_skills:
   - "adi-writing"
   - "agent-native-repo-playbook"
@@ -50,11 +52,13 @@ skills:
   - "defuddle"
   - "find-skills"
   - "imagegen"
+  - "issue-work-handoff"
   - "pdf"
   - "pretty-mermaid"
   - "project"
   - "secret-management"
   - "skill-creator"
+  - "things-client"
   - "vercel-react-best-practices"
   - "web-design-guidelines"
   - "web-typography"

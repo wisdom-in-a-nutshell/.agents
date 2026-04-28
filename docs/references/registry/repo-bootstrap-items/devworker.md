@@ -2,7 +2,7 @@
 repo_name: "devworker"
 path: "~/GitHub/devworker"
 mcp_count: 0
-skill_count: 10
+skill_count: 12
 repo_local_skill_count: 0
 global_agent_count: 1
 custom_agent_count: 0
@@ -21,10 +21,12 @@ global_skills:
   - "architecture-docs"
   - "defuddle"
   - "find-skills"
+  - "issue-work-handoff"
   - "pdf"
   - "project"
   - "secret-management"
   - "skill-creator"
+  - "things-client"
 repo_skills:
   - "agent-native-repo-playbook"
   - "codex-app-server"
@@ -36,10 +38,12 @@ skills:
   - "codex-app-server"
   - "defuddle"
   - "find-skills"
+  - "issue-work-handoff"
   - "pdf"
   - "project"
   - "secret-management"
   - "skill-creator"
+  - "things-client"
 ---
 
 Generated from `codex/config/repo-bootstrap.json`, `skills/registry.json`, and `agents/registry.json`. Do not edit manually.

@@ -2,7 +2,7 @@
 repo_name: "codexclaw"
 path: "~/GitHub/codexclaw"
 mcp_count: 1
-skill_count: 21
+skill_count: 23
 repo_local_skill_count: 0
 global_agent_count: 1
 custom_agent_count: 0
@@ -22,10 +22,12 @@ global_skills:
   - "architecture-docs"
   - "defuddle"
   - "find-skills"
+  - "issue-work-handoff"
   - "pdf"
   - "project"
   - "secret-management"
   - "skill-creator"
+  - "things-client"
 repo_skills:
   - "agent-native-repo-playbook"
   - "client-interface-guidelines"
@@ -55,6 +57,7 @@ skills:
   - "ios-debugger-agent"
   - "ios-ettrace-performance"
   - "ios-memgraph-leaks"
+  - "issue-work-handoff"
   - "pdf"
   - "project"
   - "secret-management"
@@ -63,6 +66,7 @@ skills:
   - "swiftui-performance-audit"
   - "swiftui-ui-patterns"
   - "swiftui-view-refactor"
+  - "things-client"
 ---
 
 Generated from `codex/config/repo-bootstrap.json`, `skills/registry.json`, and `agents/registry.json`. Do not edit manually.

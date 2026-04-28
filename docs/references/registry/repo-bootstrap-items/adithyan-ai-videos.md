@@ -2,7 +2,7 @@
 repo_name: "adithyan-ai-videos"
 path: "~/GitHub/adithyan-ai-videos"
 mcp_count: 0
-skill_count: 16
+skill_count: 18
 repo_local_skill_count: 1
 global_agent_count: 1
 custom_agent_count: 1
@@ -23,10 +23,12 @@ global_skills:
   - "architecture-docs"
   - "defuddle"
   - "find-skills"
+  - "issue-work-handoff"
   - "pdf"
   - "project"
   - "secret-management"
   - "skill-creator"
+  - "things-client"
 repo_skills:
   - "agent-native-repo-playbook"
   - "client-interface-guidelines"
@@ -46,12 +48,14 @@ skills:
   - "defuddle"
   - "find-skills"
   - "imagegen"
+  - "issue-work-handoff"
   - "media-toolkit"
   - "pdf"
   - "project"
   - "remotion"
   - "secret-management"
   - "skill-creator"
+  - "things-client"
   - "vercel-react-best-practices"
   - "web-design-guidelines"
 ---

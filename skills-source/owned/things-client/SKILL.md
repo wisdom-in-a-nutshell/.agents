@@ -24,7 +24,7 @@ Output is a stable JSON envelope by default. Use `--plain` only for human inspec
 
 ## Boundaries
 
-- Reads use the local Things SQLite database in read-only mode.
+- Reads use the local Things SQLite database in read-only mode when a path is configured, otherwise bounded JXA reads against the running Things app.
 - Writes use supported Things URL-scheme operations.
 - Do not write directly to the Things SQLite database.
 - Do not encode Dobby memory, journal, calendar, or area-routing policy here.
@@ -41,6 +41,16 @@ Task note updates need the Things URL-scheme auth token. The CLI looks for `THIN
 5. `/Users/dobby/GitHub/adi/.env`
 
 The token is never printed.
+
+## SQLite Path
+
+The CLI does not scan the Things app-group directory by default because that can block on some macOS states. To force SQLite reads, set one of:
+
+- `THINGS_CLIENT_SQLITE_PATH`
+- `THINGS_SQLITE_PATH`
+- `DOBBY_THINGS_SQLITE_PATH`
+
+Without one of those variables, read commands use JXA with a timeout.
 
 ## Common Patterns
 

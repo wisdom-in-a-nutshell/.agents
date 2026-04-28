@@ -93,6 +93,22 @@
       "upstream_ref": "vercel-labs/skills:skills/find-skills@main"
     },
     {
+      "skill": "issue-work-handoff",
+      "origin": "owned",
+      "scope": "global",
+      "repos": [],
+      "source_path": "skills-source/owned/issue-work-handoff",
+      "upstream_ref": "-"
+    },
+    {
+      "skill": "things-client",
+      "origin": "owned",
+      "scope": "global",
+      "repos": [],
+      "source_path": "skills-source/owned/things-client",
+      "upstream_ref": "-"
+    },
+    {
       "skill": "pretty-mermaid",
       "origin": "owned",
       "scope": "repo",

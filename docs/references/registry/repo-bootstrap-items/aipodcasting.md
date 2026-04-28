@@ -2,7 +2,7 @@
 repo_name: "aipodcasting"
 path: "~/GitHub/aipodcasting"
 mcp_count: 0
-skill_count: 18
+skill_count: 20
 repo_local_skill_count: 0
 global_agent_count: 1
 custom_agent_count: 0
@@ -21,10 +21,12 @@ global_skills:
   - "architecture-docs"
   - "defuddle"
   - "find-skills"
+  - "issue-work-handoff"
   - "pdf"
   - "project"
   - "secret-management"
   - "skill-creator"
+  - "things-client"
 repo_skills:
   - "agent-native-repo-playbook"
   - "ai-podcasting"
@@ -48,12 +50,14 @@ skills:
   - "client-interface-guidelines"
   - "defuddle"
   - "find-skills"
+  - "issue-work-handoff"
   - "modal-function-sync"
   - "pdf"
   - "project"
   - "secret-management"
   - "show-password-setup"
   - "skill-creator"
+  - "things-client"
   - "vercel-react-best-practices"
   - "web-design-guidelines"
 ---

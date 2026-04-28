@@ -2,7 +2,7 @@
 repo_name: "adi"
 path: "~/GitHub/adi"
 mcp_count: 0
-skill_count: 21
+skill_count: 23
 repo_local_skill_count: 0
 global_agent_count: 1
 custom_agent_count: 1
@@ -23,10 +23,12 @@ global_skills:
   - "architecture-docs"
   - "defuddle"
   - "find-skills"
+  - "issue-work-handoff"
   - "pdf"
   - "project"
   - "secret-management"
   - "skill-creator"
+  - "things-client"
 repo_skills:
   - "adi-writing"
   - "agent-native-repo-playbook"
@@ -57,6 +59,7 @@ skills:
   - "find-skills"
   - "health"
   - "imagegen"
+  - "issue-work-handoff"
   - "journal-checkin"
   - "pdf"
   - "pretty-mermaid"
@@ -64,6 +67,7 @@ skills:
   - "secret-management"
   - "skill-creator"
   - "social-media-publishing"
+  - "things-client"
 ---
 
 Generated from `codex/config/repo-bootstrap.json`, `skills/registry.json`, and `agents/registry.json`. Do not edit manually.

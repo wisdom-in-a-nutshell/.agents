@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 import argparse
-import glob
 import json
 import os
 import re
@@ -23,10 +22,7 @@ SCHEMA_VERSION = "1.0"
 AUTH_TOKEN_ENV = "THINGS3_AUTH_TOKEN"
 SQLITE_PATH_ENVS = ("THINGS_CLIENT_SQLITE_PATH", "THINGS_SQLITE_PATH", "DOBBY_THINGS_SQLITE_PATH")
 THINGS_BUNDLE_ID = "com.culturedcode.ThingsMac"
-THINGS_SQLITE_PATTERNS = (
-    "~/Library/Group Containers/JLMPQHK86H.com.culturedcode.ThingsMac/ThingsData-*/Things Database.thingsdatabase/main.sqlite",
-    "~/Library/Group Containers/JLMPQHK86H.com.culturedcode.ThingsMac/Things Database.thingsdatabase/main.sqlite",
-)
+JXA_READ_TIMEOUT = int(os.environ.get("THINGS_CLIENT_JXA_TIMEOUT_SECS", "10"))
 
 STATUS_OPEN = 0
 STATUS_CANCELED = 2
@@ -163,27 +159,26 @@ def read_auth_token() -> str:
     )
 
 
-def find_database() -> DatabaseInfo:
+def configured_database_path() -> Path | None:
     for env_name in SQLITE_PATH_ENVS:
         configured = os.environ.get(env_name)
         if configured:
             path = Path(configured).expanduser()
             if not path.exists():
                 raise ThingsError("E_NOT_FOUND", f"{env_name} points to a missing file: {path}")
-            return DatabaseInfo(path=path)
+            return path
+    return None
 
-    candidates: list[Path] = []
-    for pattern in THINGS_SQLITE_PATTERNS:
-        candidates.extend(Path(p) for p in glob.glob(os.path.expanduser(pattern)))
 
-    def is_backup(path: Path) -> bool:
-        return any(".bak" in part.lower() or "backup" in part.lower() for part in path.parts)
-
-    candidates = [path for path in candidates if path.exists() and not is_backup(path)]
-    if not candidates:
-        raise ThingsError("E_NOT_FOUND", "Things SQLite database not found.")
-    candidates.sort(key=lambda path: path.stat().st_mtime, reverse=True)
-    return DatabaseInfo(path=candidates[0])
+def find_database() -> DatabaseInfo:
+    path = configured_database_path()
+    if path is None:
+        raise ThingsError(
+            "E_NOT_FOUND",
+            "Things SQLite database path is not configured.",
+            hint="Set THINGS_CLIENT_SQLITE_PATH to use SQLite reads, or use the default JXA read backend.",
+        )
+    return DatabaseInfo(path=path)
 
 
 def connect_readonly() -> tuple[sqlite3.Connection, DatabaseInfo]:
@@ -195,6 +190,147 @@ def connect_readonly() -> tuple[sqlite3.Connection, DatabaseInfo]:
     except sqlite3.Error as exc:
         raise ThingsError("E_IO", f"failed to open Things SQLite database read-only: {exc}") from exc
     return conn, info
+
+
+def run_jxa(script: str) -> Any:
+    try:
+        proc = subprocess.run(
+            ["osascript", "-l", "JavaScript", "-e", script],
+            capture_output=True,
+            text=True,
+            timeout=JXA_READ_TIMEOUT,
+            check=False,
+        )
+    except subprocess.TimeoutExpired as exc:
+        raise ThingsError("E_TIMEOUT", f"JXA timed out after {JXA_READ_TIMEOUT}s.", retryable=True) from exc
+    except FileNotFoundError as exc:
+        raise ThingsError("E_DEPENDENCY", "osascript is not available.") from exc
+    if proc.returncode != 0:
+        stderr = proc.stderr.strip()
+        if "not running" in stderr or "Connection is invalid" in stderr:
+            raise ThingsError("E_DEPENDENCY", "Things 3 is not running.", hint="Open Things 3 and retry.")
+        raise ThingsError("E_RUNTIME", f"JXA failed: {stderr}")
+    stdout = proc.stdout.strip()
+    if not stdout:
+        return []
+    try:
+        return json.loads(stdout)
+    except json.JSONDecodeError as exc:
+        raise ThingsError("E_RUNTIME", f"JXA returned invalid JSON: {exc}") from exc
+
+
+def jxa_task_fields(*, verbose: bool) -> str:
+    base = """
+        id: t.id(),
+        name: t.name(),
+        status: t.status(),
+        tagNames: (() => { try { return t.tagNames() || ""; } catch(e) { return ""; } })(),
+        project: (() => { try { const p = t.project(); return p ? p.name() : null; } catch(e) { return null; } })(),
+        area: (() => { try { const a = t.area(); return a ? a.name() : null; } catch(e) { return null; } })(),
+    """
+    if not verbose:
+        return base
+    return base + """
+        notes: (() => { try { return t.notes() || ""; } catch(e) { return ""; } })(),
+        dueDate: (() => { try { const d = t.dueDate(); return d ? d.toISOString().slice(0, 10) : null; } catch(e) { return null; } })(),
+        creationDate: (() => { try { return t.creationDate().toISOString(); } catch(e) { return null; } })(),
+        modificationDate: (() => { try { const d = t.modificationDate(); return d ? d.toISOString() : null; } catch(e) { return null; } })(),
+    """
+
+
+def jxa_list_tasks(*, tag: str | None, verbose: bool, limit: int) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+    tag_json = json.dumps((tag or "").lower())
+    script = f"""
+const things = Application("Things3");
+const tag = {tag_json};
+const limit = {int(limit)};
+const out = [];
+function hasTag(t) {{
+  if (!tag) return true;
+  let names = "";
+  try {{ names = t.tagNames() || ""; }} catch(e) {{ names = ""; }}
+  return names.split(",").map(s => s.trim().toLowerCase()).includes(tag);
+}}
+for (const t of things.toDos()) {{
+  if (t.status() !== "open") continue;
+  if (!hasTag(t)) continue;
+  out.push({{ {jxa_task_fields(verbose=verbose)} }});
+  if (limit > 0 && out.length >= limit) break;
+}}
+JSON.stringify(out);
+"""
+    return run_jxa(script), {"name": "jxa"}
+
+
+def jxa_search_tasks(query: str, *, tag: str | None, include_completed: bool, verbose: bool, limit: int) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+    query_json = json.dumps(query.lower())
+    tag_json = json.dumps((tag or "").lower())
+    include_json = "true" if include_completed else "false"
+    script = f"""
+const things = Application("Things3");
+const query = {query_json};
+const tag = {tag_json};
+const includeCompleted = {include_json};
+const limit = {int(limit)};
+const out = [];
+function hasTag(t) {{
+  if (!tag) return true;
+  let names = "";
+  try {{ names = t.tagNames() || ""; }} catch(e) {{ names = ""; }}
+  return names.split(",").map(s => s.trim().toLowerCase()).includes(tag);
+}}
+function matches(t) {{
+  let notes = "";
+  try {{ notes = t.notes() || ""; }} catch(e) {{ notes = ""; }}
+  return t.name().toLowerCase().includes(query) || notes.toLowerCase().includes(query);
+}}
+function scan(todos) {{
+  for (const t of todos) {{
+    if (!includeCompleted && t.status() !== "open") continue;
+    if (!hasTag(t) || !matches(t)) continue;
+    out.push({{ {jxa_task_fields(verbose=verbose)} }});
+    if (limit > 0 && out.length >= limit) return;
+  }}
+}}
+scan(things.toDos());
+if (includeCompleted && (limit === 0 || out.length < limit)) {{
+  try {{ scan(things.lists.byName("Logbook").toDos()); }} catch(e) {{}}
+}}
+JSON.stringify(out);
+"""
+    return run_jxa(script), {"name": "jxa"}
+
+
+def jxa_inspect_task(target: str, *, include_completed: bool) -> tuple[dict[str, Any], dict[str, Any]]:
+    target_json = json.dumps(target)
+    include_json = "true" if include_completed else "false"
+    script = f"""
+const things = Application("Things3");
+const target = {target_json};
+const includeCompleted = {include_json};
+const matches = [];
+function scan(todos) {{
+  for (const t of todos) {{
+    if (!includeCompleted && t.status() !== "open") continue;
+    const id = t.id();
+    const name = t.name();
+    if (id === target || id.startsWith(target) || name === target) {{
+      matches.push({{ {jxa_task_fields(verbose=True)} }});
+    }}
+  }}
+}}
+scan(things.toDos());
+if (includeCompleted) {{
+  try {{ scan(things.lists.byName("Logbook").toDos()); }} catch(e) {{}}
+}}
+JSON.stringify(matches);
+"""
+    matches = run_jxa(script)
+    if not matches:
+        raise ThingsError("E_NOT_FOUND", f"not found: {target}")
+    if len(matches) > 1 and not (matches[0].get("id") == target or matches[0].get("name") == target):
+        raise ThingsError("E_VALIDATION", f"ambiguous target prefix: {target}")
+    return {"type": "to-do", "task": matches[0]}, {"name": "jxa"}
 
 
 def thingsdate_to_iso(value: int | None) -> str | None:
@@ -311,6 +447,8 @@ def fetch_tasks(where: str, params: Iterable[Any], *, verbose: bool, include_sta
 
 
 def list_tasks(*, tag: str | None, verbose: bool, limit: int) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+    if configured_database_path() is None:
+        return jxa_list_tasks(tag=tag, verbose=verbose, limit=limit)
     tag_sql, tag_params = tag_filter_clause(tag)
     return fetch_tasks(
         f"TASK.type = ? AND TASK.status = ? AND TASK.trashed = 0{tag_sql}",
@@ -322,6 +460,8 @@ def list_tasks(*, tag: str | None, verbose: bool, limit: int) -> tuple[list[dict
 
 
 def search_tasks(query: str, *, tag: str | None, include_completed: bool, verbose: bool, limit: int) -> tuple[list[dict[str, Any]], dict[str, Any]]:
+    if configured_database_path() is None:
+        return jxa_search_tasks(query, tag=tag, include_completed=include_completed, verbose=verbose, limit=limit)
     tag_sql, tag_params = tag_filter_clause(tag)
     statuses = (STATUS_OPEN, STATUS_CANCELED, STATUS_COMPLETED) if include_completed else (STATUS_OPEN,)
     placeholders = ",".join("?" for _ in statuses)
@@ -337,6 +477,8 @@ def search_tasks(query: str, *, tag: str | None, include_completed: bool, verbos
 
 
 def inspect_task(target: str, *, include_completed: bool = False) -> tuple[dict[str, Any], dict[str, Any]]:
+    if configured_database_path() is None:
+        return jxa_inspect_task(target, include_completed=include_completed)
     conn, info = connect_readonly()
     statuses = (STATUS_OPEN, STATUS_CANCELED, STATUS_COMPLETED) if include_completed else (STATUS_OPEN,)
     placeholders = ",".join("?" for _ in statuses)
@@ -536,17 +678,33 @@ def cmd_doctor(args: argparse.Namespace) -> int:
     checks.append({"name": "open_command", "ok": open_ok, "detail": shutil_which("open") or "not found"})
 
     sqlite_ok = False
-    sqlite_detail = ""
+    sqlite_detail = "not configured"
     try:
-        info = find_database()
-        conn, _ = connect_readonly()
-        conn.execute("SELECT name FROM sqlite_master LIMIT 1").fetchall()
-        conn.close()
-        sqlite_ok = True
-        sqlite_detail = str(info.path)
+        sqlite_configured = configured_database_path() is not None
     except ThingsError as exc:
+        sqlite_configured = False
         sqlite_detail = exc.message
+    if sqlite_configured:
+        try:
+            info = find_database()
+            conn, _ = connect_readonly()
+            conn.execute("SELECT name FROM sqlite_master LIMIT 1").fetchall()
+            conn.close()
+            sqlite_ok = True
+            sqlite_detail = str(info.path)
+        except ThingsError as exc:
+            sqlite_detail = exc.message
     checks.append({"name": "sqlite_read_backend", "ok": sqlite_ok, "detail": sqlite_detail})
+
+    jxa_ok = False
+    jxa_detail = ""
+    try:
+        _ = run_jxa('const things = Application("Things3"); JSON.stringify({count: things.toDos().length});')
+        jxa_ok = True
+        jxa_detail = "ok"
+    except ThingsError as exc:
+        jxa_detail = exc.message
+    checks.append({"name": "jxa_read_backend", "ok": jxa_ok, "detail": jxa_detail})
 
     token_ok = False
     token_detail = "not configured"
@@ -560,15 +718,28 @@ def cmd_doctor(args: argparse.Namespace) -> int:
 
     installed_detail = ""
     installed_ok = False
+    running_detail = ""
+    running_ok = False
+    try:
+        running = subprocess.run(["pgrep", "-x", "Things3"], capture_output=True, text=True, timeout=5)
+        running_ok = bool(running.stdout.strip())
+        running_detail = "running" if running_ok else "not running"
+    except Exception as exc:
+        running_detail = str(exc)
+    checks.append({"name": "things3_running", "ok": running_ok, "detail": running_detail})
+
     try:
         proc = subprocess.run(["mdfind", f"kMDItemCFBundleIdentifier == '{THINGS_BUNDLE_ID}'"], capture_output=True, text=True, timeout=5)
         installed_detail = proc.stdout.strip().splitlines()[0] if proc.stdout.strip() else "not found"
         installed_ok = bool(proc.stdout.strip())
     except Exception as exc:
         installed_detail = str(exc)
+    if not installed_ok and running_ok:
+        installed_ok = True
+        installed_detail = running_detail
     checks.append({"name": "things3_installed", "ok": installed_ok, "detail": installed_detail})
 
-    ok = open_ok and sqlite_ok
+    ok = open_ok and (sqlite_ok or jxa_ok)
     data = {"ok": ok, "checks": checks}
     if args.plain:
         lines = [f"ok: {str(ok).lower()}"]

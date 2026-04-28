@@ -2,7 +2,7 @@
 repo_name: "win"
 path: "~/GitHub/win"
 mcp_count: 0
-skill_count: 16
+skill_count: 18
 repo_local_skill_count: 0
 global_agent_count: 1
 custom_agent_count: 0
@@ -21,10 +21,12 @@ global_skills:
   - "architecture-docs"
   - "defuddle"
   - "find-skills"
+  - "issue-work-handoff"
   - "pdf"
   - "project"
   - "secret-management"
   - "skill-creator"
+  - "things-client"
 repo_skills:
   - "agent-native-repo-playbook"
   - "aip-dto-contract-sync"
@@ -45,6 +47,7 @@ skills:
   - "client-interface-guidelines"
   - "defuddle"
   - "find-skills"
+  - "issue-work-handoff"
   - "media-toolkit"
   - "modal-function-sync"
   - "pdf"
@@ -52,6 +55,7 @@ skills:
   - "secret-management"
   - "show-password-setup"
   - "skill-creator"
+  - "things-client"
 ---
 
 Generated from `codex/config/repo-bootstrap.json`, `skills/registry.json`, and `agents/registry.json`. Do not edit manually.

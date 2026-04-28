@@ -2,7 +2,7 @@
 repo_name: "angie"
 path: "~/GitHub/angie"
 mcp_count: 0
-skill_count: 13
+skill_count: 15
 repo_local_skill_count: 0
 global_agent_count: 1
 custom_agent_count: 0
@@ -21,10 +21,12 @@ global_skills:
   - "architecture-docs"
   - "defuddle"
   - "find-skills"
+  - "issue-work-handoff"
   - "pdf"
   - "project"
   - "secret-management"
   - "skill-creator"
+  - "things-client"
 repo_skills:
   - "agent-native-repo-playbook"
   - "client-interface-guidelines"
@@ -41,11 +43,13 @@ skills:
   - "dobby"
   - "find-skills"
   - "imagegen"
+  - "issue-work-handoff"
   - "journal-checkin"
   - "pdf"
   - "project"
   - "secret-management"
   - "skill-creator"
+  - "things-client"
 ---
 
 Generated from `codex/config/repo-bootstrap.json`, `skills/registry.json`, and `agents/registry.json`. Do not edit manually.
