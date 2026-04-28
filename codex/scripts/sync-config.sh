@@ -746,7 +746,13 @@ while i < len(lines):
     output.append(line)
     i += 1
 
-target.write_text("".join(output), encoding="utf-8")
+while output and not output[-1].strip():
+    output.pop()
+
+text = "".join(output)
+if text and not text.endswith("\n"):
+    text += "\n"
+target.write_text(text, encoding="utf-8")
 PY
 }
 
@@ -897,7 +903,13 @@ while i < len(lines):
     output.append(line)
     i += 1
 
-target.write_text("".join(output), encoding="utf-8")
+while output and not output[-1].strip():
+    output.pop()
+
+text = "".join(output)
+if text and not text.endswith("\n"):
+    text += "\n"
+target.write_text(text, encoding="utf-8")
 PY
 }
 

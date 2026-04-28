@@ -9,6 +9,7 @@ GLOBAL_AGENTS="${HOME}/.codex/AGENTS.md"
 XCODE_CONFIG="${HOME}/Library/Developer/Xcode/CodingAssistant/codex/config.toml"
 XCODE_RULES="${HOME}/Library/Developer/Xcode/CodingAssistant/codex/rules/xcode.rules"
 GHOSTTY_CONFIG="${HOME}/Library/Application Support/com.mitchellh.ghostty/config"
+REPO_FILTERS=()
 
 usage() {
   cat <<USAGE
@@ -29,11 +30,14 @@ Options:
   --xcode-config <p>     Override Xcode Codex config target
   --xcode-rules <p>      Override Xcode rules target
   --ghostty-config <p>   Override Ghostty config target
+  --repo <path>          Limit repo-local sync/check to an exact repo path
+                         (repeatable)
   -h, --help             Show this help
 
 Examples:
   ~/.agents/codex/scripts/bootstrap-machine-codex.sh
   ~/.agents/codex/scripts/bootstrap-machine-codex.sh --apply
+  ~/.agents/codex/scripts/bootstrap-machine-codex.sh --apply --repo ~/GitHub/adi
 USAGE
 }
 
@@ -84,6 +88,10 @@ while [[ $# -gt 0 ]]; do
       GHOSTTY_CONFIG="${2:-}"
       shift 2
       ;;
+    --repo)
+      REPO_FILTERS+=("${2:-}")
+      shift 2
+      ;;
     -h|--help)
       usage
       exit 0
@@ -98,6 +106,11 @@ MODE_FLAG="--dry-run"
 if (( APPLY == 1 )); then
   MODE_FLAG="--apply"
 fi
+
+REPO_ARGS=()
+for repo in "${REPO_FILTERS[@]}"; do
+  REPO_ARGS+=(--repo "$repo")
+done
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SYNC_CONFIG_SCRIPT="${SCRIPT_DIR}/sync-config.sh"
@@ -149,6 +162,7 @@ log "+ ${sync_trusted_cmd[*]}"
 sync_repo_configs_cmd=(
   "$SYNC_REPO_CONFIGS_SCRIPT"
   "$MODE_FLAG"
+  "${REPO_ARGS[@]}"
 )
 log "+ ${sync_repo_configs_cmd[*]}"
 "${sync_repo_configs_cmd[@]}"
@@ -173,6 +187,7 @@ check_cmd=(
   --global-config "$GLOBAL_CONFIG"
   --global-hooks "$GLOBAL_HOOKS"
   --xcode-config "$XCODE_CONFIG"
+  "${REPO_ARGS[@]}"
 )
 log "+ ${check_cmd[*]}"
 "${check_cmd[@]}"

@@ -130,6 +130,7 @@ codex_cmd=(
   "$CODEX_BOOTSTRAP_SCRIPT"
   "$MODE_FLAG"
   --github-root "$GITHUB_ROOT"
+  "${REPO_ARGS[@]}"
 )
 log "+ ${codex_cmd[*]}"
 "${codex_cmd[@]}"

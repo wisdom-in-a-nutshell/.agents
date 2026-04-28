@@ -163,3 +163,9 @@ assert payload["error"]["code"] == "E_VALIDATION", payload
 PY
 
 printf 'things-client tests passed\n'
+
+if [[ "${RUN_LIVE:-0}" == "1" ]]; then
+    bash "$ROOT/tests/live.sh"
+else
+    printf 'skipped things-client live tests; set RUN_LIVE=1 to run real Things write smoke\n'
+fi

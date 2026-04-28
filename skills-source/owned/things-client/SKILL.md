@@ -95,3 +95,10 @@ things-client complete <task-id>
 ```
 
 If a command fails, inspect the JSON `error.code` and `error.hint`; do not scrape prose output.
+
+## Testing
+
+- Cheap/non-mutating: `$HOME/.agents/skills-source/owned/things-client/tests/run.sh`
+- Opt-in live write smoke: `RUN_LIVE=1 $HOME/.agents/skills-source/owned/things-client/tests/run.sh`
+
+The live suite creates uniquely prefixed test tasks and cancels them during cleanup. Do not run it unless real local Things writes are acceptable.

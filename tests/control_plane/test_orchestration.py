@@ -65,7 +65,7 @@ class SharedBootstrapWrapperTests(TempDirTestCase):
                 "sync-plugins-registry.sh|--apply",
                 f"sync-managed-git-hooks.sh|--apply --repo {repo_a} --repo {repo_b}",
                 f"sync-copilot-hooks.sh|--apply --repo {repo_a} --repo {repo_b}",
-                f"bootstrap-machine-codex.sh|--apply --github-root {github_root}",
+                f"bootstrap-machine-codex.sh|--apply --github-root {github_root} --repo {repo_a} --repo {repo_b}",
                 f"bootstrap-machine-claude.sh|--apply --repo {repo_a} --repo {repo_b}",
             ],
             log_path.read_text(encoding="utf-8").splitlines(),
