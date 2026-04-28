@@ -21,12 +21,12 @@ global_skills:
   - "architecture-docs"
   - "defuddle"
   - "find-skills"
-  - "issue-work-handoff"
   - "pdf"
   - "project"
   - "secret-management"
   - "skill-creator"
   - "things-client"
+  - "work-handoff"
 repo_skills:
   - "agent-native-repo-playbook"
   - "client-interface-guidelines"
@@ -40,12 +40,12 @@ skills:
   - "codex-app-server"
   - "defuddle"
   - "find-skills"
-  - "issue-work-handoff"
   - "pdf"
   - "project"
   - "secret-management"
   - "skill-creator"
   - "things-client"
+  - "work-handoff"
 ---
 
 Generated from `codex/config/repo-bootstrap.json`, `skills/registry.json`, and `agents/registry.json`. Do not edit manually.

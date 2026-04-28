@@ -22,12 +22,12 @@ global_skills:
   - "architecture-docs"
   - "defuddle"
   - "find-skills"
-  - "issue-work-handoff"
   - "pdf"
   - "project"
   - "secret-management"
   - "skill-creator"
   - "things-client"
+  - "work-handoff"
 repo_skills:
   - "agent-native-repo-playbook"
   - "client-interface-guidelines"
@@ -57,7 +57,6 @@ skills:
   - "ios-debugger-agent"
   - "ios-ettrace-performance"
   - "ios-memgraph-leaks"
-  - "issue-work-handoff"
   - "pdf"
   - "project"
   - "secret-management"
@@ -67,6 +66,7 @@ skills:
   - "swiftui-ui-patterns"
   - "swiftui-view-refactor"
   - "things-client"
+  - "work-handoff"
 ---
 
 Generated from `codex/config/repo-bootstrap.json`, `skills/registry.json`, and `agents/registry.json`. Do not edit manually.

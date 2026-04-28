@@ -21,12 +21,12 @@ global_skills:
   - "architecture-docs"
   - "defuddle"
   - "find-skills"
-  - "issue-work-handoff"
   - "pdf"
   - "project"
   - "secret-management"
   - "skill-creator"
   - "things-client"
+  - "work-handoff"
 repo_skills:
   - "agent-native-repo-playbook"
   - "aip-company"
@@ -44,7 +44,6 @@ skills:
   - "client-interface-guidelines"
   - "defuddle"
   - "find-skills"
-  - "issue-work-handoff"
   - "pdf"
   - "project"
   - "secret-management"
@@ -52,6 +51,7 @@ skills:
   - "things-client"
   - "vercel-react-best-practices"
   - "web-design-guidelines"
+  - "work-handoff"
 ---
 
 Generated from `codex/config/repo-bootstrap.json`, `skills/registry.json`, and `agents/registry.json`. Do not edit manually.

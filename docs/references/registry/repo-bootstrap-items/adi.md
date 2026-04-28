@@ -23,12 +23,12 @@ global_skills:
   - "architecture-docs"
   - "defuddle"
   - "find-skills"
-  - "issue-work-handoff"
   - "pdf"
   - "project"
   - "secret-management"
   - "skill-creator"
   - "things-client"
+  - "work-handoff"
 repo_skills:
   - "adi-writing"
   - "agent-native-repo-playbook"
@@ -59,7 +59,6 @@ skills:
   - "find-skills"
   - "health"
   - "imagegen"
-  - "issue-work-handoff"
   - "journal-checkin"
   - "pdf"
   - "pretty-mermaid"
@@ -68,6 +67,7 @@ skills:
   - "skill-creator"
   - "social-media-publishing"
   - "things-client"
+  - "work-handoff"
 ---
 
 Generated from `codex/config/repo-bootstrap.json`, `skills/registry.json`, and `agents/registry.json`. Do not edit manually.

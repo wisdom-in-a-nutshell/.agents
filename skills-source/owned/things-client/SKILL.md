@@ -59,16 +59,18 @@ The executable path is stable, but the implementation is split underneath it:
 
 Task note updates need the Things URL-scheme auth token. Reads do not need this token.
 
-The lookup order is intentionally small:
+The token is read only from files. The lookup order is intentionally small:
 
-1. `THINGS3_AUTH_TOKEN`
-2. `THINGS_CLIENT_ENV_FILE` pointing at a simple `.env` file
-3. `$DOBBY_WORKSPACE/.env`
-4. the current working directory `.env`
+1. `THINGS_CLIENT_ENV_FILE` pointing at a simple `.env` file
+2. `$DOBBY_WORKSPACE/.env`
+3. the current working directory `.env`
 
 `THINGS_CLIENT_ENV_FILE` is only for callers that are not running from the repo
 or Dobby workspace whose `.env` should be used. Most workspace agents should not
 set it.
+
+The file should contain `THINGS3_AUTH_TOKEN=...`. The CLI does not accept the
+token directly from the process environment.
 
 The token is never printed.
 

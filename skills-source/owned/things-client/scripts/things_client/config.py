@@ -9,16 +9,40 @@ from .errors import ThingsError
 AUTH_TOKEN_ENV = "THINGS3_AUTH_TOKEN"
 SQLITE_PATH_ENVS = ("THINGS_CLIENT_SQLITE_PATH", "THINGS_SQLITE_PATH")
 THINGS_BUNDLE_ID = "com.culturedcode.ThingsMac"
-JXA_READ_TIMEOUT = int(os.environ.get("THINGS_CLIENT_JXA_TIMEOUT_SECS", "10"))
-JXA_PROBE_TIMEOUT = int(os.environ.get("THINGS_CLIENT_JXA_PROBE_TIMEOUT_SECS", "3"))
-URL_SCHEME_OPEN_TIMEOUT = int(os.environ.get("THINGS_CLIENT_OPEN_TIMEOUT_SECS", "10"))
-URL_SCHEME_SETTLE_SECS = float(os.environ.get("THINGS_CLIENT_URL_SETTLE_SECS", "0.5"))
 READ_BACKEND_ENV = "THINGS_CLIENT_READ_BACKEND"
 READ_BACKENDS = ("auto", "sqlite", "jxa")
 DEFAULT_DATABASE_GLOBS = (
     "~/Library/Group Containers/JLMPQHK86H.com.culturedcode.ThingsMac/ThingsData-*/Things Database.thingsdatabase/main.sqlite",
     "~/Library/Group Containers/JLMPQHK86H.com.culturedcode.ThingsMac/Things Database.thingsdatabase/main.sqlite",
 )
+
+
+def int_env(name: str, default: int) -> int:
+    raw = os.environ.get(name, "").strip()
+    if not raw:
+        return default
+    try:
+        value = int(raw)
+    except ValueError:
+        return default
+    return value if value > 0 else default
+
+
+def float_env(name: str, default: float) -> float:
+    raw = os.environ.get(name, "").strip()
+    if not raw:
+        return default
+    try:
+        value = float(raw)
+    except ValueError:
+        return default
+    return value if value >= 0 else default
+
+
+JXA_READ_TIMEOUT = int_env("THINGS_CLIENT_JXA_TIMEOUT_SECS", 10)
+JXA_PROBE_TIMEOUT = int_env("THINGS_CLIENT_JXA_PROBE_TIMEOUT_SECS", 3)
+URL_SCHEME_OPEN_TIMEOUT = int_env("THINGS_CLIENT_OPEN_TIMEOUT_SECS", 10)
+URL_SCHEME_SETTLE_SECS = float_env("THINGS_CLIENT_URL_SETTLE_SECS", 0.5)
 
 
 def parse_env_file(path: Path, key: str) -> str | None:
@@ -53,9 +77,6 @@ def token_search_paths() -> list[Path]:
 
 
 def read_auth_token() -> str:
-    token = os.environ.get(AUTH_TOKEN_ENV, "").strip()
-    if token:
-        return token
     for path in token_search_paths():
         token = (parse_env_file(path, AUTH_TOKEN_ENV) or "").strip()
         if token:
@@ -63,5 +84,5 @@ def read_auth_token() -> str:
     raise ThingsError(
         "E_AUTH",
         f"{AUTH_TOKEN_ENV} is not configured.",
-        hint="Set THINGS3_AUTH_TOKEN, THINGS_CLIENT_ENV_FILE, DOBBY_WORKSPACE, or run from a repo with .env before using write commands.",
+        hint="Put THINGS3_AUTH_TOKEN in a .env file, set THINGS_CLIENT_ENV_FILE to that file, set DOBBY_WORKSPACE, or run from the repo whose .env should be used.",
     )
