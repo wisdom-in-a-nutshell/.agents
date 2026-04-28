@@ -75,10 +75,10 @@ Task identity:
 
 Things lifecycle:
 
-- On pickup, DevWorker starts a Codex app-server thread and writes the raw run/session id to the Things note.
+- On pickup, DevWorker starts a Codex app-server thread and writes a `codex://threads/<id>` deep link to the Things note.
 - While running, avoid noisy receipts; the task note should stay readable.
 - On success, append the human handoff to the Things note and complete the task.
-- On blocked work, keep the Things task open, add `needs-input`, preserve the run/session id already in the Things note, and leave the smallest useful blocked note.
+- On blocked work, keep the Things task open, add `needs-input`, preserve the Codex thread link already in the Things note, and leave the smallest useful blocked note.
 - If infrastructure fails before the agent can update Things, DevWorker may add `needs-input` mechanically so the task does not disappear.
 - GitHub issues are optional escalation, not the default path. Create or update one only when the task or repo workflow needs durable repo-native discussion, external review, or audit history.
 
@@ -91,7 +91,7 @@ printf '%s\n' "<smallest useful request>" | /Users/dobby/.agents/skills-source/o
 
 On success, the handoff should be just the agent's useful final summary. Do not add a machine receipt, commit/check boilerplate, Things IDs, or "promoted from Things" metadata unless the user or repo specifically asks for it.
 
-On blocked or failed work, keep the handoff focused on the smallest useful human decision or recovery step. The Things task should remain open with `needs-input`, and the run/session id should remain visible so the human can resume the thread.
+On blocked or failed work, keep the handoff focused on the smallest useful human decision or recovery step. The Things task should remain open with `needs-input`, and the Codex thread link should remain visible so the human can resume the thread.
 
 ## Completion
 
