@@ -6,6 +6,8 @@ TMP_DIR="$(mktemp -d)"
 trap 'rm -rf "$TMP_DIR"' EXIT
 
 DB="$TMP_DIR/things.sqlite"
+AUTO_DB="$TMP_DIR/home/Library/Group Containers/JLMPQHK86H.com.culturedcode.ThingsMac/ThingsData-LIVE/Things Database.thingsdatabase/main.sqlite"
+BACKUP_DB="$TMP_DIR/home/Library/Group Containers/JLMPQHK86H.com.culturedcode.ThingsMac/ThingsData-LIVE.bak-123/Things Database.thingsdatabase/main.sqlite"
 export THINGS_CLIENT_SQLITE_PATH="$DB"
 
 python3 - "$DB" <<'PY'
@@ -60,6 +62,10 @@ conn.commit()
 conn.close()
 PY
 
+mkdir -p "$(dirname "$AUTO_DB")" "$(dirname "$BACKUP_DB")"
+cp "$DB" "$AUTO_DB"
+cp "$DB" "$BACKUP_DB"
+
 list_json="$("$ROOT/scripts/things-client" list --tag devworker --verbose)"
 python3 - "$list_json" <<'PY'
 import json
@@ -71,6 +77,18 @@ assert payload["data"]["count"] == 1, payload
 task = payload["data"]["tasks"][0]
 assert task["name"] == "Implement intake", task
 assert "repo:codexclaw" in task["notes"], task
+PY
+
+auto_json="$(env -u THINGS_CLIENT_SQLITE_PATH -u THINGS_SQLITE_PATH -u DOBBY_THINGS_SQLITE_PATH HOME="$TMP_DIR/home" "$ROOT/scripts/things-client" list --tag devworker --verbose)"
+python3 - "$auto_json" <<'PY'
+import json
+import sys
+payload = json.loads(sys.argv[1])
+assert payload["status"] == "ok", payload
+backend = payload["data"]["backend"]
+assert backend["name"] == "sqlite", backend
+assert "ThingsData-LIVE" in backend["path"], backend
+assert ".bak" not in backend["path"], backend
 PY
 
 inspect_json="$("$ROOT/scripts/things-client" inspect task-1234567890abcdef)"

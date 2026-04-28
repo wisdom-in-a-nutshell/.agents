@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import argparse
+import glob
 import json
 import os
 import re
@@ -23,6 +24,10 @@ AUTH_TOKEN_ENV = "THINGS3_AUTH_TOKEN"
 SQLITE_PATH_ENVS = ("THINGS_CLIENT_SQLITE_PATH", "THINGS_SQLITE_PATH", "DOBBY_THINGS_SQLITE_PATH")
 THINGS_BUNDLE_ID = "com.culturedcode.ThingsMac"
 JXA_READ_TIMEOUT = int(os.environ.get("THINGS_CLIENT_JXA_TIMEOUT_SECS", "10"))
+DEFAULT_DATABASE_GLOBS = (
+    "~/Library/Group Containers/JLMPQHK86H.com.culturedcode.ThingsMac/ThingsData-*/Things Database.thingsdatabase/main.sqlite",
+    "~/Library/Group Containers/JLMPQHK86H.com.culturedcode.ThingsMac/Things Database.thingsdatabase/main.sqlite",
+)
 
 STATUS_OPEN = 0
 STATUS_CANCELED = 2
@@ -170,14 +175,31 @@ def configured_database_path() -> Path | None:
     return None
 
 
+def has_configured_database_path() -> bool:
+    return any(bool(os.environ.get(env_name)) for env_name in SQLITE_PATH_ENVS)
+
+
+def is_backup_database_path(path: Path) -> bool:
+    return any(".bak" in part.lower() or "backup" in part.lower() for part in path.parts)
+
+
+def discover_database_path() -> Path | None:
+    candidates: list[Path] = []
+    for pattern in DEFAULT_DATABASE_GLOBS:
+        candidates.extend(Path(p) for p in glob.glob(os.path.expanduser(pattern)))
+    candidates = [path for path in candidates if path.exists() and not is_backup_database_path(path)]
+    if not candidates:
+        return None
+    candidates.sort(key=lambda path: path.stat().st_mtime, reverse=True)
+    return candidates[0]
+
+
 def find_database() -> DatabaseInfo:
     path = configured_database_path()
     if path is None:
-        raise ThingsError(
-            "E_NOT_FOUND",
-            "Things SQLite database path is not configured.",
-            hint="Set THINGS_CLIENT_SQLITE_PATH to use SQLite reads, or use the default JXA read backend.",
-        )
+        path = discover_database_path()
+    if path is None:
+        raise ThingsError("E_NOT_FOUND", "Things SQLite database was not found.", hint="Open Things 3 or set THINGS_CLIENT_SQLITE_PATH.")
     return DatabaseInfo(path=path)
 
 
@@ -190,6 +212,17 @@ def connect_readonly() -> tuple[sqlite3.Connection, DatabaseInfo]:
     except sqlite3.Error as exc:
         raise ThingsError("E_IO", f"failed to open Things SQLite database read-only: {exc}") from exc
     return conn, info
+
+
+def should_fallback_from_sqlite(exc: ThingsError) -> bool:
+    return not has_configured_database_path() and exc.code in {"E_NOT_FOUND", "E_IO"}
+
+
+def add_sqlite_fallback_meta(backend: dict[str, Any], exc: ThingsError) -> dict[str, Any]:
+    updated = dict(backend)
+    updated["fallback_from"] = "sqlite"
+    updated["fallback_reason"] = exc.message
+    return updated
 
 
 def run_jxa(script: str) -> Any:
@@ -447,43 +480,49 @@ def fetch_tasks(where: str, params: Iterable[Any], *, verbose: bool, include_sta
 
 
 def list_tasks(*, tag: str | None, verbose: bool, limit: int) -> tuple[list[dict[str, Any]], dict[str, Any]]:
-    if configured_database_path() is None:
-        return jxa_list_tasks(tag=tag, verbose=verbose, limit=limit)
     tag_sql, tag_params = tag_filter_clause(tag)
-    return fetch_tasks(
-        f"TASK.type = ? AND TASK.status = ? AND TASK.trashed = 0{tag_sql}",
-        [TYPE_TODO, STATUS_OPEN, *tag_params],
-        verbose=verbose,
-        include_start=verbose,
-        limit=limit,
-    )
+    try:
+        return fetch_tasks(
+            f"TASK.type = ? AND TASK.status = ? AND TASK.trashed = 0{tag_sql}",
+            [TYPE_TODO, STATUS_OPEN, *tag_params],
+            verbose=verbose,
+            include_start=verbose,
+            limit=limit,
+        )
+    except ThingsError as exc:
+        if not should_fallback_from_sqlite(exc):
+            raise
+        tasks, backend = jxa_list_tasks(tag=tag, verbose=verbose, limit=limit)
+        return tasks, add_sqlite_fallback_meta(backend, exc)
 
 
 def search_tasks(query: str, *, tag: str | None, include_completed: bool, verbose: bool, limit: int) -> tuple[list[dict[str, Any]], dict[str, Any]]:
-    if configured_database_path() is None:
-        return jxa_search_tasks(query, tag=tag, include_completed=include_completed, verbose=verbose, limit=limit)
     tag_sql, tag_params = tag_filter_clause(tag)
     statuses = (STATUS_OPEN, STATUS_CANCELED, STATUS_COMPLETED) if include_completed else (STATUS_OPEN,)
     placeholders = ",".join("?" for _ in statuses)
     needle = f"%{query.lower()}%"
-    return fetch_tasks(
-        f"""TASK.type = ? AND TASK.status IN ({placeholders}) AND TASK.trashed = 0
-        AND (lower(COALESCE(TASK.title, '')) LIKE ? OR lower(COALESCE(TASK.notes, '')) LIKE ?){tag_sql}""",
-        [TYPE_TODO, *statuses, needle, needle, *tag_params],
-        verbose=verbose,
-        include_start=verbose,
-        limit=limit,
-    )
+    try:
+        return fetch_tasks(
+            f"""TASK.type = ? AND TASK.status IN ({placeholders}) AND TASK.trashed = 0
+            AND (lower(COALESCE(TASK.title, '')) LIKE ? OR lower(COALESCE(TASK.notes, '')) LIKE ?){tag_sql}""",
+            [TYPE_TODO, *statuses, needle, needle, *tag_params],
+            verbose=verbose,
+            include_start=verbose,
+            limit=limit,
+        )
+    except ThingsError as exc:
+        if not should_fallback_from_sqlite(exc):
+            raise
+        tasks, backend = jxa_search_tasks(query, tag=tag, include_completed=include_completed, verbose=verbose, limit=limit)
+        return tasks, add_sqlite_fallback_meta(backend, exc)
 
 
 def inspect_task(target: str, *, include_completed: bool = False) -> tuple[dict[str, Any], dict[str, Any]]:
-    if configured_database_path() is None:
-        return jxa_inspect_task(target, include_completed=include_completed)
-    conn, info = connect_readonly()
     statuses = (STATUS_OPEN, STATUS_CANCELED, STATUS_COMPLETED) if include_completed else (STATUS_OPEN,)
     placeholders = ",".join("?" for _ in statuses)
     target_like = f"{target}%"
     try:
+        conn, info = connect_readonly()
         rows = conn.execute(
             f"""{TASK_SELECT}
             WHERE TASK.trashed = 0
@@ -492,17 +531,24 @@ def inspect_task(target: str, *, include_completed: bool = False) -> tuple[dict[
             ORDER BY CASE WHEN TASK.uuid = ? OR TASK.title = ? THEN 0 ELSE 1 END, TASK.userModificationDate DESC""",
             (*statuses, target, target_like, target, target, target),
         ).fetchall()
+        backend = {"name": "sqlite", "path": str(info.path)}
     except sqlite3.Error as exc:
         raise ThingsError("E_IO", f"Things SQLite query failed: {exc}") from exc
+    except ThingsError as exc:
+        if not should_fallback_from_sqlite(exc):
+            raise
+        result, backend = jxa_inspect_task(target, include_completed=include_completed)
+        return result, add_sqlite_fallback_meta(backend, exc)
     finally:
-        conn.close()
+        if "conn" in locals():
+            conn.close()
     if not rows:
         raise ThingsError("E_NOT_FOUND", f"not found: {target}")
     row = rows[0]
     if len(rows) > 1 and not (row["uuid"] == target or row["title"] == target):
         raise ThingsError("E_VALIDATION", f"ambiguous target prefix: {target}")
     result_type = "project" if row["type"] == TYPE_PROJECT else "heading" if row["type"] == TYPE_HEADING else "to-do"
-    return {"type": result_type, "task": row_to_task(row, verbose=True, include_start=True)}, {"name": "sqlite", "path": str(info.path)}
+    return {"type": result_type, "task": row_to_task(row, verbose=True, include_start=True)}, backend
 
 
 def resolve_task_id(target: str) -> str:
@@ -696,22 +742,16 @@ def cmd_doctor(args: argparse.Namespace) -> int:
     checks.append({"name": "open_command", "ok": open_ok, "detail": shutil_which("open") or "not found"})
 
     sqlite_ok = False
-    sqlite_detail = "not configured"
+    sqlite_detail = ""
     try:
-        sqlite_configured = configured_database_path() is not None
+        info = find_database()
+        conn, _ = connect_readonly()
+        conn.execute("SELECT name FROM sqlite_master LIMIT 1").fetchall()
+        conn.close()
+        sqlite_ok = True
+        sqlite_detail = str(info.path)
     except ThingsError as exc:
-        sqlite_configured = False
         sqlite_detail = exc.message
-    if sqlite_configured:
-        try:
-            info = find_database()
-            conn, _ = connect_readonly()
-            conn.execute("SELECT name FROM sqlite_master LIMIT 1").fetchall()
-            conn.close()
-            sqlite_ok = True
-            sqlite_detail = str(info.path)
-        except ThingsError as exc:
-            sqlite_detail = exc.message
     checks.append({"name": "sqlite_read_backend", "ok": sqlite_ok, "detail": sqlite_detail})
 
     jxa_ok = False
