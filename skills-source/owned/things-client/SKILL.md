@@ -17,6 +17,7 @@ Use the bundled CLI directly:
 $HOME/.agents/skills-source/owned/things-client/scripts/things-client list --tag devworker
 $HOME/.agents/skills-source/owned/things-client/scripts/things-client inspect <task-id-or-title>
 $HOME/.agents/skills-source/owned/things-client/scripts/things-client edit <task-id-or-title> --append-notes "..."
+$HOME/.agents/skills-source/owned/things-client/scripts/things-client complete <task-id-or-title>
 $HOME/.agents/skills-source/owned/things-client/scripts/things-client doctor
 ```
 
@@ -63,7 +64,13 @@ things-client list --tag devworker --verbose
 When a task has been promoted to a durable tracker item, append the URL to the notes:
 
 ```bash
-things-client edit <task-id> --append-notes "GitHub: https://github.com/owner/repo/issues/123"
+things-client edit <task-id> --append-notes "https://github.com/owner/repo/issues/123"
+```
+
+When the durable tracker work completes successfully, complete the Things task:
+
+```bash
+things-client complete <task-id>
 ```
 
 If a command fails, inspect the JSON `error.code` and `error.hint`; do not scrape prose output.

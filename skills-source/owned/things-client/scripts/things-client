@@ -571,6 +571,11 @@ def build_parser() -> argparse.ArgumentParser:
     add_format_args(p)
     p.set_defaults(handler=cmd_edit)
 
+    p = sub.add_parser("complete", help="Complete a Things task via the Things URL scheme.")
+    p.add_argument("target")
+    add_format_args(p)
+    p.set_defaults(handler=cmd_complete)
+
     p = sub.add_parser("doctor", help="Check Things client dependencies.")
     add_format_args(p)
     p.set_defaults(handler=cmd_doctor)
@@ -668,6 +673,19 @@ def cmd_edit(args: argparse.Namespace) -> int:
     if args.plain:
         return emit_text(f"edited: {task_id}")
     return emit_json(envelope("things-client.edit", "ok", data={"target": args.target, "id": task_id}, started=started))
+
+
+def cmd_complete(args: argparse.Namespace) -> int:
+    started = time.perf_counter()
+    try:
+        token = read_auth_token()
+        task_id = resolve_task_id(args.target)
+        run_url_scheme("update", {"auth-token": token, "id": task_id, "completed": "true"})
+    except ThingsError as exc:
+        return emit_json(envelope("things-client.complete", "error", error=error_payload(exc), started=started))
+    if args.plain:
+        return emit_text(f"completed: {task_id}")
+    return emit_json(envelope("things-client.complete", "ok", data={"target": args.target, "id": task_id}, started=started))
 
 
 def cmd_doctor(args: argparse.Namespace) -> int:
