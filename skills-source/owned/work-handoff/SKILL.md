@@ -71,7 +71,6 @@ Task identity:
 - DevWorker must pass the Things task id in the worker prompt when the task came from Things.
 - Use the task id for lifecycle updates; do not rely on the title because titles can change or collide.
 - If the prompt provides helper commands, prefer those helpers over hand-rolled Things calls.
-- The reusable Things task lifecycle helper lives at `scripts/work-handoff-task` in this skill.
 
 Things lifecycle:
 
@@ -82,11 +81,19 @@ Things lifecycle:
 - If infrastructure fails before the agent can update Things, DevWorker may add `needs-input` mechanically so the task does not disappear.
 - GitHub issues are optional escalation, not the default path. Create or update one only when the task or repo workflow needs durable repo-native discussion, external review, or audit history.
 
-When DevWorker provides helper commands, use this pattern:
+Helper contract:
+
+- Script: `/Users/dobby/.agents/skills-source/owned/work-handoff/scripts/task`
+- Complete: `task complete <things-task-id> --note-file - --no-input`
+- Needs input: `task needs-input <things-task-id> --note-file - --no-input`
+- Input note: pass the human handoff or smallest useful request on stdin when using `--note-file -`.
+- Output: JSON on stdout with `status: "ok"` or `status: "error"`.
+
+Common pattern:
 
 ```bash
-printf '%s\n' "<human handoff>" | /Users/dobby/.agents/skills-source/owned/work-handoff/scripts/work-handoff-task complete <things-task-id> --note-file - --no-input
-printf '%s\n' "<smallest useful request>" | /Users/dobby/.agents/skills-source/owned/work-handoff/scripts/work-handoff-task needs-input <things-task-id> --note-file - --no-input
+printf '%s\n' "<human handoff>" | /Users/dobby/.agents/skills-source/owned/work-handoff/scripts/task complete <things-task-id> --note-file - --no-input
+printf '%s\n' "<smallest useful request>" | /Users/dobby/.agents/skills-source/owned/work-handoff/scripts/task needs-input <things-task-id> --note-file - --no-input
 ```
 
 On success, the handoff should be just the agent's useful final summary. Do not add a machine receipt, commit/check boilerplate, Things IDs, or "promoted from Things" metadata unless the user or repo specifically asks for it.

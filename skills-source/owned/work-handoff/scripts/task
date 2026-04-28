@@ -39,7 +39,7 @@ def main(argv: list[str] | None = None) -> int:
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(prog="work-handoff-task")
+    parser = argparse.ArgumentParser(prog="work-handoff task")
     parser.add_argument("--things-client", default=str(DEFAULT_THINGS_CLIENT), help="Path to the things-client CLI.")
     parser.add_argument("--no-input", action="store_true", help="Accepted for non-interactive callers; commands never prompt.")
     subparsers = parser.add_subparsers(dest="command", required=True)
