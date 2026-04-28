@@ -1,10 +1,10 @@
 ---
 registry_kind: managed
-skill: "issue-work-handoff"
+skill: "work-handoff"
 origin: "owned"
 scope: "global"
 repos_csv: "*"
-source_path: "skills-source/owned/issue-work-handoff"
+source_path: "skills-source/owned/work-handoff"
 upstream_ref: "-"
 repos:
   - "*"

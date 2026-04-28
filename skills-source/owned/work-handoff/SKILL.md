@@ -1,9 +1,9 @@
 ---
-name: issue-work-handoff
+name: work-handoff
 description: Use when an agent is working from a GitHub issue, Things 3 task, tracker item, or DevWorker/Symphony-style task and needs to complete the work, report needs-input/blocked status, or produce a human-readable handoff. Applies to issue/task-driven implementation, investigation, validation, and review loops across repos.
 ---
 
-# Issue Work Handoff
+# Work Handoff
 
 ## Purpose
 
