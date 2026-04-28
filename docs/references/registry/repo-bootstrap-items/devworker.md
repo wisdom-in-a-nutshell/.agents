@@ -2,7 +2,7 @@
 repo_name: "devworker"
 path: "~/GitHub/devworker"
 mcp_count: 0
-skill_count: 9
+skill_count: 10
 repo_local_skill_count: 0
 global_agent_count: 1
 custom_agent_count: 0
@@ -26,10 +26,12 @@ global_skills:
   - "secret-management"
   - "skill-creator"
 repo_skills:
+  - "agent-native-repo-playbook"
   - "codex-app-server"
 repo_local_skills: []
 skills:
   - "agent-browser"
+  - "agent-native-repo-playbook"
   - "architecture-docs"
   - "codex-app-server"
   - "defuddle"
