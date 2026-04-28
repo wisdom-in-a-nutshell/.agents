@@ -47,8 +47,6 @@ def command_from_prog(prog: str) -> str:
     root = parts[0]
     if root.endswith("dobby-memory"):
         domain = "memory"
-    elif root.endswith("dobby-tasks"):
-        domain = "tasks"
     elif root.endswith("dobby-calendar"):
         domain = "calendar"
     else:

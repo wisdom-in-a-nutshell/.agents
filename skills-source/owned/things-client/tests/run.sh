@@ -29,30 +29,52 @@ conn.executescript(
         start INTEGER,
         startDate INTEGER,
         deadline INTEGER,
+        deadlineSuppressionDate INTEGER,
         creationDate REAL,
         userModificationDate REAL,
         stopDate REAL,
         project TEXT,
         area TEXT,
-        "index" INTEGER
+        heading TEXT,
+        "index" INTEGER,
+        todayIndex INTEGER
     );
     CREATE TABLE TMTaskTag (tasks TEXT, tags TEXT);
     CREATE TABLE TMTag (uuid TEXT PRIMARY KEY, title TEXT, "index" INTEGER);
     CREATE TABLE TMArea (uuid TEXT PRIMARY KEY, title TEXT);
+    CREATE TABLE TMAreaTag (areas TEXT, tags TEXT);
     INSERT INTO TMTag VALUES ('tag-devworker', 'devworker', 0);
     INSERT INTO TMTag VALUES ('tag-other', 'other', 1);
     INSERT INTO TMArea VALUES ('area-builder', 'Builder');
     INSERT INTO TMTask VALUES (
+        'project-builder',
+        'Builder Project',
+        'Project notes.',
+        0, 1, 0, 1, NULL, NULL, NULL, 900, 2100, NULL, NULL, 'area-builder', NULL, 0, 0
+    );
+    INSERT INTO TMTask VALUES (
         'task-1234567890abcdef',
         'Implement intake',
         'repo:codexclaw\n\nBuild the bridge.',
-        0, 0, 0, 1, NULL, NULL, 1000, 2000, NULL, NULL, 'area-builder', 1
+        0, 0, 0, 1, NULL, NULL, NULL, 1000, 2000, NULL, 'project-builder', NULL, NULL, 1, 1
     );
     INSERT INTO TMTask VALUES (
         'task-ignored',
         'Other task',
         'No repo marker.',
-        0, 0, 0, 1, NULL, NULL, 1000, 1000, NULL, NULL, NULL, 2
+        0, 0, 0, 1, NULL, NULL, NULL, 1000, 1000, NULL, NULL, NULL, NULL, 2, 2
+    );
+    INSERT INTO TMTask VALUES (
+        'task-inbox',
+        'Inbox task',
+        '',
+        0, 0, 0, 0, NULL, NULL, NULL, 1000, 1900, NULL, NULL, NULL, NULL, 3, 3
+    );
+    INSERT INTO TMTask VALUES (
+        'task-overdue',
+        'Overdue task',
+        '',
+        0, 0, 0, 1, NULL, 132780160, NULL, 1000, 1800, NULL, NULL, NULL, NULL, 4, 4
     );
     INSERT INTO TMTaskTag VALUES ('task-1234567890abcdef', 'tag-devworker');
     INSERT INTO TMTaskTag VALUES ('task-ignored', 'tag-other');
@@ -79,7 +101,38 @@ assert task["name"] == "Implement intake", task
 assert "repo:codexclaw" in task["notes"], task
 PY
 
-auto_json="$(env -u THINGS_CLIENT_SQLITE_PATH -u THINGS_SQLITE_PATH -u DOBBY_THINGS_SQLITE_PATH HOME="$TMP_DIR/home" "$ROOT/scripts/things-client" list --tag devworker --verbose)"
+snapshot_json="$("$ROOT/scripts/things-client" snapshot --minimal --limit 2)"
+python3 - "$snapshot_json" <<'PY'
+import json
+import sys
+payload = json.loads(sys.argv[1])
+assert payload["status"] == "ok", payload
+assert payload["data"]["views"]["inbox"]["count"] == 1, payload
+assert payload["data"]["views"]["overdue"]["count"] == 1, payload
+assert payload["data"]["backend"]["name"] == "sqlite", payload
+PY
+
+projects_json="$("$ROOT/scripts/things-client" projects)"
+python3 - "$projects_json" <<'PY'
+import json
+import sys
+payload = json.loads(sys.argv[1])
+assert payload["status"] == "ok", payload
+assert payload["data"]["count"] == 1, payload
+assert payload["data"]["projects"][0]["name"] == "Builder Project", payload
+PY
+
+areas_json="$("$ROOT/scripts/things-client" areas)"
+python3 - "$areas_json" <<'PY'
+import json
+import sys
+payload = json.loads(sys.argv[1])
+assert payload["status"] == "ok", payload
+assert payload["data"]["count"] == 1, payload
+assert payload["data"]["areas"][0]["name"] == "Builder", payload
+PY
+
+auto_json="$(env -u THINGS_CLIENT_SQLITE_PATH -u THINGS_SQLITE_PATH HOME="$TMP_DIR/home" "$ROOT/scripts/things-client" list --tag devworker --verbose)"
 python3 - "$auto_json" <<'PY'
 import json
 import sys

@@ -2,22 +2,15 @@
 # Top-level test runner for the Dobby skill scripts.
 #
 # By default, runs only cheap/non-mutating suites. Live suites (`*/live.sh`)
-# are opt-in because they may write to real local surfaces such as Things 3 or
-# Calendar before cleaning up.
-#
-# When the Things 3 live suite is selected, sweeps DOBBY-TEST-* leftover tasks
-# before and after the run so aborted live runs do not pollute the user's task
-# surface. Cheap/default runs do not touch Things for sweeping.
+# are opt-in because they may write to real local surfaces such as Calendar
+# before cleaning up. Things 3 tests live with the shared things-client skill.
 #
 # Usage:
 #     bash ~/.agents/skills-source/owned/dobby/tests/run.sh                 # cheap suites only
 #     RUN_LIVE=1 bash ~/.agents/skills-source/owned/dobby/tests/run.sh      # include all live suites
 #     bash ~/.agents/skills-source/owned/dobby/tests/run.sh memory          # only memory suites
-#     bash ~/.agents/skills-source/owned/dobby/tests/run.sh tasks live      # only tasks/live.sh
 #     bash ~/.agents/skills-source/owned/dobby/tests/run.sh live            # all live suites
 #     SKIP_LIVE=1 bash ~/.agents/skills-source/owned/dobby/tests/run.sh     # force-skip live suites
-#     SWEEP_THINGS=1 bash ~/.agents/skills-source/owned/dobby/tests/run.sh  # cleanup stale DOBBY-TEST-* tasks
-#     SKIP_SWEEP=1 RUN_LIVE=1 bash ~/.agents/skills-source/owned/dobby/tests/run.sh # skip live sweep
 set -uo pipefail
 
 TESTS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -45,28 +38,6 @@ resolve_workspace() {
 REPO_ROOT="$(resolve_workspace)"
 export DOBBY_WORKSPACE="$REPO_ROOT"
 
-# Sweep stale open Things 3 test artifacts.
-#
-# Things URL writes can cancel tasks reliably; AppleScript deletion can hang on
-# some machines, so the sweep intentionally removes artifacts from open lists
-# without trying to purge already-canceled/completed Logbook history.
-sweep_things3() {
-    [[ "${SKIP_SWEEP:-0}" == "1" ]] && return 0
-    # Uses the Dobby CLI itself — no external task binary.
-    local found=0
-    local ids
-    ids=$("$DOBBY_BIN" tasks search "DOBBY-TEST-" --json 2>/dev/null \
-        | jq -r '.data.tasks[]?.id' 2>/dev/null || true)
-    for id in $ids; do
-        [[ -z "$id" ]] && continue
-        "$DOBBY_BIN" tasks cancel "$id" > /dev/null 2>&1 || true
-        found=$((found + 1))
-    done
-    if (( found > 0 )); then
-        printf "\033[33m[sweep] canceled %d stale open DOBBY-TEST-* artifact(s)\033[0m\n" "$found"
-    fi
-}
-
 has_filter() {
     local needle="$1"
     shift || true
@@ -88,7 +59,7 @@ matches_filters() {
 }
 
 # Collect test scripts. If args are given, each arg is an ANDed substring filter
-# on the script path. Example: `tasks live` selects `tasks/live.sh`.
+# on the script path. Example: `calendar live` selects `calendar/live.sh`.
 SCRIPTS=()
 SKIPPED_LIVE=0
 LIVE_FILTER_REQUESTED=0
@@ -113,27 +84,11 @@ while IFS= read -r -d '' file; do
         SKIPPED_LIVE=$((SKIPPED_LIVE + 1))
         continue
     fi
-    # Honor SKIP_TASKS (when Things 3 isn't available)
-    if [[ "${SKIP_TASKS:-0}" == "1" ]] && [[ "$file" == */tasks/* ]]; then
-        continue
-    fi
     SCRIPTS+=("$file")
 done < <(find "$TESTS_DIR" -type f -name '*.sh' -print0 | sort -z)
 
-SELECTED_TASKS_LIVE=0
-for script in "${SCRIPTS[@]}"; do
-    if [[ "$script" == */tasks/live.sh ]]; then
-        SELECTED_TASKS_LIVE=1
-        break
-    fi
-done
-
 if [[ "$SKIPPED_LIVE" -gt 0 ]]; then
     printf "\033[33m[tests] skipped %d live suite(s); set RUN_LIVE=1 or filter on 'live' to run them\033[0m\n" "$SKIPPED_LIVE"
-fi
-
-if [[ "$SELECTED_TASKS_LIVE" == "1" || "${SWEEP_THINGS:-0}" == "1" ]]; then
-    sweep_things3
 fi
 
 TOTAL_SUITES=0
@@ -158,10 +113,6 @@ for script in "${SCRIPTS[@]}"; do
         FAILED_NAMES+=("$rel ($rc failures)")
     fi
 done
-
-if [[ "$SELECTED_TASKS_LIVE" == "1" || "${SWEEP_THINGS:-0}" == "1" ]]; then
-    sweep_things3  # post-run sweep, catches anything the individual trap cleanups missed
-fi
 
 printf "\n\033[1m════════════════════════════════════════\033[0m\n"
 if [[ $FAILED_SUITES -eq 0 ]]; then

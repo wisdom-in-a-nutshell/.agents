@@ -16,8 +16,8 @@ Soul lives in `/soul.md` (Dobby's character). Operations live here.
 Boot context is delivered by the repo's `SessionStart` hook
 (`scripts/hooks/session_start.py`), not by this skill. That repo hook is a
 thin delegate to the skill-bundled hook, which reads `now.md`, walks
-`memory/areas/`, and calls the skill-bundled `dobby-tasks snapshot`
-and `dobby-calendar upcoming` in parallel. Adi's durable identity
+`memory/areas/`, and calls the shared `things-client snapshot`
+and skill-bundled `dobby-calendar upcoming` in parallel. Adi's durable identity
 is part of `soul.md` under `## About Adi` and arrives via the
 wrapper-composed system prompt.
 
@@ -35,7 +35,7 @@ Read deeper files only when the task actually needs them. Areas under
 
 ## Prefer the CLI
 
-The skill-bundled Dobby scripts are the preferred path for reads, appends, tasks, and calendar operations. They live beside this skill file under `$HOME/.agents/skills-source/owned/dobby/scripts/`: `dobby-memory`, `dobby-tasks`, and `dobby-calendar`. They are deterministic, timestamped, tested, and agent-first: JSON envelopes by default, `--plain` only for operator inspection. **Do not first look for repo-local `scripts/dobby-*` wrappers.** Invoke the skill-bundled scripts directly, from a Dobby workspace root, or set `DOBBY_WORKSPACE=/path/to/workspace`.
+The preferred command surfaces are deterministic, timestamped, tested, and agent-first: JSON envelopes by default, `--plain` only for operator inspection. Use `$HOME/.agents/skills-source/owned/dobby/scripts/dobby-memory` for memory, `$HOME/.agents/skills-source/owned/things-client/scripts/things-client` for Things 3 tasks, and `$HOME/.agents/skills-source/owned/dobby/scripts/dobby-calendar` for calendar. **Do not first look for repo-local `scripts/dobby-*` wrappers.** Invoke the skill-bundled scripts directly, from a Dobby workspace root, or set `DOBBY_WORKSPACE=/path/to/workspace`.
 
 **Reach for the CLI first.** Fall through to the `Edit`/`Write` tools only when the CLI cannot do what's needed — surgical mid-file section rewrites, or creating a new file. Both are legitimate; the CLI is simply the default.
 
@@ -50,11 +50,11 @@ See `references/commands.md` for full recipes.
 
 ## Testing
 
-Use the skill test runner for script changes. It is cheap/non-mutating by default; live suites that may create temporary Things 3 tasks or Calendar events are opt-in.
+Use the skill test runner for Dobby memory/calendar script changes. It is cheap/non-mutating by default; live suites that may create temporary Calendar events are opt-in. Things 3 integration tests live with the shared `things-client` skill.
 
 - Normal check: `bash $HOME/.agents/skills-source/owned/dobby/tests/run.sh`
 - Live smoke: `RUN_LIVE=1 bash $HOME/.agents/skills-source/owned/dobby/tests/run.sh`
-- Specific live smoke: `bash $HOME/.agents/skills-source/owned/dobby/tests/run.sh tasks live`
+- Specific live smoke: `bash $HOME/.agents/skills-source/owned/dobby/tests/run.sh calendar live`
 
 Do not add real external writes to non-live tests. Put write-path coverage in `*/live.sh`.
 
@@ -64,7 +64,7 @@ When new information surfaces, route it to exactly one canonical home. Never dup
 
 | Signal | Home | Operation |
 |---|---|---|
-| Actionable item (to do, follow up, remind me) | **Things 3** | `$HOME/.agents/skills-source/owned/dobby/scripts/dobby-tasks add "..." --when ... --area <Area>` |
+| Actionable item (to do, follow up, remind me) | **Things 3** | `$HOME/.agents/skills-source/owned/things-client/scripts/things-client add "..." --when ... --area <Area>` |
 | Durable truth about the user (identity, pattern, preference) | `soul.md` `## About Adi` | Edit in place (section) |
 | This week's active context / session handoff | `memory/now.md` | Rewrite the relevant section, keep ≤60 lines |
 | Per-area durable canon | `memory/areas/<area>/<area>.md` | Edit in place |
@@ -83,13 +83,13 @@ For user-intent-to-action mappings, see `references/scenarios.md`.
 
 Tasks always go through the CLI. There is no file-based alternative.
 
-- Add: `$HOME/.agents/skills-source/owned/dobby/scripts/dobby-tasks add "..." --when today|tomorrow|"next monday" --area <Area> --checklist "a,b,c"`
-- Boot snapshot: `$HOME/.agents/skills-source/owned/dobby/scripts/dobby-tasks snapshot`
-- List: `$HOME/.agents/skills-source/owned/dobby/scripts/dobby-tasks today | inbox | overdue`
-- Search: `$HOME/.agents/skills-source/owned/dobby/scripts/dobby-tasks search "..."` (fast summary by default; add `--verbose` only when full fields are needed)
-- Inspect a task/project: `$HOME/.agents/skills-source/owned/dobby/scripts/dobby-tasks inspect "Personal AI / agent system"`
-- Complete: `$HOME/.agents/skills-source/owned/dobby/scripts/dobby-tasks done <id-prefix>`
-- Doctor: `$HOME/.agents/skills-source/owned/dobby/scripts/dobby-tasks doctor` (health check)
+- Add: `$HOME/.agents/skills-source/owned/things-client/scripts/things-client add "..." --when today|tomorrow|"next monday" --area <Area> --checklist "a,b,c"`
+- Boot snapshot: `$HOME/.agents/skills-source/owned/things-client/scripts/things-client snapshot`
+- List: `$HOME/.agents/skills-source/owned/things-client/scripts/things-client today | inbox | overdue`
+- Search: `$HOME/.agents/skills-source/owned/things-client/scripts/things-client search "..."`
+- Inspect a task/project: `$HOME/.agents/skills-source/owned/things-client/scripts/things-client inspect "Personal AI / agent system"`
+- Complete: `$HOME/.agents/skills-source/owned/things-client/scripts/things-client done <id-prefix>`
+- Doctor: `$HOME/.agents/skills-source/owned/things-client/scripts/things-client doctor` (health check)
 
 Read commands default to an `auto` backend: fast read-only SQLite first, then
 JXA fallback if the local database is unavailable. Agents should not choose a

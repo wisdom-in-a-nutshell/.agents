@@ -10,7 +10,7 @@ source "$(dirname "$0")/../lib/assert.sh"
 FAIL_COUNT=0
 
 section "schema_version stability across commands"
-for cmd in "memory read --section now" "memory diff" "tasks doctor" "calendar doctor"; do
+for cmd in "memory read --section now" "memory diff" "calendar doctor"; do
     run_dobby $cmd
     assert_jq_eq "$cmd: schema_version=1.0" '.schema_version' "1.0" "$CAPTURED_STDOUT"
 done
@@ -47,9 +47,6 @@ assert_exit "E_VALIDATION -> exit 2" 2 "$CAPTURED_EXIT"
 # E_NOT_FOUND -> 1
 run_dobby memory read --section area.nope
 assert_exit "E_NOT_FOUND -> exit 1" 1 "$CAPTURED_EXIT"
-# E_VALIDATION from tasks.add empty title
-run_dobby tasks add ""
-assert_exit "tasks.add empty -> exit 2" 2 "$CAPTURED_EXIT"
 
 section "stdout is clean JSON by default (no prefix/suffix)"
 run_dobby memory read --section now
@@ -67,8 +64,6 @@ section "--no-input is accepted and non-interactive"
 run_dobby memory read --section now --no-input
 assert_exit "memory read now --no-input exit 0" 0 "$CAPTURED_EXIT"
 assert_envelope_ok "memory.read --no-input" "$CAPTURED_STDOUT"
-run_dobby tasks doctor --no-input
-assert_envelope_shape "tasks.doctor --no-input" "$CAPTURED_STDOUT"
 run_dobby calendar doctor --no-input
 assert_envelope_shape "calendar.doctor --no-input" "$CAPTURED_STDOUT"
 

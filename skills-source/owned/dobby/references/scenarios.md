@@ -12,7 +12,7 @@ Common phrasings mapped to the exact operation. Match intent, not literal words;
 Confirm in one line: "Added to `soul.md` `## About Adi` under Communication preferences."
 
 **"Save this for later"** / "Keep this"
-→ Actionable? → Things 3 Inbox via `$HOME/.agents/skills-source/owned/dobby/scripts/dobby-tasks add`. Content/reflection? → new file in `journal/daily/<today>/notes-<slug>.md`.
+→ Actionable? → Things 3 Inbox via `$HOME/.agents/skills-source/owned/things-client/scripts/things-client add`. Content/reflection? → new file in `journal/daily/<today>/notes-<slug>.md`.
 
 **"Add this to <area>"**
 → Durable canon? → `Edit memory/areas/<area>/<area>.md`. Event/completion? → append to `memory/areas/<area>/log.md` via CLI.
@@ -20,13 +20,13 @@ Confirm in one line: "Added to `soul.md` `## About Adi` under Communication pref
 ## Read
 
 **"What's on today?"** / "What's my day look like?"
-→ `$HOME/.agents/skills-source/owned/dobby/scripts/dobby-tasks snapshot` for today + overdue + inbox in one call. Surface counts and the live list.
+→ `$HOME/.agents/skills-source/owned/things-client/scripts/things-client snapshot` for today + overdue + inbox in one call. Surface counts and the live list.
 
 **"What's on my calendar / week?"**
 → `$HOME/.agents/skills-source/owned/dobby/scripts/dobby-calendar week` or `$HOME/.agents/skills-source/owned/dobby/scripts/dobby-calendar today`. Use `--all-calendars` only when the user asks for an audit or cross-account search.
 
 **"What's in my inbox?"**
-→ `$HOME/.agents/skills-source/owned/dobby/scripts/dobby-tasks inbox`. Flag anything stale.
+→ `$HOME/.agents/skills-source/owned/things-client/scripts/things-client inbox`. Flag anything stale.
 
 **"What do you know about <area>?"**
 → `$HOME/.agents/skills-source/owned/dobby/scripts/dobby-memory read --section area.<area>.<area>` (single main file). Surface "Current state" section first. Load the log only if asked.
@@ -51,13 +51,13 @@ Propose the destination; do the write.
 ## Tasks
 
 **"Add a task to X"** / "Remind me to X" / "I need to X"
-→ `$HOME/.agents/skills-source/owned/dobby/scripts/dobby-tasks add "X" --when <default: today> --area <best guess; ask if unclear>`.
+→ `$HOME/.agents/skills-source/owned/things-client/scripts/things-client add "X" --when <default: today> --area <best guess; ask if unclear>`.
 
 **"Mark X done"**
-→ `$HOME/.agents/skills-source/owned/dobby/scripts/dobby-tasks done <id-prefix>`. If no id, use `$HOME/.agents/skills-source/owned/dobby/scripts/dobby-tasks search "X"` first.
+→ `$HOME/.agents/skills-source/owned/things-client/scripts/things-client done <id-prefix>`. If no id, use `$HOME/.agents/skills-source/owned/things-client/scripts/things-client search "X"` first.
 
 **"What's overdue?"**
-→ `$HOME/.agents/skills-source/owned/dobby/scripts/dobby-tasks overdue`. Name any drift from stated commitments directly.
+→ `$HOME/.agents/skills-source/owned/things-client/scripts/things-client overdue`. Name any drift from stated commitments directly.
 
 ## Calendar
 

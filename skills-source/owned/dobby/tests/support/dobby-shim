@@ -4,13 +4,12 @@ set -euo pipefail
 SKILL_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 cmd="${1:-}"
 if [[ -z "$cmd" ]]; then
-  echo "usage: dobby-shim memory|tasks|calendar ..." >&2
+  echo "usage: dobby-shim memory|calendar ..." >&2
   exit 2
 fi
 shift
 case "$cmd" in
   memory) exec "$SKILL_DIR/scripts/dobby-memory" "$@" ;;
-  tasks) exec "$SKILL_DIR/scripts/dobby-tasks" "$@" ;;
   calendar) exec "$SKILL_DIR/scripts/dobby-calendar" "$@" ;;
   *) echo "unknown dobby group: $cmd" >&2; exit 2 ;;
 esac

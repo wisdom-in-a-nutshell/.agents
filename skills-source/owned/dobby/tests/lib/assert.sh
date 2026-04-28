@@ -37,7 +37,6 @@ REPO_ROOT="$(resolve_workspace)"
 export DOBBY_WORKSPACE="$REPO_ROOT"
 DOBBY="$TESTS_DIR/support/dobby-shim"
 DOBBY_MEMORY="$SKILL_DIR/scripts/dobby-memory"
-DOBBY_TASKS="$SKILL_DIR/scripts/dobby-tasks"
 DOBBY_CALENDAR="$SKILL_DIR/scripts/dobby-calendar"
 
 # Failure counter — test scripts can read and return at the end.
@@ -46,10 +45,7 @@ export FAIL_COUNT=${FAIL_COUNT:-0}
 _pass() { printf "  \033[32m✓\033[0m %s\n" "$1"; }
 _fail() { printf "  \033[31m✗\033[0m %s: %s\n" "$1" "$2"; FAIL_COUNT=$((FAIL_COUNT + 1)); }
 
-# Eventual-consistency helper for live Things Cloud calls.
-#
-# Usage:
-#     retry_cmd 5 2 /path/to/dobby tasks search "foo" --json
+# Eventual-consistency helper for live integration calls.
 #
 # Retries the command up to N times with a delay between attempts, returning
 # 0 on the first success and the last exit code after exhaustion. Captures the
@@ -68,26 +64,6 @@ retry_cmd() {
         sleep "$delay"
     done
     return "$last"
-}
-
-# Retries a dobby search until a jq-expressed predicate is truthy.
-# Used to ride out Things Cloud sync latency in live tests.
-#
-# Usage:
-#     wait_for_search "DOBBY-foo" ".data.count >= 1"
-wait_for_search() {
-    local query="$1" predicate="$2"
-    local attempts=${3:-6} delay=${4:-1}
-    for ((i=1; i<=attempts; i++)); do
-        CAPTURED_STDOUT=$("$DOBBY" tasks search "$query" --json 2>/dev/null || true)
-        if [[ -n "$CAPTURED_STDOUT" ]]; then
-            if printf '%s' "$CAPTURED_STDOUT" | jq -e "$predicate" > /dev/null 2>&1; then
-                return 0
-            fi
-        fi
-        sleep "$delay"
-    done
-    return 1
 }
 
 section() {

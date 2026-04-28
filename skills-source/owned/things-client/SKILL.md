@@ -7,26 +7,40 @@ description: Use when an agent needs to read, inspect, or update Things 3 tasks 
 
 ## Overview
 
-This skill provides a reusable Things 3 client for agents. It is the generic task-access layer; personal routing policy belongs in Dobby/Adi, and engineering orchestration belongs in DevWorker.
+This skill provides the reusable Things 3 client for agents. It is the generic task-access layer; personal routing policy belongs in Dobby/Adi, and engineering orchestration belongs in DevWorker.
 
 ## CLI
 
 Use the bundled CLI directly:
 
 ```bash
-$HOME/.agents/skills-source/owned/things-client/scripts/things-client list --tag devworker
-$HOME/.agents/skills-source/owned/things-client/scripts/things-client inspect <task-id-or-title>
-$HOME/.agents/skills-source/owned/things-client/scripts/things-client edit <task-id-or-title> --append-notes "..."
-$HOME/.agents/skills-source/owned/things-client/scripts/things-client complete <task-id-or-title>
-$HOME/.agents/skills-source/owned/things-client/scripts/things-client doctor
+THINGS="$HOME/.agents/skills-source/owned/things-client/scripts/things-client"
+
+$THINGS snapshot
+$THINGS today | inbox | overdue
+$THINGS list --tag devworker --verbose
+$THINGS inspect <task-id-or-title>
+$THINGS add "Task title" --when today --area <Area>
+$THINGS edit <task-id-or-title> --append-notes "..."
+$THINGS done <task-id-or-title>
+$THINGS doctor
 ```
 
 Output is a stable JSON envelope by default. Use `--plain` only for human inspection.
+
+## Command Surface
+
+- Read tasks: `snapshot`, `today`, `inbox`, `upcoming`, `anytime`, `someday`, `overdue`, `logbook`, `list`, `search`, `inspect`.
+- Read structure: `projects`, `areas`, `tags`.
+- Write tasks: `add`, `edit`, `schedule`, `done`, `complete` (alias), `cancel`, `delete --yes`, `show`.
+- Write structure/admin: `project-new`, `area-new`, `log-completed`, `empty-trash --yes`.
+- Health: `doctor`.
 
 ## Boundaries
 
 - Reads auto-discover the local Things SQLite database and open it read-only. If SQLite is unavailable, read commands fall back to bounded JXA against the running Things app.
 - Writes use supported Things URL-scheme operations.
+- Deletion and Logbook maintenance use bounded AppleScript because the Things URL scheme does not expose those operations.
 - Do not write directly to the Things SQLite database.
 - Do not encode Dobby memory, journal, calendar, or area-routing policy here.
 - Keep DevWorker-specific parsing such as `repo:codexclaw` in DevWorker.
@@ -49,9 +63,16 @@ The CLI normally discovers the newest non-backup Things database under the Thing
 
 - `THINGS_CLIENT_SQLITE_PATH`
 - `THINGS_SQLITE_PATH`
-- `DOBBY_THINGS_SQLITE_PATH`
 
 Explicit paths are overrides. If an explicit path is missing or broken, the command fails instead of silently using another database. Without an explicit path, read commands use auto-discovered read-only SQLite first and bounded JXA as a fallback.
+
+Useful diagnostic knobs:
+
+- `THINGS_CLIENT_READ_BACKEND=auto|sqlite|jxa`
+- `THINGS_CLIENT_JXA_TIMEOUT_SECS`
+- `THINGS_CLIENT_JXA_PROBE_TIMEOUT_SECS`
+- `THINGS_CLIENT_OPEN_TIMEOUT_SECS`
+- `THINGS_CLIENT_URL_SETTLE_SECS`
 
 ## Common Patterns
 

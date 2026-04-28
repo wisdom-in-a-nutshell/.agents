@@ -11,9 +11,9 @@ Section order (identity-first so later sections read through the right lens):
 
 Memory reads (`now.md`, area manifest, `soul.md`) happen inline via
 file I/O — trivial work, no reason to round-trip through a CLI. Task and
-calendar snapshots go through `dobby-tasks` and `dobby-calendar`
-because those wrap non-trivial integrations (JXA into Things 3, EventKit
-via `ical`) and are worth the CLI contract.
+calendar snapshots go through `things-client` and `dobby-calendar`
+because those wrap non-trivial integrations (Things 3, EventKit) and are
+worth the CLI contract.
 
 The user's durable identity lives in `soul.md`. It is normally loaded as
 the system prompt by:
@@ -69,6 +69,12 @@ SCRIPTS_DIR = Path(
     os.environ.get(
         "DOBBY_SCRIPTS_DIR",
         str(Path.home() / ".agents/skills-source/owned/dobby/scripts"),
+    )
+).expanduser()
+THINGS_CLIENT = Path(
+    os.environ.get(
+        "THINGS_CLIENT_CLI",
+        str(Path.home() / ".agents/skills-source/owned/things-client/scripts/things-client"),
     )
 ).expanduser()
 
@@ -263,7 +269,6 @@ def print_soul() -> None:
 
 
 def main() -> int:
-    tasks_cli = SCRIPTS_DIR / "dobby-tasks"
     cal_cli = SCRIPTS_DIR / "dobby-calendar"
 
     os.chdir(REPO_ROOT)
@@ -271,7 +276,7 @@ def main() -> int:
     # Parallelize the two CLI calls that do real external work.
     # Memory reads stay on the main thread — they're fast local file I/O.
     with ThreadPoolExecutor(max_workers=2) as pool:
-        tasks_future = pool.submit(run_json, [str(tasks_cli), "snapshot"])
+        tasks_future = pool.submit(run_json, [str(THINGS_CLIENT), "snapshot"])
         cal_future = pool.submit(
             run_json,
             [
