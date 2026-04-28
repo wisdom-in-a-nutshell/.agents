@@ -17,13 +17,13 @@ Boot context is delivered by the repo's `SessionStart` hook
 (`scripts/hooks/session_start.py`), not by this skill. That repo hook is a
 thin delegate to the skill-bundled hook, which reads `now.md`, walks
 `memory/areas/`, and calls the shared `things-client snapshot`
-and skill-bundled `dobby-calendar upcoming` in parallel. Adi's durable identity
-is part of `soul.md` under `## About Adi` and arrives via the
-wrapper-composed system prompt.
+and skill-bundled `dobby-calendar upcoming` in parallel. The workspace user's
+durable identity is part of `soul.md` under that workspace's `## About <User>`
+section and arrives via the wrapper-composed system prompt.
 
 What you can rely on being in context at session start:
 
-1. `soul.md` (identity, values, voice, `## About Adi`) — from the system prompt.
+1. `soul.md` (identity, values, voice, `## About <User>`) — from the system prompt.
 2. `now.md` — full contents.
 3. Task snapshot (overdue / today / inbox counts + top items).
 4. Calendar (next 2 days).
@@ -43,7 +43,7 @@ Examples:
 - Read a file: `$HOME/.agents/skills-source/owned/dobby/scripts/dobby-memory read --section now` / `--section area.<name>.<file>`
 - Append to a log: `echo "- date — event" | $HOME/.agents/skills-source/owned/dobby/scripts/dobby-memory write --section area.<name>.log --message "label"`
 - Mid-file section edit in `now.md` or an area file: use `Edit` tool (CLI can't replace sections)
-- Edit durable identity (`## About Adi` in `soul.md`): use `Edit` tool directly on `soul.md`
+- Edit durable identity (`## About <User>` in `soul.md`): use `Edit` tool directly on `soul.md`
 - New journal file: use `Write` tool (CLI `write` appends, doesn't create)
 
 See `references/commands.md` for full recipes.
@@ -65,7 +65,7 @@ When new information surfaces, route it to exactly one canonical home. Never dup
 | Signal | Home | Operation |
 |---|---|---|
 | Actionable item (to do, follow up, remind me) | **Things 3** | `$HOME/.agents/skills-source/owned/things-client/scripts/things-client add "..." --when ... --area <Area>` |
-| Durable truth about the user (identity, pattern, preference) | `soul.md` `## About Adi` | Edit in place (section) |
+| Durable truth about the user (identity, pattern, preference) | `soul.md` `## About <User>` | Edit in place (section) |
 | This week's active context / session handoff | `memory/now.md` | Rewrite the relevant section, keep ≤60 lines |
 | Per-area durable canon | `memory/areas/<area>/<area>.md` | Edit in place |
 | Per-area event or task completion | `memory/areas/<area>/log.md` | Append (dated one-liner), via CLI |
@@ -117,11 +117,16 @@ Calendar operations go through the skill-bundled EventKit wrapper: `$HOME/.agent
 
 - **One canonical home.** Never write the same fact to two places. Use pointers when cross-reference is needed.
 - **Read before you write.** Don't duplicate content that already exists.
-- **Respect the clocks.** `soul.md` (including `## About Adi`) is slow (monthly–yearly). `now.md` is weekly. Area canon shifts as needed. Don't churn slow files with fast content.
+- **Respect the clocks.** `soul.md` (including `## About <User>`) is slow (monthly–yearly). `now.md` is weekly. Area canon shifts as needed. Don't churn slow files with fast content.
 - **No `current.md` files.** Per-area active state lives as a "Current state" section at the top of the area's main file, or in `now.md` if it's cross-cutting this week.
 - **Actionable ≠ memory.** If it's a to-do, it goes to Things 3, full stop.
 - **Preserve continuity on rewrites.** When slimming or consolidating, don't lose content silently — fold into another file, or append to `journal/daily/YYYY-MM-DD/` before removing.
 - **Standing permission for memory writes.** The user has granted direct write-back permission — don't ask before updating memory when something durable surfaces. Note the write inline so they see what happened.
+- **Keep repo docs thin.** Workspace repo docs may describe repo-specific facts
+  such as area names, host topology, local secret mapping, and setup steps. Do
+  not duplicate command recipes, CLI internals, backend behavior, or task/client
+  policy there; keep those in this skill or the shared `things-client` skill and
+  point repo docs here.
 
 ## Delegation
 

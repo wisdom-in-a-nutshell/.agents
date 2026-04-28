@@ -7,7 +7,7 @@ description: Use when an agent needs to read, inspect, or update Things 3 tasks 
 
 ## Overview
 
-This skill provides the reusable Things 3 client for agents. It is the generic task-access layer; personal routing policy belongs in Dobby/Adi, and engineering orchestration belongs in DevWorker.
+This skill provides the reusable Things 3 client for agents. It is the generic task-access layer; personal routing policy belongs in Dobby-style workspace skills, and engineering orchestration belongs in DevWorker.
 
 ## CLI
 

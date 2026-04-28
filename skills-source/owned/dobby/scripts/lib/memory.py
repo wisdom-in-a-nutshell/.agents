@@ -10,9 +10,10 @@ Section routing (dot notation):
     area.<name>        -> memory/areas/<name>/  (concat all .md)
     area.<name>.<file> -> memory/areas/<name>/<file>.md
 
-Adi's durable identity lives in `soul.md` under `## About Adi` and is loaded
-via the wrapper-composed system prompt. It is intentionally not served by
-this CLI — editing soul.md is a manual `Edit` operation.
+The workspace user's durable identity lives in `soul.md` under that workspace's
+`## About <User>` section and is loaded via the wrapper-composed system prompt.
+It is intentionally not served by this CLI — editing soul.md is a manual `Edit`
+operation.
 
 Boot-time loading is handled by the repo's SessionStart hook
 (`scripts/hooks/session_start.py`) which reads memory files directly via

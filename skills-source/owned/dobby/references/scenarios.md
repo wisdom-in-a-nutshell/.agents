@@ -6,10 +6,10 @@ Common phrasings mapped to the exact operation. Match intent, not literal words;
 
 **"Remember that I prefer X"** / "Note that I..."
 → Classify:
-- Durable identity/preference? → `Edit soul.md` in the right subsection of `## About Adi`.
+- Durable identity/preference? → `Edit soul.md` in the right subsection of `## About <User>`.
 - Per-area canon? → `Edit memory/areas/<area>/<area>.md`.
 
-Confirm in one line: "Added to `soul.md` `## About Adi` under Communication preferences."
+Confirm in one line: "Added to `soul.md` `## About <User>` under Communication preferences."
 
 **"Save this for later"** / "Keep this"
 → Actionable? → Things 3 Inbox via `$HOME/.agents/skills-source/owned/things-client/scripts/things-client add`. Content/reflection? → new file in `journal/daily/<today>/notes-<slug>.md`.
@@ -42,7 +42,7 @@ Confirm in one line: "Added to `soul.md` `## About Adi` under Communication pref
 **"Where does this go?"**
 → Walk the write-decision tree:
 - Actionable? → Things 3.
-- Durable truth about the user? → `soul.md` `## About Adi`.
+- Durable truth about the user? → `soul.md` `## About <User>`.
 - Per-area? → `memory/areas/<area>/`.
 - Dated reflection? → `journal/daily/<today>/`.
 
@@ -96,9 +96,9 @@ When the route isn't obvious, try in order:
 2. Dated observation? → `journal/daily/<today>/`.
 3. Tied to one area? → `memory/areas/<area>/`.
 4. Cross-cutting, this week? → `memory/now.md`.
-5. Durable and about the user? → `soul.md` `## About Adi`.
+5. Durable and about the user? → `soul.md` `## About <User>`.
 6. Unsure? → `journal/daily/<today>/notes-<slug>.md` as a safe holding ground; route properly during next consolidation.
 
 ## Read-before-write rule
 
-For any substantive write (>2 lines into an existing file, or any edit to `soul.md` `## About Adi` or area canon), read the target first. Duplicates are the biggest drift source. Add "see also" pointers instead of restating.
+For any substantive write (>2 lines into an existing file, or any edit to `soul.md` `## About <User>` or area canon), read the target first. Duplicates are the biggest drift source. Add "see also" pointers instead of restating.

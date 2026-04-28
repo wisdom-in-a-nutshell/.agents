@@ -6,8 +6,9 @@ The skill-bundled scripts are the preferred path. They are agent-first: JSON env
 
 Boot context is delivered by the repo's `SessionStart` hook
 (`scripts/hooks/session_start.py`). This CLI no longer exposes a `boot`
-subcommand. Adi's durable identity lives in `soul.md` under `## About Adi`
-and arrives via the wrapper-composed system prompt.
+subcommand. The workspace user's durable identity lives in `soul.md` under
+that workspace's `## About <User>` section and arrives via the
+wrapper-composed system prompt.
 
 ## Read a specific file
 
@@ -37,7 +38,7 @@ The CLI does NOT create files. The target must already exist. Content must arriv
 
 ## Mid-file section rewrite (Edit tool only)
 
-The CLI only appends. For replacing a section in `now.md`, an area main file, or `## About Adi` in `soul.md`, use `Edit`:
+The CLI only appends. For replacing a section in `now.md`, an area main file, or `## About <User>` in `soul.md`, use `Edit`:
 
 ```
 Edit memory/now.md

@@ -13,14 +13,14 @@ What each file is for, how often it changes, and the write pattern (append / edi
 
 Durable truths about the user — identity, preferences, patterns, values,
 structural/financial context, risk patterns, support patterns — live in
-`soul.md` under `## About Adi`. Edit in place by section. "Who the user
-is today" arrives at session start via the wrapper-composed system
-prompt; it is not served by the memory CLI.
+`soul.md` under the workspace's `## About <User>` section. Edit in place by
+section. "Who the user is today" arrives at session start via the
+wrapper-composed system prompt; it is not served by the memory CLI.
 
 ### `memory/now.md`
 - **Holds:** this week's active context — week shape, strategic tracks, life timeline, watchouts, session handoff.
 - **Clock:** weekly rewrites; section updates as context shifts.
-- **Write pattern:** rewrite sections in place. Hard cap: ≤60 lines. If a section outgrows its budget, promote stable content to `soul.md` `## About Adi` or area canon and prune.
+- **Write pattern:** rewrite sections in place. Hard cap: ≤60 lines. If a section outgrows its budget, promote stable content to `soul.md` `## About <User>` or area canon and prune.
 - **Rule:** actionable items live in Things 3, not here.
 
 ## Areas (mirror Things 3 Areas)
@@ -29,7 +29,7 @@ Each area has a folder under `memory/areas/`. The set of areas is workspace-inst
 
 ### `memory/areas/<area>/<area>.md`
 - **Holds:** durable canon for that area — identity, patterns, active "Current state" section, coaching notes.
-- **Clock:** shifts as the area shifts. Faster than `soul.md` `## About Adi`, slower than `now.md`.
+- **Clock:** shifts as the area shifts. Faster than `soul.md` `## About <User>`, slower than `now.md`.
 - **Write pattern:** edit in place, by section.
 
 ### `memory/areas/<area>/log.md`
@@ -67,7 +67,7 @@ Generated or synced data that is semantically part of an area still lives under 
 
 | File | Clock | Write pattern |
 |---|---|---|
-| `soul.md` (incl. `## About Adi`) | yearly; `## About Adi` monthly | curated edit / section edit |
+| `soul.md` (incl. `## About <User>`) | yearly; `## About <User>` monthly | curated edit / section edit |
 | `now.md` | weekly | section rewrite, ≤60 lines |
 | `areas/<x>/<x>.md` | as area shifts | section edit |
 | `areas/<x>/log.md` | event-driven | append only |
