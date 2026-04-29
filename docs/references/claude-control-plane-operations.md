@@ -131,6 +131,7 @@ The Claude control plane follows the same sync/check pattern as Codex, with scri
 - If a managed repo tracks those paths in git, they will appear as ordinary worktree changes until committed.
 - `check-claude-control-plane.sh` now also flags untracked files under tracked repo-local Claude generated surfaces such as `.claude/skills/` and `.claude/agents/`.
   - This catches the "new generated Claude symlink was created but never added to the repo" case.
+  - `scripts/check-fast.sh` runs this same repo-local git-state guard for the current repo.
   - It does not auto-commit or auto-push target repos.
 
 ## Generic Baseline Exclusions
