@@ -10,6 +10,11 @@ SOCKET_PATH="${DOBBY_CALENDAR_BRIDGE_SOCKET:-${HOME}/Library/Application Support
 LAUNCH_LABEL="com.${USER}.dobby-calendar-bridge"
 CODESIGN_IDENTITY="${DOBBY_CALENDAR_CODESIGN_IDENTITY:-}"
 ALLOW_ADHOC_SIGNING="${DOBBY_CALENDAR_ALLOW_ADHOC_SIGNING:-0}"
+BOOTSTRAP_LOCAL_CODESIGN="${DOBBY_CALENDAR_BOOTSTRAP_LOCAL_CODESIGN:-1}"
+LOCAL_CODESIGN_NAME="${DOBBY_CALENDAR_LOCAL_CODESIGN_NAME:-Dobby Local Code Signing}"
+LOCAL_CODESIGN_KEYCHAIN="${DOBBY_CALENDAR_CODESIGN_KEYCHAIN:-${HOME}/Library/Keychains/dobby-local-codesign.keychain-db}"
+LOCAL_CODESIGN_SECRET_ENV="${DOBBY_CALENDAR_CODESIGN_SECRET_ENV:-${HOME}/.secrets/dobby-codesign/env}"
+CODESIGN_KEYCHAIN_ARGS=()
 
 usage() {
   cat <<USAGE
@@ -29,6 +34,9 @@ Options:
   --force                   Rebuild/reinstall even if app already exists
   --codesign-identity <id>   Stable signing identity to use (or set
                              DOBBY_CALENDAR_CODESIGN_IDENTITY)
+  --no-bootstrap-codesign-identity
+                             Do not create the local Dobby signing keychain if
+                             no stable identity exists
   --allow-adhoc-signing      Fall back to ad-hoc signing if no stable identity
                              exists (may reset macOS Calendar permission)
   -h, --help                Show this help
@@ -60,6 +68,10 @@ while [[ $# -gt 0 ]]; do
     --codesign-identity)
       CODESIGN_IDENTITY="${2:-}"
       shift 2
+      ;;
+    --no-bootstrap-codesign-identity)
+      BOOTSTRAP_LOCAL_CODESIGN=0
+      shift
       ;;
     --allow-adhoc-signing)
       ALLOW_ADHOC_SIGNING=1
@@ -128,18 +140,31 @@ find_codesign_identity() {
     return 1
   fi
 
-  local identities
-  identities="$(security find-identity -v -p codesigning 2>/dev/null || true)"
-
-  # Prefer a purpose-specific local identity when one exists. Fall back to
-  # Adi's Apple Development certificate, which is stable across app rebuilds
-  # on this machine and avoids TCC permission churn caused by ad-hoc signing.
+  # Prefer the purpose-specific local identity. It lives in a Dobby-owned
+  # keychain so agents can sign helper rebuilds without triggering private-key
+  # prompts from Adi's Apple Development keychain item.
   local identity
-  identity="$(printf '%s\n' "$identities" | awk -F'"' '/"Dobby Local Code Signing"/ { print $2; exit }')"
+  identity="$(find_local_codesign_identity || true)"
   if [[ -n "$identity" ]]; then
+    CODESIGN_KEYCHAIN_ARGS=(--keychain "$LOCAL_CODESIGN_KEYCHAIN")
     printf '%s\n' "$identity"
     return 0
   fi
+
+  if [[ "$BOOTSTRAP_LOCAL_CODESIGN" == "1" ]]; then
+    identity="$(bootstrap_local_codesign_identity || true)"
+    if [[ -n "$identity" ]]; then
+      CODESIGN_KEYCHAIN_ARGS=(--keychain "$LOCAL_CODESIGN_KEYCHAIN")
+      printf '%s\n' "$identity"
+      return 0
+    fi
+  fi
+
+  # Last stable fallback: a normal Apple Development identity. This may require
+  # an interactive private-key prompt depending on the user's Keychain ACL, so
+  # the local Dobby identity above should be used for autonomous agent work.
+  local identities
+  identities="$(security find-identity -v -p codesigning 2>/dev/null || true)"
   identity="$(printf '%s\n' "$identities" | awk -F'"' '/"Apple Development: Adithyan Ilangovan / { print $2; exit }')"
   if [[ -n "$identity" ]]; then
     printf '%s\n' "$identity"
@@ -153,6 +178,143 @@ find_codesign_identity() {
   return 1
 }
 
+find_local_codesign_identity() {
+  [[ -f "$LOCAL_CODESIGN_KEYCHAIN" ]] || return 1
+  unlock_local_codesign_keychain
+  ensure_keychain_in_search_list "$LOCAL_CODESIGN_KEYCHAIN"
+  local identity
+  identity="$(
+    security find-identity -v -p codesigning "$LOCAL_CODESIGN_KEYCHAIN" 2>/dev/null |
+      awk -v name="\"$LOCAL_CODESIGN_NAME\"" '$0 ~ name { print $2; exit }'
+  )"
+  if [[ -n "$identity" ]]; then
+    printf '%s\n' "$identity"
+    return 0
+  fi
+  return 1
+}
+
+load_or_create_local_codesign_password() {
+  mkdir -p "$(dirname "$LOCAL_CODESIGN_SECRET_ENV")"
+  chmod 700 "$(dirname "$LOCAL_CODESIGN_SECRET_ENV")"
+
+  if [[ -f "$LOCAL_CODESIGN_SECRET_ENV" ]]; then
+    # shellcheck disable=SC1090
+    source "$LOCAL_CODESIGN_SECRET_ENV"
+  fi
+
+  if [[ -z "${DOBBY_CODESIGN_KEYCHAIN_PASSWORD:-}" ]]; then
+    if ! command -v openssl >/dev/null 2>&1; then
+      echo "openssl not found; cannot create local Dobby code-signing identity." >&2
+      return 1
+    fi
+    DOBBY_CODESIGN_KEYCHAIN_PASSWORD="$(openssl rand -base64 48 | tr -d '\n')"
+    umask 077
+    printf 'DOBBY_CODESIGN_KEYCHAIN_PASSWORD=%q\n' "$DOBBY_CODESIGN_KEYCHAIN_PASSWORD" >"$LOCAL_CODESIGN_SECRET_ENV"
+    chmod 600 "$LOCAL_CODESIGN_SECRET_ENV"
+  fi
+}
+
+unlock_local_codesign_keychain() {
+  load_or_create_local_codesign_password
+  security unlock-keychain -p "$DOBBY_CODESIGN_KEYCHAIN_PASSWORD" "$LOCAL_CODESIGN_KEYCHAIN" >/dev/null 2>&1 || true
+  security set-keychain-settings -lut 21600 "$LOCAL_CODESIGN_KEYCHAIN" >/dev/null 2>&1 || true
+}
+
+ensure_keychain_in_search_list() {
+  local keychain_path="$1"
+  local existing=()
+  local found=0
+  local line
+  while IFS= read -r line; do
+    line="${line#"${line%%[![:space:]]*}"}"
+    line="${line%\"}"
+    line="${line#\"}"
+    [[ -z "$line" ]] && continue
+    existing+=("$line")
+    if [[ "$line" == "$keychain_path" ]]; then
+      found=1
+    fi
+  done < <(security list-keychains -d user 2>/dev/null || true)
+  if [[ "$found" != "1" ]]; then
+    security list-keychains -d user -s "$keychain_path" "${existing[@]}" >/dev/null
+  fi
+}
+
+bootstrap_local_codesign_identity() {
+  if ! command -v openssl >/dev/null 2>&1; then
+    echo "openssl not found; cannot create local Dobby code-signing identity." >&2
+    return 1
+  fi
+
+  load_or_create_local_codesign_password
+  mkdir -p "$(dirname "$LOCAL_CODESIGN_KEYCHAIN")"
+  if [[ ! -f "$LOCAL_CODESIGN_KEYCHAIN" ]]; then
+    echo "+ security create-keychain $LOCAL_CODESIGN_KEYCHAIN" >&2
+    security create-keychain -p "$DOBBY_CODESIGN_KEYCHAIN_PASSWORD" "$LOCAL_CODESIGN_KEYCHAIN" >/dev/null
+  fi
+  unlock_local_codesign_keychain
+  ensure_keychain_in_search_list "$LOCAL_CODESIGN_KEYCHAIN"
+
+  local existing
+  existing="$(find_local_codesign_identity || true)"
+  if [[ -n "$existing" ]]; then
+    printf '%s\n' "$existing"
+    return 0
+  fi
+
+  echo "+ create local code-signing identity: $LOCAL_CODESIGN_NAME" >&2
+  local tmp_dir p12_pass
+  tmp_dir="$(mktemp -d "${TMPDIR:-/tmp}/dobby-codesign.XXXXXX")"
+  p12_pass="$(openssl rand -base64 32 | tr -d '\n')"
+  cat >"$tmp_dir/openssl.cnf" <<EOF
+[req]
+distinguished_name = dn
+x509_extensions = v3_req
+prompt = no
+
+[dn]
+CN = $LOCAL_CODESIGN_NAME
+O = Dobby Local
+
+[v3_req]
+basicConstraints = critical, CA:false
+keyUsage = critical, digitalSignature
+extendedKeyUsage = critical, codeSigning
+subjectKeyIdentifier = hash
+EOF
+
+  openssl req -x509 -newkey rsa:2048 -sha256 -days 3650 -nodes \
+    -keyout "$tmp_dir/key.pem" \
+    -out "$tmp_dir/cert.pem" \
+    -config "$tmp_dir/openssl.cnf" \
+    -extensions v3_req >/dev/null 2>&1
+  openssl pkcs12 -export \
+    -inkey "$tmp_dir/key.pem" \
+    -in "$tmp_dir/cert.pem" \
+    -name "$LOCAL_CODESIGN_NAME" \
+    -out "$tmp_dir/identity.p12" \
+    -passout "pass:$p12_pass" >/dev/null 2>&1
+  security import "$tmp_dir/identity.p12" \
+    -k "$LOCAL_CODESIGN_KEYCHAIN" \
+    -P "$p12_pass" \
+    -T /usr/bin/codesign \
+    -T /usr/bin/security >/dev/null
+  security set-key-partition-list \
+    -S apple-tool:,apple:,codesign: \
+    -s \
+    -k "$DOBBY_CODESIGN_KEYCHAIN_PASSWORD" \
+    "$LOCAL_CODESIGN_KEYCHAIN" >/dev/null 2>&1 || true
+  security add-trusted-cert \
+    -r trustAsRoot \
+    -p codeSign \
+    -k "$LOCAL_CODESIGN_KEYCHAIN" \
+    "$tmp_dir/cert.pem" >/dev/null 2>&1 || true
+  rm -rf "$tmp_dir"
+
+  find_local_codesign_identity
+}
+
 sign_app() {
   if ! command -v codesign >/dev/null 2>&1; then
     echo "codesign not found; cannot install a stable Calendar permission identity." >&2
@@ -162,8 +324,8 @@ sign_app() {
   local identity
   identity="$(find_codesign_identity || true)"
   if [[ -n "$identity" ]]; then
-    echo "+ codesign --force --deep --sign \"$identity\" $APP_DIR" >&2
-    codesign --force --deep --sign "$identity" "$APP_DIR" >/dev/null
+    echo "+ codesign --force --deep ${CODESIGN_KEYCHAIN_ARGS[*]} --sign \"$identity\" $APP_DIR" >&2
+    codesign --force --deep "${CODESIGN_KEYCHAIN_ARGS[@]}" --sign "$identity" "$APP_DIR" >/dev/null
     return 0
   fi
 
@@ -178,6 +340,7 @@ sign_app() {
 No stable code-signing identity found.
 
 Install or configure one, then rerun. Options:
+  - allow the installer to create the Dobby local signing keychain
   - set DOBBY_CALENDAR_CODESIGN_IDENTITY to an existing code-signing identity
   - pass --codesign-identity "<identity>"
   - as a last resort, pass --allow-adhoc-signing (permission may reset)
