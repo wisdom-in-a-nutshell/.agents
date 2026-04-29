@@ -18,7 +18,7 @@ THINGS="$HOME/.agents/skills-source/owned/things-client/scripts/things-client"
 
 $THINGS snapshot
 $THINGS today | inbox | overdue
-$THINGS list --tag devworker --verbose
+$THINGS list --tag agent --verbose
 $THINGS inspect <task-id-or-title>
 $THINGS add "Task title" --when today --area <Area>
 $THINGS edit <task-id-or-title> --append-notes "..."
@@ -93,10 +93,10 @@ Useful diagnostic knobs:
 
 ## Common Patterns
 
-For local intake queues, prefer a Things tag such as `devworker`, then let the caller interpret task notes:
+For local intake queues, prefer a caller-owned Things tag such as `agent`, then let the caller interpret task notes:
 
 ```bash
-things-client list --tag devworker --verbose
+things-client list --tag agent --verbose
 ```
 
 When a task has been promoted to a durable tracker item, append the URL to the notes:

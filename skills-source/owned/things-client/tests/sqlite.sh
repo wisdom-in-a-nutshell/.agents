@@ -43,7 +43,7 @@ conn.executescript(
     CREATE TABLE TMTag (uuid TEXT PRIMARY KEY, title TEXT, "index" INTEGER);
     CREATE TABLE TMArea (uuid TEXT PRIMARY KEY, title TEXT);
     CREATE TABLE TMAreaTag (areas TEXT, tags TEXT);
-    INSERT INTO TMTag VALUES ('tag-devworker', 'devworker', 0);
+    INSERT INTO TMTag VALUES ('tag-agent', 'agent', 0);
     INSERT INTO TMTag VALUES ('tag-other', 'other', 1);
     INSERT INTO TMArea VALUES ('area-builder', 'Builder');
     INSERT INTO TMTask VALUES (
@@ -76,7 +76,7 @@ conn.executescript(
         '',
         0, 0, 0, 1, NULL, 132780160, NULL, 1000, 1800, NULL, NULL, NULL, NULL, 4, 4
     );
-    INSERT INTO TMTaskTag VALUES ('task-1234567890abcdef', 'tag-devworker');
+    INSERT INTO TMTaskTag VALUES ('task-1234567890abcdef', 'tag-agent');
     INSERT INTO TMTaskTag VALUES ('task-ignored', 'tag-other');
     """
 )
@@ -88,7 +88,7 @@ mkdir -p "$(dirname "$AUTO_DB")" "$(dirname "$BACKUP_DB")"
 cp "$DB" "$AUTO_DB"
 cp "$DB" "$BACKUP_DB"
 
-list_json="$("$ROOT/scripts/things-client" list --tag devworker --verbose)"
+list_json="$("$ROOT/scripts/things-client" list --tag agent --verbose)"
 python3 - "$list_json" <<'PY'
 import json
 import sys
@@ -132,7 +132,7 @@ assert payload["data"]["count"] == 1, payload
 assert payload["data"]["areas"][0]["name"] == "Builder", payload
 PY
 
-auto_json="$(env -u THINGS_CLIENT_SQLITE_PATH -u THINGS_SQLITE_PATH HOME="$TMP_DIR/home" "$ROOT/scripts/things-client" list --tag devworker --verbose)"
+auto_json="$(env -u THINGS_CLIENT_SQLITE_PATH -u THINGS_SQLITE_PATH HOME="$TMP_DIR/home" "$ROOT/scripts/things-client" list --tag agent --verbose)"
 python3 - "$auto_json" <<'PY'
 import json
 import sys

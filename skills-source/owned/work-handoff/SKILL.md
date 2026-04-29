@@ -75,6 +75,7 @@ Task identity:
 Things lifecycle:
 
 - On pickup, DevWorker starts a Codex app-server thread and writes a `codex://threads/<id>` deep link to the Things note.
+- The Codex thread link is the run-claim marker. If an open task already has a `codex://threads/<id>` link, do not start a duplicate run; tag it `needs-input` so the human can resume from that thread.
 - While running, avoid noisy receipts; the task note should stay readable.
 - On success, append the human handoff to the Things note and complete the task.
 - On blocked work, keep the Things task open, add `needs-input`, preserve the Codex thread link already in the Things note, and leave the smallest useful blocked note.
