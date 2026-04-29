@@ -82,7 +82,7 @@ Use [Codex Control Plane Ownership](/Users/dobby/.agents/docs/references/codex-c
   - [`sync-repo-codex-configs.sh`](/Users/dobby/.agents/codex/scripts/sync-repo-codex-configs.sh)
   - `~/.agents/codex/scripts/sync-repo-codex-configs.sh --apply`
 - Regenerate the Obsidian Base artifacts for the repo bootstrap registry:
-- [`sync-repo-bootstrap-registry.sh`](/Users/dobby/.agents/codex/scripts/sync-repo-bootstrap-registry.sh)
+  - [`sync-repo-bootstrap-registry.sh`](/Users/dobby/.agents/codex/scripts/sync-repo-bootstrap-registry.sh)
   - `~/.agents/codex/scripts/sync-repo-bootstrap-registry.sh`
 - Link the shared shell config:
   - [`link-shared-zshrc.sh`](/Users/dobby/GitHub/scripts/setup/codex/link-shared-zshrc.sh)
