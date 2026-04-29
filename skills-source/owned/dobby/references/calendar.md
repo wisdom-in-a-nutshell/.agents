@@ -50,6 +50,19 @@ Run once per Mac after the Dobby skill is available:
 
 A human must grant **Full Calendar Access** to **Dobby Calendar Bridge** in System Settings > Privacy & Security > Calendars. This is a macOS TCC requirement; scripts cannot bypass it.
 
+The installer must sign the bridge with a stable code-signing identity. macOS
+Calendar permission is tied to the app's code identity; ad-hoc signing (`-s -`)
+can make every rebuild look like a new app and reset Calendar access. The
+installer therefore refuses ad-hoc signing by default and prefers, in order:
+
+1. `DOBBY_CALENDAR_CODESIGN_IDENTITY` / `--codesign-identity`
+2. `Dobby Local Code Signing` if present
+3. Adi's `Apple Development: Adithyan Ilangovan (...)` identity
+4. any available `Apple Development: ...` identity
+
+Use `--allow-adhoc-signing` only as a last-resort repair path, and expect to
+grant Calendar permission again afterward.
+
 ## Backends
 
 `dobby-calendar` backend order:

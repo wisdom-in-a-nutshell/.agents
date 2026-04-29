@@ -102,6 +102,7 @@ Usage:
   DobbyCalendarBridge calendars [--no-input]
   DobbyCalendarBridge list --from <date> --to <date> [--query <text>] [--calendar <name>|--all-calendars] [--limit <n>] [--no-recurring] [--no-input]
   DobbyCalendarBridge add --title <title> --start <date> [--end <date>] --calendar <name> [--all-day] [--location <text>] [--notes <text>] [--url <url>] [--repeat daily|weekly|monthly|yearly] [--repeat-until <date>] [--no-alert] [--no-input]
+  DobbyCalendarBridge update --id <event-id> [--title <title>] [--start <date>] [--end <date>] [--calendar <name>] [--location <text>] [--notes <text>] [--url <url>] [--no-alert] [--no-input]
   DobbyCalendarBridge --version
 
 Output is always one JSON envelope on stdout. Diagnostics go to stderr.
@@ -123,7 +124,7 @@ func parseArgs(_ raw: [String]) throws -> ParsedArgs {
         return ParsedArgs(command: "help")
     }
     let command = args.removeFirst()
-    let knownCommands = ["doctor", "calendars", "list", "add"]
+    let knownCommands = ["doctor", "calendars", "list", "add", "update"]
     guard knownCommands.contains(command) else {
         throw BridgeError("E_VALIDATION", "unknown command: \(command)", hint: usage())
     }
@@ -135,7 +136,7 @@ func parseArgs(_ raw: [String]) throws -> ParsedArgs {
         case "--request-access", "--all-calendars", "--all-day", "--no-alert", "--no-recurring", "--no-input":
             parsed.flags.insert(String(arg.dropFirst(2)))
             i += 1
-        case "--from", "--to", "--query", "--calendar", "--limit", "--title", "--start", "--end", "--location", "--notes", "--url", "--repeat", "--repeat-until":
+        case "--from", "--to", "--query", "--calendar", "--limit", "--title", "--start", "--end", "--location", "--notes", "--url", "--repeat", "--repeat-until", "--id":
             guard i + 1 < args.count else {
                 throw BridgeError("E_VALIDATION", "missing value for \(arg)", hint: usage())
             }
@@ -325,6 +326,49 @@ final class CalendarBridge {
             try store.save(event, span: .thisEvent, commit: true)
         } catch {
             throw BridgeError("E_RUNTIME", "failed to save event: \(error.localizedDescription)")
+        }
+        return eventInfo(event)
+    }
+
+    func updateEvent(args: ParsedArgs) throws -> [String: Any] {
+        try ensureAccess(requestIfNeeded: false)
+        let id = try requireValue(args, "id")
+        guard let event = store.event(withIdentifier: id) else {
+            throw BridgeError("E_NOT_FOUND", "event not found: \(id)")
+        }
+
+        if let title = args.values["title"] { event.title = title }
+        if let calendarName = args.values["calendar"] {
+            event.calendar = try writableCalendar(named: calendarName)
+        }
+        if let startText = args.values["start"] {
+            event.startDate = try parseDate(startText, role: .eventStart)
+        }
+        if let endText = args.values["end"] {
+            event.endDate = try parseDate(endText, role: event.isAllDay ? .allDayEnd : .eventEnd)
+        }
+        if event.endDate <= event.startDate {
+            throw BridgeError("E_VALIDATION", "event end must be after start")
+        }
+        if let location = args.values["location"] { event.location = location }
+        if let notes = args.values["notes"] { event.notes = notes }
+        if let urlText = args.values["url"] {
+            event.url = urlText.isEmpty ? nil : URL(string: urlText)
+        }
+        if args.flags.contains("no-alert") {
+            event.alarms = []
+        }
+        if let frequency = args.values["repeat"] {
+            if frequency == "none" {
+                event.recurrenceRules = nil
+            } else {
+                event.recurrenceRules = [try recurrenceRule(frequency: frequency, untilText: args.values["repeat-until"])]
+            }
+        }
+        do {
+            try store.save(event, span: .thisEvent, commit: true)
+        } catch {
+            throw BridgeError("E_RUNTIME", "failed to update event: \(error.localizedDescription)")
         }
         return eventInfo(event)
     }
@@ -546,6 +590,8 @@ func executeParsed(_ parsed: ParsedArgs) throws -> (command: String, data: Any) 
         result = ["count": events.count, "events": events]
     case "add":
         result = try bridge.addEvent(args: parsed)
+    case "update":
+        result = try bridge.updateEvent(args: parsed)
     default:
         throw BridgeError("E_VALIDATION", "unknown command: \(parsed.command)", hint: usage())
     }
