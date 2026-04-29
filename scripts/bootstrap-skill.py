@@ -422,6 +422,18 @@ def main() -> int:
         child_commands = [
             [sys.executable, "scripts/refresh-external-skills.py", "--apply", "--skill", skill],
             [sys.executable, "scripts/sync-skills-registry.py", "--apply"],
+            [
+                "bash",
+                "claude/scripts/sync-skills.sh",
+                "--apply",
+                "--registry",
+                str(registry_file),
+                *(
+                    arg
+                    for repo in effective_repos
+                    for arg in ("--repo", str(resolve_repo_root(repo, github_root, home)))
+                ),
+            ],
             [sys.executable, "codex/scripts/sync-repo-bootstrap-registry.py"],
         ]
 
@@ -457,21 +469,27 @@ def main() -> int:
                     plain=args.plain,
                 )
         actions.append(f"Imported upstream skill into {source_path}.")
-        actions.append("Synced managed skill links and regenerated derived registry artifacts.")
+        actions.append(
+            "Synced managed Codex/OpenAI and Claude skill links, then regenerated "
+            "derived registry artifacts."
+        )
     else:
         actions.append(f"Would import upstream skill into {source_path}.")
         actions.append(
             "Would run refresh-external-skills, sync-skills-registry, "
-            "and sync-repo-bootstrap-registry."
+            "claude sync-skills, and sync-repo-bootstrap-registry."
         )
 
     repo_links = []
+    claude_links = []
     if effective_scope == "repo":
         for repo in effective_repos:
             repo_root = resolve_repo_root(repo, github_root, home)
             repo_links.append(str(repo_root / ".agents" / "skills" / skill))
+            claude_links.append(str(repo_root / ".claude" / "skills" / skill))
     elif effective_scope == "global":
         repo_links.append(str(root_dir / "skills" / skill))
+        claude_links.append(str(home / ".claude" / "skills" / skill))
 
     data = {
         "skill": skill,
@@ -484,6 +502,7 @@ def main() -> int:
         "apply": bool(args.apply),
         "repo_roots": resolved_repo_roots,
         "expected_links": repo_links,
+        "expected_claude_links": claude_links,
         "actions": actions,
         "commands_run": commands_run,
     }

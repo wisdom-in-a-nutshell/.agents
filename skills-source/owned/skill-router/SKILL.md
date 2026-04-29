@@ -68,7 +68,8 @@ Behavior:
 2. Adds or updates the managed external entry in `skills/registry.json`.
 3. Runs `refresh-external-skills` for that skill.
 4. Runs `sync-skills-registry --apply`.
-5. Regenerates repo bootstrap registry artifacts.
+5. Runs the Claude skill sync internally for the affected repo targets so Claude sees the same managed skill.
+6. Regenerates repo bootstrap registry artifacts.
 
 Defaults:
 
@@ -95,8 +96,8 @@ python3 ~/.agents/skills-source/external/skill-creator/scripts/init_skill.py <sk
 4. Run:
 ```bash
 cd ~/.agents
-./scripts/sync-skills-registry.sh --apply
-./scripts/check-skills-registry.sh
+./scripts/bootstrap-machine-agent-control-planes.sh --apply
+./scripts/check-agent-control-planes.sh
 ```
 
 ### B) Add External Skill
@@ -116,8 +117,8 @@ cd ~/.agents
 4. Run sync/check:
 ```bash
 cd ~/.agents
-./scripts/sync-skills-registry.sh --apply
-./scripts/check-skills-registry.sh
+./scripts/bootstrap-machine-agent-control-planes.sh --apply
+./scripts/check-agent-control-planes.sh
 ```
 5. Treat direct installer-based global installs as non-canonical in this repo. Prefer registry + refresh so external skills remain reproducible and refreshable.
 6. If the input is a `skills.sh` URL or upstream ref and no special handling is needed, prefer the bootstrap shortcut above instead of doing these steps manually.
@@ -135,9 +136,26 @@ cd ~/.agents
 3. If needed, remove old unmanaged repo-local entry.
 4. Run sync/check.
 
+For repo-scoped managed skills, use `--repo <repo-root>` with the Claude sync/check when you want a scoped run:
+
+```bash
+cd ~/.agents
+./scripts/bootstrap-machine-agent-control-planes.sh --apply --repo <repo-root>
+./scripts/check-agent-control-planes.sh --repo <repo-root>
+```
+
+If the target repo already tracks `.claude/skills/`, any newly generated Claude skill symlink must be staged/committed with the registry change. Do not leave generated Claude skill links untracked.
+
 ## Safety Rules
 
 - Edit canonical skill sources, not symlink destinations.
-- If `skills/registry.json` changes, run sync/check in the same change.
+- If `skills/registry.json` changes, use the shared root bootstrap/check path so Codex/OpenAI and Claude skill surfaces stay aligned.
 - Keep distribution link-only.
 - Do not create additional mapping manifests; use `skills/registry.json` only.
+
+## Low-Level Entrypoints
+
+Use these only for focused troubleshooting or tests:
+
+- `scripts/sync-skills-registry.sh`: materializes Codex/OpenAI skill links and generated registry views.
+- `claude/scripts/sync-skills.sh`: materializes Claude skill links.

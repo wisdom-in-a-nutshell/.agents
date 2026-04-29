@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 import sys
 
-from tests.control_plane.support import REPO_ROOT, TempDirTestCase, run_command, write_json
+from tests.control_plane.support import REPO_ROOT, TempDirTestCase, run_command, write_json, write_text
 
 
 class BootstrapSkillClientContractTests(TempDirTestCase):
@@ -101,6 +101,71 @@ class BootstrapSkillClientContractTests(TempDirTestCase):
 
         self.assertTrue(result.stdout.startswith("ok skill=example-skill scope=global"))
         self.assertEqual(result.stderr, "")
+
+    def test_apply_syncs_claude_skill_links_for_repo_targets(self) -> None:
+        root = self.temp_path
+        github_root = root / "GitHub"
+        repo = github_root / "target-repo"
+        repo.mkdir(parents=True)
+        registry = root / "skills" / "registry.json"
+        log = root / "commands.log"
+        write_json(
+            registry,
+            {
+                "managed_skills": [],
+                "paths": {"github_root": str(github_root)},
+                "unmanaged_repo_local_skills": [],
+            },
+        )
+        for script in (
+            "scripts/refresh-external-skills.py",
+            "scripts/sync-skills-registry.py",
+            "codex/scripts/sync-repo-bootstrap-registry.py",
+        ):
+            write_text(
+                root / script,
+                "\n".join(
+                    [
+                        "from pathlib import Path",
+                        "import sys",
+                        f"Path({str(log)!r}).open('a').write(' '.join(sys.argv) + '\\n')",
+                    ]
+                ),
+            )
+        write_text(
+            root / "claude/scripts/sync-skills.sh",
+            "\n".join(
+                [
+                    "#!/usr/bin/env bash",
+                    f"printf '%s\\n' \"$0 $*\" >> {str(log)!r}",
+                ]
+            ),
+        )
+
+        result = run_command(
+            [
+                sys.executable,
+                str(REPO_ROOT / "scripts/bootstrap-skill.py"),
+                "owner/repo:skills/example-skill@main",
+                "--repo",
+                "target-repo",
+                "--registry-file",
+                str(registry),
+                "--apply",
+                "--no-input",
+            ]
+        )
+
+        payload = json.loads(result.stdout)
+        self.assertEqual(payload["status"], "ok")
+        self.assertIn(
+            str(repo.resolve() / ".claude" / "skills" / "example-skill"),
+            payload["data"]["expected_claude_links"],
+        )
+        command_log = log.read_text(encoding="utf-8")
+        self.assertIn("claude/scripts/sync-skills.sh", command_log)
+        self.assertIn("--apply --registry", command_log)
+        self.assertIn(f"--repo {repo.resolve()}", command_log)
 
 
 class BootstrapPluginClientContractTests(TempDirTestCase):
