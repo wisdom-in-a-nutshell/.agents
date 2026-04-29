@@ -43,10 +43,10 @@ writing a handoff record under `tmp/hooks/session-end/`, launching
 `scripts/hooks/write-session-note` in the background, and exiting `0`.
 
 The worker renders the transcript when the runtime provides `transcript_path`,
-asks Anthropic Sonnet for a short free-form prose note, and writes one new note
-using the session start timestamp in Berlin local time. It never blocks session
-shutdown. If dependencies, auth, transcript access, or the API call fail, the
-worker logs to stderr/`tmp/hooks/session-memory/worker.log` and exits `0`.
+passes it to a note-generation placeholder, and writes one new note using the
+session start timestamp in Berlin local time when a generator returns text. It
+never blocks session shutdown. If transcript access or note generation fails,
+the worker logs to stderr/`tmp/hooks/session-memory/worker.log` and exits `0`.
 
 Operational limits:
 - filename format: `memory/sessions/YYYY/MM/DD-HHMMSS.md` with numeric suffixes
@@ -54,12 +54,15 @@ Operational limits:
 - boot context: last 3 notes plus notes from the last 7 days, capped at 10
 - per-note boot cap: 2500 chars
 - total recent-session boot block cap: 12000 chars
-- model default: `claude-sonnet-4.6`; override with
-  `DOBBY_SESSION_MEMORY_MODEL` only after the user agrees
 
 Stored notes stay plain prose. Do not add templates/frontmatter. Durable
 decisions still get promoted to `now.md`, area canon, or `soul.md` as
 appropriate.
+
+No provider-specific SDK is wired yet. `scripts/hooks/write-session-note`
+contains the placeholder where a future model client should be added after the
+user chooses the API route. For smoke tests only, `DOBBY_SESSION_MEMORY_FAKE_NOTE`
+or `--fake-note` can supply the note body.
 
 ## Prefer the CLI
 

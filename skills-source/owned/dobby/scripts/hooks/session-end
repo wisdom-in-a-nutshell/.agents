@@ -3,8 +3,8 @@
 
 Session end should stay fast. This hook captures a compact handoff record with
 the session/transcript pointer under `<repo>/tmp/hooks/session-end/`, launches
-the background session-memory worker, then exits successfully. The worker owns
-slow transcript rendering, Anthropic API calls, and writing the prose note under
+the background `write-session-note` worker, then exits successfully. The worker owns
+slow transcript rendering, note generation, and writing the prose note under
 `memory/sessions/YYYY/MM/DD-HHMMSS.md`.
 """
 

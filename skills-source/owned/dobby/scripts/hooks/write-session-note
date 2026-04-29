@@ -3,7 +3,7 @@
 
 This worker is launched by the Dobby SessionEnd hook and intentionally runs out
 of band. It reads the normalized lifecycle payload, renders a compact transcript,
-asks Anthropic Sonnet for a short prose memory note, and writes the note under:
+hands that transcript to a note-generation placeholder, and writes the note under:
 
     memory/sessions/YYYY/MM/DD-HHMMSS.md
 
@@ -23,12 +23,10 @@ from typing import Any
 from zoneinfo import ZoneInfo
 
 LOCAL_TIMEZONE = "Europe/Berlin"
-DEFAULT_MODEL = "claude-sonnet-4.6"
-DEFAULT_MAX_TOKENS = 900
 MAX_TRANSCRIPT_CHARS = 120_000
 TEXT_SNIPPET_CHARS = 8_000
 TOOL_RESULT_CHARS = 1_200
-PROMPT = """You are Dobby writing a short memory note about the session that just ended.
+SESSION_NOTE_PROMPT = """You are Dobby writing a short memory note about the session that just ended.
 
 You have the full transcript above. Write a brief note — what we talked about, what came up, what was decided, anything still hanging, anything worth remembering next time we pick up.
 
@@ -43,7 +41,7 @@ Output only the note body. No preamble, no explanation.
 
 
 def log(message: str) -> None:
-    print(f"[session-memory] {message}", file=sys.stderr)
+    print(f"[write-session-note] {message}", file=sys.stderr)
 
 
 def read_json(path: Path) -> dict[str, Any]:
@@ -341,43 +339,20 @@ def resolve_output_path(root: Path, start_utc: datetime) -> Path:
     raise RuntimeError(f"could not allocate unique session note path under {sessions_dir}")
 
 
-def call_anthropic(transcript: str, payload: dict[str, Any], *, fake_note: str | None) -> str:
+def generate_note(transcript: str, payload: dict[str, Any], *, fake_note: str | None) -> str | None:
+    """Return a prose session note, or None when no generator is configured.
+
+    This is intentionally a placeholder. Do not add a provider-specific SDK or
+    API key dependency here without the user's explicit choice. Future provider
+    implementations can use `SESSION_NOTE_PROMPT`, `transcript`, and `payload`.
+    """
     fake = fake_note if fake_note is not None else os.environ.get("DOBBY_SESSION_MEMORY_FAKE_NOTE")
     if fake is not None:
         return fake.strip()
 
-    try:
-        from anthropic import Anthropic  # type: ignore
-    except ImportError as exc:
-        raise RuntimeError("missing Python package: anthropic") from exc
-
-    api_key = os.environ.get("ANTHROPIC_API_KEY")
-    if not api_key:
-        raise RuntimeError("ANTHROPIC_API_KEY is not set")
-
-    model = os.environ.get("DOBBY_SESSION_MEMORY_MODEL") or DEFAULT_MODEL
-    max_tokens = int(os.environ.get("DOBBY_SESSION_MEMORY_MAX_TOKENS") or DEFAULT_MAX_TOKENS)
-
-    client = Anthropic(api_key=api_key)
-    response = client.messages.create(
-        model=model,
-        max_tokens=max_tokens,
-        temperature=0.2,
-        system=PROMPT,
-        messages=[
-            {
-                "role": "user",
-                "content": f"<transcript>\n{transcript}\n</transcript>",
-            }
-        ],
-    )
-
-    parts: list[str] = []
-    for block in getattr(response, "content", []) or []:
-        text = getattr(block, "text", None)
-        if isinstance(text, str) and text.strip():
-            parts.append(text.strip())
-    return "\n\n".join(parts).strip()
+    # Provider intentionally not wired yet. Keep the hook path alive while the
+    # model client/API route is decided separately.
+    return None
 
 
 def write_note(path: Path, note: str) -> Path:
@@ -423,7 +398,11 @@ def main() -> int:
         log("no transcript or fallback prompt content available; skipping note")
         return 0
 
-    note = call_anthropic(transcript, payload, fake_note=args.fake_note)
+    note = generate_note(transcript, payload, fake_note=args.fake_note)
+    if note is None:
+        log("note generation is not configured yet; skipping note")
+        return 0
+
     start = session_start_timestamp(payload, events)
     path = resolve_output_path(root, start)
     written = write_note(path, note)
