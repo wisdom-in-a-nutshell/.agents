@@ -220,6 +220,7 @@
       "origin": "owned",
       "scope": "repo",
       "repos": [
+        "~/.agents",
         "adi",
         "codexclaw",
         "devworker"
