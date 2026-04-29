@@ -146,8 +146,9 @@ These settings stay close to the repo because they describe how Codex should beh
 4. Managed plugin source is refreshed under `plugins-source/`, then extracted into shared skills and MCP registries.
 5. The repo bootstrap registry drives both trusted repo discovery and managed repo-local `.codex/config.toml` generation.
 6. The hook registry drives managed repo-local `.codex/hooks.json` generation.
-7. Codex starts from `~/.codex/config.toml` and any trusted repo-local `.codex/config.toml` and `.codex/hooks.json` in real project repos.
-8. Repo-local overrides refine behavior for one project without changing the global control plane.
+7. The Codex bootstrap installs the stale-session archive LaunchAgent, which uses Codex app-server APIs to archive managed-repo threads after their `updatedAt` timestamp is older than the configured threshold.
+8. Codex starts from `~/.codex/config.toml` and any trusted repo-local `.codex/config.toml` and `.codex/hooks.json` in real project repos.
+9. Repo-local overrides refine behavior for one project without changing the global control plane.
 
 ## Key Boundaries
 

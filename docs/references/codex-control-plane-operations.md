@@ -55,7 +55,15 @@ Use [Codex Control Plane Ownership](/Users/dobby/.agents/docs/references/codex-c
 - Apply the full Codex bootstrap batch:
   - [`bootstrap-machine-codex.sh`](/Users/dobby/.agents/codex/scripts/bootstrap-machine-codex.sh)
   - `~/.agents/codex/scripts/bootstrap-machine-codex.sh --apply`
-  - this applies the Codex control-plane outputs only; shared shell links still come from `~/GitHub/scripts/setup/codex/`
+  - this applies the Codex control-plane outputs only, including the stale-session archive LaunchAgent; shared shell links still come from `~/GitHub/scripts/setup/codex/`
+- Check stale Codex sessions without archiving:
+  - [`archive-stale-sessions.py`](/Users/dobby/.agents/codex/scripts/archive-stale-sessions.py)
+  - `~/.agents/codex/scripts/archive-stale-sessions.py --dry-run --older-than-days 2`
+  - eligibility is based on Codex `thread.updatedAt`, not creation time
+- Install/update the stale-session archive LaunchAgent:
+  - [`install-archive-stale-sessions-launchagent.sh`](/Users/dobby/.agents/codex/scripts/install-archive-stale-sessions-launchagent.sh)
+  - `~/.agents/codex/scripts/install-archive-stale-sessions-launchagent.sh --apply`
+  - default schedule is every 6 hours, archiving managed-repo sessions whose last update is older than 48 hours
 - Auto-apply the Codex control plane after `~/.agents` sync when `codex/` changed:
   - [`auto-apply-codex-control-plane.sh`](/Users/dobby/.agents/codex/scripts/auto-apply-codex-control-plane.sh)
   - `~/.agents/codex/scripts/auto-apply-codex-control-plane.sh --apply`
@@ -107,6 +115,7 @@ Use [Codex Control Plane Ownership](/Users/dobby/.agents/docs/references/codex-c
 - `~/.codex/config.toml` enables Codex hooks through `[features].codex_hooks = true`
 - `~/.codex/config.toml` explicitly preserves `computer-use@openai-bundled` and disables bundled Codex skills classified as `disabled` in [`bundled-skills-policy.json`](/Users/dobby/.agents/codex/config/bundled-skills-policy.json)
 - `~/.codex/hooks.json` is rendered from `hooks/registry.json` for global Codex hooks. Current managed hooks are repo-scoped, so they render into repo `.codex/hooks.json`. Codex does not currently expose a separate documented `SessionEnd` hook.
+- `com.<user>.codex-session-archiver` is loaded as a LaunchAgent and runs [`archive-stale-sessions.py`](/Users/dobby/.agents/codex/scripts/archive-stale-sessions.py) every 6 hours against managed repo paths from [`repo-bootstrap.json`](/Users/dobby/.agents/codex/config/repo-bootstrap.json).
 - `~/.codex/config.toml` contains no Git conflict markers
 - `~/.codex/vendor_imports/skills` is a valid Git checkout:
   - `git -C ~/.codex/vendor_imports/skills rev-parse --show-toplevel`
@@ -184,7 +193,19 @@ Use [Codex Control Plane Ownership](/Users/dobby/.agents/docs/references/codex-c
   - runs trusted-project sync
   - runs repo-local Codex config sync
   - runs Ghostty config reconciliation
+  - installs the stale-session archive LaunchAgent
   - runs control-plane validation at the end and fails if the rendered state is inconsistent
+- [`archive-stale-sessions.py`](/Users/dobby/.agents/codex/scripts/archive-stale-sessions.py)
+  - starts a short-lived Codex app-server JSONL client and uses the documented `thread/list` and `thread/archive` methods
+  - reads managed repo paths from [`repo-bootstrap.json`](/Users/dobby/.agents/codex/config/repo-bootstrap.json) unless `--repo` filters are supplied
+  - archives only non-archived sessions whose `updatedAt` is older than the configured threshold; default is 48 hours
+  - defaults to dry-run; use `--apply` for actual archiving
+  - uses a machine-local lock under `~/.local/state/codex-control-plane/` so overlapping launchd runs do not race
+- [`install-archive-stale-sessions-launchagent.sh`](/Users/dobby/.agents/codex/scripts/install-archive-stale-sessions-launchagent.sh)
+  - renders `~/Library/LaunchAgents/com.<user>.codex-session-archiver.plist`
+  - schedules [`archive-stale-sessions.py`](/Users/dobby/.agents/codex/scripts/archive-stale-sessions.py) every 6 hours by default
+  - writes logs under `~/.local/state/codex-control-plane/log/`
+  - supports dry-run output before writing or loading launchd state
 - [`auto-apply-codex-control-plane.sh`](/Users/dobby/.agents/codex/scripts/auto-apply-codex-control-plane.sh)
   - checks whether `~/.agents/codex/` changed since the last successful reconcile on that machine
   - runs [`bootstrap-machine-codex.sh`](/Users/dobby/.agents/codex/scripts/bootstrap-machine-codex.sh) only when a new Codex control-plane revision needs to be applied
