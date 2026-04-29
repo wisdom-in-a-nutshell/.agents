@@ -82,9 +82,12 @@ Preferred posture:
 This avoids malformed image payloads and makes the evaluator handoff reproducible.
 
 Typical js_repl pattern:
-- `const { buildVisualReviewerItems } = await import("/Users/dobby/.agents/skills-source/owned/paper-design/scripts/paper_review_handoff.mjs")`
-- `const { items } = await buildVisualReviewerItems("ARTBOARD_ID", "Review this panel for hierarchy and clarity.")`
-- use `items` directly in `spawn_agent({ agent_type: "visual_reviewer", items })`
+
+```js
+const { buildVisualReviewerItems } = await import(`${nodeRepl.homeDir}/.agents/skills-source/owned/paper-design/scripts/paper_review_handoff.mjs`)
+const { items } = await buildVisualReviewerItems("ARTBOARD_ID", "Review this panel for hierarchy and clarity.")
+// Use `items` directly in spawn_agent({ agent_type: "visual_reviewer", items }).
+```
 
 ### Evaluator handoff pattern
 

@@ -197,8 +197,8 @@ agent-browser click @e33  # radio button
 agent-browser click @e5   # combobox option after fill
 
 # 4. Upload resume + cover letter PDFs (this is the bit Claude-in-Chrome cannot do)
-agent-browser upload @e15 "/Users/dobby/GitHub/adi/memory/areas/builder/career/cv/latex/tailored/<slug>/resume.pdf"
-agent-browser upload @eN "/Users/dobby/GitHub/adi/memory/areas/builder/career/cv/latex/tailored/<slug>/cover-letter.pdf"
+agent-browser upload @e15 "$HOME/GitHub/adi/memory/areas/builder/career/cv/latex/tailored/<slug>/resume.pdf"
+agent-browser upload @eN "$HOME/GitHub/adi/memory/areas/builder/career/cv/latex/tailored/<slug>/cover-letter.pdf"
 
 # 5. Screenshot for verification before the final click
 agent-browser screenshot /tmp/<slug>-before-submit.png

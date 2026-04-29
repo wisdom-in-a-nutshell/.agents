@@ -73,8 +73,8 @@ Typical examples:
 ### Runtime / Key Vault
 
 Canonical docs:
-- `/Users/dobby/GitHub/scripts/docs/architecture/secret-source-of-truth-flow.md`
-- `/Users/dobby/GitHub/scripts/docs/references/azure-key-vault-structure.md`
+- `$HOME/GitHub/scripts/docs/architecture/secret-source-of-truth-flow.md`
+- `$HOME/GitHub/scripts/docs/references/azure-key-vault-structure.md`
 
 ### Repo-Local
 
@@ -86,9 +86,9 @@ Typical files inside an app repo:
 ### Machine-Local Shared
 
 Typical files:
-- `/Users/dobby/GitHub/scripts/sync/machine-secrets/<integration>.env.map`
-- `/Users/dobby/GitHub/scripts/sync/keyvault-sync-machine-secrets.sh`
-- `/Users/dobby/GitHub/scripts/setup/codex/zshrc.shared`
+- `$HOME/GitHub/scripts/sync/machine-secrets/<integration>.env.map`
+- `$HOME/GitHub/scripts/sync/keyvault-sync-machine-secrets.sh`
+- `$HOME/GitHub/scripts/setup/codex/zshrc.shared`
 - `~/.secrets/<integration>/env`
 
 ### GitHub CI

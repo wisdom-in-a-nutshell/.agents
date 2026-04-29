@@ -84,7 +84,7 @@ Things lifecycle:
 
 Helper contract:
 
-- Script: `/Users/dobby/.agents/skills-source/owned/work-handoff/scripts/task`
+- Script: `$HOME/.agents/skills-source/owned/work-handoff/scripts/task`
 - Complete: `task complete <things-task-id> --note-file - --no-input`
 - Needs input: `task needs-input <things-task-id> --note-file - --no-input`
 - Input note: pass the human handoff or smallest useful request on stdin when using `--note-file -`.
@@ -93,8 +93,8 @@ Helper contract:
 Common pattern:
 
 ```bash
-printf '%s\n' "<human handoff>" | /Users/dobby/.agents/skills-source/owned/work-handoff/scripts/task complete <things-task-id> --note-file - --no-input
-printf '%s\n' "<smallest useful request>" | /Users/dobby/.agents/skills-source/owned/work-handoff/scripts/task needs-input <things-task-id> --note-file - --no-input
+printf '%s\n' "<human handoff>" | "$HOME/.agents/skills-source/owned/work-handoff/scripts/task" complete <things-task-id> --note-file - --no-input
+printf '%s\n' "<smallest useful request>" | "$HOME/.agents/skills-source/owned/work-handoff/scripts/task" needs-input <things-task-id> --note-file - --no-input
 ```
 
 On success, the handoff should be just the agent's useful final summary. Do not add a machine receipt, commit/check boilerplate, Things IDs, or "promoted from Things" metadata unless the user or repo specifically asks for it.

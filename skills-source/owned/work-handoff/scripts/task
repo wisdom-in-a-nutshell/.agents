@@ -10,7 +10,7 @@ from pathlib import Path
 from typing import Any
 
 
-DEFAULT_THINGS_CLIENT = Path("/Users/dobby/.agents/skills-source/owned/things-client/scripts/things-client")
+DEFAULT_THINGS_CLIENT = Path.home() / ".agents/skills-source/owned/things-client/scripts/things-client"
 
 
 def main(argv: list[str] | None = None) -> int:

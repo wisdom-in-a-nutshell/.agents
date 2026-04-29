@@ -60,7 +60,7 @@ PY
 if find "$ROOT" -type f \
     ! -path "$ROOT/tests/contract.sh" \
     ! -path '*/__pycache__/*' \
-    -exec grep -H "THINGS3_ENV_FILE\\|/Users/dobby/GitHub/adi/.env" {} + >/dev/null; then
+    -exec grep -H "THINGS3_ENV_FILE\\|GitHub/adi/.env" {} + >/dev/null; then
     echo "unexpected legacy token fallback in things-client skill" >&2
     exit 1
 fi
