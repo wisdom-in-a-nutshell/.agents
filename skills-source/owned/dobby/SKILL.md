@@ -25,13 +25,41 @@ What you can rely on being in context at session start:
 
 1. `soul.md` (identity, values, voice, `## About <User>`) — from the system prompt.
 2. `now.md` — full contents.
-3. Task snapshot (overdue / today / inbox counts + top items).
-4. Calendar (next 2 days).
-5. Area manifest (area names + file lists, content on demand).
+3. Recent session notes — last 3 plus notes from the last 7 days, capped at 10.
+4. Task snapshot (overdue / today / inbox counts + top items).
+5. Calendar (next 2 days).
+6. Area manifest (area names + file lists, content on demand).
 
 Surface overdue / today / inbox counts naturally in the first response.
 Read deeper files only when the task actually needs them. Areas under
 `memory/areas/` load on demand.
+
+## Session notes
+
+Session continuity lives in `memory/sessions/YYYY/MM/DD-HHMMSS.md`, not in
+`memory/now.md`. Repo-local `scripts/hooks/session_end.py` wrappers delegate to
+the skill-bundled `scripts/hooks/session-end`, which keeps the hook fast by
+writing a handoff record under `tmp/hooks/session-end/`, launching
+`scripts/hooks/session-memory-worker` in the background, and exiting `0`.
+
+The worker renders the transcript when the runtime provides `transcript_path`,
+asks Anthropic Sonnet for a short free-form prose note, and writes one new note
+using the session start timestamp in Berlin local time. It never blocks session
+shutdown. If dependencies, auth, transcript access, or the API call fail, the
+worker logs to stderr/`tmp/hooks/session-memory/worker.log` and exits `0`.
+
+Operational limits:
+- filename format: `memory/sessions/YYYY/MM/DD-HHMMSS.md` with numeric suffixes
+  on collision
+- boot context: last 3 notes plus notes from the last 7 days, capped at 10
+- per-note boot cap: 2500 chars
+- total recent-session boot block cap: 12000 chars
+- model default: `claude-sonnet-4.6`; override with
+  `DOBBY_SESSION_MEMORY_MODEL` only after the user agrees
+
+Stored notes stay plain prose. Do not add templates/frontmatter. Durable
+decisions still get promoted to `now.md`, area canon, or `soul.md` as
+appropriate.
 
 ## Prefer the CLI
 
@@ -66,7 +94,8 @@ When new information surfaces, route it to exactly one canonical home. Never dup
 |---|---|---|
 | Actionable item (to do, follow up, remind me) | **Things 3** | `$HOME/.agents/skills-source/owned/things-client/scripts/things-client add "..." --when ... --area <Area>` |
 | Durable truth about the user (identity, pattern, preference) | `soul.md` `## About <User>` | Edit in place (section) |
-| This week's active context / session handoff | `memory/now.md` | Rewrite the relevant section, keep ≤60 lines |
+| This week's active context | `memory/now.md` | Rewrite the relevant section, keep ≤60 lines |
+| Session continuity / what happened last time | `memory/sessions/YYYY/MM/DD-HHMMSS.md` | Auto-written by the SessionEnd hook; do not put session handoff prose in `now.md` |
 | Per-area durable canon | `memory/areas/<area>/<area>.md` | Edit in place |
 | Per-area event or task completion | `memory/areas/<area>/log.md` | Append (dated one-liner), via CLI |
 | Dated reflection, check-in, or noticing | `journal/daily/YYYY-MM-DD/` | New file in today's folder |

@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
 """Dobby session-end hook.
 
-Session end should stay fast. This hook captures a small handoff record with
-the session/transcript pointer under `<repo>/tmp/hooks/session-end/`, then
-exits. An explicit repo-local flow can inspect the file later and decide
-what to do with it.
+Session end should stay fast. This hook captures a compact handoff record with
+the session/transcript pointer under `<repo>/tmp/hooks/session-end/`, launches
+the background session-memory worker, then exits successfully. The worker owns
+slow transcript rendering, Anthropic API calls, and writing the prose note under
+`memory/sessions/YYYY/MM/DD-HHMMSS.md`.
 """
 
 from __future__ import annotations
@@ -12,6 +13,7 @@ from __future__ import annotations
 import json
 import os
 import re
+import subprocess
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
@@ -20,6 +22,7 @@ from typing import Any
 HOOK_EVENT = "SessionEnd"
 SCHEMA_VERSION = "1.0"
 SESSION_END_DIR = Path("tmp/hooks/session-end")
+SESSION_MEMORY_DIR = Path("tmp/hooks/session-memory")
 
 
 def utc_now_iso_z() -> str:
@@ -115,6 +118,45 @@ def write_session_end_record(root: Path, record: dict[str, Any]) -> None:
     tmp_path.replace(path)
 
 
+def write_session_memory_job(root: Path, payload: dict[str, Any]) -> Path:
+    session_id = text_field(payload, "session_id")
+    stem = safe_file_stem(session_id)
+    path = root / SESSION_MEMORY_DIR / f"{stem}-{utc_now_file_stamp()}.json"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp_path = path.with_suffix(path.suffix + ".tmp")
+    tmp_path.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n")
+    tmp_path.replace(path)
+    return path
+
+
+def launch_session_memory_worker(root: Path, payload: dict[str, Any]) -> None:
+    job_path = write_session_memory_job(root, payload)
+    worker = Path(__file__).resolve().parent / "session-memory-worker"
+    if not worker.is_file():
+        print(f"session-end: missing session memory worker: {worker}", file=sys.stderr)
+        return
+
+    log_path = root / SESSION_MEMORY_DIR / "worker.log"
+    log_path.parent.mkdir(parents=True, exist_ok=True)
+    with log_path.open("a", encoding="utf-8") as stderr_log:
+        subprocess.Popen(
+            [
+                sys.executable,
+                str(worker),
+                "--job",
+                str(job_path),
+                "--repo-root",
+                str(root),
+            ],
+            cwd=str(root),
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.DEVNULL,
+            stderr=stderr_log,
+            start_new_session=True,
+            close_fds=True,
+        )
+
+
 def main() -> int:
     payload = read_payload()
     event_name = payload.get("hook_event_name") or os.environ.get("AGENT_HOOK_EVENT")
@@ -126,8 +168,13 @@ def main() -> int:
     root = repo_root(payload)
     os.chdir(root)
     write_session_end_record(root, compact_record(payload))
+    launch_session_memory_worker(root, payload)
     return 0
 
 
 if __name__ == "__main__":
-    raise SystemExit(main())
+    try:
+        raise SystemExit(main())
+    except Exception as exc:
+        print(f"session-end: {exc}", file=sys.stderr)
+        raise SystemExit(0)

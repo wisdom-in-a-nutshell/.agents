@@ -7,7 +7,7 @@ Emits situational boot context to stdout; the shared dispatcher at
 
 Section order (identity-first so later sections read through the right lens):
 
-    soul (conditional) | now | tasks | calendar | areas
+    soul (conditional) | now | recent sessions | tasks | calendar | areas
 
 Memory reads (`now.md`, area manifest, `soul.md`) happen inline via
 file I/O — trivial work, no reason to round-trip through a CLI. Task and
@@ -39,10 +39,17 @@ import re
 import subprocess
 import sys
 from concurrent.futures import ThreadPoolExecutor
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 PER_CALL_TIMEOUT_SEC = 4
+LOCAL_TIMEZONE = "Europe/Berlin"
+RECENT_SESSION_DAYS = 7
+RECENT_SESSION_MIN_COUNT = 3
+RECENT_SESSION_MAX_COUNT = 10
+RECENT_SESSION_NOTE_MAX_CHARS = 2500
+RECENT_SESSIONS_BLOCK_MAX_CHARS = 12000
 
 
 # ---------------------------------------------------------------------------
@@ -146,6 +153,86 @@ def build_area_manifest(areas_dir: Path) -> list[dict]:
     return out
 
 
+def parse_session_note_datetime(path: Path) -> datetime | None:
+    """Parse memory/sessions/YYYY/MM/DD-HHMMSS*.md as local time."""
+    try:
+        year = int(path.parent.parent.name)
+        month = int(path.parent.name)
+        stem = path.stem
+        match = re.match(r"^(?P<day>\d{2})-(?P<hour>\d{2})(?P<minute>\d{2})(?P<second>\d{2})", stem)
+        if not match:
+            return None
+        tz = ZoneInfo(LOCAL_TIMEZONE)
+        return datetime(
+            year,
+            month,
+            int(match.group("day")),
+            int(match.group("hour")),
+            int(match.group("minute")),
+            int(match.group("second")),
+            tzinfo=tz,
+        )
+    except (OSError, ValueError):
+        return None
+
+
+def truncate_note(content: str, limit: int) -> str:
+    content = content.strip()
+    if len(content) <= limit:
+        return content
+    suffix = "\n...[note truncated]"
+    return content[: max(0, limit - len(suffix))].rstrip() + suffix
+
+
+def build_recent_session_notes(sessions_dir: Path) -> list[dict]:
+    """Return selected session notes, oldest first, capped for boot context."""
+    if not sessions_dir.exists():
+        return []
+
+    dated: list[tuple[datetime, Path]] = []
+    for path in sessions_dir.glob("*/*/*-*.md"):
+        parsed = parse_session_note_datetime(path)
+        if parsed is not None:
+            dated.append((parsed, path))
+
+    if not dated:
+        return []
+
+    dated.sort(key=lambda item: (item[0], str(item[1])))
+    now_local = datetime.now(ZoneInfo(LOCAL_TIMEZONE))
+    cutoff = now_local - timedelta(days=RECENT_SESSION_DAYS)
+
+    selected_paths = {path for _, path in dated[-RECENT_SESSION_MIN_COUNT:]}
+    selected_paths.update(path for stamp, path in dated if stamp >= cutoff)
+
+    selected = [item for item in dated if item[1] in selected_paths]
+    if len(selected) > RECENT_SESSION_MAX_COUNT:
+        selected = selected[-RECENT_SESSION_MAX_COUNT:]
+
+    out: list[dict] = []
+    total_chars = 0
+    for stamp, path in selected:
+        try:
+            content = truncate_note(path.read_text(encoding="utf-8"), RECENT_SESSION_NOTE_MAX_CHARS)
+        except OSError:
+            continue
+        if not content:
+            continue
+
+        label = stamp.strftime("%Y-%m-%d %H:%M:%S %Z")
+        block = f"## {label}\n{content}\n"
+        if total_chars + len(block) > RECENT_SESSIONS_BLOCK_MAX_CHARS:
+            remaining = RECENT_SESSIONS_BLOCK_MAX_CHARS - total_chars
+            if remaining <= 80:
+                break
+            content = truncate_note(content, max(0, remaining - len(f"## {label}\n")))
+            block = f"## {label}\n{content}\n"
+
+        out.append({"label": label, "content": content, "path": path})
+        total_chars += len(block)
+    return out
+
+
 # ---------------------------------------------------------------------------
 # rendering helpers
 # ---------------------------------------------------------------------------
@@ -240,6 +327,18 @@ def print_areas(areas: list[dict]) -> None:
         print(f"- {name.ljust(max_name)}  {files_str}")
 
 
+def print_recent_sessions(notes: list[dict]) -> None:
+    if not notes:
+        return
+
+    section("recent sessions")
+    for index, note in enumerate(notes):
+        if index:
+            print("")
+        print(f"## {note['label']}")
+        print(str(note["content"]).strip())
+
+
 def should_emit_soul() -> bool:
     """Emit soul.md as additional context only for Claude clients that have
     no system-prompt mechanism (e.g. the desktop app). Skip for any other
@@ -290,6 +389,7 @@ def main() -> int:
 
         memory_dir = REPO_ROOT / "memory"
         now_content = read_memory_file(memory_dir / "now.md")
+        recent_sessions = build_recent_session_notes(memory_dir / "sessions")
         areas = build_area_manifest(memory_dir / "areas")
 
         tasks = tasks_future.result()
@@ -315,6 +415,7 @@ def main() -> int:
         section("now")
         print(now)
 
+    print_recent_sessions(recent_sessions)
     print_tasks(tasks)
     print_calendar(calendar)
     print_areas(areas)

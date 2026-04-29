@@ -18,10 +18,16 @@ section. "Who the user is today" arrives at session start via the
 wrapper-composed system prompt; it is not served by the memory CLI.
 
 ### `memory/now.md`
-- **Holds:** this week's active context — week shape, strategic tracks, life timeline, watchouts, session handoff.
+- **Holds:** this week's active context — week shape, strategic tracks, life timeline, watchouts.
 - **Clock:** weekly rewrites; section updates as context shifts.
 - **Write pattern:** rewrite sections in place. Hard cap: ≤60 lines. If a section outgrows its budget, promote stable content to `soul.md` `## About <User>` or area canon and prune.
 - **Rule:** actionable items live in Things 3, not here.
+
+### `memory/sessions/YYYY/MM/DD-HHMMSS.md`
+- **Holds:** one short free-form prose note for an ended agent session — what happened, what came up, what was decided, and what is worth remembering next time.
+- **Clock:** automatic at session end when the runtime exposes enough transcript context.
+- **Write pattern:** append-only tree, one new file per session. Do not hand-edit into a template; the stored note body stays plain prose.
+- **Boot rule:** session start injects the last 3 notes plus notes from the last 7 days, capped at 10 total. Durable decisions still get promoted to `now.md`, area canon, or `soul.md` as appropriate.
 
 ## Areas (mirror Things 3 Areas)
 
@@ -69,6 +75,7 @@ Generated or synced data that is semantically part of an area still lives under 
 |---|---|---|
 | `soul.md` (incl. `## About <User>`) | yearly; `## About <User>` monthly | curated edit / section edit |
 | `now.md` | weekly | section rewrite, ≤60 lines |
+| `sessions/YYYY/MM/DD-HHMMSS.md` | session end | one new prose note |
 | `areas/<x>/<x>.md` | as area shifts | section edit |
 | `areas/<x>/log.md` | event-driven | append only |
 | `dobby/growth.md` | session-driven | append only |
