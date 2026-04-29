@@ -199,6 +199,7 @@ Use [Codex Control Plane Ownership](/Users/dobby/.agents/docs/references/codex-c
   - starts a short-lived Codex app-server JSONL client and uses the documented `thread/list` and `thread/archive` methods
   - reads managed repo paths from [`repo-bootstrap.json`](/Users/dobby/.agents/codex/config/repo-bootstrap.json) unless `--repo` filters are supplied
   - archives only non-archived sessions whose `updatedAt` is older than the configured threshold; default is 48 hours
+  - does not try to detect what the Desktop app currently has loaded; the safety boundary is the last-activity cutoff
   - defaults to dry-run; use `--apply` for actual archiving
   - uses a machine-local lock under `~/.local/state/codex-control-plane/` so overlapping launchd runs do not race
 - [`install-archive-stale-sessions-launchagent.sh`](/Users/dobby/.agents/codex/scripts/install-archive-stale-sessions-launchagent.sh)

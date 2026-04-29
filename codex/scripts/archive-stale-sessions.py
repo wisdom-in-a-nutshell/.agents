@@ -297,19 +297,6 @@ def method_for_error(payload: dict[str, Any]) -> str:
     return f"request id={payload.get('id')}"
 
 
-def list_loaded_threads(client: AppServerClient, page_limit: int) -> set[str]:
-    loaded: set[str] = set()
-    cursor: str | None = None
-    while True:
-        result = client.request("thread/loaded/list", {"cursor": cursor, "limit": page_limit})
-        data = result.get("data", [])
-        if isinstance(data, list):
-            loaded.update(str(item) for item in data)
-        cursor = result.get("nextCursor")
-        if not isinstance(cursor, str) or not cursor:
-            return loaded
-
-
 def list_candidates(
     client: AppServerClient,
     *,
@@ -428,8 +415,6 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--max-report", type=int, default=DEFAULT_MAX_REPORT, help="Maximum candidate detail lines in plain output; 0 means unlimited.")
     parser.add_argument("--all-source-kinds", action="store_true", help="Include non-interactive and subagent session sources.")
     parser.add_argument("--source-kind", action="append", choices=SOURCE_KINDS, default=[], help="Filter to a Codex thread source kind. Repeatable.")
-    parser.add_argument("--skip-loaded", action="store_true", default=True, help="Skip threads loaded in this app-server process (default).")
-    parser.add_argument("--no-skip-loaded", dest="skip_loaded", action="store_false")
     parser.add_argument("--state-db-only", action="store_true", help="Use only Codex's state DB instead of scan-and-repair listing.")
     parser.add_argument("--lock", type=Path, default=DEFAULT_LOCK)
     parser.add_argument("--now", type=parse_timestamp, help="Override current time for testing; epoch or ISO timestamp.")
@@ -476,7 +461,6 @@ def main() -> int:
         lock_file = acquire_lock(args.lock.expanduser())
         try:
             with AppServerClient(args.codex_bin, args.timeout_seconds) as client:
-                loaded = list_loaded_threads(client, args.page_limit) if args.skip_loaded else set()
                 candidates = list_candidates(
                     client,
                     repos=repos,
@@ -492,9 +476,7 @@ def main() -> int:
                 for candidate in candidates:
                     skipped_reason: str | None = None
                     archived = False
-                    if candidate.thread_id in loaded:
-                        skipped_reason = "loaded"
-                    elif args.max_archive and archived_count >= args.max_archive:
+                    if args.max_archive and archived_count >= args.max_archive:
                         skipped_reason = "max_archive_reached"
 
                     if skipped_reason is None and apply:
