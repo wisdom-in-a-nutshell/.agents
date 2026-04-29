@@ -131,7 +131,7 @@ def write_session_memory_job(root: Path, payload: dict[str, Any]) -> Path:
 
 def launch_session_memory_worker(root: Path, payload: dict[str, Any]) -> None:
     job_path = write_session_memory_job(root, payload)
-    worker = Path(__file__).resolve().parent / "session-memory-worker"
+    worker = Path(__file__).resolve().parent / "write-session-note"
     if not worker.is_file():
         print(f"session-end: missing session memory worker: {worker}", file=sys.stderr)
         return

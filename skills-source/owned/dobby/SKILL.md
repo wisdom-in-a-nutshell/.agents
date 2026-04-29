@@ -40,7 +40,7 @@ Session continuity lives in `memory/sessions/YYYY/MM/DD-HHMMSS.md`, not in
 `memory/now.md`. Repo-local `scripts/hooks/session_end.py` wrappers delegate to
 the skill-bundled `scripts/hooks/session-end`, which keeps the hook fast by
 writing a handoff record under `tmp/hooks/session-end/`, launching
-`scripts/hooks/session-memory-worker` in the background, and exiting `0`.
+`scripts/hooks/write-session-note` in the background, and exiting `0`.
 
 The worker renders the transcript when the runtime provides `transcript_path`,
 asks Anthropic Sonnet for a short free-form prose note, and writes one new note
