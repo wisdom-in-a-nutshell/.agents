@@ -14,6 +14,9 @@ description: Local-first WIN-to-AIP contract workflow. Use when adding or changi
 - `win` owns contract sources; `aipodcasting/lib/aip/contracts/**` is generated output.
 - Run local sync; do not wait for CI or cloud cross-repo sync.
 - Do not hand-edit generated files under `aipodcasting/lib/aip/contracts/**`.
+- Generated job endpoint IDs are path slugs: strip slashes and replace `/` and `-` with `_`.
+  Example: `/operations/episodes/retry-ingest` becomes `operations_episodes_retry_ingest`.
+  Verify the final key in `aipodcasting/lib/aip/contracts/job-endpoints.ts`.
 - Keep database models internal; expose public DTOs only.
 - Ask only when frontend fields or UX placement cannot be inferred safely.
 - Do not commit or push unless the user explicitly asks or repo-local automation handles it.
@@ -43,6 +46,7 @@ description: Local-first WIN-to-AIP contract workflow. Use when adding or changi
    - Keep feature-local filters, form state, and UI-only types outside generated contracts.
 5. Validate:
    - Confirm expected generated files exist under `../aipodcasting/lib/aip/contracts/**`.
+   - Run `scripts/local/check_aip_contracts_drift.sh` when you need a non-mutating stale-contract check.
    - Run focused backend tests for changed WIN contract exporters or handlers.
    - Run `pnpm type-check` in `../aipodcasting` when frontend TypeScript or contract consumers changed.
    - Report `git status -sb` for both repos.
