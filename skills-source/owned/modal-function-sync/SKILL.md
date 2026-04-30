@@ -12,6 +12,7 @@ Use this skill to add or modify Modal functions in `modal_functions`, register t
 - `modal_functions` is the source of truth; never implement Modal entrypoints directly in `win`.
 - `services/modal/client_generated.py` is generated from the `modal_functions` registry; do not edit it by hand.
 - Sync is local-first from the sibling checkout with `scripts/local/sync_win_modal_client.sh`.
+- Check drift without mutating `win` with `scripts/local/check_win_modal_client_drift.sh`.
 - CI validates and deploys Modal functions; it does not commit generated client files into `win`.
 - Generate locally to `tmp/client_generated.py` for fast validation without dirtying `win`.
 - Generate into `../win/services/modal/client_generated.py` through the local sync wrapper before testing `win` wrappers/call sites.
@@ -53,6 +54,7 @@ Use this skill to add or modify Modal functions in `modal_functions`, register t
 - The wrapper validates the registry, generates `../win/services/modal/client_generated.py`, and formats it with WIN's Ruff config.
 - Do not hand-edit `services/modal/client_generated.py`.
 - Use `python tools/generate_modal_client.py --output tmp/client_generated.py` for local validation without touching `win`.
+- Use `scripts/local/check_win_modal_client_drift.sh` when you need a check-only stale-client guardrail.
 - Include generated client changes in the `win` worktree when the registry output changed.
 
 ### 6) Win integration
