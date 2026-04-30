@@ -2,7 +2,7 @@
 repo_name: "win"
 path: "~/GitHub/win"
 mcp_count: 0
-skill_count: 18
+skill_count: 17
 repo_local_skill_count: 0
 global_agent_count: 1
 custom_agent_count: 0
@@ -29,19 +29,16 @@ global_skills:
   - "work-handoff"
 repo_skills:
   - "agent-native-repo-playbook"
-  - "aip-dto-contract-sync"
-  - "aip-frontend-contract-apply"
   - "azure-webapp-config"
   - "client-interface-guidelines"
   - "media-toolkit"
   - "modal-function-sync"
   - "show-password-setup"
+  - "win-aip-contract-sync"
 repo_local_skills: []
 skills:
   - "agent-browser"
   - "agent-native-repo-playbook"
-  - "aip-dto-contract-sync"
-  - "aip-frontend-contract-apply"
   - "architecture-docs"
   - "azure-webapp-config"
   - "client-interface-guidelines"
@@ -55,6 +52,7 @@ skills:
   - "show-password-setup"
   - "skill-creator"
   - "things-client"
+  - "win-aip-contract-sync"
   - "work-handoff"
 ---
 

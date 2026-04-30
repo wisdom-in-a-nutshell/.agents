@@ -2,7 +2,7 @@
 repo_name: "aipodcasting"
 path: "~/GitHub/aipodcasting"
 mcp_count: 0
-skill_count: 20
+skill_count: 19
 repo_local_skill_count: 0
 global_agent_count: 1
 custom_agent_count: 0
@@ -30,21 +30,18 @@ global_skills:
 repo_skills:
   - "agent-native-repo-playbook"
   - "ai-podcasting"
-  - "aip-dto-contract-sync"
-  - "aip-frontend-contract-apply"
   - "azure-webapp-config"
   - "client-interface-guidelines"
   - "modal-function-sync"
   - "show-password-setup"
   - "vercel-react-best-practices"
   - "web-design-guidelines"
+  - "win-aip-contract-sync"
 repo_local_skills: []
 skills:
   - "agent-browser"
   - "agent-native-repo-playbook"
   - "ai-podcasting"
-  - "aip-dto-contract-sync"
-  - "aip-frontend-contract-apply"
   - "architecture-docs"
   - "azure-webapp-config"
   - "client-interface-guidelines"
@@ -59,6 +56,7 @@ skills:
   - "things-client"
   - "vercel-react-best-practices"
   - "web-design-guidelines"
+  - "win-aip-contract-sync"
   - "work-handoff"
 ---
 

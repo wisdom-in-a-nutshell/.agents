@@ -7,6 +7,7 @@
 - Functions: `src/functions/`
 - Shared helpers: `src/common/`
 - Client generator: `tools/generate_modal_client.py`
+- Local WIN client sync: `scripts/local/sync_win_modal_client.sh`
 - Registry validator: `tools/validate_registry.py`
 - Deploy workflow: `.github/workflows/deploy-on-main.yml`
 - Deploy entrypoint: `src/deploy.py`

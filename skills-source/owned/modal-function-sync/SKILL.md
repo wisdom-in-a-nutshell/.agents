@@ -6,15 +6,15 @@ description: Implement or update Modal functions in modal_functions and ensure t
 # Modal Function Sync
 
 ## Overview
-Use this skill to add or modify Modal functions in `modal_functions`, register them, and rely on CI to sync the generated client into `win`.
+Use this skill to add or modify Modal functions in `modal_functions`, register them, and locally sync the generated client into `win`.
 
 ## Auto-generation rules
 - `modal_functions` is the source of truth; never implement Modal entrypoints directly in `win`.
-- `services/modal/client_generated.py` is CI-generated; do not edit it by hand.
-- Sync happens on push to `main` (non-doc changes) via `.github/workflows/deploy-on-main.yml`.
-- Use `workflow_dispatch` only when you need to trigger deploy/sync without code changes.
+- `services/modal/client_generated.py` is generated from the `modal_functions` registry; do not edit it by hand.
+- Sync is local-first from the sibling checkout with `scripts/local/sync_win_modal_client.sh`.
+- CI validates and deploys Modal functions; it does not commit generated client files into `win`.
 - Generate locally to `tmp/client_generated.py` for fast validation without dirtying `win`.
-- Generate locally into `../win/services/modal/client_generated.py` only when actively testing `win` wrappers/call sites or when CI is unavailable.
+- Generate into `../win/services/modal/client_generated.py` through the local sync wrapper before testing `win` wrappers/call sites.
 - Stable Modal runtime secrets should default to the Key Vault -> manifest -> Modal sync flow, not one-off manual Modal secret updates.
 
 ## Workflow
@@ -45,11 +45,15 @@ Use this skill to add or modify Modal functions in `modal_functions`, register t
 - Update `docs/rules/environment-variables.md` when the secret shape or expected env keys change.
 - Do not leave a new code-level `modal.Secret.from_name(...)` reference unmanaged unless the exception is explicitly documented.
 
-### 5) Client sync (automatic)
-- The deploy workflow in `.github/workflows/deploy-on-main.yml` generates and pushes `services/modal/client_generated.py` into `win` on push to `main`.
+### 5) Client sync (local generated output)
+- Run the local sync wrapper from `modal_functions`:
+  ```bash
+  scripts/local/sync_win_modal_client.sh
+  ```
+- The wrapper validates the registry, generates `../win/services/modal/client_generated.py`, and formats it with WIN's Ruff config.
 - Do not hand-edit `services/modal/client_generated.py`.
 - Use `python tools/generate_modal_client.py --output tmp/client_generated.py` for local validation without touching `win`.
-- Generate into `../win/services/modal/client_generated.py` only when you need the new generated methods to run `win` tests before CI syncs, or when CI is unavailable.
+- Include generated client changes in the `win` worktree when the registry output changed.
 
 ### 6) Win integration
 - Use `ModalClientGenerated` from `services/modal/client_generated.py`.
@@ -57,18 +61,16 @@ Use this skill to add or modify Modal functions in `modal_functions`, register t
 - Update tests in `tests/services/modal/test_client.py` and any call sites.
 
 ### 7) Deploy + verify
-- Push to `main`, watch CI: lint/tests/deploy plus client sync.
+- Push to `main`, watch CI: lint/tests/deploy.
 - In the deploy job, confirm the secret-refresh step passes when the change touches managed Modal secrets.
-- Rebase `win` after CI pushes the client update.
-- Verify critical flows or run targeted tests.
+- Verify critical flows or run targeted tests in `win`.
 
 ## Common pitfalls
-- Docs-only changes won't trigger deploy or sync (workflow ignores `docs/**` and `*.md`).
+- Docs-only changes won't trigger Modal deploy (workflow ignores `docs/**` and `*.md`).
 - Missing registry entries means the client will not include the function.
-- Missing `CROSS_REPO_SYNC_PAT` breaks sync; CI will fail.
 - Adding `modal.Secret.from_name(...)` in code without updating the manifest reintroduces secret drift.
 - Adding a manifest entry without a real Key Vault backing secret will make deploy-time secret sync fail.
-- Manual local client generation is for validation, same-task `win` integration tests, or CI-breakglass use; the normal authoritative path is CI-driven sync.
+- Direct edits to generated client output will be overwritten by the local sync wrapper.
 
 ## References
 - See `references/paths.md` for key files and repo entry points.
