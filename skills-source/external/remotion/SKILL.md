@@ -282,6 +282,10 @@ See [rules/light-leaks.md](rules/light-leaks.md) for light leak overlay effects 
 
 See [rules/lottie.md](rules/lottie.md) for embedding Lottie animations in Remotion.
 
+## HTML in canvas
+
+See [rules/html-in-canvas.md](rules/html-in-canvas.md) if you need to render HTML into a `<canvas>` to apply 2D or WebGL effects via `<HtmlInCanvas>`.
+
 ## Measuring DOM nodes
 
 See [rules/measuring-dom-nodes.md](rules/measuring-dom-nodes.md) for measuring DOM element dimensions in Remotion.
