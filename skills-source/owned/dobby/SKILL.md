@@ -1,13 +1,13 @@
 ---
 name: dobby
-description: Canonical contract for operating a Dobby workspace — a personal-agent repo where memory, direction, per-area canon, journal, tasks, and calendar are held as the user's externalized mind. Use whenever the user wants to store, read, update, or route personal memory; check or update task state; reflect or journal; inspect, search, or add calendar events; answer "where does this go"; or run any operation that touches `memory/`, `dobby/`, `journal/`, Things 3, or calendar. Triggers include "remember this", "store this", "add to memory", "what's on today", "what's overdue", "what's in my inbox", "what's on my calendar/week", "add this to calendar", "schedule this", "add a task", "mark done", and routing decisions about new information surfaced in conversation.
+description: Canonical contract for operating a Dobby workspace — a personal-agent repo where memory, direction, per-area canon, journal, Shelf tasks, and calendar are held as the user's externalized mind. Use whenever the user wants to store, read, update, or route personal memory; check or update Shelf state; reflect or journal; inspect, search, or add calendar events; answer "where does this go"; or run any operation that touches `memory/`, `dobby/`, `journal/`, `state/shelf.json`, or calendar. Triggers include "remember this", "store this", "add to memory", "what's on today", "what's on my shelf", "what's later", "what's on my calendar/week", "add this to calendar", "schedule this", "add a task", "mark done", and routing decisions about new information surfaced in conversation.
 ---
 
 # Dobby
 
 ## Overview
 
-Dobby is a companion that lives in a git repo. The workspace itself is Dobby — `memory/`, `journal/`, `dobby/`, plus a task surface (Things 3). This skill is the operator's manual: what to read, where to write, how to keep the workspace coherent across agents.
+Dobby is a companion that lives in a git repo. The workspace itself is Dobby — `memory/`, `journal/`, `dobby/`, plus a task surface (Shelf). This skill is the operator's manual: what to read, where to write, how to keep the workspace coherent across agents.
 
 Soul lives in `/soul.md` (Dobby's character). Operations live here.
 
@@ -15,9 +15,9 @@ Soul lives in `/soul.md` (Dobby's character). Operations live here.
 
 Boot context is delivered by the repo's `SessionStart` hook
 (`scripts/hooks/session_start.py`), not by this skill. That repo hook is a
-thin delegate to the skill-bundled hook, which reads `now.md`, walks
-`memory/areas/`, and calls the shared `things-client snapshot`
-and skill-bundled `dobby-calendar upcoming` in parallel. The workspace user's
+thin delegate to the skill-bundled hook, which reads `now.md`, `state/shelf.json`,
+walks `memory/areas/`, and calls the skill-bundled `dobby-calendar upcoming` in
+parallel. The workspace user's
 durable identity is part of `soul.md` under that workspace's `## About <User>`
 section and arrives via the wrapper-composed system prompt.
 
@@ -26,11 +26,11 @@ What you can rely on being in context at session start:
 1. `soul.md` (identity, values, voice, `## About <User>`) — from the system prompt.
 2. `now.md` — full contents.
 3. Recent session notes — last 3 plus notes from the last 7 days, capped at 10.
-4. Task snapshot (overdue / today / inbox counts + top items).
+4. Shelf snapshot (Now / Today / Upcoming / Later counts + top items).
 5. Calendar (next 2 days).
 6. Area manifest (area names + file lists, content on demand).
 
-Surface overdue / today / inbox counts naturally in the first response.
+Surface Shelf counts naturally in the first response.
 Read deeper files only when the task actually needs them. Areas under
 `memory/areas/` load on demand.
 
@@ -66,7 +66,7 @@ or `--fake-note` can supply the note body.
 
 ## Prefer the CLI
 
-The preferred command surfaces are deterministic, timestamped, tested, and agent-first: JSON envelopes by default, `--plain` only for operator inspection. Use `$HOME/.agents/skills-source/owned/dobby/scripts/dobby-memory` for memory, `$HOME/.agents/skills-source/owned/things-client/scripts/things-client` for Things 3 tasks, and `$HOME/.agents/skills-source/owned/dobby/scripts/dobby-calendar` for calendar. **Do not first look for repo-local `scripts/dobby-*` wrappers.** Invoke the skill-bundled scripts directly, from a Dobby workspace root, or set `DOBBY_WORKSPACE=/path/to/workspace`.
+The preferred command surfaces are deterministic, timestamped, tested, and agent-first: JSON envelopes by default, `--plain` only for operator inspection. Use `$HOME/.agents/skills-source/owned/dobby/scripts/dobby-memory` for memory and `$HOME/.agents/skills-source/owned/dobby/scripts/dobby-calendar` for calendar. Shelf currently lives in `state/shelf.json` and through CodexClaw mobile-gateway endpoints. **Do not first look for repo-local `scripts/dobby-*` wrappers.** Invoke the skill-bundled scripts directly, from a Dobby workspace root, or set `DOBBY_WORKSPACE=/path/to/workspace`.
 
 **Reach for the CLI first.** Fall through to the `Edit`/`Write` tools only when the CLI cannot do what's needed — surgical mid-file section rewrites, or creating a new file. Both are legitimate; the CLI is simply the default.
 
@@ -81,7 +81,7 @@ See `references/commands.md` for full recipes.
 
 ## Testing
 
-Use the skill test runner for Dobby memory/calendar script changes. It is cheap/non-mutating by default; live suites that may create temporary Calendar events are opt-in. Things 3 integration tests live with the shared `things-client` skill.
+Use the skill test runner for Dobby memory/calendar script changes. It is cheap/non-mutating by default; live suites that may create temporary Calendar events are opt-in. Shelf backend tests live in `~/GitHub/codexclaw/services/mobile-gateway`.
 
 - Normal check: `bash $HOME/.agents/skills-source/owned/dobby/tests/run.sh`
 - Live smoke: `RUN_LIVE=1 bash $HOME/.agents/skills-source/owned/dobby/tests/run.sh`
@@ -95,7 +95,7 @@ When new information surfaces, route it to exactly one canonical home. Never dup
 
 | Signal | Home | Operation |
 |---|---|---|
-| Actionable item (to do, follow up, remind me) | **Things 3** | `$HOME/.agents/skills-source/owned/things-client/scripts/things-client add "..." --when ... --area <Area>` |
+| Actionable item (to do, follow up, remind me) | **Shelf** (`state/shelf.json`) | Add/update one Shelf item; use the mobile-gateway API when available, otherwise edit the JSON carefully. |
 | Durable truth about the user (identity, pattern, preference) | `soul.md` `## About <User>` | Edit in place (section) |
 | This week's active context | `memory/now.md` | Rewrite the relevant section, keep ≤60 lines |
 | Session continuity / what happened last time | `memory/sessions/YYYY/MM/DD-HHMMSS.md` | Auto-written by the SessionEnd hook; do not put session handoff prose in `now.md` |
@@ -106,30 +106,35 @@ When new information surfaces, route it to exactly one canonical home. Never dup
 | Dobby's own voice sharpening / blindspot named | `dobby/growth.md` | Append (dated entry) |
 | Raw capture with no clear home yet | `journal/daily/YYYY-MM-DD/notes-<slug>.md` | New file — journal is the default holding ground; there is no separate `capture/` folder |
 
-**Areas mirror the user's Things 3 Areas exactly.** A task tagged `Builder` and `memory/areas/builder/` are the same domain. Area names are discoverable via `ls memory/areas/`. Every workspace instance has its own set (identity-shaped, typically 3–5).
+Shelf does not use a project hierarchy. Area names for memory remain discoverable via `ls memory/areas/`. Every workspace instance has its own set (identity-shaped, typically 3–5).
 
 For the full file-by-file contract, see `references/files.md`.
 For user-intent-to-action mappings, see `references/scenarios.md`.
 
-## Tasks (Things 3)
+## Tasks (Shelf)
 
-Tasks always go through the CLI. There is no file-based alternative.
+Tasks live in `state/shelf.json`. The core contract is:
 
-- Add: `$HOME/.agents/skills-source/owned/things-client/scripts/things-client add "..." --when today|tomorrow|"next monday" --area <Area> --checklist "a,b,c"`
-- Boot snapshot: `$HOME/.agents/skills-source/owned/things-client/scripts/things-client snapshot`
-- List: `$HOME/.agents/skills-source/owned/things-client/scripts/things-client today | inbox | overdue`
-- Search: `$HOME/.agents/skills-source/owned/things-client/scripts/things-client search "..."`
-- Inspect a task/project: `$HOME/.agents/skills-source/owned/things-client/scripts/things-client inspect "Personal AI / agent system"`
-- Complete: `$HOME/.agents/skills-source/owned/things-client/scripts/things-client done <id-prefix>`
-- Doctor: `$HOME/.agents/skills-source/owned/things-client/scripts/things-client doctor` (health check)
+```json
+{
+  "schemaVersion": 1,
+  "revision": 0,
+  "updatedAt": "1970-01-01T00:00:00.000Z",
+  "items": []
+}
+```
 
-Read commands default to an `auto` backend: fast read-only SQLite first, then
-JXA fallback if the local database is unavailable. Agents should not choose a
-backend in normal use. Use `--backend sqlite|jxa|auto` only for diagnostics.
+Item statuses are only `open`, `done`, or `dropped`. There is no `snoozed`;
+deferring keeps the item open, updates `showAt`, increments `deferCount`, and
+sets `lastDeferredAt`. `isNow` is capped at two open items.
 
-Habits are not Things 3 tasks. Structured check-ins are handled by a journaling skill if one is installed; recurring physical habits (running, etc.) are Things 3 recurring tasks set once in the UI; behavioral nudges happen inside conversation.
+Use the CodexClaw mobile-gateway Shelf endpoints when the running gateway is the
+right boundary. From inside the same workspace, agents may read/write
+`state/shelf.json` directly, preserving schema, revision, and timestamps.
 
-Default for ambiguous new tasks: drop into Things 3 Inbox. The user sorts during morning review.
+Default for ambiguous new tasks: add a plain `open` Shelf item with no `showAt`
+so it lands in Later. Use `showAt` for when it should surface and `dueAt` only
+for a real deadline.
 
 ## Journal
 
@@ -151,14 +156,13 @@ Calendar operations go through the skill-bundled EventKit wrapper: `$HOME/.agent
 - **Read before you write.** Don't duplicate content that already exists.
 - **Respect the clocks.** `soul.md` (including `## About <User>`) is slow (monthly–yearly). `now.md` is weekly. Area canon shifts as needed. Don't churn slow files with fast content.
 - **No `current.md` files.** Per-area active state lives as a "Current state" section at the top of the area's main file, or in `now.md` if it's cross-cutting this week.
-- **Actionable ≠ memory.** If it's a to-do, it goes to Things 3, full stop.
+- **Actionable ≠ memory.** If it's a to-do, it goes to Shelf, full stop.
 - **Preserve continuity on rewrites.** When slimming or consolidating, don't lose content silently — fold into another file, or append to `journal/daily/YYYY-MM-DD/` before removing.
 - **Standing permission for memory writes.** The user has granted direct write-back permission — don't ask before updating memory when something durable surfaces. Note the write inline so they see what happened.
 - **Keep repo docs thin.** Workspace repo docs may describe repo-specific facts
   such as area names, host topology, local secret mapping, and setup steps. Do
   not duplicate command recipes, CLI internals, backend behavior, or task/client
-  policy there; keep those in this skill or the shared `things-client` skill and
-  point repo docs here.
+  policy there; keep those in this skill and point repo docs here.
 
 ## Delegation
 

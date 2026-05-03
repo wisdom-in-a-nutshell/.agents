@@ -21,7 +21,7 @@ wrapper-composed system prompt; it is not served by the memory CLI.
 - **Holds:** this week's active context — week shape, strategic tracks, life timeline, watchouts.
 - **Clock:** weekly rewrites; section updates as context shifts.
 - **Write pattern:** rewrite sections in place. Hard cap: ≤60 lines. If a section outgrows its budget, promote stable content to `soul.md` `## About <User>` or area canon and prune.
-- **Rule:** actionable items live in Things 3, not here.
+- **Rule:** actionable items live in `state/shelf.json`, not here.
 
 ### `memory/sessions/YYYY/MM/DD-HHMMSS.md`
 - **Holds:** one short free-form prose note for an ended agent session — what happened, what came up, what was decided, and what is worth remembering next time.
@@ -29,7 +29,7 @@ wrapper-composed system prompt; it is not served by the memory CLI.
 - **Write pattern:** append-only tree, one new file per session. Do not hand-edit into a template; the stored note body stays plain prose.
 - **Boot rule:** session start injects the last 3 notes plus notes from the last 7 days, capped at 10 total. Durable decisions still get promoted to `now.md`, area canon, or `soul.md` as appropriate.
 
-## Areas (mirror Things 3 Areas)
+## Areas
 
 Each area has a folder under `memory/areas/`. The set of areas is workspace-instance-specific — discover via `ls memory/areas/`. Each area contains at minimum a main `.md` plus `log.md`.
 
@@ -82,9 +82,17 @@ Generated or synced data that is semantically part of an area still lives under 
 | `journal/daily/<today>/` | daily | new files |
 | `journal/monthly/<month>.md` | monthly | session edit |
 
+## Shelf
+
+### `state/shelf.json`
+- **Holds:** Dobby Shelf, the canonical local-first task/open-loop state.
+- **Clock:** fast; changes whenever a task is added, completed, deferred, or dropped.
+- **Write pattern:** structured JSON rewrite with `revision` increment and `updatedAt` update. Prefer the CodexClaw mobile-gateway Shelf API when acting through the app boundary; direct agent writes are acceptable inside the workspace if schema, revision, and timestamps are preserved.
+- **Rule:** statuses are only `open`, `done`, and `dropped`. Deferral is not a status; keep the item open, update `showAt`, increment `deferCount`, and set `lastDeferredAt`.
+
 ## What's intentionally absent
 
-- `capture/` — removed. Raw intake goes to `journal/daily/YYYY-MM-DD/` as a dated notes file, or to the right area, or to Things 3.
+- `capture/` — removed. Raw intake goes to `journal/daily/YYYY-MM-DD/` as a dated notes file, or to the right area, or to Shelf.
 - `reference/` — removed. Lookup material lives inside the relevant `memory/areas/<area>/` subfolders.
 - `memory/areas/*/current.md` — removed. Per-area current state is a section in the area's main file.
 - `.base` or other app-specific formats — removed. Pure markdown only.

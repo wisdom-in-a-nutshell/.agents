@@ -7,13 +7,12 @@ Emits situational boot context to stdout; the shared dispatcher at
 
 Section order (identity-first so later sections read through the right lens):
 
-    soul (conditional) | now | recent sessions | tasks | calendar | areas
+    soul (conditional) | now | recent sessions | shelf | calendar | areas
 
 Memory reads (`now.md`, area manifest, `soul.md`) happen inline via
-file I/O — trivial work, no reason to round-trip through a CLI. Task and
-calendar snapshots go through `things-client` and `dobby-calendar`
-because those wrap non-trivial integrations (Things 3, EventKit) and are
-worth the CLI contract.
+file I/O — trivial work, no reason to round-trip through a CLI. Shelf also
+lives as workspace-local JSON. Calendar snapshots go through `dobby-calendar`
+because EventKit is a non-trivial integration and is worth the CLI contract.
 
 The user's durable identity lives in `soul.md`. It is normally loaded as
 the system prompt by:
@@ -78,16 +77,10 @@ SCRIPTS_DIR = Path(
         str(Path.home() / ".agents/skills-source/owned/dobby/scripts"),
     )
 ).expanduser()
-THINGS_CLIENT = Path(
-    os.environ.get(
-        "THINGS_CLIENT_CLI",
-        str(Path.home() / ".agents/skills-source/owned/things-client/scripts/things-client"),
-    )
-).expanduser()
 
 
 # ---------------------------------------------------------------------------
-# subprocess helpers (for non-trivial CLIs: tasks via JXA, calendar via ical)
+# subprocess helpers (for non-trivial CLIs: calendar via EventKit)
 # ---------------------------------------------------------------------------
 
 
@@ -260,37 +253,107 @@ def section(name: str) -> None:
     print(f"# {name}")
 
 
-def print_tasks(tasks: dict) -> None:
-    section("tasks")
-    if tasks.get("status") != "ok":
-        err = (tasks.get("error") or {}).get("message", "tasks unavailable")
+def read_shelf() -> dict:
+    path = REPO_ROOT / "state" / "shelf.json"
+    if not path.exists():
+        return {
+            "status": "ok",
+            "data": {
+                "schemaVersion": 1,
+                "revision": 0,
+                "updatedAt": "1970-01-01T00:00:00.000Z",
+                "items": [],
+            },
+        }
+
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except Exception as exc:
+        return {"status": "error", "error": {"message": f"invalid shelf: {exc}"}}
+
+    if not isinstance(data, dict) or not isinstance(data.get("items"), list):
+        return {"status": "error", "error": {"message": "invalid shelf shape"}}
+    return {"status": "ok", "data": data}
+
+
+def shelf_show_date(item: dict) -> str | None:
+    value = item.get("showAt")
+    if not isinstance(value, str):
+        return None
+    match = re.match(r"^\d{4}-\d{2}-\d{2}", value)
+    return match.group(0) if match else None
+
+
+def print_shelf(shelf: dict) -> None:
+    section("shelf")
+    if shelf.get("status") != "ok":
+        err = (shelf.get("error") or {}).get("message", "shelf unavailable")
         print(f"unavailable: {err}")
         return
 
-    views = (tasks.get("data") or {}).get("views", {}) or {}
-    overdue_v = views.get("overdue", {}) or {}
-    today_v = views.get("today", {}) or {}
-    inbox_v = views.get("inbox", {}) or {}
+    data = shelf.get("data") or {}
+    items = data.get("items") if isinstance(data, dict) else []
+    if not isinstance(items, list):
+        print("unavailable: invalid shelf items")
+        return
+
+    today = datetime.now(ZoneInfo(LOCAL_TIMEZONE)).date().isoformat()
+    open_items = [
+        item for item in items if isinstance(item, dict) and item.get("status") == "open"
+    ]
+    now_items = [item for item in open_items if item.get("isNow") is True]
+    today_items = [
+        item
+        for item in open_items
+        if item.get("isNow") is not True
+        and shelf_show_date(item) is not None
+        and shelf_show_date(item) <= today
+    ]
+    upcoming_items = [
+        item
+        for item in open_items
+        if shelf_show_date(item) is not None and shelf_show_date(item) > today
+    ]
+    later_items = [item for item in open_items if shelf_show_date(item) is None]
 
     print(
-        f"counts: overdue={overdue_v.get('count', 0)} "
-        f"today={today_v.get('count', 0)} "
-        f"inbox={inbox_v.get('count', 0)}"
+        f"revision={data.get('revision', 0)} "
+        f"open={len(open_items)} "
+        f"now={len(now_items)} "
+        f"today={len(today_items)} "
+        f"upcoming={len(upcoming_items)} "
+        f"later={len(later_items)}"
     )
 
-    def fmt_task(task: object) -> str:
-        if isinstance(task, dict):
-            title = str(task.get("title") or task.get("name") or "").strip()
-            return f"- {title}" if title else f"- {task}"
-        return f"- {task}"
+    def fmt_item(item: dict) -> str:
+        title = str(item.get("title") or "").strip() or str(item)
+        bits: list[str] = []
+        kind = item.get("kind")
+        if kind and kind != "do":
+            bits.append(str(kind))
+        show_at = item.get("showAt")
+        if show_at:
+            bits.append(f"showAt={show_at}")
+        due_at = item.get("dueAt")
+        if due_at:
+            bits.append(f"dueAt={due_at}")
+        defer_count = item.get("deferCount")
+        if isinstance(defer_count, int) and defer_count > 0:
+            bits.append(f"deferred={defer_count}x")
+        suffix = f" ({', '.join(bits)})" if bits else ""
+        return f"- {title}{suffix}"
 
-    for label, view in [("overdue", overdue_v), ("today", today_v), ("inbox", inbox_v)]:
-        items = view.get("tasks", []) or []
-        if items:
+    for label, view_items in [
+        ("now", now_items),
+        ("today", today_items),
+        ("upcoming", upcoming_items),
+        ("later", later_items),
+    ]:
+        if view_items:
             print("")
             print(f"## {label}")
-            for task in items[:10]:
-                print(fmt_task(task))
+            for item in view_items[:10]:
+                print(fmt_item(item))
 
 
 def print_calendar(calendar: dict) -> None:
@@ -372,10 +435,9 @@ def main() -> int:
 
     os.chdir(REPO_ROOT)
 
-    # Parallelize the two CLI calls that do real external work.
+    # Parallelize the one CLI call that does real external work.
     # Memory reads stay on the main thread — they're fast local file I/O.
-    with ThreadPoolExecutor(max_workers=2) as pool:
-        tasks_future = pool.submit(run_json, [str(THINGS_CLIENT), "snapshot"])
+    with ThreadPoolExecutor(max_workers=1) as pool:
         cal_future = pool.submit(
             run_json,
             [
@@ -391,8 +453,8 @@ def main() -> int:
         now_content = read_memory_file(memory_dir / "now.md")
         recent_sessions = build_recent_session_notes(memory_dir / "sessions")
         areas = build_area_manifest(memory_dir / "areas")
+        shelf = read_shelf()
 
-        tasks = tasks_future.result()
         calendar = cal_future.result()
 
     # --- Header (# session) --------------------------------------------------
@@ -416,7 +478,7 @@ def main() -> int:
         print(now)
 
     print_recent_sessions(recent_sessions)
-    print_tasks(tasks)
+    print_shelf(shelf)
     print_calendar(calendar)
     print_areas(areas)
     return 0
