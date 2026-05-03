@@ -15,6 +15,8 @@ personality = "pragmatic"
 suppress_unstable_features_warning = true
 
 [features]
+goals = true
+memories = true
 apps = false
 external_migration = false
 
