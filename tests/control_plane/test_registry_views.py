@@ -4,18 +4,16 @@ from tests.control_plane.support import (
     REPO_ROOT,
     TempDirTestCase,
     default_mcp_registry,
-    external_researcher_agent,
     init_git_repo,
     make_control_plane_root,
     make_skill_source,
     run_command,
-    visual_reviewer_agent,
     write_json,
 )
 
 
 class RegistryViewsGenerationTests(TempDirTestCase):
-    def test_generates_repo_mcp_and_agent_registry_views_from_shared_inputs(self) -> None:
+    def test_generates_repo_mcp_and_skill_registry_views_from_shared_inputs(self) -> None:
         root = make_control_plane_root(self.temp_path)
         home = self.temp_path / "home"
         github_root = home / "GitHub"
@@ -72,29 +70,6 @@ class RegistryViewsGenerationTests(TempDirTestCase):
         )
         write_json(root / "mcp/config/presets.json", default_mcp_registry())
 
-        hot_agent = {
-            "access_profile": "full_access",
-            "agent": "research-hot",
-            "claude": {
-                "prompt_file": "external-researcher.md",
-                "tools": ["Read"],
-            },
-            "description": "Full-access Claude-only research worker.",
-            "repos": [],
-            "scope": "global",
-        }
-        write_json(
-            root / "agents/registry.json",
-            {
-                "managed_agents": [
-                    external_researcher_agent(),
-                    visual_reviewer_agent("adi"),
-                    hot_agent,
-                ],
-                "version": 1,
-            },
-        )
-
         run_command(
             [
                 "python3",
@@ -102,28 +77,22 @@ class RegistryViewsGenerationTests(TempDirTestCase):
                 str(root / "codex/config/repo-bootstrap.json"),
                 "--mcp-registry",
                 str(root / "mcp/config/presets.json"),
-                "--agent-registry",
-                str(root / "agents/registry.json"),
             ],
             env={"HOME": str(home)},
         )
 
         repo_item = root / "docs/references/registry/repo-bootstrap-items/adi.md"
         cloudflare_item = root / "docs/references/registry/mcp-registry-items/cloudflare-docs.md"
-        hot_agent_item = root / "docs/references/registry/agent-registry-items/research-hot.md"
-        reviewer_item = (
-            root / "docs/references/registry/agent-registry-items/visual-reviewer.md"
-        )
 
         self.assertTrue(repo_item.is_file())
         self.assertTrue(cloudflare_item.is_file())
-        self.assertTrue(hot_agent_item.is_file())
-        self.assertTrue(reviewer_item.is_file())
+        self.assertFalse((root / "docs/references/registry/agent-registry.base").exists())
+        self.assertFalse((root / "docs/references/registry/agent-registry-items").exists())
 
         repo_text = repo_item.read_text(encoding="utf-8")
         self.assertIn('repo_name: "adi"', repo_text)
-        self.assertIn('custom_agents:', repo_text)
-        self.assertIn('  - "visual_reviewer"', repo_text)
+        self.assertNotIn("custom_agents:", repo_text)
+        self.assertNotIn("agents:", repo_text)
         self.assertIn('skills:', repo_text)
         self.assertIn('  - "global-helper"', repo_text)
         self.assertIn('  - "repo-helper"', repo_text)
@@ -134,17 +103,6 @@ class RegistryViewsGenerationTests(TempDirTestCase):
         self.assertIn('effective_scope: "repo"', cloudflare_text)
         self.assertIn('transport: "http"', cloudflare_text)
         self.assertIn('  - "adi"', cloudflare_text)
-
-        hot_agent_text = hot_agent_item.read_text(encoding="utf-8")
-        self.assertIn('agent_name: "research-hot"', hot_agent_text)
-        self.assertIn('runtimes: "claude"', hot_agent_text)
-        self.assertIn('claude_permission_mode: "bypassPermissions"', hot_agent_text)
-
-        reviewer_text = reviewer_item.read_text(encoding="utf-8")
-        self.assertIn('agent_name: "visual-reviewer"', reviewer_text)
-        self.assertIn('runtimes: "codex, claude"', reviewer_text)
-        self.assertIn('claude_name: "visual-reviewer"', reviewer_text)
-        self.assertIn('codex_name: "visual_reviewer"', reviewer_text)
 
     def test_omits_missing_repo_local_skills_from_repo_bootstrap_views(self) -> None:
         root = make_control_plane_root(self.temp_path)
@@ -193,10 +151,6 @@ class RegistryViewsGenerationTests(TempDirTestCase):
             },
         )
         write_json(root / "mcp/config/presets.json", default_mcp_registry())
-        write_json(
-            root / "agents/registry.json",
-            {"managed_agents": [external_researcher_agent()], "version": 1},
-        )
 
         run_command(
             [
@@ -205,8 +159,6 @@ class RegistryViewsGenerationTests(TempDirTestCase):
                 str(root / "codex/config/repo-bootstrap.json"),
                 "--mcp-registry",
                 str(root / "mcp/config/presets.json"),
-                "--agent-registry",
-                str(root / "agents/registry.json"),
             ],
             env={"HOME": str(home)},
         )

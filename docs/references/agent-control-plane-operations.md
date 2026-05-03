@@ -38,13 +38,12 @@ For repo authors adding `scripts/hooks/*.py`, start with
   - renders `.github/hooks/agent-control-plane.json` for each managed repo in `codex/config/repo-bootstrap.json`
   - supports `--check` to fail when repo-local Copilot hook files are stale
 - `scripts/test-control-plane.sh`
-  - hermetic regression test entrypoint for shared skills, hooks, MCPs, Codex config rendering, Claude subagent rendering, and shared registry views
+  - hermetic regression test entrypoint for shared skills, hooks, MCPs, Codex config rendering, Claude config rendering, and shared registry views
 
 ## Runtime-Relevant Change Model
 
 `scripts/auto-apply-agent-control-planes.sh` currently watches:
 
-- `agents/`
 - `skills/`
 - `skills-source/`
 - `mcp/`
@@ -69,8 +68,6 @@ Current apply rules:
   - sync managed repo local Git hook config
 - `scripts/sync-copilot-hooks.sh` or repo-bootstrap registry changes:
   - sync managed repo local GitHub Copilot hook files
-- `agents/` changes:
-  - run both Codex and Claude bootstrap batches
 - `codex/` changes:
   - run Codex bootstrap
   - if the change is `codex/config/repo-bootstrap.json`, also run Claude bootstrap

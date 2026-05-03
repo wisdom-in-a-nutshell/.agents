@@ -19,7 +19,6 @@ from tests.control_plane.support import (
     REPO_ROOT,
     TempDirTestCase,
     default_mcp_registry,
-    external_researcher_agent,
     init_git_repo,
     make_control_plane_root,
     read_json,
@@ -615,13 +614,6 @@ class HooksControlPlaneTests(TempDirTestCase):
         root = make_control_plane_root(self.temp_path)
         home = self.temp_path / "home"
         write_json(root / "mcp/config/presets.json", default_mcp_registry())
-        write_json(
-            root / "agents/registry.json",
-            {
-                "managed_agents": [external_researcher_agent()],
-                "version": 1,
-            },
-        )
 
         run_command(
             [
@@ -636,8 +628,6 @@ class HooksControlPlaneTests(TempDirTestCase):
                 str(root / "codex/config"),
                 "--mcp-registry",
                 str(root / "mcp/config/presets.json"),
-                "--agent-registry",
-                str(root / "agents/registry.json"),
                 "--hooks-registry",
                 str(root / "hooks/registry.json"),
             ],

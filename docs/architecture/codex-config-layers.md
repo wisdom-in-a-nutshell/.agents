@@ -45,10 +45,6 @@ flowchart TD
 - `xcode.config.toml` defines the managed baseline for Xcode Codex.
 - `bundled-skills-policy.json` classifies OpenAI-bundled runtime skills as allowed or disabled so new upstream bundled skills cannot silently drift into the local control plane.
 - `../mcp/config/presets.json` defines the shared MCP presets and machine-wide global MCP defaults.
-- `config/agents/*.toml` defines managed role-specific overrides for custom multi-agent roles such as `external_researcher`, plus the canonical role behavior files reused by repo-scoped roles.
-  - built-in `explorer` remains available upstream for local repo and runtime exploration.
-  - `external_researcher` is the managed custom role for information outside the local repo and runtime, using docs, MCP servers, skills, and web sources as needed.
-  - repo-scoped roles such as `visual_reviewer` are assigned from `repo-bootstrap.json` and materialized into repo-local `.codex/agents/` folders instead of being enabled globally.
 - `repo-bootstrap.json` defines:
   - which repos are managed
   - which MCP presets each repo gets
@@ -59,7 +55,7 @@ These files are the source of truth.
 ### Live Machine Config
 
 - `sync-config.sh` writes the managed baseline into `~/.codex/config.toml` and Xcode Codex config.
-- `sync-config.sh` also syncs managed role config files into `~/.codex/agents/` and the Xcode Codex runtime `agents/` folder so relative `config_file` paths resolve from the live runtime config.
+- `sync-config.sh` prunes stale managed agent role declarations and role files from older versions of this control plane.
 - It preserves machine-specific/runtime-specific state that should not live in git.
 - It explicitly preserves the OpenAI-bundled Computer Use plugin and writes disabled bundled-skill entries from `bundled-skills-policy.json`.
 - It also prunes stale managed keys when the canonical templates no longer want them, while preserving unrelated runtime MCP sections and only injecting the shared global MCP defaults.
@@ -76,15 +72,10 @@ So trust sync is part of config layering, not a separate unrelated feature.
 
 ### Repo-Local Config
 
-- `sync-repo-codex-configs.sh` generates repo-local `.codex/config.toml` files from `repo-bootstrap.json` plus `agents/registry.json`.
+- `sync-repo-codex-configs.sh` generates repo-local `.codex/config.toml` files from `repo-bootstrap.json` plus shared MCP presets.
 - Most repos can have a minimal managed file with no repo-local overrides.
 - Some repos get MCP presets or later model-specific overrides.
 - `sync-repo-bootstrap-registry.sh` regenerates user-facing Obsidian views for the same registry under [`docs/references/registry/`](/Users/dobby/.agents/docs/references/registry) so the current repo assignments stay visible in Obsidian, including effective skills merged from [`skills/registry.json`](/Users/dobby/.agents/skills/registry.json).
-  - the per-repo view now includes:
-    - `global_agents`
-    - `custom_agents`
-    - `agents`
-  - and the generated registry now also includes a role-centric [`agent-registry.base`](/Users/dobby/.agents/docs/references/registry/agent-registry.base)
 
 Current per-repo fields in `repo-bootstrap.json`:
 - `mcp_presets`
@@ -97,8 +88,6 @@ Current per-repo fields in `repo-bootstrap.json`:
 - `project_root_markers`
 - `features`
 - `service_tier`
-
-Additional shared agent metadata now lives in `agents/registry.json`.
 
 Shared MCP definitions live in `mcp/config/presets.json`.
 
@@ -115,6 +104,6 @@ Bundled Codex runtime skill policy lives in `codex/config/bundled-skills-policy.
 ## Notes
 
 - Use `docs/architecture/` to understand the shape of the system.
-- Use [Capability Bootstrap Model](/Users/dobby/.agents/docs/architecture/capability-bootstrap-model.md) for the consolidated skills / MCPs / agents model.
+- Use [Capability Bootstrap Model](/Users/dobby/.agents/docs/architecture/capability-bootstrap-model.md) for the consolidated skills / MCPs model.
 - Use [Codex Control Plane Operations](/Users/dobby/.agents/docs/references/codex-control-plane-operations.md) for exact commands.
 - Use [Codex Control Plane Ownership](/Users/dobby/.agents/docs/references/codex-control-plane-ownership.md) for the keep/move/generate split.

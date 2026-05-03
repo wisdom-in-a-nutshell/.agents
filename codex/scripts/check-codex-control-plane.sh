@@ -121,63 +121,13 @@ def load_toml(path: Path) -> dict:
     return data
 
 
-def validate_role_file(path: Path, expected_name: str) -> dict:
-    data = load_toml(path)
-    name = data.get("name")
-    description = data.get("description")
-    if not isinstance(name, str) or not name.strip():
-        fail(f"agent role file at {path} must define a non-empty `name`")
-    if not isinstance(description, str) or not description.strip():
-        fail(f"agent role `{name if isinstance(name, str) and name else expected_name}` must define a description")
-    if expected_name and name.strip() != expected_name:
-        fail(f"agent role file {path} declares `{name.strip()}` but expected `{expected_name}`")
-    return data
-
-
-def normalize_repo_agent_names(custom_agents: list[str]) -> list[str]:
-    ordered: list[str] = []
-    for agent_name in custom_agents:
-        if agent_name not in ordered:
-            ordered.append(agent_name)
-    return ordered
-
-
-def validate_agent_declarations(config_path: Path, *, agent_files_base: Path, require_runtime_files: bool, check_runtime_extras: bool) -> list[str]:
+def validate_no_agent_declarations(config_path: Path) -> None:
     data = load_toml(config_path)
     agents = data.get("agents", {}) or {}
     if not isinstance(agents, dict):
         fail(f"`agents` must be a TOML table in {config_path}")
-
-    declared_names: list[str] = []
-    expected_basenames: list[str] = []
-    for role_name, value in sorted(agents.items()):
-        if not isinstance(role_name, str):
-            fail(f"agent role name must be a string in {config_path}")
-        if not isinstance(value, dict):
-            fail(f"agents.{role_name} must be a TOML table in {config_path}")
-        declared_names.append(role_name)
-        description = value.get("description")
-        config_file = value.get("config_file")
-        if not isinstance(description, str) or not description.strip():
-            fail(f"agents.{role_name} must define a non-empty description in {config_path}")
-        if not isinstance(config_file, str) or not config_file.strip():
-            fail(f"agents.{role_name} must define a non-empty config_file in {config_path}")
-        resolved = (config_path.parent / config_file).resolve()
-        basename = os.path.basename(config_file)
-        expected_basenames.append(basename)
-        if require_runtime_files and not resolved.is_file():
-            fail(f"runtime config {config_path} references missing role file: {resolved}")
-        validate_role_file(resolved if require_runtime_files else resolved, role_name)
-
-    if check_runtime_extras and agent_files_base.exists():
-        actual = sorted(p.name for p in agent_files_base.glob("*.toml"))
-        extras = sorted(set(actual) - set(expected_basenames))
-        if extras:
-            fail(
-                f"runtime agents dir {agent_files_base} contains unreferenced role files: {', '.join(extras)}"
-            )
-
-    return declared_names
+    if agents:
+        fail(f"{config_path} declares managed agents; this control plane no longer materializes agent roles")
 
 
 def is_git_repo(path: Path) -> bool:
@@ -196,22 +146,17 @@ def is_git_repo(path: Path) -> bool:
 canonical_dir = Path(sys.argv[1]).expanduser().resolve()
 global_config = Path(sys.argv[2]).expanduser().resolve()
 global_hooks = Path(sys.argv[3]).expanduser().resolve()
-global_agents_dir = Path(sys.argv[4]).expanduser().resolve()
-xcode_config = Path(sys.argv[5]).expanduser().resolve()
-xcode_agents_dir = Path(sys.argv[6]).expanduser().resolve()
-registry_path = Path(sys.argv[7]).expanduser().resolve()
-mcp_registry_path = Path(sys.argv[8]).expanduser().resolve()
-agent_registry_path = Path(sys.argv[9]).expanduser().resolve()
-hooks_registry_path = Path(sys.argv[10]).expanduser().resolve()
-repo_filters = {str(Path(p).expanduser().resolve()) for p in sys.argv[11:] if p.strip()}
+xcode_config = Path(sys.argv[4]).expanduser().resolve()
+registry_path = Path(sys.argv[5]).expanduser().resolve()
+mcp_registry_path = Path(sys.argv[6]).expanduser().resolve()
+hooks_registry_path = Path(sys.argv[7]).expanduser().resolve()
+repo_filters = {str(Path(p).expanduser().resolve()) for p in sys.argv[8:] if p.strip()}
 
-root_dir = agent_registry_path.parent.parent.resolve()
+root_dir = canonical_dir.parent.parent.resolve()
 sys.path.insert(0, str(root_dir))
 
-from agents.registry import load_agent_registry
 from hooks.control_plane import load_hooks_registry, render_codex_hooks
 
-canonical_agents_dir = canonical_dir / "agents"
 global_template = canonical_dir / "global.config.toml"
 xcode_template = canonical_dir / "xcode.config.toml"
 bundled_skills_policy_path = canonical_dir / "bundled-skills-policy.json"
@@ -328,41 +273,19 @@ def validate_disabled_skill_entries(config_path: Path, policy: dict[str, dict[st
 bundled_skills_policy = load_bundled_skills_policy(bundled_skills_policy_path)
 audit_installed_bundled_skills(bundled_skills_policy)
 
-validate_agent_declarations(
-    global_template,
-    agent_files_base=canonical_agents_dir,
-    require_runtime_files=False,
-    check_runtime_extras=False,
-)
-validate_agent_declarations(
-    xcode_template,
-    agent_files_base=canonical_agents_dir,
-    require_runtime_files=False,
-    check_runtime_extras=False,
-)
+validate_no_agent_declarations(global_template)
+validate_no_agent_declarations(xcode_template)
 
 if global_config.exists():
-    validate_agent_declarations(
-        global_config,
-        agent_files_base=global_agents_dir,
-        require_runtime_files=True,
-        check_runtime_extras=True,
-    )
+    validate_no_agent_declarations(global_config)
 
 if xcode_config.exists():
-    validate_agent_declarations(
-        xcode_config,
-        agent_files_base=xcode_agents_dir,
-        require_runtime_files=True,
-        check_runtime_extras=True,
-    )
+    validate_no_agent_declarations(xcode_config)
 
 if not registry_path.is_file():
     fail(f"missing registry file: {registry_path}")
 if not mcp_registry_path.is_file():
     fail(f"missing MCP registry file: {mcp_registry_path}")
-if not agent_registry_path.is_file():
-    fail(f"missing agent registry file: {agent_registry_path}")
 if not hooks_registry_path.is_file():
     fail(f"missing hooks registry file: {hooks_registry_path}")
 try:
@@ -420,7 +343,6 @@ repos = registry.get("repos", [])
 if not isinstance(repos, list):
     fail(f"repos must be an array in {registry_path}")
 
-resolved_repo_names: set[str] = set()
 resolved_repos: list[dict[str, str]] = []
 for item in repos:
     if not isinstance(item, dict):
@@ -430,56 +352,7 @@ for item in repos:
         fail("repo.path must be a non-empty string")
     repo_path = Path(raw_path).expanduser().resolve()
     repo_name = repo_path.name or str(repo_path)
-    resolved_repo_names.add(repo_name)
     resolved_repos.append({"path": str(repo_path), "repo_name": repo_name})
-
-managed_agents = load_agent_registry(
-    agent_registry_path,
-    root_dir=root_dir,
-    valid_repo_names=resolved_repo_names,
-)
-
-expected_global_agents: list[str] = []
-expected_repo_agents: dict[str, list[str]] = {}
-for agent in managed_agents:
-    codex = agent.get("codex")
-    if not isinstance(codex, dict) or not codex.get("materialize"):
-        continue
-    role_path = Path(codex["source_path"])
-    validate_role_file(role_path, str(codex["name"]))
-    if agent["scope"] == "global":
-        expected_global_agents.append(str(codex["name"]))
-    else:
-        for repo_name in agent["repos"]:
-            expected_repo_agents.setdefault(str(repo_name), []).append(str(codex["name"]))
-
-expected_global_agents = normalize_repo_agent_names(expected_global_agents)
-for repo_name, names in list(expected_repo_agents.items()):
-    expected_repo_agents[repo_name] = normalize_repo_agent_names(names)
-
-if global_config.exists():
-    declared_global_agents = validate_agent_declarations(
-        global_config,
-        agent_files_base=global_agents_dir,
-        require_runtime_files=True,
-        check_runtime_extras=True,
-    )
-    if sorted(declared_global_agents) != sorted(expected_global_agents):
-        fail(
-            f"global runtime declares agents {sorted(declared_global_agents)} but registry expects {sorted(expected_global_agents)}"
-        )
-
-if xcode_config.exists():
-    declared_xcode_agents = validate_agent_declarations(
-        xcode_config,
-        agent_files_base=xcode_agents_dir,
-        require_runtime_files=True,
-        check_runtime_extras=True,
-    )
-    if sorted(declared_xcode_agents) != sorted(expected_global_agents):
-        fail(
-            f"xcode runtime declares agents {sorted(declared_xcode_agents)} but registry expects {sorted(expected_global_agents)}"
-        )
 
 if global_config.exists():
     global_data = load_toml(global_config)
@@ -505,8 +378,6 @@ for item in resolved_repos:
     repo_path = Path(item["path"]).resolve()
     if repo_filters and str(repo_path) not in repo_filters:
         continue
-    repo_name = item["repo_name"]
-    expected_repo_agent_names = expected_repo_agents.get(repo_name, [])
 
     if not repo_path.exists() or not is_git_repo(repo_path):
         continue
@@ -515,20 +386,10 @@ for item in resolved_repos:
     if not repo_config.exists():
         continue
 
-    declared_repo_agents = validate_agent_declarations(
-        repo_config,
-        agent_files_base=repo_path / ".codex" / "agents",
-        require_runtime_files=True,
-        check_runtime_extras=False,
-    )
-    if sorted(declared_repo_agents) != sorted(expected_repo_agent_names):
-        fail(
-            f"repo {repo_path} declares agents {sorted(declared_repo_agents)} but registry expects {sorted(expected_repo_agent_names)}"
-        )
+    validate_no_agent_declarations(repo_config)
     validated_repo_count += 1
 
 print("Codex structural validation passed")
-print(f"  canonical agent roles: {len(list(canonical_agents_dir.glob('*.toml')))}")
 print(f"  global runtime config checked: {'yes' if global_config.exists() else 'no'}")
 print(f"  global runtime hooks checked: {'yes' if global_hooks.exists() else 'no'}")
 print(f"  xcode runtime config checked: {'yes' if xcode_config.exists() else 'no'}")
@@ -540,7 +401,6 @@ if ! drift_output="$(
     --check \
     --registry "$REGISTRY_FILE" \
     --mcp-registry "$MCP_REGISTRY_FILE" \
-    --agent-registry "$AGENT_REGISTRY_FILE" \
     --hooks-registry "$HOOKS_REGISTRY_FILE" \
     "${REPO_ARGS[@]}" \
     2>&1

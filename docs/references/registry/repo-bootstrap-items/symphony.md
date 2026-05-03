@@ -4,19 +4,11 @@ path: "~/GitHub/symphony"
 mcp_count: 1
 skill_count: 10
 repo_local_skill_count: 0
-global_agent_count: 1
-custom_agent_count: 0
-agent_count: 1
 model: "gpt-5.5"
 reasoning: "high"
 service_tier: "-"
 mcps:
   - "openaiDeveloperDocs"
-global_agents:
-  - "external_researcher"
-custom_agents: []
-agents:
-  - "external_researcher"
 global_skills:
   - "agent-browser"
   - "architecture-docs"
@@ -43,4 +35,4 @@ skills:
   - "things-client"
 ---
 
-Generated from `codex/config/repo-bootstrap.json`, `skills/registry.json`, and `agents/registry.json`. Do not edit manually.
+Generated from `codex/config/repo-bootstrap.json` and `skills/registry.json`. Do not edit manually.

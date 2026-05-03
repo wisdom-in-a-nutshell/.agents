@@ -7,7 +7,6 @@ from tests.control_plane.support import (
     init_git_repo,
     make_control_plane_root,
     run_command,
-    visual_reviewer_agent,
     write_json,
     write_text,
 )
@@ -46,15 +45,6 @@ class CodexControlPlaneCheckTests(TempDirTestCase):
             }
         }
         write_json(root / "mcp/config/presets.json", mcp_registry)
-        write_json(
-            root / "agents/registry.json",
-            {
-                "managed_agents": [
-                    visual_reviewer_agent("adi"),
-                ],
-                "version": 1,
-            },
-        )
         return root, home, adi
 
     def _check_command(self, root, home, repo):  # noqa: ANN001, ANN202
@@ -64,18 +54,12 @@ class CodexControlPlaneCheckTests(TempDirTestCase):
             str(root / "codex/config"),
             "--global-config",
             str(home / ".codex/config.toml"),
-            "--global-agents-dir",
-            str(home / ".codex/agents"),
             "--xcode-config",
             str(home / "xcode/config.toml"),
-            "--xcode-agents-dir",
-            str(home / "xcode/agents"),
             "--registry",
             str(root / "codex/config/repo-bootstrap.json"),
             "--mcp-registry",
             str(root / "mcp/config/presets.json"),
-            "--agent-registry",
-            str(root / "agents/registry.json"),
             "--hooks-registry",
             str(root / "hooks/registry.json"),
             "--repo",
@@ -91,8 +75,6 @@ class CodexControlPlaneCheckTests(TempDirTestCase):
                 str(root / "codex/config/repo-bootstrap.json"),
                 "--mcp-registry",
                 str(root / "mcp/config/presets.json"),
-                "--agent-registry",
-                str(root / "agents/registry.json"),
                 "--hooks-registry",
                 str(root / "hooks/registry.json"),
             ],
@@ -113,7 +95,6 @@ class CodexControlPlaneCheckTests(TempDirTestCase):
         self.assertIn("OK: Codex control plane validation passed", result.stdout)
         self.assertTrue((adi / ".codex/config.toml").is_file())
         self.assertTrue((adi / ".codex/hooks.json").is_file())
-        self.assertTrue((adi / ".codex/agents/visual_reviewer.toml").is_file())
 
     def test_check_script_fails_when_repo_config_missing_for_managed_repo(self) -> None:
         root, home, adi = self._make_codex_repo_fixture()
@@ -150,30 +131,6 @@ class CodexControlPlaneCheckTests(TempDirTestCase):
         self.assertIn("repo-local Codex files are out of sync", result.stderr)
         self.assertIn('-model = "gpt-5.3"', result.stderr)
         self.assertIn('+model = "gpt-5.5"', result.stderr)
-
-    def test_check_script_fails_when_repo_agent_file_drifted_from_role_source(self) -> None:
-        root, home, adi = self._make_codex_repo_fixture()
-        self._render_repo_configs(root, home)
-        role_path = adi / ".codex/agents/visual_reviewer.toml"
-        role_path.write_text(
-            role_path.read_text(encoding="utf-8").replace(
-                'sandbox_mode = "read-only"',
-                'sandbox_mode = "workspace-write"',
-            ),
-            encoding="utf-8",
-        )
-
-        result = run_command(
-            self._check_command(root, home, adi),
-            env={"HOME": str(home)},
-            check=False,
-        )
-
-        self.assertNotEqual(result.returncode, 0)
-        self.assertIn("repo-local Codex files are out of sync", result.stderr)
-        self.assertIn("visual_reviewer.toml", result.stderr)
-        self.assertIn('-sandbox_mode = "workspace-write"', result.stderr)
-        self.assertIn('+sandbox_mode = "read-only"', result.stderr)
 
     def test_check_script_fails_for_unclassified_bundled_codex_skill(self) -> None:
         root, home, adi = self._make_codex_repo_fixture()

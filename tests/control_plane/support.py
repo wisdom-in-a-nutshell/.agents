@@ -96,19 +96,13 @@ def commit_all(path: Path, message: str) -> None:
 def make_control_plane_root(base_dir: Path) -> Path:
     root = base_dir / "control-plane-root"
     for relative_path in (
-        "agents/__init__.py",
-        "agents/registry.py",
-        "codex/config/agents/external_researcher.toml",
         "codex/config/bundled-skills-policy.json",
         "codex/config/global.agents.md",
         "codex/config/global.config.toml",
-        "codex/config/agents/visual_reviewer.toml",
         "codex/config/xcode.config.toml",
         "claude/config/bootstrap.json",
-        "claude/config/agents/external-researcher.md",
         "claude/config/global.claude.md",
         "claude/config/settings.json",
-        "claude/config/agents/visual-reviewer.md",
         "hooks/__init__.py",
         "hooks/control_plane.py",
         "hooks/registry.json",
@@ -179,42 +173,6 @@ def default_skills_registry() -> dict[str, Any]:
             "github_root": "~/GitHub",
         },
         "unmanaged_repo_local_skills": [],
-    }
-def external_researcher_agent() -> dict[str, Any]:
-    return {
-        "access_profile": "read_only",
-        "agent": "external-researcher",
-        "claude": {
-            "prompt_file": "external-researcher.md",
-            "tools": ["Read", "Grep", "Glob", "WebFetch"],
-        },
-        "codex": {
-            "config_file": "external_researcher.toml",
-            "name": "external_researcher",
-        },
-        "description": "Read-only researcher for information outside the local codebase and runtime.",
-        "repos": [],
-        "scope": "global",
-    }
-
-
-def visual_reviewer_agent(*repo_names: str) -> dict[str, Any]:
-    return {
-        "access_profile": "read_only",
-        "agent": "visual-reviewer",
-        "claude": {
-            "color": "cyan",
-            "prompt_file": "visual-reviewer.md",
-            "tools": ["Read", "Grep", "Glob"],
-        },
-        "codex": {
-            "config_file": "visual_reviewer.toml",
-            "name": "visual_reviewer",
-            "nickname_candidates": ["Lens", "Critic", "Review"],
-        },
-        "description": "Read-only reviewer for visual work such as screenshots, layouts, hierarchy, and clarity.",
-        "repos": list(repo_names),
-        "scope": "repo",
     }
 
 

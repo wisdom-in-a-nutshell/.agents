@@ -34,7 +34,6 @@ Shared inputs Claude reads from outside `claude/`:
 
 - `../codex/config/global.agents.md`
 - `../codex/config/repo-bootstrap.json`
-- `../agents/registry.json`
 - `../hooks/registry.json`
 - `../mcp/config/presets.json`
 - `../skills/registry.json`
@@ -48,7 +47,6 @@ Owns the applied local runtime state:
 - `settings.json`
 - `settings.local.json`
 - `skills/`
-- `agents/`
 - `*.json` runtime caches and history
 
 ### Repo-local files
@@ -60,7 +58,6 @@ The generic project contract is:
 - `.claude/settings.json`
 - `.mcp.json`
 - `.claude/skills/`
-- `.claude/agents/`
 
 `AGENTS.md` remains the shared repo instruction source. `CLAUDE.md` is only the compatibility entrypoint.
 
@@ -75,8 +72,6 @@ Claude has both global and project layers:
 - project `.claude/settings.json`
 - project `.mcp.json`
 - project `.claude/skills/`
-- global `~/.claude/agents/`
-- project `.claude/agents/`
 
 Managed lifecycle hooks render into project `.claude/settings.json` when
 `hooks/registry.json` assigns them to that repo. Current global Claude settings
@@ -97,7 +92,7 @@ This baseline includes:
 - project MCP via `.mcp.json`
 - global MCP via `~/.claude.json`
 - global and project skills
-- global and project subagents rendered from the shared agent registry
+- no managed Claude subagent rendering or repo-scoped subagent assignment
 
 This baseline intentionally defers:
 
@@ -112,14 +107,12 @@ The mental model is:
 1. `codex/config/global.agents.md` stays the shared global machine guidance.
 2. `AGENTS.md` stays the shared repo contract.
 3. Claude compatibility is added on top of those shared sources.
-4. `~/.agents/claude/` defines Claude-specific managed inputs such as settings, MCP, skills, and subagents.
-5. `~/.agents/agents/registry.json` defines which shared agents should materialize in Claude.
-6. Shared machine-facing apply enters through `~/.agents/scripts/bootstrap-machine-agent-control-planes.sh` or `~/.agents/scripts/auto-apply-agent-control-planes.sh`.
-7. `~/.claude/` is the applied machine state.
+4. `~/.agents/claude/` defines Claude-specific managed inputs such as settings, MCP, and skills.
+5. Shared machine-facing apply enters through `~/.agents/scripts/bootstrap-machine-agent-control-planes.sh` or `~/.agents/scripts/auto-apply-agent-control-planes.sh`.
+6. `~/.claude/` is the applied machine state.
 
 That keeps Claude as a sibling control plane, not a replacement for the existing Codex bootstrap.
 
 ## Related Docs
 
 - [Claude Control Plane Operations](/Users/dobby/.agents/docs/references/claude-control-plane-operations.md)
-- [Unified Codex And Claude Agent Model](/Users/dobby/.agents/docs/architecture/unified-codex-claude-agent-model.md)

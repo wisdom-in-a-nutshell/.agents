@@ -4,20 +4,10 @@ path: "~/GitHub/adi"
 mcp_count: 0
 skill_count: 23
 repo_local_skill_count: 0
-global_agent_count: 1
-custom_agent_count: 1
-agent_count: 2
 model: "gpt-5.5"
 reasoning: "high"
 service_tier: "fast"
 mcps: []
-global_agents:
-  - "external_researcher"
-custom_agents:
-  - "visual_reviewer"
-agents:
-  - "external_researcher"
-  - "visual_reviewer"
 global_skills:
   - "agent-browser"
   - "architecture-docs"
@@ -70,4 +60,4 @@ skills:
   - "things-client"
 ---
 
-Generated from `codex/config/repo-bootstrap.json`, `skills/registry.json`, and `agents/registry.json`. Do not edit manually.
+Generated from `codex/config/repo-bootstrap.json` and `skills/registry.json`. Do not edit manually.

@@ -58,10 +58,10 @@ flowchart TD
   - writes exact trust entries for discovered Git repos
 - [`sync-repo-codex-configs.sh`](/Users/dobby/.agents/codex/scripts/sync-repo-codex-configs.sh)
   - renders managed repo-local `.codex/config.toml` files for all registered repos
-  - also materializes repo-local `.codex/agents/*.toml` files for assigned repo-scoped custom agents
+  - prunes stale managed repo-local `.codex/agents/*.toml` files left by older control-plane versions
   - resolves repo MCP presets through [`mcp/config/presets.json`](/Users/dobby/.agents/mcp/config/presets.json)
 - [`repo-bootstrap.json`](/Users/dobby/.agents/codex/config/repo-bootstrap.json)
-  - defines the managed repo set, repo MCP assignment, repo-scoped custom agents, and per-repo model/service-tier/reasoning overrides
+  - defines the managed repo set, repo MCP assignment, and per-repo model/service-tier/reasoning overrides
 - [`configure-ghostty-cwd.sh`](/Users/dobby/.agents/codex/scripts/configure-ghostty-cwd.sh)
   - rewrites Ghostty config so Codex startup and cwd handling stay consistent
 

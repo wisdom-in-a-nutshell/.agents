@@ -129,7 +129,6 @@ class AutoApplyRoutingTests(TempDirTestCase):
         stamp_file = self.temp_path / "last-reconciled.sha"
 
         for relative_path in (
-            "agents/registry.json",
             "plugins/registry.json",
             "skills/registry.json",
             "mcp/config/presets.json",
@@ -205,33 +204,6 @@ class AutoApplyRoutingTests(TempDirTestCase):
             ["git", "-C", str(root), "rev-parse", "HEAD"],
         ).stdout.strip()
         self.assertEqual(head_sha, stamp_file.read_text(encoding="utf-8").strip())
-
-    def test_agents_registry_change_triggers_codex_and_claude_bootstraps(self) -> None:
-        root, log_path, stamp_file = self._make_agents_repo()
-        baseline_sha = run_command(
-            ["git", "-C", str(root), "rev-parse", "HEAD"],
-        ).stdout.strip()
-        write_text(stamp_file, baseline_sha + "\n")
-
-        write_json(
-            root / "agents/registry.json",
-            {
-                "managed_agents": [],
-                "version": 1,
-            },
-        )
-        commit_all(root, "update agent registry")
-
-        output = self._run_auto_apply(root, log_path, stamp_file)
-
-        self.assertIn("APPLY: detected shared agent control-plane changes", output)
-        self.assertEqual(
-            [
-                f"bootstrap-machine-codex.sh|--apply --github-root {self.temp_path / 'GitHub'}",
-                "bootstrap-machine-claude.sh|--apply",
-            ],
-            log_path.read_text(encoding="utf-8").splitlines(),
-        )
 
     def test_skills_registry_change_triggers_skill_sync_and_both_runtimes(self) -> None:
         root, log_path, stamp_file = self._make_agents_repo()

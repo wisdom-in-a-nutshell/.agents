@@ -14,7 +14,6 @@ Canonical personal Claude control-plane assets live here.
   - `config/global.claude.md`: symlink alias to `../codex/config/global.agents.md` for `~/.claude/CLAUDE.md`.
   - `config/settings.json`: canonical machine-wide settings source for `~/.claude/settings.json`.
   - `config/bootstrap.json`: Claude-only bootstrap defaults and per-repo overrides.
-  - `config/agents/*.md`: canonical Claude subagent prompt bodies rendered into `~/.claude/agents/` and repo `.claude/agents/`.
 - `scripts/`: canonical Claude-specific automation scripts.
 
 ## Current Scope
@@ -24,7 +23,6 @@ Canonical personal Claude control-plane assets live here.
 - `../scripts/check-agent-control-planes.sh` is the canonical shared validation entrypoint for skills plus Codex and Claude.
 - `scripts/bootstrap-machine-claude.sh` is the canonical Claude-specific bootstrap batch used by the shared root wrappers.
 - `scripts/check-claude-control-plane.sh` is the canonical Claude control-plane validation entrypoint.
-- `scripts/sync-subagents.sh` is the canonical Claude subagent materialization entrypoint for `~/.claude/agents/` and repo `.claude/agents/`.
 - `scripts/sync-skills.sh` is the canonical Claude skill materialization entrypoint for `~/.claude/skills/` and repo `.claude/skills/`.
 
 ## Rules
@@ -36,9 +34,8 @@ Canonical personal Claude control-plane assets live here.
 - Keep the Claude bootstrap local-first and generic; treat repo-specific prompt overrides such as `adi` `soul.md` as explicit follow-up work.
 - Keep machine-local runtime state under `~/.claude/`, not in this repo.
 - Treat `codex/config/repo-bootstrap.json` as the shared repo inventory and repo-assignment registry.
-- Treat `../agents/registry.json` as the shared agent exposure registry for Codex and Claude.
 - Treat `mcp/config/presets.json` as the shared MCP registry for both Codex and Claude.
-- Treat `config/bootstrap.json` as Claude-only settings and repo override input, not as the Claude subagent registry.
+- Treat `config/bootstrap.json` as Claude-only settings and repo override input.
 
 ## References
 

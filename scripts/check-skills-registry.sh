@@ -16,8 +16,6 @@ changes="$(git status --porcelain -- \
   docs/references/registry/skills-items \
   docs/references/registry/repo-bootstrap.base \
   docs/references/registry/repo-bootstrap-items \
-  docs/references/registry/agent-registry.base \
-  docs/references/registry/agent-registry-items \
   docs/references/registry/mcp-registry.base \
   docs/references/registry/mcp-registry-items)"
 if [[ -n "$changes" ]]; then

@@ -8,11 +8,8 @@ Canonical sources:
 
 - [`skills/registry.json`](/Users/dobby/.agents/skills/registry.json)
 - [`plugins/registry.json`](/Users/dobby/.agents/plugins/registry.json)
-- [`agents/registry.json`](/Users/dobby/.agents/agents/registry.json)
 - [`codex/config/repo-bootstrap.json`](/Users/dobby/.agents/codex/config/repo-bootstrap.json)
 - [`mcp/config/presets.json`](/Users/dobby/.agents/mcp/config/presets.json)
-- [`codex/config/agents/*.toml`](/Users/dobby/.agents/codex/config/agents)
-- [`claude/config/agents/*.md`](/Users/dobby/.agents/claude/config/agents)
 
 Generated views:
 
@@ -23,9 +20,6 @@ Generated views:
 - [`repo-bootstrap.base`](/Users/dobby/.agents/docs/references/registry/repo-bootstrap.base)
   - per-repo Codex bootstrap view, including MCP presets plus effective skill availability derived from [`skills/registry.json`](/Users/dobby/.agents/skills/registry.json)
 - [`repo-bootstrap-items/`](/Users/dobby/.agents/docs/references/registry/repo-bootstrap-items)
-- [`agent-registry.base`](/Users/dobby/.agents/docs/references/registry/agent-registry.base)
-  - role-centric Codex agent view, including scope, repos, model, sandbox, MCP exposure, web search, disabled tools, and `js_repl`
-- [`agent-registry-items/`](/Users/dobby/.agents/docs/references/registry/agent-registry-items)
 - [`mcp-registry.base`](/Users/dobby/.agents/docs/references/registry/mcp-registry.base)
 - [`mcp-registry-items/`](/Users/dobby/.agents/docs/references/registry/mcp-registry-items)
 

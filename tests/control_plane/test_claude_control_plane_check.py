@@ -7,20 +7,18 @@ from tests.control_plane.support import (
     TempDirTestCase,
     default_mcp_registry,
     default_skills_registry,
-    external_researcher_agent,
     init_git_repo,
     make_control_plane_root,
     make_skill_source,
     read_json,
     run_command,
-    visual_reviewer_agent,
     write_json,
     write_text,
 )
 
 
 class ClaudeControlPlaneCheckTests(TempDirTestCase):
-    def test_check_script_passes_for_rendered_skills_mcp_and_subagents(self) -> None:
+    def test_check_script_passes_for_rendered_skills_and_mcp(self) -> None:
         root = make_control_plane_root(self.temp_path)
         home = self.temp_path / "home"
         github_root = home / "GitHub"
@@ -67,16 +65,6 @@ class ClaudeControlPlaneCheckTests(TempDirTestCase):
             },
         )
         write_json(root / "mcp/config/presets.json", default_mcp_registry())
-        write_json(
-            root / "agents/registry.json",
-            {
-                "managed_agents": [
-                    external_researcher_agent(),
-                    visual_reviewer_agent("adi"),
-                ],
-                "version": 1,
-            },
-        )
 
         env = {"HOME": str(home)}
         run_command(
@@ -111,19 +99,6 @@ class ClaudeControlPlaneCheckTests(TempDirTestCase):
                 str(home / ".claude.json"),
                 "--mcp-registry",
                 str(root / "mcp/config/presets.json"),
-            ],
-            env=env,
-        )
-        run_command(
-            [
-                str(REPO_ROOT / "claude/scripts/sync-subagents.sh"),
-                "--apply",
-                "--registry",
-                str(root / "codex/config/repo-bootstrap.json"),
-                "--agent-registry",
-                str(root / "agents/registry.json"),
-                "--global-agents-dir",
-                str(home / ".claude/agents"),
             ],
             env=env,
         )
@@ -172,8 +147,6 @@ class ClaudeControlPlaneCheckTests(TempDirTestCase):
                 str(home / ".claude/settings.json"),
                 "--global-config",
                 str(home / ".claude.json"),
-                "--global-agents-dir",
-                str(home / ".claude/agents"),
                 "--registry",
                 str(root / "codex/config/repo-bootstrap.json"),
                 "--bootstrap",
@@ -182,8 +155,6 @@ class ClaudeControlPlaneCheckTests(TempDirTestCase):
                 str(root / "mcp/config/presets.json"),
                 "--skills-registry",
                 str(root / "skills/registry.json"),
-                "--agent-registry",
-                str(root / "agents/registry.json"),
                 "--hooks-registry",
                 str(root / "hooks/registry.json"),
                 "--repo",
@@ -213,8 +184,6 @@ class ClaudeControlPlaneCheckTests(TempDirTestCase):
             },
             read_json(home / ".claude.json")["mcpServers"],
         )
-        self.assertTrue((home / ".claude/agents/external-researcher.md").is_file())
-        self.assertTrue((adi / ".claude/agents/visual-reviewer.md").is_file())
         self.assertTrue((home / ".claude/skills/global-helper").is_symlink())
         self.assertTrue((adi / ".claude/skills/repo-helper").is_symlink())
         self.assertTrue((adi / ".claude/settings.json").is_file())
@@ -252,15 +221,6 @@ class ClaudeControlPlaneCheckTests(TempDirTestCase):
                     "github_root": str(github_root),
                 },
                 "unmanaged_repo_local_skills": [],
-            },
-        )
-        write_json(
-            root / "agents/registry.json",
-            {
-                "managed_agents": [
-                    external_researcher_agent(),
-                ],
-                "version": 1,
             },
         )
         write_json(root / "mcp/config/presets.json", default_mcp_registry())
@@ -307,19 +267,6 @@ class ClaudeControlPlaneCheckTests(TempDirTestCase):
         )
         run_command(
             [
-                str(REPO_ROOT / "claude/scripts/sync-subagents.sh"),
-                "--apply",
-                "--registry",
-                str(root / "codex/config/repo-bootstrap.json"),
-                "--agent-registry",
-                str(root / "agents/registry.json"),
-                "--global-agents-dir",
-                str(home / ".claude/agents"),
-            ],
-            env=env,
-        )
-        run_command(
-            [
                 str(REPO_ROOT / "claude/scripts/sync-skills.sh"),
                 "--apply",
                 "--registry",
@@ -354,8 +301,6 @@ class ClaudeControlPlaneCheckTests(TempDirTestCase):
                 str(home / ".claude/settings.json"),
                 "--global-config",
                 str(home / ".claude.json"),
-                "--global-agents-dir",
-                str(home / ".claude/agents"),
                 "--registry",
                 str(root / "codex/config/repo-bootstrap.json"),
                 "--bootstrap",
@@ -364,8 +309,6 @@ class ClaudeControlPlaneCheckTests(TempDirTestCase):
                 str(root / "mcp/config/presets.json"),
                 "--skills-registry",
                 str(root / "skills/registry.json"),
-                "--agent-registry",
-                str(root / "agents/registry.json"),
                 "--hooks-registry",
                 str(root / "hooks/registry.json"),
                 "--repo",
@@ -428,15 +371,6 @@ class ClaudeControlPlaneCheckTests(TempDirTestCase):
             },
         )
         write_json(root / "mcp/config/presets.json", default_mcp_registry())
-        write_json(
-            root / "agents/registry.json",
-            {
-                "managed_agents": [
-                    external_researcher_agent(),
-                ],
-                "version": 1,
-            },
-        )
 
         env = {"HOME": str(home)}
         run_command(
@@ -471,19 +405,6 @@ class ClaudeControlPlaneCheckTests(TempDirTestCase):
                 str(home / ".claude.json"),
                 "--mcp-registry",
                 str(root / "mcp/config/presets.json"),
-            ],
-            env=env,
-        )
-        run_command(
-            [
-                str(REPO_ROOT / "claude/scripts/sync-subagents.sh"),
-                "--apply",
-                "--registry",
-                str(root / "codex/config/repo-bootstrap.json"),
-                "--agent-registry",
-                str(root / "agents/registry.json"),
-                "--global-agents-dir",
-                str(home / ".claude/agents"),
             ],
             env=env,
         )
@@ -579,8 +500,6 @@ class ClaudeControlPlaneCheckTests(TempDirTestCase):
                 str(home / ".claude/settings.json"),
                 "--global-config",
                 str(home / ".claude.json"),
-                "--global-agents-dir",
-                str(home / ".claude/agents"),
                 "--registry",
                 str(root / "codex/config/repo-bootstrap.json"),
                 "--bootstrap",
@@ -589,8 +508,6 @@ class ClaudeControlPlaneCheckTests(TempDirTestCase):
                 str(root / "mcp/config/presets.json"),
                 "--skills-registry",
                 str(registry_path),
-                "--agent-registry",
-                str(root / "agents/registry.json"),
                 "--hooks-registry",
                 str(root / "hooks/registry.json"),
                 "--repo",
@@ -610,7 +527,6 @@ class ClaudeControlPlaneCheckTests(TempDirTestCase):
         write_json(root / "codex/config/repo-bootstrap.json", {"defaults": {}, "repos": []})
         write_json(root / "mcp/config/presets.json", default_mcp_registry())
         write_json(root / "skills/registry.json", default_skills_registry())
-        write_json(root / "agents/registry.json", {"managed_agents": [], "version": 1})
 
         (root / "claude/config/global.claude.md").unlink()
         write_text(root / "claude/config/global.claude.md", "# Forked Claude Guidance\n")
@@ -630,8 +546,6 @@ class ClaudeControlPlaneCheckTests(TempDirTestCase):
                 str(root / "mcp/config/presets.json"),
                 "--skills-registry",
                 str(root / "skills/registry.json"),
-                "--agent-registry",
-                str(root / "agents/registry.json"),
                 "--hooks-registry",
                 str(root / "hooks/registry.json"),
                 "--global-agents",

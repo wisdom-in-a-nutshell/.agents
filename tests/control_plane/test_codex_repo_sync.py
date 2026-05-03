@@ -7,20 +7,18 @@ from tests.control_plane.support import (
     init_git_repo,
     make_control_plane_root,
     run_command,
-    visual_reviewer_agent,
     write_json,
     write_text,
 )
 
 
 class CodexRepoSyncTests(TempDirTestCase):
-    def test_renders_repo_config_and_role_files_from_shared_agent_registry(self) -> None:
+    def test_renders_repo_config_and_prunes_stale_managed_role_files(self) -> None:
         root = make_control_plane_root(self.temp_path)
         adi = init_git_repo(self.temp_path / "adi")
 
         repo_registry_path = root / "codex/config/repo-bootstrap.json"
         mcp_registry_path = root / "mcp/config/presets.json"
-        agent_registry_path = root / "agents/registry.json"
         stale_managed_role = write_text(
             adi / ".codex/agents/writer.toml",
             "\n".join(
@@ -59,15 +57,6 @@ class CodexRepoSyncTests(TempDirTestCase):
             }
         }
         write_json(mcp_registry_path, mcp_registry)
-        write_json(
-            agent_registry_path,
-            {
-                "managed_agents": [
-                    visual_reviewer_agent("adi"),
-                ],
-                "version": 1,
-            },
-        )
 
         run_command(
             [
@@ -77,14 +66,11 @@ class CodexRepoSyncTests(TempDirTestCase):
                 str(repo_registry_path),
                 "--mcp-registry",
                 str(mcp_registry_path),
-                "--agent-registry",
-                str(agent_registry_path),
             ]
         )
 
         repo_config = (adi / ".codex/config.toml").read_text(encoding="utf-8")
         repo_hooks = (adi / ".codex/hooks.json").read_text(encoding="utf-8")
-        repo_role = (adi / ".codex/agents/visual_reviewer.toml").read_text(encoding="utf-8")
 
         self.assertIn('model = "gpt-5.5"', repo_config)
         self.assertIn('model_reasoning_effort = "high"', repo_config)
@@ -92,15 +78,8 @@ class CodexRepoSyncTests(TempDirTestCase):
         self.assertIn('url = "https://docs.mcp.cloudflare.com/mcp"', repo_config)
         self.assertIn("[mcp_servers.xcodebuildmcp]", repo_config)
         self.assertIn('command = "npx"', repo_config)
-        self.assertIn("[agents.visual_reviewer]", repo_config)
-        self.assertIn('config_file = "agents/visual_reviewer.toml"', repo_config)
-        self.assertIn('nickname_candidates = ["Lens", "Critic", "Review"]', repo_config)
+        self.assertNotIn("[agents.", repo_config)
         self.assertIn('"Stop"', repo_hooks)
         self.assertIn('"SessionStart"', repo_hooks)
 
-        self.assertIn("# Managed by ~/.agents/codex/scripts/sync-repo-codex-configs.sh.", repo_role)
-        self.assertIn('name = "visual_reviewer"', repo_role)
-        self.assertIn('description = "Read-only reviewer for visual work such as screenshots, layouts, hierarchy, and clarity."', repo_role)
-        self.assertIn('sandbox_mode = "read-only"', repo_role)
-        self.assertNotIn("[mcp_servers.paper]", repo_role)
         self.assertFalse(stale_managed_role.exists())

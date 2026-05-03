@@ -16,7 +16,6 @@ The repo bootstrap registry in `~/.agents/codex/config/repo-bootstrap.json` then
 - which repos are managed
 - which extra repos live outside `~/GitHub`
 - which repo-local MCP presets should be enabled
-- which repo-scoped custom agents should be enabled
 - which repo-local `.codex/config.toml` files should be generated
 
 Shared MCP preset definitions themselves now live in `~/.agents/mcp/config/presets.json`.
@@ -158,7 +157,6 @@ These settings stay close to the repo because they describe how Codex should beh
 - Repo-specific Codex behavior belongs in repo-local `.codex/`.
 - Plugin source belongs in `plugins-source/`; extracted skills and MCP belong in the normal shared skills/MCP registries.
 - The repo registry decides which repos get generated repo-local config and which MCP presets they receive.
-- The same registry also decides which repo-local agent role files should be rendered from canonical role templates plus repo policy.
 
 ## Notes
 
@@ -168,7 +166,6 @@ These settings stay close to the repo because they describe how Codex should beh
 
 See [Codex Control Plane Ownership](/Users/dobby/.agents/docs/references/codex-control-plane-ownership.md) for the exact split.
 See [Codex Control Plane Operations](/Users/dobby/.agents/docs/references/codex-control-plane-operations.md) for exact commands, healthy-state checks, and common failure modes.
-See [Capability Bootstrap Model](/Users/dobby/.agents/docs/architecture/capability-bootstrap-model.md) for the holistic skills / MCPs / agents structure.
+See [Capability Bootstrap Model](/Users/dobby/.agents/docs/architecture/capability-bootstrap-model.md) for the skills / MCPs / plugins structure.
 See [Codex Config Layers](/Users/dobby/.agents/docs/architecture/codex-config-layers.md) for the config-specific layering model.
-See [Repo-Scoped Agent Bootstrap](/Users/dobby/.agents/docs/architecture/repo-scoped-agent-bootstrap.md) for the repo-specific custom sub-agent design bootstrapped from the same control plane.
 See [Codex Control Plane Script Flows](/Users/dobby/.agents/docs/architecture/codex-control-plane-script-flows.md) for smaller diagrams showing what each main script group does.

@@ -57,7 +57,7 @@ The strongest fit is when:
 - the creator is looping or attached to a direction
 - the remaining issue is more about taste, hierarchy, or narrative clarity than mechanics
 
-Use the dedicated `visual_reviewer` agent for Paper screenshot critique. If it is somehow unavailable in a future runtime, fall back to another independent sub-agent rather than relying on self-review alone.
+Use an independent reviewer subagent for Paper screenshot critique rather than relying on self-review alone.
 
 Do not use an evaluator for:
 - tiny spacing nudges
@@ -73,7 +73,7 @@ For Paper work, do **not** hand-build base64 data URLs for evaluator handoffs.
 Use `scripts/paper_review_handoff.mjs` to:
 - capture a Paper screenshot via `mcp__paper__get_screenshot`
 - write it to a temp file
-- pass it to `visual_reviewer` as a `local_image` item
+- pass it to a reviewer as a `local_image` item
 
 Preferred posture:
 - `local_image` file handoff first
@@ -86,7 +86,7 @@ Typical js_repl pattern:
 ```js
 const { buildVisualReviewerItems } = await import(`${nodeRepl.homeDir}/.agents/skills-source/owned/paper-design/scripts/paper_review_handoff.mjs`)
 const { items } = await buildVisualReviewerItems("ARTBOARD_ID", "Review this panel for hierarchy and clarity.")
-// Use `items` directly in spawn_agent({ agent_type: "visual_reviewer", items }).
+// Use `items` directly in spawn_agent({ agent_type: "default", items }).
 ```
 
 ### Evaluator handoff pattern

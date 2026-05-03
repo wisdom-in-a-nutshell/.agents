@@ -22,7 +22,7 @@ Do not bulk-load every reference file by default.
 - Confirm the correct Paper page before creating/editing when page context is ambiguous.
 - Prefer one artboard at a time unless the user explicitly wants a batch.
 - Review your own Paper work by default before showing it.
-- Use the `visual_reviewer` sub-agent for screenshot-based Paper critique.
+- Use an independent reviewer subagent for screenshot-based Paper critique when the work needs a second pass.
 - Keep canonical story panels in a vertical lane and put stuck-panel variants in a horizontal lane beside them.
 - If a clear improvement is visible, do not stop to ask whether to keep going; continue autonomously until the panel is genuinely presentable or a real tradeoff/blocker appears.
 

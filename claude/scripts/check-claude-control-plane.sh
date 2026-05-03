@@ -9,12 +9,10 @@ CANONICAL_DIR="${CONTROL_PLANE_DIR}/config"
 GLOBAL_CLAUDE_MD="${HOME}/.claude/CLAUDE.md"
 GLOBAL_SETTINGS="${HOME}/.claude/settings.json"
 GLOBAL_CONFIG="${HOME}/.claude.json"
-GLOBAL_AGENTS_DIR="${HOME}/.claude/agents"
 REPO_REGISTRY="${ROOT_DIR}/codex/config/repo-bootstrap.json"
 BOOTSTRAP_FILE="${CANONICAL_DIR}/bootstrap.json"
 MCP_REGISTRY="${ROOT_DIR}/mcp/config/presets.json"
 SKILLS_REGISTRY="${ROOT_DIR}/skills/registry.json"
-AGENT_REGISTRY="${ROOT_DIR}/agents/registry.json"
 HOOKS_REGISTRY="${ROOT_DIR}/hooks/registry.json"
 GLOBAL_AGENTS_MD=""
 REPO_FILTERS=()
@@ -30,12 +28,10 @@ Options:
   --global-claude-md <path> Override runtime ~/.claude/CLAUDE.md path
   --global-settings <path>  Override runtime ~/.claude/settings.json path
   --global-config <path>    Override runtime ~/.claude.json path
-  --global-agents-dir <p>   Override runtime ~/.claude/agents path
   --registry <path>         Override shared repo bootstrap registry path
   --bootstrap <path>        Override Claude bootstrap defaults/overrides path
   --mcp-registry <path>     Override shared MCP registry path
   --skills-registry <path>  Override shared skills registry path
-  --agent-registry <path>   Override shared agent registry path
   --hooks-registry <path>   Override shared hooks registry path
   --global-agents <path>    Override shared global AGENTS guidance path
   --repo <path>             Limit repo-local validation to one repo path (repeatable)
@@ -62,10 +58,6 @@ while [[ $# -gt 0 ]]; do
       GLOBAL_CONFIG="${2:-}"
       shift 2
       ;;
-    --global-agents-dir)
-      GLOBAL_AGENTS_DIR="${2:-}"
-      shift 2
-      ;;
     --registry)
       REPO_REGISTRY="${2:-}"
       shift 2
@@ -80,10 +72,6 @@ while [[ $# -gt 0 ]]; do
       ;;
     --skills-registry)
       SKILLS_REGISTRY="${2:-}"
-      shift 2
-      ;;
-    --agent-registry)
-      AGENT_REGISTRY="${2:-}"
       shift 2
       ;;
     --hooks-registry)
@@ -121,7 +109,6 @@ python3 -m claude.control_plane.validate_inputs \
   --bootstrap "$BOOTSTRAP_FILE" \
   --mcp-registry "$MCP_REGISTRY" \
   --skills-registry "$SKILLS_REGISTRY" \
-  --agent-registry "$AGENT_REGISTRY" \
   --hooks-registry "$HOOKS_REGISTRY" \
   --global-agents "$GLOBAL_AGENTS_MD"
 
@@ -154,8 +141,6 @@ run_and_require_clean "global Claude settings" \
   bash "${SCRIPT_DIR}/sync-settings.sh" --dry-run --global-settings "$GLOBAL_SETTINGS" --canonical-settings "${CANONICAL_DIR}/settings.json" --hooks-registry "$HOOKS_REGISTRY"
 run_and_require_clean "global Claude MCP" \
   bash "${SCRIPT_DIR}/sync-global-mcp.sh" --dry-run --global-config "$GLOBAL_CONFIG" --mcp-registry "$MCP_REGISTRY"
-run_and_require_clean "Claude subagent sync" \
-  bash "${SCRIPT_DIR}/sync-subagents.sh" --dry-run --global-agents-dir "$GLOBAL_AGENTS_DIR" --registry "$REPO_REGISTRY" --agent-registry "$AGENT_REGISTRY" "${REPO_ARGS[@]}"
 run_and_require_clean "Claude skills sync" \
   bash "${SCRIPT_DIR}/sync-skills.sh" --dry-run --registry "$SKILLS_REGISTRY" "${REPO_ARGS[@]}"
 run_and_require_clean "repo Claude config sync" \

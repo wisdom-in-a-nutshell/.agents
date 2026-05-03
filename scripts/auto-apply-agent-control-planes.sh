@@ -176,7 +176,6 @@ while IFS= read -r path; do
   fi
 done < <(
   git -C "$AGENTS_REPO" diff --name-only "$last_sha" "$current_sha" -- \
-    agents \
     claude \
     codex \
     hooks \
@@ -204,17 +203,11 @@ copilot_hooks_changed=0
 root_bootstrap_changed=0
 shared_mcp_changed=0
 repo_registry_changed=0
-agent_registry_changed=0
 
 for path in "${changed_paths[@]}"; do
   case "$path" in
     scripts/bootstrap-machine-agent-control-planes.sh)
       root_bootstrap_changed=1
-      ;;
-  esac
-  case "$path" in
-    agents/*)
-      agent_registry_changed=1
       ;;
   esac
   case "$path" in
@@ -285,10 +278,10 @@ fi
 if (( copilot_hooks_changed == 1 || repo_registry_changed == 1 )); then
   need_sync_copilot_hooks=1
 fi
-if (( skills_changed == 1 || plugins_changed == 1 || codex_changed == 1 || hooks_changed == 1 || shared_mcp_changed == 1 || agent_registry_changed == 1 )); then
+if (( skills_changed == 1 || plugins_changed == 1 || codex_changed == 1 || hooks_changed == 1 || shared_mcp_changed == 1 )); then
   need_bootstrap_codex=1
 fi
-if (( claude_changed == 1 || hooks_changed == 1 || shared_mcp_changed == 1 || skills_changed == 1 || plugins_changed == 1 || repo_registry_changed == 1 || agent_registry_changed == 1 )); then
+if (( claude_changed == 1 || hooks_changed == 1 || shared_mcp_changed == 1 || skills_changed == 1 || plugins_changed == 1 || repo_registry_changed == 1 )); then
   need_bootstrap_claude=1
 fi
 

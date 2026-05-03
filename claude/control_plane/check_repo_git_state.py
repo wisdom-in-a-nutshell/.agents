@@ -10,7 +10,6 @@ from .common import ControlPlaneError, git_repo_root, main_guard, normalize_path
 
 TRACKED_SURFACES = (
     ".claude/skills",
-    ".claude/agents",
 )
 
 

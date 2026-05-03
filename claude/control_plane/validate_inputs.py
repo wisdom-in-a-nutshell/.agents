@@ -17,7 +17,6 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--bootstrap", required=True)
     parser.add_argument("--mcp-registry", required=True)
     parser.add_argument("--skills-registry", required=True)
-    parser.add_argument("--agent-registry", required=True)
     parser.add_argument("--hooks-registry", required=True)
     parser.add_argument("--global-agents", required=True)
     return parser.parse_args()
@@ -39,7 +38,6 @@ def main() -> int:
     bootstrap_file = Path(args.bootstrap).expanduser().resolve()
     mcp_registry = Path(args.mcp_registry).expanduser().resolve()
     skills_registry = Path(args.skills_registry).expanduser().resolve()
-    agent_registry = Path(args.agent_registry).expanduser().resolve()
     hooks_registry = Path(args.hooks_registry).expanduser().resolve()
     global_agents = Path(args.global_agents).expanduser().resolve()
 
@@ -52,7 +50,6 @@ def main() -> int:
         bootstrap_file,
         mcp_registry,
         skills_registry,
-        agent_registry,
         hooks_registry,
         global_agents,
     ):
@@ -73,7 +70,6 @@ def main() -> int:
     bootstrap_data = _load_json_object(bootstrap_file, label="Claude bootstrap")
     mcp_data = _load_json_object(mcp_registry, label="MCP registry")
     skills_data = _load_json_object(skills_registry, label="skills registry")
-    agent_data = _load_json_object(agent_registry, label="agent registry")
     hooks_data = _load_json_object(hooks_registry, label="hooks registry")
 
     repos = repo_data.get("repos", [])
@@ -189,10 +185,6 @@ def main() -> int:
         raise ControlPlaneError(
             f"unmanaged_repo_local_skills must be an array in {skills_registry}"
         )
-
-    managed_agents = agent_data.get("managed_agents", [])
-    if not isinstance(managed_agents, list):
-        raise ControlPlaneError(f"managed_agents must be an array in {agent_registry}")
 
     try:
         validate_hooks_registry_data(hooks_data, label=str(hooks_registry))

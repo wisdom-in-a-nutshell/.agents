@@ -20,10 +20,6 @@ Use [Claude Control Plane](/Users/dobby/.agents/docs/architecture/claude-control
   - Claude-only bootstrap defaults and repo-specific overrides
 - `codex/config/repo-bootstrap.json`
   - shared repo inventory plus per-repo settings/MCP assignment
-- `agents/registry.json`
-  - shared agent exposure registry for Codex and Claude
-- `claude/config/agents/*.md`
-  - canonical Claude prompt bodies for managed subagents
 - `mcp/config/presets.json`
   - shared MCP preset definitions and machine-wide global MCP defaults
 - `skills/registry.json`
@@ -43,8 +39,6 @@ Use [Claude Control Plane](/Users/dobby/.agents/docs/architecture/claude-control
   - permissive user/global defaults
 - `~/.claude.json`
   - user runtime state and global MCP store
-- `~/.claude/agents/*.md`
-  - global Claude subagents rendered from the shared agent registry
 - repo `CLAUDE.md`
   - usually a tiny file containing only `@AGENTS.md`
 - repo `.claude/settings.json`
@@ -53,8 +47,6 @@ Use [Claude Control Plane](/Users/dobby/.agents/docs/architecture/claude-control
   - project MCP
 - repo `.claude/skills/`
   - project skills
-- repo `.claude/agents/*.md`
-  - repo-scoped Claude subagents rendered from the shared agent registry
 - nested repo `CLAUDE.md`
   - tiny file containing only `@AGENTS.md` wherever nested `AGENTS.md` exists
 
@@ -78,8 +70,6 @@ The Claude control plane follows the same sync/check pattern as Codex, with scri
   - install the permissive global `settings.json` into `~/.claude/settings.json` and merge only hook registry entries assigned to global scope
 - `sync-global-mcp.sh`
   - merge global MCP entries from `mcp/config/presets.json` into `~/.claude.json`
-- `sync-subagents.sh`
-  - materialize global and project Claude subagents from `agents/registry.json`
 - `sync-skills.sh`
   - materialize global and project Claude skills from `skills/registry.json`
 - `sync-repo-claude-configs.sh`
@@ -114,8 +104,7 @@ The Claude control plane follows the same sync/check pattern as Codex, with scri
 - Project MCP lives in `.mcp.json`.
 - Global skills live under `~/.claude/skills/`.
 - Project skills live under repo `.claude/skills/`.
-- Global Claude subagents live under `~/.claude/agents/`.
-- Project Claude subagents live under repo `.claude/agents/`.
+- Claude subagents are not managed by this control plane.
 
 ## Expected Repo Diffs
 
@@ -125,11 +114,9 @@ The Claude control plane follows the same sync/check pattern as Codex, with scri
   - repo `.claude/settings.json`
   - repo `.mcp.json`
   - repo `.claude/skills/*`
-  - repo `.claude/agents/*`
 - Those are normal generated outputs from `sync-repo-claude-configs.sh` and `sync-skills.sh`, not evidence that the bootstrap misfired.
-- Repo `.claude/agents/.managed-subagents.json` is also a normal generated manifest used to prune stale managed subagent files without touching hand-written ones.
 - If a managed repo tracks those paths in git, they will appear as ordinary worktree changes until committed.
-- `check-claude-control-plane.sh` now also flags untracked files under tracked repo-local Claude generated surfaces such as `.claude/skills/` and `.claude/agents/`.
+- `check-claude-control-plane.sh` now also flags untracked files under tracked repo-local Claude generated surfaces such as `.claude/skills/`.
   - This catches the "new generated Claude symlink was created but never added to the repo" case.
   - `scripts/check-fast.sh` runs this same repo-local git-state guard for the current repo.
   - It does not auto-commit or auto-push target repos.
