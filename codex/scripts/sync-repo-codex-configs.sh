@@ -5,7 +5,6 @@ APPLY=0
 CHECK=0
 REGISTRY_FILE=""
 MCP_REGISTRY_FILE=""
-AGENT_REGISTRY_FILE=""
 HOOKS_REGISTRY_FILE=""
 REPO_FILTERS=()
 
@@ -14,7 +13,6 @@ CONTROL_PLANE_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 ROOT_DIR="$(cd "$CONTROL_PLANE_DIR/.." && pwd)"
 DEFAULT_REGISTRY_FILE="${CONTROL_PLANE_DIR}/config/repo-bootstrap.json"
 DEFAULT_MCP_REGISTRY_FILE="${ROOT_DIR}/mcp/config/presets.json"
-DEFAULT_AGENT_REGISTRY_FILE="${ROOT_DIR}/agents/registry.json"
 DEFAULT_HOOKS_REGISTRY_FILE="${ROOT_DIR}/hooks/registry.json"
 
 usage() {
@@ -32,9 +30,6 @@ Options:
                          (default: codex/config/repo-bootstrap.json)
   --mcp-registry <path>  Override shared MCP registry
                          (default: mcp/config/presets.json)
-  --agent-registry <path>
-                         Override shared agent registry
-                         (default: agents/registry.json)
   --hooks-registry <path>
                          Override shared hooks registry
                          (default: hooks/registry.json)
@@ -91,10 +86,6 @@ while [[ $# -gt 0 ]]; do
       MCP_REGISTRY_FILE="${2:-}"
       shift 2
       ;;
-    --agent-registry)
-      AGENT_REGISTRY_FILE="${2:-}"
-      shift 2
-      ;;
     --hooks-registry)
       HOOKS_REGISTRY_FILE="${2:-}"
       shift 2
@@ -119,9 +110,6 @@ fi
 if [[ -z "$MCP_REGISTRY_FILE" ]]; then
   MCP_REGISTRY_FILE="$DEFAULT_MCP_REGISTRY_FILE"
 fi
-if [[ -z "$AGENT_REGISTRY_FILE" ]]; then
-  AGENT_REGISTRY_FILE="$DEFAULT_AGENT_REGISTRY_FILE"
-fi
 if [[ -z "$HOOKS_REGISTRY_FILE" ]]; then
   HOOKS_REGISTRY_FILE="$DEFAULT_HOOKS_REGISTRY_FILE"
 fi
@@ -129,8 +117,6 @@ fi
 [[ -r "$REGISTRY_FILE" ]] || die "Registry file is not readable: $REGISTRY_FILE"
 [[ -f "$MCP_REGISTRY_FILE" ]] || die "Missing MCP registry file: $MCP_REGISTRY_FILE"
 [[ -r "$MCP_REGISTRY_FILE" ]] || die "MCP registry file is not readable: $MCP_REGISTRY_FILE"
-[[ -f "$AGENT_REGISTRY_FILE" ]] || die "Missing agent registry file: $AGENT_REGISTRY_FILE"
-[[ -r "$AGENT_REGISTRY_FILE" ]] || die "Agent registry file is not readable: $AGENT_REGISTRY_FILE"
 [[ -f "$HOOKS_REGISTRY_FILE" ]] || die "Missing hooks registry file: $HOOKS_REGISTRY_FILE"
 [[ -r "$HOOKS_REGISTRY_FILE" ]] || die "Hooks registry file is not readable: $HOOKS_REGISTRY_FILE"
 
@@ -175,7 +161,7 @@ is_drifted() {
 }
 
 MANIFEST_FILE="${TMP_DIR}/manifest.tsv"
-python3 - "$REGISTRY_FILE" "$MCP_REGISTRY_FILE" "$AGENT_REGISTRY_FILE" "$HOOKS_REGISTRY_FILE" "$TMP_DIR" ${REPO_FILTERS[@]+"${REPO_FILTERS[@]}"} >"$MANIFEST_FILE" <<'PY'
+python3 - "$REGISTRY_FILE" "$MCP_REGISTRY_FILE" "$HOOKS_REGISTRY_FILE" "$TMP_DIR" ${REPO_FILTERS[@]+"${REPO_FILTERS[@]}"} >"$MANIFEST_FILE" <<'PY'
 from __future__ import annotations
 
 import hashlib
@@ -183,12 +169,6 @@ import json
 import subprocess
 import sys
 from pathlib import Path
-
-try:
-    import tomllib
-except ModuleNotFoundError:  # pragma: no cover
-    import tomli as tomllib  # type: ignore
-
 
 REPO_SCALAR_KEYS = [
     "profile",
@@ -206,24 +186,6 @@ REPO_SCALAR_KEYS = [
     "personality",
     "service_tier",
 ]
-ROLE_RENDER_ORDER = [
-    "name",
-    "description",
-    "model",
-    "model_provider",
-    "model_reasoning_effort",
-    "plan_mode_reasoning_effort",
-    "model_reasoning_summary",
-    "model_verbosity",
-    "web_search",
-    "approval_policy",
-    "sandbox_mode",
-    "personality",
-    "service_tier",
-    "developer_instructions",
-]
-
-
 def normalize_path(raw: str) -> str:
     return str(Path(raw).expanduser().resolve())
 
@@ -258,61 +220,6 @@ def toml_value(value):
             items.append(f'"{escaped_key}" = {toml_value(value[key])}')
         return "{ " + ", ".join(items) + " }"
     raise TypeError(f"Unsupported TOML value: {value!r}")
-
-
-def validate_role_data(data: dict, expected_name: str, *, source_path: Path) -> dict:
-    if not isinstance(data, dict):
-        raise TypeError(f"Agent role file must parse to a TOML table: {source_path}")
-
-    name = data.get("name")
-    description = data.get("description")
-    if not isinstance(name, str) or not name.strip():
-        raise TypeError(f"Agent role file must define a non-empty `name`: {source_path}")
-    if not isinstance(description, str) or not description.strip():
-        raise TypeError(f"Agent role file must define a non-empty `description`: {source_path}")
-    if name.strip() != expected_name:
-        raise TypeError(
-            f"Agent role file name `{name.strip()}` does not match expected role `{expected_name}`: {source_path}"
-        )
-    return data
-
-
-def load_role_file(path: Path, expected_name: str) -> dict:
-    try:
-        data = tomllib.loads(path.read_text(encoding="utf-8"))
-    except Exception as exc:
-        raise TypeError(f"Invalid agent role TOML at {path}: {exc}") from exc
-    return validate_role_data(data, expected_name, source_path=path)
-
-
-def render_role_file(role_data: dict) -> str:
-    lines = [
-        "# Managed by ~/.agents/codex/scripts/sync-repo-codex-configs.sh.",
-        "# Edit ~/.agents/agents/registry.json or ~/.agents/codex/config/agents/*.toml and re-run the sync script.",
-    ]
-
-    for key in ROLE_RENDER_ORDER:
-        if key in role_data and role_data[key] is not None:
-            lines.append(f"{key} = {toml_value(role_data[key])}")
-
-    for table_name in ("tools", "features"):
-        table = role_data.get(table_name, {}) or {}
-        if not table:
-            continue
-        lines.append("")
-        lines.append(f"[{table_name}]")
-        for key in sorted(table):
-            lines.append(f"{key} = {toml_value(table[key])}")
-
-    mcp_servers = role_data.get("mcp_servers", {}) or {}
-    for server_name in sorted(mcp_servers):
-        config = mcp_servers[server_name]
-        lines.append("")
-        lines.append(f"[mcp_servers.{server_name}]")
-        for key in sorted(config):
-            lines.append(f"{key} = {toml_value(config[key])}")
-
-    return "\n".join(lines) + "\n"
 
 
 def validate_mcp_registry(path: Path) -> tuple[dict, list[str]]:
@@ -384,12 +291,10 @@ def render_repo_config(
     defaults: dict,
     override: dict,
     presets: dict,
-    agent_presets: dict,
-    custom_agent_names: list[str],
 ) -> str:
     lines = [
         "# Managed by ~/.agents/codex/scripts/sync-repo-codex-configs.sh.",
-        "# Edit ~/.agents/codex/config/repo-bootstrap.json or ~/.agents/agents/registry.json and re-run the sync script.",
+        "# Edit ~/.agents/codex/config/repo-bootstrap.json and re-run the sync script.",
     ]
     rendered_anything = False
 
@@ -441,24 +346,6 @@ def render_repo_config(
         for key in sorted(codex_config):
             lines.append(f"{key} = {toml_value(codex_config[key])}")
 
-    if not isinstance(custom_agent_names, list):
-        raise TypeError(f"custom_agents for {repo} must be an array")
-
-    for agent_name in custom_agent_names:
-        if agent_name not in agent_presets:
-            raise KeyError(f"Unknown repo agent `{agent_name}` for {repo}")
-        agent = agent_presets[agent_name]
-        if not isinstance(agent.get("description"), str) or not agent["description"].strip():
-            raise TypeError(f"repo agent `{agent_name}` must define a non-empty description")
-        rendered_anything = True
-        lines.append("")
-        lines.append(f"[agents.{agent_name}]")
-        lines.append(f"description = {toml_value(agent['description'])}")
-        lines.append(f"config_file = {toml_value('agents/' + agent['config_file'])}")
-        nickname_candidates = agent.get("nickname_candidates", [])
-        if nickname_candidates:
-            lines.append(f"nickname_candidates = {toml_value(nickname_candidates)}")
-
     if not rendered_anything:
         lines.append("# No repo-local Codex overrides are currently assigned.")
 
@@ -466,15 +353,13 @@ def render_repo_config(
 
 registry_path = Path(sys.argv[1]).expanduser().resolve()
 mcp_registry_path = Path(sys.argv[2]).expanduser().resolve()
-agent_registry_path = Path(sys.argv[3]).expanduser().resolve()
-hooks_registry_path = Path(sys.argv[4]).expanduser().resolve()
-tmp_dir = Path(sys.argv[5]).resolve()
-filters = {normalize_path(path) for path in sys.argv[6:] if path}
+hooks_registry_path = Path(sys.argv[3]).expanduser().resolve()
+tmp_dir = Path(sys.argv[4]).resolve()
+filters = {normalize_path(path) for path in sys.argv[5:] if path}
 
-root_dir = agent_registry_path.parent.parent.resolve()
+root_dir = registry_path.parent.parent.parent.resolve()
 sys.path.insert(0, str(root_dir))
 
-from agents.registry import load_agent_registry
 from hooks.control_plane import load_hooks_registry, render_codex_hooks
 
 
@@ -490,7 +375,6 @@ if not isinstance(repos_raw, list):
     raise TypeError("repos must be an array")
 
 repo_items_all: list[dict] = []
-valid_repo_names: set[str] = set()
 for item in repos_raw:
     if not isinstance(item, dict):
         raise TypeError("each repo entry must be an object")
@@ -515,30 +399,6 @@ for item in repos_raw:
     repo_copy["_actual_repo"] = actual_repo
     repo_copy["_repo_name"] = repo_name
     repo_items_all.append(repo_copy)
-    valid_repo_names.add(repo_name)
-
-managed_agents = load_agent_registry(
-    agent_registry_path,
-    root_dir=root_dir,
-    valid_repo_names=valid_repo_names,
-)
-
-agent_presets: dict[str, dict] = {}
-repo_agent_assignments: dict[str, list[str]] = {}
-for agent in managed_agents:
-    codex = agent.get("codex")
-    if not isinstance(codex, dict) or not codex.get("materialize"):
-        continue
-    codex_name = str(codex["name"])
-    agent_presets[codex_name] = {
-        "description": str(codex["description"]),
-        "config_file": str(codex["config_file"]),
-        "nickname_candidates": [str(value) for value in codex.get("nickname_candidates", [])],
-        "source_path": Path(codex["source_path"]),
-    }
-    if agent["scope"] == "repo":
-        for repo_name in agent["repos"]:
-            repo_agent_assignments.setdefault(str(repo_name), []).append(codex_name)
 
 manifest_lines: list[str] = []
 managed_header = "# Managed by ~/.agents/codex/scripts/sync-repo-codex-configs.sh."
@@ -547,7 +407,6 @@ for item in repo_items_all:
     if filters and actual_repo not in filters:
         continue
 
-    repo_agent_names = ordered_unique(repo_agent_assignments.get(item["_repo_name"], []))
     expected_role_targets: set[Path] = set()
 
     rendered = render_repo_config(
@@ -555,8 +414,6 @@ for item in repo_items_all:
         defaults,
         item,
         presets,
-        agent_presets,
-        repo_agent_names,
     )
     rendered_path = tmp_dir / f"{hashlib.sha256(actual_repo.encode()).hexdigest()}.toml"
     rendered_path.write_text(rendered, encoding="utf-8")
@@ -571,21 +428,6 @@ for item in repo_items_all:
     )
     target_hooks_path = Path(actual_repo) / ".codex" / "hooks.json"
     manifest_lines.append(f"{actual_repo}\t{target_hooks_path}\t{rendered_hooks_path}")
-
-    for agent_name in repo_agent_names:
-        preset = agent_presets.get(agent_name)
-        if not isinstance(preset, dict):
-            raise KeyError(f"Unknown repo agent `{agent_name}` for {actual_repo}")
-        source_path = Path(preset["source_path"])
-        if not source_path.is_file():
-            raise FileNotFoundError(f"Missing agent role file for `{agent_name}`: {source_path}")
-        role_data = load_role_file(source_path, agent_name)
-        rendered_role = render_role_file(role_data)
-        rendered_role_path = tmp_dir / f"{hashlib.sha256((actual_repo + ':' + agent_name).encode()).hexdigest()}-{Path(preset['config_file']).name}"
-        rendered_role_path.write_text(rendered_role, encoding="utf-8")
-        target_role_path = Path(actual_repo) / ".codex" / "agents" / Path(preset["config_file"]).name
-        expected_role_targets.add(target_role_path.resolve())
-        manifest_lines.append(f"{actual_repo}\t{target_role_path}\t{rendered_role_path}")
 
     agents_dir = Path(actual_repo) / ".codex" / "agents"
     if agents_dir.is_dir():

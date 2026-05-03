@@ -17,10 +17,8 @@ XCODE_AGENTS_DIR="${HOME}/Library/Developer/Xcode/CodingAssistant/codex/agents"
 XCODE_RULES="${HOME}/Library/Developer/Xcode/CodingAssistant/codex/rules/xcode.rules"
 CANONICAL_DIR="${CONTROL_PLANE_DIR}/config"
 MCP_REGISTRY="${ROOT_DIR}/mcp/config/presets.json"
-AGENT_REGISTRY="${ROOT_DIR}/agents/registry.json"
 HOOKS_REGISTRY="${ROOT_DIR}/hooks/registry.json"
 CANONICAL_GLOBAL_TEMPLATE="${CANONICAL_DIR}/global.config.toml"
-CANONICAL_AGENTS_DIR="${CANONICAL_DIR}/agents"
 CANONICAL_XCODE_TEMPLATE="${CANONICAL_DIR}/xcode.config.toml"
 CANONICAL_XCODE_RULES_TEMPLATE="${CANONICAL_DIR}/xcode.rules"
 BUNDLED_SKILLS_POLICY="${CANONICAL_DIR}/bundled-skills-policy.json"
@@ -50,8 +48,6 @@ Options:
                              bundled-skills-policy.json
   --mcp-registry <path>      Shared MCP registry
                              (default: mcp/config/presets.json)
-  --agent-registry <path>    Shared agent registry
-                             (default: agents/registry.json)
   --hooks-registry <path>    Shared hooks registry
                              (default: hooks/registry.json)
   -h, --help                 Show this help
@@ -131,10 +127,6 @@ while [[ $# -gt 0 ]]; do
       ;;
     --mcp-registry)
       MCP_REGISTRY="${2:-}"
-      shift 2
-      ;;
-    --agent-registry)
-      AGENT_REGISTRY="${2:-}"
       shift 2
       ;;
     --hooks-registry)
@@ -288,145 +280,6 @@ for name in [str(value) for value in global_presets] + [str(value) for value in 
     section = f"mcp_servers.{name}"
     for key in sorted(k for k in preset.keys() if k != "transport"):
         print(f"{section}\x1F{key}\x1F{toml_value(preset[key])}")
-PY
-}
-
-extract_global_agent_entries() {
-  local registry_file="$1"
-  local runtime="$2"
-  python3 - "$registry_file" "$runtime" "$ROOT_DIR" <<'PY'
-from __future__ import annotations
-
-import sys
-from pathlib import Path
-
-root_dir = Path(sys.argv[3]).resolve()
-sys.path.insert(0, str(root_dir))
-
-from agents.registry import load_agent_registry
-
-
-def toml_value(value):
-    if isinstance(value, bool):
-        return "true" if value else "false"
-    if isinstance(value, int):
-        return str(value)
-    if isinstance(value, str):
-        escaped = value.replace("\\", "\\\\").replace('"', '\\"')
-        return f'"{escaped}"'
-    if isinstance(value, list):
-        return "[" + ", ".join(toml_value(item) for item in value) + "]"
-    if isinstance(value, dict):
-        items = []
-        for key in sorted(value):
-            if not isinstance(key, str):
-                raise TypeError(f"Unsupported TOML key type: {key!r}")
-            escaped_key = key.replace("\\", "\\\\").replace('"', '\\"')
-            items.append(f'"{escaped_key}" = {toml_value(value[key])}')
-        return "{ " + ", ".join(items) + " }"
-    raise TypeError(f"Unsupported TOML value: {value!r}")
-
-
-registry_path = Path(sys.argv[1]).expanduser().resolve()
-runtime = sys.argv[2].strip()
-agents = load_agent_registry(registry_path, root_dir=root_dir)
-
-for agent in sorted(agents, key=lambda item: item["agent"]):
-    runtime_data = agent.get(runtime)
-    if not isinstance(runtime_data, dict) or not runtime_data.get("materialize"):
-        continue
-    if agent.get("scope") != "global":
-        continue
-    if runtime != "codex":
-        continue
-    section = f"agents.{runtime_data['name']}"
-    print(f"{section}\x1Fdescription\x1F{toml_value(runtime_data['description'])}")
-    print(f"{section}\x1Fconfig_file\x1F{toml_value('agents/' + runtime_data['config_file'])}")
-    nickname_candidates = runtime_data.get("nickname_candidates", [])
-    if nickname_candidates:
-        print(f"{section}\x1Fnickname_candidates\x1F{toml_value(nickname_candidates)}")
-PY
-}
-
-validate_agent_role_file() {
-  local file="$1"
-  local expected_name="${2:-}"
-
-  python3 - "$file" "$expected_name" <<'PY'
-from __future__ import annotations
-
-import sys
-from pathlib import Path
-
-try:
-    import tomllib
-except ModuleNotFoundError:  # pragma: no cover
-    import tomli as tomllib  # type: ignore
-
-
-path = Path(sys.argv[1])
-expected_name = sys.argv[2].strip()
-
-try:
-    data = tomllib.loads(path.read_text(encoding="utf-8"))
-except Exception as exc:  # pragma: no cover - surfaced to shell
-    raise SystemExit(f"{path}: invalid TOML: {exc}") from exc
-
-if not isinstance(data, dict):
-    raise SystemExit(f"{path}: role file must parse to a TOML table")
-
-name = data.get("name")
-description = data.get("description")
-
-if not isinstance(name, str) or not name.strip():
-    raise SystemExit(f"{path}: role file must define a non-empty `name`")
-if not isinstance(description, str) or not description.strip():
-    raise SystemExit(f"{path}: role file must define a non-empty `description`")
-if expected_name and name.strip() != expected_name:
-    raise SystemExit(
-        f"{path}: role file name `{name.strip()}` does not match expected role `{expected_name}`"
-    )
-PY
-}
-
-extract_referenced_agent_role_files() {
-  local config_file="$1"
-
-  python3 - "$config_file" <<'PY'
-from __future__ import annotations
-
-import os
-import sys
-from pathlib import Path
-
-try:
-    import tomllib
-except ModuleNotFoundError:  # pragma: no cover
-    import tomli as tomllib  # type: ignore
-
-
-config_path = Path(sys.argv[1])
-if not config_path.is_file():
-    raise SystemExit(f"Missing config file: {config_path}")
-
-data = tomllib.loads(config_path.read_text(encoding="utf-8"))
-agents = data.get("agents", {})
-if agents is None:
-    agents = {}
-if not isinstance(agents, dict):
-    raise SystemExit(f"{config_path}: `agents` must be a TOML table")
-
-for role_name in sorted(k for k in agents.keys() if isinstance(k, str)):
-    role = agents.get(role_name)
-    if not isinstance(role, dict):
-        raise SystemExit(f"{config_path}: agents.{role_name} must be a TOML table")
-    description = role.get("description")
-    config_file = role.get("config_file")
-    if not isinstance(description, str) or not description.strip():
-        raise SystemExit(f"{config_path}: agents.{role_name} must define a non-empty description")
-    if not isinstance(config_file, str) or not config_file.strip():
-        raise SystemExit(f"{config_path}: agents.{role_name} must define a non-empty config_file")
-    print(f"{role_name}\t{os.path.basename(config_file.strip())}")
 PY
 }
 
@@ -630,7 +483,6 @@ render_global_config() {
   local target_file="$1"
   local template_file="$2"
   local mcp_registry_file="$3"
-  local agent_registry_file="$4"
   local section key value
 
   while IFS=$'\x1f' read -r section key value; do
@@ -660,10 +512,6 @@ render_global_config() {
   fi
 
   prune_stale_agent_sections "$target_file" "$template_file"
-  while IFS=$'\x1f' read -r section key value; do
-    [[ -n "$key" ]] || continue
-    upsert_section_key "$target_file" "$section" "$key" "$value"
-  done < <(extract_global_agent_entries "$agent_registry_file" "codex")
   prune_stale_app_sections "$target_file" "$template_file"
   prune_stale_plugin_sections "$target_file" "$template_file"
   prune_stale_model_provider_sections "$target_file" "$template_file"
@@ -1137,7 +985,6 @@ render_xcode_config() {
   local target_file="$1"
   local template_file="$2"
   local mcp_registry_file="$3"
-  local agent_registry_file="$4"
   local writable_roots
   local project_section
   local section key value
@@ -1148,7 +995,7 @@ render_xcode_config() {
     [[ -n "$key" ]] || continue
     if [[ -z "$section" ]]; then
       upsert_top_level_key "$target_file" "$key" "$value"
-    elif [[ "$section" == "features" || "$section" == "sandbox_workspace_write" || "$section" == "apps._default" || "$section" == notice.* || "$section" == apps.* || "$section" == plugins.* || "$section" == agents.* ]]; then
+    elif [[ "$section" == "features" || "$section" == "sandbox_workspace_write" || "$section" == "apps._default" || "$section" == notice.* || "$section" == apps.* || "$section" == plugins.* ]]; then
       upsert_section_key "$target_file" "$section" "$key" "$value"
     fi
   done < <(extract_toml_entries "$template_file")
@@ -1171,10 +1018,6 @@ render_xcode_config() {
   fi
 
   prune_stale_agent_sections "$target_file" "$template_file"
-  while IFS=$'\x1f' read -r section key value; do
-    [[ -n "$key" ]] || continue
-    upsert_section_key "$target_file" "$section" "$key" "$value"
-  done < <(extract_global_agent_entries "$agent_registry_file" "codex")
   prune_stale_app_sections "$target_file" "$template_file"
   prune_stale_plugin_sections "$target_file" "$template_file"
   prune_stale_model_provider_sections "$target_file" "$template_file"
@@ -1223,6 +1066,29 @@ install_rendered_file() {
   log "Updated: $target"
 }
 
+cleanup_agent_role_dir() {
+  local label="$1"
+  local target_dir="$2"
+  local target_existing
+
+  if [[ ! -d "$target_dir" ]]; then
+    return
+  fi
+
+  shopt -s nullglob
+  for target_existing in "$target_dir"/*.toml; do
+    log ""
+    log "=== ${label} (${target_existing}) ==="
+    log "Stale managed agent role file will be removed."
+    show_diff "$target_existing" /dev/null
+    if (( APPLY == 1 )); then
+      rm -f "$target_existing"
+      log "Removed: $target_existing"
+    fi
+  done
+  shopt -u nullglob
+}
+
 sync_global() {
   local original="$GLOBAL_CONFIG"
   local rendered="${TMP_DIR}/global.config.toml"
@@ -1232,13 +1098,12 @@ sync_global() {
   require_readable_file "$CANONICAL_GLOBAL_TEMPLATE"
   require_readable_file "$BUNDLED_SKILLS_POLICY"
   require_readable_file "$MCP_REGISTRY"
-  require_readable_file "$AGENT_REGISTRY"
   require_readable_file "$HOOKS_REGISTRY"
   ensure_parent_dir "$original"
   ensure_parent_dir "$hooks_original"
   prepare_work_file "$original" "$rendered"
   sanitize_machine_specific_entries "$rendered"
-  render_global_config "$rendered" "$CANONICAL_GLOBAL_TEMPLATE" "$MCP_REGISTRY" "$AGENT_REGISTRY"
+  render_global_config "$rendered" "$CANONICAL_GLOBAL_TEMPLATE" "$MCP_REGISTRY"
   ensure_system_skills_disabled "$rendered" "$BUNDLED_SKILLS_POLICY"
   render_codex_hooks "$HOOKS_REGISTRY" "$hooks_rendered"
 
@@ -1254,7 +1119,7 @@ sync_global() {
     install_rendered_file "$hooks_rendered" "$hooks_original"
   fi
 
-  sync_agent_role_configs "Global Agent Roles" "$CANONICAL_AGENTS_DIR" "$GLOBAL_AGENTS_DIR" "$rendered"
+  cleanup_agent_role_dir "Global Agent Roles" "$GLOBAL_AGENTS_DIR"
 }
 
 sync_xcode() {
@@ -1266,13 +1131,12 @@ sync_xcode() {
   require_readable_file "$CANONICAL_XCODE_TEMPLATE"
   require_readable_file "$CANONICAL_XCODE_RULES_TEMPLATE"
   require_readable_file "$MCP_REGISTRY"
-  require_readable_file "$AGENT_REGISTRY"
   ensure_parent_dir "$original_cfg"
   ensure_parent_dir "$original_rules"
 
   prepare_work_file "$original_cfg" "$rendered_cfg"
   sanitize_machine_specific_entries "$rendered_cfg"
-  render_xcode_config "$rendered_cfg" "$CANONICAL_XCODE_TEMPLATE" "$MCP_REGISTRY" "$AGENT_REGISTRY"
+  render_xcode_config "$rendered_cfg" "$CANONICAL_XCODE_TEMPLATE" "$MCP_REGISTRY"
   render_xcode_rules "$rendered_rules" "$CANONICAL_XCODE_RULES_TEMPLATE"
 
   log ""
@@ -1287,82 +1151,7 @@ sync_xcode() {
     install_rendered_file "$rendered_rules" "$original_rules"
   fi
 
-  sync_agent_role_configs "Xcode Agent Roles" "$CANONICAL_AGENTS_DIR" "$XCODE_AGENTS_DIR" "$rendered_cfg"
-}
-
-sync_agent_role_configs() {
-  local label="$1"
-  local source_dir="$2"
-  local target_dir="$3"
-  local declaring_config="$4"
-  local source_file target_file rendered_file basename target_existing role_name
-  local existing_index found idx
-  local -a source_basenames=()
-  local -a referenced_role_basenames=()
-  local -a referenced_role_names=()
-
-  if [[ ! -d "$source_dir" ]]; then
-    return
-  fi
-
-  require_readable_file "$declaring_config"
-
-  while IFS=$'\t' read -r role_name basename; do
-    [[ -n "$role_name" && -n "$basename" ]] || continue
-    found=0
-    for existing_index in "${!referenced_role_basenames[@]}"; do
-      if [[ "${referenced_role_basenames[$existing_index]}" == "$basename" ]]; then
-        referenced_role_names[$existing_index]="$role_name"
-        found=1
-        break
-      fi
-    done
-    if (( found == 0 )); then
-      referenced_role_basenames+=("$basename")
-      referenced_role_names+=("$role_name")
-    fi
-  done < <(extract_referenced_agent_role_files "$declaring_config")
-
-  shopt -s nullglob
-  for idx in "${!referenced_role_basenames[@]}"; do
-    basename="${referenced_role_basenames[$idx]}"
-    role_name="${referenced_role_names[$idx]}"
-    source_file="${source_dir}/${basename}"
-    target_file="${target_dir}/${basename}"
-    rendered_file="${TMP_DIR}/${label// /_}-${basename}"
-
-    require_readable_file "$source_file"
-    validate_agent_role_file "$source_file" "$role_name"
-    ensure_parent_dir "$target_file"
-    cp "$source_file" "$rendered_file"
-    source_basenames+=("$basename")
-
-    log ""
-    log "=== ${label} (${target_file}) ==="
-    show_diff "$target_file" "$rendered_file"
-
-    if (( APPLY == 1 )); then
-      install_rendered_file "$rendered_file" "$target_file"
-    fi
-  done
-
-  if [[ -d "$target_dir" ]]; then
-    for target_existing in "$target_dir"/*.toml; do
-      basename="$(basename "$target_existing")"
-      if [[ " ${source_basenames[*]} " == *" ${basename} "* ]]; then
-        continue
-      fi
-
-      log ""
-      log "=== ${label} (${target_existing}) ==="
-      log "Stale managed agent role file will be removed."
-      if (( APPLY == 1 )); then
-        rm -f "$target_existing"
-        log "Removed: $target_existing"
-      fi
-    done
-  fi
-  shopt -u nullglob
+  cleanup_agent_role_dir "Xcode Agent Roles" "$XCODE_AGENTS_DIR"
 }
 
 ensure_required_openai_bundled_plugins() {
