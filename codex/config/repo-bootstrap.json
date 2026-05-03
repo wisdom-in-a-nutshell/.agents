@@ -83,6 +83,12 @@
       "path": "~/GitHub/scripts"
     },
     {
+      "path": "~/GitHub/symphony",
+      "mcp_presets": [
+        "openaiDeveloperDocs"
+      ]
+    },
+    {
       "path": "~/GitHub/stadia-macos-controller"
     },
     {
