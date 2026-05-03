@@ -26,8 +26,8 @@ global_skills:
   - "project"
   - "secret-management"
   - "skill-creator"
+  - "symphony"
   - "things-client"
-  - "work-handoff"
 repo_skills:
   - "agent-native-repo-playbook"
   - "client-interface-guidelines"
@@ -67,8 +67,8 @@ skills:
   - "swiftui-performance-audit"
   - "swiftui-ui-patterns"
   - "swiftui-view-refactor"
+  - "symphony"
   - "things-client"
-  - "work-handoff"
 ---
 
 Generated from `codex/config/repo-bootstrap.json`, `skills/registry.json`, and `agents/registry.json`. Do not edit manually.

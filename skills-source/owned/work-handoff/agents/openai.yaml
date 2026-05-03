@@ -1,4 +1,0 @@
-interface:
-  display_name: "Work Handoff"
-  short_description: "Human handoffs for task-driven agent work"
-  default_prompt: "Use $work-handoff to complete this task and produce a concise human handoff."

@@ -1,0 +1,157 @@
+#!/usr/bin/env python3
+from __future__ import annotations
+
+import argparse
+import json
+import subprocess
+import sys
+import time
+from pathlib import Path
+from typing import Any
+
+
+DEFAULT_SYMPHONY_DIR = Path.home() / "GitHub/symphony"
+
+
+def main(argv: list[str] | None = None) -> int:
+    started = time.perf_counter()
+    parser = build_parser()
+    try:
+        args = parser.parse_args(argv)
+        note = read_note(args)
+        if args.command == "complete":
+            data = complete_work(args, note=note)
+        elif args.command == "needs-input":
+            if not note or not note.strip():
+                raise SymphonyTaskError("needs-input requires a non-empty note")
+            data = mark_needs_input(args, note=note)
+        else:
+            raise SymphonyTaskError(f"unsupported command: {args.command}")
+    except SymphonyTaskError as exc:
+        emit({"status": "error", "error": {"message": str(exc)}, "meta": meta(started)})
+        return 1
+    except Exception as exc:
+        emit({"status": "error", "error": {"message": str(exc), "type": type(exc).__name__}, "meta": meta(started)})
+        return 1
+
+    emit({"status": "ok", "data": data, "error": None, "meta": meta(started)})
+    return 0
+
+
+def build_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(prog="symphony task")
+    parser.add_argument("--symphony-dir", default=str(DEFAULT_SYMPHONY_DIR), help="Path to the Symphony repo.")
+    parser.add_argument("--symphony-cli", help="Path to a built Symphony JS CLI, or an executable command on PATH.")
+    parser.add_argument("--db", help="Override the Symphony SQLite database path.")
+    parser.add_argument("--no-input", action="store_true", help="Accepted for non-interactive callers; commands never prompt.")
+    subparsers = parser.add_subparsers(dest="command", required=True)
+
+    complete = subparsers.add_parser("complete", help="Mark a Symphony work item done.")
+    add_note_args(complete)
+
+    needs_input = subparsers.add_parser("needs-input", help="Mark a Symphony work item blocked on Adi.")
+    add_note_args(needs_input)
+    return parser
+
+
+def add_note_args(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument("work_id", help="Symphony work item id.")
+    parser.add_argument("--note", help="Human-facing note or summary.")
+    parser.add_argument("--note-file", help="Read the note from a file, or '-' for stdin.")
+    parser.add_argument("--no-input", action="store_true", default=argparse.SUPPRESS, help=argparse.SUPPRESS)
+
+
+def read_note(args: argparse.Namespace) -> str | None:
+    if args.note and args.note_file:
+        raise SymphonyTaskError("Use either --note or --note-file, not both.")
+    if args.note_file == "-":
+        return sys.stdin.read()
+    if args.note_file:
+        return Path(args.note_file).expanduser().read_text()
+    return args.note
+
+
+def complete_work(args: argparse.Namespace, *, note: str | None) -> dict[str, Any]:
+    command = ["done", args.work_id, "--json"]
+    if note and note.strip():
+        command.extend(["--summary", note.strip()])
+    payload = symphony(args, command)
+    return {"work_id": args.work_id, "status": "done", "symphony": payload}
+
+
+def mark_needs_input(args: argparse.Namespace, *, note: str) -> dict[str, Any]:
+    payload = symphony(args, ["needs-input", args.work_id, note.strip(), "--json"])
+    return {"work_id": args.work_id, "status": "needs_input", "symphony": payload}
+
+
+def symphony(args: argparse.Namespace, command: list[str]) -> dict[str, Any]:
+    proc = subprocess.run(
+        [*symphony_command(args), *command_with_db(args, command)],
+        text=True,
+        capture_output=True,
+        stdin=subprocess.DEVNULL,
+        check=False,
+        timeout=120,
+    )
+    if proc.returncode != 0:
+        detail = (proc.stderr or proc.stdout).strip()
+        raise SymphonyTaskError(f"symphony failed with exit code {proc.returncode}: {detail[-1000:]}")
+    try:
+        return json.loads(proc.stdout)
+    except json.JSONDecodeError as exc:
+        raise SymphonyTaskError(f"symphony returned invalid JSON: {proc.stdout[-1000:]}") from exc
+
+
+def symphony_command(args: argparse.Namespace) -> list[str]:
+    if args.symphony_cli:
+        cli = Path(args.symphony_cli).expanduser()
+        if cli.exists():
+            return ["node", str(cli)] if cli.suffix == ".js" else [str(cli)]
+        return [args.symphony_cli]
+
+    symphony_dir = Path(args.symphony_dir).expanduser()
+    cli = symphony_dir / "dist/src/cli.js"
+    if not cli.exists():
+        build_symphony(symphony_dir)
+    if not cli.exists():
+        raise SymphonyTaskError(f"Symphony CLI not found after build: {cli}")
+    return ["node", str(cli)]
+
+
+def build_symphony(symphony_dir: Path) -> None:
+    if not (symphony_dir / "package.json").is_file():
+        raise SymphonyTaskError(f"Symphony repo not found: {symphony_dir}")
+    proc = subprocess.run(
+        ["npm", "run", "build", "--", "--pretty", "false"],
+        cwd=str(symphony_dir),
+        text=True,
+        capture_output=True,
+        stdin=subprocess.DEVNULL,
+        check=False,
+        timeout=120,
+    )
+    if proc.returncode != 0:
+        detail = (proc.stderr or proc.stdout).strip()
+        raise SymphonyTaskError(f"failed to build Symphony: {detail[-1000:]}")
+
+
+def command_with_db(args: argparse.Namespace, command: list[str]) -> list[str]:
+    if not args.db:
+        return command
+    return [*command, "--db", args.db]
+
+
+def meta(started: float) -> dict[str, Any]:
+    return {"duration_ms": round((time.perf_counter() - started) * 1000)}
+
+
+def emit(payload: dict[str, Any]) -> None:
+    print(json.dumps(payload, sort_keys=True))
+
+
+class SymphonyTaskError(Exception):
+    pass
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

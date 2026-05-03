@@ -27,8 +27,8 @@ global_skills:
   - "project"
   - "secret-management"
   - "skill-creator"
+  - "symphony"
   - "things-client"
-  - "work-handoff"
 repo_skills:
   - "adi-writing"
   - "agent-native-repo-playbook"
@@ -57,11 +57,11 @@ skills:
   - "project"
   - "secret-management"
   - "skill-creator"
+  - "symphony"
   - "things-client"
   - "vercel-react-best-practices"
   - "web-design-guidelines"
   - "web-typography"
-  - "work-handoff"
 ---
 
 Generated from `codex/config/repo-bootstrap.json`, `skills/registry.json`, and `agents/registry.json`. Do not edit manually.

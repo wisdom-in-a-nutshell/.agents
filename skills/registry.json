@@ -93,11 +93,11 @@
       "upstream_ref": "vercel-labs/skills:skills/find-skills@main"
     },
     {
-      "skill": "work-handoff",
+      "skill": "symphony",
       "origin": "owned",
       "scope": "global",
       "repos": [],
-      "source_path": "skills-source/owned/work-handoff",
+      "source_path": "skills-source/owned/symphony",
       "upstream_ref": "-"
     },
     {
