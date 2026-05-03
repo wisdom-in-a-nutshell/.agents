@@ -1,4 +1,4 @@
 interface:
   display_name: "Symphony"
-  short_description: "Finish and update local solo-dev Symphony work items."
-  default_prompt: "Use $symphony to complete this Symphony work item, report needs_input only for true blockers, and produce a concise human handoff with the Symphony status footer."
+  short_description: "Load and update local solo-dev Symphony work items."
+  default_prompt: "Use $symphony to handle Symphony work item <id>, load it through the task client, and update lifecycle state directly."

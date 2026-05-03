@@ -1,6 +1,6 @@
 ---
 name: symphony
-description: Use when an agent is working from a Symphony work item or local solo-dev agent queue, needs to finish with a Symphony status footer, report needs_input, complete a work item, or produce a concise human handoff. Also use when maintaining Symphony lifecycle behavior, its task helper, or the launchd watcher handoff contract.
+description: Use when an agent is given a Symphony work item ID, needs to load the item from the Symphony task client, do the target repo work, and update lifecycle state as done, needs_input, failed, or cancelled. Also use when maintaining Symphony lifecycle behavior, task helper scripts, or the launchd watcher handoff contract.
 ---
 
 # Symphony
@@ -42,30 +42,83 @@ When blocked, ask for the smallest concrete input that would unblock the next ru
 
 ## Workflow
 
-1. Read the work item and repo guidance.
-2. Do the work in the current repo according to local rules.
-3. Run the most relevant validation the repo provides.
-4. Follow the repo's normal finish path for commits, hooks, comments, and pushes.
-5. Finish with a human handoff plus the Symphony footer when running under Symphony.
+1. When given a Symphony work item id, load it through the task client.
+2. Read the target repo guidance from the loaded `repoPath`.
+3. Do the work in the target repo according to local rules.
+4. Run the most relevant validation the repo provides.
+5. Follow the repo's normal finish path for commits, hooks, comments, and pushes.
+6. Update Symphony lifecycle state through the task client before finishing.
 
-## Symphony Footer
+## Task Client
 
-When Symphony is supervising the run, finish with this machine-readable footer:
+Use the machine-primary client packaged in the Symphony repo:
 
-```text
-SYMPHONY_STATUS: done | needs_input | failed
-SYMPHONY_SUMMARY: one concise sentence
-SYMPHONY_INPUT: only when status is needs_input; ask the specific blocking question
+```bash
+~/GitHub/symphony/dist/src/cli.js task <command> <work-id> --no-input
 ```
 
-If no footer is found after a successful Codex turn, Symphony defaults to `done`, so include the footer when the status is blocked or failed.
+If the built CLI is missing, run:
+
+```bash
+cd ~/GitHub/symphony && npm run build -- --pretty false
+```
+
+Load the work item:
+
+```bash
+node ~/GitHub/symphony/dist/src/cli.js task get <work-id> --no-input
+```
+
+Get the minimal handoff prompt:
+
+```bash
+node ~/GitHub/symphony/dist/src/cli.js task prompt <work-id> --no-input --plain
+```
+
+Complete a work item:
+
+```bash
+printf '%s\n' "<human handoff>" \
+  | node ~/GitHub/symphony/dist/src/cli.js task complete <work-id> --note-file - --no-input
+```
+
+Mark a work item blocked:
+
+```bash
+printf '%s\n' "<smallest useful request>" \
+  | node ~/GitHub/symphony/dist/src/cli.js task needs-input <work-id> --note-file - --no-input
+```
+
+Mark a work item failed:
+
+```bash
+printf '%s\n' "<failure summary>" \
+  | node ~/GitHub/symphony/dist/src/cli.js task failed <work-id> --note-file - --no-input
+```
+
+Record Adi's answer and make the item ready again:
+
+```bash
+printf '%s\n' "<Adi's answer>" \
+  | node ~/GitHub/symphony/dist/src/cli.js task input <work-id> --note-file - --no-input
+```
+
+The client returns a stable JSON envelope with `schema_version`, `command`, `status`, `data`, `error`, and `meta`. Treat non-zero exit as a failed lifecycle write.
 
 ## Helper Contract
 
-Script:
+Thin wrapper:
 
 ```bash
 $HOME/.agents/skills-source/owned/symphony/scripts/task
+```
+
+This wrapper forwards to `~/GitHub/symphony/dist/src/cli.js task ...` and preserves the same stable JSON envelope. Use it when a shorter path is more convenient.
+
+Load a work item:
+
+```bash
+"$HOME/.agents/skills-source/owned/symphony/scripts/task" get <work-id> --no-input
 ```
 
 Complete a work item:
@@ -82,7 +135,14 @@ printf '%s\n' "<smallest useful request>" \
   | "$HOME/.agents/skills-source/owned/symphony/scripts/task" needs-input <work-id> --note-file - --no-input
 ```
 
-The helper emits JSON with `status: "ok"` or `status: "error"`. It updates Symphony state directly; it does not talk to Things.
+Mark a work item failed:
+
+```bash
+printf '%s\n' "<failure summary>" \
+  | "$HOME/.agents/skills-source/owned/symphony/scripts/task" failed <work-id> --note-file - --no-input
+```
+
+The helper updates Symphony state directly; it does not talk to Things.
 
 ## Handoff Shape
 
