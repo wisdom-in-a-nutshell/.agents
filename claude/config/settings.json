@@ -10,8 +10,22 @@
   "enableAllProjectMcpServers": true,
   "enabledPlugins": {
     "anthropic-skills@anthropic": false,
-    "cowork-plugin-management@anthropic": false
+    "cowork-plugin-management@anthropic": false,
+    "init@builtin": false,
+    "review@builtin": false,
+    "security-review@builtin": false,
+    "simplify@builtin": false,
+    "update-config@builtin": false,
+    "keybindings-help@builtin": false,
+    "fewer-permission-prompts@builtin": false,
+    "loop@builtin": false,
+    "schedule@builtin": false
   },
+  "disabledMcpServers": [
+    "claude_ai_Google_Drive",
+    "Claude_in_Chrome",
+    "computer-use"
+  ],
   "permissions": {
     "defaultMode": "bypassPermissions"
   },
