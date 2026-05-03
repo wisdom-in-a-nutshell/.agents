@@ -45,11 +45,17 @@ def should_skip_walk_dir(path: Path, repo_root_path: Path) -> bool:
         return False
     skipped = {
         ".git",
+        ".tmp",
         ".claude",
         ".codex",
+        ".build",
         "node_modules",
         "dist",
         "build",
+        "tmp",
+        "temp",
+        "DerivedData",
+        "SourcePackages",
         ".next",
         ".turbo",
         "coverage",

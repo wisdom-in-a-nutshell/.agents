@@ -66,6 +66,25 @@ class ClaudeControlPlaneCheckTests(TempDirTestCase):
                 ],
             },
         )
+        write_json(
+            root / "skills/registry.json",
+            {
+                "managed_skills": [],
+                "paths": {
+                    "github_root": str(github_root),
+                },
+                "unmanaged_repo_local_skills": [],
+            },
+        )
+        write_json(
+            root / "agents/registry.json",
+            {
+                "managed_agents": [
+                    external_researcher_agent(),
+                ],
+                "version": 1,
+            },
+        )
         write_json(root / "mcp/config/presets.json", default_mcp_registry())
         write_json(
             root / "agents/registry.json",
@@ -220,6 +239,172 @@ class ClaudeControlPlaneCheckTests(TempDirTestCase):
         self.assertTrue((adi / ".claude/settings.json").is_file())
         self.assertTrue((adi / ".mcp.json").is_file())
         self.assertTrue((adi / "CLAUDE.md").is_file())
+
+    def test_check_script_ignores_nested_agents_in_repo_temp_trees(self) -> None:
+        root = make_control_plane_root(self.temp_path)
+        home = self.temp_path / "home"
+        github_root = home / "GitHub"
+        adi = init_git_repo(github_root / "adi")
+        write_text(adi / "AGENTS.md", "# Repo Guidance\n")
+        write_text(adi / "docs" / "AGENTS.md", "# Docs Guidance\n")
+        write_text(
+            adi / ".tmp" / "ios-fast-tests-derived-data" / "SourcePackages" / "checkouts" / "FluidAudio" / "AGENTS.md",
+            "# Transient Guidance\n",
+        )
+
+        write_json(
+            root / "codex/config/repo-bootstrap.json",
+            {
+                "defaults": {},
+                "repos": [
+                    {
+                        "path": str(adi),
+                    }
+                ],
+            },
+        )
+        write_json(
+            root / "skills/registry.json",
+            {
+                "managed_skills": [],
+                "paths": {
+                    "github_root": str(github_root),
+                },
+                "unmanaged_repo_local_skills": [],
+            },
+        )
+        write_json(
+            root / "agents/registry.json",
+            {
+                "managed_agents": [
+                    external_researcher_agent(),
+                ],
+                "version": 1,
+            },
+        )
+        write_json(root / "mcp/config/presets.json", default_mcp_registry())
+
+        bootstrap = read_json(root / "claude/config/bootstrap.json")
+        bootstrap["defaults"]["sync_nested_claude_md_to_agents_md"] = True
+        write_json(root / "claude/config/bootstrap.json", bootstrap)
+
+        env = {"HOME": str(home)}
+        run_command(
+            [
+                str(REPO_ROOT / "claude/scripts/sync-global-claude-md.sh"),
+                "--apply",
+                "--global-claude-md",
+                str(home / ".claude/CLAUDE.md"),
+                "--canonical-claude",
+                str(root / "claude/config/global.claude.md"),
+            ],
+            env=env,
+        )
+        run_command(
+            [
+                str(REPO_ROOT / "claude/scripts/sync-settings.sh"),
+                "--apply",
+                "--global-settings",
+                str(home / ".claude/settings.json"),
+                "--canonical-settings",
+                str(root / "claude/config/settings.json"),
+                "--hooks-registry",
+                str(root / "hooks/registry.json"),
+            ],
+            env=env,
+        )
+        run_command(
+            [
+                str(REPO_ROOT / "claude/scripts/sync-global-mcp.sh"),
+                "--apply",
+                "--global-config",
+                str(home / ".claude.json"),
+                "--mcp-registry",
+                str(root / "mcp/config/presets.json"),
+            ],
+            env=env,
+        )
+        run_command(
+            [
+                str(REPO_ROOT / "claude/scripts/sync-subagents.sh"),
+                "--apply",
+                "--registry",
+                str(root / "codex/config/repo-bootstrap.json"),
+                "--agent-registry",
+                str(root / "agents/registry.json"),
+                "--global-agents-dir",
+                str(home / ".claude/agents"),
+            ],
+            env=env,
+        )
+        run_command(
+            [
+                str(REPO_ROOT / "claude/scripts/sync-skills.sh"),
+                "--apply",
+                "--registry",
+                str(root / "skills/registry.json"),
+            ],
+            env=env,
+        )
+        run_command(
+            [
+                str(REPO_ROOT / "claude/scripts/sync-repo-claude-configs.sh"),
+                "--apply",
+                "--registry",
+                str(root / "codex/config/repo-bootstrap.json"),
+                "--bootstrap",
+                str(root / "claude/config/bootstrap.json"),
+                "--mcp-registry",
+                str(root / "mcp/config/presets.json"),
+                "--hooks-registry",
+                str(root / "hooks/registry.json"),
+            ],
+            env=env,
+        )
+
+        run_command(
+            [
+                str(REPO_ROOT / "claude/scripts/check-claude-control-plane.sh"),
+                "--canonical-dir",
+                str(root / "claude/config"),
+                "--global-claude-md",
+                str(home / ".claude/CLAUDE.md"),
+                "--global-settings",
+                str(home / ".claude/settings.json"),
+                "--global-config",
+                str(home / ".claude.json"),
+                "--global-agents-dir",
+                str(home / ".claude/agents"),
+                "--registry",
+                str(root / "codex/config/repo-bootstrap.json"),
+                "--bootstrap",
+                str(root / "claude/config/bootstrap.json"),
+                "--mcp-registry",
+                str(root / "mcp/config/presets.json"),
+                "--skills-registry",
+                str(root / "skills/registry.json"),
+                "--agent-registry",
+                str(root / "agents/registry.json"),
+                "--hooks-registry",
+                str(root / "hooks/registry.json"),
+                "--repo",
+                str(adi),
+            ],
+            env=env,
+        )
+
+        self.assertTrue((adi / "docs" / "CLAUDE.md").is_file())
+        self.assertFalse(
+            (
+                adi
+                / ".tmp"
+                / "ios-fast-tests-derived-data"
+                / "SourcePackages"
+                / "checkouts"
+                / "FluidAudio"
+                / "CLAUDE.md"
+            ).exists()
+        )
 
     def test_check_script_fails_for_untracked_claude_skill_in_tracked_surface(self) -> None:
         root = make_control_plane_root(self.temp_path)
