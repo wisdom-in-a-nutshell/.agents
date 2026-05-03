@@ -12,7 +12,7 @@ Common phrasings mapped to the exact operation. Match intent, not literal words;
 Confirm in one line: "Added to `soul.md` `## About <User>` under Communication preferences."
 
 **"Save this for later"** / "Keep this"
-→ Actionable? → Things 3 Inbox via `$HOME/.agents/skills-source/owned/things-client/scripts/things-client add`. Content/reflection? → new file in `journal/daily/<today>/notes-<slug>.md`.
+→ Actionable? → Shelf item with no `showAt` so it appears in Later. Content/reflection? → new file in `journal/daily/<today>/notes-<slug>.md`.
 
 **"Add this to <area>"**
 → Durable canon? → `Edit memory/areas/<area>/<area>.md`. Event/completion? → append to `memory/areas/<area>/log.md` via CLI.
@@ -20,13 +20,13 @@ Confirm in one line: "Added to `soul.md` `## About <User>` under Communication p
 ## Read
 
 **"What's on today?"** / "What's my day look like?"
-→ `$HOME/.agents/skills-source/owned/things-client/scripts/things-client snapshot` for today + overdue + inbox in one call. Surface counts and the live list.
+→ Read `state/shelf.json`, derive Now / Today / Upcoming / Later from `status`, `showAt`, and `isNow`. Surface Now first, then Today.
 
 **"What's on my calendar / week?"**
 → `$HOME/.agents/skills-source/owned/dobby/scripts/dobby-calendar week` or `$HOME/.agents/skills-source/owned/dobby/scripts/dobby-calendar today`. Use `--all-calendars` only when the user asks for an audit or cross-account search.
 
 **"What's in my inbox?"**
-→ `$HOME/.agents/skills-source/owned/things-client/scripts/things-client inbox`. Flag anything stale.
+→ Shelf has no inbox. Read Later (`open` items without `showAt`) and ask whether stale items should be scheduled, kept, or dropped.
 
 **"What do you know about <area>?"**
 → `$HOME/.agents/skills-source/owned/dobby/scripts/dobby-memory read --section area.<area>.<area>` (single main file). Surface "Current state" section first. Load the log only if asked.
@@ -41,7 +41,7 @@ Confirm in one line: "Added to `soul.md` `## About <User>` under Communication p
 
 **"Where does this go?"**
 → Walk the write-decision tree:
-- Actionable? → Things 3.
+- Actionable? → Shelf.
 - Durable truth about the user? → `soul.md` `## About <User>`.
 - Per-area? → `memory/areas/<area>/`.
 - Dated reflection? → `journal/daily/<today>/`.
@@ -51,13 +51,13 @@ Propose the destination; do the write.
 ## Tasks
 
 **"Add a task to X"** / "Remind me to X" / "I need to X"
-→ `$HOME/.agents/skills-source/owned/things-client/scripts/things-client add "X" --when <default: today> --area <best guess; ask if unclear>`.
+→ Add one Shelf item to `state/shelf.json` or through the mobile-gateway Shelf API. Default `kind` to `do`; use `showAt` for when it should surface and `dueAt` only for a real deadline.
 
 **"Mark X done"**
-→ `$HOME/.agents/skills-source/owned/things-client/scripts/things-client done <id-prefix>`. If no id, use `$HOME/.agents/skills-source/owned/things-client/scripts/things-client search "X"` first.
+→ Find the matching Shelf item, set `status: "done"`, clear `isNow`, set `completedAt`, increment `revision`, and update `updatedAt`.
 
 **"What's overdue?"**
-→ `$HOME/.agents/skills-source/owned/things-client/scripts/things-client overdue`. Name any drift from stated commitments directly.
+→ Read open Shelf items with `dueAt` before today. Name any drift from stated commitments directly.
 
 ## Calendar
 
@@ -92,7 +92,7 @@ Propose the destination; do the write.
 
 When the route isn't obvious, try in order:
 
-1. Actionable? → Things 3 (always wins).
+1. Actionable? → Shelf (always wins).
 2. Dated observation? → `journal/daily/<today>/`.
 3. Tied to one area? → `memory/areas/<area>/`.
 4. Cross-cutting, this week? → `memory/now.md`.

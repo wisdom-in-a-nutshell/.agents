@@ -3,7 +3,7 @@
 #
 # By default, runs only cheap/non-mutating suites. Live suites (`*/live.sh`)
 # are opt-in because they may write to real local surfaces such as Calendar
-# before cleaning up. Things 3 tests live with the shared things-client skill.
+# before cleaning up. Shelf backend tests live in the CodexClaw mobile gateway.
 #
 # Usage:
 #     bash ~/.agents/skills-source/owned/dobby/tests/run.sh                 # cheap suites only

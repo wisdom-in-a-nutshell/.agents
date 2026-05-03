@@ -55,43 +55,35 @@ CLI `memory write` does not create files. Use `Write` for:
 - New area sub-files.
 - Any first-time file.
 
-## Tasks (Things 3)
+## Tasks (Shelf)
 
-No file-based alternative — always via CLI.
+Shelf is the file-based task/open-loop surface:
 
-```bash
-$HOME/.agents/skills-source/owned/things-client/scripts/things-client snapshot   # today + overdue + inbox
-$HOME/.agents/skills-source/owned/things-client/scripts/things-client today
-$HOME/.agents/skills-source/owned/things-client/scripts/things-client inbox
-$HOME/.agents/skills-source/owned/things-client/scripts/things-client overdue
-$HOME/.agents/skills-source/owned/things-client/scripts/things-client search "Beach"
-$HOME/.agents/skills-source/owned/things-client/scripts/things-client search "Beach" --verbose  # slower, full fields
-$HOME/.agents/skills-source/owned/things-client/scripts/things-client inspect "Personal AI / agent system"
-
-$HOME/.agents/skills-source/owned/things-client/scripts/things-client add "Task title" --when today --area <Area>
-$HOME/.agents/skills-source/owned/things-client/scripts/things-client add "Task title" --when "next monday" --area <Area> \
-  --checklist "step one, step two, step three"
-
-$HOME/.agents/skills-source/owned/things-client/scripts/things-client done <id-prefix>
-$HOME/.agents/skills-source/owned/things-client/scripts/things-client done <id-prefix> --log-now  # optional immediate Logbook move
-$HOME/.agents/skills-source/owned/things-client/scripts/things-client cancel <id-prefix>
-$HOME/.agents/skills-source/owned/things-client/scripts/things-client delete <id-prefix> --yes
-
-$HOME/.agents/skills-source/owned/things-client/scripts/things-client doctor                    # Things integration health check
+```text
+state/shelf.json
 ```
 
-`--when` accepts natural-language dates: `today`, `tomorrow`, `next monday`, `in 3 days`, specific dates.
-`--area` is case-sensitive and must match an existing Things 3 Area.
-Read commands return a fast summary shape by default. Use `--verbose` only when full fields such as notes and timestamps are needed. Create commands avoid slow read-back by default; pass `--resolve` when full created-object data is worth the latency.
-Add `--plain` for compact inspection output.
+When working through the iPhone boundary, use the CodexClaw gateway endpoints:
 
-Read commands use `--backend auto` by default: read-only SQLite first, JXA
-fallback only if the local database is unavailable. Agents should normally not
-set this flag; use `--backend sqlite|jxa|auto` only for diagnostics.
+```bash
+curl -sS "http://127.0.0.1:8787/v1/shelf?surfaceKey=ios:local-smoke"
 
-`delete --yes` can remove open tasks by name/ID and completed Logbook tasks by exact ID. Use `search --include-completed` first when cleaning old test artifacts.
-`done` and `cancel` use the Things URL scheme and are the reliable status-change path.
-`delete` still requires Things AppleScript because the URL scheme does not expose Trash/delete; prefer `cancel` unless true deletion is required.
+curl -sS -X POST http://127.0.0.1:8787/v1/shelf/items \
+  -H 'content-type: application/json' \
+  --data '{"surfaceKey":"ios:local-smoke","title":"Book dentist","showAt":"2026-05-04"}'
+```
+
+When working directly inside the workspace, read/write the JSON carefully:
+
+- `status`: only `open`, `done`, `dropped`
+- `kind`: only `do`, `buy`, `remember`
+- `showAt`: when it surfaces
+- `dueAt`: when it is owed
+- `isNow`: max two open items
+- defer: keep `status: "open"`, update `showAt`, increment `deferCount`, set `lastDeferredAt`
+- drop: set `status: "dropped"` and add `dropReason` when meaningful
+
+Increment `revision` and update top-level `updatedAt` on every write.
 
 ## Calendar
 
@@ -119,7 +111,7 @@ Do not use AppleScript for broad calendar search/audits; it can hang on Google-b
 
 ## Tests
 
-The Dobby skill test runner is cheap/non-mutating by default. Live suites are opt-in because they may create temporary real Calendar events before cleanup. Things 3 tests live with the shared `things-client` skill.
+The Dobby skill test runner is cheap/non-mutating by default. Live suites are opt-in because they may create temporary real Calendar events before cleanup. Shelf backend tests live in `~/GitHub/codexclaw/services/mobile-gateway`.
 
 ```bash
 # Default: cheap suites only. Does not run */live.sh.
@@ -136,7 +128,6 @@ Rules for agents:
 - Run the default cheap suite for normal Dobby script/doc changes.
 - Run Dobby live suites only when touching Calendar writes, backend integration, or before closing a risky refactor.
 - Do not add real external writes to non-live test files. Put write-path coverage in `*/live.sh`.
-For Things changes, run `$HOME/.agents/skills-source/owned/things-client/tests/run.sh`.
 
 ## Diff and history
 
@@ -152,9 +143,7 @@ Wraps `git log -p memory/` with date filtering.
 Every CLI command defaults to a stable JSON envelope and also accepts explicit `--json`:
 ```bash
 $HOME/.agents/skills-source/owned/dobby/scripts/dobby-memory read --section now
-$HOME/.agents/skills-source/owned/things-client/scripts/things-client snapshot
-$HOME/.agents/skills-source/owned/things-client/scripts/things-client today
-$HOME/.agents/skills-source/owned/things-client/scripts/things-client doctor
+$HOME/.agents/skills-source/owned/dobby/scripts/dobby-calendar week
 ```
 
 The scripts emit a stable JSON envelope (`schema_version`, `command`, `status`, `data`, `error`, `meta`) by default. Use `--plain` for markdown/text inspection.
@@ -166,20 +155,14 @@ Timeout configuration:
 - `DOBBY_CALENDAR_BRIDGE_BIN` — optional explicit path to `DobbyCalendarBridge` helper for install/doctor discovery
 - `DOBBY_CALENDAR_BRIDGE_SOCKET` — optional explicit Unix socket path for the bridge server
 - `DOBBY_CALENDAR_BRIDGE_TIMEOUT_SECS` — native bridge timeout, default `20`
-- `THINGS_CLIENT_READ_BACKEND` — task read backend, `auto|sqlite|jxa`, default `auto`
-- `THINGS_CLIENT_SQLITE_PATH` — optional explicit Things `main.sqlite` path for diagnostics
-- `THINGS_CLIENT_JXA_TIMEOUT_SECS` — task read JXA fallback timeout, default `10`
-- `THINGS_CLIENT_JXA_PROBE_TIMEOUT_SECS` — doctor JXA health probe timeout, default `3`
-- `THINGS_CLIENT_OPEN_TIMEOUT_SECS` — Things URL open timeout, default `10`
-- `THINGS_CLIENT_URL_SETTLE_SECS` — post-URL settle delay, default `0.5`
 
-Secrets are never accepted via flags. Things URL auth uses the workspace `.env` file provisioned by the local secret bootstrap; the token is not emitted in outputs.
+Secrets are never accepted via flags.
 
 ## Typical session-start pattern
 
 Boot context is delivered automatically by `scripts/hooks/session_start.py`.
-You do not need to invoke anything manually. Surface the overdue / today /
-inbox counts from the hook's `# tasks` section in your first response.
+You do not need to invoke anything manually. Surface the hook's `# shelf`
+counts naturally in your first response.
 
 ## Permissions reminder
 
