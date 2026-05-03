@@ -66,25 +66,6 @@ class ClaudeControlPlaneCheckTests(TempDirTestCase):
                 ],
             },
         )
-        write_json(
-            root / "skills/registry.json",
-            {
-                "managed_skills": [],
-                "paths": {
-                    "github_root": str(github_root),
-                },
-                "unmanaged_repo_local_skills": [],
-            },
-        )
-        write_json(
-            root / "agents/registry.json",
-            {
-                "managed_agents": [
-                    external_researcher_agent(),
-                ],
-                "version": 1,
-            },
-        )
         write_json(root / "mcp/config/presets.json", default_mcp_registry())
         write_json(
             root / "agents/registry.json",
