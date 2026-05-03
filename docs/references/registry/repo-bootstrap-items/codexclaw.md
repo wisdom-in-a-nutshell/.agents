@@ -2,7 +2,7 @@
 repo_name: "codexclaw"
 path: "~/GitHub/codexclaw"
 mcp_count: 1
-skill_count: 23
+skill_count: 24
 repo_local_skill_count: 0
 global_agent_count: 1
 custom_agent_count: 0
@@ -34,6 +34,7 @@ repo_skills:
   - "codex-agent-loop"
   - "codex-app-server"
   - "copilot-sdk"
+  - "imagegen"
   - "ios-app-intents"
   - "ios-debugger-agent"
   - "ios-ettrace-performance"
@@ -53,6 +54,7 @@ skills:
   - "copilot-sdk"
   - "defuddle"
   - "find-skills"
+  - "imagegen"
   - "ios-app-intents"
   - "ios-debugger-agent"
   - "ios-ettrace-performance"
