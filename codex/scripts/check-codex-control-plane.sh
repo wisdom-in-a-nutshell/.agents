@@ -8,13 +8,10 @@ SYNC_REPO_CONFIGS_SCRIPT="${SCRIPT_DIR}/sync-repo-codex-configs.sh"
 
 GLOBAL_CONFIG="${HOME}/.codex/config.toml"
 GLOBAL_HOOKS="${HOME}/.codex/hooks.json"
-GLOBAL_AGENTS_DIR="${HOME}/.codex/agents"
 XCODE_CONFIG="${HOME}/Library/Developer/Xcode/CodingAssistant/codex/config.toml"
-XCODE_AGENTS_DIR="${HOME}/Library/Developer/Xcode/CodingAssistant/codex/agents"
 CANONICAL_DIR="${CONTROL_PLANE_DIR}/config"
 REGISTRY_FILE="${CANONICAL_DIR}/repo-bootstrap.json"
 MCP_REGISTRY_FILE="${ROOT_DIR}/mcp/config/presets.json"
-AGENT_REGISTRY_FILE="${ROOT_DIR}/agents/registry.json"
 HOOKS_REGISTRY_FILE="${ROOT_DIR}/hooks/registry.json"
 REPO_FILTERS=()
 
@@ -28,12 +25,9 @@ Options:
   --canonical-dir <path>      Override canonical codex/config directory
   --global-config <path>      Override runtime ~/.codex/config.toml path
   --global-hooks <path>       Override runtime ~/.codex/hooks.json path
-  --global-agents-dir <path>  Override runtime ~/.codex/agents path
   --xcode-config <path>       Override Xcode runtime config path
-  --xcode-agents-dir <path>   Override Xcode runtime agents dir
   --registry <path>           Override repo bootstrap registry path
   --mcp-registry <path>       Override shared MCP registry path
-  --agent-registry <path>     Override shared agent registry path
   --hooks-registry <path>     Override shared hooks registry path
   --repo <path>               Limit repo-local validation to one repo path (repeatable)
   -h, --help                  Show this help
@@ -55,16 +49,8 @@ while [[ $# -gt 0 ]]; do
       GLOBAL_HOOKS="${2:-}"
       shift 2
       ;;
-    --global-agents-dir)
-      GLOBAL_AGENTS_DIR="${2:-}"
-      shift 2
-      ;;
     --xcode-config)
       XCODE_CONFIG="${2:-}"
-      shift 2
-      ;;
-    --xcode-agents-dir)
-      XCODE_AGENTS_DIR="${2:-}"
       shift 2
       ;;
     --registry)
@@ -73,10 +59,6 @@ while [[ $# -gt 0 ]]; do
       ;;
     --mcp-registry)
       MCP_REGISTRY_FILE="${2:-}"
-      shift 2
-      ;;
-    --agent-registry)
-      AGENT_REGISTRY_FILE="${2:-}"
       shift 2
       ;;
     --hooks-registry)
@@ -108,7 +90,7 @@ for repo in "${REPO_FILTERS[@]}"; do
   REPO_ARGS+=(--repo "$repo")
 done
 
-PYTHONPATH="$ROOT_DIR" python3 - "$CANONICAL_DIR" "$GLOBAL_CONFIG" "$GLOBAL_HOOKS" "$GLOBAL_AGENTS_DIR" "$XCODE_CONFIG" "$XCODE_AGENTS_DIR" "$REGISTRY_FILE" "$MCP_REGISTRY_FILE" "$AGENT_REGISTRY_FILE" "$HOOKS_REGISTRY_FILE" "${REPO_FILTERS[@]}" <<'PY'
+PYTHONPATH="$ROOT_DIR" python3 - "$CANONICAL_DIR" "$GLOBAL_CONFIG" "$GLOBAL_HOOKS" "$XCODE_CONFIG" "$REGISTRY_FILE" "$MCP_REGISTRY_FILE" "$HOOKS_REGISTRY_FILE" "${REPO_FILTERS[@]}" <<'PY'
 from __future__ import annotations
 
 import json
