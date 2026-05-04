@@ -14,6 +14,7 @@ Canonical personal Claude control-plane assets live here.
   - `config/global.claude.md`: symlink alias to `../codex/config/global.agents.md` for `~/.claude/CLAUDE.md`.
   - `config/settings.json`: canonical machine-wide settings source for `~/.claude/settings.json`.
   - `config/bootstrap.json`: Claude-only bootstrap defaults and per-repo overrides.
+  - `config/managed-settings.json`: canonical OS-level policy source rendered into `/Library/Application Support/ClaudeCode/managed-settings.json` (macOS) or `/etc/claude-code/managed-settings.json` (Linux). `enabledPlugins` entries here lock the plugin name and block any `--plugin-dir` injection by daemons such as the Claude.ai app's ccd-cli runtime.
 - `scripts/`: canonical Claude-specific automation scripts.
 
 ## Current Scope
@@ -24,6 +25,7 @@ Canonical personal Claude control-plane assets live here.
 - `scripts/bootstrap-machine-claude.sh` is the canonical Claude-specific bootstrap batch used by the shared root wrappers.
 - `scripts/check-claude-control-plane.sh` is the canonical Claude control-plane validation entrypoint.
 - `scripts/sync-skills.sh` is the canonical Claude skill materialization entrypoint for `~/.claude/skills/` and repo `.claude/skills/`.
+- `scripts/sync-managed-settings.sh` is the canonical Claude OS-level policy materialization entrypoint; uses sudo to write `/Library/Application Support/ClaudeCode/managed-settings.json` when the existing file is root-owned.
 
 ## Rules
 
@@ -36,6 +38,7 @@ Canonical personal Claude control-plane assets live here.
 - Treat `codex/config/repo-bootstrap.json` as the shared repo inventory and repo-assignment registry.
 - Treat `mcp/config/presets.json` as the shared MCP registry for both Codex and Claude.
 - Treat `config/bootstrap.json` as Claude-only settings and repo override input.
+- Treat `config/managed-settings.json` as the canonical OS-level policy source. Do not hand-edit the rendered `/Library/Application Support/ClaudeCode/managed-settings.json` (or `/etc/claude-code/managed-settings.json` on Linux); update the canonical file and re-run `scripts/sync-managed-settings.sh --apply` (or the full Claude bootstrap).
 
 ## References
 
