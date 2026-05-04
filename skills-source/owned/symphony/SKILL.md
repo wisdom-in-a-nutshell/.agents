@@ -51,7 +51,7 @@ When blocked, ask for the smallest concrete input that would unblock the next ru
 
 ## Task Client
 
-Use the machine-primary client packaged in the Symphony repo:
+Use the machine-primary client packaged in the Symphony repo. Prefer this direct Node CLI for all normal lifecycle reads and writes:
 
 ```bash
 ~/GitHub/symphony/dist/src/cli.js task <command> <work-id> --no-input
@@ -105,9 +105,9 @@ printf '%s\n' "<Adi's answer>" \
 
 The client returns a stable JSON envelope with `schema_version`, `command`, `status`, `data`, `error`, and `meta`. Treat non-zero exit as a failed lifecycle write.
 
-## Helper Contract
+## Fallback Helper
 
-Thin wrapper:
+Thin wrapper. Use this only when a shorter command is useful; if anything looks stuck or confusing, switch back to the direct Node CLI above.
 
 ```bash
 $HOME/.agents/skills-source/owned/symphony/scripts/task
@@ -142,7 +142,7 @@ printf '%s\n' "<failure summary>" \
   | "$HOME/.agents/skills-source/owned/symphony/scripts/task" failed <work-id> --note-file - --no-input
 ```
 
-The helper updates Symphony state directly; it does not talk to Things.
+The helper updates Symphony state directly; it does not talk to Things. It has a short timeout by default and returns the same stable JSON envelope as the direct Node CLI.
 
 ## Handoff Shape
 

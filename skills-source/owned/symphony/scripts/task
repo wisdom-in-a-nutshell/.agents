@@ -15,6 +15,7 @@ from typing import Any
 
 DEFAULT_SYMPHONY_DIR = Path.home() / "GitHub/symphony"
 SCHEMA_VERSION = "1.0"
+DEFAULT_TIMEOUT_SECONDS = 30
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -30,7 +31,7 @@ def main(argv: list[str] | None = None) -> int:
         command = [*symphony_command(args), "task", *task_args]
         if args.db and "--db" not in task_args:
             command.extend(["--db", args.db])
-        proc = run_command(command, read_stdin_if_needed(task_args), timeout_seconds=120)
+        proc = run_command(command, read_stdin_if_needed(task_args), timeout_seconds=helper_timeout_seconds())
     except HelperError as exc:
         emit(error_envelope("task", exc, started, request_id))
         return exc.exit_code
@@ -68,6 +69,17 @@ def read_stdin_if_needed(task_args: list[str]) -> str | None:
         if arg == "--note-file" and index + 1 < len(task_args) and task_args[index + 1] == "-":
             return sys.stdin.read()
     return None
+
+
+def helper_timeout_seconds() -> int:
+    raw = os.environ.get("SYMPHONY_TASK_HELPER_TIMEOUT_SECONDS")
+    if not raw:
+        return DEFAULT_TIMEOUT_SECONDS
+    try:
+        parsed = int(raw)
+    except ValueError:
+        return DEFAULT_TIMEOUT_SECONDS
+    return parsed if parsed >= 1 else DEFAULT_TIMEOUT_SECONDS
 
 
 def run_command(command: list[str], stdin_text: str | None, timeout_seconds: int) -> subprocess.CompletedProcess[str]:
@@ -135,6 +147,7 @@ def symphony_command(args: argparse.Namespace) -> list[str]:
 def build_symphony(symphony_dir: Path) -> None:
     if not (symphony_dir / "package.json").is_file():
         raise HelperError("E_IO", f"Symphony repo not found: {symphony_dir}", "Check --symphony-dir.", 1)
+    sys.stderr.write(f"[symphony-task] built CLI missing; building in {symphony_dir}\n")
     proc = subprocess.run(
         ["npm", "run", "build", "--", "--pretty", "false"],
         cwd=str(symphony_dir),
