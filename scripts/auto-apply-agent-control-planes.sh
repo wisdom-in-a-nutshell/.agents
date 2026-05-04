@@ -345,6 +345,17 @@ for action in "${actions[@]}"; do
       cmd=("$CODEX_BOOTSTRAP_SCRIPT" "$MODE" --github-root "$GITHUB_ROOT")
       ;;
     bootstrap_claude)
+      # Claude bootstrap may need sudo to write the OS-level managed-settings
+      # policy file. Pre-warm a sudo credential once when running interactively
+      # so the bootstrap chain doesn't stall partway through. In non-interactive
+      # contexts (cron, post-pull hooks without a TTY), let sync-managed-settings.sh
+      # surface its own clear error if a write is actually required.
+      if [[ "$MODE" == "--apply" ]] && [[ -t 0 && -t 2 ]]; then
+        if ! sudo -n true 2>/dev/null; then
+          log "Pre-warming sudo for Claude managed-settings policy write"
+          sudo -v || die "sudo pre-warm failed; cannot apply Claude managed-settings policy"
+        fi
+      fi
       cmd=("$CLAUDE_BOOTSTRAP_SCRIPT" "$MODE")
       ;;
     *)

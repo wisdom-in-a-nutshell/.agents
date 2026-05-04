@@ -74,7 +74,43 @@ def policy_files_match(left: Path, right: Path) -> bool:
     return json_files_equal(left, right)
 
 
+def _sudo_available_noninteractive() -> bool:
+    """Return True iff `sudo -n true` succeeds, i.e. sudo is cached/passwordless."""
+    try:
+        result = subprocess.run(
+            ["sudo", "-n", "true"],
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            check=False,
+        )
+    except FileNotFoundError:
+        return False
+    return result.returncode == 0
+
+
+def _has_tty() -> bool:
+    """Return True iff the current process can prompt the user on a TTY."""
+    try:
+        return sys.stdin.isatty() and sys.stderr.isatty()
+    except Exception:
+        return False
+
+
 def install_with_sudo(rendered: Path, target: Path) -> None:
+    """Install rendered file at the policy path using sudo.
+
+    Refuses to run if sudo is not cached AND no TTY is attached, to avoid
+    hanging the bootstrap chain in cron / auto-apply contexts.
+    """
+    if not _sudo_available_noninteractive() and not _has_tty():
+        raise ControlPlaneError(
+            f"Writing {target} requires sudo, but sudo is not cached and no TTY is "
+            f"attached. Re-run interactively (e.g. "
+            f"`bash claude/scripts/sync-managed-settings.sh --apply`) once to cache "
+            f"sudo credentials, or pre-warm sudo before invoking the auto-apply chain."
+        )
+
     target_str = str(target)
     target_parent = str(target.parent)
 

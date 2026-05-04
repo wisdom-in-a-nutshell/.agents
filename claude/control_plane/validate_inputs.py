@@ -43,9 +43,11 @@ def main() -> int:
 
     global_claude = canonical_dir / "global.claude.md"
     settings_json = canonical_dir / "settings.json"
+    managed_settings_json = canonical_dir / "managed-settings.json"
     for path in (
         global_claude,
         settings_json,
+        managed_settings_json,
         repo_registry,
         bootstrap_file,
         mcp_registry,
@@ -66,11 +68,32 @@ def main() -> int:
         )
 
     settings = _load_json_object(settings_json, label="settings")
+    managed_settings = _load_json_object(
+        managed_settings_json, label="managed-settings"
+    )
     repo_data = _load_json_object(repo_registry, label="repo bootstrap")
     bootstrap_data = _load_json_object(bootstrap_file, label="Claude bootstrap")
     mcp_data = _load_json_object(mcp_registry, label="MCP registry")
     skills_data = _load_json_object(skills_registry, label="skills registry")
     hooks_data = _load_json_object(hooks_registry, label="hooks registry")
+
+    managed_enabled_plugins = managed_settings.get("enabledPlugins")
+    if managed_enabled_plugins is not None:
+        if not isinstance(managed_enabled_plugins, dict):
+            raise ControlPlaneError(
+                f"enabledPlugins must be an object in {managed_settings_json}"
+            )
+        for plugin_key, plugin_value in managed_enabled_plugins.items():
+            if not isinstance(plugin_key, str) or "@" not in plugin_key:
+                raise ControlPlaneError(
+                    f"enabledPlugins keys must be `<plugin>@<marketplace>` strings in "
+                    f"{managed_settings_json}; got {plugin_key!r}"
+                )
+            if not isinstance(plugin_value, bool):
+                raise ControlPlaneError(
+                    f"enabledPlugins.{plugin_key} must be a boolean in "
+                    f"{managed_settings_json} for the policy lock to apply"
+                )
 
     repos = repo_data.get("repos", [])
     if not isinstance(repos, list):

@@ -102,6 +102,7 @@ def make_control_plane_root(base_dir: Path) -> Path:
         "codex/config/xcode.config.toml",
         "claude/config/bootstrap.json",
         "claude/config/global.claude.md",
+        "claude/config/managed-settings.json",
         "claude/config/settings.json",
         "hooks/__init__.py",
         "hooks/control_plane.py",

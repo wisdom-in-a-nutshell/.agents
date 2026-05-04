@@ -28,6 +28,11 @@ APP_MANAGED_PLUGIN_IDS = {
 }
 REVIEW_MARKETPLACE_PREFIXES = ("openai-",)
 
+CLAUDE_MANAGED_SETTINGS_PATHS = {
+    "darwin": "/Library/Application Support/ClaudeCode/managed-settings.json",
+    "linux": "/etc/claude-code/managed-settings.json",
+}
+
 
 def utc_now() -> str:
     return datetime.now(UTC).isoformat(timespec="seconds").replace("+00:00", "Z")
@@ -305,6 +310,102 @@ def audit_required_codex_plugins(agents_repo: Path, home: Path) -> dict[str, Any
     )
 
 
+def claude_managed_settings_target() -> Path | None:
+    if sys.platform == "darwin":
+        return Path(CLAUDE_MANAGED_SETTINGS_PATHS["darwin"])
+    if sys.platform.startswith("linux"):
+        return Path(CLAUDE_MANAGED_SETTINGS_PATHS["linux"])
+    return None
+
+
+def audit_claude_managed_settings(agents_repo: Path) -> dict[str, Any]:
+    name = "claude_managed_settings"
+    canonical = agents_repo / "claude" / "config" / "managed-settings.json"
+    target = claude_managed_settings_target()
+
+    if target is None:
+        return check_result(
+            name,
+            "skipped",
+            f"unsupported platform for Claude managed-settings audit: {sys.platform}",
+        )
+
+    details: dict[str, Any] = {
+        "canonical": str(canonical),
+        "target": str(target),
+    }
+
+    if not canonical.is_file():
+        return check_result(
+            name,
+            "error",
+            f"missing canonical managed-settings file: {canonical}",
+            details=details,
+            hint=(
+                "Restore claude/config/managed-settings.json or remove the audit "
+                "expectation if the policy file is no longer used."
+            ),
+            error_code="E_CLAUDE_MANAGED_SETTINGS_CANONICAL_MISSING",
+        )
+
+    if not target.exists():
+        return check_result(
+            name,
+            "error",
+            f"Claude managed-settings policy file is missing: {target}",
+            details=details,
+            hint=(
+                "Run `bash ~/.agents/claude/scripts/sync-managed-settings.sh --apply` "
+                "(uses sudo) to materialize the policy file."
+            ),
+            error_code="E_CLAUDE_MANAGED_SETTINGS_TARGET_MISSING",
+        )
+
+    try:
+        canonical_data = json.loads(canonical.read_text(encoding="utf-8"))
+        target_data = json.loads(target.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as exc:
+        return check_result(
+            name,
+            "error",
+            f"invalid JSON in managed-settings file: {exc}",
+            details=details,
+            hint=(
+                "Re-render via `bash ~/.agents/claude/scripts/sync-managed-settings.sh "
+                "--apply` after fixing the canonical source."
+            ),
+            error_code="E_CLAUDE_MANAGED_SETTINGS_INVALID_JSON",
+        )
+    except PermissionError as exc:
+        return check_result(
+            name,
+            "error",
+            f"cannot read managed-settings file: {exc}",
+            details=details,
+            error_code="E_CLAUDE_MANAGED_SETTINGS_UNREADABLE",
+        )
+
+    if canonical_data != target_data:
+        return check_result(
+            name,
+            "error",
+            "Claude managed-settings is out of sync with canonical source",
+            details=details,
+            hint=(
+                "Run `bash ~/.agents/claude/scripts/sync-managed-settings.sh --apply` "
+                "to re-render the policy file from canonical source."
+            ),
+            error_code="E_CLAUDE_MANAGED_SETTINGS_DRIFT",
+        )
+
+    return check_result(
+        name,
+        "ok",
+        "Claude managed-settings policy file matches canonical source",
+        details=details,
+    )
+
+
 def build_payload(args: argparse.Namespace) -> tuple[dict[str, Any], int]:
     start = time.monotonic()
     request_id = str(uuid.uuid4())
@@ -315,6 +416,7 @@ def build_payload(args: argparse.Namespace) -> tuple[dict[str, Any], int]:
         run_control_plane_check(agents_repo, args.timeout_sec, skip=args.skip_control_plane_check),
         audit_codex_plugins(agents_repo, home),
         audit_required_codex_plugins(agents_repo, home),
+        audit_claude_managed_settings(agents_repo),
     ]
 
     error_checks = [check for check in checks if check["status"] == "error"]
