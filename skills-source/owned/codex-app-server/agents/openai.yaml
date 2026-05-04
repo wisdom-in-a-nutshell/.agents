@@ -1,4 +1,4 @@
 interface:
   display_name: "Codex App Server"
   short_description: "Build this repo around Codex App Server primitives."
-  default_prompt: "Implement this change using Codex App Server primitives (initialize, thread lifecycle, turn lifecycle, streaming items, approvals) and keep the client/harness thin and deterministic. Start with the local conceptual reference, probe the installed app server for build-specific truth, and use `openaiDeveloperDocs` when you need the latest official behavior beyond the local binary."
+  default_prompt: "Implement this change using Codex App Server primitives for rich client integrations (initialize, thread lifecycle, turn lifecycle, streaming items, approvals) and keep the client/harness thin and deterministic. Use the Codex SDK instead for automation or CI. Start with the local conceptual reference, probe the installed app server for build-specific truth, and use `openaiDeveloperDocs` when you need the latest official behavior beyond the local binary."

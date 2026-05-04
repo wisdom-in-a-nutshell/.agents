@@ -63,9 +63,8 @@ Prefer App Server when you want the full Codex harness:
 - config and auth flows
 - full client-driven interaction
 
-Use narrower surfaces only when that smaller contract is enough:
+Use the Codex SDK for one-shot automation, batch jobs, and CI. Use narrower surfaces only when that smaller contract is enough:
 
-- `codex exec` for one-shot automation
 - `codex mcp-server` when Codex only needs to appear as a tool inside an MCP workflow
 
 ## Source
