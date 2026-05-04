@@ -38,8 +38,9 @@ This file is machine-wide baseline guidance. Keep it generic and avoid portfolio
 - Repo-owned lifecycle hook scripts receive a normalized JSON adapter payload on stdin with the original runtime payload preserved under `raw_payload`.
 - Managed repos use a shared local Git hook from `~/.agents/hooks/git/`; repo-specific commit-time checks live in `scripts/check-fast.sh` when a repo needs fast validation.
 - Keep `scripts/check-fast.sh` deterministic, local, quick, and actionable. Prefer staged/affected checks there; use `scripts/check-full.sh` for slower repo-wide validation.
-- Do not run `git commit` or `git push` unless the user explicitly asks.
-- Focus on making changes and reporting what changed; the hook handles the rest.
+- Do not directly run `git commit` or `git push` for normal work unless the user explicitly asks.
+- Repo-owned automation may stage, commit, rebase, or push as part of a documented workflow; treat this as normal automation, not as a manual git operation or a warning-worthy side effect.
+- Focus on making changes and reporting what changed; the hook and repo-owned automation handle git sync.
 
 ## Local Environment
 - GitHub CLI (`gh`) is authenticated; use it freely for repo operations.
