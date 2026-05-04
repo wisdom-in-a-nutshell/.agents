@@ -191,7 +191,7 @@
         "~/.agents",
         "adi",
         "codexclaw",
-        "devworker"
+        "symphony"
       ],
       "source_path": "skills-source/owned/codex-app-server",
       "upstream_ref": "-"
@@ -211,7 +211,6 @@
         "angie",
         "blog-personal",
         "codexclaw",
-        "devworker",
         "focus",
         "future-of-life-institute-podcast-aipodcast-ing-theme",
         "platform-ops",

@@ -3,14 +3,14 @@ registry_kind: managed
 skill: "codex-app-server"
 origin: "owned"
 scope: "repo"
-repos_csv: "~/.agents,adi,codexclaw,devworker"
+repos_csv: "~/.agents,adi,codexclaw,symphony"
 source_path: "skills-source/owned/codex-app-server"
 upstream_ref: "-"
 repos:
   - "~/.agents"
   - "adi"
   - "codexclaw"
-  - "devworker"
+  - "symphony"
 ---
 
 Generated from `skills/registry.json`. Do not edit manually.
