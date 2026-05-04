@@ -10,6 +10,7 @@ service_tier: "fast"
 mcps: []
 global_skills:
   - "agent-browser"
+  - "agent-native-repo-playbook"
   - "architecture-docs"
   - "defuddle"
   - "find-skills"
@@ -21,7 +22,6 @@ global_skills:
   - "things-client"
 repo_skills:
   - "adi-writing"
-  - "agent-native-repo-playbook"
   - "aip-company"
   - "client-interface-guidelines"
   - "codex-agent-loop"

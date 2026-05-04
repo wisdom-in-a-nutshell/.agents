@@ -10,6 +10,7 @@ service_tier: "-"
 mcps: []
 global_skills:
   - "agent-browser"
+  - "agent-native-repo-playbook"
   - "architecture-docs"
   - "defuddle"
   - "find-skills"
@@ -20,7 +21,6 @@ global_skills:
   - "symphony"
   - "things-client"
 repo_skills:
-  - "agent-native-repo-playbook"
   - "ai-podcasting"
   - "azure-webapp-config"
   - "client-interface-guidelines"

@@ -2,6 +2,8 @@
 from __future__ import annotations
 
 import argparse
+import os
+import signal
 import json
 import subprocess
 import sys
@@ -28,14 +30,7 @@ def main(argv: list[str] | None = None) -> int:
         command = [*symphony_command(args), "task", *task_args]
         if args.db and "--db" not in task_args:
             command.extend(["--db", args.db])
-        proc = subprocess.run(
-            command,
-            input=read_stdin_if_needed(task_args),
-            text=True,
-            capture_output=True,
-            check=False,
-            timeout=120,
-        )
+        proc = run_command(command, read_stdin_if_needed(task_args), timeout_seconds=120)
     except HelperError as exc:
         emit(error_envelope("task", exc, started, request_id))
         return exc.exit_code
@@ -73,6 +68,47 @@ def read_stdin_if_needed(task_args: list[str]) -> str | None:
         if arg == "--note-file" and index + 1 < len(task_args) and task_args[index + 1] == "-":
             return sys.stdin.read()
     return None
+
+
+def run_command(command: list[str], stdin_text: str | None, timeout_seconds: int) -> subprocess.CompletedProcess[str]:
+    stdin = subprocess.PIPE if stdin_text is not None else subprocess.DEVNULL
+    proc = subprocess.Popen(
+        command,
+        stdin=stdin,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+        start_new_session=True,
+    )
+    try:
+        stdout, stderr = proc.communicate(input=stdin_text, timeout=timeout_seconds)
+    except subprocess.TimeoutExpired:
+        kill_process_group(proc)
+        stdout, stderr = proc.communicate()
+        raise HelperError(
+            "E_TIMEOUT",
+            f"Symphony task client timed out after {timeout_seconds}s",
+            "Retry with the direct Node CLI: `node ~/GitHub/symphony/dist/src/cli.js task ... --no-input`.",
+            124,
+        )
+    return subprocess.CompletedProcess(command, proc.returncode, stdout, stderr)
+
+
+def kill_process_group(proc: subprocess.Popen[str]) -> None:
+    try:
+        os.killpg(proc.pid, signal.SIGTERM)
+    except ProcessLookupError:
+        return
+    except Exception:
+        proc.kill()
+        return
+    try:
+        proc.wait(timeout=5)
+    except subprocess.TimeoutExpired:
+        try:
+            os.killpg(proc.pid, signal.SIGKILL)
+        except ProcessLookupError:
+            pass
 
 
 def symphony_command(args: argparse.Namespace) -> list[str]:

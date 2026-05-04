@@ -12,6 +12,7 @@ mcps:
   - "cloudflare-docs"
 global_skills:
   - "agent-browser"
+  - "agent-native-repo-playbook"
   - "architecture-docs"
   - "defuddle"
   - "find-skills"
@@ -22,7 +23,6 @@ global_skills:
   - "symphony"
   - "things-client"
 repo_skills:
-  - "agent-native-repo-playbook"
   - "client-interface-guidelines"
 repo_local_skills: []
 skills:
