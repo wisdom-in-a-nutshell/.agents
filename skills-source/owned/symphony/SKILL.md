@@ -113,7 +113,7 @@ Thin wrapper. Use this only when a shorter command is useful; if anything looks 
 $HOME/.agents/skills-source/owned/symphony/scripts/task
 ```
 
-This wrapper forwards to `~/GitHub/symphony/dist/src/cli.js task ...` and preserves the same stable JSON envelope. Use it when a shorter path is more convenient.
+This wrapper forwards to `~/GitHub/symphony/dist/src/cli.js task ...` and preserves the same stable JSON envelope. Treat it as a fallback convenience path, not the first debugging path.
 
 Load a work item:
 
