@@ -70,7 +70,7 @@ MCPs are endpoints and transports. The registry views answer which repos get whi
 
 There is no managed agent bootstrap layer.
 
-Do not add a new `agents/registry.json`, repo-scoped subagent assignment map, or generated `.codex/agents` / `.claude/agents` materialization path unless there is a concrete new need. The default is to let the runtime delegate naturally when a task benefits from subagents.
+Let the runtime delegate naturally when a task benefits from subagents. Do not model subagent assignment in this control plane.
 
 ## Working Rules
 

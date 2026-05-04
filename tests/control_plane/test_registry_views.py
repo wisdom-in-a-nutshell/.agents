@@ -86,8 +86,6 @@ class RegistryViewsGenerationTests(TempDirTestCase):
 
         self.assertTrue(repo_item.is_file())
         self.assertTrue(cloudflare_item.is_file())
-        self.assertFalse((root / "docs/references/registry/agent-registry.base").exists())
-        self.assertFalse((root / "docs/references/registry/agent-registry-items").exists())
 
         repo_text = repo_item.read_text(encoding="utf-8")
         self.assertIn('repo_name: "adi"', repo_text)

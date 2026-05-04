@@ -624,10 +624,6 @@ def main() -> int:
     generate_mcp_registry_items(
         views_dir, presets, repos, global_terminal_mcp, global_xcode_mcp
     )
-    agent_registry_base = views_dir / "agent-registry.base"
-    if agent_registry_base.exists():
-        agent_registry_base.unlink()
-    shutil.rmtree(views_dir / "agent-registry-items", ignore_errors=True)
     legacy_agent_capabilities_base = views_dir / "agent-capabilities.base"
     if legacy_agent_capabilities_base.exists():
         legacy_agent_capabilities_base.unlink()
