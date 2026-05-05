@@ -1,15 +1,15 @@
 ---
 name: dobby
-description: Canonical contract for operating a Dobby workspace — a personal-agent repo where memory, direction, per-area canon, journal, Shelf tasks, and calendar are held as the user's externalized mind. Use whenever the user wants to store, read, update, or route personal memory; check or update Shelf state; reflect or journal; inspect, search, or add calendar events; answer "where does this go"; or run any operation that touches `memory/`, `dobby/`, `journal/`, `state/shelf.json`, or calendar. Triggers include "remember this", "store this", "add to memory", "what's on today", "what's on my shelf", "what's later", "what's on my calendar/week", "add this to calendar", "schedule this", "add a task", "mark done", and routing decisions about new information surfaced in conversation.
+description: Canonical contract for operating a Dobby workspace — a personal-agent repo where memory, direction, per-area canon, journal, Shelf open loops, and calendar are held as the user's externalized mind. Use whenever the user wants to store, read, update, or route personal memory; check or update Shelf state; reflect or journal; inspect, search, or add calendar events; answer "where does this go"; or run any operation that touches `memory/`, `dobby/`, `journal/`, `state/shelf.json`, or calendar. Triggers include "remember this", "store this", "add to memory", "what's on today", "what's on my shelf", "what's later", "what's on my calendar/week", "add this to calendar", "schedule this", "add a task", "mark done", and routing decisions about new information surfaced in conversation.
 ---
 
 # Dobby
 
 ## Overview
 
-Dobby is a companion that lives in a git repo. The workspace itself is Dobby — `memory/`, `journal/`, `dobby/`, plus a task surface (Shelf). This skill is the operator's manual: what to read, where to write, how to keep the workspace coherent across agents.
+Dobby is a companion that lives in a git repo. The workspace itself is Dobby: `memory/`, `journal/`, `dobby/`, and the Shelf open-loop file. This skill is the operator's manual: what to read, where to write, and how to keep the workspace coherent across agents.
 
-Soul lives in `/soul.md` (Dobby's character). Operations live here.
+Soul lives in `/soul.md` (Dobby's character and durable user context). Operational rules live here.
 
 ## Boot
 
@@ -66,7 +66,7 @@ or `--fake-note` can supply the note body.
 
 ## Prefer the CLI
 
-The preferred command surfaces are deterministic, timestamped, tested, and agent-first: JSON envelopes by default, `--plain` only for operator inspection. Use `$HOME/.agents/skills-source/owned/dobby/scripts/dobby-memory` for memory and `$HOME/.agents/skills-source/owned/dobby/scripts/dobby-calendar` for calendar. Shelf currently lives in `state/shelf.json` and through CodexClaw mobile-gateway endpoints. **Do not first look for repo-local `scripts/dobby-*` wrappers.** Invoke the skill-bundled scripts directly, from a Dobby workspace root, or set `DOBBY_WORKSPACE=/path/to/workspace`.
+The preferred command surfaces are deterministic, timestamped, tested, and agent-first: JSON envelopes by default, `--plain` only for operator inspection. Use `$HOME/.agents/skills-source/owned/dobby/scripts/dobby-memory` for memory and `$HOME/.agents/skills-source/owned/dobby/scripts/dobby-calendar` for calendar. Shelf is `state/shelf.json`; the mobile gateway exposes it for phone/client access. **Do not first look for repo-local `scripts/dobby-*` wrappers.** Invoke the skill-bundled scripts directly, from a Dobby workspace root, or set `DOBBY_WORKSPACE=/path/to/workspace`.
 
 **Reach for the CLI first.** Fall through to the `Edit`/`Write` tools only when the CLI cannot do what's needed — surgical mid-file section rewrites, or creating a new file. Both are legitimate; the CLI is simply the default.
 
@@ -95,7 +95,7 @@ When new information surfaces, route it to exactly one canonical home. Never dup
 
 | Signal | Home | Operation |
 |---|---|---|
-| Actionable item (to do, follow up, remind me) | **Shelf** (`state/shelf.json`) | Add/update one Shelf item; use the mobile-gateway API when available, otherwise edit the JSON carefully. |
+| Personal actionable item / open loop assigned to the user | **Shelf** (`state/shelf.json`) | Add/update one Shelf item; use the mobile-gateway API when acting through the app boundary, otherwise edit the JSON carefully. |
 | Durable truth about the user (identity, pattern, preference) | `soul.md` `## About <User>` | Edit in place (section) |
 | This week's active context | `memory/now.md` | Rewrite the relevant section, keep ≤60 lines |
 | Session continuity / what happened last time | `memory/sessions/YYYY/MM/DD-HHMMSS.md` | Auto-written by the SessionEnd hook; do not put session handoff prose in `now.md` |
@@ -113,7 +113,18 @@ For user-intent-to-action mappings, see `references/scenarios.md`.
 
 ## Tasks (Shelf)
 
-Tasks live in `state/shelf.json`. The core contract is:
+Shelf is Dobby's personal open-loop surface. It holds things assigned to the user:
+tasks, follow-ups, reminders, small purchases, and concrete one-off actions.
+It is not chat history, memory canon, an external task-app database, or the
+Symphony agent-work queue.
+
+Canonical state lives in the workspace:
+
+```text
+state/shelf.json
+```
+
+The core contract is:
 
 ```json
 {
@@ -126,11 +137,20 @@ Tasks live in `state/shelf.json`. The core contract is:
 
 Item statuses are only `open`, `done`, or `dropped`. There is no `snoozed`;
 deferring keeps the item open, updates `showAt`, increments `deferCount`, and
-sets `lastDeferredAt`. `isNow` is capped at two open items.
+sets `lastDeferredAt`.
 
-Use the CodexClaw mobile-gateway Shelf endpoints when the running gateway is the
-right boundary. From inside the same workspace, agents may read/write
-`state/shelf.json` directly, preserving schema, revision, and timestamps.
+`isNow` is an uncapped soft focus signal, not a hard constraint. If many open
+items are marked Now, treat that as useful coaching context: surface the overload
+plainly and help the user choose, but do not reject or auto-bump items.
+
+Use the mobile-gateway Shelf endpoints when the running gateway is the right
+boundary, especially for phone/client behavior. From inside the same workspace,
+agents may read/write `state/shelf.json` directly, preserving schema, revision,
+and timestamps.
+
+Use Symphony instead of Shelf when the item is work assigned to Dobby as an
+agent. Shelf is for the user's visible personal loops; Symphony is for local
+agent work.
 
 Default for ambiguous new tasks: add a plain `open` Shelf item with no `showAt`
 so it lands in Later. Use `showAt` for when it should surface and `dueAt` only
@@ -138,11 +158,11 @@ for a real deadline.
 
 ## Journal
 
-Dobby owns routing to `journal/`; the dedicated `journal-checkin` skill owns structured check-ins and guided reflections. For raw dated capture, create a file under `journal/daily/YYYY-MM-DD/` after reading enough context to avoid duplication. Do not turn journal entries into Things tasks unless there is an explicit action.
+Dobby owns routing to `journal/`; the dedicated `journal-checkin` skill owns structured check-ins and guided reflections. For raw dated capture, create a file under `journal/daily/YYYY-MM-DD/` after reading enough context to avoid duplication. Do not turn journal entries into Shelf items unless there is an explicit action.
 
 ## Calendar
 
-Calendar operations go through the skill-bundled EventKit wrapper: `$HOME/.agents/skills-source/owned/dobby/scripts/dobby-calendar`. It prefers the native Dobby Calendar Bridge helper (`~/Applications/Dobby Calendar Bridge.app` via its user-only LaunchAgent socket) and falls back to Homebrew `ical`. The bridge is the durable path for Codex.app/Claude/Terminal because macOS grants Calendar access to the bridge's stable bundle identity instead of whichever caller app spawned the command. The default calendar is required via the `DOBBY_CALENDAR_DEFAULT` env var (no hardcoded fallback) — set it per-workspace via `scripts/local/secrets/static_env_defaults.env` so it lands in `.env` on bootstrap. Commands that need a specific calendar fail fast with a clear message when unset. Use this CLI for date-bounded reads and safe writes; do not use AppleScript for broad calendar search/audits.
+Calendar operations go through the skill-bundled EventKit wrapper: `$HOME/.agents/skills-source/owned/dobby/scripts/dobby-calendar`. It prefers the native Dobby Calendar Bridge helper (`~/Applications/Dobby Calendar Bridge.app` via its user-only LaunchAgent socket) and falls back to Homebrew `ical`. The bridge is the durable path for Dobby because macOS grants Calendar access to the bridge's stable bundle identity instead of whichever caller app spawned the command. The default calendar is required via the `DOBBY_CALENDAR_DEFAULT` env var (no hardcoded fallback) — set it per-workspace via `scripts/local/secrets/static_env_defaults.env` so it lands in `.env` on bootstrap. Commands that need a specific calendar fail fast with a clear message when unset. Use this CLI for date-bounded reads and safe writes; do not use AppleScript for broad calendar search/audits.
 
 - List calendars: `$HOME/.agents/skills-source/owned/dobby/scripts/dobby-calendar calendars`
 - Week view: `$HOME/.agents/skills-source/owned/dobby/scripts/dobby-calendar week`
@@ -156,7 +176,7 @@ Calendar operations go through the skill-bundled EventKit wrapper: `$HOME/.agent
 - **Read before you write.** Don't duplicate content that already exists.
 - **Respect the clocks.** `soul.md` (including `## About <User>`) is slow (monthly–yearly). `now.md` is weekly. Area canon shifts as needed. Don't churn slow files with fast content.
 - **No `current.md` files.** Per-area active state lives as a "Current state" section at the top of the area's main file, or in `now.md` if it's cross-cutting this week.
-- **Actionable ≠ memory.** If it's a to-do, it goes to Shelf, full stop.
+- **Actionable ≠ memory.** If it's a personal to-do or open loop, it goes to Shelf. If it is work assigned to an agent, route it to Symphony.
 - **Preserve continuity on rewrites.** When slimming or consolidating, don't lose content silently — fold into another file, or append to `journal/daily/YYYY-MM-DD/` before removing.
 - **Standing permission for memory writes.** The user has granted direct write-back permission — don't ask before updating memory when something durable surfaces. Note the write inline so they see what happened.
 - **Keep repo docs thin.** Workspace repo docs may describe repo-specific facts

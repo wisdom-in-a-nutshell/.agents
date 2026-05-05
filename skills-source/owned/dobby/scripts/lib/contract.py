@@ -34,7 +34,7 @@ ERROR_EXIT_CODES: dict[str, int] = {
     "E_IO": 1,          # file read/write failure
     "E_RUNTIME": 1,     # generic runtime error
     "E_DEPENDENCY": 4,  # external tool missing, network unavailable
-    "E_AUTH": 3,        # authentication failure (Things Cloud, etc.)
+    "E_AUTH": 3,        # authentication failure (calendar bridge/backend, etc.)
     "E_TIMEOUT": 5,     # remote call timed out
 }
 

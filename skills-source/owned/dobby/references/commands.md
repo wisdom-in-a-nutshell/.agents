@@ -55,15 +55,20 @@ CLI `memory write` does not create files. Use `Write` for:
 - New area sub-files.
 - Any first-time file.
 
-## Tasks (Shelf)
+## Shelf Open Loops
 
-Shelf is the file-based task/open-loop surface:
+Shelf is the workspace-local personal open-loop surface. It is the only task
+state Dobby workspace operations use:
 
 ```text
 state/shelf.json
 ```
 
-When working through the iPhone boundary, use the CodexClaw gateway endpoints:
+Use Shelf for work assigned to the user: follow-ups, reminders, purchases,
+small tasks, and concrete one-off actions. Use Symphony for work assigned to
+Dobby as an agent.
+
+When working through the iPhone boundary, use the mobile-gateway endpoints:
 
 ```bash
 curl -sS "http://127.0.0.1:8787/v1/shelf?surfaceKey=ios:local-smoke"
@@ -79,11 +84,13 @@ When working directly inside the workspace, read/write the JSON carefully:
 - `kind`: only `do`, `buy`, `remember`
 - `showAt`: when it surfaces
 - `dueAt`: when it is owed
-- `isNow`: max two open items
+- `isNow`: uncapped soft focus signal
 - defer: keep `status: "open"`, update `showAt`, increment `deferCount`, set `lastDeferredAt`
 - drop: set `status: "dropped"` and add `dropReason` when meaningful
 
 Increment `revision` and update top-level `updatedAt` on every write.
+If many open items are `isNow: true`, name the overload and help the user choose;
+do not reject the write or auto-bump items.
 
 ## Calendar
 

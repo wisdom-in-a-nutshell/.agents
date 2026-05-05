@@ -26,7 +26,7 @@ Confirm in one line: "Added to `soul.md` `## About <User>` under Communication p
 → `$HOME/.agents/skills-source/owned/dobby/scripts/dobby-calendar week` or `$HOME/.agents/skills-source/owned/dobby/scripts/dobby-calendar today`. Use `--all-calendars` only when the user asks for an audit or cross-account search.
 
 **"What's in my inbox?"**
-→ Shelf has no inbox. Read Later (`open` items without `showAt`) and ask whether stale items should be scheduled, kept, or dropped.
+→ Shelf has no inbox and no project hierarchy. Read Later (`open` items without `showAt`) and ask whether stale items should be scheduled, kept, or dropped.
 
 **"What do you know about <area>?"**
 → `$HOME/.agents/skills-source/owned/dobby/scripts/dobby-memory read --section area.<area>.<area>` (single main file). Surface "Current state" section first. Load the log only if asked.
@@ -51,7 +51,13 @@ Propose the destination; do the write.
 ## Tasks
 
 **"Add a task to X"** / "Remind me to X" / "I need to X"
-→ Add one Shelf item to `state/shelf.json` or through the mobile-gateway Shelf API. Default `kind` to `do`; use `showAt` for when it should surface and `dueAt` only for a real deadline.
+→ If the item is assigned to the user, add one Shelf item to `state/shelf.json` or through the mobile-gateway Shelf API. Default `kind` to `do`; use `showAt` for when it should surface and `dueAt` only for a real deadline.
+
+**"Have Dobby do X"** / "Create agent work for X"
+→ This is not Shelf. Route to Symphony, because the work is assigned to Dobby as an agent.
+
+**"Pin X to Now"**
+→ Set `isNow: true`. Now is uncapped; if the list is overloaded, name that and help the user choose, but do not reject the operation.
 
 **"Mark X done"**
 → Find the matching Shelf item, set `status: "done"`, clear `isNow`, set `completedAt`, increment `revision`, and update `updatedAt`.

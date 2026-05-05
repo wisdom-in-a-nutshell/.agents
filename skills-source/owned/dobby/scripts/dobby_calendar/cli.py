@@ -81,7 +81,7 @@ def _backend_order() -> list[str]:
     pref = _backend_preference()
     if pref == "auto":
         # Prefer the native Dobby EventKit helper. It has its own stable macOS
-        # Calendar permission identity, so it works from Codex.app/Claude/etc.
+        # Calendar permission identity, so it works across Dobby caller apps.
         # Fall back to Homebrew `ical` for machines that have not installed the
         # helper yet or when terminal-granted ical access is the only available
         # path.
@@ -410,8 +410,8 @@ def _run_backend(
                 raise
             continue
     if errors:
-        # Prefer surfacing auth failures because that is the common Codex.app
-        # issue and the hint is actionable.
+        # Prefer surfacing auth failures because caller-app permission mismatch
+        # is common and the hint is actionable.
         for _, err in errors:
             if _err_code(err) == "E_AUTH":
                 raise err

@@ -85,10 +85,12 @@ Generated or synced data that is semantically part of an area still lives under 
 ## Shelf
 
 ### `state/shelf.json`
-- **Holds:** Dobby Shelf, the canonical local-first task/open-loop state.
+- **Holds:** Dobby Shelf, the canonical local-first personal open-loop state.
 - **Clock:** fast; changes whenever a task is added, completed, deferred, or dropped.
-- **Write pattern:** structured JSON rewrite with `revision` increment and `updatedAt` update. Prefer the CodexClaw mobile-gateway Shelf API when acting through the app boundary; direct agent writes are acceptable inside the workspace if schema, revision, and timestamps are preserved.
+- **Write pattern:** structured JSON rewrite with `revision` increment and `updatedAt` update. Prefer the mobile-gateway Shelf API when acting through the app boundary; direct agent writes are acceptable inside the workspace if schema, revision, and timestamps are preserved.
 - **Rule:** statuses are only `open`, `done`, and `dropped`. Deferral is not a status; keep the item open, update `showAt`, increment `deferCount`, and set `lastDeferredAt`.
+- **Boundary:** Shelf is for work assigned to the user. Symphony is for work assigned to Dobby as an agent. Shelf has no project hierarchy.
+- **Now:** `isNow` is an uncapped soft focus signal. Too many Now items is coaching context, not a schema violation.
 
 ## What's intentionally absent
 

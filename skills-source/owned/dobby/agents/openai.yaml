@@ -1,4 +1,4 @@
 interface:
   display_name: "Dobby"
-  short_description: "Operate a Dobby workspace: memory, task routing, calendar."
-  default_prompt: "Where does this go in memory?"
+  short_description: "Operate a Dobby workspace: memory, Shelf, journal, calendar."
+  default_prompt: "Where should this live in Dobby?"

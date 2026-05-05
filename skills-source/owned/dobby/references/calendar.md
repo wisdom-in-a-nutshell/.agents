@@ -4,12 +4,12 @@ The Dobby Calendar Bridge is the skill-owned, machine-local EventKit permission 
 
 ## Why it exists
 
-macOS Calendar privacy grants are tied to the process/app identity that touches EventKit. Terminal-launched Codex can work when Ghostty/bash has Calendar access, while Codex.app can fail because macOS sees `com.openai.codex` as a different app. Shell changes inside Codex.app do not fix that attribution boundary.
+macOS Calendar privacy grants are tied to the process/app identity that touches EventKit. One caller app may work while another fails because macOS sees them as different apps. Shell changes inside the caller do not fix that attribution boundary.
 
 The bridge gives Dobby one stable local identity:
 
 ```text
-Codex.app / Claude / Terminal
+Dobby callers
         ↓
 dobby-calendar CLI
         ↓
