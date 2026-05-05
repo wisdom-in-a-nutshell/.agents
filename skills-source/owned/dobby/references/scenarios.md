@@ -48,7 +48,7 @@ Confirm in one line: "Added to `soul.md` `## About <User>` under Communication p
 
 Propose the destination; do the write.
 
-## Tasks
+## Shelf
 
 **"Add a task to X"** / "Remind me to X" / "I need to X"
 → If the item is assigned to the user, add one Shelf item to `state/shelf.json` or through the mobile-gateway Shelf API. Default `kind` to `do`; use `showAt` for when it should surface and `dueAt` only for a real deadline.

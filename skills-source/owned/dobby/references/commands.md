@@ -57,8 +57,8 @@ CLI `memory write` does not create files. Use `Write` for:
 
 ## Shelf Open Loops
 
-Shelf is the workspace-local personal open-loop surface. It is the only task
-state Dobby workspace operations use:
+Shelf is the workspace-local personal open-loop surface. It is the only
+personal open-loop state Dobby workspace operations use:
 
 ```text
 state/shelf.json

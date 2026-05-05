@@ -111,12 +111,12 @@ Shelf does not use a project hierarchy. Area names for memory remain discoverabl
 For the full file-by-file contract, see `references/files.md`.
 For user-intent-to-action mappings, see `references/scenarios.md`.
 
-## Tasks (Shelf)
+## Shelf
 
 Shelf is Dobby's personal open-loop surface. It holds things assigned to the user:
-tasks, follow-ups, reminders, small purchases, and concrete one-off actions.
-It is not chat history, memory canon, an external task-app database, or the
-Symphony agent-work queue.
+small tasks, follow-ups, reminders, purchases, and concrete one-off actions.
+It is not chat history, memory canon, an external app database, or the Symphony
+agent-work queue.
 
 Canonical state lives in the workspace:
 
@@ -152,7 +152,7 @@ Use Symphony instead of Shelf when the item is work assigned to Dobby as an
 agent. Shelf is for the user's visible personal loops; Symphony is for local
 agent work.
 
-Default for ambiguous new tasks: add a plain `open` Shelf item with no `showAt`
+Default for ambiguous new Shelf items: add a plain `open` item with no `showAt`
 so it lands in Later. Use `showAt` for when it should surface and `dueAt` only
 for a real deadline.
 
@@ -181,7 +181,7 @@ Calendar operations go through the skill-bundled EventKit wrapper: `$HOME/.agent
 - **Standing permission for memory writes.** The user has granted direct write-back permission — don't ask before updating memory when something durable surfaces. Note the write inline so they see what happened.
 - **Keep repo docs thin.** Workspace repo docs may describe repo-specific facts
   such as area names, host topology, local secret mapping, and setup steps. Do
-  not duplicate command recipes, CLI internals, backend behavior, or task/client
+  not duplicate command recipes, CLI internals, backend behavior, or Shelf/client
   policy there; keep those in this skill and point repo docs here.
 
 ## Delegation
