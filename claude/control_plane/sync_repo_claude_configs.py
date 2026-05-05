@@ -59,6 +59,8 @@ def should_skip_walk_dir(path: Path, repo_root_path: Path) -> bool:
         ".next",
         ".turbo",
         "coverage",
+        "tmp",
+        ".tmp",
         "__pycache__",
         ".venv",
         "venv",
