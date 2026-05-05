@@ -7,8 +7,9 @@ Use this skill whenever designing or reviewing a command-line client tool that i
 1. Read `09-agent-first-contract.md`.
 2. Apply `10-agent-must-should-checklist.md`.
 3. Validate with `11-agent-test-matrix-template.md`.
-4. Use section files `02` to `07` for deeper design choices.
-5. Use `08-quick-review-checklist.md` as extended coverage.
+4. Use `12-delivery-route-selection.md` when the CLI chooses between local, remote, beta, cloud, or smoke-test delivery routes.
+5. Use section files `02` to `07` for deeper design choices.
+6. Use `08-quick-review-checklist.md` as extended coverage.
 
 ## Working Modes
 
@@ -41,6 +42,7 @@ Use this skill whenever designing or reviewing a command-line client tool that i
 - `09-agent-first-contract.md`: required agent contract.
 - `10-agent-must-should-checklist.md`: agent-focused quality gate.
 - `11-agent-test-matrix-template.md`: validation template.
+- `12-delivery-route-selection.md`: local/remote/cloud/beta delivery route selection contract.
 
 ## Output Requirement
 

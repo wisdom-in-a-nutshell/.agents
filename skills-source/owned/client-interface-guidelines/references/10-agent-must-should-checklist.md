@@ -19,6 +19,7 @@ Use this checklist for agent-native CLI quality gates.
 - [ ] Supports retry-safe or resumable behavior for long operations.
 - [ ] Keeps interface changes additive, or documents deprecation before breaking.
 - [ ] Does not change the semantic shape of the primary result based on TTY detection.
+- [ ] For multi-route delivery commands, reports requested route, selected route, considered routes, route reason codes, and final delivery state.
 
 ## SHOULD
 
@@ -32,5 +33,6 @@ Use this checklist for agent-native CLI quality gates.
 - [ ] Uses a sparse default heartbeat for long waits, around `60s` unless richer state-change events are available.
 - [ ] Suppresses per-poll duplicate progress lines when the observable state has not changed, while still emitting sparse long-wait heartbeats.
 - [ ] Provides clear post-action state summary.
+- [ ] Provides route inspection or doctor commands when delivery depends on device, host, provider, or credential availability.
 - [ ] Keeps help examples focused on common tasks first.
 - [ ] Includes compact terminal docs plus richer web docs.

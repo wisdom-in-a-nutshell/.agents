@@ -36,3 +36,14 @@ Use this matrix to validate the CLI contract before release.
 | SEC-01 | Secret via flag attempt | `tool login --password ...` | rejected with guidance |
 | SEC-02 | Secret redaction | debug/logging path | no secret values in output |
 | SEC-03 | Secret input path | file/stdin secret input | accepted securely |
+
+## Delivery Route Tests
+
+| ID | Scenario | Command | Expected |
+| --- | --- | --- | --- |
+| DR-01 | Auto selects direct device | `tool deliver --route auto --json` with reachable device | `selected_route=direct_device`, other routes listed with reason codes |
+| DR-02 | Auto falls back to internal beta | `tool deliver --route auto --json` with no device and valid beta credentials | `selected_route=internal_beta`, direct route marked unavailable |
+| DR-03 | Explicit direct route unavailable | `tool deliver --route direct-device --json --no-input` with no device | non-zero exit, `error.code=E_DEVICE_UNAVAILABLE` |
+| DR-04 | Beta agreement blocked | `tool deliver --route internal-beta --json --no-input` with provider agreement missing | non-zero exit, `error.code=E_BETA_AGREEMENT_REQUIRED`, actionable hint |
+| DR-05 | Dry-run route plan | `tool deliver --route auto --dry-run --json` | no state-changing upload/install; reports route that would run |
+| DR-06 | Async processing | `tool deliver --route internal-beta --no-wait --json` | returns provider ids/status URL and `result.state=uploaded_processing` |

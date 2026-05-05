@@ -89,6 +89,23 @@ Minimum mapping:
 - For wait-heavy commands, a sparse heartbeat cadence around `60s` is a good default unless the tool has richer state transitions to report.
 - Suppress per-poll duplicate progress lines when the observable state has not changed, but do not go completely silent on long waits; keep the sparse heartbeat.
 
+## Delivery Route Rules
+
+When a command chooses between multiple delivery or install paths, expose the choice in structured output.
+
+Examples include direct device install, remote host install, internal beta distribution, cloud build, hosted device run, and server smoke test.
+
+The result should include:
+
+- `requested_route`: what the caller asked for, such as `"auto"` or `"internal_beta"`.
+- `selected_route`: what actually ran.
+- `routes`: every route considered with availability, decision, and stable reason code.
+- `result.state`: final state such as `"installed_launched"`, `"uploaded_processing"`, `"available"`, or `"blocked"`.
+- `next_action`: `null` on a complete success, or a concrete resumable action when more work remains.
+
+Do not let auto-routing be implicit.
+If a local route fails over to a remote beta route, that must be visible in the final JSON.
+
 ## Anti-Patterns
 
 - TTY-sensitive changes to output structure.

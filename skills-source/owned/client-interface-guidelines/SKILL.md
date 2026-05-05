@@ -18,8 +18,9 @@ Treat operator inspection as a secondary debugging and status layer, not as a co
 2. Start with `references/09-agent-first-contract.md`.
 3. Apply `references/10-agent-must-should-checklist.md`.
 4. Validate using `references/11-agent-test-matrix-template.md`.
-5. Use `references/02` to `07` for detailed guidance.
-6. Optionally run `references/08-quick-review-checklist.md` for full coverage.
+5. Use `references/12-delivery-route-selection.md` when a CLI chooses between local device, remote beta, cloud build, or other delivery routes.
+6. Use `references/02` to `07` for detailed guidance.
+7. Optionally run `references/08-quick-review-checklist.md` for full coverage.
 
 ## Reference Files
 
@@ -35,6 +36,7 @@ Treat operator inspection as a secondary debugging and status layer, not as a co
 - `references/09-agent-first-contract.md`
 - `references/10-agent-must-should-checklist.md`
 - `references/11-agent-test-matrix-template.md`
+- `references/12-delivery-route-selection.md`
 
 ## Non-Negotiables
 
