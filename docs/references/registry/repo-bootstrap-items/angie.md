@@ -12,6 +12,7 @@ global_skills:
   - "agent-browser"
   - "agent-native-repo-playbook"
   - "architecture-docs"
+  - "client-interface-guidelines"
   - "defuddle"
   - "find-skills"
   - "pdf"
@@ -21,7 +22,6 @@ global_skills:
   - "symphony"
   - "things-client"
 repo_skills:
-  - "client-interface-guidelines"
   - "dobby"
   - "imagegen"
   - "journal-checkin"

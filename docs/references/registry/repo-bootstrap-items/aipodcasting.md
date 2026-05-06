@@ -12,6 +12,7 @@ global_skills:
   - "agent-browser"
   - "agent-native-repo-playbook"
   - "architecture-docs"
+  - "client-interface-guidelines"
   - "defuddle"
   - "find-skills"
   - "pdf"
@@ -23,7 +24,6 @@ global_skills:
 repo_skills:
   - "ai-podcasting"
   - "azure-webapp-config"
-  - "client-interface-guidelines"
   - "modal-function-sync"
   - "show-password-setup"
   - "vercel-react-best-practices"

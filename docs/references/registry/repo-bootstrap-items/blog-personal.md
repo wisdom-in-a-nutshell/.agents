@@ -12,6 +12,7 @@ global_skills:
   - "agent-browser"
   - "agent-native-repo-playbook"
   - "architecture-docs"
+  - "client-interface-guidelines"
   - "defuddle"
   - "find-skills"
   - "pdf"
@@ -23,7 +24,6 @@ global_skills:
 repo_skills:
   - "adi-writing"
   - "aip-company"
-  - "client-interface-guidelines"
   - "imagegen"
   - "pretty-mermaid"
   - "vercel-react-best-practices"

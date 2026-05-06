@@ -2,7 +2,7 @@
 repo_name: "symphony"
 path: "~/GitHub/symphony"
 mcp_count: 1
-skill_count: 12
+skill_count: 13
 repo_local_skill_count: 0
 model: "gpt-5.5"
 reasoning: "high"
@@ -13,6 +13,7 @@ global_skills:
   - "agent-browser"
   - "agent-native-repo-playbook"
   - "architecture-docs"
+  - "client-interface-guidelines"
   - "defuddle"
   - "find-skills"
   - "pdf"
@@ -28,6 +29,7 @@ skills:
   - "agent-browser"
   - "agent-native-repo-playbook"
   - "architecture-docs"
+  - "client-interface-guidelines"
   - "codex-app-server"
   - "defuddle"
   - "find-skills"

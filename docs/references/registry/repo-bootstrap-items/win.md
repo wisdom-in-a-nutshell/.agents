@@ -12,6 +12,7 @@ global_skills:
   - "agent-browser"
   - "agent-native-repo-playbook"
   - "architecture-docs"
+  - "client-interface-guidelines"
   - "defuddle"
   - "find-skills"
   - "pdf"
@@ -22,7 +23,6 @@ global_skills:
   - "things-client"
 repo_skills:
   - "azure-webapp-config"
-  - "client-interface-guidelines"
   - "media-toolkit"
   - "modal-function-sync"
   - "show-password-setup"
