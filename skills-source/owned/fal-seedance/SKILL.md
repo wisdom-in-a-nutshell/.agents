@@ -14,10 +14,12 @@ Use this skill when a task involves fal.ai Seedance, reference-to-video, image-t
 - Secret lane: machine-local shared integration `fal`
 - Secret mapping: `/Users/dobby/GitHub/scripts/sync/machine-secrets/fal.env.map`
 - Generated secret file: `~/.secrets/fal/env`
-- CLI: `node scripts/fal_seedance_ref2v.mjs`
-- Client contract: `docs/references/fal-seedance-client.md`
+- CLI: `python3 .claude/skills/fal-seedance/scripts/fal_seedance_ref2v.py` (Python, uses the official `fal-client` PyPI SDK)
+- Client contract: `.claude/skills/fal-seedance/references/client.md`
 
 The CLI reads `~/.secrets/fal/env` directly. Do not pass fal keys through flags, tracked files, or chat-visible shell commands.
+
+If `fal-client` isn't installed: `python3 -m pip install --user --break-system-packages fal-client`.
 
 ## Workflow
 
@@ -33,19 +35,19 @@ The CLI reads `~/.secrets/fal/env` directly. Do not pass fal keys through flags,
 Validate the local secret bootstrap:
 
 ```bash
-node scripts/fal_seedance_ref2v.mjs validate
+python3 .claude/skills/fal-seedance/scripts/fal_seedance_ref2v.py validate
 ```
 
 Verify fal provider connectivity without video inference:
 
 ```bash
-node scripts/fal_seedance_ref2v.mjs doctor --remote
+python3 .claude/skills/fal-seedance/scripts/fal_seedance_ref2v.py doctor --remote
 ```
 
 Dry-run a canary:
 
 ```bash
-node scripts/fal_seedance_ref2v.mjs run \
+python3 .claude/skills/fal-seedance/scripts/fal_seedance_ref2v.py run \
   --project <project-id> \
   --name portrait-motion-canary \
   --ref projects/<project-id>/storyboard/frame-01.png \
@@ -60,7 +62,7 @@ Run after the dry-run looks right by removing `--dry-run`.
 Multi-reference storyboard canary:
 
 ```bash
-node scripts/fal_seedance_ref2v.mjs run \
+python3 .claude/skills/fal-seedance/scripts/fal_seedance_ref2v.py run \
   --project <project-id> \
   --name anchored-portrait-motion \
   --ref projects/<project-id>/storyboard/primary-frame.png \
