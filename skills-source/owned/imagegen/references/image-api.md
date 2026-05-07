@@ -6,11 +6,10 @@
 
 ## Models
 - Default: `gpt-image-2`
-- Legacy overrides: `gpt-image-1.5` for existing validated workflows, `gpt-image-1-mini` for faster/lower-cost generation.
 
 ## Core parameters (generate + edit)
 - `prompt`: text prompt
-- `model`: image model
+- `model`: `gpt-image-2`
 - `n`: number of images (1-10)
 - `size`: `1024x1024`, `1536x1024`, `1024x1536`, or `auto`
 - `quality`: `low`, `medium`, `high`, or `auto`
@@ -22,7 +21,6 @@
 ## Edit-specific parameters
 - `image`: one or more input images (first image is primary)
 - `mask`: optional mask image (same size, alpha channel required)
-- `input_fidelity`: legacy edit parameter (`low` or `high`) for older GPT image models. Do not pass it for `gpt-image-2`.
 
 ## Output
 - `data[]` list with `b64_json` per image
@@ -33,5 +31,5 @@
 - Masking is prompt-guided; exact shapes are not guaranteed.
 - Large sizes and high quality increase latency and cost.
 - For fast iteration or latency-sensitive runs, start with `quality=low`; raise to `high` for text-heavy or detail-critical outputs.
-- For strict `gpt-image-2` edits, repeat invariants in the prompt instead of using `input_fidelity`.
-- For alpha cutouts, generate a clean plain-background cutout first, then use deterministic post-processing or an explicit legacy model override if required.
+- For strict edits, repeat invariants in the prompt.
+- For alpha cutouts, generate a clean plain-background cutout first, then use deterministic post-processing if required.

@@ -54,8 +54,6 @@ Practical size convention:
 
 ## Quality
 - `--quality` works for `generate`, `edit`, and `generate-batch`: `low|medium|high|auto`.
-- `gpt-image-2` does not need `--input-fidelity`; the CLI omits it when the default model is used.
-- `--input-fidelity` remains available only for explicit legacy-model edit calls.
 
 Example:
 ```

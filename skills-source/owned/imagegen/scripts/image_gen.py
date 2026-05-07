@@ -28,7 +28,7 @@ DEFAULT_DOWNSCALE_SUFFIX = "-web"
 
 ALLOWED_SIZES = {"1024x1024", "1536x1024", "1024x1536", "auto"}
 ALLOWED_QUALITIES = {"low", "medium", "high", "auto"}
-ALLOWED_BACKGROUNDS = {"transparent", "opaque", "auto", None}
+ALLOWED_BACKGROUNDS = {"opaque", "auto", None}
 
 MAX_IMAGE_BYTES = 50 * 1024 * 1024
 MAX_BATCH_JOBS = 500
@@ -103,17 +103,12 @@ def _validate_quality(quality: str) -> None:
 
 def _validate_background(background: Optional[str]) -> None:
     if background not in ALLOWED_BACKGROUNDS:
-        _die("background must be one of transparent, opaque, or auto.")
+        _die("background must be opaque or auto. gpt-image-2 does not support transparent backgrounds.")
 
 
-def _validate_transparency(background: Optional[str], output_format: str) -> None:
-    if background == "transparent" and output_format not in {"png", "webp"}:
-        _die("transparent background requires output-format png or webp.")
-
-
-def _validate_model_options(model: str, background: Optional[str]) -> None:
-    if model == "gpt-image-2" and background == "transparent":
-        _die('gpt-image-2 does not currently support background="transparent".')
+def _validate_model(model: str) -> None:
+    if model != DEFAULT_MODEL:
+        _die(f"Only {DEFAULT_MODEL} is supported by this skill.")
 
 
 def _validate_generate_payload(payload: Dict[str, Any]) -> None:
@@ -123,10 +118,11 @@ def _validate_generate_payload(payload: Dict[str, Any]) -> None:
     size = str(payload.get("size", DEFAULT_SIZE))
     quality = str(payload.get("quality", DEFAULT_QUALITY))
     background = payload.get("background")
+    model = str(payload.get("model", DEFAULT_MODEL))
+    _validate_model(model)
     _validate_size(size)
     _validate_quality(quality)
     _validate_background(background)
-    _validate_model_options(str(payload.get("model", DEFAULT_MODEL)), background)
     oc = payload.get("output_compression")
     if oc is not None and not (0 <= int(oc) <= 100):
         _die("output_compression must be between 0 and 100")
@@ -518,7 +514,6 @@ async def _run_generate_batch(args: argparse.Namespace) -> int:
 
             _validate_generate_payload(job_payload)
             effective_output_format = _normalize_output_format(job_payload.get("output_format"))
-            _validate_transparency(job_payload.get("background"), effective_output_format)
             if "output_format" in job_payload:
                 job_payload["output_format"] = effective_output_format
 
@@ -569,7 +564,6 @@ async def _run_generate_batch(args: argparse.Namespace) -> int:
         n = int(payload.get("n", 1))
         _validate_generate_payload(payload)
         effective_output_format = _normalize_output_format(payload.get("output_format"))
-        _validate_transparency(payload.get("background"), effective_output_format)
         if "output_format" in payload:
             payload["output_format"] = effective_output_format
         outputs = _job_output_paths(
@@ -646,7 +640,6 @@ def _generate(args: argparse.Namespace) -> None:
     payload = {k: v for k, v in payload.items() if v is not None}
 
     output_format = _normalize_output_format(args.output_format)
-    _validate_transparency(args.background, output_format)
     if "output_format" in payload:
         payload["output_format"] = output_format
     output_paths = _build_output_paths(args.out, output_format, args.n, args.out_dir)
@@ -701,15 +694,9 @@ def _edit(args: argparse.Namespace) -> None:
         "output_compression": args.output_compression,
         "moderation": args.moderation,
     }
-    if args.input_fidelity:
-        if args.model == "gpt-image-2":
-            _warn("gpt-image-2 ignores --input-fidelity; omitting it from the request.")
-        else:
-            payload["input_fidelity"] = args.input_fidelity
     payload = {k: v for k, v in payload.items() if v is not None}
 
     output_format = _normalize_output_format(args.output_format)
-    _validate_transparency(args.background, output_format)
     if "output_format" in payload:
         payload["output_format"] = output_format
     output_paths = _build_output_paths(args.out, output_format, args.n, args.out_dir)
@@ -804,7 +791,6 @@ class _FileBundle:
 
 
 def _add_shared_args(parser: argparse.ArgumentParser) -> None:
-    parser.add_argument("--model", default=DEFAULT_MODEL)
     parser.add_argument("--prompt")
     parser.add_argument("--prompt-file")
     parser.add_argument("--n", type=int, default=1)
@@ -838,6 +824,7 @@ def _add_shared_args(parser: argparse.ArgumentParser) -> None:
     # Post-processing (optional): generate an additional downscaled copy for fast web loading.
     parser.add_argument("--downscale-max-dim", type=int)
     parser.add_argument("--downscale-suffix", default=DEFAULT_DOWNSCALE_SUFFIX)
+    parser.set_defaults(model=DEFAULT_MODEL)
 
 
 def main() -> int:
@@ -863,7 +850,6 @@ def main() -> int:
     _add_shared_args(edit_parser)
     edit_parser.add_argument("--image", action="append", required=True)
     edit_parser.add_argument("--mask")
-    edit_parser.add_argument("--input-fidelity")
     edit_parser.set_defaults(func=_edit)
 
     args = parser.parse_args()
@@ -883,7 +869,7 @@ def main() -> int:
     _validate_size(args.size)
     _validate_quality(args.quality)
     _validate_background(args.background)
-    _validate_model_options(args.model, args.background)
+    _validate_model(args.model)
     _ensure_api_env(args.dry_run)
 
     args.func(args)

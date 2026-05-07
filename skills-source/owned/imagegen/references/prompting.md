@@ -1,4 +1,4 @@
-# Prompting best practices (GPT image models)
+# Prompting best practices (gpt-image-2)
 
 ## Contents
 - [Structure](#structure)
@@ -55,7 +55,7 @@
 ## Quality vs latency
 - For latency-sensitive runs, start at `quality=low` and only raise it if needed.
 - Use `quality=high` for text-heavy or detail-critical images.
-- For strict edits, repeat invariants clearly; `gpt-image-2` does not need `input_fidelity`.
+- For strict edits, repeat invariants clearly.
 
 ## Use-case tips
 Generate:

@@ -116,7 +116,7 @@ python3 -m pip install --user --break-system-packages openai pillow
 If installation isn't possible in this environment, tell the user which dependency is missing and how to install it locally.
 
 ## Defaults & rules
-- Use `gpt-image-2` by default. Override the model only when the user explicitly asks for another model or a known model-specific constraint requires it.
+- Use `gpt-image-2`.
 - Assume the user wants a new image unless they explicitly ask for an edit.
 - Unless the user specifies otherwise, call the CLI as if the default size is `1536x1024`.
 - Default size should generally bias toward `1536x1024` unless the user clearly wants square or portrait.
@@ -192,7 +192,7 @@ Augmentation rules:
 - Always classify the request into a taxonomy slug above and tailor constraints/composition/quality to that bucket. Use the slug to find the matching example in `references/sample-prompts.md`.
 - If the user gives a broad request (e.g., "Generate images for this website"), use judgment to propose tasteful, context-appropriate assets and map each to a taxonomy slug.
 - For edits, explicitly list invariants ("change only X; keep Y unchanged").
-- `gpt-image-2` does not currently support transparent backgrounds. For alpha cutouts, generate a clean plain-background cutout first, then use deterministic post-processing or an explicit legacy model override if required.
+- `gpt-image-2` does not currently support transparent backgrounds. For alpha cutouts, generate a clean plain-background cutout first, then use deterministic post-processing if required.
 - If any critical detail is missing and blocks success, ask a question; otherwise proceed.
 
 ## Examples
@@ -226,7 +226,7 @@ Constraints: change only the background; keep the product and its edges unchange
 - For edits, repeat invariants every iteration to reduce drift.
 - Iterate with single-change follow-ups.
 - For latency-sensitive runs, start with quality=low; use quality=high for text-heavy or detail-critical outputs.
-- For strict edits, repeat invariants clearly; `gpt-image-2` does not need `input_fidelity`.
+- For strict edits, repeat invariants clearly.
 - If results feel “tacky”, add a brief “Avoid:” line (stock-photo vibe; cheesy lens flare; oversaturated neon; harsh bloom; oversharpening; clutter) and specify restraint (“editorial”, “premium”, “subtle”).
 
 More principles: `references/prompting.md`. Copy/paste specs: `references/sample-prompts.md`.
