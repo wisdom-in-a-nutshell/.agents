@@ -183,7 +183,19 @@ def build_arg_parser() -> argparse.ArgumentParser:
     p.add_argument("--duration", default="auto", help="auto or integer 4..15.")
     p.add_argument("--resolution", default="1080p", choices=sorted(VALID_RESOLUTIONS))
     p.add_argument("--aspect-ratio", default="auto", choices=sorted(VALID_ASPECT_RATIOS))
-    p.add_argument("--endpoint", default=DEFAULT_ENDPOINT, choices=sorted(VALID_ENDPOINTS))
+    # Endpoint validation is per-subcommand (ref2v allows different endpoints
+    # than i2v, and i2v accepts both Seedance and Kling). Validate manually.
+    p.add_argument(
+        "--endpoint",
+        default=DEFAULT_ENDPOINT,
+        help=(
+            "fal endpoint. ref2v default: bytedance/seedance-2.0/reference-to-video. "
+            "i2v defaults to bytedance/seedance-2.0/image-to-video; "
+            "also accepts fal-ai/kling-video/o3/{standard,pro,4k}/image-to-video and "
+            "fal-ai/kling-video/v3/{standard,pro}/image-to-video. "
+            "Kling endpoints ignore --resolution and --generate-audio."
+        ),
+    )
     p.add_argument("--generate-audio", dest="generate_audio", action="store_true")
     p.add_argument("--no-generate-audio", dest="generate_audio", action="store_false")
     p.set_defaults(generate_audio=False)
