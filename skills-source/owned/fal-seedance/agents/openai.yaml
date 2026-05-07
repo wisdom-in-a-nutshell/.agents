@@ -1,0 +1,3 @@
+display_name: fal Seedance
+short_description: Run fal.ai Seedance reference-to-video canaries with local refs.
+default_prompt: Use fal Seedance reference-to-video for this project. Start with a dry-run, keep outputs under the project seedance folder, and preserve the JSON receipt.

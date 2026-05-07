@@ -324,6 +324,16 @@
       "upstream_ref": "-"
     },
     {
+      "skill": "fal-seedance",
+      "origin": "owned",
+      "scope": "repo",
+      "repos": [
+        "adithyan-ai-videos"
+      ],
+      "source_path": "skills-source/owned/fal-seedance",
+      "upstream_ref": "-"
+    },
+    {
       "skill": "skill-creator",
       "origin": "external",
       "scope": "global",
