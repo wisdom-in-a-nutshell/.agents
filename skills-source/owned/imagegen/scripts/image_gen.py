@@ -20,6 +20,13 @@ from typing import Any, Dict, Iterable, List, Optional, Tuple
 from io import BytesIO
 
 DEFAULT_MODEL = "gpt-image-2"
+ALLOWED_MODELS = {
+    "gpt-image-2",
+    # gemini-3-pro-image-preview routes to Gemini (Nano Banana Pro) via the
+    # litellm proxy. Use this when Azure's gpt-image-2 moderation filter blocks
+    # an edit (e.g. real-people compositing, faces of minors).
+    "gemini-3-pro-image-preview",
+}
 DEFAULT_SIZE = "1536x1024"
 DEFAULT_QUALITY = "auto"
 DEFAULT_OUTPUT_FORMAT = "png"
@@ -107,8 +114,8 @@ def _validate_background(background: Optional[str]) -> None:
 
 
 def _validate_model(model: str) -> None:
-    if model != DEFAULT_MODEL:
-        _die(f"Only {DEFAULT_MODEL} is supported by this skill.")
+    if model not in ALLOWED_MODELS:
+        _die(f"Model not supported by this skill: {model}. Use one of: {', '.join(sorted(ALLOWED_MODELS))}")
 
 
 def _validate_generate_payload(payload: Dict[str, Any]) -> None:
@@ -820,6 +827,10 @@ def _add_shared_args(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--text")
     parser.add_argument("--constraints")
     parser.add_argument("--negative")
+
+    # Model selection. Defaults to gpt-image-2 via Azure; pass --model gemini-3-pro-image-preview
+    # to route through the litellm proxy to Gemini when Azure moderation blocks an edit.
+    parser.add_argument("--model", default=DEFAULT_MODEL, choices=sorted(ALLOWED_MODELS))
 
     # Post-processing (optional): generate an additional downscaled copy for fast web loading.
     parser.add_argument("--downscale-max-dim", type=int)
