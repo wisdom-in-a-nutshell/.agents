@@ -9,8 +9,14 @@ Use this skill when a task involves fal.ai Seedance, reference-to-video, image-t
 
 ## Default Lane
 
-- Endpoint: `bytedance/seedance-2.0/reference-to-video` (full quality, supports 1080p, multi-action shots, director-level camera control). Pass `--endpoint bytedance/seedance-2.0/fast/reference-to-video` for the cheaper/faster variant when iterating on prompts cheaply.
-- Default resolution: `1080p`. Drop to `720p` or `480p` for cheaper canaries on the full endpoint, or use the fast endpoint (capped at 720p).
+- **ref2v** endpoint: `bytedance/seedance-2.0/reference-to-video` (full quality, supports 1080p, multi-action shots, director-level camera control). Pass `--endpoint bytedance/seedance-2.0/fast/reference-to-video` for the cheaper/faster variant when iterating on prompts cheaply.
+- **i2v** (image-to-video, deterministic start→end morph) supports both Seedance and Kling families:
+  - Seedance: `bytedance/seedance-2.0/image-to-video` (default), `bytedance/seedance-2.0/fast/image-to-video`
+  - Kling O3: `fal-ai/kling-video/o3/standard/image-to-video` (clean baseline), `fal-ai/kling-video/o3/pro/image-to-video` (higher quality, recommended when standard output looks soft/weird), `fal-ai/kling-video/o3/4k/image-to-video` (highest tier)
+  - Kling V3: `fal-ai/kling-video/v3/standard/image-to-video`, `fal-ai/kling-video/v3/pro/image-to-video`
+  - Kling endpoints don't accept `--resolution` or `--generate-audio`; the CLI strips them automatically.
+  - Switch from Seedance to Kling when Seedance shows chroma-noise on smooth/cream backgrounds.
+- Default resolution: `1080p` (Seedance only). Drop to `720p` or `480p` for cheaper canaries on the full endpoint, or use the fast endpoint (capped at 720p).
 - Secret lane: machine-local shared integration `fal`
 - Secret mapping: `/Users/dobby/GitHub/scripts/sync/machine-secrets/fal.env.map`
 - Generated secret file: `~/.secrets/fal/env`
@@ -58,6 +64,22 @@ python3 .claude/skills/fal-seedance/scripts/fal_seedance_ref2v.py run \
 ```
 
 Run after the dry-run looks right by removing `--dry-run`.
+
+Image-to-video (deterministic start→end morph) on Kling O3 Pro:
+
+```bash
+python3 .claude/skills/fal-seedance/scripts/fal_seedance_ref2v.py i2v \
+  --project <project-id> \
+  --name <beat-name> \
+  --start-image projects/<project-id>/keyframes/start.png \
+  --end-image projects/<project-id>/keyframes/end.png \
+  --endpoint fal-ai/kling-video/o3/pro/image-to-video \
+  --duration 5 --aspect-ratio 1:1 \
+  --prompt "<phased timing prompt>" \
+  --dry-run
+```
+
+Drop `--dry-run` to render. Use `o3/standard` for cheaper iterations and `o3/pro` once the prompt is locked and you want production quality. Long prompts can be passed via `--prompt-file` instead of `--prompt`.
 
 Multi-reference storyboard canary:
 
