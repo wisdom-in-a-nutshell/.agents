@@ -37,6 +37,18 @@ VALID_ENDPOINTS = {
 VALID_I2V_ENDPOINTS = {
     "bytedance/seedance-2.0/image-to-video",
     "bytedance/seedance-2.0/fast/image-to-video",
+    "fal-ai/kling-video/o3/standard/image-to-video",
+    "fal-ai/kling-video/o3/pro/image-to-video",
+    "fal-ai/kling-video/o3/4k/image-to-video",
+    "fal-ai/kling-video/v3/standard/image-to-video",
+    "fal-ai/kling-video/v3/pro/image-to-video",
+}
+KLING_I2V_ENDPOINTS = {
+    "fal-ai/kling-video/o3/standard/image-to-video",
+    "fal-ai/kling-video/o3/pro/image-to-video",
+    "fal-ai/kling-video/o3/4k/image-to-video",
+    "fal-ai/kling-video/v3/standard/image-to-video",
+    "fal-ai/kling-video/v3/pro/image-to-video",
 }
 DEFAULT_SECRET_ENV_FILE = Path.home() / ".secrets" / "fal" / "env"
 VALID_RESOLUTIONS = {"480p", "720p", "1080p"}
@@ -698,15 +710,21 @@ def cmd_run_i2v(opts: Options, started_at_ms: int, request_id: str) -> int:
     start_ref = _resolve_one("start_image", opts.start_image)
     end_ref = _resolve_one("end_image", opts.end_image)
 
+    # Branch payload construction by endpoint family. Seedance accepts
+    # resolution + generate_audio; Kling does not. Stable schema: kling
+    # branch is additive (no existing caller relied on those keys for
+    # Kling endpoints because Kling endpoints didn't exist before).
+    is_kling = opts.endpoint in KLING_I2V_ENDPOINTS
     planned_input: dict[str, Any] = {
         "prompt": prompt,
         "image_url": start_ref["url"] or f"upload://start",
         "end_image_url": end_ref["url"] or f"upload://end",
-        "resolution": opts.resolution,
         "duration": opts.duration,
         "aspect_ratio": opts.aspect_ratio,
-        "generate_audio": opts.generate_audio,
     }
+    if not is_kling:
+        planned_input["resolution"] = opts.resolution
+        planned_input["generate_audio"] = opts.generate_audio
     if opts.seed is not None:
         planned_input["seed"] = opts.seed
 
