@@ -29,9 +29,14 @@ from fal_client import StorageSettings
 
 SCHEMA_VERSION = "1.0"
 DEFAULT_ENDPOINT = "bytedance/seedance-2.0/reference-to-video"
+DEFAULT_I2V_ENDPOINT = "bytedance/seedance-2.0/image-to-video"
 VALID_ENDPOINTS = {
     "bytedance/seedance-2.0/reference-to-video",
     "bytedance/seedance-2.0/fast/reference-to-video",
+}
+VALID_I2V_ENDPOINTS = {
+    "bytedance/seedance-2.0/image-to-video",
+    "bytedance/seedance-2.0/fast/image-to-video",
 }
 DEFAULT_SECRET_ENV_FILE = Path.home() / ".secrets" / "fal" / "env"
 VALID_RESOLUTIONS = {"480p", "720p", "1080p"}
@@ -116,6 +121,8 @@ def read_secret_env_file(secret_env_file: str | Path) -> dict[str, Any]:
 class Options:
     command: str = "run"
     refs: list[str] = field(default_factory=list)
+    start_image: str | None = None
+    end_image: str | None = None
     video_urls: list[str] = field(default_factory=list)
     audio_urls: list[str] = field(default_factory=list)
     prompt: str | None = None
@@ -149,8 +156,10 @@ def build_arg_parser() -> argparse.ArgumentParser:
         description="fal Seedance Reference-to-Video CLI.",
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
-    p.add_argument("command", nargs="?", default="run", choices=["run", "validate", "doctor"])
-    p.add_argument("--ref", "--image-url", dest="refs", action="append", default=[], help="Reference image path or URL; repeat up to 9.")
+    p.add_argument("command", nargs="?", default="run", choices=["run", "i2v", "validate", "doctor"])
+    p.add_argument("--ref", "--image-url", dest="refs", action="append", default=[], help="(run) Reference image path or URL; repeat up to 9.")
+    p.add_argument("--start-image", dest="start_image", help="(i2v) Path/URL of the starting frame.")
+    p.add_argument("--end-image", dest="end_image", help="(i2v) Path/URL of the ending frame (deterministic morph target).")
     p.add_argument("--video-url", dest="video_urls", action="append", default=[], help="Reference video URL; repeat up to 3.")
     p.add_argument("--audio-url", dest="audio_urls", action="append", default=[], help="Reference audio URL; repeat up to 3.")
     p.add_argument("--prompt", help="Seedance prompt. Refer to images as @Image1, @Image2, ...")
@@ -187,6 +196,8 @@ def parse_args(argv: list[str]) -> Options:
     return Options(
         command=ns.command,
         refs=list(ns.refs),
+        start_image=ns.start_image,
+        end_image=ns.end_image,
         video_urls=list(ns.video_urls),
         audio_urls=list(ns.audio_urls),
         prompt=ns.prompt,
@@ -623,6 +634,184 @@ def cmd_run(opts: Options, started_at_ms: int, request_id: str) -> int:
     return 0
 
 
+def cmd_run_i2v(opts: Options, started_at_ms: int, request_id: str) -> int:
+    if not opts.prompt and not opts.prompt_file:
+        fail("E_USAGE", "Missing prompt", exit_code=2, hint="Pass --prompt <text> or --prompt-file <path>.")
+    if opts.prompt and opts.prompt_file:
+        fail("E_USAGE", "Use either --prompt or --prompt-file, not both", exit_code=2)
+    if not opts.start_image:
+        fail("E_USAGE", "Missing --start-image", exit_code=2, hint="Pass --start-image <path-or-url>. i2v requires a starting frame.")
+    if not opts.end_image:
+        fail(
+            "E_USAGE",
+            "Missing --end-image",
+            exit_code=2,
+            hint="Pass --end-image <path-or-url>. The whole point of i2v over ref2v is deterministic end-frame conditioning; pass it.",
+        )
+    # i2v endpoint default + validation.
+    if opts.endpoint == DEFAULT_ENDPOINT:
+        opts.endpoint = DEFAULT_I2V_ENDPOINT
+    if opts.endpoint not in VALID_I2V_ENDPOINTS:
+        fail(
+            "E_USAGE",
+            f"Invalid i2v endpoint: {opts.endpoint}",
+            exit_code=2,
+            hint=f"Use one of: {', '.join(sorted(VALID_I2V_ENDPOINTS))}",
+        )
+    if opts.endpoint == "bytedance/seedance-2.0/fast/image-to-video" and opts.resolution == "1080p":
+        fail(
+            "E_USAGE",
+            "1080p is not supported by the fast i2v endpoint",
+            exit_code=2,
+            hint="Use --endpoint bytedance/seedance-2.0/image-to-video for 1080p, or pass --resolution 720p.",
+        )
+    if opts.duration != "auto":
+        try:
+            d = int(opts.duration)
+        except (TypeError, ValueError):
+            fail("E_USAGE", f"Invalid duration: {opts.duration}", exit_code=2, hint="Use auto or an integer from 4 to 15.")
+        if d < 4 or d > 15:
+            fail("E_USAGE", f"Invalid duration: {opts.duration}", exit_code=2, hint="Use auto or an integer from 4 to 15.")
+        opts.duration = d
+
+    paths = resolve_output_paths(opts)
+    prompt = read_prompt(opts)
+
+    secret = None
+    if not opts.dry_run:
+        secret = read_secret_env_file(opts.secret_env_file)
+        os.environ["FAL_KEY"] = secret["value"]
+
+    # Upload start + end images (or pass through URLs).
+    def _resolve_one(label: str, value: str) -> dict[str, Any]:
+        if is_url(value):
+            return {"role": label, "source": value, "url": value, "uploaded": False}
+        if opts.dry_run:
+            abs_path = Path(value).resolve()
+            if not abs_path.exists():
+                fail("E_NOT_FOUND", f"{label} file not found: {abs_path}", exit_code=2)
+            return {"role": label, "source": str(abs_path), "url": None, "uploaded": False, "upload_required": True, "bytes": abs_path.stat().st_size}
+        u = upload_local_file(value, opts.lifecycle)
+        u["role"] = label
+        return u
+
+    start_ref = _resolve_one("start_image", opts.start_image)
+    end_ref = _resolve_one("end_image", opts.end_image)
+
+    planned_input: dict[str, Any] = {
+        "prompt": prompt,
+        "image_url": start_ref["url"] or f"upload://start",
+        "end_image_url": end_ref["url"] or f"upload://end",
+        "resolution": opts.resolution,
+        "duration": opts.duration,
+        "aspect_ratio": opts.aspect_ratio,
+        "generate_audio": opts.generate_audio,
+    }
+    if opts.seed is not None:
+        planned_input["seed"] = opts.seed
+
+    if opts.dry_run:
+        print_envelope(
+            started_at_ms,
+            command="fal-seedance.i2v.run",
+            status="ok",
+            request_id=request_id,
+            data={
+                "dry_run": True,
+                "endpoint": opts.endpoint,
+                "input": planned_input,
+                "references": [start_ref, end_ref],
+                "output": paths,
+                "secret_env_file": str(expand_path(opts.secret_env_file)),
+            },
+        )
+        return 0
+
+    if opts.progress != "off":
+        sys.stderr.write(f"Submitting fal Seedance i2v request to {opts.endpoint}\n")
+
+    def on_enqueue(req_id: str) -> None:
+        if opts.progress != "off":
+            sys.stderr.write(f"fal request id: {req_id}\n")
+
+    def on_queue_update(update: Any) -> None:
+        if opts.progress == "off":
+            return
+        cls = update.__class__.__name__
+        if cls == "Queued":
+            pos = getattr(update, "queue_position", None)
+            sys.stderr.write(f"queue: position {pos}\n")
+        elif cls == "InProgress":
+            logs = getattr(update, "logs", None)
+            last_log = logs[-1] if isinstance(logs, list) and logs else None
+            if isinstance(last_log, dict) and last_log.get("message"):
+                sys.stderr.write(f"progress: {last_log['message']}\n")
+            else:
+                sys.stderr.write("progress: IN_PROGRESS\n")
+
+    try:
+        result = fal_client.subscribe(
+            opts.endpoint,
+            arguments=planned_input,
+            with_logs=opts.progress != "off",
+            on_enqueue=on_enqueue,
+            on_queue_update=on_queue_update,
+            start_timeout=opts.start_timeout_seconds,
+            client_timeout=opts.timeout_ms / 1000.0 if opts.timeout_ms else None,
+        )
+    except Exception as exc:
+        raise classify_unexpected_error(exc) from exc
+
+    video = (result or {}).get("video") if isinstance(result, dict) else None
+    video_url = video.get("url") if isinstance(video, dict) else None
+    if not video_url:
+        fail("E_PROVIDER_OUTPUT", "fal result did not include video.url", exit_code=1, hint="Inspect the receipt payload and fal dashboard request.")
+
+    downloaded = None
+    if opts.download:
+        downloaded = download_video(video_url, paths["video_path"])
+
+    fal_request_id = (result or {}).get("requestId") if isinstance(result, dict) else None
+    receipt = {
+        "schema_version": SCHEMA_VERSION,
+        "endpoint": opts.endpoint,
+        "local_request_id": request_id,
+        "fal_request_id": fal_request_id,
+        "created_at_utc": now_iso(),
+        "input": planned_input,
+        "references": [start_ref, end_ref],
+        "result": result,
+        "output": {
+            "video_url": video_url,
+            "local_video": downloaded,
+            "receipt_path": paths["receipt_path"],
+        },
+        "secret_env_file": secret["path"] if secret else None,
+    }
+    write_receipt(paths["receipt_path"], receipt)
+
+    if opts.plain:
+        sys.stdout.write(f"{(downloaded or {}).get('path') if downloaded else video_url}\n")
+        return 0
+
+    print_envelope(
+        started_at_ms,
+        command="fal-seedance.i2v.run",
+        status="ok",
+        request_id=request_id,
+        data={
+            "endpoint": opts.endpoint,
+            "fal_request_id": fal_request_id,
+            "video": video,
+            "seed": (result or {}).get("seed") if isinstance(result, dict) else None,
+            "local_video": downloaded,
+            "receipt_path": paths["receipt_path"],
+            "references": [start_ref, end_ref],
+        },
+    )
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     started_at_ms = int(time.time() * 1000)
     request_id = make_request_id()
@@ -636,7 +825,9 @@ def main(argv: list[str] | None = None) -> int:
             return cmd_doctor(opts, started_at_ms, request_id)
         if opts.command == "run":
             return cmd_run(opts, started_at_ms, request_id)
-        fail("E_USAGE", f"Unknown command: {opts.command}", exit_code=2, hint="Use run, validate, or doctor.")
+        if opts.command == "i2v":
+            return cmd_run_i2v(opts, started_at_ms, request_id)
+        fail("E_USAGE", f"Unknown command: {opts.command}", exit_code=2, hint="Use run, i2v, validate, or doctor.")
     except CliError as exc:
         print_envelope(
             started_at_ms,
