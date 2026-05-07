@@ -5,11 +5,11 @@ description: "Generate and edit images with AI, including image generation, inpa
 
 # Image Generation Skill
 
-Generates or edits images for the current project (e.g., website assets, game assets, UI mockups, product mockups, wireframes, logo design, photorealistic images, infographics, or comic/explainer panels). Defaults to `gpt-image-1.5` and the OpenAI Image API for model-based work.
+Generates or edits images for the current project (e.g., website assets, game assets, UI mockups, product mockups, wireframes, logo design, photorealistic images, infographics, or comic/explainer panels). Defaults to `gpt-image-2` and the OpenAI Image API for model-based work.
 
 ## When to use
 - Generate a new image (concept art, product shot, cover, website hero)
-- Edit an existing image with the model (inpainting, masked edits, lighting or weather transformations, background replacement, object removal, compositing, transparent background)
+- Edit an existing image with the model (inpainting, masked edits, lighting or weather transformations, background replacement, object removal, compositing, clean cutouts)
 - Batch runs (many prompts, or many variants across prompts)
 - Unless the user explicitly asks for raw first-pass outputs, rough explorations, or a faster lighter-touch flow, use the default workflow for non-trivial image work: inspect outputs, keep a project-local worklog, and iterate before presenting the strongest version.
 
@@ -116,7 +116,7 @@ python3 -m pip install --user --break-system-packages openai pillow
 If installation isn't possible in this environment, tell the user which dependency is missing and how to install it locally.
 
 ## Defaults & rules
-- Use `gpt-image-1.5` unless the user explicitly asks for `gpt-image-1-mini` or explicitly prefers a cheaper/faster model.
+- Use `gpt-image-2` by default. Override the model only when the user explicitly asks for another model or a known model-specific constraint requires it.
 - Assume the user wants a new image unless they explicitly ask for an edit.
 - Unless the user specifies otherwise, call the CLI as if the default size is `1536x1024`.
 - Default size should generally bias toward `1536x1024` unless the user clearly wants square or portrait.
@@ -160,7 +160,7 @@ Edit:
 - identity-preserve — try-on, person-in-scene; lock face/body/pose.
 - precise-object-edit — remove/replace a specific element (incl. interior swaps).
 - lighting-weather — time-of-day/season/atmosphere changes only.
-- background-extraction — transparent background / clean cutout.
+- background-extraction — clean cutout/background removal prep.
 - style-transfer — apply reference style while changing subject/scene.
 - compositing — multi-image insert/merge with matched lighting/perspective.
 - sketch-to-render — drawing/line art to photoreal render.
@@ -182,7 +182,6 @@ Lighting/mood: <lighting + mood>
 Color palette: <palette notes>
 Materials/textures: <surface details>
 Quality: <low/medium/high/auto>
-Input fidelity (edits): <low/high>
 Text (verbatim): "<exact text>"
 Constraints: <must keep/must avoid>
 Avoid: <negative constraints>
@@ -193,6 +192,7 @@ Augmentation rules:
 - Always classify the request into a taxonomy slug above and tailor constraints/composition/quality to that bucket. Use the slug to find the matching example in `references/sample-prompts.md`.
 - If the user gives a broad request (e.g., "Generate images for this website"), use judgment to propose tasteful, context-appropriate assets and map each to a taxonomy slug.
 - For edits, explicitly list invariants ("change only X; keep Y unchanged").
+- `gpt-image-2` does not currently support transparent backgrounds. For alpha cutouts, generate a clean plain-background cutout first, then use deterministic post-processing or an explicit legacy model override if required.
 - If any critical detail is missing and blocks success, ask a question; otherwise proceed.
 
 ## Examples
@@ -226,7 +226,7 @@ Constraints: change only the background; keep the product and its edges unchange
 - For edits, repeat invariants every iteration to reduce drift.
 - Iterate with single-change follow-ups.
 - For latency-sensitive runs, start with quality=low; use quality=high for text-heavy or detail-critical outputs.
-- For strict edits (identity/layout lock), consider input_fidelity=high.
+- For strict edits, repeat invariants clearly; `gpt-image-2` does not need `input_fidelity`.
 - If results feel “tacky”, add a brief “Avoid:” line (stock-photo vibe; cheesy lens flare; oversaturated neon; harsh bloom; oversharpening; clutter) and specify restraint (“editorial”, “premium”, “subtle”).
 
 More principles: `references/prompting.md`. Copy/paste specs: `references/sample-prompts.md`.

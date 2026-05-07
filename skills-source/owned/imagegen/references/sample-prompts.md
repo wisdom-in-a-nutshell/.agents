@@ -202,7 +202,7 @@ Asset type: game UI icon
 Primary request: round shield icon with a subtle rune pattern
 Style/medium: painted game UI icon
 Composition/framing: centered icon; generous padding; clear silhouette
-Background: transparent
+Background: plain white or solid high-contrast backdrop
 Lighting/mood: subtle highlights; crisp edges
 Constraints: no text; no logos or trademarks; no watermark
 ```
@@ -352,8 +352,8 @@ Quality: high
 ```
 Use case: background-extraction
 Input images: Image 1: product photo
-Primary request: extract the product on a transparent background
-Output: transparent background (RGBA PNG)
+Primary request: extract the product as a clean cutout on a plain white background
+Output: crisp product cutout suitable for later alpha post-processing
 Constraints: crisp silhouette, no halos/fringing; preserve label text exactly; no restyling
 ```
 

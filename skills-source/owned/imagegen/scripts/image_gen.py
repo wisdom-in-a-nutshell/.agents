@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Generate or edit images with the OpenAI Image API.
 
-Defaults to gpt-image-1.5 and a structured prompt augmentation workflow.
+Defaults to gpt-image-2 and a structured prompt augmentation workflow.
 """
 
 from __future__ import annotations
@@ -19,7 +19,7 @@ from typing import Any, Dict, Iterable, List, Optional, Tuple
 
 from io import BytesIO
 
-DEFAULT_MODEL = "gpt-image-1.5"
+DEFAULT_MODEL = "gpt-image-2"
 DEFAULT_SIZE = "1536x1024"
 DEFAULT_QUALITY = "auto"
 DEFAULT_OUTPUT_FORMAT = "png"
@@ -111,6 +111,11 @@ def _validate_transparency(background: Optional[str], output_format: str) -> Non
         _die("transparent background requires output-format png or webp.")
 
 
+def _validate_model_options(model: str, background: Optional[str]) -> None:
+    if model == "gpt-image-2" and background == "transparent":
+        _die('gpt-image-2 does not currently support background="transparent".')
+
+
 def _validate_generate_payload(payload: Dict[str, Any]) -> None:
     n = int(payload.get("n", 1))
     if n < 1 or n > 10:
@@ -121,6 +126,7 @@ def _validate_generate_payload(payload: Dict[str, Any]) -> None:
     _validate_size(size)
     _validate_quality(quality)
     _validate_background(background)
+    _validate_model_options(str(payload.get("model", DEFAULT_MODEL)), background)
     oc = payload.get("output_compression")
     if oc is not None and not (0 <= int(oc) <= 100):
         _die("output_compression must be between 0 and 100")
@@ -693,9 +699,13 @@ def _edit(args: argparse.Namespace) -> None:
         "background": args.background,
         "output_format": args.output_format,
         "output_compression": args.output_compression,
-        "input_fidelity": args.input_fidelity,
         "moderation": args.moderation,
     }
+    if args.input_fidelity:
+        if args.model == "gpt-image-2":
+            _warn("gpt-image-2 ignores --input-fidelity; omitting it from the request.")
+        else:
+            payload["input_fidelity"] = args.input_fidelity
     payload = {k: v for k, v in payload.items() if v is not None}
 
     output_format = _normalize_output_format(args.output_format)
@@ -873,6 +883,7 @@ def main() -> int:
     _validate_size(args.size)
     _validate_quality(args.quality)
     _validate_background(args.background)
+    _validate_model_options(args.model, args.background)
     _ensure_api_env(args.dry_run)
 
     args.func(args)

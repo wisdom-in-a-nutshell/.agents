@@ -41,24 +41,25 @@ python "$IMAGE_GEN" generate --prompt "A cozy alpine cabin at dawn"
 - This is an owned fork. Modify `scripts/image_gen.py` only for deliberate durable behavior changes, and keep the docs in sync when you do.
 
 ## Defaults (unless overridden by flags)
-- Model: `gpt-image-1.5`
+- Model: `gpt-image-2`
 - Size: `1536x1024`
 - Quality: `auto`
 - Output format: `png`
-- Background: unspecified (API default). If you set `--background transparent`, also set `--output-format png` or `webp`.
+- Background: unspecified (API default). `gpt-image-2` supports opaque/auto backgrounds, not transparent alpha.
 
 Practical size convention:
 - Treat `1536x1024` as the practical default for most generated visuals unless square is clearly the better fit.
 - For comic/story/explainer visuals (`illustration-story`) with a panel-like layout, prefer `1536x1024` unless the user asks for square or portrait.
 - For tall vertical compositions, use `1024x1536`.
 
-## Quality + input fidelity
+## Quality
 - `--quality` works for `generate`, `edit`, and `generate-batch`: `low|medium|high|auto`.
-- `--input-fidelity` is **edit-only**: `low|high` (use `high` for strict edits like identity or layout lock).
+- `gpt-image-2` does not need `--input-fidelity`; the CLI omits it when the default model is used.
+- `--input-fidelity` remains available only for explicit legacy-model edit calls.
 
 Example:
 ```
-python "$IMAGE_GEN" edit --image input.png --prompt "Change only the background" --quality high --input-fidelity high
+python "$IMAGE_GEN" edit --image input.png --prompt "Change only the background" --quality high
 ```
 
 ## Masks (edits)
@@ -127,7 +128,7 @@ python "$IMAGE_GEN" edit --image input.png --mask mask.png --prompt "Replace the
 
 ## CLI notes
 - Supported sizes: `1024x1024`, `1536x1024`, `1024x1536`, or `auto`.
-- Transparent backgrounds require `output_format` to be `png` or `webp`.
+- `gpt-image-2` does not currently support transparent backgrounds. Use a clean plain background for cutout prep, then post-process alpha separately when needed.
 - Default output is `output.png`; multiple images become `output-1.png`, `output-2.png`, etc.
 - Use `--no-augment` to skip prompt augmentation.
 

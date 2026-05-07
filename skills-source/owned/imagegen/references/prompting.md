@@ -1,4 +1,4 @@
-# Prompting best practices (gpt-image-1.5)
+# Prompting best practices (GPT image models)
 
 ## Contents
 - [Structure](#structure)
@@ -55,7 +55,7 @@
 ## Quality vs latency
 - For latency-sensitive runs, start at `quality=low` and only raise it if needed.
 - Use `quality=high` for text-heavy or detail-critical images.
-- For strict edits (identity preservation, layout lock), consider `input_fidelity=high`.
+- For strict edits, repeat invariants clearly; `gpt-image-2` does not need `input_fidelity`.
 
 ## Use-case tips
 Generate:
@@ -70,10 +70,10 @@ Generate:
 
 Edit:
 - text-localization: Change only the text; preserve layout, typography, spacing, and hierarchy; no extra words or reflow unless needed.
-- identity-preserve: Lock identity (face, body, pose, hair, expression); change only the specified elements; match lighting and shadows; use `input_fidelity=high` if likeness drifts.
+- identity-preserve: Lock identity (face, body, pose, hair, expression); change only the specified elements; match lighting and shadows; repeat identity invariants if likeness drifts.
 - precise-object-edit: Specify exactly what to remove/replace; preserve surrounding texture and lighting; keep everything else unchanged.
 - lighting-weather: Change only environmental conditions (light, shadows, atmosphere, precipitation); keep geometry, framing, and subject identity.
-- background-extraction: Request transparent background; crisp silhouette; no halos; preserve label text exactly; optionally add a subtle contact shadow.
+- background-extraction: Request a clean cutout on a plain high-contrast background; crisp silhouette; no halos; preserve label text exactly. Add alpha later with deterministic post-processing when needed.
 - style-transfer: Specify style cues to preserve (palette, texture, brushwork) and what must change; add "no extra elements" to prevent drift.
 - compositing: Reference inputs by index; specify what moves where; match lighting, perspective, and scale; keep background and framing unchanged.
 - sketch-to-render: Preserve layout, proportions, and perspective; add plausible materials, lighting, and environment; "do not add new elements or text."
