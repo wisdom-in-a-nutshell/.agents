@@ -2,7 +2,7 @@
 repo_name: "adithyan-ai-videos"
 path: "~/GitHub/adithyan-ai-videos"
 mcp_count: 0
-skill_count: 19
+skill_count: 18
 repo_local_skill_count: 1
 model: "gpt-5.5"
 reasoning: "high"
@@ -20,7 +20,6 @@ global_skills:
   - "secret-management"
   - "skill-creator"
   - "symphony"
-  - "things-client"
 repo_skills:
   - "fal-seedance"
   - "imagegen"
@@ -47,7 +46,6 @@ skills:
   - "secret-management"
   - "skill-creator"
   - "symphony"
-  - "things-client"
   - "vercel-react-best-practices"
   - "web-design-guidelines"
 ---

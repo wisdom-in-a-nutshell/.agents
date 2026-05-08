@@ -2,7 +2,7 @@
 repo_name: "codexclaw"
 path: "~/GitHub/codexclaw"
 mcp_count: 1
-skill_count: 24
+skill_count: 23
 repo_local_skill_count: 0
 model: "gpt-5.5"
 reasoning: "high"
@@ -21,7 +21,6 @@ global_skills:
   - "secret-management"
   - "skill-creator"
   - "symphony"
-  - "things-client"
 repo_skills:
   - "codex-agent-loop"
   - "codex-app-server"
@@ -60,7 +59,6 @@ skills:
   - "swiftui-ui-patterns"
   - "swiftui-view-refactor"
   - "symphony"
-  - "things-client"
 ---
 
 Generated from `codex/config/repo-bootstrap.json` and `skills/registry.json`. Do not edit manually.

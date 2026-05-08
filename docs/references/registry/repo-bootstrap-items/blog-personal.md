@@ -2,7 +2,7 @@
 repo_name: "blog-personal"
 path: "~/GitHub/blog-personal"
 mcp_count: 0
-skill_count: 20
+skill_count: 19
 repo_local_skill_count: 1
 model: "gpt-5.5"
 reasoning: "high"
@@ -20,7 +20,6 @@ global_skills:
   - "secret-management"
   - "skill-creator"
   - "symphony"
-  - "things-client"
 repo_skills:
   - "adi-writing"
   - "aip-company"
@@ -48,7 +47,6 @@ skills:
   - "secret-management"
   - "skill-creator"
   - "symphony"
-  - "things-client"
   - "vercel-react-best-practices"
   - "web-design-guidelines"
   - "web-typography"

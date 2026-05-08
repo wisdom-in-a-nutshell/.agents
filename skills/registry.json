@@ -80,14 +80,6 @@
       "upstream_ref": "-"
     },
     {
-      "skill": "things-client",
-      "origin": "owned",
-      "scope": "global",
-      "repos": [],
-      "source_path": "skills-source/owned/things-client",
-      "upstream_ref": "-"
-    },
-    {
       "skill": "pretty-mermaid",
       "origin": "owned",
       "scope": "repo",

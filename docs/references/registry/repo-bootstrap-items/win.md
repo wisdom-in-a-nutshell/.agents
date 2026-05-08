@@ -2,7 +2,7 @@
 repo_name: "win"
 path: "~/GitHub/win"
 mcp_count: 0
-skill_count: 17
+skill_count: 16
 repo_local_skill_count: 0
 model: "gpt-5.5"
 reasoning: "high"
@@ -20,7 +20,6 @@ global_skills:
   - "secret-management"
   - "skill-creator"
   - "symphony"
-  - "things-client"
 repo_skills:
   - "azure-webapp-config"
   - "media-toolkit"
@@ -44,7 +43,6 @@ skills:
   - "show-password-setup"
   - "skill-creator"
   - "symphony"
-  - "things-client"
   - "win-aip-contract-sync"
 ---
 

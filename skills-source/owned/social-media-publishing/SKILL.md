@@ -114,7 +114,7 @@ Current supported flow:
 - runtime/config inspection via `status`
 - upload from a public direct `--video-url` through Modal
 - upload from a local `--video` by staging into the Modal cache volume, then calling Modal
-- optional thumbnail, playlist, privacy, scheduled publish, made-for-kids, embeddable, and subscriber notification flags
+- intentionally small upload surface: video, title, description, optional thumbnail, optional privacy
 - machine-readable JSON output by default, plus optional `--plain` inspection mode
 - stderr-only progress via `--progress`
 
@@ -122,12 +122,12 @@ Core commands:
 
 ```bash
 python3 ~/.agents/skills-source/owned/social-media-publishing/scripts/youtube/cli.py status
-python3 ~/.agents/skills-source/owned/social-media-publishing/scripts/youtube/cli.py upload-video --video /abs/path/video.mp4 --title "Video title" --description-file /abs/path/description.md --privacy private --credentials-id ADITHYAN --dry-run
-python3 ~/.agents/skills-source/owned/social-media-publishing/scripts/youtube/cli.py --progress plain upload-video --video /abs/path/video.mp4 --title "Video title" --description-file /abs/path/description.md --privacy unlisted --credentials-id ADITHYAN
-python3 ~/.agents/skills-source/owned/social-media-publishing/scripts/youtube/cli.py upload-video --video-url https://example.com/video.mp4 --title "Video title" --description-file /abs/path/description.md --privacy unlisted --credentials-id ADITHYAN --dry-run
+python3 ~/.agents/skills-source/owned/social-media-publishing/scripts/youtube/cli.py upload-video --video /abs/path/video.mp4 --title "Video title" --description-file /abs/path/description.md --privacy private --dry-run
+python3 ~/.agents/skills-source/owned/social-media-publishing/scripts/youtube/cli.py --progress plain upload-video --video /abs/path/video.mp4 --title "Video title" --description-file /abs/path/description.md --privacy unlisted
+python3 ~/.agents/skills-source/owned/social-media-publishing/scripts/youtube/cli.py upload-video --video-url https://example.com/video.mp4 --title "Video title" --description-file /abs/path/description.md --privacy unlisted --dry-run
 ```
 
-YouTube is Modal-backed by design. Do not import WIN or duplicate the local YouTube uploader in this skill unless Modal becomes a proven bottleneck.
+YouTube is Modal-backed by design. The CLI is personal-account-first: credentials id `ADITHYAN`, notify subscribers on, made-for-kids off, embeddable on. Do not import WIN or duplicate the local YouTube uploader in this skill unless Modal becomes a proven bottleneck.
 
 
 ## X

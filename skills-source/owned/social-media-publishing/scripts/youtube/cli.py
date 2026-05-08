@@ -20,6 +20,10 @@ DEFAULT_MODAL_FUNCTION = "upload_youtube_video"
 DEFAULT_MODAL_VOLUME = "cache"
 DEFAULT_STAGING_PREFIX = "youtube-staging"
 DEFAULT_PRIVACY = "private"
+DEFAULT_CREDENTIALS_ID = "ADITHYAN"
+DEFAULT_MADE_FOR_KIDS = False
+DEFAULT_EMBEDDABLE = True
+DEFAULT_NOTIFY_SUBSCRIBERS = True
 PRIVACY_CHOICES = ("private", "unlisted", "public")
 ROUTE_CHOICES = ("auto", "modal", "dry-run")
 PROGRESS_CHOICES = ("auto", "off", "plain")
@@ -52,7 +56,6 @@ class Config:
     modal_app: str
     modal_function: str
     modal_volume: str
-    default_credentials_id: str | None
 
 
 @dataclass
@@ -99,7 +102,6 @@ def build_config(args: argparse.Namespace) -> Config:
         or DEFAULT_MODAL_FUNCTION,
         modal_volume=get_value("SOCIAL_YOUTUBE_MODAL_VOLUME", DEFAULT_MODAL_VOLUME)
         or DEFAULT_MODAL_VOLUME,
-        default_credentials_id=get_value("YOUTUBE_DEFAULT_CREDENTIALS_ID"),
     )
 
 
@@ -192,17 +194,8 @@ def resolve_description(args: argparse.Namespace) -> str:
     return args.description or ""
 
 
-def resolve_credentials_id(args: argparse.Namespace, config: Config) -> str:
-    credentials_id = args.credentials_id or config.default_credentials_id
-    if not credentials_id:
-        raise CliError(
-            "Missing YouTube credentials id.",
-            code="E_MISSING_CREDENTIALS_ID",
-            exit_code=2,
-            retryable=False,
-            hint="Pass --credentials-id ADITHYAN or set YOUTUBE_DEFAULT_CREDENTIALS_ID in ~/.secrets/youtube/env.",
-        )
-    return credentials_id
+def resolve_credentials_id() -> str:
+    return DEFAULT_CREDENTIALS_ID
 
 
 def import_modal_module():
@@ -400,7 +393,13 @@ def command_status(
         "modal_app": config.modal_app,
         "modal_function": config.modal_function,
         "modal_volume": config.modal_volume,
-        "default_credentials_id_configured": bool(config.default_credentials_id),
+        "credentials_id": DEFAULT_CREDENTIALS_ID,
+        "defaults": {
+            "privacy": DEFAULT_PRIVACY,
+            "made_for_kids": DEFAULT_MADE_FOR_KIDS,
+            "embeddable": DEFAULT_EMBEDDABLE,
+            "notify_subscribers": DEFAULT_NOTIFY_SUBSCRIBERS,
+        },
         "remote_check": "skipped",
     }
     return build_envelope(
@@ -426,11 +425,11 @@ def command_upload_video(
             hint="Use --thumbnail for a local file or --thumbnail-url for a public direct image URL.",
         )
 
-    credentials_id = resolve_credentials_id(args, config)
+    credentials_id = resolve_credentials_id()
     description = resolve_description(args)
     using_local_file = bool(args.video)
-    requested_route = "dry_run" if args.route == "dry-run" else args.route
-    dry_run = bool(args.dry_run or args.route == "dry-run")
+    requested_route = "auto"
+    dry_run = bool(args.dry_run)
     selected_route = "modal"
 
     video_path = require_file(args.video, label="video") if args.video else None
@@ -447,9 +446,9 @@ def command_upload_video(
         "publish_at": args.publish_at,
         "playlist_id": args.playlist_id,
         "thumbnail_url": args.thumbnail_url,
-        "made_for_kids": args.made_for_kids,
-        "embeddable": not args.no_embeddable,
-        "notify_subscribers": not args.no_notify_subscribers,
+        "made_for_kids": DEFAULT_MADE_FOR_KIDS,
+        "embeddable": DEFAULT_EMBEDDABLE,
+        "notify_subscribers": DEFAULT_NOTIFY_SUBSCRIBERS,
     }
 
     staged_paths: list[str] = []
@@ -457,7 +456,7 @@ def command_upload_video(
         base_payload["video_volume_path"] = make_staged_remote_path(
             request_id=runtime.request_id,
             source_path=video_path,
-            prefix=args.staging_prefix,
+            prefix=getattr(args, "staging_prefix", DEFAULT_STAGING_PREFIX),
             role="video",
         )
         base_payload["video_url"] = None
@@ -466,7 +465,7 @@ def command_upload_video(
         base_payload["thumbnail_volume_path"] = make_staged_remote_path(
             request_id=runtime.request_id,
             source_path=thumbnail_path,
-            prefix=args.staging_prefix,
+            prefix=getattr(args, "staging_prefix", DEFAULT_STAGING_PREFIX),
             role="thumbnail",
         )
         base_payload["thumbnail_url"] = None
@@ -514,7 +513,7 @@ def command_upload_video(
             volume_name=config.modal_volume,
             local_path=video_path,
             remote_path=base_payload["video_volume_path"],
-            force=args.force_stage,
+            force=getattr(args, "force_stage", False),
             args=args,
         )
     if thumbnail_path:
@@ -523,7 +522,7 @@ def command_upload_video(
             volume_name=config.modal_volume,
             local_path=thumbnail_path,
             remote_path=base_payload["thumbnail_volume_path"],
-            force=args.force_stage,
+            force=getattr(args, "force_stage", False),
             args=args,
         )
 
@@ -532,7 +531,7 @@ def command_upload_video(
             modal=modal, config=config, payload=base_payload, args=args
         )
     finally:
-        if staged_paths and not args.keep_staged:
+        if staged_paths and not getattr(args, "keep_staged", False):
             cleanup_staged_paths(
                 modal=modal,
                 volume_name=config.modal_volume,
@@ -556,7 +555,7 @@ def command_upload_video(
         "staging": {
             "modal_volume": config.modal_volume,
             "paths": staged_paths,
-            "kept": bool(args.keep_staged),
+            "kept": bool(getattr(args, "keep_staged", False)),
         },
         "result": {
             "state": "uploaded",
@@ -639,14 +638,8 @@ def build_parser() -> argparse.ArgumentParser:
         default=DEFAULT_PRIVACY,
         help="YouTube privacy status. Defaults to private for safety.",
     )
-    upload.add_argument(
-        "--credentials-id",
-        help="YouTube credential id configured in Modal youtube-oauth, e.g. ADITHYAN.",
-    )
-    upload.add_argument(
-        "--publish-at", help="Optional ISO timestamp for scheduled publishing."
-    )
-    upload.add_argument("--playlist-id", help="Optional YouTube playlist id.")
+    upload.add_argument("--publish-at", help=argparse.SUPPRESS)
+    upload.add_argument("--playlist-id", help=argparse.SUPPRESS)
     upload.add_argument(
         "--thumbnail", help="Local thumbnail image to stage into Modal volume."
     )
@@ -654,44 +647,15 @@ def build_parser() -> argparse.ArgumentParser:
         "--thumbnail-url", help="Public direct thumbnail URL for Modal to download."
     )
     upload.add_argument(
-        "--made-for-kids",
-        action="store_true",
-        help="Set YouTube selfDeclaredMadeForKids=true.",
-    )
-    upload.add_argument(
-        "--no-embeddable", action="store_true", help="Disable embedding."
-    )
-    upload.add_argument(
-        "--no-notify-subscribers",
-        action="store_true",
-        help="Do not notify subscribers.",
-    )
-    upload.add_argument(
-        "--route",
-        choices=ROUTE_CHOICES,
-        default="auto",
-        help="Delivery route. auto/modal both use Modal; dry-run validates only.",
-    )
-    upload.add_argument(
         "--dry-run",
         action="store_true",
         help="Validate and show the selected route without uploading.",
     )
     upload.add_argument(
-        "--staging-prefix",
-        default=DEFAULT_STAGING_PREFIX,
-        help="Modal volume prefix for staged local files.",
+        "--staging-prefix", default=DEFAULT_STAGING_PREFIX, help=argparse.SUPPRESS
     )
-    upload.add_argument(
-        "--force-stage",
-        action="store_true",
-        help="Allow overwriting existing staged files if paths collide.",
-    )
-    upload.add_argument(
-        "--keep-staged",
-        action="store_true",
-        help="Keep staged Modal volume files after successful upload.",
-    )
+    upload.add_argument("--force-stage", action="store_true", help=argparse.SUPPRESS)
+    upload.add_argument("--keep-staged", action="store_true", help=argparse.SUPPRESS)
 
     return parser
 

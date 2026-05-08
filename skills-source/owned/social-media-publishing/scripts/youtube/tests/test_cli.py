@@ -43,8 +43,6 @@ def test_upload_video_dry_run_reports_modal_route_for_local_file(
             "Test video",
             "--description-file",
             str(desc),
-            "--credentials-id",
-            "ADITHYAN",
             "--dry-run",
         ]
     )
@@ -61,10 +59,14 @@ def test_upload_video_dry_run_reports_modal_route_for_local_file(
     assert "description" not in payload["data"]["payload_preview"]
 
 
-def test_upload_video_requires_credentials_id(tmp_path: Path, capsys) -> None:
+def test_upload_video_dry_run_includes_thumbnail_staging(
+    tmp_path: Path, capsys
+) -> None:
     cli = load_cli_module()
     video = tmp_path / "video.mp4"
     video.write_bytes(b"video")
+    thumb = tmp_path / "thumb.jpg"
+    thumb.write_bytes(b"thumb")
 
     exit_code = cli.run(
         [
@@ -75,6 +77,8 @@ def test_upload_video_requires_credentials_id(tmp_path: Path, capsys) -> None:
             "upload-video",
             "--video",
             str(video),
+            "--thumbnail",
+            str(thumb),
             "--title",
             "Test video",
             "--dry-run",
@@ -82,9 +86,11 @@ def test_upload_video_requires_credentials_id(tmp_path: Path, capsys) -> None:
     )
 
     payload = read_json_stdout(capsys)
-    assert exit_code == 2
-    assert payload["status"] == "error"
-    assert payload["error"]["code"] == "E_MISSING_CREDENTIALS_ID"
+    assert exit_code == 0
+    assert payload["status"] == "ok"
+    preview = payload["data"]["payload_preview"]
+    assert preview["credentials_id"] == "ADITHYAN"
+    assert preview["thumbnail_volume_path"].endswith("/thumbnail.jpg")
 
 
 def test_upload_video_public_url_calls_modal(
@@ -126,8 +132,6 @@ def test_upload_video_public_url_calls_modal(
             "Description",
             "--privacy",
             "unlisted",
-            "--credentials-id",
-            "ADITHYAN",
         ]
     )
 

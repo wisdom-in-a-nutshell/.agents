@@ -2,7 +2,7 @@
 repo_name: "aipodcasting"
 path: "~/GitHub/aipodcasting"
 mcp_count: 0
-skill_count: 19
+skill_count: 18
 repo_local_skill_count: 0
 model: "gpt-5.5"
 reasoning: "high"
@@ -20,7 +20,6 @@ global_skills:
   - "secret-management"
   - "skill-creator"
   - "symphony"
-  - "things-client"
 repo_skills:
   - "ai-podcasting"
   - "azure-webapp-config"
@@ -46,7 +45,6 @@ skills:
   - "show-password-setup"
   - "skill-creator"
   - "symphony"
-  - "things-client"
   - "vercel-react-best-practices"
   - "web-design-guidelines"
   - "win-aip-contract-sync"

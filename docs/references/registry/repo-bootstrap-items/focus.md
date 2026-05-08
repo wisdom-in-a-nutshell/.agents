@@ -2,7 +2,7 @@
 repo_name: "focus"
 path: "~/GitHub/focus"
 mcp_count: 0
-skill_count: 12
+skill_count: 11
 repo_local_skill_count: 0
 model: "gpt-5.5"
 reasoning: "high"
@@ -20,7 +20,6 @@ global_skills:
   - "secret-management"
   - "skill-creator"
   - "symphony"
-  - "things-client"
 repo_skills: []
 repo_local_skills: []
 skills:
@@ -35,7 +34,6 @@ skills:
   - "secret-management"
   - "skill-creator"
   - "symphony"
-  - "things-client"
 ---
 
 Generated from `codex/config/repo-bootstrap.json` and `skills/registry.json`. Do not edit manually.

@@ -2,7 +2,7 @@
 repo_name: "adi"
 path: "~/GitHub/adi"
 mcp_count: 0
-skill_count: 23
+skill_count: 22
 repo_local_skill_count: 0
 model: "gpt-5.5"
 reasoning: "high"
@@ -20,7 +20,6 @@ global_skills:
   - "secret-management"
   - "skill-creator"
   - "symphony"
-  - "things-client"
 repo_skills:
   - "adi-writing"
   - "aip-company"
@@ -57,7 +56,6 @@ skills:
   - "skill-creator"
   - "social-media-publishing"
   - "symphony"
-  - "things-client"
 ---
 
 Generated from `codex/config/repo-bootstrap.json` and `skills/registry.json`. Do not edit manually.

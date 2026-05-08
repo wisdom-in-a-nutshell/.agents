@@ -30,7 +30,6 @@ python3 ~/.agents/skills-source/owned/social-media-publishing/scripts/youtube/cl
   --title "Video title" \
   --description-file /abs/path/description.md \
   --privacy unlisted \
-  --credentials-id ADITHYAN \
   --dry-run
 ```
 
@@ -43,8 +42,7 @@ python3 ~/.agents/skills-source/owned/social-media-publishing/scripts/youtube/cl
   --video /abs/path/video.mp4 \
   --title "Video title" \
   --description-file /abs/path/description.md \
-  --privacy private \
-  --credentials-id ADITHYAN
+  --privacy private
 ```
 
 For local files, the CLI stages the video into the shared Modal `cache` volume and calls the Modal uploader with `video_volume_path`. This avoids temporary public URLs and avoids copying YouTube upload internals into the skill.
@@ -63,19 +61,26 @@ or, for a public thumbnail:
 
 ## Config
 
-Optional non-secret config file:
+Optional non-secret config file. The YouTube credential id is hardcoded to `ADITHYAN` for Adi's personal account:
 
 `~/.secrets/youtube/env`
 
 Supported keys:
 
 ```bash
-YOUTUBE_DEFAULT_CREDENTIALS_ID=ADITHYAN
 SOCIAL_YOUTUBE_MODAL_PYTHON=/Users/dobby/GitHub/modal_functions/venv/bin/python
 SOCIAL_YOUTUBE_MODAL_APP=aip-processor
 SOCIAL_YOUTUBE_MODAL_FUNCTION=upload_youtube_video
 SOCIAL_YOUTUBE_MODAL_VOLUME=cache
 ```
+
+Baked-in personal defaults:
+
+- credentials id: `ADITHYAN`
+- privacy: `private` unless `--privacy` is passed
+- notify subscribers: `true`
+- made for kids: `false`
+- embeddable: `true`
 
 Do not store OAuth secrets here. YouTube secrets remain in Modal secret `youtube-oauth`, sourced from the existing Modal/Key Vault flow.
 
@@ -104,7 +109,13 @@ Progress goes to stderr only. Final JSON goes to stdout only.
 
 ## Safety defaults
 
+The normal user-facing knobs are intentionally small: video, title, description, optional thumbnail, optional privacy. Everything else uses Adi's defaults.
+
 - Default privacy is `private`.
+- Subscriber notifications are enabled by default.
+- Made-for-kids is disabled by default.
+- Embedding is enabled by default.
 - `--dry-run` validates and reports the selected route without publishing.
-- Local staged files are removed from the Modal volume after successful upload unless `--keep-staged` is passed.
+- `--publish-at` and `--playlist-id` still exist as hidden advanced flags if needed later, but they are not part of the normal path.
+- Local staged files are removed from the Modal volume after successful upload.
 - On timeout/retry-exhausted errors, check YouTube Studio for a possible partial/private duplicate before retrying.
