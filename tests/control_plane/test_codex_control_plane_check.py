@@ -96,6 +96,26 @@ class CodexControlPlaneCheckTests(TempDirTestCase):
         self.assertTrue((adi / ".codex/config.toml").is_file())
         self.assertTrue((adi / ".codex/hooks.json").is_file())
 
+    def test_check_script_fails_for_deprecated_codex_feature_flag(self) -> None:
+        root, home, adi = self._make_codex_repo_fixture()
+        global_template = root / "codex/config/global.config.toml"
+        global_template.write_text(
+            global_template.read_text(encoding="utf-8").replace(
+                "hooks = true",
+                "codex_hooks = true",
+            ),
+            encoding="utf-8",
+        )
+
+        result = run_command(
+            self._check_command(root, home, adi),
+            env={"HOME": str(home), "CODEX_FEATURES_LIST_OUTPUT": "hooks stable true\n"},
+            check=False,
+        )
+
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("uses deprecated Codex feature flag `codex_hooks`", result.stderr)
+
     def test_check_script_fails_when_repo_config_missing_for_managed_repo(self) -> None:
         root, home, adi = self._make_codex_repo_fixture()
 

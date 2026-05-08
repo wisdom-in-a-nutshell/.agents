@@ -95,6 +95,7 @@ from __future__ import annotations
 
 import json
 import os
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -128,6 +129,58 @@ def validate_no_agent_declarations(config_path: Path) -> None:
         fail(f"`agents` must be a TOML table in {config_path}")
     if agents:
         fail(f"{config_path} declares managed agents; this control plane no longer materializes agent roles")
+
+
+FEATURE_RENAMES = {
+    "codex_hooks": "hooks",
+}
+
+
+def load_codex_feature_statuses() -> dict[str, str]:
+    fixture = os.environ.get("CODEX_FEATURES_LIST_OUTPUT")
+    if fixture is not None:
+        output = fixture
+    else:
+        codex_bin = os.environ.get("CODEX_BIN", "codex")
+        if shutil.which(codex_bin) is None:
+            return {}
+        try:
+            completed = subprocess.run(
+                [codex_bin, "features", "list"],
+                check=False,
+                capture_output=True,
+                text=True,
+                timeout=10,
+            )
+        except Exception:
+            return {}
+        if completed.returncode != 0:
+            return {}
+        output = completed.stdout
+
+    statuses: dict[str, str] = {}
+    for line in output.splitlines():
+        parts = line.split()
+        if len(parts) >= 3:
+            statuses[parts[0]] = " ".join(parts[1:-1])
+    return statuses
+
+
+def validate_feature_flags(config_path: Path, feature_statuses: dict[str, str]) -> None:
+    data = load_toml(config_path)
+    features = data.get("features", {}) or {}
+    if not isinstance(features, dict):
+        fail(f"`features` must be a TOML table in {config_path}")
+
+    for key in sorted(features):
+        if key in FEATURE_RENAMES:
+            fail(
+                f"{config_path} uses deprecated Codex feature flag `{key}`; "
+                f"use `{FEATURE_RENAMES[key]}` instead."
+            )
+        status = feature_statuses.get(str(key))
+        if status == "deprecated":
+            fail(f"{config_path} uses deprecated Codex feature flag `{key}`")
 
 
 def is_git_repo(path: Path) -> bool:
@@ -272,15 +325,20 @@ def validate_disabled_skill_entries(config_path: Path, policy: dict[str, dict[st
 
 bundled_skills_policy = load_bundled_skills_policy(bundled_skills_policy_path)
 audit_installed_bundled_skills(bundled_skills_policy)
+codex_feature_statuses = load_codex_feature_statuses()
 
 validate_no_agent_declarations(global_template)
 validate_no_agent_declarations(xcode_template)
+validate_feature_flags(global_template, codex_feature_statuses)
+validate_feature_flags(xcode_template, codex_feature_statuses)
 
 if global_config.exists():
     validate_no_agent_declarations(global_config)
+    validate_feature_flags(global_config, codex_feature_statuses)
 
 if xcode_config.exists():
     validate_no_agent_declarations(xcode_config)
+    validate_feature_flags(xcode_config, codex_feature_statuses)
 
 if not registry_path.is_file():
     fail(f"missing registry file: {registry_path}")
@@ -358,8 +416,8 @@ if global_config.exists():
     global_data = load_toml(global_config)
     validate_disabled_skill_entries(global_config, bundled_skills_policy)
     features = global_data.get("features", {})
-    codex_hooks_enabled = isinstance(features, dict) and features.get("codex_hooks") is True
-    if codex_hooks_enabled and not global_hooks.is_file():
+    hooks_enabled = isinstance(features, dict) and features.get("hooks") is True
+    if hooks_enabled and not global_hooks.is_file():
         fail(f"Codex hooks are enabled but hooks file is missing: {global_hooks}")
     if global_hooks.is_file():
         try:

@@ -639,7 +639,7 @@ class HooksControlPlaneTests(TempDirTestCase):
         self.assertIn('model = "gpt-5.5"', rendered_config)
         self.assertIn('model_reasoning_effort = "high"', rendered_config)
         self.assertIn('plan_mode_reasoning_effort = "high"', rendered_config)
-        self.assertIn("codex_hooks = true", rendered_config)
+        self.assertIn("hooks = true", rendered_config)
         self.assertIn('[plugins."computer-use@openai-bundled"]', rendered_config)
         self.assertIn(
             f'path = "{home}/.codex/skills/.system/plugin-creator/SKILL.md"',

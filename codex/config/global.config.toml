@@ -13,7 +13,7 @@ personality = "pragmatic"
 suppress_unstable_features_warning = true
 
 [features]
-codex_hooks = true
+hooks = true
 js_repl = true
 remote_connections = true
 goals = true

@@ -112,7 +112,7 @@ Use [Codex Control Plane Ownership](/Users/dobby/.agents/docs/references/codex-c
   - brand-new branches without upstream tracking use an initial `git push -u <remote> HEAD`, so the hook can publish the branch before future tracked-branch pulls
   - logs phase timing to `~/.local/state/agents-control-plane/log/hooks-stop.log`
 - `~/.codex/config.toml` and Xcode Codex config contain exact trusted repo entries for local repos such as `focus`
-- `~/.codex/config.toml` enables Codex hooks through `[features].codex_hooks = true`
+- `~/.codex/config.toml` enables Codex hooks through `[features].hooks = true`
 - `~/.codex/config.toml` explicitly preserves `computer-use@openai-bundled` and disables bundled Codex skills classified as `disabled` in [`bundled-skills-policy.json`](/Users/dobby/.agents/codex/config/bundled-skills-policy.json)
 - `~/.codex/hooks.json` is rendered from `hooks/registry.json` for global Codex hooks. The managed `Stop` hook renders there; repo-specific context hooks still render into repo `.codex/hooks.json`. Codex does not currently expose a separate documented `SessionEnd` hook.
 - `com.<user>.codex-session-archiver` is loaded as a LaunchAgent and runs [`archive-stale-sessions.py`](/Users/dobby/.agents/codex/scripts/archive-stale-sessions.py) every 6 hours against managed repo paths from [`repo-bootstrap.json`](/Users/dobby/.agents/codex/config/repo-bootstrap.json).

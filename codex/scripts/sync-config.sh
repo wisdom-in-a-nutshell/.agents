@@ -510,6 +510,9 @@ render_global_config() {
   if ! rg -n '^[[:space:]]*fast_mode[[:space:]]*=' "$template_file" >/dev/null 2>&1; then
     remove_section_key "$target_file" "features" "fast_mode"
   fi
+  # Codex 0.129 renamed the hooks feature flag; prune the older managed key
+  # when applying the new canonical template.
+  remove_section_key "$target_file" "features" "codex_hooks"
 
   prune_stale_agent_sections "$target_file" "$template_file"
   prune_stale_app_sections "$target_file" "$template_file"
@@ -1016,6 +1019,9 @@ render_xcode_config() {
   if ! rg -n '^[[:space:]]*fast_mode[[:space:]]*=' "$template_file" >/dev/null 2>&1; then
     remove_section_key "$target_file" "features" "fast_mode"
   fi
+  # Codex 0.129 renamed the hooks feature flag; prune the older managed key
+  # when applying the new canonical template.
+  remove_section_key "$target_file" "features" "codex_hooks"
 
   prune_stale_agent_sections "$target_file" "$template_file"
   prune_stale_app_sections "$target_file" "$template_file"
