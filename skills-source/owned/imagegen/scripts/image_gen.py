@@ -22,6 +22,9 @@ from io import BytesIO
 DEFAULT_MODEL = "gpt-image-2"
 ALLOWED_MODELS = {
     "gpt-image-2",
+    # gpt-image-1.5 is available via the litellm proxy. Lighter/older variant;
+    # useful as a fallback when gpt-image-2 hits proxy timeouts on heavy edits.
+    "gpt-image-1.5",
     # gemini-3-pro-image-preview routes to Gemini (Nano Banana Pro) via the
     # litellm proxy. Use this when Azure's gpt-image-2 moderation filter blocks
     # an edit (e.g. real-people compositing, faces of minors).
