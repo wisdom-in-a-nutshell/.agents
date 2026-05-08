@@ -83,6 +83,31 @@ For native video, use `post --dry-run` first whenever the targets file, comment 
 - Avoid external links in strict communities unless the user explicitly wants a link-first strategy.
 - When the format is unclear, confirm with the user before posting.
 
+## Subreddit cultural fit (read before posting)
+
+A post can pass technical validation (correct flair, correct format, allowed link) and still flop because it offends the subreddit's culture. Validation only checks rules; culture decides whether the post lands or gets buried.
+
+Before suggesting a subreddit, do a fit check on:
+
+- **Tooling stance.** Does the sub favor open-source/local/free tools or paid/cloud/proprietary tools? Posting paid-cloud workflows in open-source-leaning subs gets downvoted, regardless of content quality.
+- **Audience identity.** Subs named after specific tools (r/StableDiffusion, r/LocalLLaMA, r/comfyui) are usually built around that specific tool's community. Off-tool content reads as misplaced even when topically adjacent.
+- **Self-promo tolerance.** Some subs welcome creator showcases, others actively dislike them. Read the sidebar and pinned mod posts before assuming.
+- **Content-type expectations.** Workflow posts, output showcase posts, and discussion posts often perform very differently in the same sub. Match the post shape to what the audience clicks on.
+
+Surface the fit risk to the user **before posting**, not after. If a sub looks technically valid but culturally questionable, name the concern and let the user choose. Better to skip a sub than burn karma on a bad fit.
+
+### Known sub-fit notes (extend as patterns surface)
+
+- **r/StableDiffusion** — strongly biased toward open-source / local / free tooling. Posts featuring paid cloud pipelines (Kling, Runway, Sora, OpenAI image APIs, Suno, etc.) tend to get downvoted regardless of output quality, often with a comment along the lines of "this could be done with local/free tools." Skip unless the workflow is at least partly Stable-Diffusion-based or open-source.
+- **r/aivideo** — link whitelist restricted to `x.ai` only (xAI/Grok), text posts blocked. Effectively only accepts xAI-sourced video.
+- **r/Anthropic** — small audience focused on Claude usage and API workflows. Off-target for content where Claude is peripheral (e.g. orchestrator in a multi-tool media pipeline).
+
+### Operator account state (Adi)
+
+Account-specific state that affects which subs to attempt:
+
+- **r/singularity — banned.** Submission attempts return `SUBREDDIT_NOTALLOWED_BANNED`. Skip in any campaign.
+
 ## Commands
 
 Status:
