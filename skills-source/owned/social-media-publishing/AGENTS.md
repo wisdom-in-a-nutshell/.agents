@@ -21,8 +21,10 @@ Use this skill for reusable publishing workflows that should travel across repos
 - Reddit flow -> `references/reddit/workflow.md`
 - LinkedIn setup and copy defaults -> `references/linkedin/`
 - X setup and copy defaults -> `references/x/`
+- YouTube upload flow -> `references/youtube/posting.md`
 - For LinkedIn on a fresh boot, prefer `scripts/linkedin/cli.py status` before guessing what is configured or permitted.
 - For X on a fresh boot, prefer `scripts/x/cli.py status` before guessing what is configured or permitted.
+- For YouTube on a fresh boot, prefer `scripts/youtube/cli.py status` before guessing Modal/runtime configuration.
 
 ## Write-back rule
 

@@ -9,7 +9,7 @@ description: Multi-channel social publishing workflow plus blog-post publication
 
 Use this skill to package publishing and distribution work as a reusable workflow instead of repo-specific one-offs.
 
-Keep campaign assets in the active project. Keep durable repo-specific publishing conventions in the owning repo. The current bundled channel helpers cover Reddit, LinkedIn, and X.
+Keep campaign assets in the active project. Keep durable repo-specific publishing conventions in the owning repo. The current bundled channel helpers cover Reddit, LinkedIn, X, and Modal-backed YouTube uploads.
 
 ## Workflow
 
@@ -103,6 +103,33 @@ python3 ~/.agents/skills-source/owned/social-media-publishing/scripts/linkedin/c
 This helper uses machine-local generated secrets under `~/.secrets/linkedin/` and should stay one-user until the workflow is more mature.
 
 
+## YouTube
+
+Use the bundled YouTube CLI at `scripts/youtube/cli.py` for local YouTube publishing through the existing Modal upload engine.
+
+Read first:
+- `references/youtube/posting.md`
+
+Current supported flow:
+- runtime/config inspection via `status`
+- upload from a public direct `--video-url` through Modal
+- upload from a local `--video` by staging into the Modal cache volume, then calling Modal
+- optional thumbnail, playlist, privacy, scheduled publish, made-for-kids, embeddable, and subscriber notification flags
+- machine-readable JSON output by default, plus optional `--plain` inspection mode
+- stderr-only progress via `--progress`
+
+Core commands:
+
+```bash
+python3 ~/.agents/skills-source/owned/social-media-publishing/scripts/youtube/cli.py status
+python3 ~/.agents/skills-source/owned/social-media-publishing/scripts/youtube/cli.py upload-video --video /abs/path/video.mp4 --title "Video title" --description-file /abs/path/description.md --privacy private --credentials-id ADITHYAN --dry-run
+python3 ~/.agents/skills-source/owned/social-media-publishing/scripts/youtube/cli.py --progress plain upload-video --video /abs/path/video.mp4 --title "Video title" --description-file /abs/path/description.md --privacy unlisted --credentials-id ADITHYAN
+python3 ~/.agents/skills-source/owned/social-media-publishing/scripts/youtube/cli.py upload-video --video-url https://example.com/video.mp4 --title "Video title" --description-file /abs/path/description.md --privacy unlisted --credentials-id ADITHYAN --dry-run
+```
+
+YouTube is Modal-backed by design. Do not import WIN or duplicate the local YouTube uploader in this skill unless Modal becomes a proven bottleneck.
+
+
 ## X
 
 Use the bundled X CLI at `scripts/x/cli.py` for local X posting.
@@ -148,6 +175,8 @@ python3 ~/.agents/skills-source/owned/social-media-publishing/scripts/x/cli.py p
 - `references/blog/publishing.md`: blog publication workflow before distribution.
 - `references/reddit/workflow.md`: operational Reddit workflow.
 - `references/reddit/plan-schema.md`: portable Reddit plan-file contract.
+- `scripts/youtube/cli.py`: Modal-backed YouTube upload CLI.
+- `references/youtube/posting.md`: YouTube upload workflow and route contract.
 - `scripts/linkedin/cli.py`: local LinkedIn posting CLI.
 - `references/linkedin/posting.md`: LinkedIn posting setup and usage.
 - `references/linkedin/copy.md`: LinkedIn copy defaults and reusable post baselines.
