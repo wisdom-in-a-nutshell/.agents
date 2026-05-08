@@ -17,7 +17,7 @@ hooks = true
 js_repl = true
 remote_connections = true
 goals = true
-memories = true
+memories = false
 apps = false
 external_migration = false
 

@@ -13,11 +13,15 @@ flowchart TD
     D --> E{repo hook exists?}
     E -->|yes| F[scripts/hooks/session_start.py]
     E -->|yes| G[scripts/hooks/user_prompt_submit.py]
-    E -->|yes| H[scripts/hooks/session_end.py]
-    E -->|no| I[exit successfully]
+    E -->|yes| H[scripts/hooks/pre_compact.py]
+    E -->|yes| I[scripts/hooks/post_compact.py]
+    E -->|yes| K[scripts/hooks/session_end.py]
+    E -->|no| N[exit successfully]
     F --> J[stdout can become context]
     G --> J
-    H --> K[stdout is logged only]
+    H --> L[stdout passes through raw]
+    I --> L
+    K --> M[stdout is logged only]
 ```
 
 ## Rule Of Thumb
@@ -50,6 +54,8 @@ Create these files only when a repo needs them:
 ```text
 scripts/hooks/session_start.py
 scripts/hooks/user_prompt_submit.py
+scripts/hooks/pre_compact.py
+scripts/hooks/post_compact.py
 scripts/hooks/session_end.py
 ```
 
@@ -70,6 +76,20 @@ All repo lifecycle hooks are Python. Do not add shell compatibility shims.
 - Codex and Claude can receive stdout as additional prompt context.
 - Copilot JSON hooks currently ignore prompt-submit stdout.
 - Good for very small, current-time or current-state context.
+
+`PreCompact`
+
+- Runs before Codex or Claude compacts a session, where supported.
+- Good for last-chance preservation or guardrails before context is compressed.
+- Repo stdout is passed through raw; emit only valid runtime hook JSON or nothing.
+- Keep it fast. Enqueue slow consolidation instead of doing it inline.
+
+`PostCompact`
+
+- Runs after Codex or Claude compacts a session, where supported.
+- Good for observing compaction or enqueueing follow-up consolidation.
+- Repo stdout is passed through raw; emit only valid runtime hook JSON or nothing.
+- Keep it fast. Enqueue slow consolidation instead of doing it inline.
 
 `SessionEnd`
 
@@ -120,7 +140,8 @@ Copilot SDK adapters. Runtime-specific details are preserved under
 Important fields:
 
 - `schema_version`: current adapter contract version. Today this is `1.0`.
-- `hook_event_name`: `SessionStart`, `UserPromptSubmit`, or `SessionEnd`.
+- `hook_event_name`: `SessionStart`, `UserPromptSubmit`, `PreCompact`,
+  `PostCompact`, or `SessionEnd`.
 - `runtime`: `codex`, `claude`, or `copilot`.
 - `cwd`: where the client session was running.
 - `repo_root`: resolved Git top-level directory.
@@ -137,7 +158,7 @@ runtime-specific detail is genuinely needed.
 Repo hooks also receive:
 
 ```text
-AGENT_HOOK_EVENT=SessionStart | UserPromptSubmit | SessionEnd
+AGENT_HOOK_EVENT=SessionStart | UserPromptSubmit | PreCompact | PostCompact | SessionEnd
 AGENT_HOOK_RUNTIME=codex | claude | copilot
 AGENT_REPO_ROOT=/absolute/repo/root
 AGENT_HOOK_SCHEMA_VERSION=1.0
@@ -203,6 +224,10 @@ For `session_start.py` and `user_prompt_submit.py`, stdout may become model
 context for Codex and Claude. Print only concise context that should be shown to
 the agent.
 
+For `pre_compact.py` and `post_compact.py`, stdout is passed through raw to the
+runtime. Print nothing unless you intentionally want to return a valid hook JSON
+payload for that runtime.
+
 For `session_end.py`, stdout is only logged. Use it for diagnostics, not model
 instructions.
 
@@ -235,12 +260,17 @@ background worker or next SessionStart processes it
 SessionStart injects the useful compact summary
 ```
 
+The same principle applies to `PreCompact` and `PostCompact`: use them to
+capture pointers or enqueue work, not to run slow summarization inline.
+
 ## Runtime Notes
 
 Claude:
 
 - Native `SessionEnd` can provide `transcript_path`.
 - Use that path instead of trying to reconstruct the conversation.
+- `PreCompact` and `PostCompact` are rendered by this control plane for managed
+  repos that opt into the shared compact hooks.
 
 Copilot JSON hooks:
 
@@ -259,7 +289,8 @@ Copilot SDK adapters:
 
 Codex:
 
-- `SessionStart` and `UserPromptSubmit` are supported by this control plane.
+- `SessionStart`, `UserPromptSubmit`, `PreCompact`, and `PostCompact` are
+  supported by this control plane.
 - A separate `SessionEnd` is not rendered for Codex today.
 - Use `Stop` for turn-end commit/check automation.
 
@@ -289,11 +320,22 @@ printf '{"hook_event_name":"SessionEnd","cwd":"%s","session_id":"test-session","
   | python3 ~/.agents/hooks/scripts/session_end.py --runtime claude
 ```
 
+For compaction:
+
+```bash
+cd /path/to/repo
+printf '{"hook_event_name":"PreCompact","cwd":"%s","session_id":"test-session"}' "$PWD" \
+  | python3 ~/.agents/hooks/scripts/pre_compact.py --runtime codex
+printf '{"hook_event_name":"PostCompact","cwd":"%s","session_id":"test-session"}' "$PWD" \
+  | python3 ~/.agents/hooks/scripts/post_compact.py --runtime claude
+```
+
 Expected behavior:
 
 - Missing repo hook: exits `0`, no output.
 - `SessionStart` / `UserPromptSubmit`: stdout may be wrapped and forwarded for
   Codex or Claude.
+- `PreCompact` / `PostCompact`: stdout passes through raw to the runtime.
 - `SessionEnd`: stdout goes to
   `~/.local/state/agents-control-plane/log/hooks-session-end.log`.
 
@@ -318,6 +360,8 @@ python3 -m py_compile \
   hooks/scripts/hook_runtime.py \
   hooks/scripts/session_start.py \
   hooks/scripts/user_prompt_submit.py \
+  hooks/scripts/pre_compact.py \
+  hooks/scripts/post_compact.py \
   hooks/scripts/session_end.py
 python3 -m unittest tests.control_plane.test_hooks_control_plane
 ./scripts/test-control-plane.sh
@@ -337,6 +381,7 @@ Do not edit rendered .github/hooks/agent-control-plane.json.
 Read the normalized JSON payload from stdin.
 Prefer top-level fields over raw_payload.
 Keep the hook non-interactive, fast, deterministic, and Python-only.
-For SessionEnd, enqueue slow summary/memory work instead of doing it inline.
+For PreCompact, PostCompact, and SessionEnd, enqueue slow summary/memory work
+instead of doing it inline.
 Run the repo's fast check before finishing.
 ```

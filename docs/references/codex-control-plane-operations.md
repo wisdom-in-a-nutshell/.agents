@@ -114,7 +114,7 @@ Use [Codex Control Plane Ownership](/Users/dobby/.agents/docs/references/codex-c
 - `~/.codex/config.toml` and Xcode Codex config contain exact trusted repo entries for local repos such as `focus`
 - `~/.codex/config.toml` enables Codex hooks through `[features].hooks = true`
 - `~/.codex/config.toml` explicitly preserves `computer-use@openai-bundled` and disables bundled Codex skills classified as `disabled` in [`bundled-skills-policy.json`](/Users/dobby/.agents/codex/config/bundled-skills-policy.json)
-- `~/.codex/hooks.json` is rendered from `hooks/registry.json` for global Codex hooks. The managed `Stop` hook renders there; repo-specific context hooks still render into repo `.codex/hooks.json`. Codex does not currently expose a separate documented `SessionEnd` hook.
+- `~/.codex/hooks.json` is rendered from `hooks/registry.json` for global Codex hooks. The managed `Stop` hook renders there; repo-specific lifecycle hooks such as `SessionStart`, `UserPromptSubmit`, `PreCompact`, and `PostCompact` still render into repo `.codex/hooks.json`. Codex does not currently expose a separate documented `SessionEnd` hook.
 - `com.<user>.codex-session-archiver` is loaded as a LaunchAgent and runs [`archive-stale-sessions.py`](/Users/dobby/.agents/codex/scripts/archive-stale-sessions.py) every 6 hours against managed repo paths from [`repo-bootstrap.json`](/Users/dobby/.agents/codex/config/repo-bootstrap.json).
 - `~/.codex/config.toml` contains no Git conflict markers
 - `~/.codex/vendor_imports/skills` is a valid Git checkout:

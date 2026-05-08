@@ -94,7 +94,7 @@ Detailed operations live in:
 - New or promoted agent-facing CLI clients must follow `docs/references/cli-interface-contract.md`.
 - Do not hand-edit rendered runtime hook files. Update `hooks/registry.json` or `hooks/scripts/*`, then rerun the shared bootstrap/check.
 - Repo lifecycle hook authoring contract lives in `docs/references/repo-lifecycle-hook-adapter.md`.
-- Repo-specific lifecycle behavior belongs in optional Python scripts under `scripts/hooks/session_start.py`, `scripts/hooks/user_prompt_submit.py`, and `scripts/hooks/session_end.py`.
+- Repo-specific lifecycle behavior belongs in optional Python scripts under `scripts/hooks/session_start.py`, `scripts/hooks/user_prompt_submit.py`, `scripts/hooks/pre_compact.py`, `scripts/hooks/post_compact.py`, and `scripts/hooks/session_end.py`.
 - Managed repos get rendered repo-local hook config at `.codex/hooks.json`, `.claude/settings.json`, and `.github/hooks/agent-control-plane.json` according to `hooks/registry.json`; do not hand-edit those hook surfaces. Update `hooks/registry.json`, `hooks/scripts/*`, or `codex/config/repo-bootstrap.json`, then rerun the shared bootstrap wrapper.
 - Managed repos use local Git `core.hooksPath` pointing at `hooks/git/`; the shared commit-time hook delegates to repo-owned `scripts/check-fast.sh` when present.
 - Use `scripts/check-fast.sh` as the fast, deterministic, repo-owned validation entrypoint. Prefer staged/affected checks there; keep slower repo-wide validation in `scripts/check-full.sh`.

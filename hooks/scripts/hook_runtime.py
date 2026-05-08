@@ -28,6 +28,7 @@ class RepoHookSpec:
     valid_runtimes: frozenset[str]
     label: str
     forward_stdout_as_context: bool = False
+    forward_stdout_raw: bool = False
     ignore_stdout_context_runtimes: frozenset[str] = field(
         default_factory=lambda: frozenset({"copilot"})
     )
@@ -175,14 +176,18 @@ def run_repo_hook(
             print(f"{spec.label}: failed to run {script}: {exc}", file=sys.stderr)
         return 0
 
-    if (
-        result.stdout
-        and spec.forward_stdout_as_context
-        and runtime not in spec.ignore_stdout_context_runtimes
-    ):
-        write_context_output(event=spec.event, stdout=result.stdout)
-    elif result.stdout and spec.log_stdout:
-        log_hook_message(f"repo={root} runtime={runtime} stdout={result.stdout.strip()!r}")
+    if result.stdout:
+        if spec.forward_stdout_raw:
+            sys.stdout.write(result.stdout)
+        elif (
+            spec.forward_stdout_as_context
+            and runtime not in spec.ignore_stdout_context_runtimes
+        ):
+            write_context_output(event=spec.event, stdout=result.stdout)
+        elif spec.log_stdout:
+            log_hook_message(
+                f"repo={root} runtime={runtime} stdout={result.stdout.strip()!r}"
+            )
 
     if result.stderr:
         sys.stderr.write(result.stderr)

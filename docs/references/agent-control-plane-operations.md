@@ -118,13 +118,13 @@ Preferred rule for repo bootstrap or MCP changes:
 - Current assignment policy:
   - `Stop` is global for Codex and Claude so the git conveyor does not depend on repo-local hook loading.
   - GitHub Copilot still receives `agentStop` through repo-local hook files for all managed repos.
-  - `SessionStart`, `UserPromptSubmit`, and `SessionEnd` are repo-scoped to `adi` and `angie`.
+  - `SessionStart`, `UserPromptSubmit`, `PreCompact`, `PostCompact`, and `SessionEnd` are repo-scoped to `adi` and `angie`.
 - Rendered global hook surfaces are `~/.codex/hooks.json` and `~/.claude/settings.json`; rendered repo-local hook surfaces are `.codex/hooks.json`, `.claude/settings.json`, and `.github/hooks/agent-control-plane.json`.
-- Event entrypoints live in [`hooks/scripts/session_start.py`](/Users/dobby/.agents/hooks/scripts/session_start.py), [`hooks/scripts/user_prompt_submit.py`](/Users/dobby/.agents/hooks/scripts/user_prompt_submit.py), and [`hooks/scripts/session_end.py`](/Users/dobby/.agents/hooks/scripts/session_end.py).
+- Event entrypoints live in [`hooks/scripts/session_start.py`](/Users/dobby/.agents/hooks/scripts/session_start.py), [`hooks/scripts/user_prompt_submit.py`](/Users/dobby/.agents/hooks/scripts/user_prompt_submit.py), [`hooks/scripts/pre_compact.py`](/Users/dobby/.agents/hooks/scripts/pre_compact.py), [`hooks/scripts/post_compact.py`](/Users/dobby/.agents/hooks/scripts/post_compact.py), and [`hooks/scripts/session_end.py`](/Users/dobby/.agents/hooks/scripts/session_end.py).
 - Shared dispatch plumbing lives in [`hooks/scripts/hook_runtime.py`](/Users/dobby/.agents/hooks/scripts/hook_runtime.py); runtime-specific payload normalization lives in [`hooks/scripts/hook_adapter.py`](/Users/dobby/.agents/hooks/scripts/hook_adapter.py).
 - The canonical repo hook authoring contract is [`repo-lifecycle-hook-adapter.md`](/Users/dobby/.agents/docs/references/repo-lifecycle-hook-adapter.md). Keep payload fields, environment variables, stdout semantics, smoke tests, and hand-off guidance there instead of duplicating them on this operations page.
 - Repo-specific lifecycle behavior belongs in optional Python scripts under `scripts/hooks/`. Missing repo scripts are successful no-ops.
-- Codex renders assigned `SessionStart`, `UserPromptSubmit`, and `Stop` events; it does not render a fake `SessionEnd`.
+- Codex renders assigned `SessionStart`, `UserPromptSubmit`, `PreCompact`, `PostCompact`, and `Stop` events; it does not render a fake `SessionEnd`.
 
 ## Agent Commit Gate Contract
 

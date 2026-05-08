@@ -127,7 +127,7 @@ flowchart TD
 
 ## Figure 4: Session And Prompt Dispatch
 
-One hook registry defines the shared event implementations and the repo assignment policy. Session and prompt context hooks are rendered repo-locally only for repos that need them. Today that means `adi` and `angie`; other managed repos do not get these extra context hooks.
+One hook registry defines the shared event implementations and the repo assignment policy. Session, prompt, compact, and session-end hooks are rendered repo-locally only for repos that need them. Today that means `adi` and `angie`; other managed repos do not get these extra lifecycle hooks.
 
 ```mermaid
 flowchart TD
@@ -155,6 +155,14 @@ flowchart TD
     O -->|yes| P[run Python hook from repo root]
     P --> Q[forward or ignore stdout per runtime]
     O -->|no| R[silent success]
+    B2 --> AA[Codex compacts]
+    C --> AB[Claude compacts]
+    AA --> AC[hooks/scripts/pre_compact.py / post_compact.py]
+    AB --> AC
+    AC --> AD{scripts/hooks/pre_compact.py or post_compact.py exists?}
+    AD -->|yes| AE[run Python compact hook from repo root]
+    AE --> AF[pass stdout through raw]
+    AD -->|no| AG[silent success]
     C --> S[Claude session ends]
     Y --> S2[Copilot session ends]
     S --> T[hooks/scripts/session_end.py]
@@ -169,7 +177,7 @@ flowchart TD
 
 - `hooks/registry.json`
   - owns which repos receive each lifecycle event
-  - currently assigns `SessionStart`, `UserPromptSubmit`, and `SessionEnd` only to `adi` and `angie`
+  - currently assigns `SessionStart`, `UserPromptSubmit`, `PreCompact`, `PostCompact`, and `SessionEnd` only to `adi` and `angie`
 - [`session_start.py`](/Users/dobby/.agents/hooks/scripts/session_start.py)
   - runs as the shared Codex, Claude, and GitHub Copilot `SessionStart` hook when that event is assigned to the repo
   - resolves the current git root from the hook payload `cwd`
@@ -182,6 +190,16 @@ flowchart TD
   - runs repo-owned `scripts/hooks/user_prompt_submit.py` when present
   - passes the same normalized JSON adapter payload shape, with `hook_event_name=UserPromptSubmit`
   - forwards repo script stdout as additional prompt context for runtimes that process it, capped at a rough `30000` token budget (`120000` characters); Copilot currently ignores `userPromptSubmitted` output
+- [`pre_compact.py`](/Users/dobby/.agents/hooks/scripts/pre_compact.py)
+  - runs as the shared Codex and Claude `PreCompact` hook when that event is assigned to the repo
+  - runs repo-owned `scripts/hooks/pre_compact.py` when present
+  - passes the same normalized JSON adapter payload shape, with `hook_event_name=PreCompact`
+  - passes repo script stdout through raw so the repo hook can return runtime-specific hook JSON when needed
+- [`post_compact.py`](/Users/dobby/.agents/hooks/scripts/post_compact.py)
+  - runs as the shared Codex and Claude `PostCompact` hook when that event is assigned to the repo
+  - runs repo-owned `scripts/hooks/post_compact.py` when present
+  - passes the same normalized JSON adapter payload shape, with `hook_event_name=PostCompact`
+  - passes repo script stdout through raw so the repo hook can return runtime-specific hook JSON when needed
 - [`session_end.py`](/Users/dobby/.agents/hooks/scripts/session_end.py)
   - runs as the shared Claude and GitHub Copilot `SessionEnd` hook when that event is assigned to the repo
   - runs repo-owned `scripts/hooks/session_end.py` when present
@@ -195,6 +213,14 @@ flowchart TD
   - optional repo-owned prompt context command
   - should stay fast, deterministic, and non-interactive
   - should print only context that should be added before processing that prompt
+- `scripts/hooks/pre_compact.py`
+  - optional repo-owned pre-compaction command
+  - should stay fast, deterministic, and non-interactive
+  - should print nothing unless returning valid hook JSON for the runtime
+- `scripts/hooks/post_compact.py`
+  - optional repo-owned post-compaction command
+  - should stay fast, deterministic, and non-interactive
+  - should print nothing unless returning valid hook JSON for the runtime
 - `scripts/hooks/session_end.py`
   - optional Claude and GitHub Copilot cleanup command
   - should stay fast and local because it runs while the agent exits the session
@@ -256,6 +282,8 @@ flowchart TD
 - Hook dispatch scripts:
   - `session_start.py` runs optional repo-owned `scripts/hooks/session_start.py` where the registry assigns `SessionStart`
   - `user_prompt_submit.py` runs optional repo-owned `scripts/hooks/user_prompt_submit.py` where the registry assigns `UserPromptSubmit`
+  - `pre_compact.py` runs optional repo-owned `scripts/hooks/pre_compact.py` where the registry assigns `PreCompact`
+  - `post_compact.py` runs optional repo-owned `scripts/hooks/post_compact.py` where the registry assigns `PostCompact`
   - `session_end.py` runs optional Claude and GitHub Copilot repo-owned `scripts/hooks/session_end.py` where the registry assigns `SessionEnd`
 
 ## Figure 6: Optional Machine Policy Script

@@ -16,7 +16,7 @@ suppress_unstable_features_warning = true
 
 [features]
 goals = true
-memories = true
+memories = false
 apps = false
 external_migration = false
 

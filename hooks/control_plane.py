@@ -13,6 +13,8 @@ ALL_REPOS = "*"
 EVENT_RUNTIME_SUPPORT = {
     "SessionStart": {"codex", "claude", "copilot"},
     "UserPromptSubmit": {"codex", "claude", "copilot"},
+    "PreCompact": {"codex", "claude"},
+    "PostCompact": {"codex", "claude"},
     "Stop": {"codex", "claude", "copilot"},
     "SessionEnd": {"claude", "copilot"},
 }
@@ -321,6 +323,8 @@ def _without_managed_groups(groups: list[Any]) -> list[Any]:
         "~/.agents/hooks/scripts/lifecycle.py",
         "~/.agents/hooks/scripts/session_start.py",
         "~/.agents/hooks/scripts/user_prompt_submit.py",
+        "~/.agents/hooks/scripts/pre_compact.py",
+        "~/.agents/hooks/scripts/post_compact.py",
         "~/.agents/hooks/scripts/stop.py",
         "~/.agents/hooks/scripts/session_end.py",
     }
