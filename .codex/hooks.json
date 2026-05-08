@@ -1,15 +1,3 @@
 {
-  "hooks": {
-    "Stop": [
-      {
-        "hooks": [
-          {
-            "command": "python3 ~/.agents/hooks/scripts/stop.py --runtime codex",
-            "timeout": 900,
-            "type": "command"
-          }
-        ]
-      }
-    ]
-  }
+  "hooks": {}
 }

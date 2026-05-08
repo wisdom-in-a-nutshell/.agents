@@ -22,7 +22,7 @@ Use [Codex Control Plane Ownership](/Users/dobby/.agents/docs/references/codex-c
 - `~/.codex`
   - live runtime home only
   - applied `config.toml`, global `hooks.json`, auth, sessions, logs, caches, sqlite, shell snapshots
-  - repo-local Codex hooks live in managed repo `.codex/hooks.json`, not in the global file
+  - global Codex hooks such as `Stop` live in `~/.codex/hooks.json`; repo-specific context hooks live in managed repo `.codex/hooks.json`
   - Codex-managed vendor imports in `vendor_imports/`, including the nested Git checkout at `vendor_imports/skills`
   - should not be a git repo
 - `~/.local/state/codex-control-plane`
@@ -103,7 +103,7 @@ Use [Codex Control Plane Ownership](/Users/dobby/.agents/docs/references/codex-c
 - Ghostty points at the canonical Codex startup wrapper:
   - `initial-command = direct:$HOME/.agents/codex/scripts/ghostty-codex-then-shell.sh`
 - `~/.codex/config.toml` does not use Codex `notify`; global hook automation is rendered into `~/.codex/hooks.json`, and repo-assigned hooks are rendered into managed repo `.codex/hooks.json` from `hooks/registry.json`.
-- The repo-local `Stop` hook owns the managed-repo git conveyor:
+- The global `Stop` hook owns the managed-repo git conveyor:
   - stages all changes with `git add -A`
   - commits so each repo's own `scripts/check-fast.sh` checks decide whether the change is acceptable
   - relies on managed repo local `core.hooksPath` pointing at `~/.agents/hooks/git`
@@ -114,7 +114,7 @@ Use [Codex Control Plane Ownership](/Users/dobby/.agents/docs/references/codex-c
 - `~/.codex/config.toml` and Xcode Codex config contain exact trusted repo entries for local repos such as `focus`
 - `~/.codex/config.toml` enables Codex hooks through `[features].codex_hooks = true`
 - `~/.codex/config.toml` explicitly preserves `computer-use@openai-bundled` and disables bundled Codex skills classified as `disabled` in [`bundled-skills-policy.json`](/Users/dobby/.agents/codex/config/bundled-skills-policy.json)
-- `~/.codex/hooks.json` is rendered from `hooks/registry.json` for global Codex hooks. Current managed hooks are repo-scoped, so they render into repo `.codex/hooks.json`. Codex does not currently expose a separate documented `SessionEnd` hook.
+- `~/.codex/hooks.json` is rendered from `hooks/registry.json` for global Codex hooks. The managed `Stop` hook renders there; repo-specific context hooks still render into repo `.codex/hooks.json`. Codex does not currently expose a separate documented `SessionEnd` hook.
 - `com.<user>.codex-session-archiver` is loaded as a LaunchAgent and runs [`archive-stale-sessions.py`](/Users/dobby/.agents/codex/scripts/archive-stale-sessions.py) every 6 hours against managed repo paths from [`repo-bootstrap.json`](/Users/dobby/.agents/codex/config/repo-bootstrap.json).
 - `~/.codex/config.toml` contains no Git conflict markers
 - `~/.codex/vendor_imports/skills` is a valid Git checkout:
@@ -252,7 +252,7 @@ Use [Codex Control Plane Ownership](/Users/dobby/.agents/docs/references/codex-c
 - Machine-facing multi-surface apply now lives in [`auto-apply-agent-control-planes.sh`](/Users/dobby/.agents/scripts/auto-apply-agent-control-planes.sh), which calls the Codex, Claude, and repo-local GitHub Copilot hook entrypoints as needed after `~/.agents` sync.
 - When shared skill inputs change, that wrapper also reruns the Codex bootstrap so machine-side dependencies for managed skills such as `pdf` stay converged.
 - That same wrapper now also runs the managed external plugin refresh once per day, then re-syncs plugin-derived skills and MCP state.
-- When `hooks/registry.json` or `codex/config/repo-bootstrap.json` changes, that wrapper syncs repo-local hooks for Codex, Claude, and GitHub Copilot in managed repos.
+- When `hooks/registry.json` or `codex/config/repo-bootstrap.json` changes, that wrapper syncs global Codex/Claude hooks and repo-local hooks for Codex, Claude, and GitHub Copilot in managed repos.
 - Codex-specific post-sync apply logic still lives in [`auto-apply-codex-control-plane.sh`](/Users/dobby/.agents/codex/scripts/auto-apply-codex-control-plane.sh) as an optional lower-level Codex-only reconcile helper.
 - Practical flow:
   1. one machine pushes a change in `~/.agents`

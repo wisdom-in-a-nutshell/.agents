@@ -41,37 +41,41 @@ class HooksControlPlaneTests(TempDirTestCase):
     def test_registry_renders_codex_and_claude_hooks(self) -> None:
         registry = load_hooks_registry(REPO_ROOT / "hooks/registry.json")
 
-        self.assertEqual(render_codex_hooks(registry), {"hooks": {}})
+        global_codex_hooks = render_codex_hooks(registry)
+        self.assertEqual(set(global_codex_hooks["hooks"].keys()), {"Stop"})
+        self.assertEqual(
+            global_codex_hooks["hooks"]["Stop"][0]["hooks"][0]["command"],
+            "python3 ~/.agents/hooks/scripts/stop.py --runtime codex",
+        )
+        self.assertEqual(
+            global_codex_hooks["hooks"]["Stop"][0]["hooks"][0]["timeout"],
+            900,
+        )
 
         codex_hooks = render_codex_hooks(registry, repo_name="adi")
         self.assertEqual(
             set(codex_hooks["hooks"].keys()),
-            {"SessionStart", "UserPromptSubmit", "Stop"},
+            {"SessionStart", "UserPromptSubmit"},
         )
         self.assertEqual(
             codex_hooks["hooks"]["SessionStart"][0]["matcher"],
             "startup|resume|clear",
         )
-        self.assertNotIn("matcher", codex_hooks["hooks"]["Stop"][0])
         self.assertEqual(
             codex_hooks["hooks"]["UserPromptSubmit"][0]["hooks"][0]["command"],
             "python3 ~/.agents/hooks/scripts/user_prompt_submit.py --runtime codex",
         )
         self.assertEqual(
-            codex_hooks["hooks"]["Stop"][0]["hooks"][0]["command"],
-            "python3 ~/.agents/hooks/scripts/stop.py --runtime codex",
-        )
-        self.assertEqual(
-            codex_hooks["hooks"]["Stop"][0]["hooks"][0]["timeout"],
-            900,
-        )
-        self.assertEqual(
             set(render_codex_hooks(registry, repo_name="win")["hooks"].keys()),
-            {"Stop"},
+            set(),
         )
 
         claude_settings = merge_claude_hooks({"permissions": {"defaultMode": "bypassPermissions"}}, registry)
-        self.assertNotIn("hooks", claude_settings)
+        self.assertEqual(set(claude_settings["hooks"].keys()), {"Stop"})
+        self.assertEqual(
+            claude_settings["hooks"]["Stop"][0]["hooks"][0]["command"],
+            "python3 ~/.agents/hooks/scripts/stop.py --runtime claude",
+        )
 
         claude_settings = merge_claude_hooks(
             {"permissions": {"defaultMode": "bypassPermissions"}},
@@ -86,10 +90,7 @@ class HooksControlPlaneTests(TempDirTestCase):
             claude_settings["hooks"]["UserPromptSubmit"][0]["hooks"][0]["command"],
             "python3 ~/.agents/hooks/scripts/user_prompt_submit.py --runtime claude",
         )
-        self.assertEqual(
-            claude_settings["hooks"]["Stop"][0]["hooks"][0]["command"],
-            "python3 ~/.agents/hooks/scripts/stop.py --runtime claude",
-        )
+        self.assertNotIn("Stop", claude_settings["hooks"])
         self.assertEqual(
             claude_settings["hooks"]["SessionEnd"][0]["matcher"],
             "clear|resume|logout|prompt_input_exit|bypass_permissions_disabled|other",
@@ -99,7 +100,7 @@ class HooksControlPlaneTests(TempDirTestCase):
             "python3 ~/.agents/hooks/scripts/session_end.py --runtime claude",
         )
         self.assertEqual(
-            set(merge_claude_hooks({}, registry, repo_name="win")["hooks"].keys()),
+            set(merge_claude_hooks({}, registry)["hooks"].keys()),
             {"Stop"},
         )
 
@@ -610,7 +611,7 @@ class HooksControlPlaneTests(TempDirTestCase):
             f"runtime=claude\nevent=SessionEnd\nschema=1.0\nrepo_root={repo.resolve()}\ntranscript_format=None\n",
         )
 
-    def test_codex_sync_config_renders_plan_mode_and_empty_global_hooks(self) -> None:
+    def test_codex_sync_config_renders_plan_mode_and_global_stop_hook(self) -> None:
         root = make_control_plane_root(self.temp_path)
         home = self.temp_path / "home"
         write_json(root / "mcp/config/presets.json", default_mcp_registry())
@@ -647,7 +648,10 @@ class HooksControlPlaneTests(TempDirTestCase):
         self.assertNotIn("notify =", rendered_config)
 
         hooks = read_json(home / ".codex/hooks.json")
-        self.assertEqual(hooks, {"hooks": {}})
+        self.assertEqual(
+            hooks["hooks"]["Stop"][0]["hooks"][0]["command"],
+            "python3 ~/.agents/hooks/scripts/stop.py --runtime codex",
+        )
 
     def test_sync_copilot_hooks_renders_repo_local_github_hook_file(self) -> None:
         repo = init_git_repo(self.temp_path / "repo")

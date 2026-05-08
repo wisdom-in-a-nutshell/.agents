@@ -73,9 +73,9 @@ Claude has both global and project layers:
 - project `.mcp.json`
 - project `.claude/skills/`
 
-Managed lifecycle hooks render into project `.claude/settings.json` when
-`hooks/registry.json` assigns them to that repo. Current global Claude settings
-stay generic.
+Global lifecycle hooks such as `Stop` render into `~/.claude/settings.json`.
+Repo-specific lifecycle hooks render into project `.claude/settings.json` when
+`hooks/registry.json` assigns them to that repo.
 
 The baseline keeps the same permissive default posture at both scopes where Anthropic allows it:
 

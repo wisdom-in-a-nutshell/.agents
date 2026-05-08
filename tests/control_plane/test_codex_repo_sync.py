@@ -79,7 +79,6 @@ class CodexRepoSyncTests(TempDirTestCase):
         self.assertIn("[mcp_servers.xcodebuildmcp]", repo_config)
         self.assertIn('command = "npx"', repo_config)
         self.assertNotIn("[agents.", repo_config)
-        self.assertIn('"Stop"', repo_hooks)
         self.assertIn('"SessionStart"', repo_hooks)
 
         self.assertFalse(stale_managed_role.exists())

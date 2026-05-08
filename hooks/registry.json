@@ -42,13 +42,23 @@
       "command": "python3 ~/.agents/hooks/scripts/stop.py --runtime {runtime}",
       "enabled": true,
       "event": "Stop",
-      "id": "repo-stop",
+      "id": "global-stop",
+      "runtimes": [
+        "codex",
+        "claude"
+      ],
+      "scope": "global",
+      "timeout": 900
+    },
+    {
+      "command": "python3 ~/.agents/hooks/scripts/stop.py --runtime {runtime}",
+      "enabled": true,
+      "event": "Stop",
+      "id": "repo-stop-copilot",
       "repos": [
         "*"
       ],
       "runtimes": [
-        "codex",
-        "claude",
         "copilot"
       ],
       "scope": "repo",

@@ -201,12 +201,12 @@ flowchart TD
 
 ## Figure 5: Post-Turn Automation
 
-The `Stop` hook is a repo-scoped registry entry assigned to all managed repos. It renders into each repo's Codex, Claude, and GitHub Copilot hook config, then delegates commit-time validation to the repo's own `scripts/check-fast.sh`.
+The `Stop` hook is a global Codex and Claude registry entry so the git conveyor does not depend on repo-local hook loading. GitHub Copilot still receives the same logical stop hook through repo-local `agentStop` config, then commit-time validation delegates to each repo's own `scripts/check-fast.sh`.
 
 ```mermaid
 flowchart TD
-    A[hooks/registry.json<br/>Stop assigned to repos: *] --> B[managed repo<br/>.codex/hooks.json]
-    A --> C[managed repo<br/>.claude/settings.json]
+    A[hooks/registry.json<br/>global Stop] --> B[~/.codex/hooks.json]
+    A --> C[~/.claude/settings.json]
     A --> Y[managed repo<br/>.github/hooks/agent-control-plane.json]
     B --> D[Codex turn reaches Stop]
     C --> E[Claude turn reaches Stop]

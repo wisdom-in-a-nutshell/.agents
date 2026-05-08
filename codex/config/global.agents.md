@@ -32,7 +32,7 @@ This file is machine-wide baseline guidance. Keep it generic and avoid portfolio
 - Favor a small number of focused subagents over many broad ones.
 
 ## Git Automation (Agent Stop Hook)
-- Managed repos render a repo-local Stop hook that runs after each agent turn and auto-stages, commits, runs repo-owned fast checks through `git commit`, rebases, and pushes.
+- Managed repos use the global Stop hook that runs after each agent turn and auto-stages, commits, runs repo-owned fast checks through `git commit`, rebases, and pushes.
 - If repo-owned checks fail, the hook returns the failure details to the current agent so it can fix the issue in the same session.
 - Shared hook dispatch also supports repo-owned Python lifecycle hooks at `scripts/hooks/session_start.py`, `scripts/hooks/user_prompt_submit.py`, and `scripts/hooks/session_end.py` when those events are assigned to the repo and those files exist. `SessionEnd` currently renders for Claude and GitHub Copilot, not Codex.
 - Repo-owned lifecycle hook scripts receive a normalized JSON adapter payload on stdin with the original runtime payload preserved under `raw_payload`.
