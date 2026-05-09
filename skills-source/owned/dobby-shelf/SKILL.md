@@ -50,13 +50,34 @@ Default for ambiguous new Shelf items: add a plain `open` item with no `showAt`
 so it lands in Later. Use `showAt` for when it should surface and `dueAt` only
 for a real deadline.
 
+## CLI first
+
+Use the skill-bundled CLI for ordinary Shelf operations:
+
+```bash
+$HOME/.agents/skills-source/owned/dobby-shelf/scripts/dobby-shelf list --view open
+$HOME/.agents/skills-source/owned/dobby-shelf/scripts/dobby-shelf add --title "Buy oats" --kind buy --show-at 2026-05-10
+$HOME/.agents/skills-source/owned/dobby-shelf/scripts/dobby-shelf done <id-or-prefix>
+$HOME/.agents/skills-source/owned/dobby-shelf/scripts/dobby-shelf defer <id-or-prefix> --show-at 2026-05-12
+$HOME/.agents/skills-source/owned/dobby-shelf/scripts/dobby-shelf drop <id-or-prefix> --reason "no longer relevant"
+$HOME/.agents/skills-source/owned/dobby-shelf/scripts/dobby-shelf focus <id-or-prefix> --on
+```
+
+The CLI emits JSON envelopes by default; use `--plain` only for operator inspection.
+
 ## Operating rules
 
 - Read `state/shelf.json` before writing.
 - Preserve schema, `revision`, and timestamps.
 - Increment `revision` on every write and set `updatedAt` to current UTC ISO.
 - Prefer the mobile-gateway Shelf endpoints when operating through the app/client
-  boundary. Inside the same workspace, direct JSON edits are allowed.
+  boundary. Inside the same workspace, use the CLI; direct JSON edits are only the fallback.
 - Do not turn journal entries into Shelf items unless there is an explicit action.
+
+## Testing
+
+```bash
+bash $HOME/.agents/skills-source/owned/dobby-shelf/tests/run.sh
+```
 
 For examples and edge cases, read `references/shelf.md`.

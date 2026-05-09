@@ -27,6 +27,21 @@ Common item fields:
 - `deferCount`, `lastDeferredAt` — deferral history.
 - `dropReason` — short explanation when dropped.
 
+## CLI
+
+Preferred command surface:
+
+```bash
+dobby-shelf list --view open|now|today|upcoming|later|done|dropped|all
+dobby-shelf add --title <title> [--kind do|buy|remember] [--show-at YYYY-MM-DD] [--due-at ...] [--note ...] [--now]
+dobby-shelf done <id-or-prefix>
+dobby-shelf defer <id-or-prefix> --show-at YYYY-MM-DD
+dobby-shelf drop <id-or-prefix> [--reason ...]
+dobby-shelf focus <id-or-prefix> --on|--off
+```
+
+Selectors resolve by exact id, unique id prefix, or exact title. Use full ids when ambiguous.
+
 ## Mutations
 
 ### Add
