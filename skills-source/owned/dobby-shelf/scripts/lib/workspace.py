@@ -1,7 +1,7 @@
 """Workspace resolution for Dobby skill scripts.
 
-Dobby's executable scripts live inside the `dobby` skill, but operate on a
-Dobby workspace repo. Resolve that workspace from DOBBY_WORKSPACE first, then
+This skill's executable scripts live outside the workspace repo, but operate on
+a Dobby workspace. Resolve that workspace from DOBBY_WORKSPACE first, then
 from the current working directory.
 """
 

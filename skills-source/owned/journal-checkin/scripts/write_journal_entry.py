@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import sys
 from datetime import datetime
 from pathlib import Path
@@ -43,10 +44,27 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
+WORKSPACE_MARKERS = ("soul.md", "memory", "journal")
+
+
+def is_workspace(path: Path) -> bool:
+    return all((path / marker).exists() for marker in WORKSPACE_MARKERS)
+
+
 def detect_workspace_root() -> Path:
+    env = os.environ.get("DOBBY_WORKSPACE", "").strip()
+    if env:
+        path = Path(env).expanduser().resolve()
+        if is_workspace(path):
+            return path
+        raise SystemExit(
+            f"DOBBY_WORKSPACE does not look like a Dobby workspace: {path}. "
+            "Expected soul.md, memory/, and journal/."
+        )
+
     cwd = Path.cwd().resolve()
     for path in [cwd, *cwd.parents]:
-        if (path / "AGENTS.md").is_file():
+        if is_workspace(path):
             return path
     return cwd
 
