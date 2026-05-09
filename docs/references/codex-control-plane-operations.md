@@ -113,6 +113,7 @@ Use [Codex Control Plane Ownership](/Users/dobby/.agents/docs/references/codex-c
   - logs phase timing to `~/.local/state/agents-control-plane/log/hooks-stop.log`
 - `~/.codex/config.toml` and Xcode Codex config contain exact trusted repo entries for local repos such as `focus`
 - `~/.codex/config.toml` enables Codex hooks through `[features].hooks = true`
+- `~/.codex/config.toml` contains `[hooks.state]` trust hashes for managed hooks rendered by this control plane, so global and repo-local lifecycle hooks do not need repeated `/hooks` review on every machine bootstrap.
 - `~/.codex/config.toml` explicitly preserves `computer-use@openai-bundled` and disables bundled Codex skills classified as `disabled` in [`bundled-skills-policy.json`](/Users/dobby/.agents/codex/config/bundled-skills-policy.json)
 - `~/.codex/hooks.json` is rendered from `hooks/registry.json` for global Codex hooks. The managed `Stop` hook renders there; repo-specific lifecycle hooks such as `SessionStart`, `UserPromptSubmit`, `PreCompact`, and `PostCompact` still render into repo `.codex/hooks.json`. Codex does not currently expose a separate documented `SessionEnd` hook.
 - `com.<user>.codex-session-archiver` is loaded as a LaunchAgent and runs [`archive-stale-sessions.py`](/Users/dobby/.agents/codex/scripts/archive-stale-sessions.py) every 6 hours against managed repo paths from [`repo-bootstrap.json`](/Users/dobby/.agents/codex/config/repo-bootstrap.json).
@@ -135,6 +136,10 @@ Use [Codex Control Plane Ownership](/Users/dobby/.agents/docs/references/codex-c
   - prunes stale managed agent declarations and runtime role files left by older control-plane versions
   - fails fast if the target config contains unresolved Git conflict markers
   - skips no-op rewrites
+- [`sync-hook-trust-state.py`](/Users/dobby/.agents/codex/scripts/sync-hook-trust-state.py)
+  - computes Codex's normalized hook trust hash for managed global and repo-local hooks
+  - writes those hashes under `[hooks.state]` in `~/.codex/config.toml`
+  - is intentionally scoped to hooks rendered from the shared control plane, not arbitrary repo hooks
 - [`sync-trusted-projects.sh`](/Users/dobby/.agents/codex/scripts/sync-trusted-projects.sh)
   - scans repo roots from the canonical repo bootstrap registry (defaults to `~/GitHub`)
   - includes explicit extra managed repos such as `~/.agents`
