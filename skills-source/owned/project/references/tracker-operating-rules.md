@@ -69,7 +69,7 @@ Keep blockers first-class:
 
 - Archive by default when `Done When` is satisfied, remaining milestones/tasks are complete or explicitly descoped, validation is acceptable for the scoped work, and no material blocker remains.
 - Ask before archiving only when project completion is materially uncertain or when closure depends on product judgment rather than implementation execution.
-- Unless repo guidance says otherwise, archive by moving the tracker from `docs/projects/<project>/tasks.md` to `docs/projects/archive/<project>/tasks.md`.
+- Unless repo guidance says otherwise, archive by moving the tracker from the active tracker path to the repo's archive path, e.g. `projects/archive/<project>/tasks.md` or `docs/projects/archive/<project>/tasks.md`.
 - If the archive folder does not exist, create it during closeout.
 - Do not introduce a `ready-to-archive` holding state by default.
 

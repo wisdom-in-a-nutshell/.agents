@@ -1,26 +1,30 @@
 # Dobby lifecycle hooks
 
-Lifecycle details live here so the main Dobby skill stays a thin router.
+Lifecycle details live here so `STRUCTURE.md` can stay the workspace body map
+instead of becoming a hook runbook.
 
 ## Boot
 
 Boot context is delivered by the repo's `SessionStart` hook
 (`scripts/hooks/session_start.py`), which delegates to the skill-bundled hook.
-The hook reads `now.md`, `state/shelf.json`, walks `memory/areas/`, reads recent
-session notes, and calls the `dobby-calendar` skill CLI for upcoming events.
+The hook reads `STRUCTURE.md`, `now.md`, `state/shelf.json`, walks
+`memory/areas/`, reads recent session notes, and calls the `dobby-calendar`
+skill CLI for upcoming events.
 
 What boot context should include:
 
 1. `soul.md` / identity context through the runtime system-prompt mechanism.
-2. `memory/now.md`.
-3. Recent session notes: last 3 plus notes from the last 7 days, capped at 10.
-4. Shelf snapshot.
-5. Calendar snapshot for the next 2 days.
-6. Area manifest.
+2. `STRUCTURE.md` as the Dobby workspace body map and routing contract.
+3. `memory/now.md`.
+4. Recent session notes: last 3 plus notes from the last 7 days, capped at 10.
+5. Shelf snapshot.
+6. Calendar snapshot for the next 2 days.
+7. Area manifest.
 
 Operational limits:
 
 - filename format: `memory/sessions/YYYY/MM/DD-HHMMSS.md` with numeric suffixes on collision
+- structure boot cap: 16000 chars
 - boot context: last 3 notes plus notes from the last 7 days, capped at 10
 - per-note boot cap: 2500 chars
 - total recent-session boot block cap: 12000 chars
@@ -34,10 +38,10 @@ writing a handoff record under `tmp/hooks/session-end/`, launching a background
 continuity worker, and exiting `0`.
 
 For Codex runtimes, `scripts/hooks/codex-finalize-session` starts local
-`codex app-server`, forks the source thread, injects a `$dobby` finalization
-turn, and lets the forked agent write directly to `memory/sessions/...`. This is
-the preferred path because it reuses the source thread context and keeps the
-active user thread clean.
+`codex app-server`, forks the source thread, injects a finalization prompt that
+points to `STRUCTURE.md`, and lets the forked agent write directly to
+`memory/sessions/...`. This is the preferred path because it reuses the source
+thread context and keeps the active user thread clean.
 
 For non-Codex runtimes, `scripts/hooks/write-session-note` is the legacy
 transcript path. It renders the transcript when the runtime provides

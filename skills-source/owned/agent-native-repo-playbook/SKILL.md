@@ -16,6 +16,7 @@ Operating model:
 ## Workflow
 1. Read the repo's current guidance and structure:
    - `AGENTS.md` files
+   - `STRUCTURE.md` or other repo-specific structure maps when present
    - `docs/` organization
    - `.github/workflows/`
    - local `.agents/skills/`
@@ -33,7 +34,7 @@ Operating model:
 ## Output Format
 1. `What is working`: short bullets.
 2. `Highest-leverage gaps`: short bullets.
-3. `AGENTS audit`: `Keep / Move / Delete` decisions for major `AGENTS.md` lines or sections.
+3. Guidance audit: `Keep / Move / Delete` decisions for major root guidance lines or sections (`AGENTS.md`, `STRUCTURE.md`, or equivalent).
 4. `Recommended next moves`:
    - Immediate
    - Near-term
@@ -44,9 +45,9 @@ Operating model:
 - Prefer recommendations that reduce human coordination load.
 - Prefer mechanical guardrails over prose-only guidance.
 - Preserve the operating principle: humans set intent; agents write 100% of code.
-- Keep AGENTS concise; move detailed guidance into docs.
-- Keep root `AGENTS.md` as a router; use nested `AGENTS.md` only where local boundary rules materially differ.
-- When editing or proposing `AGENTS.md`, follow `references/agents-md-best-practices.md` and include an AGENTS audit (`Keep / Move / Delete`).
+- Keep root guidance concise; move durable detail into the repo's chosen canonical layer.
+- For normal software repos, keep root `AGENTS.md` as a router and use nested `AGENTS.md` only where local boundary rules materially differ. If a repo intentionally rejects `AGENTS.md` and uses another passive/bootstrapped map such as `STRUCTURE.md`, honor that design.
+- When editing or proposing `AGENTS.md`, follow `references/agents-md-best-practices.md`; when the repo uses `STRUCTURE.md` or equivalent, audit that root guidance instead.
 - When defining docs contracts, prefer:
   - `docs/architecture/` as quick human-overview and visual-first (Mermaid in Markdown + short helper text),
   - `docs/references/` as durable implementation facts, command snippets, and operational lookup material for humans and agents.
@@ -56,8 +57,8 @@ Operating model:
 - Prioritize feedback loops that agents can run autonomously.
 - Avoid heavy process designed for large teams unless explicitly requested.
 - Recommend one docs contract across repos unless the user requests exceptions.
-- Use `$project` for creating, resuming, replanning, and closing `docs/projects/<project>/tasks.md`.
-- If repo-local guidance conflicts with this playbook, prefer repo-local sources of truth (`AGENTS.md`, decision docs, and architecture docs).
+- Use `$project` for creating, resuming, replanning, and closing project trackers in the repo's tracker home.
+- If repo-local guidance conflicts with this playbook, prefer repo-local sources of truth (`STRUCTURE.md`, `AGENTS.md`, decision docs, and architecture docs).
 
 ## Resources
 - `references/best-practices.md`: baseline best practices for this workflow.

@@ -47,13 +47,13 @@ TEMPLATE GUIDANCE (for generating agent):
 - Run validation after each milestone or risky batch and fix failures before advancing.
 - Continue working until the scoped project is done or a true blocker requires human input; do not stop after one completed task if more actionable work remains.
 - When `Done When` is satisfied and validation is acceptable, archive the project directly; ask only if completion is materially uncertain.
-- Unless repo guidance says otherwise, archiving means moving the tracker to `docs/projects/archive/<project>/tasks.md`; create the archive folders if missing.
+- Unless repo guidance says otherwise, archiving means moving the tracker to the repo's archive path, e.g. `projects/archive/<project>/tasks.md` or `docs/projects/archive/<project>/tasks.md`; create the archive folders if missing.
 - Update this tracker whenever the plan changes materially or before ending the run.
 - If project-critical ambiguity would stall progress later, ask targeted follow-up questions now and record the answers here.
 - Use `Current Batch` as the live execution board and primary resume point.
 - If `Current Batch` is empty or stale, rebuild it from the remaining milestones and backlog before continuing.
-- If parallel work helps, keep `tasks.md` single-writer and let delegated work write topic-based files under `docs/projects/<project>/resources/` when durable notes or artifacts are useful.
-- For long-running or cross-repo work, add a closeout learnings task that reviews `docs/projects/<project>/learnings/README.md` before archive and keep appending to that file during the project when the run reveals missing docs, weak tooling, or other agent-facing improvements.
+- If parallel work helps, keep `tasks.md` single-writer and let delegated work write topic-based files under the tracker's sibling `resources/` folder when durable notes or artifacts are useful.
+- For long-running or cross-repo work, add a closeout learnings task that reviews the tracker's sibling `learnings/README.md` before archive and keep appending to that file during the project when the run reveals missing docs, weak tooling, or other agent-facing improvements.
 - Before starting delegated work, add or update the delegated row in `Current Batch`.
 
 ## Decisions
@@ -71,7 +71,7 @@ TEMPLATE GUIDANCE (for generating agent):
 | todo |  | parent |  |
 
 ## Backlog / Remaining Work
-<!-- Durable list of remaining work. Promote items into Current Batch when they become active. Include at least one validation task, one AGENTS.md/doc review/update task when guidance changes materially, and a final closeout/archive task rather than a `ready-to-archive` placeholder. For long-running or cross-repo projects, also include a closeout learnings task that reviews and finalizes `docs/projects/<project>/learnings/README.md` for future agent improvement. -->
+<!-- Durable list of remaining work. Promote items into Current Batch when they become active. Include at least one validation task, one guidance/doc review/update task when guidance changes materially, and a final closeout/archive task rather than a `ready-to-archive` placeholder. For long-running or cross-repo projects, also include a closeout learnings task that reviews and finalizes the tracker's sibling `learnings/README.md` for future agent improvement. -->
 - [ ] 
 
 ## Validation / Test Plan

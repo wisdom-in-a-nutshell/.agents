@@ -22,7 +22,7 @@ macOS EventKit / Calendar.app
 
 ## Ownership
 
-The implementation lives in the Dobby skill so every Dobby workspace (`adi`, `angie`, future workspaces) uses the same calendar backend:
+The implementation lives in the Dobby Calendar skill so every Dobby workspace (`adi`, `angie`, future workspaces) uses the same calendar backend:
 
 - source: `scripts/dobby_calendar/bridge/main.swift`
 - app metadata: `scripts/dobby_calendar/bridge/Info.plist`
@@ -42,7 +42,7 @@ Per machine, the installer creates runtime artifacts outside the repo:
 
 ## Setup
 
-Run once per Mac after the Dobby skill is available:
+Run once per Mac after the Dobby Calendar skill is available:
 
 ```bash
 ~/.agents/skills-source/owned/dobby-calendar/scripts/dobby_calendar/bridge/install --request-access

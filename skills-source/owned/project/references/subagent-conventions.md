@@ -66,7 +66,7 @@ This keeps delegation as a force multiplier for bounded work instead of turning 
 - The parent thread should usually own final integration, docs sync, validation orchestration, and runtime or device smokes.
 - The parent thread should freeze shared contracts before sending multiple workers to implement against them.
 - Subagents may read `tasks.md` for context.
-- Subagents may write topic-based notes or artifacts under `docs/projects/<project>/resources/` when durable working memory is useful.
+- Subagents may write topic-based notes or artifacts under the tracker's sibling `resources/` folder when durable working memory is useful.
 - Before delegated work starts, the parent thread should add or refresh the corresponding row in `Current Batch`.
 - The parent thread records the durable outcome of delegated work in `tasks.md`.
 

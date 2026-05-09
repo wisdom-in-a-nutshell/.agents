@@ -1,6 +1,6 @@
 ---
 name: project
-description: Create, resume, replan, and close long-running project work using a single tracker at `docs/projects/PROJECT/tasks.md`. Use when starting a new project, continuing an existing project, refreshing a stale plan, or asking an agent to handle a complicated multi-session task with durable repo memory, milestone validation, and a clear resume point.
+description: Create, resume, replan, and close long-running project work using the repo's project-tracker home (usually `docs/projects/PROJECT/tasks.md`, but follow repo guidance such as `projects/PROJECT/tasks.md` when specified). Use when starting a new project, continuing an existing project, refreshing a stale plan, or asking an agent to handle a complicated multi-session task with durable repo memory, milestone validation, and a clear resume point.
 ---
 
 # Project
@@ -9,15 +9,19 @@ description: Create, resume, replan, and close long-running project work using a
 
 Use one project tracker file as the durable source of truth for long-running work. Keep the tracker current while you work, execute from `Current Batch`, validate at milestone boundaries, and archive the tracker when the scoped work is genuinely done.
 
-## Default Location
+## Tracker Location
 
-1. Use `docs/projects/<project>/tasks.md`.
-2. When archiving a finished project, use `docs/projects/archive/<project>/tasks.md`.
+Follow repo-local guidance first.
+
+1. If the repo defines a project-tracker home in `STRUCTURE.md`, `AGENTS.md`, or another root guidance file, use that.
+   - Dobby workspace example: `projects/<project>/tasks.md` and `projects/archive/<project>/tasks.md`.
+2. Otherwise use the default: `docs/projects/<project>/tasks.md`.
+3. When archiving a finished project, archive under that same project-tracker home.
 
 ## Workflow
 
 1. **Locate or create the tracker**
-   - If `docs/projects/<project>/tasks.md` is missing, create it with `references/tasks-template.md`.
+   - If the tracker is missing, create it with `references/tasks-template.md` in the repo's project-tracker home.
 2. **Choose the operating mode from repo state**
    - Missing tracker: create it.
    - Active tracker: resume from `Current Batch`.
@@ -47,7 +51,7 @@ Use one project tracker file as the durable source of truth for long-running wor
 9. **Close out**
    - Summarize validation evidence and residual risks.
    - Include a short delegation retrospective when subagents were used.
-   - Review and finalize `docs/projects/<project>/learnings/README.md` before archive for long-running or tooling-heavy projects.
+   - Review and finalize `<project-root>/<project>/learnings/README.md` before archive for long-running or tooling-heavy projects.
 
 ## Core Rules
 
@@ -62,4 +66,4 @@ Use one project tracker file as the durable source of truth for long-running wor
 - Use `references/tasks-template.md` when creating or normalizing `tasks.md`.
 - Use `references/tracker-operating-rules.md` for `Current Batch`, checkpoint, backlog, and closeout rules.
 - Use `references/subagent-conventions.md` for delegation strategy, role split, split patterns, and anti-patterns.
-- Use `references/learnings-template.md` when bootstrapping `docs/projects/<project>/learnings/README.md`.
+- Use `references/learnings-template.md` when bootstrapping `<project-root>/<project>/learnings/README.md`.

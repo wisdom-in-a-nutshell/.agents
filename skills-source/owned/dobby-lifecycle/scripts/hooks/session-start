@@ -5,11 +5,11 @@ Emits situational boot context to stdout; the shared dispatcher at
 `~/.agents/hooks/scripts/session_start.py` forwards it to the agent as
 `hookSpecificOutput.additionalContext`.
 
-Section order (identity-first so later sections read through the right lens):
+Section order:
 
-    soul (conditional) | now | recent sessions | shelf | calendar | areas
+    soul (conditional) | structure | now | recent sessions | shelf | calendar | areas
 
-Memory reads (`now.md`, area manifest, `soul.md`) happen inline via
+Memory reads (`STRUCTURE.md`, `now.md`, area manifest, `soul.md`) happen inline via
 file I/O — trivial work, no reason to round-trip through a CLI. Shelf also
 lives as workspace-local JSON. Calendar snapshots go through the `dobby-calendar` skill CLI because EventKit is a non-trivial integration and is worth the CLI contract.
 
@@ -48,6 +48,7 @@ RECENT_SESSION_MIN_COUNT = 3
 RECENT_SESSION_MAX_COUNT = 10
 RECENT_SESSION_NOTE_MAX_CHARS = 2500
 RECENT_SESSIONS_BLOCK_MAX_CHARS = 12000
+STRUCTURE_MAX_CHARS = 16000
 
 
 # ---------------------------------------------------------------------------
@@ -173,6 +174,14 @@ def truncate_note(content: str, limit: int) -> str:
     if len(content) <= limit:
         return content
     suffix = "\n...[note truncated]"
+    return content[: max(0, limit - len(suffix))].rstrip() + suffix
+
+
+def truncate_text(content: str, limit: int, label: str = "content") -> str:
+    content = content.strip()
+    if len(content) <= limit:
+        return content
+    suffix = f"\n...[{label} truncated]"
     return content[: max(0, limit - len(suffix))].rstrip() + suffix
 
 
@@ -424,6 +433,14 @@ def print_soul() -> None:
     print(content)
 
 
+def print_structure() -> None:
+    content = read_memory_file(REPO_ROOT / "STRUCTURE.md").strip()
+    if not content:
+        return
+    section("structure")
+    print(truncate_text(strip_leading_h1(content), STRUCTURE_MAX_CHARS, "structure"))
+
+
 # ---------------------------------------------------------------------------
 # main
 # ---------------------------------------------------------------------------
@@ -458,18 +475,20 @@ def main() -> int:
 
     # --- Header (# session) --------------------------------------------------
     session_started = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%MZ")
+    structure_mtime = file_mtime_iso("STRUCTURE.md") or "?"
     now_mtime = file_mtime_iso("memory/now.md") or "?"
     areas_count = sum(len(a["files"]) for a in areas)
 
     print("# session")
     print(f"started:  {session_started}")
+    print(f"structure.md: modified {structure_mtime}")
     print(f"now.md:   modified {now_mtime}")
     print(f"areas:    {areas_count} files")
 
     # --- Sections ------------------------------------------------------------
-    # soul comes first so later sections read through the right identity lens.
-    # Emitted only for Claude clients without a system-prompt mechanism.
+    # soul is emitted only for Claude clients without a system-prompt mechanism.
     print_soul()
+    print_structure()
 
     now = strip_leading_h1(now_content.strip())
     if now:

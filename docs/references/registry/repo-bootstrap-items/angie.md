@@ -2,7 +2,7 @@
 repo_name: "angie"
 path: "~/GitHub/angie"
 mcp_count: 0
-skill_count: 16
+skill_count: 15
 repo_local_skill_count: 0
 model: "gpt-5.5"
 reasoning: "high"
@@ -21,7 +21,6 @@ global_skills:
   - "skill-creator"
   - "symphony"
 repo_skills:
-  - "dobby"
   - "dobby-calendar"
   - "dobby-shelf"
   - "imagegen"
@@ -33,7 +32,6 @@ skills:
   - "architecture-docs"
   - "client-interface-guidelines"
   - "defuddle"
-  - "dobby"
   - "dobby-calendar"
   - "dobby-shelf"
   - "find-skills"

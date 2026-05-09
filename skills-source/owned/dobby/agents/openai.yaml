@@ -1,4 +1,0 @@
-interface:
-  display_name: "Dobby"
-  short_description: "Route and update Dobby workspace memory"
-  default_prompt: "Use $dobby to decide where information belongs in the Dobby workspace or to update memory."

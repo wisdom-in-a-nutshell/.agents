@@ -126,13 +126,6 @@ def note_path_hint(root: Path, payload: dict[str, Any]) -> Path:
     return sessions_dir / f"{local:%d-%H%M%S}.md"
 
 
-def skill_path(root: Path) -> Path:
-    repo_skill = root / ".agents" / "skills" / "dobby" / "SKILL.md"
-    if repo_skill.is_file():
-        return repo_skill
-    return Path.home() / ".agents" / "skills-source" / "owned" / "dobby" / "SKILL.md"
-
-
 def finalizer_prompt(
     *,
     root: Path,
@@ -143,11 +136,9 @@ def finalizer_prompt(
 ) -> str:
     event_label = event_name or "SessionEnd"
     source_turn_line = f"- Source turn id: `{source_turn}`\n" if source_turn else ""
-    return f"""$dobby
+    return f"""You are running in a forked Codex finalization thread.
 
-You are running in a forked Codex finalization thread.
-
-Finalize continuity for the source thread. Use the Dobby skill and write directly to the workspace memory files.
+Finalize continuity for the source thread. Use `STRUCTURE.md` for Dobby workspace routing and write directly to the workspace memory files.
 
 Context:
 - Workspace root: `{root}`
@@ -156,12 +147,12 @@ Context:
 {source_turn_line}- Suggested session note path: `{target_hint}`
 
 Task:
-1. Read the Dobby skill rules for session continuity and memory routing.
+1. Read `STRUCTURE.md` for session continuity and memory routing.
 2. Write one concise, useful session-continuity note under `memory/sessions/YYYY/MM/DD-HHMMSS.md`.
    - Use the suggested path above if it fits.
    - If that file already exists, use the next numeric suffix.
 3. Capture what happened, decisions made, open loops, and the best continuation point.
-4. Promote durable facts only if the Dobby skill clearly says they belong in `now.md`, an area file, or `soul.md`.
+4. Promote durable facts only if `STRUCTURE.md` clearly says they belong in `now.md`, an area file, or `soul.md`.
 5. Do not ask the user.
 6. Keep it human and compact.
 
@@ -392,7 +383,6 @@ def run_finalizer(
     event_name = text_field(payload, "hook_event_name") or "SessionEnd"
     source_turn = source_turn_id(payload)
     target_hint = note_path_hint(root, payload)
-    dobby_skill = skill_path(root)
     prompt = finalizer_prompt(
         root=root,
         event_name=event_name,
@@ -429,7 +419,6 @@ def run_finalizer(
                 "threadId": finalizer_thread,
                 "input": [
                     {"type": "text", "text": prompt},
-                    {"type": "skill", "name": "dobby", "path": str(dobby_skill)},
                 ],
                 "cwd": str(root),
             },
