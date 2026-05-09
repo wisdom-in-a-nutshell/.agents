@@ -64,6 +64,21 @@ contains the placeholder where a future model client should be added after the
 user chooses the API route. For smoke tests only, `DOBBY_SESSION_MEMORY_FAKE_NOTE`
 or `--fake-note` can supply the note body.
 
+## Pre-compaction hook
+
+Repo-local `scripts/hooks/pre_compact.py` wrappers delegate to the
+skill-bundled `scripts/hooks/pre-compact`. The hook is intentionally quiet:
+it writes only a compact lifecycle record under `tmp/hooks/pre-compact/` and
+prints nothing to stdout, because PreCompact runs while the active context
+window is already under pressure.
+
+Canonical IDs:
+- `source_thread_id` — Codex/App Server thread being compacted
+- `source_turn_id` — current turn if provided by the runtime
+
+Do not put Dobby memory synthesis directly in the shared `~/.agents` dispatcher.
+The dispatcher routes lifecycle events; this skill owns Dobby-specific behavior.
+
 ## Prefer the CLI
 
 The preferred command surfaces are deterministic, timestamped, tested, and agent-first: JSON envelopes by default, `--plain` only for operator inspection. Use `$HOME/.agents/skills-source/owned/dobby/scripts/dobby-memory` for memory and `$HOME/.agents/skills-source/owned/dobby/scripts/dobby-calendar` for calendar. Shelf is `state/shelf.json`; the mobile gateway exposes it for phone/client access. **Do not first look for repo-local `scripts/dobby-*` wrappers.** Invoke the skill-bundled scripts directly, from a Dobby workspace root, or set `DOBBY_WORKSPACE=/path/to/workspace`.

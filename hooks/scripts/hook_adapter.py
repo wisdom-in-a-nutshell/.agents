@@ -15,6 +15,30 @@ def _first_text(payload: dict[str, Any], *keys: str) -> str | None:
     return None
 
 
+def _source_thread_id(raw_payload: dict[str, Any]) -> str | None:
+    return _first_text(
+        raw_payload,
+        "source_thread_id",
+        "sourceThreadId",
+        "thread_id",
+        "threadId",
+        # Runtime hook payloads may still call the active Codex/App Server
+        # thread a session. Keep that name at the boundary only.
+        "session_id",
+        "sessionId",
+    )
+
+
+def _source_turn_id(raw_payload: dict[str, Any]) -> str | None:
+    return _first_text(
+        raw_payload,
+        "source_turn_id",
+        "sourceTurnId",
+        "turn_id",
+        "turnId",
+    )
+
+
 def _transcript_format(
     payload: dict[str, Any],
     *,
@@ -50,6 +74,8 @@ def normalize_hook_payload(
         "runtime": runtime,
         "cwd": cwd,
         "repo_root": str(repo_root),
+        "source_thread_id": _source_thread_id(raw_payload),
+        "source_turn_id": _source_turn_id(raw_payload),
         "session_id": _first_text(raw_payload, "session_id", "sessionId"),
         "turn_id": _first_text(raw_payload, "turn_id", "turnId"),
         "model": _first_text(raw_payload, "model"),

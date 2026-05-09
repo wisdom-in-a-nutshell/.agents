@@ -16,7 +16,7 @@ EVENT_RUNTIME_SUPPORT = {
     "PreCompact": {"codex", "claude"},
     "PostCompact": {"codex", "claude"},
     "Stop": {"codex", "claude", "copilot"},
-    "SessionEnd": {"claude", "copilot"},
+    "SessionEnd": {"codex", "claude", "copilot"},
 }
 VALID_EVENTS = set(EVENT_RUNTIME_SUPPORT)
 EVENTS_WITH_MATCHERS = {"SessionStart", "SessionEnd"}

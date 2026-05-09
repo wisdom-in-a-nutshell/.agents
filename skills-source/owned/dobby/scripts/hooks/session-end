@@ -59,6 +59,40 @@ def text_field(payload: dict[str, Any], key: str) -> str | None:
     return None
 
 
+def raw_payload(payload: dict[str, Any]) -> dict[str, Any]:
+    raw = payload.get("raw_payload")
+    return raw if isinstance(raw, dict) else {}
+
+
+def first_text(payload: dict[str, Any], *keys: str) -> str | None:
+    for key in keys:
+        value = payload.get(key)
+        if isinstance(value, str) and value.strip():
+            return value.strip()
+    return None
+
+
+def source_thread_id(payload: dict[str, Any]) -> str | None:
+    raw = raw_payload(payload)
+    return (
+        first_text(payload, "source_thread_id", "sourceThreadId")
+        or first_text(raw, "source_thread_id", "sourceThreadId")
+        or first_text(raw, "thread_id", "threadId")
+        or first_text(payload, "session_id", "sessionId")
+        or first_text(raw, "session_id", "sessionId")
+    )
+
+
+def source_turn_id(payload: dict[str, Any]) -> str | None:
+    raw = raw_payload(payload)
+    return (
+        first_text(payload, "source_turn_id", "sourceTurnId")
+        or first_text(raw, "source_turn_id", "sourceTurnId")
+        or first_text(payload, "turn_id", "turnId")
+        or first_text(raw, "turn_id", "turnId")
+    )
+
+
 def transcript_format(payload: dict[str, Any], transcript_path: str | None) -> str | None:
     explicit = text_field(payload, "transcript_format")
     if explicit or not transcript_path:
@@ -91,7 +125,10 @@ def compact_record(payload: dict[str, Any]) -> dict[str, Any]:
         "hook_event_name": HOOK_EVENT,
         "runtime": text_field(payload, "runtime")
         or os.environ.get("AGENT_HOOK_RUNTIME"),
+        "source_thread_id": source_thread_id(payload),
+        "source_turn_id": source_turn_id(payload),
         "session_id": text_field(payload, "session_id"),
+        "turn_id": text_field(payload, "turn_id"),
         "reason": text_field(payload, "reason"),
         "cwd": text_field(payload, "cwd"),
         "transcript_path": transcript_path,
@@ -109,8 +146,8 @@ def safe_file_stem(value: str | None) -> str:
 
 
 def write_session_end_record(root: Path, record: dict[str, Any]) -> None:
-    session_id = record.get("session_id")
-    stem = safe_file_stem(session_id if isinstance(session_id, str) else None)
+    source_id = record.get("source_thread_id") or record.get("session_id")
+    stem = safe_file_stem(source_id if isinstance(source_id, str) else None)
     path = root / SESSION_END_DIR / f"{stem}.json"
     path.parent.mkdir(parents=True, exist_ok=True)
     tmp_path = path.with_suffix(path.suffix + ".tmp")
@@ -119,8 +156,7 @@ def write_session_end_record(root: Path, record: dict[str, Any]) -> None:
 
 
 def write_session_memory_job(root: Path, payload: dict[str, Any]) -> Path:
-    session_id = text_field(payload, "session_id")
-    stem = safe_file_stem(session_id)
+    stem = safe_file_stem(source_thread_id(payload))
     path = root / SESSION_MEMORY_DIR / f"{stem}-{utc_now_file_stamp()}.json"
     path.parent.mkdir(parents=True, exist_ok=True)
     tmp_path = path.with_suffix(path.suffix + ".tmp")

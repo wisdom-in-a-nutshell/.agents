@@ -1,0 +1,144 @@
+#!/usr/bin/env python3
+"""Dobby pre-compact hook.
+
+This is intentionally quiet. PreCompact runs while the active context window is
+under pressure, so the hook records the lifecycle payload for later use and
+prints nothing to stdout.
+
+The only canonical IDs this hook cares about are:
+
+- source_thread_id: the Codex/App Server thread being compacted
+- source_turn_id: the current turn if the runtime provides one
+"""
+
+from __future__ import annotations
+
+import json
+import os
+import re
+import sys
+from datetime import datetime, timezone
+from pathlib import Path
+from typing import Any
+
+HOOK_EVENT = "PreCompact"
+SCHEMA_VERSION = "1.0"
+PRE_COMPACT_DIR = Path("tmp/hooks/pre-compact")
+
+
+def utc_now_iso_z() -> str:
+    return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+
+
+def utc_now_file_stamp() -> str:
+    return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H-%M-%SZ")
+
+
+def read_payload() -> dict[str, Any]:
+    raw = sys.stdin.read()
+    if not raw.strip():
+        return {}
+    try:
+        payload = json.loads(raw)
+    except json.JSONDecodeError:
+        return {}
+    return payload if isinstance(payload, dict) else {}
+
+
+def repo_root(payload: dict[str, Any]) -> Path:
+    return Path(
+        payload.get("repo_root")
+        or os.environ.get("AGENT_REPO_ROOT")
+        or "."
+    ).expanduser().resolve()
+
+
+def text_field(payload: dict[str, Any], *keys: str) -> str | None:
+    for key in keys:
+        value = payload.get(key)
+        if isinstance(value, str) and value.strip():
+            return value.strip()
+    return None
+
+
+def raw_payload(payload: dict[str, Any]) -> dict[str, Any]:
+    raw = payload.get("raw_payload")
+    return raw if isinstance(raw, dict) else {}
+
+
+def source_thread_id(payload: dict[str, Any]) -> str | None:
+    raw = raw_payload(payload)
+    return (
+        text_field(payload, "source_thread_id", "sourceThreadId")
+        or text_field(raw, "source_thread_id", "sourceThreadId")
+        or text_field(raw, "thread_id", "threadId")
+        or text_field(payload, "session_id", "sessionId")
+        or text_field(raw, "session_id", "sessionId")
+    )
+
+
+def source_turn_id(payload: dict[str, Any]) -> str | None:
+    raw = raw_payload(payload)
+    return (
+        text_field(payload, "source_turn_id", "sourceTurnId")
+        or text_field(raw, "source_turn_id", "sourceTurnId")
+        or text_field(payload, "turn_id", "turnId")
+        or text_field(raw, "turn_id", "turnId")
+    )
+
+
+def safe_file_stem(value: str | None) -> str:
+    if not value:
+        return f"unknown-{utc_now_file_stamp()}"
+    cleaned = re.sub(r"[^A-Za-z0-9._-]+", "-", value.strip()).strip(".-")
+    return cleaned or f"unknown-{utc_now_file_stamp()}"
+
+
+def compact_record(payload: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "schema_version": SCHEMA_VERSION,
+        "recorded_at": utc_now_iso_z(),
+        "hook_event_name": HOOK_EVENT,
+        "runtime": text_field(payload, "runtime") or os.environ.get("AGENT_HOOK_RUNTIME"),
+        "repo_root": text_field(payload, "repo_root"),
+        "cwd": text_field(payload, "cwd"),
+        "source_thread_id": source_thread_id(payload),
+        "source_turn_id": source_turn_id(payload),
+        "reason": text_field(payload, "reason"),
+        "model": text_field(payload, "model"),
+        "raw_payload": raw_payload(payload),
+    }
+
+
+def write_pre_compact_record(root: Path, record: dict[str, Any]) -> Path:
+    stem = safe_file_stem(
+        record.get("source_thread_id") if isinstance(record.get("source_thread_id"), str) else None
+    )
+    path = root / PRE_COMPACT_DIR / f"{stem}-{utc_now_file_stamp()}.json"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp_path = path.with_suffix(path.suffix + ".tmp")
+    tmp_path.write_text(json.dumps(record, indent=2, sort_keys=True) + "\n")
+    tmp_path.replace(path)
+    return path
+
+
+def main() -> int:
+    payload = read_payload()
+    event_name = payload.get("hook_event_name") or os.environ.get("AGENT_HOOK_EVENT")
+    if event_name not in {None, HOOK_EVENT}:
+        return 0
+    if payload.get("schema_version") not in {None, SCHEMA_VERSION}:
+        return 0
+
+    root = repo_root(payload)
+    os.chdir(root)
+    write_pre_compact_record(root, compact_record(payload))
+    return 0
+
+
+if __name__ == "__main__":
+    try:
+        raise SystemExit(main())
+    except Exception as exc:
+        print(f"pre-compact: {exc}", file=sys.stderr)
+        raise SystemExit(0)
