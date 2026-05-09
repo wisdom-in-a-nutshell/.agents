@@ -20,6 +20,7 @@ EVENT_LABELS = {
     "PostCompact": "post_compact",
     "SessionStart": "session_start",
     "UserPromptSubmit": "user_prompt_submit",
+    "SessionEnd": "session_end",
     "Stop": "stop",
 }
 
@@ -176,14 +177,18 @@ def rendered_config_without_hook_state(config_path: Path) -> list[str]:
     return kept
 
 
-def render_hook_state_block(existing_state: dict, managed_entries: dict[str, str]) -> list[str]:
+def render_hook_state_block(
+    existing_state: dict,
+    managed_entries: dict[str, str],
+    managed_prefixes: set[str],
+) -> list[str]:
     merged: dict[str, dict[str, object]] = {}
     for key, value in sorted(existing_state.items()):
         if isinstance(value, dict):
             entry = dict(value)
         else:
             entry = {}
-        if key not in managed_entries:
+        if key not in managed_entries and not any(key.startswith(prefix) for prefix in managed_prefixes):
             merged[key] = entry
     for key, trusted_hash in sorted(managed_entries.items()):
         merged[key] = {"trusted_hash": trusted_hash}
@@ -210,9 +215,13 @@ def main() -> int:
     registry_path = expand(args.registry)
     repo_filters = {expand(path) for path in args.repo}
 
+    managed_hook_paths = [global_hooks]
     managed_entries = hook_state_entries(global_hooks)
     for repo_path in registry_repo_paths(registry_path, repo_filters):
-        managed_entries.update(hook_state_entries(repo_path / ".codex" / "hooks.json"))
+        hooks_path = repo_path / ".codex" / "hooks.json"
+        managed_hook_paths.append(hooks_path)
+        managed_entries.update(hook_state_entries(hooks_path))
+    managed_prefixes = {f"{path}:" for path in managed_hook_paths}
 
     config = load_toml(global_config)
     existing_state = ((config.get("hooks") or {}).get("state") or {})
@@ -220,7 +229,11 @@ def main() -> int:
         raise SystemExit(f"ERROR: hooks.state must be a table in {global_config}")
 
     base_lines = rendered_config_without_hook_state(global_config)
-    next_lines = base_lines + render_hook_state_block(existing_state, managed_entries)
+    next_lines = base_lines + render_hook_state_block(
+        existing_state,
+        managed_entries,
+        managed_prefixes,
+    )
     rendered = "\n".join(next_lines).rstrip() + "\n"
     current = global_config.read_text(encoding="utf-8") if global_config.is_file() else ""
 

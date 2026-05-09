@@ -55,7 +55,7 @@ class HooksControlPlaneTests(TempDirTestCase):
         codex_hooks = render_codex_hooks(registry, repo_name="adi")
         self.assertEqual(
             set(codex_hooks["hooks"].keys()),
-            {"SessionStart", "UserPromptSubmit", "PreCompact", "PostCompact"},
+            {"SessionStart", "UserPromptSubmit", "PreCompact", "SessionEnd"},
         )
         self.assertEqual(
             codex_hooks["hooks"]["SessionStart"][0]["matcher"],
@@ -70,8 +70,8 @@ class HooksControlPlaneTests(TempDirTestCase):
             "python3 ~/.agents/hooks/scripts/pre_compact.py --runtime codex",
         )
         self.assertEqual(
-            codex_hooks["hooks"]["PostCompact"][0]["hooks"][0]["command"],
-            "python3 ~/.agents/hooks/scripts/post_compact.py --runtime codex",
+            codex_hooks["hooks"]["SessionEnd"][0]["hooks"][0]["command"],
+            "python3 ~/.agents/hooks/scripts/session_end.py --runtime codex",
         )
         self.assertEqual(
             set(render_codex_hooks(registry, repo_name="win")["hooks"].keys()),
@@ -102,10 +102,7 @@ class HooksControlPlaneTests(TempDirTestCase):
             claude_settings["hooks"]["PreCompact"][0]["hooks"][0]["command"],
             "python3 ~/.agents/hooks/scripts/pre_compact.py --runtime claude",
         )
-        self.assertEqual(
-            claude_settings["hooks"]["PostCompact"][0]["hooks"][0]["command"],
-            "python3 ~/.agents/hooks/scripts/post_compact.py --runtime claude",
-        )
+        self.assertNotIn("PostCompact", claude_settings["hooks"])
         self.assertNotIn("Stop", claude_settings["hooks"])
         self.assertEqual(
             claude_settings["hooks"]["SessionEnd"][0]["matcher"],
@@ -212,9 +209,9 @@ class HooksControlPlaneTests(TempDirTestCase):
                     {
                         "command": "python3 hook.py --runtime {runtime}",
                         "enabled": True,
-                        "event": "SessionEnd",
+                        "event": "PreCompact",
                         "id": "bad-event-runtime",
-                        "runtimes": ["codex"],
+                        "runtimes": ["copilot"],
                         "scope": "global",
                         "timeout": 5,
                     }
