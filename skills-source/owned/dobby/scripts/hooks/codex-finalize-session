@@ -191,6 +191,7 @@ class AppServerClient:
         self.messages: queue.Queue[dict[str, Any]] = queue.Queue()
         self.request_id = 0
         self.agent_text_parts: list[str] = []
+        self.agent_completed_text: str | None = None
 
     def start(self) -> None:
         self.proc = subprocess.Popen(
@@ -328,7 +329,7 @@ class AppServerClient:
         elif method == "item/completed":
             item = params.get("item") if isinstance(params.get("item"), dict) else {}
             if item.get("type") == "agentMessage" and isinstance(item.get("text"), str):
-                self.agent_text_parts.append(item["text"])
+                self.agent_completed_text = item["text"]
         elif method == "error":
             log(f"server error notification: {params}")
 
@@ -448,6 +449,8 @@ def run_finalizer(
         if status and status != "completed":
             raise RuntimeError(f"finalizer turn finished with status={status}")
         final_text = "".join(client.agent_text_parts).strip()
+        if not final_text and client.agent_completed_text:
+            final_text = client.agent_completed_text.strip()
         if final_text:
             log(f"finalizer reply: {re.sub(r'\\s+', ' ', final_text)[:1000]}")
         else:
