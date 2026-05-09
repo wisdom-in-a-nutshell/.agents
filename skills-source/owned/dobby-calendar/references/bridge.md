@@ -45,7 +45,7 @@ Per machine, the installer creates runtime artifacts outside the repo:
 Run once per Mac after the Dobby skill is available:
 
 ```bash
-~/.agents/skills-source/owned/dobby/scripts/dobby_calendar/bridge/install --request-access
+~/.agents/skills-source/owned/dobby-calendar/scripts/dobby_calendar/bridge/install --request-access
 ```
 
 A human must grant **Full Calendar Access** to **Dobby Calendar Bridge** in System Settings > Privacy & Security > Calendars. This is a macOS TCC requirement; scripts cannot bypass it.
@@ -73,6 +73,6 @@ grant Calendar permission again afterward.
 Diagnostics:
 
 ```bash
-DOBBY_CALENDAR_BACKEND=bridge ~/.agents/skills-source/owned/dobby/scripts/dobby-calendar doctor
-DOBBY_CALENDAR_BACKEND=ical ~/.agents/skills-source/owned/dobby/scripts/dobby-calendar doctor
+DOBBY_CALENDAR_BACKEND=bridge ~/.agents/skills-source/owned/dobby-calendar/scripts/dobby-calendar doctor
+DOBBY_CALENDAR_BACKEND=ical ~/.agents/skills-source/owned/dobby-calendar/scripts/dobby-calendar doctor
 ```

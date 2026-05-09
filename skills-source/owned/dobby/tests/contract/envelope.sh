@@ -10,7 +10,7 @@ source "$(dirname "$0")/../lib/assert.sh"
 FAIL_COUNT=0
 
 section "schema_version stability across commands"
-for cmd in "memory read --section now" "memory diff" "calendar doctor"; do
+for cmd in "memory read --section now" "memory diff"; do
     run_dobby $cmd
     assert_jq_eq "$cmd: schema_version=1.0" '.schema_version' "1.0" "$CAPTURED_STDOUT"
 done
@@ -64,8 +64,6 @@ section "--no-input is accepted and non-interactive"
 run_dobby memory read --section now --no-input
 assert_exit "memory read now --no-input exit 0" 0 "$CAPTURED_EXIT"
 assert_envelope_ok "memory.read --no-input" "$CAPTURED_STDOUT"
-run_dobby calendar doctor --no-input
-assert_envelope_shape "calendar.doctor --no-input" "$CAPTURED_STDOUT"
 
 section "stderr stays clean on success"
 run_dobby memory read --section now

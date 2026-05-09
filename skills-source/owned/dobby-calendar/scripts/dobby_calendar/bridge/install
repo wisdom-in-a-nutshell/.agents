@@ -34,8 +34,8 @@ Options:
   -h, --help                Show this help
 
 Examples:
-  ~/.agents/skills-source/owned/dobby/scripts/dobby_calendar/bridge/install --request-access
-  ~/.agents/skills-source/owned/dobby/scripts/dobby_calendar/bridge/install --check
+  ~/.agents/skills-source/owned/dobby-calendar/scripts/dobby_calendar/bridge/install --request-access
+  ~/.agents/skills-source/owned/dobby-calendar/scripts/dobby_calendar/bridge/install --check
 USAGE
 }
 

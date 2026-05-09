@@ -36,7 +36,7 @@ resolve_workspace() {
 REPO_ROOT="$(resolve_workspace)"
 export DOBBY_WORKSPACE="$REPO_ROOT"
 DOBBY="$TESTS_DIR/support/dobby-shim"
-DOBBY_MEMORY="$SKILL_DIR/scripts/dobby-memory"
+DOBBY_CALENDAR="$SKILL_DIR/scripts/dobby-calendar"
 
 # Failure counter — test scripts can read and return at the end.
 export FAIL_COUNT=${FAIL_COUNT:-0}

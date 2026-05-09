@@ -1,110 +1,34 @@
-# Dobby scenarios — user intent → action
-
-Common phrasings mapped to the exact operation. Match intent, not literal words; the user often dictates, so expect typos and dropped words.
+# Dobby routing scenarios
 
 ## Store / remember
 
-**"Remember that I prefer X"** / "Note that I..."
-→ Classify:
-- Durable identity/preference? → `Edit soul.md` in the right subsection of `## About <User>`.
-- Per-area canon? → `Edit memory/areas/<area>/<area>.md`.
-
-Confirm in one line: "Added to `soul.md` `## About <User>` under Communication preferences."
-
-**"Save this for later"** / "Keep this"
-→ Actionable? → Shelf item with no `showAt` so it appears in Later. Content/reflection? → new file in `journal/daily/<today>/notes-<slug>.md`.
-
-**"Add this to <area>"**
-→ Durable canon? → `Edit memory/areas/<area>/<area>.md`. Event/completion? → append to `memory/areas/<area>/log.md` via CLI.
+1. Is it an actionable personal open loop? → use `dobby-shelf`.
+2. Is it an event/schedule item? → use `dobby-calendar`.
+3. Is it durable identity, values, preference, or a stable pattern? → `soul.md`.
+4. Is it this week's active context? → `memory/now.md`.
+5. Is it area-specific canon? → `memory/areas/<area>/<area>.md`.
+6. Is it a dated reflection or raw capture? → journal; use `journal-checkin` for structured check-ins.
 
 ## Read
 
-**"What's on today?"** / "What's my day look like?"
-→ Read `state/shelf.json`, derive Now / Today / Upcoming / Later from `status`, `showAt`, and `isNow`. Surface Now first, then Today.
-
-**"What's on my calendar / week?"**
-→ `$HOME/.agents/skills-source/owned/dobby/scripts/dobby-calendar week` or `$HOME/.agents/skills-source/owned/dobby/scripts/dobby-calendar today`. Use `--all-calendars` only when the user asks for an audit or cross-account search.
-
-**"What's in my inbox?"**
-→ Shelf has no inbox and no project hierarchy. Read Later (`open` items without `showAt`) and ask whether stale items should be scheduled, kept, or dropped.
-
-**"What do you know about <area>?"**
-→ `$HOME/.agents/skills-source/owned/dobby/scripts/dobby-memory read --section area.<area>.<area>` (single main file). Surface "Current state" section first. Load the log only if asked.
-
-**"What's live right now?"**
-→ `$HOME/.agents/skills-source/owned/dobby/scripts/dobby-memory read --section now`.
-
-**"What happened yesterday / last week?"**
-→ `ls journal/daily/` for recent dates; `Read` the relevant folder's `checkin.md` or reflections.
+- "What do you know about X?" → load the relevant area file or `soul.md` section.
+- "What's active right now/this week?" → read `memory/now.md`.
+- "What's on my Shelf/today/later?" → use `dobby-shelf`.
+- "What's on my calendar?" → use `dobby-calendar`.
 
 ## Route
 
-**"Where does this go?"**
-→ Walk the write-decision tree:
-- Actionable? → Shelf.
-- Durable truth about the user? → `soul.md` `## About <User>`.
-- Per-area? → `memory/areas/<area>/`.
-- Dated reflection? → `journal/daily/<today>/`.
+If unsure, prefer the lowest-churn home:
 
-Propose the destination; do the write.
-
-## Shelf
-
-**"Add a task to X"** / "Remind me to X" / "I need to X"
-→ If the item is assigned to the user, add one Shelf item to `state/shelf.json` or through the mobile-gateway Shelf API. Default `kind` to `do`; use `showAt` for when it should surface and `dueAt` only for a real deadline.
-
-**"Have Dobby do X"** / "Create agent work for X"
-→ This is not Shelf. Route to Symphony, because the work is assigned to Dobby as an agent.
-
-**"Pin X to Now"**
-→ Set `isNow: true`. Now is uncapped; if the list is overloaded, name that and help the user choose, but do not reject the operation.
-
-**"Mark X done"**
-→ Find the matching Shelf item, set `status: "done"`, clear `isNow`, set `completedAt`, increment `revision`, and update `updatedAt`.
-
-**"What's overdue?"**
-→ Read open Shelf items with `dueAt` before today. Name any drift from stated commitments directly.
-
-## Calendar
-
-**"Add this to calendar"** / "Block this time" / "Schedule this trip"
-→ Use `$HOME/.agents/skills-source/owned/dobby/scripts/dobby-calendar upsert-event` when an event may already exist; include a match range to avoid duplicates. Default calendar comes from `DOBBY_CALENDAR_DEFAULT` (required; no fallback); override per-call with `--calendar`.
-
-**"Search my calendar for X"**
-→ Use `$HOME/.agents/skills-source/owned/dobby/scripts/dobby-calendar search "X" --from <date> --to <date>`. Calendar searches must be date-bounded; use `--all-calendars` for migration/audit work.
-
-## Reflect
-
-**"Let's journal"** / "Morning check-in" / "Night reflection" / "I want to reflect"
-→ If a structured check-in skill is installed (e.g., `journal-checkin`), delegate to it. Otherwise: `mkdir -p journal/daily/<today>` and `Write` a new reflection file with a descriptive slug.
-
-**"I want to just note something"** (not a full journal)
-→ `Write journal/daily/<today>/notes-<slug>.md`.
-
-## Dobby's own growth
-
-**"You were wrong about X"** / "Actually I prefer Y"
-→ Append to `dobby/growth.md` under "Blindspots" with today's date, what was wrong, what's updated.
-
-**"You're getting sharper at X"** / "That was a good instinct"
-→ Append to `dobby/growth.md` under "Voice and instinct" with the specific pattern.
+1. Shelf for explicit actions.
+2. Calendar for scheduled events.
+3. Journal for raw capture/history.
+4. Area canon for durable domain knowledge.
+5. `soul.md` only for slow durable identity/user truths.
+6. `memory/now.md` only for active weekly orientation.
 
 ## Consolidation
 
-**"Clean up memory"** / "This is getting messy"
-→ If a memory-consolidation skill is installed, invoke it for the reflective pass. Otherwise: read the bloated file, propose the consolidation plan, execute with the user's go-ahead.
-
-## Ambiguity resolution (default ordering)
-
-When the route isn't obvious, try in order:
-
-1. Actionable? → Shelf (always wins).
-2. Dated observation? → `journal/daily/<today>/`.
-3. Tied to one area? → `memory/areas/<area>/`.
-4. Cross-cutting, this week? → `memory/now.md`.
-5. Durable and about the user? → `soul.md` `## About <User>`.
-6. Unsure? → `journal/daily/<today>/notes-<slug>.md` as a safe holding ground; route properly during next consolidation.
-
-## Read-before-write rule
-
-For any substantive write (>2 lines into an existing file, or any edit to `soul.md` `## About <User>` or area canon), read the target first. Duplicates are the biggest drift source. Add "see also" pointers instead of restating.
+When slimming or consolidating, do not lose content silently. Fold it into the
+right canonical file, append a dated note to journal when needed, or leave a
+pointer.

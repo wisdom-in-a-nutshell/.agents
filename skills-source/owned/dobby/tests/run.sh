@@ -1,9 +1,7 @@
 #!/usr/bin/env bash
-# Top-level test runner for the Dobby skill scripts.
+# Test runner for the Dobby memory skill scripts.
 #
-# By default, runs only cheap/non-mutating suites. Live suites (`*/live.sh`)
-# are opt-in because they may write to real local surfaces such as Calendar
-# before cleaning up. Shelf backend tests live in the CodexClaw mobile gateway.
+# By default, runs only cheap/non-mutating suites. Live suites (`*/live.sh`) are opt-in. Shelf tests live with the Shelf backend; calendar tests live in `dobby-calendar`.
 #
 # Usage:
 #     bash ~/.agents/skills-source/owned/dobby/tests/run.sh                 # cheap suites only

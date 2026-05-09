@@ -1,11 +1,14 @@
 #!/usr/bin/env python3
 """Dobby session-end hook.
 
-Session end should stay fast. This hook captures a compact handoff record with
-the session/transcript pointer under `<repo>/tmp/hooks/session-end/`, launches
-the background `write-session-note` worker, then exits successfully. The worker owns
-slow transcript rendering, note generation, and writing the prose note under
-`memory/sessions/YYYY/MM/DD-HHMMSS.md`.
+Session end should stay fast. This hook captures a compact handoff record under
+`<repo>/tmp/hooks/session-end/`, launches a background continuity worker, then
+exits successfully.
+
+For Codex, the worker forks the source thread through Codex App Server and
+injects the Dobby finalization prompt so the forked agent writes directly to
+`memory/sessions/YYYY/MM/DD-HHMMSS.md`. Other runtimes keep using the legacy
+transcript-based `write-session-note` worker.
 """
 
 from __future__ import annotations
@@ -23,6 +26,7 @@ HOOK_EVENT = "SessionEnd"
 SCHEMA_VERSION = "1.0"
 SESSION_END_DIR = Path("tmp/hooks/session-end")
 SESSION_MEMORY_DIR = Path("tmp/hooks/session-memory")
+SESSION_FINALIZER_DIR = Path("tmp/hooks/session-finalizer")
 
 
 def utc_now_iso_z() -> str:
@@ -57,6 +61,11 @@ def text_field(payload: dict[str, Any], key: str) -> str | None:
     if isinstance(value, str) and value.strip():
         return value.strip()
     return None
+
+
+def runtime(payload: dict[str, Any]) -> str | None:
+    value = text_field(payload, "runtime") or os.environ.get("AGENT_HOOK_RUNTIME")
+    return value.strip().lower() if isinstance(value, str) and value.strip() else None
 
 
 def raw_payload(payload: dict[str, Any]) -> dict[str, Any]:
@@ -123,8 +132,7 @@ def compact_record(payload: dict[str, Any]) -> dict[str, Any]:
         "schema_version": SCHEMA_VERSION,
         "recorded_at": utc_now_iso_z(),
         "hook_event_name": HOOK_EVENT,
-        "runtime": text_field(payload, "runtime")
-        or os.environ.get("AGENT_HOOK_RUNTIME"),
+        "runtime": runtime(payload),
         "source_thread_id": source_thread_id(payload),
         "source_turn_id": source_turn_id(payload),
         "session_id": text_field(payload, "session_id"),
@@ -165,8 +173,8 @@ def write_session_memory_job(root: Path, payload: dict[str, Any]) -> Path:
     return path
 
 
-def launch_session_memory_worker(root: Path, payload: dict[str, Any]) -> None:
-    job_path = write_session_memory_job(root, payload)
+def launch_session_memory_worker(root: Path, payload: dict[str, Any], job_path: Path | None = None) -> None:
+    job_path = job_path or write_session_memory_job(root, payload)
     worker = Path(__file__).resolve().parent / "write-session-note"
     if not worker.is_file():
         print(f"session-end: missing session memory worker: {worker}", file=sys.stderr)
@@ -193,6 +201,45 @@ def launch_session_memory_worker(root: Path, payload: dict[str, Any]) -> None:
         )
 
 
+def launch_codex_finalizer_worker(root: Path, job_path: Path) -> None:
+    if os.environ.get("DOBBY_CODEX_FINALIZER_DISABLED") == "1":
+        return
+
+    worker = Path(__file__).resolve().parent / "codex-finalize-session"
+    if not worker.is_file():
+        print(f"session-end: missing Codex finalizer worker: {worker}", file=sys.stderr)
+        return
+
+    log_path = root / SESSION_FINALIZER_DIR / "worker.log"
+    log_path.parent.mkdir(parents=True, exist_ok=True)
+    with log_path.open("a", encoding="utf-8") as stderr_log:
+        subprocess.Popen(
+            [
+                sys.executable,
+                str(worker),
+                "--job",
+                str(job_path),
+                "--repo-root",
+                str(root),
+            ],
+            cwd=str(root),
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.DEVNULL,
+            stderr=stderr_log,
+            start_new_session=True,
+            close_fds=True,
+        )
+
+
+def launch_continuity_worker(root: Path, payload: dict[str, Any]) -> None:
+    job_path = write_session_memory_job(root, payload)
+    if runtime(payload) == "codex":
+        if source_thread_id(payload):
+            launch_codex_finalizer_worker(root, job_path)
+        return
+    launch_session_memory_worker(root, payload, job_path)
+
+
 def main() -> int:
     payload = read_payload()
     event_name = payload.get("hook_event_name") or os.environ.get("AGENT_HOOK_EVENT")
@@ -204,7 +251,7 @@ def main() -> int:
     root = repo_root(payload)
     os.chdir(root)
     write_session_end_record(root, compact_record(payload))
-    launch_session_memory_worker(root, payload)
+    launch_continuity_worker(root, payload)
     return 0
 
 

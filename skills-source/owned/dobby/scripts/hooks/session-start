@@ -11,8 +11,7 @@ Section order (identity-first so later sections read through the right lens):
 
 Memory reads (`now.md`, area manifest, `soul.md`) happen inline via
 file I/O — trivial work, no reason to round-trip through a CLI. Shelf also
-lives as workspace-local JSON. Calendar snapshots go through `dobby-calendar`
-because EventKit is a non-trivial integration and is worth the CLI contract.
+lives as workspace-local JSON. Calendar snapshots go through the `dobby-calendar` skill CLI because EventKit is a non-trivial integration and is worth the CLI contract.
 
 The user's durable identity lives in `soul.md`. It is normally loaded as
 the system prompt by:
@@ -71,10 +70,10 @@ def git_root() -> Path:
 
 
 REPO_ROOT = git_root()
-SCRIPTS_DIR = Path(
+CALENDAR_SCRIPTS_DIR = Path(
     os.environ.get(
-        "DOBBY_SCRIPTS_DIR",
-        str(Path.home() / ".agents/skills-source/owned/dobby/scripts"),
+        "DOBBY_CALENDAR_SCRIPTS_DIR",
+        str(Path.home() / ".agents/skills-source/owned/dobby-calendar/scripts"),
     )
 ).expanduser()
 
@@ -431,7 +430,7 @@ def print_soul() -> None:
 
 
 def main() -> int:
-    cal_cli = SCRIPTS_DIR / "dobby-calendar"
+    cal_cli = CALENDAR_SCRIPTS_DIR / "dobby-calendar"
 
     os.chdir(REPO_ROOT)
 

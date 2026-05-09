@@ -1,4 +1,4 @@
 interface:
   display_name: "Dobby"
-  short_description: "Operate a Dobby workspace: memory, Shelf, journal, calendar."
-  default_prompt: "Where should this live in Dobby?"
+  short_description: "Route and update Dobby workspace memory"
+  default_prompt: "Use $dobby to decide where information belongs in the Dobby workspace or to update memory."
