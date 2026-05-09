@@ -15,9 +15,9 @@ The workspace user's durable identity lives in `soul.md` under that workspace's
 It is intentionally not served by this CLI — editing soul.md is a manual `Edit`
 operation.
 
-Boot-time loading is handled by the repo's SessionStart hook
-(`scripts/hooks/session_start.py`) which reads memory files directly via
-file I/O. This CLI no longer exposes a `boot` command.
+Boot-time loading is handled by the `dobby-lifecycle` SessionStart hook
+(reached through repo wrapper `scripts/hooks/session_start.py`) which reads
+memory files directly via file I/O. This CLI no longer exposes a `boot` command.
 
 Every command defaults to the Dobby JSON envelope for agent reliability.
 `--plain` prints markdown/raw text for operator inspection when needed.
