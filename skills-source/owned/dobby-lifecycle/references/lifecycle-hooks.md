@@ -34,7 +34,7 @@ Operational limits:
 Session continuity lives in `memory/sessions/YYYY/MM/DD-HHMMSS.md`, not in
 `memory/now.md`.
 
-For Codex runtimes, continuity finalization is owned by PostCompact. The
+PreCompact is intentionally not enabled for Dobby workspaces. For Codex runtimes, continuity finalization is owned by PostCompact. The
 PostCompact hook records a small job under `tmp/hooks/post-compact/` and starts
 `scripts/hooks/codex-finalize-session` in the background. That worker starts a
 local `codex app-server`, forks the source thread, injects a finalization prompt
@@ -63,16 +63,6 @@ appropriate.
 For smoke tests of the legacy worker only, `DOBBY_SESSION_MEMORY_FAKE_NOTE` or
 `--fake-note` can supply the note body. To temporarily prevent the Codex worker
 from launching from hooks, set `DOBBY_CODEX_FINALIZER_DISABLED=1`.
-
-## Pre-compaction hook
-
-Repo-local `scripts/hooks/pre_compact.py` wrappers delegate to the
-skill-bundled `scripts/hooks/pre-compact`. The hook is deliberately inert: it
-does nothing and prints nothing to stdout.
-
-PreCompact must not capture, queue, synthesize, or start a Codex finalizer. The
-runtime is already protecting the context window at this point. Dobby continuity
-starts after compaction, in PostCompact.
 
 ## Post-compaction hook
 

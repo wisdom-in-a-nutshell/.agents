@@ -5,7 +5,6 @@ SKILL_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 python3 -m py_compile \
   "$SKILL_DIR/scripts/hooks/session-start" \
   "$SKILL_DIR/scripts/hooks/user-prompt-submit" \
-  "$SKILL_DIR/scripts/hooks/pre-compact" \
   "$SKILL_DIR/scripts/hooks/post-compact" \
   "$SKILL_DIR/scripts/hooks/session-end" \
   "$SKILL_DIR/scripts/hooks/codex-finalize-session" \
@@ -13,26 +12,6 @@ python3 -m py_compile \
 
 tmp_root="$(mktemp -d)"
 trap 'rm -rf "$tmp_root"' EXIT
-
-cat >"$tmp_root/precompact-payload.json" <<JSON
-{
-  "schema_version": "1.0",
-  "hook_event_name": "PreCompact",
-  "runtime": "codex",
-  "repo_root": "$tmp_root",
-  "cwd": "$tmp_root",
-  "session_id": "test-source-thread",
-  "turn_id": "test-turn",
-  "model": "test-model"
-}
-JSON
-
-python3 "$SKILL_DIR/scripts/hooks/pre-compact" <"$tmp_root/precompact-payload.json"
-if [[ -e "$tmp_root/tmp" ]]; then
-  echo "PreCompact must be fully inert and create no artifacts" >&2
-  find "$tmp_root/tmp" -maxdepth 4 -type f >&2 || true
-  exit 1
-fi
 
 cat >"$tmp_root/postcompact-payload.json" <<JSON
 {
