@@ -44,7 +44,11 @@ For Codex runtimes, `scripts/hooks/codex-finalize-session` starts local
 `codex app-server`, forks the source thread, injects a finalization prompt that
 points to `STRUCTURE.md`, and lets the forked agent write directly to
 `memory/sessions/...`. This is the preferred path because it reuses the source
-thread context and keeps the active user thread clean.
+thread context and keeps the active user thread clean. The worker starts its
+forked app-server with `DOBBY_CODEX_FINALIZER_ACTIVE=1` and
+`DOBBY_CODEX_FINALIZER_DISABLED=1`; repo lifecycle hooks must treat that as an
+inert finalizer context and avoid launching or recording additional lifecycle
+work from inside it.
 
 For non-Codex runtimes, `scripts/hooks/write-session-note` is the legacy
 transcript path. It renders the transcript when the runtime provides
@@ -67,9 +71,13 @@ from launching from hooks, set `DOBBY_CODEX_FINALIZER_DISABLED=1`.
 
 Repo-local `scripts/hooks/pre_compact.py` wrappers delegate to the
 skill-bundled `scripts/hooks/pre-compact`. The hook is intentionally quiet: it
-writes a compact lifecycle record under `tmp/hooks/pre-compact/`, starts the
-same Codex finalizer in the background when a Codex source thread id is
-available, and prints nothing to stdout.
+writes a compact lifecycle record under `tmp/hooks/pre-compact/` and prints
+nothing to stdout.
+
+PreCompact is a last-chance capture point, not a synthesis point. It must not
+start a Codex finalizer or any other agent. Starting an agent from PreCompact can
+create a recursive loop: the finalizer thread may itself compact and trigger
+PreCompact again.
 
 Canonical IDs:
 

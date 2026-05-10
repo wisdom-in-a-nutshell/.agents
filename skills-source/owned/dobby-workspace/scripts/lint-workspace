@@ -20,7 +20,7 @@ from the workspace itself:
 
 1. If the new path/artifact was accidental, remove it.
 2. If it was deliberate, ask Adi whether the workspace body should change.
-3. If Adi agrees, update `references/body-map.md`, this script, and any repo-local `STRUCTURE.md` note in the same change.
+3. If Adi agrees, update `references/body-map.md` and this script in the same change.
 
 Do not turn this into a broad policy engine or semantic memory judge. Keep it
 fast enough to run on every `check-fast.sh` / stop-hook pass.
@@ -143,7 +143,7 @@ class Finding:
             "If this was accidental, remove it.\n"
             "If this was intentional, ask Adi whether this should become part of "
             "Dobby's workspace body, then update the dobby-workspace "
-            "shared body map and linter, plus repo-local STRUCTURE.md if needed."
+            "shared body map and linter."
         )
 
 

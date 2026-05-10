@@ -11,7 +11,6 @@ Dobby wakes through a nervous system:
 ```text
 soul.md
 + shared body map
-+ repo-local STRUCTURE.md, if present
 + memory/now.md
 + recent session notes
 + Shelf
@@ -24,7 +23,6 @@ soul.md
 | Organ | Purpose |
 |---|---|
 | `soul.md` | Constitution: Dobby identity, durable user truth, values, boundaries. |
-| `STRUCTURE.md` | Thin repo-local map or exceptions; shared body meaning lives here in `dobby-workspace`. |
 | `memory/` | Dobby's understanding: current orientation, area canon/logs, session notes. |
 | `journal/` | Dated lived history: reflections, check-ins, raw captures, monthly synthesis. |
 | `state/` | Live machine-readable state, usually Shelf. |
@@ -41,7 +39,6 @@ soul.md
 |---|---|
 | Dobby constitution / durable user truth | `soul.md` |
 | Shared workspace body meaning | `dobby-workspace` skill |
-| Repo-local workspace exceptions | `STRUCTURE.md` |
 | This week's active orientation | `memory/now.md` |
 | Area-specific durable understanding | `memory/areas/<area>/<area>.md` |
 | Area-specific dated fact/event | `memory/areas/<area>/log.md` |
@@ -72,5 +69,4 @@ When a workspace shape change is intentional:
 
 1. Ask the relevant human whether the workspace body should change.
 2. Update this shared body map and `scripts/lint-workspace` together.
-3. Update repo-local `STRUCTURE.md` only for local exceptions or orientation.
-4. Keep lifecycle behavior in `dobby-lifecycle`, not here.
+3. Keep lifecycle behavior in `dobby-lifecycle`, not here.

@@ -2,9 +2,10 @@
 """Dobby pre-compact hook.
 
 This is intentionally quiet. PreCompact runs while the active context window is
-under pressure, so the hook records the lifecycle payload for later use, starts
-the Codex finalizer worker in the background when possible, and prints nothing
-to stdout.
+under pressure, so the hook only records the lifecycle payload for later use and
+prints nothing to stdout. It must not start another agent or perform synthesis:
+agent-created finalizer threads can themselves compact, which risks recursive
+hook fan-out.
 
 The only canonical IDs this hook cares about are:
 
@@ -17,7 +18,6 @@ from __future__ import annotations
 import json
 import os
 import re
-import subprocess
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
@@ -26,13 +26,6 @@ from typing import Any
 HOOK_EVENT = "PreCompact"
 SCHEMA_VERSION = "1.0"
 PRE_COMPACT_DIR = Path("tmp/hooks/pre-compact")
-SESSION_FINALIZER_DIR = Path("tmp/hooks/session-finalizer")
-FINALIZER_THREADS_LOG = SESSION_FINALIZER_DIR / "finalizer-threads.jsonl"
-FINALIZER_TRANSCRIPT_MARKERS = (
-    "You are running in a forked Codex finalization thread.",
-    "Dobby Session Finalizer",
-    "dobby_session_finalizer",
-)
 
 
 def utc_now_iso_z() -> str:
@@ -109,45 +102,6 @@ def transcript_path(payload: dict[str, Any]) -> str | None:
     )
 
 
-def is_marked_finalizer_thread(root: Path, thread_id: str | None) -> bool:
-    if not thread_id:
-        return False
-    marker_path = root / FINALIZER_THREADS_LOG
-    if not marker_path.is_file():
-        return False
-    try:
-        lines = marker_path.read_text(encoding="utf-8").splitlines()
-    except OSError:
-        return False
-    needle = f'"finalizer_thread_id": "{thread_id}"'
-    return any(needle in line for line in lines[-500:])
-
-
-def transcript_looks_like_finalizer(root: Path, payload: dict[str, Any]) -> bool:
-    raw_path = transcript_path(payload)
-    if not raw_path:
-        return False
-    path = Path(raw_path).expanduser()
-    if not path.is_absolute():
-        path = root / path
-    if not path.is_file():
-        return False
-    try:
-        with path.open("rb") as handle:
-            handle.seek(0, os.SEEK_END)
-            size = handle.tell()
-            handle.seek(max(0, size - 512_000), os.SEEK_SET)
-            text = handle.read().decode("utf-8", errors="ignore")
-    except OSError:
-        return False
-    return any(marker in text for marker in FINALIZER_TRANSCRIPT_MARKERS)
-
-
-def is_finalizer_thread(root: Path, payload: dict[str, Any]) -> bool:
-    thread_id = source_thread_id(payload)
-    return is_marked_finalizer_thread(root, thread_id) or transcript_looks_like_finalizer(root, payload)
-
-
 def safe_file_stem(value: str | None) -> str:
     if not value:
         return f"unknown-{utc_now_file_stamp()}"
@@ -167,6 +121,7 @@ def compact_record(payload: dict[str, Any]) -> dict[str, Any]:
         "source_turn_id": source_turn_id(payload),
         "reason": text_field(payload, "reason"),
         "model": text_field(payload, "model"),
+        "transcript_path": transcript_path(payload),
         "raw_payload": raw_payload(payload),
     }
 
@@ -183,37 +138,10 @@ def write_pre_compact_record(root: Path, record: dict[str, Any]) -> Path:
     return path
 
 
-def launch_codex_finalizer_worker(root: Path, job_path: Path) -> None:
-    if os.environ.get("DOBBY_CODEX_FINALIZER_DISABLED") == "1":
-        return
-
-    worker = Path(__file__).resolve().parent / "codex-finalize-session"
-    if not worker.is_file():
-        print(f"pre-compact: missing Codex finalizer worker: {worker}", file=sys.stderr)
-        return
-
-    log_path = root / SESSION_FINALIZER_DIR / "worker.log"
-    log_path.parent.mkdir(parents=True, exist_ok=True)
-    with log_path.open("a", encoding="utf-8") as stderr_log:
-        subprocess.Popen(
-            [
-                sys.executable,
-                str(worker),
-                "--job",
-                str(job_path),
-                "--repo-root",
-                str(root),
-            ],
-            cwd=str(root),
-            stdin=subprocess.DEVNULL,
-            stdout=subprocess.DEVNULL,
-            stderr=stderr_log,
-            start_new_session=True,
-            close_fds=True,
-        )
-
-
 def main() -> int:
+    if os.environ.get("DOBBY_CODEX_FINALIZER_ACTIVE") == "1":
+        return 0
+
     payload = read_payload()
     event_name = payload.get("hook_event_name") or os.environ.get("AGENT_HOOK_EVENT")
     if event_name not in {None, HOOK_EVENT}:
@@ -223,9 +151,7 @@ def main() -> int:
 
     root = repo_root(payload)
     os.chdir(root)
-    record_path = write_pre_compact_record(root, compact_record(payload))
-    if runtime(payload) == "codex" and source_thread_id(payload) and not is_finalizer_thread(root, payload):
-        launch_codex_finalizer_worker(root, record_path)
+    write_pre_compact_record(root, compact_record(payload))
     return 0
 
 

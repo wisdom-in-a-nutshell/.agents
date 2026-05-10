@@ -241,6 +241,9 @@ def launch_continuity_worker(root: Path, payload: dict[str, Any]) -> None:
 
 
 def main() -> int:
+    if os.environ.get("DOBBY_CODEX_FINALIZER_ACTIVE") == "1":
+        return 0
+
     payload = read_payload()
     event_name = payload.get("hook_event_name") or os.environ.get("AGENT_HOOK_EVENT")
     if event_name not in {None, HOOK_EVENT}:
