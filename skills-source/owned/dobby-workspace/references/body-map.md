@@ -1,0 +1,76 @@
+# Dobby Workspace Body Map
+
+A Dobby workspace is not a normal software repository. It is a personal-agent
+home: durable context, current orientation, lived history, open loops, Dobby's
+own sharpening notes, lifecycle hooks, and active improvement trackers.
+
+## Core idea
+
+Dobby wakes through a nervous system:
+
+```text
+soul.md
++ shared body map
++ repo-local STRUCTURE.md, if present
++ memory/now.md
++ recent session notes
++ Shelf
++ calendar
++ memory/areas manifest
+```
+
+## Organs
+
+| Organ | Purpose |
+|---|---|
+| `soul.md` | Constitution: Dobby identity, durable user truth, values, boundaries. |
+| `STRUCTURE.md` | Thin repo-local map or exceptions; shared body meaning lives here in `dobby-workspace`. |
+| `memory/` | Dobby's understanding: current orientation, area canon/logs, session notes. |
+| `journal/` | Dated lived history: reflections, check-ins, raw captures, monthly synthesis. |
+| `state/` | Live machine-readable state, usually Shelf. |
+| `dobby/` | Dobby's own sharpening notes and blindspot record. |
+| `projects/` | Active Dobby/app/system improvement trackers. |
+| `scripts/` | Repo-local checks, lifecycle wrappers, and local helpers. |
+| `.agents/skills/` | Repo-local links to operational skills. |
+| `.codex/`, `.claude/`, `.mcp.json` | Runtime/tooling configuration. |
+| `tmp/` | Disposable scratch and hook logs. |
+
+## Routing table
+
+| Content | Canonical home |
+|---|---|
+| Dobby constitution / durable user truth | `soul.md` |
+| Shared workspace body meaning | `dobby-workspace` skill |
+| Repo-local workspace exceptions | `STRUCTURE.md` |
+| This week's active orientation | `memory/now.md` |
+| Area-specific durable understanding | `memory/areas/<area>/<area>.md` |
+| Area-specific dated fact/event | `memory/areas/<area>/log.md` |
+| Session continuity note | `memory/sessions/YYYY/MM/DD-HHMMSS.md` |
+| Reflection / check-in / raw capture | `journal/daily/...` |
+| Monthly synthesis | `journal/monthly/...` |
+| Personal actionable open loop | `state/shelf.json` via `dobby-shelf` |
+| Dobby/agent work tracker | `projects/<project>/tasks.md` |
+| Dobby's own behavioral sharpening | `dobby/growth.md` |
+| Exact command/schema/operational recipe | Relevant skill under `~/.agents/skills-source/owned/` |
+| Temporary scratch / hook logs | `tmp/` |
+
+One fact should have one canonical home. If another place needs awareness, point
+to the canonical home instead of duplicating.
+
+## Memory contract
+
+- `memory/now.md` is the short active weekly layer.
+- Area canon files hold durable domain understanding.
+- Area logs are append-only dated facts: `- YYYY-MM-DD — <event>`.
+- Session notes are continuity notes, not canon by default.
+- Personal open loops never live in memory; they live in Shelf.
+- Raw reflections live in journal first and only become memory after synthesis.
+
+## Change protocol
+
+When a workspace shape change is intentional:
+
+1. Ask the relevant human whether the workspace body should change.
+2. Update this shared body map and `scripts/lint-workspace` together.
+3. Update repo-local `STRUCTURE.md` only for local exceptions or orientation.
+4. Keep lifecycle behavior in `dobby-lifecycle`, not here.

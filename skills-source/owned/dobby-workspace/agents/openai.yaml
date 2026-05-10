@@ -1,0 +1,3 @@
+display_name: Dobby Workspace
+short_description: Shared Dobby workspace body map and shape linter.
+default_prompt: Use the Dobby workspace skill to inspect or update the shared body map and workspace shape lint.

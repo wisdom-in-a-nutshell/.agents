@@ -1,6 +1,6 @@
 ---
 name: dobby-lifecycle
-description: "Operate Dobby workspace lifecycle hooks and context flow: session start boot context, user-prompt-submit time context, pre-compact capture, session-end finalization, Codex session finalizer, hook logs, and debugging why Dobby context/session memory did or did not load/write. Use for hook implementation changes, lifecycle debugging, boot context changes, and session continuity plumbing. For workspace/memory routing use the workspace `STRUCTURE.md`."
+description: "Operate Dobby workspace lifecycle hooks and context flow: session start boot context, user-prompt-submit time context, pre-compact capture, session-end finalization, Codex session finalizer, hook logs, and debugging why Dobby context/session memory did or did not load/write. Use for hook implementation changes, lifecycle debugging, boot context changes, and session continuity plumbing. For workspace/body routing use the `dobby-workspace` skill plus repo-local `STRUCTURE.md`."
 ---
 
 # Dobby Lifecycle
@@ -16,15 +16,15 @@ session-continuity notes after work ends.
 Use this skill for:
 
 - `SessionStart`, `UserPromptSubmit`, `PreCompact`, and `SessionEnd` hook behavior.
-- Boot context assembly: `STRUCTURE.md`, `now.md`, recent sessions, Shelf snapshot, calendar snapshot, area manifest.
+- Boot context assembly: shared `dobby-workspace` body map, repo-local `STRUCTURE.md`, `now.md`, recent sessions, Shelf snapshot, calendar snapshot, area manifest.
 - Codex App Server session finalization and forked finalizer turns.
 - Hook payload normalization, temporary hook records, worker logs, and lifecycle debugging.
 - Questions like “why did Dobby not load context?”, “why did session memory not write?”, or “change what loads at boot.”
 
 Do **not** use this skill for deciding where a fact belongs in memory. Use the
-workspace `STRUCTURE.md` for memory routing and file contracts. Lifecycle code
-may read `STRUCTURE.md` when it needs memory meaning, especially during session
-finalization.
+shared `dobby-workspace` body map and repo-local `STRUCTURE.md` for memory
+routing and file contracts. Lifecycle code may read those files when it needs
+memory meaning, especially during boot and session finalization.
 
 Use the more specific skills for concrete domains:
 
@@ -67,7 +67,8 @@ Load on demand:
 Name by domain, implement through hooks:
 
 ```text
-STRUCTURE.md     = memory meaning and routing
+dobby-workspace  = shared workspace body meaning and shape lint
+STRUCTURE.md     = repo-local body exceptions and orientation
 dobby-lifecycle  = runtime context flow and hook machinery
 ```
 

@@ -1,30 +1,33 @@
 # Dobby lifecycle hooks
 
-Lifecycle details live here so `STRUCTURE.md` can stay the workspace body map
-instead of becoming a hook runbook.
+Lifecycle details live here so the shared `dobby-workspace` body map and thin
+repo-local `STRUCTURE.md` can stay focused on workspace meaning instead of
+becoming a hook runbook.
 
 ## Boot
 
 Boot context is delivered by the repo's `SessionStart` hook
 (`scripts/hooks/session_start.py`), which delegates to the skill-bundled hook.
 The hook reads `STRUCTURE.md`, `now.md`, `state/shelf.json`, walks
-`memory/areas/`, reads recent session notes, and calls the `dobby-calendar`
-skill CLI for upcoming events.
+`memory/areas/`, reads the shared `dobby-workspace` body map, reads recent
+session notes, and calls the `dobby-calendar` skill CLI for upcoming events.
 
 What boot context should include:
 
 1. `soul.md` / identity context through the runtime system-prompt mechanism.
-2. `STRUCTURE.md` as the Dobby workspace body map and routing contract.
-3. `memory/now.md`.
-4. Recent session notes: last 3 plus notes from the last 7 days, capped at 10.
-5. Shelf snapshot.
-6. Calendar snapshot for the next 2 days.
-7. Area manifest.
+2. Shared `dobby-workspace/references/body-map.md` as the common Dobby body map.
+3. Repo-local `STRUCTURE.md` for local exceptions/orientation.
+4. `memory/now.md`.
+5. Recent session notes: last 3 plus notes from the last 7 days, capped at 10.
+6. Shelf snapshot.
+7. Calendar snapshot for the next 2 days.
+8. Area manifest.
 
 Operational limits:
 
 - filename format: `memory/sessions/YYYY/MM/DD-HHMMSS.md` with numeric suffixes on collision
-- structure boot cap: 16000 chars
+- shared body-map boot cap: 12000 chars
+- repo-local structure boot cap: 16000 chars
 - boot context: last 3 notes plus notes from the last 7 days, capped at 10
 - per-note boot cap: 2500 chars
 - total recent-session boot block cap: 12000 chars

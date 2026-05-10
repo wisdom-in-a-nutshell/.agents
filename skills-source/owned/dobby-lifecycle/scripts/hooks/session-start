@@ -7,11 +7,13 @@ Emits situational boot context to stdout; the shared dispatcher at
 
 Section order:
 
-    soul (conditional) | structure | now | recent sessions | shelf | calendar | areas
+    soul (conditional) | workspace body map | local structure | now | recent sessions | shelf | calendar | areas
 
-Memory reads (`STRUCTURE.md`, `now.md`, area manifest, `soul.md`) happen inline via
-file I/O — trivial work, no reason to round-trip through a CLI. Shelf also
-lives as workspace-local JSON. Calendar snapshots go through the `dobby-calendar` skill CLI because EventKit is a non-trivial integration and is worth the CLI contract.
+Memory reads (`STRUCTURE.md`, `now.md`, area manifest, `soul.md`) and the shared
+workspace body map happen inline via file I/O — trivial work, no reason to
+round-trip through a CLI. Shelf also lives as workspace-local JSON. Calendar
+snapshots go through the `dobby-calendar` skill CLI because EventKit is a
+non-trivial integration and is worth the CLI contract.
 
 The user's durable identity lives in `soul.md`. It is normally loaded as
 the system prompt by:
@@ -48,6 +50,7 @@ RECENT_SESSION_MIN_COUNT = 3
 RECENT_SESSION_MAX_COUNT = 10
 RECENT_SESSION_NOTE_MAX_CHARS = 2500
 RECENT_SESSIONS_BLOCK_MAX_CHARS = 12000
+BODY_MAP_MAX_CHARS = 12000
 STRUCTURE_MAX_CHARS = 16000
 
 
@@ -75,6 +78,12 @@ CALENDAR_SCRIPTS_DIR = Path(
     os.environ.get(
         "DOBBY_CALENDAR_SCRIPTS_DIR",
         str(Path.home() / ".agents/skills-source/owned/dobby-calendar/scripts"),
+    )
+).expanduser()
+DOBBY_WORKSPACE_SKILL_DIR = Path(
+    os.environ.get(
+        "DOBBY_WORKSPACE_SKILL_DIR",
+        str(Path.home() / ".agents/skills-source/owned/dobby-workspace"),
     )
 ).expanduser()
 
@@ -247,13 +256,16 @@ def strip_leading_h1(content: str) -> str:
     return re.sub(r"^#\s[^\n]*\n+", "", content, count=1).strip()
 
 
-def file_mtime_iso(rel_path: str) -> str | None:
-    path = REPO_ROOT / rel_path
+def path_mtime_iso(path: Path) -> str | None:
     if not path.exists():
         return None
     return datetime.fromtimestamp(path.stat().st_mtime, tz=timezone.utc).strftime(
         "%Y-%m-%dT%H:%MZ"
     )
+
+
+def file_mtime_iso(rel_path: str) -> str | None:
+    return path_mtime_iso(REPO_ROOT / rel_path)
 
 
 def section(name: str) -> None:
@@ -437,8 +449,24 @@ def print_structure() -> None:
     content = read_memory_file(REPO_ROOT / "STRUCTURE.md").strip()
     if not content:
         return
-    section("structure")
+    section("local structure")
     print(truncate_text(strip_leading_h1(content), STRUCTURE_MAX_CHARS, "structure"))
+
+
+def print_workspace_body_map() -> None:
+    content = read_memory_file(
+        DOBBY_WORKSPACE_SKILL_DIR / "references" / "body-map.md"
+    ).strip()
+    if not content:
+        return
+    section("workspace body map")
+    print(
+        truncate_text(
+            strip_leading_h1(content),
+            BODY_MAP_MAX_CHARS,
+            "workspace body map",
+        )
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -475,19 +503,24 @@ def main() -> int:
 
     # --- Header (# session) --------------------------------------------------
     session_started = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%MZ")
+    body_map_mtime = path_mtime_iso(
+        DOBBY_WORKSPACE_SKILL_DIR / "references" / "body-map.md"
+    ) or "?"
     structure_mtime = file_mtime_iso("STRUCTURE.md") or "?"
     now_mtime = file_mtime_iso("memory/now.md") or "?"
     areas_count = sum(len(a["files"]) for a in areas)
 
     print("# session")
     print(f"started:  {session_started}")
+    print(f"body-map.md:  modified {body_map_mtime}")
     print(f"structure.md: modified {structure_mtime}")
-    print(f"now.md:   modified {now_mtime}")
-    print(f"areas:    {areas_count} files")
+    print(f"now.md:       modified {now_mtime}")
+    print(f"areas:        {areas_count} files")
 
     # --- Sections ------------------------------------------------------------
     # soul is emitted only for Claude clients without a system-prompt mechanism.
     print_soul()
+    print_workspace_body_map()
     print_structure()
 
     now = strip_leading_h1(now_content.strip())

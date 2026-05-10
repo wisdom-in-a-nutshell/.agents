@@ -1,0 +1,308 @@
+#!/usr/bin/env python3
+"""Fast Dobby workspace shape linter.
+
+This is Dobby's cheap mechanical reflex. The shared semantic map lives in
+`dobby-workspace/references/body-map.md`; this script owns the exact enforceable
+body shape.
+
+The linter is intentionally small and deterministic. It checks only things that
+are cheap and specific enough to be useful:
+
+- required top-level organs exist
+- only known top-level organs exist
+- key organs keep their expected second-level shape
+- active projects have `tasks.md`
+- `state/shelf.json` has basic JSON shape
+- generated CV PDFs are not tracked
+
+When this script fails, future Dobby should treat the message as an instruction
+from the workspace itself:
+
+1. If the new path/artifact was accidental, remove it.
+2. If it was deliberate, ask Adi whether the workspace body should change.
+3. If Adi agrees, update `references/body-map.md`, this script, and any repo-local `STRUCTURE.md` note in the same change.
+
+Do not turn this into a broad policy engine or semantic memory judge. Keep it
+fast enough to run on every `check-fast.sh` / stop-hook pass.
+"""
+
+from __future__ import annotations
+
+import argparse
+import json
+import subprocess
+import sys
+from pathlib import Path
+
+
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description="Lint a Dobby workspace body shape.")
+    parser.add_argument(
+        "--workspace-root",
+        default=".",
+        help="Workspace repo root to lint. Defaults to the current directory.",
+    )
+    return parser.parse_args()
+
+
+def resolve_root(value: str) -> Path:
+    path = Path(value).expanduser().resolve()
+    if not path.exists():
+        raise SystemExit(f"workspace root does not exist: {path}")
+    return path
+
+
+ARGS = parse_args()
+ROOT = resolve_root(ARGS.workspace_root)
+
+REQUIRED_TOP_LEVEL = {
+    "soul.md": "file",
+    "STRUCTURE.md": "file",
+    "memory": "dir",
+    "journal": "dir",
+    "state": "dir",
+    "dobby": "dir",
+    "projects": "dir",
+    "scripts": "dir",
+}
+
+ALLOWED_TOP_LEVEL = {
+    *REQUIRED_TOP_LEVEL.keys(),
+    ".agents",
+    ".claude",
+    ".codex",
+    ".github",
+    ".gitignore",
+    ".mcp.json",
+    ".envrc",
+    "tmp",
+}
+
+LOCAL_TOP_LEVEL_IGNORES = {
+    ".git",
+    ".venv",
+    ".ruff_cache",
+    ".obsidian",
+    ".DS_Store",
+}
+
+SECOND_LEVEL = {
+    "memory": {
+        "files": {"now.md"},
+        "dirs": {"areas", "sessions"},
+    },
+    "journal": {
+        "files": set(),
+        "dirs": {"daily", "monthly", "templates"},
+    },
+    "state": {
+        "files": {"shelf.json"},
+        "dirs": set(),
+    },
+    "dobby": {
+        "files": {"growth.md"},
+        "dirs": set(),
+    },
+    "scripts": {
+        "files": {"check-fast.sh", "check-full.sh", "lint-workspace.py"},
+        "dirs": {"hooks", "local"},
+    },
+    ".agents": {
+        "files": set(),
+        "dirs": {"skills"},
+    },
+    ".codex": {
+        "files": {"config.toml", "hooks.json"},
+        "dirs": {"agents", "environments"},
+    },
+    ".claude": {
+        "files": {"harness-minimal.md", "settings.json"},
+        "dirs": {"agents", "bin", "skills"},
+    },
+    ".github": {
+        "files": set(),
+        "dirs": {"hooks"},
+    },
+}
+
+IGNORED_CHILD_NAMES = {".DS_Store", "__pycache__"}
+
+
+class Finding:
+    def __init__(self, kind: str, path: Path, message: str):
+        self.kind = kind
+        self.path = path
+        self.message = message
+
+    def render(self) -> str:
+        rel = self.path.relative_to(ROOT) if self.path.is_absolute() else self.path
+        return (
+            f"{self.kind}: {rel}\n"
+            f"{self.message}\n"
+            "\n"
+            "If this was accidental, remove it.\n"
+            "If this was intentional, ask Adi whether this should become part of "
+            "Dobby's workspace body, then update the dobby-workspace "
+            "shared body map and linter, plus repo-local STRUCTURE.md if needed."
+        )
+
+
+errors: list[Finding] = []
+warnings: list[Finding] = []
+
+
+def add_error(path: Path, message: str) -> None:
+    errors.append(Finding("ERROR", path, message))
+
+
+def add_warning(path: Path, message: str) -> None:
+    warnings.append(Finding("WARNING", path, message))
+
+
+def iter_children(path: Path):
+    if not path.exists() or not path.is_dir():
+        return []
+    return sorted(path.iterdir(), key=lambda p: p.name)
+
+
+def check_required_top_level() -> None:
+    for name, expected in REQUIRED_TOP_LEVEL.items():
+        path = ROOT / name
+        if not path.exists():
+            add_error(path, f"Required Dobby workspace organ is missing: {name}.")
+            continue
+        if expected == "file" and not path.is_file():
+            add_error(path, f"Required Dobby workspace organ should be a file: {name}.")
+        if expected == "dir" and not path.is_dir():
+            add_error(path, f"Required Dobby workspace organ should be a directory: {name}.")
+
+
+def is_ignored_top_level(name: str) -> bool:
+    if name in LOCAL_TOP_LEVEL_IGNORES:
+        return True
+    return name.startswith(".env") and name != ".envrc"
+
+
+def check_top_level_shape() -> None:
+    for child in iter_children(ROOT):
+        name = child.name
+        if is_ignored_top_level(name) or name in ALLOWED_TOP_LEVEL:
+            continue
+        add_error(
+            child,
+            "Unexpected top-level path. Dobby's root should stay small: only "
+            "intentional organs belong here.",
+        )
+
+
+def check_second_level_shape() -> None:
+    for parent_name, contract in SECOND_LEVEL.items():
+        parent = ROOT / parent_name
+        if not parent.exists():
+            continue
+        allowed_files = contract["files"]
+        allowed_dirs = contract["dirs"]
+        for child in iter_children(parent):
+            if child.name in IGNORED_CHILD_NAMES:
+                continue
+            if child.is_dir() and child.name in allowed_dirs:
+                continue
+            if child.is_file() and child.name in allowed_files:
+                continue
+            add_error(
+                child,
+                f"Unexpected second-level path under {parent_name}/. This is a "
+                "new folder/file in a deliberate workspace organ.",
+            )
+
+
+def check_projects() -> None:
+    projects = ROOT / "projects"
+    if not projects.exists():
+        return
+    for child in iter_children(projects):
+        if child.name in IGNORED_CHILD_NAMES:
+            continue
+        if not child.is_dir():
+            add_error(child, "projects/ should contain project folders, not loose files.")
+            continue
+        if child.name == "archive":
+            for archived in iter_children(child):
+                if archived.is_dir() and not (archived / "tasks.md").exists():
+                    add_warning(archived, "Archived project folder does not contain tasks.md.")
+            continue
+        if not (child / "tasks.md").exists():
+            add_error(child, "Active project folders must contain tasks.md.")
+
+
+def check_shelf_json() -> None:
+    path = ROOT / "state" / "shelf.json"
+    if not path.exists():
+        add_error(path, "Shelf state is missing. Personal open loops live in state/shelf.json.")
+        return
+    try:
+        data = json.loads(path.read_text())
+    except json.JSONDecodeError as exc:
+        add_error(path, f"Shelf state is not valid JSON: {exc}.")
+        return
+    if not isinstance(data, dict):
+        add_error(path, "Shelf state should be a JSON object.")
+        return
+    if "revision" not in data:
+        add_error(path, "Shelf state is missing required key: revision.")
+    if "items" not in data:
+        add_error(path, "Shelf state is missing required key: items.")
+    elif not isinstance(data["items"], list):
+        add_error(path, "Shelf state key `items` should be a list.")
+
+
+def tracked_files() -> list[str]:
+    try:
+        result = subprocess.run(
+            ["git", "-C", str(ROOT), "ls-files"],
+            check=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+        )
+    except (OSError, subprocess.CalledProcessError):
+        return []
+    return [line for line in result.stdout.splitlines() if line]
+
+
+def check_tracked_generated_artifacts() -> None:
+    for rel in tracked_files():
+        if rel.startswith("memory/areas/builder/career/cv/latex/") and rel.endswith(".pdf"):
+            add_error(
+                ROOT / rel,
+                "Generated CV PDFs should not be tracked. Keep LaTeX sources and regenerate PDFs when needed.",
+            )
+
+
+def main() -> int:
+    check_required_top_level()
+    check_top_level_shape()
+    check_second_level_shape()
+    check_projects()
+    check_shelf_json()
+    check_tracked_generated_artifacts()
+
+    if warnings:
+        print("[lint-workspace] warnings:", file=sys.stderr)
+        for finding in warnings:
+            print("", file=sys.stderr)
+            print(finding.render(), file=sys.stderr)
+
+    if errors:
+        print("[lint-workspace] Dobby workspace shape check failed.", file=sys.stderr)
+        for finding in errors:
+            print("", file=sys.stderr)
+            print(finding.render(), file=sys.stderr)
+        return 1
+
+    print("[lint-workspace] passed")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
