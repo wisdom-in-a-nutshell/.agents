@@ -241,7 +241,7 @@ def launch_continuity_worker(root: Path, payload: dict[str, Any]) -> None:
 
 
 def main() -> int:
-    if os.environ.get("DOBBY_CODEX_FINALIZER_ACTIVE") == "1":
+    if os.environ.get("DOBBY_INTERNAL_SIDECAR") == "1":
         return 0
 
     payload = read_payload()

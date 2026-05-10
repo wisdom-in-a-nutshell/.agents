@@ -191,8 +191,7 @@ class AppServerClient:
         # Any hooks fired by this forked finalizer app-server must be inert.
         # Without this, a finalizer thread can compact, trigger PreCompact or
         # SessionEnd, and spawn another finalizer recursively.
-        env["DOBBY_CODEX_FINALIZER_ACTIVE"] = "1"
-        env["DOBBY_CODEX_FINALIZER_DISABLED"] = "1"
+        env["DOBBY_INTERNAL_SIDECAR"] = "1"
         self.proc = subprocess.Popen(
             [self.codex_bin, "app-server"],
             cwd=str(self.root),
