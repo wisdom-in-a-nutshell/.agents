@@ -240,6 +240,17 @@
       "upstream_ref": "-"
     },
     {
+      "skill": "dobby-lifecycle",
+      "origin": "owned",
+      "scope": "repo",
+      "repos": [
+        "adi",
+        "angie"
+      ],
+      "source_path": "skills-source/owned/dobby-lifecycle",
+      "upstream_ref": "-"
+    },
+    {
       "skill": "dobby-workspace",
       "origin": "owned",
       "scope": "repo",
