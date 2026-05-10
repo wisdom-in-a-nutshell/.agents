@@ -21,7 +21,6 @@ mkdir -p \
 
 touch \
   "$workspace/soul.md" \
-  "$workspace/STRUCTURE.md" \
   "$workspace/memory/now.md" \
   "$workspace/dobby/growth.md" \
   "$workspace/scripts/check-fast.sh" \
@@ -34,13 +33,13 @@ JSON
 
 "$SKILL_DIR/scripts/lint-workspace" --workspace-root "$workspace"
 
-rm "$workspace/STRUCTURE.md"
+touch "$workspace/STRUCTURE.md"
 if "$SKILL_DIR/scripts/lint-workspace" --workspace-root "$workspace" >/tmp/dobby-workspace-lint-test.out 2>&1; then
-  echo "expected linter to require STRUCTURE.md" >&2
+  echo "expected linter to reject STRUCTURE.md" >&2
   exit 1
 fi
 if ! grep -q 'STRUCTURE.md' /tmp/dobby-workspace-lint-test.out; then
-  echo "expected missing STRUCTURE.md failure to mention STRUCTURE.md" >&2
+  echo "expected unexpected STRUCTURE.md failure to mention STRUCTURE.md" >&2
   cat /tmp/dobby-workspace-lint-test.out >&2
   exit 1
 fi

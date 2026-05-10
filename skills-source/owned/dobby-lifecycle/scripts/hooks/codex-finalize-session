@@ -140,7 +140,7 @@ def finalizer_prompt(
     source_turn_line = f"- Source turn id: `{source_turn}`\n" if source_turn else ""
     return f"""You are running in a forked Codex finalization thread.
 
-Finalize continuity for the source thread. Use `STRUCTURE.md` for Dobby workspace routing and write directly to the workspace memory files.
+Finalize continuity for the source thread. Use the shared `dobby-workspace` body map for Dobby workspace routing and write directly to the workspace memory files.
 
 Context:
 - Workspace root: `{root}`
@@ -149,12 +149,12 @@ Context:
 {source_turn_line}- Suggested session note path: `{target_hint}`
 
 Task:
-1. Read `STRUCTURE.md` for session continuity and memory routing.
+1. Read `$HOME/.agents/skills-source/owned/dobby-workspace/references/body-map.md` for session continuity and memory routing.
 2. Write one concise, useful session-continuity note under `memory/sessions/YYYY/MM/DD-HHMMSS.md`.
    - Use the suggested path above if it fits.
    - If that file already exists, use the next numeric suffix.
 3. Capture what happened, decisions made, open loops, and the best continuation point.
-4. Promote durable facts only if `STRUCTURE.md` clearly says they belong in `now.md`, an area file, or `soul.md`.
+4. Promote durable facts only if the shared body map clearly says they belong in `now.md`, an area file, or `soul.md`.
 5. Do not ask the user.
 6. Keep it human and compact.
 

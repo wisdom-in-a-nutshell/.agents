@@ -57,7 +57,6 @@ ROOT = resolve_root(ARGS.workspace_root)
 
 REQUIRED_TOP_LEVEL = {
     "soul.md": "file",
-    "STRUCTURE.md": "file",
     "memory": "dir",
     "journal": "dir",
     "state": "dir",

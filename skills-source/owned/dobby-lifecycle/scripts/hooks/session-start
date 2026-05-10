@@ -7,11 +7,11 @@ Emits situational boot context to stdout; the shared dispatcher at
 
 Section order:
 
-    soul (conditional) | workspace body map | local structure | now | recent sessions | shelf | calendar | areas
+    soul (conditional) | workspace body map | now | recent sessions | shelf | calendar | areas
 
-Memory reads (`STRUCTURE.md`, `now.md`, area manifest, `soul.md`) and the shared
-workspace body map happen inline via file I/O — trivial work, no reason to
-round-trip through a CLI. Shelf also lives as workspace-local JSON. Calendar
+Memory reads (`now.md`, area manifest, `soul.md`) and the shared workspace body
+map happen inline via file I/O — trivial work, no reason to round-trip through a
+CLI. Shelf also lives as workspace-local JSON. Calendar
 snapshots go through the `dobby-calendar` skill CLI because EventKit is a
 non-trivial integration and is worth the CLI contract.
 
@@ -51,7 +51,6 @@ RECENT_SESSION_MAX_COUNT = 10
 RECENT_SESSION_NOTE_MAX_CHARS = 2500
 RECENT_SESSIONS_BLOCK_MAX_CHARS = 12000
 BODY_MAP_MAX_CHARS = 12000
-STRUCTURE_MAX_CHARS = 16000
 
 
 # ---------------------------------------------------------------------------
@@ -445,14 +444,6 @@ def print_soul() -> None:
     print(content)
 
 
-def print_structure() -> None:
-    content = read_memory_file(REPO_ROOT / "STRUCTURE.md").strip()
-    if not content:
-        return
-    section("local structure")
-    print(truncate_text(strip_leading_h1(content), STRUCTURE_MAX_CHARS, "structure"))
-
-
 def print_workspace_body_map() -> None:
     content = read_memory_file(
         DOBBY_WORKSPACE_SKILL_DIR / "references" / "body-map.md"
@@ -506,14 +497,12 @@ def main() -> int:
     body_map_mtime = path_mtime_iso(
         DOBBY_WORKSPACE_SKILL_DIR / "references" / "body-map.md"
     ) or "?"
-    structure_mtime = file_mtime_iso("STRUCTURE.md") or "?"
     now_mtime = file_mtime_iso("memory/now.md") or "?"
     areas_count = sum(len(a["files"]) for a in areas)
 
     print("# session")
     print(f"started:  {session_started}")
     print(f"body-map.md:  modified {body_map_mtime}")
-    print(f"structure.md: modified {structure_mtime}")
     print(f"now.md:       modified {now_mtime}")
     print(f"areas:        {areas_count} files")
 
@@ -521,7 +510,6 @@ def main() -> int:
     # soul is emitted only for Claude clients without a system-prompt mechanism.
     print_soul()
     print_workspace_body_map()
-    print_structure()
 
     now = strip_leading_h1(now_content.strip())
     if now:
