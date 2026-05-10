@@ -3,8 +3,7 @@
 
 PostCompact runs after the runtime has already compressed the active thread. This
 is a safer place than PreCompact to launch Dobby's sidecar continuity finalizer:
-the hot compaction path is done, and the finalizer app-server marks itself as an
-internal sidecar so lifecycle hooks no-op while the normal Stop hook still runs.
+the hot compaction path is done, and the normal Stop hook still runs afterward.
 """
 
 from __future__ import annotations
@@ -165,9 +164,6 @@ def launch_codex_finalizer_worker(root: Path, job_path: Path) -> None:
 
 
 def main() -> int:
-    if os.environ.get("DOBBY_INTERNAL_SIDECAR") == "1":
-        return 0
-
     payload = read_payload()
     event_name = payload.get("hook_event_name") or os.environ.get("AGENT_HOOK_EVENT")
     if event_name not in {None, HOOK_EVENT}:

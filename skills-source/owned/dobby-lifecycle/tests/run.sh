@@ -12,8 +12,7 @@ python3 -m py_compile \
   "$SKILL_DIR/scripts/hooks/write-session-note"
 
 tmp_root="$(mktemp -d)"
-active_root="$(mktemp -d)"
-trap 'rm -rf "$tmp_root" "$active_root"' EXIT
+trap 'rm -rf "$tmp_root"' EXIT
 
 cat >"$tmp_root/precompact-payload.json" <<JSON
 {
@@ -64,37 +63,8 @@ if [[ -e "$tmp_root/tmp/hooks/session-finalizer/worker.log" ]]; then
   exit 1
 fi
 
-cat >"$active_root/postcompact-payload.json" <<JSON
-{
-  "schema_version": "1.0",
-  "hook_event_name": "PostCompact",
-  "runtime": "codex",
-  "repo_root": "$active_root",
-  "session_id": "finalizer-owned-thread"
-}
-JSON
-DOBBY_INTERNAL_SIDECAR=1 python3 "$SKILL_DIR/scripts/hooks/post-compact" <"$active_root/postcompact-payload.json"
-if [[ -e "$active_root/tmp" ]]; then
-  echo "Internal sidecar PostCompact context should be inert and write no lifecycle artifacts" >&2
-  exit 1
-fi
-
-cat >"$active_root/session-end-payload.json" <<JSON
-{
-  "schema_version": "1.0",
-  "hook_event_name": "SessionEnd",
-  "runtime": "codex",
-  "repo_root": "$active_root",
-  "session_id": "finalizer-owned-thread"
-}
-JSON
-DOBBY_INTERNAL_SIDECAR=1 python3 "$SKILL_DIR/scripts/hooks/session-end" <"$active_root/session-end-payload.json"
-if [[ -e "$active_root/tmp" ]]; then
-  echo "Internal sidecar SessionEnd context should be inert and write no lifecycle artifacts" >&2
-  exit 1
-fi
-
-if ! grep -q 'env\["DOBBY_INTERNAL_SIDECAR"\] = "1"' "$SKILL_DIR/scripts/hooks/codex-finalize-session"; then
-  echo "codex-finalize-session must mark its app-server as DOBBY_INTERNAL_SIDECAR" >&2
+forbidden_var="DOBBY_INTERNAL_""SIDECAR"
+if grep -R "$forbidden_var" "$SKILL_DIR/scripts/hooks" "$SKILL_DIR/references" >/dev/null; then
+  echo "$forbidden_var should not be part of the current simple design" >&2
   exit 1
 fi

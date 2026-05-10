@@ -40,10 +40,9 @@ PostCompact hook records a small job under `tmp/hooks/post-compact/` and starts
 local `codex app-server`, forks the source thread, injects a finalization prompt
 that points to the shared `dobby-workspace` body map, and lets the forked agent
 write directly to `memory/sessions/...`. The worker starts its forked app-server
-with `DOBBY_INTERNAL_SIDECAR=1`; repo lifecycle hooks must treat that as an
-internal sidecar context and no-op. The Stop hook is intentionally not disabled,
-so memory notes written by the sidecar can still be committed by normal repo
-automation.
+without special lifecycle environment flags for now. The Stop hook is
+intentionally not disabled, so memory notes written by the sidecar can still be
+committed by normal repo automation.
 
 `DOBBY_CODEX_FINALIZER_DISABLED=1` remains a manual kill switch to prevent hooks
 from launching Codex finalizer workers during debugging.
@@ -83,9 +82,9 @@ simple sidecar design:
 
 1. PostCompact writes one compact job record under `tmp/hooks/post-compact/`.
 2. It starts `codex-finalize-session` in the background.
-3. The sidecar app-server runs with `DOBBY_INTERNAL_SIDECAR=1`.
-4. Lifecycle hooks no-op inside the sidecar; Stop still runs normally.
-5. The sidecar writes one concise session note under `memory/sessions/...`.
+3. The sidecar forks the source Codex thread.
+4. The sidecar writes one concise session note under `memory/sessions/...`.
+5. Stop still runs normally and commits any resulting memory note.
 
 Canonical IDs for PostCompact:
 

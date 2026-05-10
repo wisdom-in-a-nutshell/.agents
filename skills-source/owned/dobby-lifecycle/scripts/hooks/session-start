@@ -43,9 +43,6 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
-if os.environ.get("DOBBY_INTERNAL_SIDECAR") == "1":
-    raise SystemExit(0)
-
 PER_CALL_TIMEOUT_SEC = 4
 LOCAL_TIMEZONE = "Europe/Berlin"
 RECENT_SESSION_DAYS = 7
