@@ -3,8 +3,8 @@
 
 PostCompact runs after the runtime has already compressed the active thread. This
 is a safer place than PreCompact to launch Dobby's sidecar continuity finalizer:
-the hot compaction path is done, and the finalizer app-server runs with lifecycle
-hooks disabled so it cannot recursively finalize itself.
+the hot compaction path is done, and the finalizer app-server marks itself as an
+internal sidecar so lifecycle hooks no-op while the normal Stop hook still runs.
 """
 
 from __future__ import annotations

@@ -234,8 +234,8 @@ def launch_codex_finalizer_worker(root: Path, job_path: Path) -> None:
 def launch_continuity_worker(root: Path, payload: dict[str, Any]) -> None:
     job_path = write_session_memory_job(root, payload)
     if runtime(payload) == "codex":
-        if source_thread_id(payload):
-            launch_codex_finalizer_worker(root, job_path)
+        # Codex continuity is handled by PostCompact. Do not also finalize on
+        # SessionEnd, or a compacted session can produce duplicate notes.
         return
     launch_session_memory_worker(root, payload, job_path)
 

@@ -188,7 +188,7 @@ class AppServerClient:
 
     def start(self) -> None:
         env = os.environ.copy()
-        # Any hooks fired by this forked finalizer app-server must be inert.
+        # Lifecycle hooks fired by this forked finalizer app-server must be inert.
         # Without this, a finalizer thread can compact, trigger PreCompact or
         # SessionEnd, and spawn another finalizer recursively.
         env["DOBBY_INTERNAL_SIDECAR"] = "1"

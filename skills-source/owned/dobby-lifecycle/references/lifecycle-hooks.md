@@ -32,20 +32,21 @@ Operational limits:
 ## Session notes
 
 Session continuity lives in `memory/sessions/YYYY/MM/DD-HHMMSS.md`, not in
-`memory/now.md`. Repo-local `scripts/hooks/session_end.py` wrappers delegate to
-the skill-bundled `scripts/hooks/session-end`, which keeps shutdown fast by
-writing a handoff record under `tmp/hooks/session-end/`, launching a background
-continuity worker, and exiting `0`.
+`memory/now.md`.
 
-For Codex runtimes, `scripts/hooks/codex-finalize-session` starts local
-`codex app-server`, forks the source thread, injects a finalization prompt that
-points to the shared `dobby-workspace` body map, and lets the forked agent write directly to
-`memory/sessions/...`. This is the preferred path because it reuses the source
-thread context and keeps the active user thread clean. The worker starts its
-forked app-server with `DOBBY_CODEX_FINALIZER_ACTIVE=1` and
-`DOBBY_CODEX_FINALIZER_DISABLED=1`; repo lifecycle hooks must treat that as an
-inert finalizer context and avoid launching or recording additional lifecycle
-work from inside it.
+For Codex runtimes, continuity finalization is owned by PostCompact. The
+PostCompact hook records a small job under `tmp/hooks/post-compact/` and starts
+`scripts/hooks/codex-finalize-session` in the background. That worker starts a
+local `codex app-server`, forks the source thread, injects a finalization prompt
+that points to the shared `dobby-workspace` body map, and lets the forked agent
+write directly to `memory/sessions/...`. The worker starts its forked app-server
+with `DOBBY_INTERNAL_SIDECAR=1`; repo lifecycle hooks must treat that as an
+internal sidecar context and no-op. The Stop hook is intentionally not disabled,
+so memory notes written by the sidecar can still be committed by normal repo
+automation.
+
+`DOBBY_CODEX_FINALIZER_DISABLED=1` remains a manual kill switch to prevent hooks
+from launching Codex finalizer workers during debugging.
 
 For non-Codex runtimes, `scripts/hooks/write-session-note` is the legacy
 transcript path. It renders the transcript when the runtime provides
@@ -67,16 +68,26 @@ from launching from hooks, set `DOBBY_CODEX_FINALIZER_DISABLED=1`.
 ## Pre-compaction hook
 
 Repo-local `scripts/hooks/pre_compact.py` wrappers delegate to the
-skill-bundled `scripts/hooks/pre-compact`. The hook is intentionally quiet: it
-writes a compact lifecycle record under `tmp/hooks/pre-compact/` and prints
-nothing to stdout.
+skill-bundled `scripts/hooks/pre-compact`. The hook is deliberately inert: it
+does nothing and prints nothing to stdout.
 
-PreCompact is a last-chance capture point, not a synthesis point. It must not
-start a Codex finalizer or any other agent. Starting an agent from PreCompact can
-create a recursive loop: the finalizer thread may itself compact and trigger
-PreCompact again.
+PreCompact must not capture, queue, synthesize, or start a Codex finalizer. The
+runtime is already protecting the context window at this point. Dobby continuity
+starts after compaction, in PostCompact.
 
-Canonical IDs:
+## Post-compaction hook
+
+Repo-local `scripts/hooks/post_compact.py` wrappers delegate to the
+skill-bundled `scripts/hooks/post-compact`. For Codex runtimes, this is the
+simple sidecar design:
+
+1. PostCompact writes one compact job record under `tmp/hooks/post-compact/`.
+2. It starts `codex-finalize-session` in the background.
+3. The sidecar app-server runs with `DOBBY_INTERNAL_SIDECAR=1`.
+4. Lifecycle hooks no-op inside the sidecar; Stop still runs normally.
+5. The sidecar writes one concise session note under `memory/sessions/...`.
+
+Canonical IDs for PostCompact:
 
 - `source_thread_id` — Codex/App Server thread being compacted
 - `source_turn_id` — current turn if provided by the runtime

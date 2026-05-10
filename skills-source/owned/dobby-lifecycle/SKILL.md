@@ -1,6 +1,6 @@
 ---
 name: dobby-lifecycle
-description: "Operate Dobby workspace lifecycle hooks and context flow: session start boot context, user-prompt-submit time context, pre-compact capture, session-end finalization, Codex session finalizer, hook logs, and debugging why Dobby context/session memory did or did not load/write. Use for hook implementation changes, lifecycle debugging, boot context changes, and session continuity plumbing. For workspace/body routing use the `dobby-workspace` skill."
+description: "Operate Dobby workspace lifecycle hooks and context flow: session start boot context, user-prompt-submit time context, inert pre-compact behavior, post-compact Codex continuity finalization, session-end handling, hook logs, and debugging why Dobby context/session memory did or did not load/write. Use for hook implementation changes, lifecycle debugging, boot context changes, and session continuity plumbing. For workspace/body routing use the `dobby-workspace` skill."
 ---
 
 # Dobby Lifecycle
@@ -15,7 +15,7 @@ session-continuity notes after work ends.
 
 Use this skill for:
 
-- `SessionStart`, `UserPromptSubmit`, `PreCompact`, and `SessionEnd` hook behavior.
+- `SessionStart`, `UserPromptSubmit`, `PreCompact`, `PostCompact`, and `SessionEnd` hook behavior.
 - Boot context assembly: shared `dobby-workspace` body map, `now.md`, recent sessions, Shelf snapshot, calendar snapshot, area manifest.
 - Codex App Server session finalization and forked finalizer turns.
 - Hook payload normalization, temporary hook records, worker logs, and lifecycle debugging.
@@ -42,6 +42,7 @@ Repo-local hook wrappers delegate to this skill’s scripts through the repo’s
 scripts/hooks/session_start.py      -> scripts/hooks/session-start
 scripts/hooks/user_prompt_submit.py -> scripts/hooks/user-prompt-submit
 scripts/hooks/pre_compact.py        -> scripts/hooks/pre-compact
+scripts/hooks/post_compact.py       -> scripts/hooks/post-compact
 scripts/hooks/session_end.py        -> scripts/hooks/session-end
 ```
 
@@ -51,6 +52,7 @@ The hook scripts live here:
 $HOME/.agents/skills-source/owned/dobby-lifecycle/scripts/hooks/session-start
 $HOME/.agents/skills-source/owned/dobby-lifecycle/scripts/hooks/user-prompt-submit
 $HOME/.agents/skills-source/owned/dobby-lifecycle/scripts/hooks/pre-compact
+$HOME/.agents/skills-source/owned/dobby-lifecycle/scripts/hooks/post-compact
 $HOME/.agents/skills-source/owned/dobby-lifecycle/scripts/hooks/session-end
 $HOME/.agents/skills-source/owned/dobby-lifecycle/scripts/hooks/codex-finalize-session
 $HOME/.agents/skills-source/owned/dobby-lifecycle/scripts/hooks/write-session-note

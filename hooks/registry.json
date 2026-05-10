@@ -56,12 +56,11 @@
     },
     {
       "command": "python3 ~/.agents/hooks/scripts/post_compact.py --runtime {runtime}",
-      "enabled": false,
+      "enabled": true,
       "event": "PostCompact",
       "id": "repo-post-compact",
       "repos": [
-        "adi",
-        "angie"
+        "adi"
       ],
       "runtimes": [
         "codex",
