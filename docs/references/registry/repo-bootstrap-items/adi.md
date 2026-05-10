@@ -2,7 +2,7 @@
 repo_name: "adi"
 path: "~/GitHub/adi"
 mcp_count: 0
-skill_count: 24
+skill_count: 25
 repo_local_skill_count: 0
 model: "gpt-5.5"
 reasoning: "high"
@@ -27,6 +27,7 @@ repo_skills:
   - "codex-app-server"
   - "cv-creator"
   - "dobby-calendar"
+  - "dobby-lifecycle"
   - "dobby-shelf"
   - "dobby-workspace"
   - "health"
@@ -47,6 +48,7 @@ skills:
   - "cv-creator"
   - "defuddle"
   - "dobby-calendar"
+  - "dobby-lifecycle"
   - "dobby-shelf"
   - "dobby-workspace"
   - "find-skills"
