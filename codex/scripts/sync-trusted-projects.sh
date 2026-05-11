@@ -223,8 +223,30 @@ from pathlib import Path
 
 root = Path(sys.argv[1]).expanduser().resolve()
 seen: set[str] = set()
+pruned_dir_names = {
+    ".cache",
+    ".direnv",
+    ".mypy_cache",
+    ".pytest_cache",
+    ".ruff_cache",
+    ".tmp",
+    ".tox",
+    ".venv",
+    "__pycache__",
+    "DerivedData",
+    "node_modules",
+    "temp",
+    "tmp",
+    "vendor",
+    "venv",
+}
 
 for dirpath, dirnames, filenames in os.walk(root, topdown=True):
+    dirnames[:] = [
+        name
+        for name in dirnames
+        if name not in pruned_dir_names
+    ]
     has_git = ".git" in dirnames or ".git" in filenames
     if ".git" in dirnames:
         dirnames.remove(".git")
