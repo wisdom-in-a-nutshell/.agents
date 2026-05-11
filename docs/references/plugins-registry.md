@@ -4,72 +4,48 @@ Canonical source of truth: [`plugins/registry.json`](/Users/dobby/.agents/plugin
 
 ## What Lives Where
 
-- `plugins/registry.json` is the canonical list of managed plugin source packages.
-- Canonical mirrored plugin source lives under:
-  - `plugins-source/external/<plugin>/`
-  - `plugins-source/owned/<plugin>/`
-- `sync-plugins-registry.sh` regenerates:
-  - Obsidian plugin registry views under `docs/references/registry/`
-  - `skills/registry.json` `managed_plugin_skills`
-  - `mcp/config/presets.json` `plugin_presets` and `plugin_global_presets`
-  - `codex/config/repo-bootstrap.json` `plugin_mcp_presets`
+- `plugins/registry.json` is the canonical list of native Codex plugin state.
+- `codex/scripts/sync-config.sh` renders plugin sections into the terminal and Xcode Codex configs.
+- `sync-plugins-registry.sh` regenerates the Obsidian plugin registry views under `docs/references/registry/`.
+- Standalone skills stay in `skills/registry.json`.
+- Standalone MCP presets stay in `mcp/config/presets.json`.
 
 ```mermaid
 flowchart LR
-    A[plugins/registry.json] --> B[plugins-source/external or owned]
-    A --> C[Obsidian plugin registry views]
-    B --> D[plugin skills/]
-    B --> E[plugin .mcp.json]
-    D --> F[skills/registry.json managed_plugin_skills]
-    E --> G[mcp/config/presets.json plugin_presets]
-    G --> H[codex/config/repo-bootstrap.json plugin_mcp_presets]
+    A[plugins/registry.json] --> B[sync-plugins-registry.sh]
+    A --> C[codex/scripts/sync-config.sh]
+    B --> D[docs/references/registry plugin views]
+    C --> E[~/.codex/config.toml]
+    C --> F[Xcode Codex config]
 ```
 
 ## Current Model
 
-- A managed plugin entry means:
-  - the plugin bundle is a canonical upstream or owned source package
-  - bundled `skills/` can be extracted into the normal managed skills flow
-  - bundled `.mcp.json` can be extracted into the normal shared MCP flow
-- `scope` controls extracted skill scope:
-  - `global` adds global managed skills
-  - `repo` adds repo-scoped managed skills for the listed repos
-- `mcp_scope` controls extracted MCP scope:
-  - `global` adds derived MCP presets to `plugin_global_presets`
-  - `repo` assigns derived MCP presets to the listed repos through `plugin_mcp_presets`
+A managed plugin entry means:
+
+- Codex should know the plugin by `<plugin>@<marketplace>`
+- the plugin should be rendered as enabled or disabled for its configured targets
+- the plugin remains a plugin, even when its package contains skills, MCP, apps, assets, or helper binaries
+
+This registry does not project plugin contents into the skill or MCP registries. If a capability should become standalone, add it directly to `skills/registry.json` or `mcp/config/presets.json`.
 
 ## Normal Workflow
 
 - Edit `plugins/registry.json`.
-- Run `./scripts/refresh-external-plugins.sh --apply` when the source is external and you want the latest upstream bundle.
 - Run `./scripts/sync-plugins-registry.sh --apply`.
 - Run `./scripts/bootstrap-machine-agent-control-planes.sh --apply`.
 - Run `./scripts/check-plugins-registry.sh`.
 
-If you only need to add one managed plugin source, use:
+If you only need to add or update one plugin entry, use:
 
 ```bash
-./scripts/bootstrap-plugin.sh build-ios-apps --repo codexclaw --apply
+./scripts/bootstrap-plugin.sh build-ios-apps --target global --apply
 ```
-
-That updates the registry, refreshes upstream source, regenerates plugin-derived skills and MCP state, and reapplies the shared Codex and Claude control planes.
-
-## External Refresh
-
-- `refresh-external-plugins.sh` refreshes canonical mirrored source under `plugins-source/external/`.
-- Refresh preserves local `agents/openai.yaml` inside external plugin source folders.
-- Plugin source refresh does not install a Codex plugin; it only refreshes the mirrored source package used for skill/MCP extraction.
 
 ## Field Quick Reference
 
-- `plugin`: canonical plugin source name, for example `build-ios-apps`
-- `origin`: `external` or `owned`
-- `scope`: extracted skill scope, `global` or `repo`
-- `repos`: target repos for repo-scoped extracted skills
-- `mcp_scope`: extracted MCP scope, `global` or `repo`
-- `mcp_repos`: target repos for repo-scoped extracted MCP presets
-- `source_path`: canonical plugin source path, usually under `plugins-source/external/`
-- `upstream_ref`: refresh source like `openai/plugins:plugins/build-ios-apps@main`
-- `extract_skills`: whether bundled `skills/` should feed the managed skills flow
-- `extract_mcp`: whether bundled `.mcp.json` should feed the shared MCP flow
+- `plugin`: plugin name, for example `build-ios-apps`
+- `marketplace`: Codex marketplace id, for example `openai-curated` or `openai-bundled`
+- `enabled`: whether Codex should enable the plugin
+- `targets`: Codex configs to render into, currently `global` and/or `xcode`
 - `category`: Obsidian registry category only

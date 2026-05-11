@@ -33,7 +33,7 @@ Use [Codex Control Plane Ownership](/Users/dobby/.agents/docs/references/codex-c
 - Apply the shared machine-facing agent bootstrap batch:
   - [`bootstrap-machine-agent-control-planes.sh`](/Users/dobby/.agents/scripts/bootstrap-machine-agent-control-planes.sh)
   - `~/.agents/scripts/bootstrap-machine-agent-control-planes.sh --apply`
-  - this syncs managed skill links, plugin-derived skills and MCP state, repo-local hook files, plus the Codex and Claude runtime control planes from one stable root entrypoint
+  - this syncs managed skill links, native Codex plugin state, repo-local hook files, plus the Codex and Claude runtime control planes from one stable root entrypoint
 - Auto-apply the shared agent control plane after `~/.agents` sync when runtime-relevant files changed:
   - [`auto-apply-agent-control-planes.sh`](/Users/dobby/.agents/scripts/auto-apply-agent-control-planes.sh)
   - `~/.agents/scripts/auto-apply-agent-control-planes.sh --apply`
@@ -44,14 +44,11 @@ Use [Codex Control Plane Ownership](/Users/dobby/.agents/docs/references/codex-c
 - Sync managed plugins and regenerate the Obsidian registry views:
   - [`sync-plugins-registry.sh`](/Users/dobby/.agents/scripts/sync-plugins-registry.sh)
   - `~/.agents/scripts/sync-plugins-registry.sh --apply`
-  - this also refreshes plugin-derived skills and MCP state in the canonical registries
-- Refresh managed external plugins from upstream:
-  - [`refresh-external-plugins.sh`](/Users/dobby/.agents/scripts/refresh-external-plugins.sh)
-  - `~/.agents/scripts/refresh-external-plugins.sh --apply`
+  - native Codex plugin enable/disable state is rendered by `sync-config.sh`
 - Bootstrap one managed plugin into the canonical registry:
   - [`bootstrap-plugin.sh`](/Users/dobby/.agents/scripts/bootstrap-plugin.sh)
-  - `~/.agents/scripts/bootstrap-plugin.sh build-ios-apps --repo codexclaw --apply`
-  - this writes the registry entry, refreshes upstream plugin source, regenerates plugin-derived skills and MCP state, and reapplies the shared control planes
+  - `~/.agents/scripts/bootstrap-plugin.sh build-ios-apps --target global --apply`
+  - this writes the registry entry, regenerates plugin registry views, and reapplies the shared control planes
 - Apply the full Codex bootstrap batch:
   - [`bootstrap-machine-codex.sh`](/Users/dobby/.agents/codex/scripts/bootstrap-machine-codex.sh)
   - `~/.agents/codex/scripts/bootstrap-machine-codex.sh --apply`
@@ -125,13 +122,13 @@ Use [Codex Control Plane Ownership](/Users/dobby/.agents/docs/references/codex-c
 
 - [`sync-config.sh`](/Users/dobby/.agents/codex/scripts/sync-config.sh)
   - applies canonical Codex config templates into live terminal + Xcode config
-  - keeps Apps/connectors globally disabled through the managed `features.apps = false` baseline and explicit static `plugins.*.enabled = false` entries in the canonical template where desired
-  - explicitly preserves the OpenAI-bundled Computer Use plugin with `computer-use@openai-bundled.enabled = true`
+  - keeps Apps/connectors globally disabled through the managed `features.apps = false` baseline
+  - renders native Codex plugin enable/disable state from [`plugins/registry.json`](/Users/dobby/.agents/plugins/registry.json)
   - disables selected bundled Codex skills in `~/.codex/config.toml` from [`bundled-skills-policy.json`](/Users/dobby/.agents/codex/config/bundled-skills-policy.json) when the control plane should prefer managed skill copies or avoid duplicate runtime surfaces
   - rewrites machine-specific system-skill paths for the current `$HOME`
   - renders only global Codex lifecycle hooks from [`hooks/registry.json`](/Users/dobby/.agents/hooks/registry.json) into `~/.codex/hooks.json`
   - strips foreign-user project and system-skill entries before writing
-  - prunes stale global `apps.*` and `plugins.*` sections that are no longer present in the canonical template, so old local connector/plugin state does not stick around
+  - prunes stale global `apps.*` and `plugins.*` sections that are no longer present in the canonical template or plugin registry, so old local connector/plugin state does not stick around
   - prunes stale global terminal `mcp_servers.*` sections that are no longer present in the canonical template
   - prunes stale managed agent declarations and runtime role files left by older control-plane versions
   - fails fast if the target config contains unresolved Git conflict markers
@@ -153,7 +150,7 @@ Use [Codex Control Plane Ownership](/Users/dobby/.agents/docs/references/codex-c
   - prunes stale managed repo-local `.codex/agents/*.toml` files left by older control-plane versions
   - skips no-op rewrites instead of dirtying the git repos unnecessarily
   - keeps the repo list and repo-level MCP/model assignments in [`repo-bootstrap.json`](/Users/dobby/.agents/codex/config/repo-bootstrap.json)
-  - resolves MCP preset definitions through [`mcp/config/presets.json`](/Users/dobby/.agents/mcp/config/presets.json), including plugin-derived presets and repo assignments
+  - resolves MCP preset definitions through [`mcp/config/presets.json`](/Users/dobby/.agents/mcp/config/presets.json)
 - [`sync-managed-git-hooks.sh`](/Users/dobby/.agents/scripts/sync-managed-git-hooks.sh)
   - applies local-only `core.hooksPath` for every managed repo in [`repo-bootstrap.json`](/Users/dobby/.agents/codex/config/repo-bootstrap.json)
   - points Git at [`hooks/git/pre-commit`](/Users/dobby/.agents/hooks/git/pre-commit)
@@ -173,8 +170,8 @@ Use [Codex Control Plane Ownership](/Users/dobby/.agents/docs/references/codex-c
 - [`sync-repo-bootstrap-registry.sh`](/Users/dobby/.agents/codex/scripts/sync-repo-bootstrap-registry.sh)
   - regenerates the Obsidian Base artifacts from [`repo-bootstrap.json`](/Users/dobby/.agents/codex/config/repo-bootstrap.json)
   - pulls MCP preset definitions from [`mcp/config/presets.json`](/Users/dobby/.agents/mcp/config/presets.json)
-  - enriches the per-repo view with effective skills from [`skills/registry.json`](/Users/dobby/.agents/skills/registry.json), including plugin-derived skills
-  - enriches the per-repo view with repo MCP assignments from both canonical and plugin-derived preset groups
+  - enriches the per-repo view with effective standalone skills from [`skills/registry.json`](/Users/dobby/.agents/skills/registry.json)
+  - enriches the per-repo view with repo MCP assignments from canonical standalone preset groups
   - updates the user-facing registry views under [`docs/references/registry/`](/Users/dobby/.agents/docs/references/registry)
   - includes [`repo-bootstrap.base`](/Users/dobby/.agents/docs/references/registry/repo-bootstrap.base), [`repo-bootstrap-items/`](/Users/dobby/.agents/docs/references/registry/repo-bootstrap-items), [`mcp-registry.base`](/Users/dobby/.agents/docs/references/registry/mcp-registry.base), and [`mcp-registry-items/`](/Users/dobby/.agents/docs/references/registry/mcp-registry-items)
 - [`bootstrap-machine-codex.sh`](/Users/dobby/.agents/codex/scripts/bootstrap-machine-codex.sh)
@@ -248,7 +245,7 @@ Use [Codex Control Plane Ownership](/Users/dobby/.agents/docs/references/codex-c
   - `service_tier`
 - Shared MCP preset definitions live separately in [`mcp/config/presets.json`](/Users/dobby/.agents/mcp/config/presets.json).
 - Shared lifecycle hook definitions live separately in [`hooks/registry.json`](/Users/dobby/.agents/hooks/registry.json).
-- Shared plugin source extraction state lives separately in [`plugins/registry.json`](/Users/dobby/.agents/plugins/registry.json).
+- Native Codex plugin state lives separately in [`plugins/registry.json`](/Users/dobby/.agents/plugins/registry.json).
 - The global defaults block supplies fallback values for repos that do not override them.
 
 ## Automatic Cross-Machine Apply
@@ -256,7 +253,7 @@ Use [Codex Control Plane Ownership](/Users/dobby/.agents/docs/references/codex-c
 - Launchd still lives in [`~/GitHub/scripts/sync/git-auto-sync.sh`](/Users/dobby/GitHub/scripts/sync/git-auto-sync.sh), because scheduler ownership is part of the generic machine-ops repo.
 - Machine-facing multi-surface apply now lives in [`auto-apply-agent-control-planes.sh`](/Users/dobby/.agents/scripts/auto-apply-agent-control-planes.sh), which calls the Codex, Claude, and repo-local GitHub Copilot hook entrypoints as needed after `~/.agents` sync.
 - When shared skill inputs change, that wrapper also reruns the Codex bootstrap so machine-side dependencies for managed skills such as `pdf` stay converged.
-- That same wrapper now also runs the managed external plugin refresh once per day, then re-syncs plugin-derived skills and MCP state.
+- That same wrapper re-syncs plugin registry views and reapplies Codex config when plugin state changes.
 - When `hooks/registry.json` or `codex/config/repo-bootstrap.json` changes, that wrapper syncs global Codex/Claude hooks and repo-local hooks for Codex, Claude, and GitHub Copilot in managed repos.
 - Codex-specific post-sync apply logic still lives in [`auto-apply-codex-control-plane.sh`](/Users/dobby/.agents/codex/scripts/auto-apply-codex-control-plane.sh) as an optional lower-level Codex-only reconcile helper.
 - Practical flow:

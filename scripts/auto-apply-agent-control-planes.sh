@@ -4,7 +4,6 @@ set -euo pipefail
 AGENTS_REPO="${HOME}/.agents"
 GITHUB_ROOT="${HOME}/GitHub"
 STAMP_FILE="${HOME}/.local/state/agents-control-plane/last-reconciled-agents.sha"
-PLUGIN_REFRESH_STAMP_FILE="${HOME}/.local/state/agents-control-plane/last-external-plugin-refresh.date"
 MODE="--apply"
 
 ROOT_BOOTSTRAP_SCRIPT=""
@@ -12,7 +11,6 @@ SYNC_SKILLS_SCRIPT=""
 SYNC_PLUGINS_SCRIPT=""
 SYNC_GIT_HOOKS_SCRIPT=""
 SYNC_COPILOT_HOOKS_SCRIPT=""
-REFRESH_EXTERNAL_PLUGINS_SCRIPT=""
 CODEX_BOOTSTRAP_SCRIPT=""
 CLAUDE_BOOTSTRAP_SCRIPT=""
 
@@ -54,40 +52,6 @@ stamp_current_sha() {
   log "Stamped reconcile state: $STAMP_FILE -> $sha"
 }
 
-refresh_external_plugins_if_due() {
-  local today=""
-  local last=""
-  local cmd=()
-  today="$(date -u +%F)"
-  if [[ -f "$PLUGIN_REFRESH_STAMP_FILE" ]]; then
-    last="$(tr -d '[:space:]' <"$PLUGIN_REFRESH_STAMP_FILE")"
-  fi
-  if [[ "$last" == "$today" ]]; then
-    log "SKIP: external plugin refresh already ran for ${today}"
-    return 0
-  fi
-
-  cmd=("$REFRESH_EXTERNAL_PLUGINS_SCRIPT")
-  if [[ "$MODE" == "--apply" ]]; then
-    cmd+=(--apply)
-    log "APPLY: external plugin refresh is due for ${today}"
-  else
-    log "DRY-RUN: external plugin refresh is due for ${today}"
-  fi
-  log "+ ${cmd[*]}"
-  "${cmd[@]}"
-
-  if [[ "$MODE" != "--apply" ]]; then
-    return 0
-  fi
-
-  log "+ ${SYNC_PLUGINS_SCRIPT} --apply"
-  "$SYNC_PLUGINS_SCRIPT" --apply
-  mkdir -p "$(dirname "$PLUGIN_REFRESH_STAMP_FILE")"
-  printf '%s\n' "$today" >"$PLUGIN_REFRESH_STAMP_FILE"
-  log "Stamped external plugin refresh: $PLUGIN_REFRESH_STAMP_FILE -> $today"
-}
-
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --apply)
@@ -125,7 +89,6 @@ SYNC_SKILLS_SCRIPT="${AGENTS_REPO}/scripts/sync-skills-registry.sh"
 SYNC_PLUGINS_SCRIPT="${AGENTS_REPO}/scripts/sync-plugins-registry.sh"
 SYNC_GIT_HOOKS_SCRIPT="${AGENTS_REPO}/scripts/sync-managed-git-hooks.sh"
 SYNC_COPILOT_HOOKS_SCRIPT="${AGENTS_REPO}/scripts/sync-copilot-hooks.sh"
-REFRESH_EXTERNAL_PLUGINS_SCRIPT="${AGENTS_REPO}/scripts/refresh-external-plugins.sh"
 CODEX_BOOTSTRAP_SCRIPT="${AGENTS_REPO}/codex/scripts/bootstrap-machine-codex.sh"
 CLAUDE_BOOTSTRAP_SCRIPT="${AGENTS_REPO}/claude/scripts/bootstrap-machine-claude.sh"
 
@@ -135,11 +98,8 @@ CLAUDE_BOOTSTRAP_SCRIPT="${AGENTS_REPO}/claude/scripts/bootstrap-machine-claude.
 [[ -x "$SYNC_PLUGINS_SCRIPT" ]] || die "Missing executable: $SYNC_PLUGINS_SCRIPT"
 [[ -x "$SYNC_GIT_HOOKS_SCRIPT" ]] || die "Missing executable: $SYNC_GIT_HOOKS_SCRIPT"
 [[ -x "$SYNC_COPILOT_HOOKS_SCRIPT" ]] || die "Missing executable: $SYNC_COPILOT_HOOKS_SCRIPT"
-[[ -x "$REFRESH_EXTERNAL_PLUGINS_SCRIPT" ]] || die "Missing executable: $REFRESH_EXTERNAL_PLUGINS_SCRIPT"
 [[ -x "$CODEX_BOOTSTRAP_SCRIPT" ]] || die "Missing executable: $CODEX_BOOTSTRAP_SCRIPT"
 [[ -x "$CLAUDE_BOOTSTRAP_SCRIPT" ]] || die "Missing executable: $CLAUDE_BOOTSTRAP_SCRIPT"
-
-refresh_external_plugins_if_due
 
 current_sha="$(git -C "$AGENTS_REPO" rev-parse HEAD)"
 last_sha=""
@@ -181,7 +141,6 @@ done < <(
     hooks \
     mcp \
     plugins \
-    plugins-source \
     scripts \
     skills \
     skills-source
@@ -231,7 +190,7 @@ for path in "${changed_paths[@]}"; do
       ;;
   esac
   case "$path" in
-    plugins/*|plugins-source/*)
+    plugins/*)
       plugins_changed=1
       ;;
   esac

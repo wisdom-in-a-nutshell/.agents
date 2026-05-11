@@ -23,12 +23,6 @@ external_migration = false
 [notice.external_config_migration_prompts]
 home = true
 
-[plugins."browser-use@openai-bundled"]
-enabled = true
-
-[plugins."computer-use@openai-bundled"]
-enabled = true
-
 [sandbox_workspace_write]
 exclude_slash_tmp = false
 exclude_tmpdir_env_var = false

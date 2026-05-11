@@ -1,15 +1,14 @@
 # Capability Bootstrap Model
 
-This repo now has three managed capability families: plugin source packages, skills, and MCPs.
+This repo has three capability families: Codex plugins, standalone skills, and standalone MCPs.
 
-Agent delegation is intentionally not modeled here anymore. Codex and Claude can still spawn subagents through their native runtime behavior, but this control plane no longer keeps a registry of named agents or assigns those agents to individual repos.
+Agent delegation is intentionally not modeled here. Codex and Claude can still spawn subagents through their native runtime behavior, but this control plane does not keep a registry of named agents or assign those agents to repos.
 
 ## Control-Plane Shape
 
 ```mermaid
 flowchart TD
     P[plugins/registry.json]
-    P2[plugins-source/external or owned]
     A[skills/registry.json]
     B[codex/config/repo-bootstrap.json]
     C[mcp/config/presets.json]
@@ -18,15 +17,13 @@ flowchart TD
     F[sync-repo-codex-configs.sh]
     G[sync-config.sh]
     H[sync-repo-bootstrap-registry.sh]
-    I[Global runtime]
+    I[Global Codex runtime]
     J[Repo-local runtime]
     K[Registry views]
 
     P --> PS
-    P2 --> PS
-    PS --> A
-    PS --> B
-    PS --> C
+    P --> G
+    PS --> K
     A --> E
     A --> H
     B --> F
@@ -40,14 +37,13 @@ flowchart TD
     H --> K
 ```
 
-## Plugin Source Packages
+## Codex Plugins
 
 Source of truth:
 
 - `plugins/registry.json`
-- canonical mirrored or owned source in `plugins-source/`
 
-Plugins are upstream bundles that can feed normal skills and MCP flows. They are not a separate runtime install system.
+Plugins remain native Codex plugins. The registry renders plugin enable/disable state into Codex config; it does not split plugin packages into skill or MCP registries.
 
 ## Skills
 
@@ -55,7 +51,7 @@ Source of truth:
 
 - `skills/registry.json`
 
-Skills can be global, repo-scoped, or unmanaged repo-local. The generated repo bootstrap views include effective skill availability per repo.
+Skills are standalone agent guidance. They can be global, repo-scoped, or unmanaged repo-local. The generated repo bootstrap views include effective skill availability per repo.
 
 ## MCPs
 
@@ -64,21 +60,15 @@ Source of truth:
 - shared MCP preset definitions in `mcp/config/presets.json`
 - repo MCP assignment in `codex/config/repo-bootstrap.json`
 
-MCPs are endpoints and transports. The registry views answer which repos get which MCPs, and whether an MCP is global, repo-only, or mixed.
-
-## Agents
-
-There is no managed agent bootstrap layer.
-
-Let the runtime delegate naturally when a task benefits from subagents. Do not model subagent assignment in this control plane.
+MCPs are standalone endpoints and transports. If a plugin contains MCP internally, that remains plugin-owned unless it is manually promoted into this registry.
 
 ## Working Rules
 
-- Keep plugin source in `plugins-source/`.
+- Keep Codex plugin state in `plugins/registry.json`.
 - Keep skill content in `skills-source/`.
 - Keep MCP preset definitions in `mcp/config/presets.json`.
 - Keep repo inventory and repo MCP/default assignments in `codex/config/repo-bootstrap.json`.
-- Do not track which subagent belongs to which repo in this control plane.
+- Do not automatically project plugin package contents into skills or MCPs.
 
 ## Related Docs
 

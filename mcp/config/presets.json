@@ -27,19 +27,6 @@
     }
   },
   "global_presets": [],
-  "plugin_presets": {
-    "xcodebuildmcp": {
-      "command": "npx",
-      "args": [
-        "-y",
-        "xcodebuildmcp@latest",
-        "mcp"
-      ],
-      "env": {
-        "XCODEBUILDMCP_ENABLED_WORKFLOWS": "simulator,ui-automation,debugging,logging"
-      },
-      "transport": "stdio"
-    }
-  },
+  "plugin_presets": {},
   "plugin_global_presets": []
 }

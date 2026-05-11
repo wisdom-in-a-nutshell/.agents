@@ -17,7 +17,7 @@ Use [Codex Control Plane](/Users/dobby/.agents/docs/architecture/codex-control-p
 
 - Codex architecture and ownership docs
 - Codex-specific managed scripts
-- plugin source registry plus mirrored or owned plugin source packages
+- native Codex plugin registry
 - canonical config fragments and presets
 - MCP preset definitions and ownership docs
 - generated user-facing Obsidian registry views under `docs/references/registry/`
@@ -87,7 +87,7 @@ Use [Codex Control Plane](/Users/dobby/.agents/docs/architecture/codex-control-p
 - [codex/scripts/sync-repo-codex-configs.sh](/Users/dobby/.agents/codex/scripts/sync-repo-codex-configs.sh): canonical repo-local Codex config sync for managed repos.
 - [codex/config/repo-bootstrap.json](/Users/dobby/.agents/codex/config/repo-bootstrap.json): canonical repo bootstrap registry for managed repos plus repo-local model/agent/MCP assignment.
 - [mcp/config/presets.json](/Users/dobby/.agents/mcp/config/presets.json): canonical shared MCP definitions plus machine-wide default MCP enablement.
-- [plugins/registry.json](/Users/dobby/.agents/plugins/registry.json): canonical plugin source registry for upstream bundles that feed shared skills and MCP.
+- [plugins/registry.json](/Users/dobby/.agents/plugins/registry.json): canonical native Codex plugin enable/disable registry.
 - [codex/scripts/install-sudoers-codex-ops.sh](/Users/dobby/.agents/codex/scripts/install-sudoers-codex-ops.sh): canonical Codex sudoers installer.
 
 ## Ongoing Direction

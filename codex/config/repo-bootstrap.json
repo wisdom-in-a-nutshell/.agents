@@ -52,10 +52,7 @@
       "path": "~/GitHub/blog-personal"
     },
     {
-      "path": "~/GitHub/codexclaw",
-      "plugin_mcp_presets": [
-        "xcodebuildmcp"
-      ]
+      "path": "~/GitHub/codexclaw"
     },
     {
       "path": "~/GitHub/focus"

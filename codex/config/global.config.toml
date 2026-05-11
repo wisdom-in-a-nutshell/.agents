@@ -24,18 +24,6 @@ external_migration = false
 [notice.external_config_migration_prompts]
 home = true
 
-[plugins."browser-use@openai-bundled"]
-enabled = true
-
-[plugins."computer-use@openai-bundled"]
-enabled = true
-
-[plugins."gmail@openai-curated"]
-enabled = false
-
-[plugins."google-calendar@openai-curated"]
-enabled = false
-
 [tui]
 theme = "catppuccin-macchiato"
 status_line = ["model-with-reasoning", "context-remaining", "current-dir", "codex-version", "context-window-size", "session-id", "fast-mode"]

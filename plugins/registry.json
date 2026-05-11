@@ -5,21 +5,51 @@
   },
   "managed_plugins": [
     {
+      "plugin": "browser-use",
+      "marketplace": "openai-bundled",
+      "enabled": true,
+      "targets": [
+        "global",
+        "xcode"
+      ],
+      "category": "Engineering"
+    },
+    {
       "plugin": "build-ios-apps",
-      "origin": "external",
-      "scope": "repo",
-      "repos": [
-        "codexclaw"
+      "marketplace": "openai-curated",
+      "enabled": true,
+      "targets": [
+        "global"
       ],
-      "mcp_scope": "repo",
-      "mcp_repos": [
-        "codexclaw"
+      "category": "Coding"
+    },
+    {
+      "plugin": "computer-use",
+      "marketplace": "openai-bundled",
+      "enabled": true,
+      "targets": [
+        "global",
+        "xcode"
       ],
-      "source_path": "plugins-source/external/build-ios-apps",
-      "upstream_ref": "openai/plugins:plugins/build-ios-apps@main",
-      "category": "Coding",
-      "extract_skills": true,
-      "extract_mcp": true
+      "category": "Productivity"
+    },
+    {
+      "plugin": "gmail",
+      "marketplace": "openai-curated",
+      "enabled": false,
+      "targets": [
+        "global"
+      ],
+      "category": "Productivity"
+    },
+    {
+      "plugin": "google-calendar",
+      "marketplace": "openai-curated",
+      "enabled": false,
+      "targets": [
+        "global"
+      ],
+      "category": "Productivity"
     }
   ],
   "unmanaged_repo_local_plugins": []

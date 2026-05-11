@@ -9,20 +9,19 @@ Use [Codex Control Plane Operations](/Users/dobby/.agents/docs/references/codex-
 
 The scripts are easier to understand if you split them into three groups:
 
-- plugin-source refresh/sync scripts that feed skills and MCP
+- plugin registry scripts that render native Codex plugin state
 - apply scripts that write config and trust state
 - post-sync reconcile scripts that auto-apply new control-plane revisions
 - startup scripts that shape the terminal and Ghostty experience
 - shared hook scripts that run at session start, prompt submit, turn stop, and supported session end events
 
-## Figure 1: Plugin Source And Apply Scripts
+## Figure 1: Plugin And Apply Scripts
 
 ```mermaid
 flowchart TD
-    P[refresh-external-plugins.sh] --> Q[sync-plugins-registry.sh]
-    Q --> S[skills/registry.json managed_plugin_skills]
-    Q --> T[mcp/config/presets.json plugin_presets]
-    Q --> R[repo-bootstrap.json plugin_mcp_presets]
+    P[plugins/registry.json] --> Q[sync-plugins-registry.sh]
+    P --> B[sync-config.sh]
+    Q --> V[plugin registry views]
     A[bootstrap-machine-codex.sh] --> B[sync-config.sh]
     A --> C[sync-trusted-projects.sh]
     A --> D[sync-repo-codex-configs.sh]
@@ -42,18 +41,16 @@ flowchart TD
 ### What This Group Does
 
 - [`refresh-external-plugins.sh`](/Users/dobby/.agents/scripts/refresh-external-plugins.sh)
-  - refreshes mirrored plugin source under `plugins-source/external/`
+  - legacy helper for mirrored plugin source, not part of the native plugin path
 - [`sync-plugins-registry.sh`](/Users/dobby/.agents/scripts/sync-plugins-registry.sh)
   - validates `plugins/registry.json`
   - writes plugin registry views
-  - derives plugin-provided skills into `skills/registry.json`
-  - derives plugin-provided MCP presets into `mcp/config/presets.json`
-  - derives repo MCP assignments into `codex/config/repo-bootstrap.json`
 - [`bootstrap-machine-codex.sh`](/Users/dobby/.agents/codex/scripts/bootstrap-machine-codex.sh)
   - orchestrates the main Codex-specific bootstrap batch
 - [`sync-config.sh`](/Users/dobby/.agents/codex/scripts/sync-config.sh)
   - writes the managed terminal and Xcode Codex config
   - injects machine-wide global MCP servers from [`mcp/config/presets.json`](/Users/dobby/.agents/mcp/config/presets.json)
+  - renders native Codex plugin enable/disable state from [`plugins/registry.json`](/Users/dobby/.agents/plugins/registry.json)
 - [`sync-trusted-projects.sh`](/Users/dobby/.agents/codex/scripts/sync-trusted-projects.sh)
   - writes exact trust entries for discovered Git repos
 - [`sync-repo-codex-configs.sh`](/Users/dobby/.agents/codex/scripts/sync-repo-codex-configs.sh)
@@ -72,11 +69,11 @@ flowchart TD
     A[git-auto-sync.sh] --> B[auto-apply-agent-control-planes.sh]
     B --> C{What changed in ~/.agents?}
     C -->|skills| D[sync-skills-registry.sh]
-    C -->|plugins| P[refresh-external-plugins.sh + sync-plugins-registry.sh]
+    C -->|plugins| P[sync-plugins-registry.sh]
     C -->|skills, plugins, codex, or mcp| E[bootstrap-machine-codex.sh --apply]
     C -->|skills, plugins, claude, or shared inputs| F[bootstrap-machine-claude.sh --apply]
     D --> G[Update shared runtime links]
-    P --> G2[Update plugin-derived skills/MCP state]
+    P --> G2[Update plugin registry views]
     E --> H[Codex runtime updated]
     F --> I[Claude runtime updated]
     G --> J[Update machine-local reconcile stamp]

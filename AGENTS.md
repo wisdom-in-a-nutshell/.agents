@@ -34,13 +34,8 @@ Personal agent, Codex, Claude, and repo-local lifecycle hook control plane.
 - Managed canonical skill content lives in:
   - `skills-source/external/<skill>/`
   - `skills-source/owned/<skill>/`
-- Managed canonical plugin content lives in:
-  - `plugins-source/external/<plugin>/`
-  - `plugins-source/owned/<plugin>/`
+- Codex-native plugin enablement lives in `plugins/registry.json`.
 - Global runtime skills live in `skills/<skill>` as symlinks.
-- Plugin-derived skill assignments render into `skills/registry.json` under `managed_plugin_skills`.
-- Plugin-derived shared MCP presets render into `mcp/config/presets.json` under `plugin_presets` and `plugin_global_presets`.
-- Plugin-derived repo MCP assignments render into `codex/config/repo-bootstrap.json` under `plugin_mcp_presets`.
 - Generated views for Obsidian live in:
   - `docs/references/registry/skills.base`
   - `docs/references/registry/skills-items/`
@@ -62,7 +57,7 @@ Personal agent, Codex, Claude, and repo-local lifecycle hook control plane.
 - Run hermetic regression tests only: `./scripts/test-control-plane.sh`
 - Bootstrap external skills/plugins through the agent-facing clients:
   - `./scripts/bootstrap-skill.sh <skills.sh-url-or-upstream-ref> --repo <repo>`
-  - `./scripts/bootstrap-plugin.sh <plugin-name-or-id> --repo <repo>`
+  - `./scripts/bootstrap-plugin.sh <plugin-name-or-id> --target <global|xcode>`
 
 Detailed operations live in:
 
@@ -79,13 +74,13 @@ Detailed operations live in:
 
 ## Rules
 
-- Runtime distribution is link-first for skills; plugin source stays canonical under `plugins-source/` and feeds extracted skills plus MCP.
+- Runtime distribution is link-first for standalone skills; Codex plugins stay native plugin entries in `plugins/registry.json`.
 - Treat global skills as a minimal default kit; prefer repo scope or repo-local unless a skill is broadly useful across unrelated repos.
 - When a user provides a `skills.sh` URL or upstream skill reference and wants it installed into a repo, prefer `./scripts/bootstrap-skill.sh` over manual registry edits.
 - Do not edit managed skills through repo symlink destinations; edit canonical source paths.
-- Do not edit plugin-derived skills, MCP, or repo runtime files as source; edit canonical plugin source paths and `plugins/registry.json`.
+- Do not split Codex plugins into skill or MCP registries by default. If a plugin capability should become standalone, promote it manually into `skills/registry.json` or `mcp/config/presets.json`.
 - Do not make `claude/config/global.claude.md` diverge from `codex/config/global.agents.md`; it must stay a symlink alias to the shared global guidance source.
-- Managed plugins can mirror upstream source under `plugins-source/external/` when the control plane extracts bundled skills and `.mcp.json` into the normal skills and MCP flows.
+- Managed plugin entries render Codex plugin enable/disable state; standalone skills and MCPs remain separate registries.
 - Keep repo-local skills listed in `skills/registry.json` under `unmanaged_repo_local_skills`.
 - Keep `unmanaged_repo_local_skills` honest: if the target repo exists locally, the repo must contain `.agents/skills/<skill>/SKILL.md` or skill sync should fail until the stale registry entry is removed.
 - Keep repo-local plugins listed in `plugins/registry.json` under `unmanaged_repo_local_plugins`.

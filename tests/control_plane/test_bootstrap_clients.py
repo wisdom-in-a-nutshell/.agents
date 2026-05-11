@@ -186,7 +186,7 @@ class BootstrapPluginClientContractTests(TempDirTestCase):
                 sys.executable,
                 str(REPO_ROOT / "scripts/bootstrap-plugin.py"),
                 "example-plugin",
-                "--scope",
+                "--target",
                 "global",
                 "--registry-file",
                 str(registry),
@@ -202,6 +202,8 @@ class BootstrapPluginClientContractTests(TempDirTestCase):
         self.assertEqual(payload["error"], None)
         self.assertFalse(payload["data"]["apply"])
         self.assertEqual(payload["data"]["plugin"], "example-plugin")
+        self.assertEqual(payload["data"]["marketplace"], "openai-curated")
+        self.assertEqual(payload["data"]["targets"], ["global"])
         self.assertIn("request_id", payload["meta"])
         self.assertIn("duration_ms", payload["meta"])
         self.assertIn("timestamp_utc", payload["meta"])
@@ -222,7 +224,7 @@ class BootstrapPluginClientContractTests(TempDirTestCase):
             [
                 sys.executable,
                 str(REPO_ROOT / "scripts/bootstrap-plugin.py"),
-                "example-plugin",
+                "https://example.com/openai/plugins/tree/main/plugins/example-plugin",
                 "--registry-file",
                 str(registry),
                 "--no-input",
@@ -234,6 +236,6 @@ class BootstrapPluginClientContractTests(TempDirTestCase):
         payload = json.loads(result.stdout)
         self.assertEqual(payload["status"], "error")
         self.assertEqual(payload["data"], {})
-        self.assertEqual(payload["error"]["code"], "E_REPO_REQUIRED")
+        self.assertEqual(payload["error"]["code"], "E_INVALID_PLUGIN_REF")
         self.assertFalse(payload["error"]["retryable"])
-        self.assertIn("--repo", payload["error"]["hint"])
+        self.assertIn("plugin name", payload["error"]["hint"])

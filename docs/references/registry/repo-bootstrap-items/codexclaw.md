@@ -1,14 +1,13 @@
 ---
 repo_name: "codexclaw"
 path: "~/GitHub/codexclaw"
-mcp_count: 1
-skill_count: 23
+mcp_count: 0
+skill_count: 15
 repo_local_skill_count: 0
 model: "gpt-5.5"
 reasoning: "high"
 service_tier: "-"
-mcps:
-  - "xcodebuildmcp"
+mcps: []
 global_skills:
   - "agent-browser"
   - "agent-native-repo-playbook"
@@ -26,14 +25,6 @@ repo_skills:
   - "codex-app-server"
   - "copilot-sdk"
   - "imagegen"
-  - "ios-app-intents"
-  - "ios-debugger-agent"
-  - "ios-ettrace-performance"
-  - "ios-memgraph-leaks"
-  - "swiftui-liquid-glass"
-  - "swiftui-performance-audit"
-  - "swiftui-ui-patterns"
-  - "swiftui-view-refactor"
 repo_local_skills: []
 skills:
   - "agent-browser"
@@ -46,18 +37,10 @@ skills:
   - "defuddle"
   - "find-skills"
   - "imagegen"
-  - "ios-app-intents"
-  - "ios-debugger-agent"
-  - "ios-ettrace-performance"
-  - "ios-memgraph-leaks"
   - "pdf"
   - "project"
   - "secret-management"
   - "skill-creator"
-  - "swiftui-liquid-glass"
-  - "swiftui-performance-audit"
-  - "swiftui-ui-patterns"
-  - "swiftui-view-refactor"
   - "symphony"
 ---
 

@@ -41,20 +41,17 @@ class CodexRepoSyncTests(TempDirTestCase):
                 },
                 "repos": [
                     {
-                        "mcp_presets": ["cloudflare-docs"],
-                        "plugin_mcp_presets": ["xcodebuildmcp"],
+                        "mcp_presets": ["cloudflare-docs", "xcodebuildmcp"],
                         "path": str(adi),
                     }
                 ],
             },
         )
         mcp_registry = default_mcp_registry()
-        mcp_registry["plugin_presets"] = {
-            "xcodebuildmcp": {
-                "transport": "stdio",
-                "command": "npx",
-                "args": ["-y", "xcodebuildmcp@latest", "mcp"],
-            }
+        mcp_registry["presets"]["xcodebuildmcp"] = {
+            "transport": "stdio",
+            "command": "npx",
+            "args": ["-y", "xcodebuildmcp@latest", "mcp"],
         }
         write_json(mcp_registry_path, mcp_registry)
 

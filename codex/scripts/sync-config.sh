@@ -17,6 +17,7 @@ XCODE_AGENTS_DIR="${HOME}/Library/Developer/Xcode/CodingAssistant/codex/agents"
 XCODE_RULES="${HOME}/Library/Developer/Xcode/CodingAssistant/codex/rules/xcode.rules"
 CANONICAL_DIR="${CONTROL_PLANE_DIR}/config"
 MCP_REGISTRY="${ROOT_DIR}/mcp/config/presets.json"
+PLUGIN_REGISTRY="${ROOT_DIR}/plugins/registry.json"
 HOOKS_REGISTRY="${ROOT_DIR}/hooks/registry.json"
 CANONICAL_GLOBAL_TEMPLATE="${CANONICAL_DIR}/global.config.toml"
 CANONICAL_XCODE_TEMPLATE="${CANONICAL_DIR}/xcode.config.toml"
@@ -48,6 +49,8 @@ Options:
                              bundled-skills-policy.json
   --mcp-registry <path>      Shared MCP registry
                              (default: mcp/config/presets.json)
+  --plugin-registry <path>   Native Codex plugin registry
+                             (default: plugins/registry.json)
   --hooks-registry <path>    Shared hooks registry
                              (default: hooks/registry.json)
   -h, --help                 Show this help
@@ -127,6 +130,10 @@ while [[ $# -gt 0 ]]; do
       ;;
     --mcp-registry)
       MCP_REGISTRY="${2:-}"
+      shift 2
+      ;;
+    --plugin-registry)
+      PLUGIN_REGISTRY="${2:-}"
       shift 2
       ;;
     --hooks-registry)
@@ -280,6 +287,36 @@ for name in [str(value) for value in global_presets] + [str(value) for value in 
     section = f"mcp_servers.{name}"
     for key in sorted(k for k in preset.keys() if k != "transport"):
         print(f"{section}\x1F{key}\x1F{toml_value(preset[key])}")
+PY
+}
+
+extract_codex_plugin_entries() {
+  local registry_file="$1"
+  local target_name="$2"
+  PYTHONPATH="$ROOT_DIR" python3 - "$registry_file" "$target_name" <<'PY'
+from __future__ import annotations
+
+import json
+import sys
+from pathlib import Path
+
+from plugins.derived import validate_plugin_registry
+
+
+registry_path = Path(sys.argv[1]).expanduser().resolve()
+target_name = sys.argv[2]
+data = json.loads(registry_path.read_text(encoding="utf-8"))
+plugins, _, _ = validate_plugin_registry(
+    data,
+    root_dir=registry_path.parent.parent,
+    home=Path.home(),
+)
+
+for plugin in plugins:
+    if target_name not in plugin.targets:
+        continue
+    enabled = "true" if plugin.enabled else "false"
+    print(f'plugins."{plugin.plugin_id}"\x1Fenabled\x1F{enabled}')
 PY
 }
 
@@ -483,6 +520,7 @@ render_global_config() {
   local target_file="$1"
   local template_file="$2"
   local mcp_registry_file="$3"
+  local plugin_registry_file="$4"
   local section key value
 
   while IFS=$'\x1f' read -r section key value; do
@@ -498,6 +536,11 @@ render_global_config() {
     [[ -n "$key" ]] || continue
     upsert_section_key "$target_file" "$section" "$key" "$value"
   done < <(extract_global_mcp_entries "$mcp_registry_file")
+
+  while IFS=$'\x1f' read -r section key value; do
+    [[ -n "$key" ]] || continue
+    upsert_section_key "$target_file" "$section" "$key" "$value"
+  done < <(extract_codex_plugin_entries "$plugin_registry_file" "global")
 
   # Codex turn-end automation now lives in hooks/registry.json -> Stop.
   remove_top_level_key "$target_file" "notify"
@@ -516,7 +559,7 @@ render_global_config() {
 
   prune_stale_agent_sections "$target_file" "$template_file"
   prune_stale_app_sections "$target_file" "$template_file"
-  prune_stale_plugin_sections "$target_file" "$template_file"
+  prune_stale_plugin_sections "$target_file" "$template_file" "$plugin_registry_file" "global"
   prune_stale_model_provider_sections "$target_file" "$template_file"
 }
 
@@ -874,16 +917,22 @@ PY
 prune_stale_plugin_sections() {
   local target_file="$1"
   local template_file="$2"
-  python3 - "$target_file" "$template_file" <<'PY'
+  local plugin_registry_file="$3"
+  local target_name="$4"
+  PYTHONPATH="$ROOT_DIR" python3 - "$target_file" "$template_file" "$plugin_registry_file" "$target_name" <<'PY'
 from __future__ import annotations
 
+import json
 import re
 import sys
 from pathlib import Path
 
+from plugins.derived import validate_plugin_registry
 
 target = Path(sys.argv[1])
 template = Path(sys.argv[2])
+plugin_registry = Path(sys.argv[3]).expanduser().resolve()
+target_name = sys.argv[4]
 
 target_text = target.read_text(encoding="utf-8") if target.exists() else ""
 template_text = template.read_text(encoding="utf-8") if template.exists() else ""
@@ -896,6 +945,17 @@ for line in template_text.splitlines():
     m = plugin_header_re.match(line.strip())
     if m:
         allowed_plugins.add(m.group(1))
+
+if plugin_registry.is_file():
+    data = json.loads(plugin_registry.read_text(encoding="utf-8"))
+    plugins, _, _ = validate_plugin_registry(
+        data,
+        root_dir=plugin_registry.parent.parent,
+        home=Path.home(),
+    )
+    for plugin in plugins:
+        if target_name in plugin.targets:
+            allowed_plugins.add(plugin.plugin_id)
 
 lines = target_text.splitlines(keepends=True)
 output: list[str] = []
@@ -988,6 +1048,7 @@ render_xcode_config() {
   local target_file="$1"
   local template_file="$2"
   local mcp_registry_file="$3"
+  local plugin_registry_file="$4"
   local writable_roots
   local project_section
   local section key value
@@ -1008,6 +1069,11 @@ render_xcode_config() {
     upsert_section_key "$target_file" "$section" "$key" "$value"
   done < <(extract_global_mcp_entries "$mcp_registry_file")
 
+  while IFS=$'\x1f' read -r section key value; do
+    [[ -n "$key" ]] || continue
+    upsert_section_key "$target_file" "$section" "$key" "$value"
+  done < <(extract_codex_plugin_entries "$plugin_registry_file" "xcode")
+
   # Keep writable roots machine-specific via CLI/home path, regardless of template value.
   upsert_section_key "$target_file" "sandbox_workspace_write" "writable_roots" "$writable_roots"
   # Ensure Xcode Codex trusts all repos under the configured GitHub root.
@@ -1025,7 +1091,7 @@ render_xcode_config() {
 
   prune_stale_agent_sections "$target_file" "$template_file"
   prune_stale_app_sections "$target_file" "$template_file"
-  prune_stale_plugin_sections "$target_file" "$template_file"
+  prune_stale_plugin_sections "$target_file" "$template_file" "$plugin_registry_file" "xcode"
   prune_stale_model_provider_sections "$target_file" "$template_file"
 }
 
@@ -1104,12 +1170,13 @@ sync_global() {
   require_readable_file "$CANONICAL_GLOBAL_TEMPLATE"
   require_readable_file "$BUNDLED_SKILLS_POLICY"
   require_readable_file "$MCP_REGISTRY"
+  require_readable_file "$PLUGIN_REGISTRY"
   require_readable_file "$HOOKS_REGISTRY"
   ensure_parent_dir "$original"
   ensure_parent_dir "$hooks_original"
   prepare_work_file "$original" "$rendered"
   sanitize_machine_specific_entries "$rendered"
-  render_global_config "$rendered" "$CANONICAL_GLOBAL_TEMPLATE" "$MCP_REGISTRY"
+  render_global_config "$rendered" "$CANONICAL_GLOBAL_TEMPLATE" "$MCP_REGISTRY" "$PLUGIN_REGISTRY"
   ensure_system_skills_disabled "$rendered" "$BUNDLED_SKILLS_POLICY"
   render_codex_hooks "$HOOKS_REGISTRY" "$hooks_rendered"
 
@@ -1137,12 +1204,13 @@ sync_xcode() {
   require_readable_file "$CANONICAL_XCODE_TEMPLATE"
   require_readable_file "$CANONICAL_XCODE_RULES_TEMPLATE"
   require_readable_file "$MCP_REGISTRY"
+  require_readable_file "$PLUGIN_REGISTRY"
   ensure_parent_dir "$original_cfg"
   ensure_parent_dir "$original_rules"
 
   prepare_work_file "$original_cfg" "$rendered_cfg"
   sanitize_machine_specific_entries "$rendered_cfg"
-  render_xcode_config "$rendered_cfg" "$CANONICAL_XCODE_TEMPLATE" "$MCP_REGISTRY"
+  render_xcode_config "$rendered_cfg" "$CANONICAL_XCODE_TEMPLATE" "$MCP_REGISTRY" "$PLUGIN_REGISTRY"
   render_xcode_rules "$rendered_rules" "$CANONICAL_XCODE_RULES_TEMPLATE"
 
   log ""
@@ -1160,8 +1228,8 @@ sync_xcode() {
   cleanup_agent_role_dir "Xcode Agent Roles" "$XCODE_AGENTS_DIR"
 }
 
-ensure_required_openai_bundled_plugins() {
-  python3 - "$CANONICAL_GLOBAL_TEMPLATE" "$CANONICAL_XCODE_TEMPLATE" "$HOME" <<'PY'
+ensure_enabled_openai_bundled_plugins() {
+  PYTHONPATH="$ROOT_DIR" python3 - "$PLUGIN_REGISTRY" "$HOME" <<'PY'
 from __future__ import annotations
 
 import json
@@ -1170,28 +1238,25 @@ import shutil
 import sys
 from pathlib import Path
 
-try:
-    import tomllib
-except ModuleNotFoundError:  # pragma: no cover
-    import tomli as tomllib  # type: ignore
+from plugins.derived import validate_plugin_registry
 
 
-global_template = Path(sys.argv[1])
-xcode_template = Path(sys.argv[2])
-home = Path(sys.argv[3])
+plugin_registry = Path(sys.argv[1]).expanduser().resolve()
+home = Path(sys.argv[2])
 bundle_marketplace = Path("/Applications/Codex.app/Contents/Resources/plugins/openai-bundled")
 runtime_marketplace = home / ".codex/.tmp/bundled-marketplaces/openai-bundled"
 runtime_cache = home / ".codex/plugins/cache/openai-bundled"
-required_plugin_names = ["computer-use"]
-
-
-def plugin_enabled(config_path: Path, plugin_id: str) -> bool:
-    if not config_path.is_file():
-        return False
-    data = tomllib.loads(config_path.read_text(encoding="utf-8"))
-    plugins = data.get("plugins", {})
-    plugin_config = plugins.get(plugin_id) if isinstance(plugins, dict) else None
-    return isinstance(plugin_config, dict) and plugin_config.get("enabled") is True
+registry_data = json.loads(plugin_registry.read_text(encoding="utf-8"))
+plugins, _, _ = validate_plugin_registry(
+    registry_data,
+    root_dir=plugin_registry.parent.parent,
+    home=home,
+)
+enabled_plugin_names = [
+    plugin.plugin
+    for plugin in plugins
+    if plugin.enabled and plugin.marketplace == "openai-bundled"
+]
 
 
 def tree_matches(source: Path, target: Path) -> bool:
@@ -1255,18 +1320,12 @@ def copy_plugin_tree(source: Path, target: Path) -> None:
         raise RuntimeError(f"plugin copy incomplete: {source} -> {target}")
 
 
-for plugin_name in required_plugin_names:
+for plugin_name in enabled_plugin_names:
     plugin_id = f"{plugin_name}@openai-bundled"
-    if not (
-        plugin_enabled(global_template, plugin_id)
-        or plugin_enabled(xcode_template, plugin_id)
-    ):
-        continue
-
     source = bundle_marketplace / "plugins" / plugin_name
     manifest_path = source / ".codex-plugin/plugin.json"
     if not manifest_path.is_file():
-        print(f"Warning: required bundled plugin source is missing: {source}", file=sys.stderr)
+        print(f"Warning: enabled bundled plugin source is missing: {source}", file=sys.stderr)
         continue
 
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
@@ -1299,7 +1358,7 @@ if (( SYNC_XCODE == 1 )); then
   sync_xcode
 fi
 if (( APPLY == 1 )); then
-  ensure_required_openai_bundled_plugins
+  ensure_enabled_openai_bundled_plugins
 fi
 
 log ""

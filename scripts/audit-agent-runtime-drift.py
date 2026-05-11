@@ -20,7 +20,6 @@ except ModuleNotFoundError:  # pragma: no cover
 
 SCHEMA_VERSION = "1.0"
 COMMAND = "audit-agent-runtime-drift"
-REQUIRED_PLUGIN_IDS = {"computer-use@openai-bundled"}
 APP_MANAGED_PLUGIN_IDS = {
     "documents@openai-primary-runtime",
     "presentations@openai-primary-runtime",
@@ -155,16 +154,36 @@ def enabled_canonical_plugin_ids(agents_repo: Path) -> set[str]:
     return enabled
 
 
-def managed_plugin_names(agents_repo: Path) -> set[str]:
+def registry_plugin_ids(agents_repo: Path) -> set[str]:
     registry_path = agents_repo / "plugins" / "registry.json"
     if not registry_path.is_file():
         return set()
     registry = load_json(registry_path)
-    names: set[str] = set()
+    ids: set[str] = set()
     for item in registry.get("managed_plugins", []):
-        if isinstance(item, dict) and isinstance(item.get("plugin"), str):
-            names.add(item["plugin"])
-    return names
+        if not isinstance(item, dict):
+            continue
+        plugin = item.get("plugin")
+        marketplace = item.get("marketplace")
+        if isinstance(plugin, str) and isinstance(marketplace, str):
+            ids.add(f"{plugin}@{marketplace}")
+    return ids
+
+
+def enabled_registry_plugin_ids(agents_repo: Path) -> set[str]:
+    registry_path = agents_repo / "plugins" / "registry.json"
+    if not registry_path.is_file():
+        return set()
+    registry = load_json(registry_path)
+    ids: set[str] = set()
+    for item in registry.get("managed_plugins", []):
+        if not isinstance(item, dict) or item.get("enabled") is not True:
+            continue
+        plugin = item.get("plugin")
+        marketplace = item.get("marketplace")
+        if isinstance(plugin, str) and isinstance(marketplace, str):
+            ids.add(f"{plugin}@{marketplace}")
+    return ids
 
 
 def installed_codex_plugins(home: Path) -> list[dict[str, Any]]:
@@ -210,8 +229,7 @@ def installed_codex_plugins(home: Path) -> list[dict[str, Any]]:
 
 def audit_codex_plugins(agents_repo: Path, home: Path) -> dict[str, Any]:
     installed = installed_codex_plugins(home)
-    configured_ids = configured_plugin_ids(agents_repo)
-    managed_names = managed_plugin_names(agents_repo)
+    known_plugin_ids = configured_plugin_ids(agents_repo) | registry_plugin_ids(agents_repo)
 
     malformed = [plugin for plugin in installed if plugin.get("manifest_error")]
     if malformed:
@@ -228,9 +246,8 @@ def audit_codex_plugins(agents_repo: Path, home: Path) -> dict[str, Any]:
         plugin
         for plugin in installed
         if str(plugin["marketplace"]).startswith(REVIEW_MARKETPLACE_PREFIXES)
-        and plugin["id"] not in configured_ids
+        and plugin["id"] not in known_plugin_ids
         and plugin["id"] not in APP_MANAGED_PLUGIN_IDS
-        and plugin["name"] not in managed_names
     ]
     if unknown_review_plugins:
         return check_result(
@@ -239,12 +256,11 @@ def audit_codex_plugins(agents_repo: Path, home: Path) -> dict[str, Any]:
             "unclassified OpenAI Codex plugin(s) installed locally",
             details={
                 "unknown_plugins": unknown_review_plugins,
-                "known_configured_plugin_ids": sorted(configured_ids),
-                "known_managed_plugin_names": sorted(managed_names),
+                "known_plugin_ids": sorted(known_plugin_ids),
             },
             hint=(
-                "Decide whether each plugin belongs in codex/config/*.toml, plugins/registry.json, "
-                "or should be removed from the local Codex runtime."
+                "Decide whether each plugin belongs in plugins/registry.json or should be "
+                "removed from the local Codex runtime."
             ),
             error_code="E_UNCLASSIFIED_CODEX_PLUGIN",
         )
@@ -255,8 +271,7 @@ def audit_codex_plugins(agents_repo: Path, home: Path) -> dict[str, Any]:
         "installed OpenAI Codex plugins are classified",
         details={
             "installed_plugins": installed,
-            "known_configured_plugin_ids": sorted(configured_ids),
-            "known_managed_plugin_names": sorted(managed_names),
+            "known_plugin_ids": sorted(known_plugin_ids),
         },
     )
 
@@ -271,8 +286,7 @@ def plugin_enabled_in_config(config_path: Path, plugin_id: str) -> bool:
 
 
 def audit_required_codex_plugins(agents_repo: Path, home: Path) -> dict[str, Any]:
-    canonical_enabled = enabled_canonical_plugin_ids(agents_repo)
-    required_ids = sorted(REQUIRED_PLUGIN_IDS & canonical_enabled)
+    required_ids = sorted(enabled_registry_plugin_ids(agents_repo) | enabled_canonical_plugin_ids(agents_repo))
     installed_ids = {plugin["id"] for plugin in installed_codex_plugins(home)}
     live_global_config = home / ".codex" / "config.toml"
     live_xcode_config = home / "Library" / "Developer" / "Xcode" / "CodingAssistant" / "codex" / "config.toml"

@@ -715,6 +715,8 @@ class HooksControlPlaneTests(TempDirTestCase):
                 str(root / "codex/config"),
                 "--mcp-registry",
                 str(root / "mcp/config/presets.json"),
+                "--plugin-registry",
+                str(root / "plugins/registry.json"),
                 "--hooks-registry",
                 str(root / "hooks/registry.json"),
             ],

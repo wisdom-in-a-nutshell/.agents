@@ -6,12 +6,19 @@ from tests.control_plane.support import REPO_ROOT, TempDirTestCase, run_command,
 
 
 class AgentRuntimeDriftAuditTests(TempDirTestCase):
-    def _write_live_codex_config(self, home):  # noqa: ANN001
-        write_text(
-            home / ".codex/config.toml",
-            '[plugins."computer-use@openai-bundled"]\n'
+    def _write_live_codex_config(self, home, *, include_computer_use: bool = True):  # noqa: ANN001
+        sections = [
+            '[plugins."browser-use@openai-bundled"]\n'
             "enabled = true\n",
-        )
+            '[plugins."build-ios-apps@openai-curated"]\n'
+            "enabled = true\n",
+        ]
+        if include_computer_use:
+            sections.append(
+                '[plugins."computer-use@openai-bundled"]\n'
+                "enabled = true\n"
+            )
+        write_text(home / ".codex/config.toml", "\n".join(sections))
 
     def _write_plugin(self, home, marketplace: str, name: str, version: str = "1.0.0") -> None:  # noqa: ANN001
         write_json(
@@ -28,6 +35,8 @@ class AgentRuntimeDriftAuditTests(TempDirTestCase):
     def test_audit_passes_for_known_required_codex_plugin(self) -> None:
         home = self.temp_path / "home"
         self._write_live_codex_config(home)
+        self._write_plugin(home, "openai-bundled", "browser-use")
+        self._write_plugin(home, "openai-curated", "build-ios-apps")
         self._write_plugin(home, "openai-bundled", "computer-use")
 
         result = run_command(
@@ -47,6 +56,8 @@ class AgentRuntimeDriftAuditTests(TempDirTestCase):
     def test_audit_fails_for_unknown_openai_plugin(self) -> None:
         home = self.temp_path / "home"
         self._write_live_codex_config(home)
+        self._write_plugin(home, "openai-bundled", "browser-use")
+        self._write_plugin(home, "openai-curated", "build-ios-apps")
         self._write_plugin(home, "openai-bundled", "computer-use")
         self._write_plugin(home, "openai-curated", "surprise-plugin")
 
@@ -68,6 +79,8 @@ class AgentRuntimeDriftAuditTests(TempDirTestCase):
     def test_audit_allows_primary_runtime_artifact_plugins(self) -> None:
         home = self.temp_path / "home"
         self._write_live_codex_config(home)
+        self._write_plugin(home, "openai-bundled", "browser-use")
+        self._write_plugin(home, "openai-curated", "build-ios-apps")
         self._write_plugin(home, "openai-bundled", "computer-use")
         self._write_plugin(home, "openai-primary-runtime", "documents")
         self._write_plugin(home, "openai-primary-runtime", "presentations")
@@ -89,6 +102,9 @@ class AgentRuntimeDriftAuditTests(TempDirTestCase):
 
     def test_audit_fails_when_required_plugin_is_not_enabled_live(self) -> None:
         home = self.temp_path / "home"
+        self._write_live_codex_config(home, include_computer_use=False)
+        self._write_plugin(home, "openai-bundled", "browser-use")
+        self._write_plugin(home, "openai-curated", "build-ios-apps")
         self._write_plugin(home, "openai-bundled", "computer-use")
 
         result = run_command(

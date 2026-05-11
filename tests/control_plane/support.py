@@ -112,8 +112,10 @@ def make_control_plane_root(base_dir: Path) -> Path:
     (root / "codex/config").mkdir(parents=True, exist_ok=True)
     (root / "claude/config").mkdir(parents=True, exist_ok=True)
     (root / "mcp/config").mkdir(parents=True, exist_ok=True)
+    (root / "plugins").mkdir(parents=True, exist_ok=True)
     (root / "skills").mkdir(parents=True, exist_ok=True)
     (root / "docs/references/registry").mkdir(parents=True, exist_ok=True)
+    write_json(root / "plugins/registry.json", default_plugin_registry())
     return root
 
 
@@ -163,6 +165,25 @@ def default_mcp_registry() -> dict[str, Any]:
                 "url": "https://docs.mcp.cloudflare.com/mcp",
             },
         },
+    }
+
+
+def default_plugin_registry() -> dict[str, Any]:
+    return {
+        "version": 1,
+        "paths": {
+            "github_root": "~/GitHub",
+        },
+        "managed_plugins": [
+            {
+                "plugin": "computer-use",
+                "marketplace": "openai-bundled",
+                "enabled": True,
+                "targets": ["global", "xcode"],
+                "category": "Productivity",
+            }
+        ],
+        "unmanaged_repo_local_plugins": [],
     }
 
 

@@ -2,44 +2,29 @@ filters:
   and:
     - 'file.inFolder("docs/references/registry/plugins-items")'
 formulas:
-  scope_badge: 'if(scope == "global", "🌍 global", if(scope == "repo", "📦 repo", scope))'
-  mcp_scope_badge: 'if(mcp_scope == "global", "🌍 global", if(mcp_scope == "repo", "📦 repo", mcp_scope))'
-  origin_badge: 'if(origin == "external", "↗ external", if(origin == "owned", "✳ owned", origin))'
+  enabled_badge: 'if(enabled, "✅ enabled", "⏸ disabled")'
+  targets_badge: 'join(targets, ", ")'
 properties:
   registry_kind:
     displayName: Type
   plugin:
     displayName: Plugin
-  origin:
-    displayName: Origin
-  formula.origin_badge:
-    displayName: Origin
-  scope:
-    displayName: Skill Scope
-  formula.scope_badge:
-    displayName: Skill Scope
-  mcp_scope:
-    displayName: MCP Scope
-  formula.mcp_scope_badge:
-    displayName: MCP Scope
-  extract_skills:
-    displayName: Extract Skills
-  extract_mcp:
-    displayName: Extract MCP
+  plugin_id:
+    displayName: Plugin ID
+  marketplace:
+    displayName: Marketplace
+  enabled:
+    displayName: Enabled
+  formula.enabled_badge:
+    displayName: State
+  targets:
+    displayName: Targets
+  targets_csv:
+    displayName: Targets CSV
+  formula.targets_badge:
+    displayName: Targets
   category:
     displayName: Category
-  repos:
-    displayName: Skill Repos
-  repos_csv:
-    displayName: Skill Repos CSV
-  mcp_repos:
-    displayName: MCP Repos
-  mcp_repos_csv:
-    displayName: MCP Repos CSV
-  source_path:
-    displayName: Source Path
-  upstream_ref:
-    displayName: Upstream
   repo:
     displayName: Repo
 views:
@@ -48,14 +33,11 @@ views:
     filters: 'registry_kind == "managed"'
     order:
       - plugin
-      - formula.origin_badge
-      - formula.scope_badge
-      - formula.mcp_scope_badge
-      - extract_skills
-      - extract_mcp
-      - repos
-      - mcp_repos
-      - upstream_ref
+      - plugin_id
+      - marketplace
+      - formula.enabled_badge
+      - targets
+      - category
     sort:
       - property: plugin
         direction: ASC

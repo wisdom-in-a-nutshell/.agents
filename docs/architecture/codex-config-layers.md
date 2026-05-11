@@ -12,6 +12,7 @@ flowchart TD
     B[~/.agents/codex/config/xcode.config.toml]
     C[~/.agents/codex/config/repo-bootstrap.json]
     D[~/.agents/mcp/config/presets.json]
+    P[~/.agents/plugins/registry.json]
     L[~/.agents/codex/config/bundled-skills-policy.json]
     E[sync-trusted-projects.sh]
     F[sync-repo-codex-configs.sh]
@@ -28,6 +29,7 @@ flowchart TD
     C --> F
     D --> K
     D --> F
+    P --> K
     K --> G
     K --> H
     E --> G
@@ -45,6 +47,7 @@ flowchart TD
 - `xcode.config.toml` defines the managed baseline for Xcode Codex.
 - `bundled-skills-policy.json` classifies OpenAI-bundled runtime skills as allowed or disabled so new upstream bundled skills cannot silently drift into the local control plane.
 - `../mcp/config/presets.json` defines the shared MCP presets and machine-wide global MCP defaults.
+- `../../plugins/registry.json` defines native Codex plugin enable/disable state.
 - `repo-bootstrap.json` defines:
   - which repos are managed
   - which MCP presets each repo gets
@@ -57,7 +60,7 @@ These files are the source of truth.
 - `sync-config.sh` writes the managed baseline into `~/.codex/config.toml` and Xcode Codex config.
 - `sync-config.sh` prunes stale managed agent role declarations and role files from older versions of this control plane.
 - It preserves machine-specific/runtime-specific state that should not live in git.
-- It explicitly preserves the OpenAI-bundled Computer Use plugin and writes disabled bundled-skill entries from `bundled-skills-policy.json`.
+- It renders native Codex plugin entries from `plugins/registry.json` and writes disabled bundled-skill entries from `bundled-skills-policy.json`.
 - It also prunes stale managed keys when the canonical templates no longer want them, while preserving unrelated runtime MCP sections and only injecting the shared global MCP defaults.
 
 Example:

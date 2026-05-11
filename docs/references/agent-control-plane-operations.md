@@ -26,7 +26,7 @@ For repo authors adding `scripts/hooks/*.py`, start with
   - runs the hermetic control-plane regression suite in `tests/control_plane/`
 - `scripts/audit-agent-runtime-drift.py`
   - read-only machine-health audit entrypoint
-  - calls the shared control-plane validation, then checks local runtime-only drift such as unclassified OpenAI Codex plugins and required Computer Use availability
+  - calls the shared control-plane validation, then checks local runtime-only drift such as unclassified OpenAI Codex plugins and enabled plugin availability
   - defaults to a stable JSON result contract; use `--plain` for operator-readable health-check logs
   - is intended to be scheduled and notified by `~/GitHub/scripts`, not by launchd directly from this repo
 - `scripts/sync-managed-git-hooks.sh`

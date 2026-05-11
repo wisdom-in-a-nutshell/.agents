@@ -37,7 +37,7 @@ Edit the canonical source, run the renderer, then run the validation command.
 ## Canonical Source Families
 
 - Registries: `skills/registry.json`, `plugins/registry.json`, `hooks/registry.json`, `mcp/config/presets.json`, `codex/config/repo-bootstrap.json`.
-- Source content: `skills-source/`, `plugins-source/`, `hooks/scripts/`, `hooks/git/`, `codex/config/`, `claude/config/`.
+- Source content: `skills-source/`, `hooks/scripts/`, `hooks/git/`, `codex/config/`, `claude/config/`.
 - Generated lookup views: `docs/references/registry/`.
 - Machine-local state and backups: `~/.local/state/...`, not tracked repo paths.
 
