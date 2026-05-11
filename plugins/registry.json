@@ -13,7 +13,7 @@
     {
       "plugin": "build-ios-apps",
       "marketplace": "openai-curated",
-      "enabled": true,
+      "enabled": false,
       "category": "Coding"
     },
     {
