@@ -6,8 +6,6 @@ GITHUB_ROOT="${HOME}/GitHub"
 GLOBAL_CONFIG="${HOME}/.codex/config.toml"
 GLOBAL_HOOKS="${HOME}/.codex/hooks.json"
 GLOBAL_AGENTS="${HOME}/.codex/AGENTS.md"
-XCODE_CONFIG="${HOME}/Library/Developer/Xcode/CodingAssistant/codex/config.toml"
-XCODE_RULES="${HOME}/Library/Developer/Xcode/CodingAssistant/codex/rules/xcode.rules"
 GHOSTTY_CONFIG="${HOME}/Library/Application Support/com.mitchellh.ghostty/config"
 REPO_FILTERS=()
 
@@ -27,8 +25,6 @@ Options:
   --global-config <p>    Override ~/.codex/config.toml target
   --global-hooks <p>     Override ~/.codex/hooks.json target
   --global-agents <p>    Override ~/.codex/AGENTS.md target
-  --xcode-config <p>     Override Xcode Codex config target
-  --xcode-rules <p>      Override Xcode rules target
   --ghostty-config <p>   Override Ghostty config target
   --repo <path>          Limit repo-local sync/check to an exact repo path
                          (repeatable)
@@ -74,14 +70,6 @@ while [[ $# -gt 0 ]]; do
       ;;
     --global-agents)
       GLOBAL_AGENTS="${2:-}"
-      shift 2
-      ;;
-    --xcode-config)
-      XCODE_CONFIG="${2:-}"
-      shift 2
-      ;;
-    --xcode-rules)
-      XCODE_RULES="${2:-}"
       shift 2
       ;;
     --ghostty-config)
@@ -139,8 +127,6 @@ sync_config_cmd=(
   --github-root "$GITHUB_ROOT"
   --global-config "$GLOBAL_CONFIG"
   --global-hooks "$GLOBAL_HOOKS"
-  --xcode-config "$XCODE_CONFIG"
-  --xcode-rules "$XCODE_RULES"
 )
 log "+ ${sync_config_cmd[*]}"
 "${sync_config_cmd[@]}"
@@ -158,7 +144,6 @@ sync_trusted_cmd=(
   "$MODE_FLAG"
   --root "$GITHUB_ROOT"
   --global-config "$GLOBAL_CONFIG"
-  --xcode-config "$XCODE_CONFIG"
 )
 log "+ ${sync_trusted_cmd[*]}"
 "${sync_trusted_cmd[@]}"
@@ -207,7 +192,6 @@ check_cmd=(
   "$CHECK_CONTROL_PLANE_SCRIPT"
   --global-config "$GLOBAL_CONFIG"
   --global-hooks "$GLOBAL_HOOKS"
-  --xcode-config "$XCODE_CONFIG"
   "${REPO_ARGS[@]}"
 )
 log "+ ${check_cmd[*]}"

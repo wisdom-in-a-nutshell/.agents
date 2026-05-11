@@ -133,24 +133,22 @@ def run_control_plane_check(agents_repo: Path, timeout_sec: int, *, skip: bool) 
 
 def configured_plugin_ids(agents_repo: Path) -> set[str]:
     ids: set[str] = set()
-    for relative in ("codex/config/global.config.toml", "codex/config/xcode.config.toml"):
-        data = load_toml(agents_repo / relative)
-        plugins = data.get("plugins", {})
-        if isinstance(plugins, dict):
-            ids.update(str(key) for key in plugins.keys())
+    data = load_toml(agents_repo / "codex/config/global.config.toml")
+    plugins = data.get("plugins", {})
+    if isinstance(plugins, dict):
+        ids.update(str(key) for key in plugins.keys())
     return ids
 
 
 def enabled_canonical_plugin_ids(agents_repo: Path) -> set[str]:
     enabled: set[str] = set()
-    for relative in ("codex/config/global.config.toml", "codex/config/xcode.config.toml"):
-        data = load_toml(agents_repo / relative)
-        plugins = data.get("plugins", {})
-        if not isinstance(plugins, dict):
-            continue
-        for plugin_id, config in plugins.items():
-            if isinstance(config, dict) and config.get("enabled") is True:
-                enabled.add(str(plugin_id))
+    data = load_toml(agents_repo / "codex/config/global.config.toml")
+    plugins = data.get("plugins", {})
+    if not isinstance(plugins, dict):
+        return enabled
+    for plugin_id, config in plugins.items():
+        if isinstance(config, dict) and config.get("enabled") is True:
+            enabled.add(str(plugin_id))
     return enabled
 
 
@@ -170,24 +168,20 @@ def registry_plugin_ids(agents_repo: Path) -> set[str]:
     return ids
 
 
-def enabled_registry_plugin_targets(agents_repo: Path) -> dict[str, set[str]]:
+def enabled_registry_plugin_ids(agents_repo: Path) -> set[str]:
     registry_path = agents_repo / "plugins" / "registry.json"
     if not registry_path.is_file():
-        return {}
+        return set()
     registry = load_json(registry_path)
-    targets_by_id: dict[str, set[str]] = {}
+    ids: set[str] = set()
     for item in registry.get("managed_plugins", []):
         if not isinstance(item, dict) or item.get("enabled") is not True:
             continue
         plugin = item.get("plugin")
         marketplace = item.get("marketplace")
-        targets = item.get("targets", ["global"])
         if isinstance(plugin, str) and isinstance(marketplace, str):
-            plugin_id = f"{plugin}@{marketplace}"
-            if not isinstance(targets, list):
-                targets = ["global"]
-            targets_by_id[plugin_id] = {str(target) for target in targets}
-    return targets_by_id
+            ids.add(f"{plugin}@{marketplace}")
+    return ids
 
 
 def installed_codex_plugins(home: Path) -> list[dict[str, Any]]:
@@ -290,28 +284,23 @@ def plugin_enabled_in_config(config_path: Path, plugin_id: str) -> bool:
 
 
 def audit_required_codex_plugins(agents_repo: Path, home: Path) -> dict[str, Any]:
-    registry_targets = enabled_registry_plugin_targets(agents_repo)
+    registry_enabled = enabled_registry_plugin_ids(agents_repo)
     canonical_enabled = enabled_canonical_plugin_ids(agents_repo)
-    required_ids = sorted(set(registry_targets) | canonical_enabled)
+    required_ids = sorted(registry_enabled | canonical_enabled)
     installed_ids = {plugin["id"] for plugin in installed_codex_plugins(home)}
     live_global_config = home / ".codex" / "config.toml"
-    live_xcode_config = home / "Library" / "Developer" / "Xcode" / "CodingAssistant" / "codex" / "config.toml"
 
     failures: list[str] = []
     details: dict[str, Any] = {
         "required_plugin_ids": required_ids,
         "installed_plugin_ids": sorted(installed_ids),
         "live_global_config": str(live_global_config),
-        "live_xcode_config": str(live_xcode_config),
     }
     for plugin_id in required_ids:
         if plugin_id not in installed_ids:
             failures.append(f"{plugin_id} is enabled canonically but not installed in ~/.codex/plugins/cache")
-        targets = registry_targets.get(plugin_id, {"global", "xcode"})
-        if "global" in targets and not plugin_enabled_in_config(live_global_config, plugin_id):
+        if not plugin_enabled_in_config(live_global_config, plugin_id):
             failures.append(f"{plugin_id} is not enabled in live ~/.codex/config.toml")
-        if "xcode" in targets and live_xcode_config.exists() and not plugin_enabled_in_config(live_xcode_config, plugin_id):
-            failures.append(f"{plugin_id} is not enabled in live Xcode Codex config")
 
     if failures:
         return check_result(

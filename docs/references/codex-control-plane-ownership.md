@@ -83,7 +83,7 @@ Use [Codex Control Plane](/Users/dobby/.agents/docs/architecture/codex-control-p
 - [scripts/sync-copilot-hooks.sh](/Users/dobby/.agents/scripts/sync-copilot-hooks.sh): canonical renderer for managed repo `.github/hooks/agent-control-plane.json` files.
 - [codex/scripts/bootstrap-machine-codex.sh](/Users/dobby/.agents/codex/scripts/bootstrap-machine-codex.sh): canonical Codex-specific machine bootstrap entrypoint.
 - [codex/scripts/auto-apply-codex-control-plane.sh](/Users/dobby/.agents/codex/scripts/auto-apply-codex-control-plane.sh): canonical low-level Codex-specific post-sync reconcile helper.
-- [codex/scripts/sync-trusted-projects.sh](/Users/dobby/.agents/codex/scripts/sync-trusted-projects.sh): canonical trusted-repo sync for terminal + Xcode Codex configs.
+- [codex/scripts/sync-trusted-projects.sh](/Users/dobby/.agents/codex/scripts/sync-trusted-projects.sh): canonical trusted-repo sync for the global Codex config.
 - [codex/scripts/sync-repo-codex-configs.sh](/Users/dobby/.agents/codex/scripts/sync-repo-codex-configs.sh): canonical repo-local Codex config sync for managed repos.
 - [codex/config/repo-bootstrap.json](/Users/dobby/.agents/codex/config/repo-bootstrap.json): canonical repo bootstrap registry for managed repos plus repo-local model/agent/MCP assignment.
 - [mcp/config/presets.json](/Users/dobby/.agents/mcp/config/presets.json): canonical shared MCP definitions plus machine-wide default MCP enablement.

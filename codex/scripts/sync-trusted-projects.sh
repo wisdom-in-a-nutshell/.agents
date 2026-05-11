@@ -3,10 +3,8 @@ set -euo pipefail
 
 APPLY=0
 SYNC_GLOBAL=1
-SYNC_XCODE=1
 ROOTS=()
 GLOBAL_CONFIG="${HOME}/.codex/config.toml"
-XCODE_CONFIG="${HOME}/Library/Developer/Xcode/CodingAssistant/codex/config.toml"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 CONTROL_PLANE_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 REGISTRY_FILE="${CONTROL_PLANE_DIR}/config/repo-bootstrap.json"
@@ -23,11 +21,9 @@ Options:
   --apply                Apply changes in place
   --dry-run              Show diff only (default)
   --global-only          Update ~/.codex/config.toml only
-  --xcode-only           Update Xcode Codex config only
   --root <path>          Root to scan for repos (repeatable; bypass registry repo list)
   --registry <path>      Override repo bootstrap registry used for managed repos
   --global-config <p>    Override global config target
-  --xcode-config <p>     Override Xcode config target
   -h, --help             Show this help
 
 Examples:
@@ -67,12 +63,6 @@ while [[ $# -gt 0 ]]; do
       ;;
     --global-only)
       SYNC_GLOBAL=1
-      SYNC_XCODE=0
-      shift
-      ;;
-    --xcode-only)
-      SYNC_GLOBAL=0
-      SYNC_XCODE=1
       shift
       ;;
     --root)
@@ -88,10 +78,6 @@ while [[ $# -gt 0 ]]; do
       GLOBAL_CONFIG="${2:-}"
       shift 2
       ;;
-    --xcode-config)
-      XCODE_CONFIG="${2:-}"
-      shift 2
-      ;;
     -h|--help)
       usage
       exit 0
@@ -102,8 +88,8 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-if (( SYNC_GLOBAL == 0 && SYNC_XCODE == 0 )); then
-  die "Nothing selected. Use default/all, --global-only, or --xcode-only."
+if (( SYNC_GLOBAL == 0 )); then
+  die "Nothing selected. Use default/all or --global-only."
 fi
 
 quote_toml_string() {
@@ -417,8 +403,4 @@ done
 
 if (( SYNC_GLOBAL == 1 )); then
   sync_target "global" "$GLOBAL_CONFIG" ${REPO_ROOTS[@]+"${REPO_ROOTS[@]}"}
-fi
-
-if (( SYNC_XCODE == 1 )); then
-  sync_target "xcode" "$XCODE_CONFIG" ${REPO_ROOTS[@]+"${REPO_ROOTS[@]}"}
 fi

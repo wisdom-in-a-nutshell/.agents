@@ -38,7 +38,6 @@ def generate_registry_base(views_dir: Path) -> None:
     - 'file.inFolder("docs/references/registry/plugins-items")'
 formulas:
   enabled_badge: 'if(enabled, "✅ enabled", "⏸ disabled")'
-  targets_badge: 'join(targets, ", ")'
 properties:
   registry_kind:
     displayName: Type
@@ -52,12 +51,6 @@ properties:
     displayName: Enabled
   formula.enabled_badge:
     displayName: State
-  targets:
-    displayName: Targets
-  targets_csv:
-    displayName: Targets CSV
-  formula.targets_badge:
-    displayName: Targets
   category:
     displayName: Category
   repo:
@@ -71,7 +64,6 @@ views:
       - plugin_id
       - marketplace
       - formula.enabled_badge
-      - targets
       - category
     sort:
       - property: plugin
@@ -111,7 +103,6 @@ def generate_registry_items(
     repo_local_dir.mkdir(parents=True, exist_ok=True)
 
     for item in managed:
-        targets_csv = ",".join(item.targets)
         lines = [
             "---",
             "registry_kind: managed",
@@ -120,10 +111,7 @@ def generate_registry_items(
             f"marketplace: {_yaml_str(item.marketplace)}",
             f"enabled: {'true' if item.enabled else 'false'}",
             f"category: {_yaml_str(item.category)}",
-            f"targets_csv: {_yaml_str(targets_csv)}",
-            "targets:",
         ]
-        lines.extend([f"  - {_yaml_str(target)}" for target in item.targets])
         lines.extend(
             [
                 "---",

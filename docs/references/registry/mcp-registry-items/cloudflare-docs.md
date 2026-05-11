@@ -2,7 +2,6 @@
 mcp_name: "cloudflare-docs"
 effective_scope: "repo"
 global_terminal: "false"
-global_xcode: "false"
 repos_csv: "platform-ops"
 transport: "http"
 target: "https://docs.mcp.cloudflare.com/mcp"

@@ -15,15 +15,6 @@
     "cloudflare-docs": {
       "transport": "http",
       "url": "https://docs.mcp.cloudflare.com/mcp"
-    },
-    "xcode": {
-      "transport": "stdio",
-      "command": "xcrun",
-      "args": [
-        "mcpbridge"
-      ],
-      "startup_timeout_sec": 180,
-      "tool_timeout_sec": 120
     }
   },
   "global_presets": [],

@@ -52,7 +52,6 @@ flowchart TD
     Q --> K[plugin registry views]
     Q --> R
     C --> G[~/.codex/config.toml]
-    C --> H[Xcode Codex config]
     V --> C
     R --> D
     R --> E
@@ -60,7 +59,6 @@ flowchart TD
     U --> C
     U --> E
     D --> G
-    D --> H
     E --> I[Repo-local .codex/config.toml]
     F --> J[Ghostty config]
 ```
@@ -136,8 +134,8 @@ These settings stay close to the repo because they describe how Codex should beh
 
 1. Canonical Codex policy and assets are edited in `~/.agents`.
 2. Shared machine-facing apply enters through `~/.agents/scripts/bootstrap-machine-agent-control-planes.sh` or `~/.agents/scripts/auto-apply-agent-control-planes.sh`.
-3. The global templates drive machine config in `~/.codex` and Xcode Codex config.
-4. Native Codex plugin state from `plugins/registry.json` is rendered into the terminal and Xcode Codex configs.
+3. The global template drives machine config in `~/.codex`.
+4. Native Codex plugin state from `plugins/registry.json` is rendered into the global Codex config.
 5. The repo bootstrap registry drives both trusted repo discovery and managed repo-local `.codex/config.toml` generation.
 6. The hook registry drives global `~/.codex/hooks.json` generation plus managed repo-local `.codex/hooks.json` generation.
 7. The Codex bootstrap installs the stale-session archive LaunchAgent, which uses Codex app-server APIs to archive managed-repo threads after their `updatedAt` timestamp is older than the configured threshold.

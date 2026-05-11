@@ -41,17 +41,17 @@ class CodexRepoSyncTests(TempDirTestCase):
                 },
                 "repos": [
                     {
-                        "mcp_presets": ["cloudflare-docs", "xcodebuildmcp"],
+                        "mcp_presets": ["cloudflare-docs", "fixture-stdio"],
                         "path": str(adi),
                     }
                 ],
             },
         )
         mcp_registry = default_mcp_registry()
-        mcp_registry["presets"]["xcodebuildmcp"] = {
+        mcp_registry["presets"]["fixture-stdio"] = {
             "transport": "stdio",
             "command": "npx",
-            "args": ["-y", "xcodebuildmcp@latest", "mcp"],
+            "args": ["-y", "fixture-mcp@latest", "mcp"],
         }
         write_json(mcp_registry_path, mcp_registry)
 
@@ -73,7 +73,7 @@ class CodexRepoSyncTests(TempDirTestCase):
         self.assertIn('model_reasoning_effort = "high"', repo_config)
         self.assertIn("[mcp_servers.cloudflare-docs]", repo_config)
         self.assertIn('url = "https://docs.mcp.cloudflare.com/mcp"', repo_config)
-        self.assertIn("[mcp_servers.xcodebuildmcp]", repo_config)
+        self.assertIn("[mcp_servers.fixture-stdio]", repo_config)
         self.assertIn('command = "npx"', repo_config)
         self.assertNotIn("[agents.", repo_config)
         self.assertIn('"SessionStart"', repo_hooks)

@@ -9,7 +9,6 @@ The short version is: canonical config lives in `~/.agents`, live machine config
 ```mermaid
 flowchart TD
     A[~/.agents/codex/config/global.config.toml]
-    B[~/.agents/codex/config/xcode.config.toml]
     C[~/.agents/codex/config/repo-bootstrap.json]
     D[~/.agents/mcp/config/presets.json]
     P[~/.agents/plugins/registry.json]
@@ -18,12 +17,10 @@ flowchart TD
     F[sync-repo-codex-configs.sh]
     K[sync-config.sh]
     G[~/.codex/config.toml]
-    H[Xcode Codex config]
     I[Repo-local .codex/config.toml]
     J[Codex runtime]
 
     A --> K
-    B --> K
     L --> K
     C --> E
     C --> F
@@ -31,9 +28,7 @@ flowchart TD
     D --> F
     P --> K
     K --> G
-    K --> H
     E --> G
-    E --> H
     F --> I
     G --> J
     I --> J
@@ -44,7 +39,6 @@ flowchart TD
 ### Canonical Templates
 
 - `global.config.toml` defines the managed baseline for terminal Codex.
-- `xcode.config.toml` defines the managed baseline for Xcode Codex.
 - `bundled-skills-policy.json` classifies OpenAI-bundled runtime skills as allowed or disabled so new upstream bundled skills cannot silently drift into the local control plane.
 - `../mcp/config/presets.json` defines the shared MCP presets and machine-wide global MCP defaults.
 - `../../plugins/registry.json` defines native Codex plugin enable/disable state.
@@ -57,7 +51,7 @@ These files are the source of truth.
 
 ### Live Machine Config
 
-- `sync-config.sh` writes the managed baseline into `~/.codex/config.toml` and Xcode Codex config.
+- `sync-config.sh` writes the managed baseline into `~/.codex/config.toml`.
 - `sync-config.sh` prunes stale managed agent role declarations and role files from older versions of this control plane.
 - It preserves machine-specific/runtime-specific state that should not live in git.
 - It renders native Codex plugin entries from `plugins/registry.json` and writes disabled bundled-skill entries from `bundled-skills-policy.json`.
@@ -68,7 +62,7 @@ Example:
 
 ### Trusted Repo Config
 
-- `sync-trusted-projects.sh` writes exact trusted repo roots into the live machine configs.
+- `sync-trusted-projects.sh` writes exact trusted repo roots into the live machine config.
 - That matters because repo-local `.codex/config.toml` is only loaded when the repo is trusted.
 
 So trust sync is part of config layering, not a separate unrelated feature.

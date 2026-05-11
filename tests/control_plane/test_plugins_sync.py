@@ -25,7 +25,6 @@ class ManagedPluginsRegistrySyncTests(TempDirTestCase):
                         "plugin": "build-ios-apps",
                         "marketplace": "openai-curated",
                         "enabled": True,
-                        "targets": ["global"],
                         "category": "Coding",
                     }
                 ],
@@ -65,7 +64,7 @@ class ManagedPluginsRegistrySyncTests(TempDirTestCase):
         self.assertIn('plugin_id: "build-ios-apps@openai-curated"', managed_text)
         self.assertIn('marketplace: "openai-curated"', managed_text)
         self.assertIn("enabled: true", managed_text)
-        self.assertIn('targets_csv: "global"', managed_text)
+        self.assertNotIn("targets", managed_text)
 
     def test_empty_managed_plugins_is_valid(self) -> None:
         root = make_control_plane_root(self.temp_path)

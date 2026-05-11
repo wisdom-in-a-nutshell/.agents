@@ -47,7 +47,7 @@ Use [Codex Control Plane Ownership](/Users/dobby/.agents/docs/references/codex-c
   - native Codex plugin enable/disable state is rendered by `sync-config.sh`
 - Bootstrap one managed plugin into the canonical registry:
   - [`bootstrap-plugin.sh`](/Users/dobby/.agents/scripts/bootstrap-plugin.sh)
-  - `~/.agents/scripts/bootstrap-plugin.sh build-ios-apps --target global --apply`
+  - `~/.agents/scripts/bootstrap-plugin.sh build-ios-apps --apply`
   - this writes the registry entry, regenerates plugin registry views, and reapplies the shared control planes
 - Apply the full Codex bootstrap batch:
   - [`bootstrap-machine-codex.sh`](/Users/dobby/.agents/codex/scripts/bootstrap-machine-codex.sh)
@@ -68,11 +68,11 @@ Use [Codex Control Plane Ownership](/Users/dobby/.agents/docs/references/codex-c
 - Apply only the managed Codex config:
   - [`sync-config.sh`](/Users/dobby/.agents/codex/scripts/sync-config.sh)
   - `~/.agents/codex/scripts/sync-config.sh --apply`
-  - this syncs the managed global config, global `hooks.json`, and only the agent-role files actually referenced by the managed global/Xcode configs into the live runtime `agents/` folders
+  - this syncs the managed global config, global `hooks.json`, and removes stale managed agent-role files from older control-plane versions
 - Validate canonical and rendered Codex control-plane state:
   - [`check-codex-control-plane.sh`](/Users/dobby/.agents/codex/scripts/check-codex-control-plane.sh)
   - `~/.agents/codex/scripts/check-codex-control-plane.sh`
-- Sync exact trusted repo roots into terminal + Xcode Codex config:
+- Sync exact trusted repo roots into the global Codex config:
   - [`sync-trusted-projects.sh`](/Users/dobby/.agents/codex/scripts/sync-trusted-projects.sh)
   - `~/.agents/codex/scripts/sync-trusted-projects.sh --apply`
 - Sync repo-local `.codex/config.toml` and `.codex/hooks.json` files from the canonical registries:
@@ -108,7 +108,7 @@ Use [Codex Control Plane Ownership](/Users/dobby/.agents/docs/references/codex-c
   - tracked branches use an optimistic `commit -> push` path and only run `git pull --rebase` when push reports that the remote is ahead
   - brand-new branches without upstream tracking use an initial `git push -u <remote> HEAD`, so the hook can publish the branch before future tracked-branch pulls
   - logs phase timing to `~/.local/state/agents-control-plane/log/hooks-stop.log`
-- `~/.codex/config.toml` and Xcode Codex config contain exact trusted repo entries for local repos such as `focus`
+- `~/.codex/config.toml` contains exact trusted repo entries for local repos such as `focus`
 - `~/.codex/config.toml` enables Codex hooks through `[features].hooks = true`
 - `~/.codex/config.toml` contains `[hooks.state]` trust hashes for managed hooks rendered by this control plane, so global and repo-local lifecycle hooks do not need repeated `/hooks` review on every machine bootstrap.
 - `~/.codex/config.toml` explicitly preserves `computer-use@openai-bundled` and disables bundled Codex skills classified as `disabled` in [`bundled-skills-policy.json`](/Users/dobby/.agents/codex/config/bundled-skills-policy.json)
@@ -121,7 +121,7 @@ Use [Codex Control Plane Ownership](/Users/dobby/.agents/docs/references/codex-c
 ## Main Scripts And Jobs
 
 - [`sync-config.sh`](/Users/dobby/.agents/codex/scripts/sync-config.sh)
-  - applies canonical Codex config templates into live terminal + Xcode config
+  - applies the canonical Codex config template into the live global config
   - keeps Apps/connectors globally disabled through the managed `features.apps = false` baseline
   - renders native Codex plugin enable/disable state from [`plugins/registry.json`](/Users/dobby/.agents/plugins/registry.json)
   - disables selected bundled Codex skills in `~/.codex/config.toml` from [`bundled-skills-policy.json`](/Users/dobby/.agents/codex/config/bundled-skills-policy.json) when the control plane should prefer managed skill copies or avoid duplicate runtime surfaces
@@ -161,7 +161,7 @@ Use [Codex Control Plane Ownership](/Users/dobby/.agents/docs/references/codex-c
   - guards local `~/.agents` hook dispatcher calls so GitHub cloud agent sessions no-op when this personal control plane is absent
   - supports `--check` to fail when rendered repo-local Copilot hook files are missing or stale
 - [`check-codex-control-plane.sh`](/Users/dobby/.agents/codex/scripts/check-codex-control-plane.sh)
-  - validates canonical `global.config.toml`, `xcode.config.toml`, `repo-bootstrap.json`, and `mcp/config/presets.json`
+  - validates canonical `global.config.toml`, `repo-bootstrap.json`, and `mcp/config/presets.json`
   - validates [`bundled-skills-policy.json`](/Users/dobby/.agents/codex/config/bundled-skills-policy.json) and fails if a local OpenAI-bundled Codex skill exists under `~/.codex/skills/.system` or `~/.codex/skills/codex-primary-runtime` without being classified as `allowed` or `disabled`
   - validates that the live global Codex config disables each skill classified as `disabled`
   - validates [`hooks/registry.json`](/Users/dobby/.agents/hooks/registry.json), rendered global `~/.codex/hooks.json`, and rendered repo-local `.codex/hooks.json` files when hooks are enabled

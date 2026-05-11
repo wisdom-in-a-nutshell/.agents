@@ -31,9 +31,7 @@ flowchart TD
     M[mcp/config/presets.json] --> B
     M --> D
     B --> F[~/.codex/config.toml]
-    B --> G[Xcode Codex config]
     C --> F
-    C --> G
     D --> H[Repo-local .codex/config.toml]
     E --> I[Ghostty config]
 ```
@@ -48,7 +46,7 @@ flowchart TD
 - [`bootstrap-machine-codex.sh`](/Users/dobby/.agents/codex/scripts/bootstrap-machine-codex.sh)
   - orchestrates the main Codex-specific bootstrap batch
 - [`sync-config.sh`](/Users/dobby/.agents/codex/scripts/sync-config.sh)
-  - writes the managed terminal and Xcode Codex config
+  - writes the managed global Codex config
   - injects machine-wide global MCP servers from [`mcp/config/presets.json`](/Users/dobby/.agents/mcp/config/presets.json)
   - renders native Codex plugin enable/disable state from [`plugins/registry.json`](/Users/dobby/.agents/plugins/registry.json)
 - [`sync-trusted-projects.sh`](/Users/dobby/.agents/codex/scripts/sync-trusted-projects.sh)

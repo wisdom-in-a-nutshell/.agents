@@ -12,8 +12,6 @@ properties:
     displayName: Scope
   global_terminal:
     displayName: Global Terminal
-  global_xcode:
-    displayName: Global Xcode
   repos:
     displayName: Repos
   repos_csv:
@@ -29,18 +27,16 @@ views:
       - mcp_name
       - formula.scope_badge
       - global_terminal
-      - global_xcode
       - repos
       - transport
       - target
   - type: table
     name: Global MCPs
-    filters: 'global_terminal == "true" || global_xcode == "true"'
+    filters: 'global_terminal == "true"'
     order:
       - mcp_name
       - formula.scope_badge
       - global_terminal
-      - global_xcode
       - repos
       - transport
       - target

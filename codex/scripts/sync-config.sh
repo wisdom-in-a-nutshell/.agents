@@ -7,21 +7,15 @@ ROOT_DIR="$(cd "$CONTROL_PLANE_DIR/.." && pwd)"
 
 APPLY=0
 SYNC_GLOBAL=1
-SYNC_XCODE=1
 GITHUB_ROOT="${HOME}/GitHub"
 GLOBAL_CONFIG="${HOME}/.codex/config.toml"
 GLOBAL_HOOKS="${HOME}/.codex/hooks.json"
 GLOBAL_AGENTS_DIR="${HOME}/.codex/agents"
-XCODE_CONFIG="${HOME}/Library/Developer/Xcode/CodingAssistant/codex/config.toml"
-XCODE_AGENTS_DIR="${HOME}/Library/Developer/Xcode/CodingAssistant/codex/agents"
-XCODE_RULES="${HOME}/Library/Developer/Xcode/CodingAssistant/codex/rules/xcode.rules"
 CANONICAL_DIR="${CONTROL_PLANE_DIR}/config"
 MCP_REGISTRY="${ROOT_DIR}/mcp/config/presets.json"
 PLUGIN_REGISTRY="${ROOT_DIR}/plugins/registry.json"
 HOOKS_REGISTRY="${ROOT_DIR}/hooks/registry.json"
 CANONICAL_GLOBAL_TEMPLATE="${CANONICAL_DIR}/global.config.toml"
-CANONICAL_XCODE_TEMPLATE="${CANONICAL_DIR}/xcode.config.toml"
-CANONICAL_XCODE_RULES_TEMPLATE="${CANONICAL_DIR}/xcode.rules"
 BUNDLED_SKILLS_POLICY="${CANONICAL_DIR}/bundled-skills-policy.json"
 
 usage() {
@@ -29,7 +23,7 @@ usage() {
 Usage: $(basename "$0") [options]
 
 Sync canonical Codex settings from the `~/.agents` control plane into
-terminal + Xcode Codex without overwriting machine/session-specific fields.
+the global Codex runtime without overwriting machine/session-specific fields.
 
 Default mode is dry-run. Use --apply to write changes.
 
@@ -37,16 +31,12 @@ Options:
   --apply                    Apply changes in place (default: dry-run)
   --dry-run                  Show planned changes only (default)
   --global-only              Sync ~/.codex/config.toml only
-  --xcode-only               Sync Xcode Codex config/rules only
   --github-root <path>       Root path for workspace-write writable_roots
                              (default: ~/GitHub)
   --global-config <path>     Override global codex config target
   --global-hooks <path>      Override global codex hooks target
-  --xcode-config <path>      Override Xcode codex config target
-  --xcode-rules <path>       Override Xcode rules target
   --canonical-dir <path>     Directory containing canonical templates:
-                             global.config.toml, xcode.config.toml, xcode.rules
-                             bundled-skills-policy.json
+                             global.config.toml and bundled-skills-policy.json
   --mcp-registry <path>      Shared MCP registry
                              (default: mcp/config/presets.json)
   --plugin-registry <path>   Native Codex plugin registry
@@ -58,7 +48,6 @@ Options:
 Examples:
   ~/.agents/codex/scripts/sync-config.sh
   ~/.agents/codex/scripts/sync-config.sh --apply
-  ~/.agents/codex/scripts/sync-config.sh --apply --xcode-only
 USAGE
 }
 
@@ -92,12 +81,6 @@ while [[ $# -gt 0 ]]; do
       ;;
     --global-only)
       SYNC_GLOBAL=1
-      SYNC_XCODE=0
-      shift
-      ;;
-    --xcode-only)
-      SYNC_GLOBAL=0
-      SYNC_XCODE=1
       shift
       ;;
     --github-root)
@@ -112,19 +95,9 @@ while [[ $# -gt 0 ]]; do
       GLOBAL_HOOKS="${2:-}"
       shift 2
       ;;
-    --xcode-config)
-      XCODE_CONFIG="${2:-}"
-      shift 2
-      ;;
-    --xcode-rules)
-      XCODE_RULES="${2:-}"
-      shift 2
-      ;;
     --canonical-dir)
       CANONICAL_DIR="${2:-}"
       CANONICAL_GLOBAL_TEMPLATE="${CANONICAL_DIR}/global.config.toml"
-      CANONICAL_XCODE_TEMPLATE="${CANONICAL_DIR}/xcode.config.toml"
-      CANONICAL_XCODE_RULES_TEMPLATE="${CANONICAL_DIR}/xcode.rules"
       BUNDLED_SKILLS_POLICY="${CANONICAL_DIR}/bundled-skills-policy.json"
       shift 2
       ;;
@@ -150,8 +123,8 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-if (( SYNC_GLOBAL == 0 && SYNC_XCODE == 0 )); then
-  die "Nothing selected. Use default/all, --global-only, or --xcode-only."
+if (( SYNC_GLOBAL == 0 )); then
+  die "Nothing selected. Use default/all or --global-only."
 fi
 
 if [[ "$GITHUB_ROOT" != /* ]]; then
@@ -292,8 +265,7 @@ PY
 
 extract_codex_plugin_entries() {
   local registry_file="$1"
-  local target_name="$2"
-  PYTHONPATH="$ROOT_DIR" python3 - "$registry_file" "$target_name" <<'PY'
+  PYTHONPATH="$ROOT_DIR" python3 - "$registry_file" <<'PY'
 from __future__ import annotations
 
 import json
@@ -304,7 +276,6 @@ from plugins.derived import validate_plugin_registry
 
 
 registry_path = Path(sys.argv[1]).expanduser().resolve()
-target_name = sys.argv[2]
 data = json.loads(registry_path.read_text(encoding="utf-8"))
 plugins, _, _ = validate_plugin_registry(
     data,
@@ -313,8 +284,6 @@ plugins, _, _ = validate_plugin_registry(
 )
 
 for plugin in plugins:
-    if target_name not in plugin.targets:
-        continue
     enabled = "true" if plugin.enabled else "false"
     print(f'plugins."{plugin.plugin_id}"\x1Fenabled\x1F{enabled}')
 PY
@@ -540,7 +509,7 @@ render_global_config() {
   while IFS=$'\x1f' read -r section key value; do
     [[ -n "$key" ]] || continue
     upsert_section_key "$target_file" "$section" "$key" "$value"
-  done < <(extract_codex_plugin_entries "$plugin_registry_file" "global")
+  done < <(extract_codex_plugin_entries "$plugin_registry_file")
 
   # Codex turn-end automation now lives in hooks/registry.json -> Stop.
   remove_top_level_key "$target_file" "notify"
@@ -559,7 +528,7 @@ render_global_config() {
 
   prune_stale_agent_sections "$target_file" "$template_file"
   prune_stale_app_sections "$target_file" "$template_file"
-  prune_stale_plugin_sections "$target_file" "$template_file" "$plugin_registry_file" "global"
+  prune_stale_plugin_sections "$target_file" "$template_file" "$plugin_registry_file"
   prune_stale_model_provider_sections "$target_file" "$template_file"
 }
 
@@ -591,6 +560,8 @@ def keep_project_block(header: str) -> bool:
     if not m:
         return True
     path = m.group(1)
+    if "/.tmp/" in path or "/tmp/" in path:
+        return False
     return not path.startswith("/Users/") or path == current_home or path.startswith(current_home + "/")
 
 
@@ -918,8 +889,7 @@ prune_stale_plugin_sections() {
   local target_file="$1"
   local template_file="$2"
   local plugin_registry_file="$3"
-  local target_name="$4"
-  PYTHONPATH="$ROOT_DIR" python3 - "$target_file" "$template_file" "$plugin_registry_file" "$target_name" <<'PY'
+  PYTHONPATH="$ROOT_DIR" python3 - "$target_file" "$template_file" "$plugin_registry_file" <<'PY'
 from __future__ import annotations
 
 import json
@@ -932,7 +902,6 @@ from plugins.derived import validate_plugin_registry
 target = Path(sys.argv[1])
 template = Path(sys.argv[2])
 plugin_registry = Path(sys.argv[3]).expanduser().resolve()
-target_name = sys.argv[4]
 
 target_text = target.read_text(encoding="utf-8") if target.exists() else ""
 template_text = template.read_text(encoding="utf-8") if template.exists() else ""
@@ -954,8 +923,7 @@ if plugin_registry.is_file():
         home=Path.home(),
     )
     for plugin in plugins:
-        if target_name in plugin.targets:
-            allowed_plugins.add(plugin.plugin_id)
+        allowed_plugins.add(plugin.plugin_id)
 
 lines = target_text.splitlines(keepends=True)
 output: list[str] = []
@@ -1042,63 +1010,6 @@ while i < len(lines):
 
 target.write_text("".join(output), encoding="utf-8")
 PY
-}
-
-render_xcode_config() {
-  local target_file="$1"
-  local template_file="$2"
-  local mcp_registry_file="$3"
-  local plugin_registry_file="$4"
-  local writable_roots
-  local project_section
-  local section key value
-  writable_roots="[$(quote_toml_string "$GITHUB_ROOT")]"
-  project_section="projects.$(quote_toml_string "$GITHUB_ROOT")"
-
-  while IFS=$'\x1f' read -r section key value; do
-    [[ -n "$key" ]] || continue
-    if [[ -z "$section" ]]; then
-      upsert_top_level_key "$target_file" "$key" "$value"
-    elif [[ "$section" == "features" || "$section" == "sandbox_workspace_write" || "$section" == "apps._default" || "$section" == notice.* || "$section" == apps.* || "$section" == plugins.* ]]; then
-      upsert_section_key "$target_file" "$section" "$key" "$value"
-    fi
-  done < <(extract_toml_entries "$template_file")
-
-  while IFS=$'\x1f' read -r section key value; do
-    [[ -n "$key" ]] || continue
-    upsert_section_key "$target_file" "$section" "$key" "$value"
-  done < <(extract_global_mcp_entries "$mcp_registry_file")
-
-  while IFS=$'\x1f' read -r section key value; do
-    [[ -n "$key" ]] || continue
-    upsert_section_key "$target_file" "$section" "$key" "$value"
-  done < <(extract_codex_plugin_entries "$plugin_registry_file" "xcode")
-
-  # Keep writable roots machine-specific via CLI/home path, regardless of template value.
-  upsert_section_key "$target_file" "sandbox_workspace_write" "writable_roots" "$writable_roots"
-  # Ensure Xcode Codex trusts all repos under the configured GitHub root.
-  upsert_section_key "$target_file" "$project_section" "trust_level" "\"trusted\""
-
-  if ! rg -n '^[[:space:]]*service_tier[[:space:]]*=' "$template_file" >/dev/null 2>&1; then
-    remove_top_level_key "$target_file" "service_tier"
-  fi
-  if ! rg -n '^[[:space:]]*fast_mode[[:space:]]*=' "$template_file" >/dev/null 2>&1; then
-    remove_section_key "$target_file" "features" "fast_mode"
-  fi
-  # Codex 0.129 renamed the hooks feature flag; prune the older managed key
-  # when applying the new canonical template.
-  remove_section_key "$target_file" "features" "codex_hooks"
-
-  prune_stale_agent_sections "$target_file" "$template_file"
-  prune_stale_app_sections "$target_file" "$template_file"
-  prune_stale_plugin_sections "$target_file" "$template_file" "$plugin_registry_file" "xcode"
-  prune_stale_model_provider_sections "$target_file" "$template_file"
-}
-
-render_xcode_rules() {
-  local rendered_rules_file="$1"
-  local template_rules_file="$2"
-  cp "$template_rules_file" "$rendered_rules_file"
 }
 
 render_codex_hooks() {
@@ -1193,39 +1104,6 @@ sync_global() {
   fi
 
   cleanup_agent_role_dir "Global Agent Roles" "$GLOBAL_AGENTS_DIR"
-}
-
-sync_xcode() {
-  local original_cfg="$XCODE_CONFIG"
-  local rendered_cfg="${TMP_DIR}/xcode.config.toml"
-  local original_rules="$XCODE_RULES"
-  local rendered_rules="${TMP_DIR}/xcode.rules"
-
-  require_readable_file "$CANONICAL_XCODE_TEMPLATE"
-  require_readable_file "$CANONICAL_XCODE_RULES_TEMPLATE"
-  require_readable_file "$MCP_REGISTRY"
-  require_readable_file "$PLUGIN_REGISTRY"
-  ensure_parent_dir "$original_cfg"
-  ensure_parent_dir "$original_rules"
-
-  prepare_work_file "$original_cfg" "$rendered_cfg"
-  sanitize_machine_specific_entries "$rendered_cfg"
-  render_xcode_config "$rendered_cfg" "$CANONICAL_XCODE_TEMPLATE" "$MCP_REGISTRY" "$PLUGIN_REGISTRY"
-  render_xcode_rules "$rendered_rules" "$CANONICAL_XCODE_RULES_TEMPLATE"
-
-  log ""
-  log "=== Xcode Codex Config (${original_cfg}) ==="
-  show_diff "$original_cfg" "$rendered_cfg"
-  log ""
-  log "=== Xcode Codex Rules (${original_rules}) ==="
-  show_diff "$original_rules" "$rendered_rules"
-
-  if (( APPLY == 1 )); then
-    install_rendered_file "$rendered_cfg" "$original_cfg"
-    install_rendered_file "$rendered_rules" "$original_rules"
-  fi
-
-  cleanup_agent_role_dir "Xcode Agent Roles" "$XCODE_AGENTS_DIR"
 }
 
 ensure_enabled_openai_bundled_plugins() {
@@ -1354,16 +1232,13 @@ fi
 if (( SYNC_GLOBAL == 1 )); then
   sync_global
 fi
-if (( SYNC_XCODE == 1 )); then
-  sync_xcode
-fi
 if (( APPLY == 1 )); then
   ensure_enabled_openai_bundled_plugins
 fi
 
 log ""
 if (( APPLY == 1 )); then
-  log "Done. Restart Codex/Xcode to ensure new settings are loaded."
+  log "Done. Restart Codex to ensure new settings are loaded."
 else
   log "Dry-run complete. Re-run with --apply to write changes."
 fi

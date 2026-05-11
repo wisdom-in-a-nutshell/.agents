@@ -5,15 +5,11 @@ from pathlib import Path
 from typing import Any
 
 
-ALLOWED_TARGETS = {"global", "xcode"}
-
-
 @dataclass(frozen=True)
 class ManagedPlugin:
     plugin: str
     marketplace: str
     enabled: bool
-    targets: list[str]
     category: str
 
     @property
@@ -31,18 +27,6 @@ def ensure_str(value: Any, field: str, idx: int, *, label: str = "managed_plugin
     if not isinstance(value, str) or not value.strip():
         raise ValueError(f"{label}[{idx}] invalid {field}: {value!r}")
     return value.strip()
-
-
-def ordered_unique(values: list[str]) -> list[str]:
-    seen: set[str] = set()
-    ordered: list[str] = []
-    for raw in values:
-        value = str(raw).strip()
-        if not value or value in seen:
-            continue
-        seen.add(value)
-        ordered.append(value)
-    return ordered
 
 
 def validate_plugin_registry(
@@ -81,16 +65,10 @@ def validate_plugin_registry(
         if not isinstance(enabled, bool):
             raise ValueError(f"managed_plugins[{idx}] enabled must be a boolean")
 
-        targets_raw = item.get("targets", ["global"])
-        if not isinstance(targets_raw, list):
-            raise ValueError(f"managed_plugins[{idx}] targets must be an array")
-        targets = ordered_unique([str(target) for target in targets_raw])
-        if not targets:
-            raise ValueError(f"managed_plugins[{idx}] targets must not be empty")
-        invalid_targets = sorted(set(targets) - ALLOWED_TARGETS)
-        if invalid_targets:
+        if "targets" in item:
             raise ValueError(
-                f"managed_plugins[{idx}] invalid targets: {', '.join(invalid_targets)}"
+                f"managed_plugins[{idx}] targets is no longer supported; "
+                "native Codex plugins render only to the global Codex config"
             )
 
         plugin_id = f"{plugin}@{marketplace}"
@@ -103,7 +81,6 @@ def validate_plugin_registry(
                 plugin=plugin,
                 marketplace=marketplace,
                 enabled=enabled,
-                targets=targets,
                 category=category,
             )
         )

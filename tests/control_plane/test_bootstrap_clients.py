@@ -186,8 +186,6 @@ class BootstrapPluginClientContractTests(TempDirTestCase):
                 sys.executable,
                 str(REPO_ROOT / "scripts/bootstrap-plugin.py"),
                 "example-plugin",
-                "--target",
-                "global",
                 "--registry-file",
                 str(registry),
                 "--no-input",
@@ -203,7 +201,7 @@ class BootstrapPluginClientContractTests(TempDirTestCase):
         self.assertFalse(payload["data"]["apply"])
         self.assertEqual(payload["data"]["plugin"], "example-plugin")
         self.assertEqual(payload["data"]["marketplace"], "openai-curated")
-        self.assertEqual(payload["data"]["targets"], ["global"])
+        self.assertNotIn("targets", payload["data"])
         self.assertIn("request_id", payload["meta"])
         self.assertIn("duration_ms", payload["meta"])
         self.assertIn("timestamp_utc", payload["meta"])

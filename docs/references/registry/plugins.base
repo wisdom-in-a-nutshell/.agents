@@ -3,7 +3,6 @@ filters:
     - 'file.inFolder("docs/references/registry/plugins-items")'
 formulas:
   enabled_badge: 'if(enabled, "✅ enabled", "⏸ disabled")'
-  targets_badge: 'join(targets, ", ")'
 properties:
   registry_kind:
     displayName: Type
@@ -17,12 +16,6 @@ properties:
     displayName: Enabled
   formula.enabled_badge:
     displayName: State
-  targets:
-    displayName: Targets
-  targets_csv:
-    displayName: Targets CSV
-  formula.targets_badge:
-    displayName: Targets
   category:
     displayName: Category
   repo:
@@ -36,7 +29,6 @@ views:
       - plugin_id
       - marketplace
       - formula.enabled_badge
-      - targets
       - category
     sort:
       - property: plugin

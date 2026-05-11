@@ -8,7 +8,6 @@ SYNC_REPO_CONFIGS_SCRIPT="${SCRIPT_DIR}/sync-repo-codex-configs.sh"
 
 GLOBAL_CONFIG="${HOME}/.codex/config.toml"
 GLOBAL_HOOKS="${HOME}/.codex/hooks.json"
-XCODE_CONFIG="${HOME}/Library/Developer/Xcode/CodingAssistant/codex/config.toml"
 CANONICAL_DIR="${CONTROL_PLANE_DIR}/config"
 REGISTRY_FILE="${CANONICAL_DIR}/repo-bootstrap.json"
 MCP_REGISTRY_FILE="${ROOT_DIR}/mcp/config/presets.json"
@@ -25,7 +24,6 @@ Options:
   --canonical-dir <path>      Override canonical codex/config directory
   --global-config <path>      Override runtime ~/.codex/config.toml path
   --global-hooks <path>       Override runtime ~/.codex/hooks.json path
-  --xcode-config <path>       Override Xcode runtime config path
   --registry <path>           Override repo bootstrap registry path
   --mcp-registry <path>       Override shared MCP registry path
   --hooks-registry <path>     Override shared hooks registry path
@@ -47,10 +45,6 @@ while [[ $# -gt 0 ]]; do
       ;;
     --global-hooks)
       GLOBAL_HOOKS="${2:-}"
-      shift 2
-      ;;
-    --xcode-config)
-      XCODE_CONFIG="${2:-}"
       shift 2
       ;;
     --registry)
@@ -90,7 +84,7 @@ for repo in "${REPO_FILTERS[@]}"; do
   REPO_ARGS+=(--repo "$repo")
 done
 
-PYTHONPATH="$ROOT_DIR" python3 - "$CANONICAL_DIR" "$GLOBAL_CONFIG" "$GLOBAL_HOOKS" "$XCODE_CONFIG" "$REGISTRY_FILE" "$MCP_REGISTRY_FILE" "$HOOKS_REGISTRY_FILE" "${REPO_FILTERS[@]}" <<'PY'
+PYTHONPATH="$ROOT_DIR" python3 - "$CANONICAL_DIR" "$GLOBAL_CONFIG" "$GLOBAL_HOOKS" "$REGISTRY_FILE" "$MCP_REGISTRY_FILE" "$HOOKS_REGISTRY_FILE" "${REPO_FILTERS[@]}" <<'PY'
 from __future__ import annotations
 
 import json
@@ -199,11 +193,10 @@ def is_git_repo(path: Path) -> bool:
 canonical_dir = Path(sys.argv[1]).expanduser().resolve()
 global_config = Path(sys.argv[2]).expanduser().resolve()
 global_hooks = Path(sys.argv[3]).expanduser().resolve()
-xcode_config = Path(sys.argv[4]).expanduser().resolve()
-registry_path = Path(sys.argv[5]).expanduser().resolve()
-mcp_registry_path = Path(sys.argv[6]).expanduser().resolve()
-hooks_registry_path = Path(sys.argv[7]).expanduser().resolve()
-repo_filters = {str(Path(p).expanduser().resolve()) for p in sys.argv[8:] if p.strip()}
+registry_path = Path(sys.argv[4]).expanduser().resolve()
+mcp_registry_path = Path(sys.argv[5]).expanduser().resolve()
+hooks_registry_path = Path(sys.argv[6]).expanduser().resolve()
+repo_filters = {str(Path(p).expanduser().resolve()) for p in sys.argv[7:] if p.strip()}
 
 root_dir = canonical_dir.parent.parent.resolve()
 sys.path.insert(0, str(root_dir))
@@ -211,7 +204,6 @@ sys.path.insert(0, str(root_dir))
 from hooks.control_plane import load_hooks_registry, render_codex_hooks
 
 global_template = canonical_dir / "global.config.toml"
-xcode_template = canonical_dir / "xcode.config.toml"
 bundled_skills_policy_path = canonical_dir / "bundled-skills-policy.json"
 
 
@@ -328,17 +320,11 @@ audit_installed_bundled_skills(bundled_skills_policy)
 codex_feature_statuses = load_codex_feature_statuses()
 
 validate_no_agent_declarations(global_template)
-validate_no_agent_declarations(xcode_template)
 validate_feature_flags(global_template, codex_feature_statuses)
-validate_feature_flags(xcode_template, codex_feature_statuses)
 
 if global_config.exists():
     validate_no_agent_declarations(global_config)
     validate_feature_flags(global_config, codex_feature_statuses)
-
-if xcode_config.exists():
-    validate_no_agent_declarations(xcode_config)
-    validate_feature_flags(xcode_config, codex_feature_statuses)
 
 if not registry_path.is_file():
     fail(f"missing registry file: {registry_path}")
@@ -450,7 +436,6 @@ for item in resolved_repos:
 print("Codex structural validation passed")
 print(f"  global runtime config checked: {'yes' if global_config.exists() else 'no'}")
 print(f"  global runtime hooks checked: {'yes' if global_hooks.exists() else 'no'}")
-print(f"  xcode runtime config checked: {'yes' if xcode_config.exists() else 'no'}")
 print(f"  repo-local configs checked: {validated_repo_count}")
 PY
 

@@ -29,17 +29,17 @@ class CodexControlPlaneCheckTests(TempDirTestCase):
                 },
                 "repos": [
                     {
-                        "mcp_presets": ["cloudflare-docs", "xcodebuildmcp"],
+                        "mcp_presets": ["cloudflare-docs", "fixture-stdio"],
                         "path": str(adi),
                     }
                 ],
             },
         )
         mcp_registry = default_mcp_registry()
-        mcp_registry["presets"]["xcodebuildmcp"] = {
+        mcp_registry["presets"]["fixture-stdio"] = {
             "transport": "stdio",
             "command": "npx",
-            "args": ["-y", "xcodebuildmcp@latest", "mcp"],
+            "args": ["-y", "fixture-mcp@latest", "mcp"],
         }
         write_json(root / "mcp/config/presets.json", mcp_registry)
         return root, home, adi
@@ -51,8 +51,6 @@ class CodexControlPlaneCheckTests(TempDirTestCase):
             str(root / "codex/config"),
             "--global-config",
             str(home / ".codex/config.toml"),
-            "--xcode-config",
-            str(home / "xcode/config.toml"),
             "--registry",
             str(root / "codex/config/repo-bootstrap.json"),
             "--mcp-registry",

@@ -99,7 +99,6 @@ def make_control_plane_root(base_dir: Path) -> Path:
         "codex/config/bundled-skills-policy.json",
         "codex/config/global.agents.md",
         "codex/config/global.config.toml",
-        "codex/config/xcode.config.toml",
         "claude/config/bootstrap.json",
         "claude/config/global.claude.md",
         "claude/config/managed-settings.json",
@@ -179,7 +178,6 @@ def default_plugin_registry() -> dict[str, Any]:
                 "plugin": "computer-use",
                 "marketplace": "openai-bundled",
                 "enabled": True,
-                "targets": ["global", "xcode"],
                 "category": "Productivity",
             }
         ],

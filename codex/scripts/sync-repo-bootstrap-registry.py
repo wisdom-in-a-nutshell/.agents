@@ -96,8 +96,8 @@ def _effective_value(defaults: dict[str, Any], item: dict[str, Any], key: str) -
     return str(value)
 
 
-def _effective_scope(global_terminal: bool, global_xcode: bool, repos: list[str]) -> str:
-    has_global = global_terminal or global_xcode
+def _effective_scope(global_terminal: bool, repos: list[str]) -> str:
+    has_global = global_terminal
     has_repos = bool(repos)
     if has_global and has_repos:
         return "mixed"
@@ -339,8 +339,6 @@ properties:
     displayName: Scope
   global_terminal:
     displayName: Global Terminal
-  global_xcode:
-    displayName: Global Xcode
   repos:
     displayName: Repos
   repos_csv:
@@ -356,18 +354,16 @@ views:
       - mcp_name
       - formula.scope_badge
       - global_terminal
-      - global_xcode
       - repos
       - transport
       - target
   - type: table
     name: Global MCPs
-    filters: 'global_terminal == "true" || global_xcode == "true"'
+    filters: 'global_terminal == "true"'
     order:
       - mcp_name
       - formula.scope_badge
       - global_terminal
-      - global_xcode
       - repos
       - transport
       - target
@@ -389,7 +385,6 @@ def generate_mcp_registry_items(
     presets: dict[str, Any],
     repos: list[dict[str, Any]],
     global_terminal_mcp: set[str],
-    global_xcode_mcp: set[str],
 ) -> None:
     root = views_dir / "mcp-registry-items"
     shutil.rmtree(root, ignore_errors=True)
@@ -404,13 +399,11 @@ def generate_mcp_registry_items(
         preset = presets[preset_name]
         repos_for_preset = sorted(repo_usage.get(preset_name, []))
         global_terminal = preset_name in global_terminal_mcp
-        global_xcode = preset_name in global_xcode_mcp
         lines = [
             "---",
             f"mcp_name: {_yaml_str(preset_name)}",
-            f"effective_scope: {_yaml_str(_effective_scope(global_terminal, global_xcode, repos_for_preset))}",
+            f"effective_scope: {_yaml_str(_effective_scope(global_terminal, repos_for_preset))}",
             f"global_terminal: {_yaml_str(str(global_terminal).lower())}",
-            f"global_xcode: {_yaml_str(str(global_xcode).lower())}",
             f"repos_csv: {_yaml_str(','.join(repos_for_preset) if repos_for_preset else '-')}",
             f"transport: {_yaml_str(_mcp_transport(preset))}",
             f"target: {_yaml_str(_mcp_target(preset))}",
@@ -619,10 +612,9 @@ def main() -> int:
     generate_registry_base(views_dir)
     generate_registry_items(views_dir, defaults, repos)
     global_terminal_mcp = set(global_presets)
-    global_xcode_mcp = set(global_presets)
     generate_mcp_registry_base(views_dir)
     generate_mcp_registry_items(
-        views_dir, presets, repos, global_terminal_mcp, global_xcode_mcp
+        views_dir, presets, repos, global_terminal_mcp
     )
     legacy_agent_capabilities_base = views_dir / "agent-capabilities.base"
     if legacy_agent_capabilities_base.exists():

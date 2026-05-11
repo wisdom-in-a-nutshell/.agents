@@ -2,7 +2,6 @@
 mcp_name: "openaiDeveloperDocs"
 effective_scope: "repo"
 global_terminal: "false"
-global_xcode: "false"
 repos_csv: ".agents,symphony"
 transport: "http"
 target: "https://developers.openai.com/mcp"

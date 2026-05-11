@@ -42,10 +42,9 @@ def emit_plain(payload: dict[str, Any]) -> None:
     if payload["status"] == "ok":
         data = payload["data"]
         enabled = "enabled" if data["enabled"] else "disabled"
-        targets = ",".join(data["targets"])
         print(
             f"ok plugin={data['plugin']} marketplace={data['marketplace']} "
-            f"state={enabled} targets={targets} "
+            f"state={enabled} "
             f"registry_changed={str(data['registry_changed']).lower()}"
         )
         for action in data["actions"]:
@@ -110,18 +109,6 @@ def finish_error(
     return exit_code
 
 
-def ordered_unique(values: list[str]) -> list[str]:
-    seen: set[str] = set()
-    out: list[str] = []
-    for raw in values:
-        value = raw.strip()
-        if not value or value in seen:
-            continue
-        seen.add(value)
-        out.append(value)
-    return out
-
-
 def parse_plugin_ref(raw: str) -> tuple[str, str]:
     raw = raw.strip()
     if not raw:
@@ -179,13 +166,6 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "plugin_ref",
         help="Plugin name, plugin id (name@marketplace), or official openai/plugins GitHub tree URL.",
-    )
-    parser.add_argument(
-        "--target",
-        action="append",
-        choices=["global", "xcode"],
-        default=[],
-        help="Codex config target to render into. Repeat for multiple targets. Default: global.",
     )
     parser.add_argument(
         "--disabled",
@@ -283,7 +263,6 @@ def main() -> int:
             plain=args.plain,
         )
 
-    targets = ordered_unique(args.target or ["global"])
     enabled = not args.disabled
     existing_entry: dict[str, Any] | None = None
     for entry in managed:
@@ -300,7 +279,6 @@ def main() -> int:
         "plugin": plugin_name,
         "marketplace": marketplace,
         "enabled": enabled,
-        "targets": targets,
         "category": args.category,
     }
 
@@ -372,7 +350,6 @@ def main() -> int:
         "marketplace": marketplace,
         "plugin_id": f"{plugin_name}@{marketplace}",
         "enabled": enabled,
-        "targets": targets,
         "category": args.category,
         "registry_file": str(registry_file),
         "registry_changed": registry_changed,

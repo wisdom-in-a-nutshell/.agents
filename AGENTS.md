@@ -57,7 +57,7 @@ Personal agent, Codex, Claude, and repo-local lifecycle hook control plane.
 - Run hermetic regression tests only: `./scripts/test-control-plane.sh`
 - Bootstrap external skills/plugins through the agent-facing clients:
   - `./scripts/bootstrap-skill.sh <skills.sh-url-or-upstream-ref> --repo <repo>`
-  - `./scripts/bootstrap-plugin.sh <plugin-name-or-id> --target <global|xcode>`
+  - `./scripts/bootstrap-plugin.sh <plugin-name-or-id>`
 
 Detailed operations live in:
 
@@ -101,4 +101,4 @@ Detailed operations live in:
 - When changing shared bootstrap inputs such as `mcp/config/presets.json`, `codex/config/repo-bootstrap.json`, or repo MCP assignment, prefer `./scripts/bootstrap-machine-agent-control-planes.sh --apply --repo <repo>` so Codex, Claude, and repo-local Copilot hook state are re-rendered together. Use component-only scripts only for intentional single-surface troubleshooting.
 - If `mcp/config/presets.json` changes, run both Codex and Claude control-plane validation in the same change.
 - If `hooks/registry.json`, `hooks/scripts/*`, `hooks/git/*`, `scripts/sync-managed-git-hooks.sh`, or `scripts/sync-copilot-hooks.sh` changes, run shared bootstrap/check plus `./scripts/test-control-plane.sh` in the same change.
-- If `codex/config/global.config.toml`, `codex/config/xcode.config.toml`, or `codex/config/repo-bootstrap.json` changes, run the Codex control-plane validation script in the same change.
+- If `codex/config/global.config.toml` or `codex/config/repo-bootstrap.json` changes, run the Codex control-plane validation script in the same change.
