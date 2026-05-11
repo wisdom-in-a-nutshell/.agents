@@ -6,7 +6,7 @@ That split keeps Codex-specific policy, repo assignment, shared MCP presets, ski
 
 The control plane includes native Codex plugin state plus the repo bootstrap registry in `~/.agents/codex/config/repo-bootstrap.json`.
 
-Codex plugin state lives in `~/.agents/plugins/registry.json`. Plugins stay plugins; the control plane does not split plugin packages into skill or MCP registries.
+Codex plugin scope and state lives in `~/.agents/plugins/registry.json`. Plugins stay plugins; the control plane does not split plugin packages into skill or MCP registries.
 
 The repo bootstrap registry in `~/.agents/codex/config/repo-bootstrap.json` then acts as the canonical source for:
 
@@ -44,6 +44,7 @@ flowchart TD
     A --> R[repo-bootstrap.json]
     P --> Q[sync-plugins-registry.sh]
     P --> C
+    P --> E
     A --> V[bundled-skills-policy.json]
     B --> C[sync-config.sh]
     B --> D[sync-trusted-projects.sh]
@@ -135,12 +136,13 @@ These settings stay close to the repo because they describe how Codex should beh
 1. Canonical Codex policy and assets are edited in `~/.agents`.
 2. Shared machine-facing apply enters through `~/.agents/scripts/bootstrap-machine-agent-control-planes.sh` or `~/.agents/scripts/auto-apply-agent-control-planes.sh`.
 3. The global template drives machine config in `~/.codex`.
-4. Native Codex plugin state from `plugins/registry.json` is rendered into the global Codex config.
+4. Global-scope native Codex plugin state from `plugins/registry.json` is rendered into the global Codex config.
 5. The repo bootstrap registry drives both trusted repo discovery and managed repo-local `.codex/config.toml` generation.
-6. The hook registry drives global `~/.codex/hooks.json` generation plus managed repo-local `.codex/hooks.json` generation.
-7. The Codex bootstrap installs the stale-session archive LaunchAgent, which uses Codex app-server APIs to archive managed-repo threads after their `updatedAt` timestamp is older than the configured threshold.
-8. Codex starts from `~/.codex/config.toml` and any trusted repo-local `.codex/config.toml` and `.codex/hooks.json` in real project repos.
-9. Repo-local overrides refine behavior for one project without changing the global control plane.
+6. Repo-scope native Codex plugin state from `plugins/registry.json` is rendered into assigned repo-local `.codex/config.toml` files.
+7. The hook registry drives global `~/.codex/hooks.json` generation plus managed repo-local `.codex/hooks.json` generation.
+8. The Codex bootstrap installs the stale-session archive LaunchAgent, which uses Codex app-server APIs to archive managed-repo threads after their `updatedAt` timestamp is older than the configured threshold.
+9. Codex starts from `~/.codex/config.toml` and any trusted repo-local `.codex/config.toml` and `.codex/hooks.json` in real project repos.
+10. Repo-local overrides refine behavior for one project without changing the global control plane.
 
 ## Key Boundaries
 
@@ -148,7 +150,7 @@ These settings stay close to the repo because they describe how Codex should beh
 - Applied runtime and volatile state belongs in `~/.codex`.
 - Generic machine bootstrap belongs in `~/GitHub/scripts`.
 - Repo-specific Codex behavior belongs in repo-local `.codex/`.
-- Codex plugin state belongs in `plugins/registry.json`; standalone skills and MCPs belong in their own registries.
+- Codex plugin scope and state belongs in `plugins/registry.json`; standalone skills and MCPs belong in their own registries.
 - The repo registry decides which repos get generated repo-local config and which MCP presets they receive.
 
 ## Notes

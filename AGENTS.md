@@ -83,7 +83,8 @@ Detailed operations live in:
 - Managed plugin entries render global plugin state into `~/.codex/config.toml` and repo-scoped plugin state into managed repo `.codex/config.toml`; standalone skills and MCPs remain separate registries.
 - Keep repo-local skills listed in `skills/registry.json` under `unmanaged_repo_local_skills`.
 - Keep `unmanaged_repo_local_skills` honest: if the target repo exists locally, the repo must contain `.agents/skills/<skill>/SKILL.md` or skill sync should fail until the stale registry entry is removed.
-- Keep repo-local plugins listed in `plugins/registry.json` under `unmanaged_repo_local_plugins`.
+- Keep managed repo-scoped native plugins in `plugins/registry.json` under `managed_plugins` with `scope: "repo"` and `repos`.
+- Keep unmanaged repo-local plugins listed in `plugins/registry.json` under `unmanaged_repo_local_plugins`.
 - Do not add additional manifest files for skill mapping; update `skills/registry.json`.
 - Do not add additional manifest files for plugin mapping; update `plugins/registry.json`.
 - New or promoted agent-facing CLI clients must follow `docs/references/cli-interface-contract.md`.

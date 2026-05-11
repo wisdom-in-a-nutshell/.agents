@@ -44,7 +44,7 @@ Use [Codex Control Plane Ownership](/Users/dobby/.agents/docs/references/codex-c
 - Sync managed plugins and regenerate the Obsidian registry views:
   - [`sync-plugins-registry.sh`](/Users/dobby/.agents/scripts/sync-plugins-registry.sh)
   - `~/.agents/scripts/sync-plugins-registry.sh --apply`
-  - native Codex plugin enable/disable state is rendered by `sync-config.sh`
+  - global native Codex plugin enable/disable state is rendered by `sync-config.sh`; repo-scoped native plugin assignments are rendered by `sync-repo-codex-configs.sh`
 - Bootstrap one managed plugin into the canonical registry:
   - [`bootstrap-plugin.sh`](/Users/dobby/.agents/scripts/bootstrap-plugin.sh)
   - `~/.agents/scripts/bootstrap-plugin.sh build-ios-apps --apply`
@@ -123,7 +123,7 @@ Use [Codex Control Plane Ownership](/Users/dobby/.agents/docs/references/codex-c
 - [`sync-config.sh`](/Users/dobby/.agents/codex/scripts/sync-config.sh)
   - applies the canonical Codex config template into the live global config
   - keeps Apps/connectors globally disabled through the managed `features.apps = false` baseline
-  - renders native Codex plugin enable/disable state from [`plugins/registry.json`](/Users/dobby/.agents/plugins/registry.json)
+  - renders global-scope native Codex plugin enable/disable state from [`plugins/registry.json`](/Users/dobby/.agents/plugins/registry.json)
   - disables selected bundled Codex skills in `~/.codex/config.toml` from [`bundled-skills-policy.json`](/Users/dobby/.agents/codex/config/bundled-skills-policy.json) when the control plane should prefer managed skill copies or avoid duplicate runtime surfaces
   - rewrites machine-specific system-skill paths for the current `$HOME`
   - renders only global Codex lifecycle hooks from [`hooks/registry.json`](/Users/dobby/.agents/hooks/registry.json) into `~/.codex/hooks.json`
@@ -144,6 +144,7 @@ Use [Codex Control Plane Ownership](/Users/dobby/.agents/docs/references/codex-c
   - skips no-op rewrites
 - [`sync-repo-codex-configs.sh`](/Users/dobby/.agents/codex/scripts/sync-repo-codex-configs.sh)
   - renders managed repo-local Codex files from the shared repo inventory plus shared MCP and hook registries
+  - renders repo-scoped native Codex plugin assignments from [`plugins/registry.json`](/Users/dobby/.agents/plugins/registry.json)
   - supports `--check` to fail when rendered repo-local files differ from the current `.codex` files
   - writes `.codex/config.toml` for all managed repos
   - writes `.codex/hooks.json` for all managed repos with only the hooks assigned to that repo
@@ -245,7 +246,7 @@ Use [Codex Control Plane Ownership](/Users/dobby/.agents/docs/references/codex-c
   - `service_tier`
 - Shared MCP preset definitions live separately in [`mcp/config/presets.json`](/Users/dobby/.agents/mcp/config/presets.json).
 - Shared lifecycle hook definitions live separately in [`hooks/registry.json`](/Users/dobby/.agents/hooks/registry.json).
-- Native Codex plugin state lives separately in [`plugins/registry.json`](/Users/dobby/.agents/plugins/registry.json).
+- Native Codex plugin scope and state lives separately in [`plugins/registry.json`](/Users/dobby/.agents/plugins/registry.json).
 - The global defaults block supplies fallback values for repos that do not override them.
 
 ## Automatic Cross-Machine Apply

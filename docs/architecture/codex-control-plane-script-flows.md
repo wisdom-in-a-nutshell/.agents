@@ -9,7 +9,7 @@ Use [Codex Control Plane Operations](/Users/dobby/.agents/docs/references/codex-
 
 The scripts are easier to understand if you split them into three groups:
 
-- plugin registry scripts that render native Codex plugin state
+- plugin registry scripts that render native Codex plugin scope and state
 - apply scripts that write config and trust state
 - post-sync reconcile scripts that auto-apply new control-plane revisions
 - startup scripts that shape the terminal and Ghostty experience
@@ -21,6 +21,7 @@ The scripts are easier to understand if you split them into three groups:
 flowchart TD
     P[plugins/registry.json] --> Q[sync-plugins-registry.sh]
     P --> B[sync-config.sh]
+    P --> D
     Q --> V[plugin registry views]
     A[bootstrap-machine-codex.sh] --> B[sync-config.sh]
     A --> C[sync-trusted-projects.sh]
@@ -48,11 +49,12 @@ flowchart TD
 - [`sync-config.sh`](/Users/dobby/.agents/codex/scripts/sync-config.sh)
   - writes the managed global Codex config
   - injects machine-wide global MCP servers from [`mcp/config/presets.json`](/Users/dobby/.agents/mcp/config/presets.json)
-  - renders native Codex plugin enable/disable state from [`plugins/registry.json`](/Users/dobby/.agents/plugins/registry.json)
+  - renders global-scope native Codex plugin enable/disable state from [`plugins/registry.json`](/Users/dobby/.agents/plugins/registry.json)
 - [`sync-trusted-projects.sh`](/Users/dobby/.agents/codex/scripts/sync-trusted-projects.sh)
   - writes exact trust entries for discovered Git repos
 - [`sync-repo-codex-configs.sh`](/Users/dobby/.agents/codex/scripts/sync-repo-codex-configs.sh)
   - renders managed repo-local `.codex/config.toml` files for all registered repos
+  - renders repo-scoped native Codex plugin assignments from [`plugins/registry.json`](/Users/dobby/.agents/plugins/registry.json)
   - prunes stale managed repo-local `.codex/agents/*.toml` files left by older control-plane versions
   - resolves repo MCP presets through [`mcp/config/presets.json`](/Users/dobby/.agents/mcp/config/presets.json)
 - [`repo-bootstrap.json`](/Users/dobby/.agents/codex/config/repo-bootstrap.json)
