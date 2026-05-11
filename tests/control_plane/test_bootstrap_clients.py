@@ -201,6 +201,8 @@ class BootstrapPluginClientContractTests(TempDirTestCase):
         self.assertFalse(payload["data"]["apply"])
         self.assertEqual(payload["data"]["plugin"], "example-plugin")
         self.assertEqual(payload["data"]["marketplace"], "openai-curated")
+        self.assertEqual(payload["data"]["scope"], "global")
+        self.assertEqual(payload["data"]["repos"], [])
         self.assertNotIn("targets", payload["data"])
         self.assertIn("request_id", payload["meta"])
         self.assertIn("duration_ms", payload["meta"])
@@ -237,3 +239,73 @@ class BootstrapPluginClientContractTests(TempDirTestCase):
         self.assertEqual(payload["error"]["code"], "E_INVALID_PLUGIN_REF")
         self.assertFalse(payload["error"]["retryable"])
         self.assertIn("plugin name", payload["error"]["hint"])
+
+    def test_repo_scope_requires_repo_and_records_repo_targets(self) -> None:
+        github_root = self.temp_path / "GitHub"
+        repo = github_root / "target-repo"
+        repo.mkdir(parents=True)
+        registry = self.temp_path / "plugins" / "registry.json"
+        write_json(
+            registry,
+            {
+                "managed_plugins": [],
+                "paths": {"github_root": str(github_root)},
+                "unmanaged_repo_local_plugins": [],
+                "version": 1,
+            },
+        )
+
+        result = run_command(
+            [
+                sys.executable,
+                str(REPO_ROOT / "scripts/bootstrap-plugin.py"),
+                "example-plugin",
+                "--scope",
+                "repo",
+                "--repo",
+                "target-repo",
+                "--registry-file",
+                str(registry),
+                "--no-input",
+            ]
+        )
+
+        payload = json.loads(result.stdout)
+        self.assertEqual(payload["status"], "ok")
+        self.assertEqual(payload["data"]["scope"], "repo")
+        self.assertEqual(payload["data"]["repos"], ["target-repo"])
+        self.assertEqual(
+            payload["data"]["resolved_repo_roots"],
+            {"target-repo": str(repo.resolve())},
+        )
+
+    def test_repo_scope_without_repo_is_usage_error(self) -> None:
+        registry = self.temp_path / "plugins" / "registry.json"
+        write_json(
+            registry,
+            {
+                "managed_plugins": [],
+                "paths": {"github_root": str(self.temp_path / "GitHub")},
+                "unmanaged_repo_local_plugins": [],
+                "version": 1,
+            },
+        )
+
+        result = run_command(
+            [
+                sys.executable,
+                str(REPO_ROOT / "scripts/bootstrap-plugin.py"),
+                "example-plugin",
+                "--scope",
+                "repo",
+                "--registry-file",
+                str(registry),
+                "--no-input",
+            ],
+            check=False,
+        )
+
+        self.assertEqual(result.returncode, 2)
+        payload = json.loads(result.stdout)
+        self.assertEqual(payload["status"], "error")
+        self.assertEqual(payload["error"]["code"], "E_REPO_REQUIRED")

@@ -19,6 +19,7 @@ class CodexRepoSyncTests(TempDirTestCase):
 
         repo_registry_path = root / "codex/config/repo-bootstrap.json"
         mcp_registry_path = root / "mcp/config/presets.json"
+        plugin_registry_path = root / "plugins/registry.json"
         stale_managed_role = write_text(
             adi / ".codex/agents/writer.toml",
             "\n".join(
@@ -63,6 +64,8 @@ class CodexRepoSyncTests(TempDirTestCase):
                 str(repo_registry_path),
                 "--mcp-registry",
                 str(mcp_registry_path),
+                "--plugin-registry",
+                str(plugin_registry_path),
             ]
         )
 
@@ -79,3 +82,74 @@ class CodexRepoSyncTests(TempDirTestCase):
         self.assertIn('"SessionStart"', repo_hooks)
 
         self.assertFalse(stale_managed_role.exists())
+
+    def test_renders_repo_scoped_plugins_only_for_assigned_repo(self) -> None:
+        root = make_control_plane_root(self.temp_path)
+        github_root = self.temp_path / "GitHub"
+        adi = init_git_repo(github_root / "adi")
+        win = init_git_repo(github_root / "win")
+
+        repo_registry_path = root / "codex/config/repo-bootstrap.json"
+        mcp_registry_path = root / "mcp/config/presets.json"
+        plugin_registry_path = root / "plugins/registry.json"
+
+        write_json(
+            repo_registry_path,
+            {
+                "defaults": {},
+                "repos": [
+                    {"path": str(adi)},
+                    {"path": str(win)},
+                ],
+            },
+        )
+        write_json(mcp_registry_path, default_mcp_registry())
+        write_json(
+            plugin_registry_path,
+            {
+                "version": 1,
+                "paths": {
+                    "github_root": str(github_root),
+                },
+                "managed_plugins": [
+                    {
+                        "plugin": "computer-use",
+                        "marketplace": "openai-bundled",
+                        "enabled": True,
+                        "scope": "global",
+                        "repos": [],
+                        "category": "Productivity",
+                    },
+                    {
+                        "plugin": "build-ios-apps",
+                        "marketplace": "openai-curated",
+                        "enabled": True,
+                        "scope": "repo",
+                        "repos": ["adi"],
+                        "category": "Coding",
+                    },
+                ],
+                "unmanaged_repo_local_plugins": [],
+            },
+        )
+
+        run_command(
+            [
+                str(REPO_ROOT / "codex/scripts/sync-repo-codex-configs.sh"),
+                "--apply",
+                "--registry",
+                str(repo_registry_path),
+                "--mcp-registry",
+                str(mcp_registry_path),
+                "--plugin-registry",
+                str(plugin_registry_path),
+            ]
+        )
+
+        adi_config = (adi / ".codex/config.toml").read_text(encoding="utf-8")
+        win_config = (win / ".codex/config.toml").read_text(encoding="utf-8")
+
+        self.assertIn('[plugins."build-ios-apps@openai-curated"]', adi_config)
+        self.assertIn("enabled = true", adi_config)
+        self.assertNotIn('[plugins."computer-use@openai-bundled"]', adi_config)
+        self.assertNotIn("build-ios-apps@openai-curated", win_config)

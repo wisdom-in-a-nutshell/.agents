@@ -284,6 +284,8 @@ plugins, _, _ = validate_plugin_registry(
 )
 
 for plugin in plugins:
+    if plugin.scope != "global":
+        continue
     enabled = "true" if plugin.enabled else "false"
     print(f'plugins."{plugin.plugin_id}"\x1Fenabled\x1F{enabled}')
 PY
@@ -923,7 +925,8 @@ if plugin_registry.is_file():
         home=Path.home(),
     )
     for plugin in plugins:
-        allowed_plugins.add(plugin.plugin_id)
+        if plugin.scope == "global":
+            allowed_plugins.add(plugin.plugin_id)
 
 lines = target_text.splitlines(keepends=True)
 output: list[str] = []
@@ -1133,7 +1136,7 @@ plugins, _, _ = validate_plugin_registry(
 enabled_plugin_names = [
     plugin.plugin
     for plugin in plugins
-    if plugin.enabled and plugin.marketplace == "openai-bundled"
+    if plugin.enabled and plugin.marketplace == "openai-bundled" and plugin.scope in {"global", "repo"}
 ]
 
 

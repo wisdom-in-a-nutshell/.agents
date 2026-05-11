@@ -38,6 +38,7 @@ def generate_registry_base(views_dir: Path) -> None:
     - 'file.inFolder("docs/references/registry/plugins-items")'
 formulas:
   enabled_badge: 'if(enabled, "✅ enabled", "⏸ disabled")'
+  scope_badge: 'if(scope == "global", "🌍 global", if(scope == "repo", "📦 repo", if(scope == "dormant", "⏸ dormant", scope)))'
 properties:
   registry_kind:
     displayName: Type
@@ -51,6 +52,14 @@ properties:
     displayName: Enabled
   formula.enabled_badge:
     displayName: State
+  scope:
+    displayName: Scope
+  formula.scope_badge:
+    displayName: Scope
+  repos:
+    displayName: Repos
+  repos_csv:
+    displayName: Repos CSV
   category:
     displayName: Category
   repo:
@@ -64,8 +73,12 @@ views:
       - plugin_id
       - marketplace
       - formula.enabled_badge
+      - formula.scope_badge
+      - repos
       - category
     sort:
+      - property: scope
+        direction: ASC
       - property: plugin
         direction: ASC
   - type: table
@@ -103,6 +116,8 @@ def generate_registry_items(
     repo_local_dir.mkdir(parents=True, exist_ok=True)
 
     for item in managed:
+        repos = list(item.repos)
+        repos_csv = ",".join(repos) if repos else ("*" if item.scope == "global" else "-")
         lines = [
             "---",
             "registry_kind: managed",
@@ -110,8 +125,17 @@ def generate_registry_items(
             f"plugin_id: {_yaml_str(item.plugin_id)}",
             f"marketplace: {_yaml_str(item.marketplace)}",
             f"enabled: {'true' if item.enabled else 'false'}",
+            f"scope: {_yaml_str(item.scope)}",
+            f"repos_csv: {_yaml_str(repos_csv)}",
             f"category: {_yaml_str(item.category)}",
+            "repos:",
         ]
+        if repos:
+            lines.extend([f"  - {_yaml_str(repo)}" for repo in repos])
+        elif item.scope == "global":
+            lines.append('  - "*"')
+        else:
+            lines.append('  - "-"')
         lines.extend(
             [
                 "---",

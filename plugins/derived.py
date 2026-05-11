@@ -5,12 +5,17 @@ from pathlib import Path
 from typing import Any
 
 
+ALLOWED_SCOPES = {"global", "repo", "dormant"}
+
+
 @dataclass(frozen=True)
 class ManagedPlugin:
     plugin: str
     marketplace: str
     enabled: bool
     category: str
+    scope: str
+    repos: tuple[str, ...]
 
     @property
     def plugin_id(self) -> str:
@@ -21,6 +26,12 @@ def expand_path(raw: str, home: Path) -> Path:
     if raw.startswith("~/"):
         return home / raw[2:]
     return Path(raw)
+
+
+def resolve_repo_root(repo: str, github_root: Path, home: Path) -> Path:
+    if repo.startswith("~/") or repo.startswith("/"):
+        return expand_path(repo, home).resolve()
+    return (github_root / repo).resolve()
 
 
 def ensure_str(value: Any, field: str, idx: int, *, label: str = "managed_plugins") -> str:
@@ -64,11 +75,29 @@ def validate_plugin_registry(
         enabled = item.get("enabled", True)
         if not isinstance(enabled, bool):
             raise ValueError(f"managed_plugins[{idx}] enabled must be a boolean")
+        scope = str(item.get("scope", "global")).strip() or "global"
+        if scope not in ALLOWED_SCOPES:
+            raise ValueError(f"managed_plugins[{idx}] invalid scope: {scope}")
+
+        repos_raw = item.get("repos", [])
+        if not isinstance(repos_raw, list):
+            raise ValueError(f"managed_plugins[{idx}] repos must be an array")
+        repos: list[str] = []
+        for repo in repos_raw:
+            repo_ref = str(repo).strip()
+            if repo_ref and repo_ref not in repos:
+                repos.append(repo_ref)
+        if scope == "repo" and not repos:
+            raise ValueError(f"managed_plugins[{idx}] repo scope needs repos")
+        if scope in {"global", "dormant"}:
+            repos = []
+        if scope == "dormant" and enabled:
+            raise ValueError(f"managed_plugins[{idx}] dormant scope must be disabled")
 
         if "targets" in item:
             raise ValueError(
                 f"managed_plugins[{idx}] targets is no longer supported; "
-                "native Codex plugins render only to the global Codex config"
+                "use scope/repos for global, repo-local, or dormant native Codex plugins"
             )
 
         plugin_id = f"{plugin}@{marketplace}"
@@ -82,6 +111,8 @@ def validate_plugin_registry(
                 marketplace=marketplace,
                 enabled=enabled,
                 category=category,
+                scope=scope,
+                repos=tuple(repos),
             )
         )
 

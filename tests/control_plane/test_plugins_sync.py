@@ -25,6 +25,8 @@ class ManagedPluginsRegistrySyncTests(TempDirTestCase):
                         "plugin": "build-ios-apps",
                         "marketplace": "openai-curated",
                         "enabled": True,
+                        "scope": "repo",
+                        "repos": ["adi"],
                         "category": "Coding",
                     }
                 ],
@@ -64,6 +66,8 @@ class ManagedPluginsRegistrySyncTests(TempDirTestCase):
         self.assertIn('plugin_id: "build-ios-apps@openai-curated"', managed_text)
         self.assertIn('marketplace: "openai-curated"', managed_text)
         self.assertIn("enabled: true", managed_text)
+        self.assertIn('scope: "repo"', managed_text)
+        self.assertIn('  - "adi"', managed_text)
         self.assertNotIn("targets", managed_text)
 
     def test_empty_managed_plugins_is_valid(self) -> None:

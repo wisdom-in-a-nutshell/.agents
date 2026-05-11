@@ -25,6 +25,7 @@ from tests.control_plane.support import (
     run_command,
     write_executable,
     write_json,
+    write_text,
 )
 
 
@@ -701,6 +702,38 @@ class HooksControlPlaneTests(TempDirTestCase):
         root = make_control_plane_root(self.temp_path)
         home = self.temp_path / "home"
         write_json(root / "mcp/config/presets.json", default_mcp_registry())
+        write_json(
+            root / "plugins/registry.json",
+            {
+                "version": 1,
+                "paths": {
+                    "github_root": str(self.temp_path),
+                },
+                "managed_plugins": [
+                    {
+                        "plugin": "computer-use",
+                        "marketplace": "openai-bundled",
+                        "enabled": True,
+                        "scope": "global",
+                        "repos": [],
+                        "category": "Productivity",
+                    },
+                    {
+                        "plugin": "build-ios-apps",
+                        "marketplace": "openai-curated",
+                        "enabled": True,
+                        "scope": "repo",
+                        "repos": ["adi"],
+                        "category": "Coding",
+                    },
+                ],
+                "unmanaged_repo_local_plugins": [],
+            },
+        )
+        write_text(
+            home / ".codex/config.toml",
+            '[plugins."build-ios-apps@openai-curated"]\nenabled = true\n',
+        )
 
         run_command(
             [
@@ -729,6 +762,7 @@ class HooksControlPlaneTests(TempDirTestCase):
         self.assertIn('plan_mode_reasoning_effort = "high"', rendered_config)
         self.assertIn("hooks = true", rendered_config)
         self.assertIn('[plugins."computer-use@openai-bundled"]', rendered_config)
+        self.assertNotIn("build-ios-apps@openai-curated", rendered_config)
         self.assertIn(
             f'path = "{home}/.codex/skills/.system/plugin-creator/SKILL.md"',
             rendered_config,

@@ -6,6 +6,7 @@ CHECK=0
 REGISTRY_FILE=""
 MCP_REGISTRY_FILE=""
 HOOKS_REGISTRY_FILE=""
+PLUGIN_REGISTRY_FILE=""
 REPO_FILTERS=()
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -14,6 +15,7 @@ ROOT_DIR="$(cd "$CONTROL_PLANE_DIR/.." && pwd)"
 DEFAULT_REGISTRY_FILE="${CONTROL_PLANE_DIR}/config/repo-bootstrap.json"
 DEFAULT_MCP_REGISTRY_FILE="${ROOT_DIR}/mcp/config/presets.json"
 DEFAULT_HOOKS_REGISTRY_FILE="${ROOT_DIR}/hooks/registry.json"
+DEFAULT_PLUGIN_REGISTRY_FILE="${ROOT_DIR}/plugins/registry.json"
 
 usage() {
   cat <<USAGE
@@ -33,6 +35,9 @@ Options:
   --hooks-registry <path>
                          Override shared hooks registry
                          (default: hooks/registry.json)
+  --plugin-registry <path>
+                         Override native Codex plugin registry
+                         (default: plugins/registry.json)
   --repo <path>          Limit sync to an exact repo path (repeatable)
   -h, --help             Show this help
 
@@ -90,6 +95,10 @@ while [[ $# -gt 0 ]]; do
       HOOKS_REGISTRY_FILE="${2:-}"
       shift 2
       ;;
+    --plugin-registry)
+      PLUGIN_REGISTRY_FILE="${2:-}"
+      shift 2
+      ;;
     --repo)
       REPO_FILTERS+=("${2:-}")
       shift 2
@@ -113,12 +122,17 @@ fi
 if [[ -z "$HOOKS_REGISTRY_FILE" ]]; then
   HOOKS_REGISTRY_FILE="$DEFAULT_HOOKS_REGISTRY_FILE"
 fi
+if [[ -z "$PLUGIN_REGISTRY_FILE" ]]; then
+  PLUGIN_REGISTRY_FILE="$DEFAULT_PLUGIN_REGISTRY_FILE"
+fi
 [[ -f "$REGISTRY_FILE" ]] || die "Missing registry file: $REGISTRY_FILE"
 [[ -r "$REGISTRY_FILE" ]] || die "Registry file is not readable: $REGISTRY_FILE"
 [[ -f "$MCP_REGISTRY_FILE" ]] || die "Missing MCP registry file: $MCP_REGISTRY_FILE"
 [[ -r "$MCP_REGISTRY_FILE" ]] || die "MCP registry file is not readable: $MCP_REGISTRY_FILE"
 [[ -f "$HOOKS_REGISTRY_FILE" ]] || die "Missing hooks registry file: $HOOKS_REGISTRY_FILE"
 [[ -r "$HOOKS_REGISTRY_FILE" ]] || die "Hooks registry file is not readable: $HOOKS_REGISTRY_FILE"
+[[ -f "$PLUGIN_REGISTRY_FILE" ]] || die "Missing plugin registry file: $PLUGIN_REGISTRY_FILE"
+[[ -r "$PLUGIN_REGISTRY_FILE" ]] || die "Plugin registry file is not readable: $PLUGIN_REGISTRY_FILE"
 
 ensure_parent_dir() {
   local file="$1"
@@ -161,7 +175,7 @@ is_drifted() {
 }
 
 MANIFEST_FILE="${TMP_DIR}/manifest.tsv"
-python3 - "$REGISTRY_FILE" "$MCP_REGISTRY_FILE" "$HOOKS_REGISTRY_FILE" "$TMP_DIR" ${REPO_FILTERS[@]+"${REPO_FILTERS[@]}"} >"$MANIFEST_FILE" <<'PY'
+PYTHONPATH="$ROOT_DIR" python3 - "$REGISTRY_FILE" "$MCP_REGISTRY_FILE" "$HOOKS_REGISTRY_FILE" "$PLUGIN_REGISTRY_FILE" "$TMP_DIR" ${REPO_FILTERS[@]+"${REPO_FILTERS[@]}"} >"$MANIFEST_FILE" <<'PY'
 from __future__ import annotations
 
 import hashlib
@@ -291,6 +305,7 @@ def render_repo_config(
     defaults: dict,
     override: dict,
     presets: dict,
+    repo_plugins: list,
 ) -> str:
     lines = [
         "# Managed by ~/.agents/codex/scripts/sync-repo-codex-configs.sh.",
@@ -324,6 +339,12 @@ def render_repo_config(
         for key in sorted(features):
             lines.append(f"{key} = {toml_value(features[key])}")
 
+    for plugin in sorted(repo_plugins, key=lambda item: item.plugin_id):
+        rendered_anything = True
+        lines.append("")
+        lines.append(f'[plugins."{plugin.plugin_id}"]')
+        lines.append(f"enabled = {toml_value(plugin.enabled)}")
+
     preset_names = override.get("mcp_presets", [])
     if not isinstance(preset_names, list):
         raise TypeError(f"mcp_presets for {repo} must be an array")
@@ -354,13 +375,15 @@ def render_repo_config(
 registry_path = Path(sys.argv[1]).expanduser().resolve()
 mcp_registry_path = Path(sys.argv[2]).expanduser().resolve()
 hooks_registry_path = Path(sys.argv[3]).expanduser().resolve()
-tmp_dir = Path(sys.argv[4]).resolve()
-filters = {normalize_path(path) for path in sys.argv[5:] if path}
+plugin_registry_path = Path(sys.argv[4]).expanduser().resolve()
+tmp_dir = Path(sys.argv[5]).resolve()
+filters = {normalize_path(path) for path in sys.argv[6:] if path}
 
 root_dir = registry_path.parent.parent.parent.resolve()
 sys.path.insert(0, str(root_dir))
 
 from hooks.control_plane import load_hooks_registry, render_codex_hooks
+from plugins.derived import resolve_repo_root, validate_plugin_registry
 
 
 data = json.loads(registry_path.read_text(encoding="utf-8"))
@@ -368,6 +391,12 @@ defaults = data.get("defaults", {})
 repos_raw = data.get("repos", [])
 presets, _global_presets = validate_mcp_registry(mcp_registry_path)
 hooks_registry = load_hooks_registry(hooks_registry_path)
+plugin_registry_data = json.loads(plugin_registry_path.read_text(encoding="utf-8"))
+plugins, _unmanaged_plugins, plugin_github_root = validate_plugin_registry(
+    plugin_registry_data,
+    root_dir=plugin_registry_path.parent.parent,
+    home=Path.home(),
+)
 
 if not isinstance(defaults, dict):
     raise TypeError("defaults must be an object")
@@ -400,6 +429,15 @@ for item in repos_raw:
     repo_copy["_repo_name"] = repo_name
     repo_items_all.append(repo_copy)
 
+repo_plugins_by_root: dict[str, list] = {item["_actual_repo"]: [] for item in repo_items_all}
+for plugin in plugins:
+    if plugin.scope != "repo":
+        continue
+    for repo_ref in plugin.repos:
+        repo_root = str(resolve_repo_root(repo_ref, plugin_github_root, Path.home()))
+        if repo_root in repo_plugins_by_root:
+            repo_plugins_by_root[repo_root].append(plugin)
+
 manifest_lines: list[str] = []
 managed_header = "# Managed by ~/.agents/codex/scripts/sync-repo-codex-configs.sh."
 for item in repo_items_all:
@@ -414,6 +452,7 @@ for item in repo_items_all:
         defaults,
         item,
         presets,
+        repo_plugins_by_root.get(actual_repo, []),
     )
     rendered_path = tmp_dir / f"{hashlib.sha256(actual_repo.encode()).hexdigest()}.toml"
     rendered_path.write_text(rendered, encoding="utf-8")

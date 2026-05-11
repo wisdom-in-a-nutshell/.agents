@@ -106,6 +106,7 @@ def make_control_plane_root(base_dir: Path) -> Path:
         "hooks/__init__.py",
         "hooks/control_plane.py",
         "hooks/registry.json",
+        "plugins/derived.py",
     ):
         copy_repo_file(relative_path, root)
     (root / "codex/config").mkdir(parents=True, exist_ok=True)
@@ -178,6 +179,8 @@ def default_plugin_registry() -> dict[str, Any]:
                 "plugin": "computer-use",
                 "marketplace": "openai-bundled",
                 "enabled": True,
+                "scope": "global",
+                "repos": [],
                 "category": "Productivity",
             }
         ],

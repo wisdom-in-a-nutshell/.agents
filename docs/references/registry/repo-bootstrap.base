@@ -10,6 +10,14 @@ properties:
     displayName: MCP Count
   mcps:
     displayName: MCPs
+  plugin_count:
+    displayName: Plugin Count
+  plugins:
+    displayName: Plugins
+  global_plugins:
+    displayName: Global Plugins
+  repo_plugins:
+    displayName: Repo Plugins
   skill_count:
     displayName: Skill Count
   repo_local_skill_count:
@@ -33,6 +41,7 @@ views:
     name: Repo Bootstrap
     order:
       - repo_name
+      - plugin_count
       - skill_count
       - repo_local_skill_count
       - mcps
@@ -53,6 +62,8 @@ views:
     filters: 'skill_count > 0'
     order:
       - repo_name
+      - plugin_count
+      - plugins
       - skill_count
       - repo_local_skill_count
       - global_skills

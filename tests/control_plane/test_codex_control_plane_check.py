@@ -57,6 +57,8 @@ class CodexControlPlaneCheckTests(TempDirTestCase):
             str(root / "mcp/config/presets.json"),
             "--hooks-registry",
             str(root / "hooks/registry.json"),
+            "--plugin-registry",
+            str(root / "plugins/registry.json"),
             "--repo",
             str(repo),
         ]
@@ -72,6 +74,8 @@ class CodexControlPlaneCheckTests(TempDirTestCase):
                 str(root / "mcp/config/presets.json"),
                 "--hooks-registry",
                 str(root / "hooks/registry.json"),
+                "--plugin-registry",
+                str(root / "plugins/registry.json"),
             ],
             env={"HOME": str(home)},
         )

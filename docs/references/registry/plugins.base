@@ -3,6 +3,7 @@ filters:
     - 'file.inFolder("docs/references/registry/plugins-items")'
 formulas:
   enabled_badge: 'if(enabled, "✅ enabled", "⏸ disabled")'
+  scope_badge: 'if(scope == "global", "🌍 global", if(scope == "repo", "📦 repo", if(scope == "dormant", "⏸ dormant", scope)))'
 properties:
   registry_kind:
     displayName: Type
@@ -16,6 +17,14 @@ properties:
     displayName: Enabled
   formula.enabled_badge:
     displayName: State
+  scope:
+    displayName: Scope
+  formula.scope_badge:
+    displayName: Scope
+  repos:
+    displayName: Repos
+  repos_csv:
+    displayName: Repos CSV
   category:
     displayName: Category
   repo:
@@ -29,8 +38,12 @@ views:
       - plugin_id
       - marketplace
       - formula.enabled_badge
+      - formula.scope_badge
+      - repos
       - category
     sort:
+      - property: scope
+        direction: ASC
       - property: plugin
         direction: ASC
   - type: table

@@ -152,36 +152,57 @@ def enabled_canonical_plugin_ids(agents_repo: Path) -> set[str]:
     return enabled
 
 
-def registry_plugin_ids(agents_repo: Path) -> set[str]:
+def expand_registry_path(raw: str, home: Path) -> Path:
+    if raw.startswith("~/"):
+        return home / raw[2:]
+    return Path(raw)
+
+
+def resolve_registry_repo(repo: str, github_root: Path, home: Path) -> Path:
+    if repo.startswith("~/") or repo.startswith("/"):
+        return expand_registry_path(repo, home).resolve()
+    return (github_root / repo).resolve()
+
+
+def registry_plugin_entries(agents_repo: Path, home: Path) -> list[dict[str, Any]]:
     registry_path = agents_repo / "plugins" / "registry.json"
     if not registry_path.is_file():
-        return set()
+        return []
     registry = load_json(registry_path)
-    ids: set[str] = set()
+    paths = registry.get("paths", {})
+    if not isinstance(paths, dict):
+        paths = {}
+    github_root_raw = paths.get("github_root", "~/GitHub")
+    github_root = expand_registry_path(str(github_root_raw), home).resolve()
+
+    entries: list[dict[str, Any]] = []
     for item in registry.get("managed_plugins", []):
         if not isinstance(item, dict):
             continue
         plugin = item.get("plugin")
         marketplace = item.get("marketplace")
-        if isinstance(plugin, str) and isinstance(marketplace, str):
-            ids.add(f"{plugin}@{marketplace}")
-    return ids
-
-
-def enabled_registry_plugin_ids(agents_repo: Path) -> set[str]:
-    registry_path = agents_repo / "plugins" / "registry.json"
-    if not registry_path.is_file():
-        return set()
-    registry = load_json(registry_path)
-    ids: set[str] = set()
-    for item in registry.get("managed_plugins", []):
-        if not isinstance(item, dict) or item.get("enabled") is not True:
+        if not isinstance(plugin, str) or not isinstance(marketplace, str):
             continue
-        plugin = item.get("plugin")
-        marketplace = item.get("marketplace")
-        if isinstance(plugin, str) and isinstance(marketplace, str):
-            ids.add(f"{plugin}@{marketplace}")
-    return ids
+        repos_raw = item.get("repos", [])
+        repos = [str(repo).strip() for repo in repos_raw] if isinstance(repos_raw, list) else []
+        entries.append(
+            {
+                "id": f"{plugin}@{marketplace}",
+                "enabled": item.get("enabled") is True,
+                "scope": str(item.get("scope", "global")).strip() or "global",
+                "repos": [repo for repo in repos if repo],
+                "github_root": github_root,
+            }
+        )
+    return entries
+
+
+def registry_plugin_ids(agents_repo: Path, home: Path) -> set[str]:
+    return {entry["id"] for entry in registry_plugin_entries(agents_repo, home)}
+
+
+def enabled_registry_plugin_entries(agents_repo: Path, home: Path) -> list[dict[str, Any]]:
+    return [entry for entry in registry_plugin_entries(agents_repo, home) if entry["enabled"]]
 
 
 def installed_codex_plugins(home: Path) -> list[dict[str, Any]]:
@@ -227,7 +248,7 @@ def installed_codex_plugins(home: Path) -> list[dict[str, Any]]:
 
 def audit_codex_plugins(agents_repo: Path, home: Path) -> dict[str, Any]:
     installed = installed_codex_plugins(home)
-    known_plugin_ids = configured_plugin_ids(agents_repo) | registry_plugin_ids(agents_repo)
+    known_plugin_ids = configured_plugin_ids(agents_repo) | registry_plugin_ids(agents_repo, home)
 
     malformed = [plugin for plugin in installed if plugin.get("manifest_error")]
     if malformed:
@@ -284,23 +305,59 @@ def plugin_enabled_in_config(config_path: Path, plugin_id: str) -> bool:
 
 
 def audit_required_codex_plugins(agents_repo: Path, home: Path) -> dict[str, Any]:
-    registry_enabled = enabled_registry_plugin_ids(agents_repo)
     canonical_enabled = enabled_canonical_plugin_ids(agents_repo)
-    required_ids = sorted(registry_enabled | canonical_enabled)
+    registry_enabled = enabled_registry_plugin_entries(agents_repo, home)
+    required_ids = sorted(
+        set(canonical_enabled) | {entry["id"] for entry in registry_enabled}
+    )
     installed_ids = {plugin["id"] for plugin in installed_codex_plugins(home)}
     live_global_config = home / ".codex" / "config.toml"
 
     failures: list[str] = []
+    repo_targets: dict[str, list[str]] = {}
     details: dict[str, Any] = {
         "required_plugin_ids": required_ids,
         "installed_plugin_ids": sorted(installed_ids),
         "live_global_config": str(live_global_config),
     }
-    for plugin_id in required_ids:
+    for plugin_id in canonical_enabled:
         if plugin_id not in installed_ids:
             failures.append(f"{plugin_id} is enabled canonically but not installed in ~/.codex/plugins/cache")
         if not plugin_enabled_in_config(live_global_config, plugin_id):
             failures.append(f"{plugin_id} is not enabled in live ~/.codex/config.toml")
+
+    for entry in registry_enabled:
+        plugin_id = entry["id"]
+        scope = entry["scope"]
+        if scope == "global":
+            if plugin_id not in installed_ids:
+                failures.append(f"{plugin_id} is enabled globally but not installed in ~/.codex/plugins/cache")
+            if not plugin_enabled_in_config(live_global_config, plugin_id):
+                failures.append(f"{plugin_id} is not enabled in live ~/.codex/config.toml")
+            continue
+        if scope != "repo":
+            continue
+
+        existing_targets: list[Path] = []
+        github_root = entry["github_root"]
+        if not isinstance(github_root, Path):
+            continue
+        for repo_ref in entry["repos"]:
+            repo_root = resolve_registry_repo(str(repo_ref), github_root, home)
+            if repo_root.exists():
+                existing_targets.append(repo_root)
+        if not existing_targets:
+            continue
+
+        repo_targets[plugin_id] = [str(path) for path in existing_targets]
+        if plugin_id not in installed_ids:
+            failures.append(f"{plugin_id} is enabled for repo scope but not installed in ~/.codex/plugins/cache")
+        for repo_root in existing_targets:
+            repo_config = repo_root / ".codex" / "config.toml"
+            if not plugin_enabled_in_config(repo_config, plugin_id):
+                failures.append(f"{plugin_id} is not enabled in {repo_config}")
+
+    details["repo_plugin_targets"] = repo_targets
 
     if failures:
         return check_result(

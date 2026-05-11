@@ -27,6 +27,7 @@ flowchart TD
     D --> K
     D --> F
     P --> K
+    P --> F
     K --> G
     E --> G
     F --> I
@@ -41,7 +42,7 @@ flowchart TD
 - `global.config.toml` defines the managed baseline for terminal Codex.
 - `bundled-skills-policy.json` classifies OpenAI-bundled runtime skills as allowed or disabled so new upstream bundled skills cannot silently drift into the local control plane.
 - `../mcp/config/presets.json` defines the shared MCP presets and machine-wide global MCP defaults.
-- `../../plugins/registry.json` defines native Codex plugin enable/disable state.
+- `../../plugins/registry.json` defines native Codex plugin scope and enable/disable state.
 - `repo-bootstrap.json` defines:
   - which repos are managed
   - which MCP presets each repo gets
@@ -54,7 +55,7 @@ These files are the source of truth.
 - `sync-config.sh` writes the managed baseline into `~/.codex/config.toml`.
 - `sync-config.sh` prunes stale managed agent role declarations and role files from older versions of this control plane.
 - It preserves machine-specific/runtime-specific state that should not live in git.
-- It renders native Codex plugin entries from `plugins/registry.json` and writes disabled bundled-skill entries from `bundled-skills-policy.json`.
+- It renders only global-scope native Codex plugin entries from `plugins/registry.json` and writes disabled bundled-skill entries from `bundled-skills-policy.json`.
 - It also prunes stale managed keys when the canonical templates no longer want them, while preserving unrelated runtime MCP sections and only injecting the shared global MCP defaults.
 
 Example:
@@ -69,10 +70,10 @@ So trust sync is part of config layering, not a separate unrelated feature.
 
 ### Repo-Local Config
 
-- `sync-repo-codex-configs.sh` generates repo-local `.codex/config.toml` files from `repo-bootstrap.json` plus shared MCP presets.
+- `sync-repo-codex-configs.sh` generates repo-local `.codex/config.toml` files from `repo-bootstrap.json`, shared MCP presets, and repo-scoped plugin assignments from `plugins/registry.json`.
 - Most repos can have a minimal managed file with no repo-local overrides.
 - Some repos get MCP presets or later model-specific overrides.
-- `sync-repo-bootstrap-registry.sh` regenerates user-facing Obsidian views for the same registry under [`docs/references/registry/`](/Users/dobby/.agents/docs/references/registry) so the current repo assignments stay visible in Obsidian, including effective skills merged from [`skills/registry.json`](/Users/dobby/.agents/skills/registry.json).
+- `sync-repo-bootstrap-registry.sh` regenerates user-facing Obsidian views for the same registry under [`docs/references/registry/`](/Users/dobby/.agents/docs/references/registry) so the current repo assignments stay visible in Obsidian, including effective plugins from [`plugins/registry.json`](/Users/dobby/.agents/plugins/registry.json) and effective skills from [`skills/registry.json`](/Users/dobby/.agents/skills/registry.json).
 
 Current per-repo fields in `repo-bootstrap.json`:
 - `mcp_presets`

@@ -2,6 +2,7 @@
 repo_name: "platform-ops"
 path: "~/GitHub/platform-ops"
 mcp_count: 2
+plugin_count: 2
 skill_count: 11
 repo_local_skill_count: 0
 model: "gpt-5.5"
@@ -10,6 +11,13 @@ service_tier: "-"
 mcps:
   - "cloudflare-api"
   - "cloudflare-docs"
+global_plugins:
+  - "browser-use@openai-bundled"
+  - "computer-use@openai-bundled"
+repo_plugins: []
+plugins:
+  - "browser-use@openai-bundled"
+  - "computer-use@openai-bundled"
 global_skills:
   - "agent-browser"
   - "agent-native-repo-playbook"
@@ -38,4 +46,4 @@ skills:
   - "symphony"
 ---
 
-Generated from `codex/config/repo-bootstrap.json` and `skills/registry.json`. Do not edit manually.
+Generated from `codex/config/repo-bootstrap.json`, `plugins/registry.json`, and `skills/registry.json`. Do not edit manually.

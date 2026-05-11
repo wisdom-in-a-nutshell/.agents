@@ -23,6 +23,8 @@ flowchart TD
 
     P --> PS
     P --> G
+    P --> F
+    P --> H
     PS --> K
     A --> E
     A --> H
@@ -43,7 +45,7 @@ Source of truth:
 
 - `plugins/registry.json`
 
-Plugins remain native Codex plugins. The registry renders plugin enable/disable state into Codex config; it does not split plugin packages into skill or MCP registries.
+Plugins remain native Codex plugins. The registry supports `global`, `repo`, and `dormant` scope: global entries render into `~/.codex/config.toml`, repo entries render only into assigned repo `.codex/config.toml`, and dormant entries stay tracked without rendering. The control plane does not split plugin packages into skill or MCP registries.
 
 ## Skills
 
@@ -64,7 +66,7 @@ MCPs are standalone endpoints and transports. If a plugin contains MCP internall
 
 ## Working Rules
 
-- Keep Codex plugin state in `plugins/registry.json`.
+- Keep Codex plugin scope and state in `plugins/registry.json`.
 - Keep skill content in `skills-source/`.
 - Keep MCP preset definitions in `mcp/config/presets.json`.
 - Keep repo inventory and repo MCP/default assignments in `codex/config/repo-bootstrap.json`.

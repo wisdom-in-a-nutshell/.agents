@@ -12,6 +12,7 @@ CANONICAL_DIR="${CONTROL_PLANE_DIR}/config"
 REGISTRY_FILE="${CANONICAL_DIR}/repo-bootstrap.json"
 MCP_REGISTRY_FILE="${ROOT_DIR}/mcp/config/presets.json"
 HOOKS_REGISTRY_FILE="${ROOT_DIR}/hooks/registry.json"
+PLUGIN_REGISTRY_FILE="${ROOT_DIR}/plugins/registry.json"
 REPO_FILTERS=()
 
 usage() {
@@ -27,6 +28,7 @@ Options:
   --registry <path>           Override repo bootstrap registry path
   --mcp-registry <path>       Override shared MCP registry path
   --hooks-registry <path>     Override shared hooks registry path
+  --plugin-registry <path>    Override native Codex plugin registry path
   --repo <path>               Limit repo-local validation to one repo path (repeatable)
   -h, --help                  Show this help
 USAGE
@@ -59,6 +61,10 @@ while [[ $# -gt 0 ]]; do
       HOOKS_REGISTRY_FILE="${2:-}"
       shift 2
       ;;
+    --plugin-registry)
+      PLUGIN_REGISTRY_FILE="${2:-}"
+      shift 2
+      ;;
     --repo)
       REPO_FILTERS+=("${2:-}")
       shift 2
@@ -84,7 +90,7 @@ for repo in "${REPO_FILTERS[@]}"; do
   REPO_ARGS+=(--repo "$repo")
 done
 
-PYTHONPATH="$ROOT_DIR" python3 - "$CANONICAL_DIR" "$GLOBAL_CONFIG" "$GLOBAL_HOOKS" "$REGISTRY_FILE" "$MCP_REGISTRY_FILE" "$HOOKS_REGISTRY_FILE" "${REPO_FILTERS[@]}" <<'PY'
+PYTHONPATH="$ROOT_DIR" python3 - "$CANONICAL_DIR" "$GLOBAL_CONFIG" "$GLOBAL_HOOKS" "$REGISTRY_FILE" "$MCP_REGISTRY_FILE" "$HOOKS_REGISTRY_FILE" "$PLUGIN_REGISTRY_FILE" "${REPO_FILTERS[@]}" <<'PY'
 from __future__ import annotations
 
 import json
@@ -196,12 +202,14 @@ global_hooks = Path(sys.argv[3]).expanduser().resolve()
 registry_path = Path(sys.argv[4]).expanduser().resolve()
 mcp_registry_path = Path(sys.argv[5]).expanduser().resolve()
 hooks_registry_path = Path(sys.argv[6]).expanduser().resolve()
-repo_filters = {str(Path(p).expanduser().resolve()) for p in sys.argv[7:] if p.strip()}
+plugin_registry_path = Path(sys.argv[7]).expanduser().resolve()
+repo_filters = {str(Path(p).expanduser().resolve()) for p in sys.argv[8:] if p.strip()}
 
 root_dir = canonical_dir.parent.parent.resolve()
 sys.path.insert(0, str(root_dir))
 
 from hooks.control_plane import load_hooks_registry, render_codex_hooks
+from plugins.derived import validate_plugin_registry
 
 global_template = canonical_dir / "global.config.toml"
 bundled_skills_policy_path = canonical_dir / "bundled-skills-policy.json"
@@ -332,6 +340,8 @@ if not mcp_registry_path.is_file():
     fail(f"missing MCP registry file: {mcp_registry_path}")
 if not hooks_registry_path.is_file():
     fail(f"missing hooks registry file: {hooks_registry_path}")
+if not plugin_registry_path.is_file():
+    fail(f"missing plugin registry file: {plugin_registry_path}")
 try:
     registry = json.loads(registry_path.read_text(encoding="utf-8"))
 except Exception as exc:
@@ -344,6 +354,15 @@ try:
     hooks_registry = load_hooks_registry(hooks_registry_path)
 except Exception as exc:
     fail(str(exc))
+try:
+    plugin_registry = json.loads(plugin_registry_path.read_text(encoding="utf-8"))
+    validate_plugin_registry(
+        plugin_registry,
+        root_dir=plugin_registry_path.parent.parent,
+        home=Path.home(),
+    )
+except Exception as exc:
+    fail(f"invalid plugin registry {plugin_registry_path}: {exc}")
 
 if not isinstance(mcp_registry, dict):
     fail(f"MCP registry root must be an object in {mcp_registry_path}")
@@ -445,6 +464,7 @@ if ! drift_output="$(
     --registry "$REGISTRY_FILE" \
     --mcp-registry "$MCP_REGISTRY_FILE" \
     --hooks-registry "$HOOKS_REGISTRY_FILE" \
+    --plugin-registry "$PLUGIN_REGISTRY_FILE" \
     "${REPO_ARGS[@]}" \
     2>&1
 )"; then

@@ -34,7 +34,7 @@ Personal agent, Codex, Claude, and repo-local lifecycle hook control plane.
 - Managed canonical skill content lives in:
   - `skills-source/external/<skill>/`
   - `skills-source/owned/<skill>/`
-- Codex-native plugin enablement lives in `plugins/registry.json`.
+- Codex-native plugin scope and enablement lives in `plugins/registry.json`.
 - Global runtime skills live in `skills/<skill>` as symlinks.
 - Generated views for Obsidian live in:
   - `docs/references/registry/skills.base`
@@ -57,7 +57,7 @@ Personal agent, Codex, Claude, and repo-local lifecycle hook control plane.
 - Run hermetic regression tests only: `./scripts/test-control-plane.sh`
 - Bootstrap external skills/plugins through the agent-facing clients:
   - `./scripts/bootstrap-skill.sh <skills.sh-url-or-upstream-ref> --repo <repo>`
-  - `./scripts/bootstrap-plugin.sh <plugin-name-or-id>`
+  - `./scripts/bootstrap-plugin.sh <plugin-name-or-id> [--scope global|repo|dormant] [--repo <repo>]`
 
 Detailed operations live in:
 
@@ -75,12 +75,12 @@ Detailed operations live in:
 ## Rules
 
 - Runtime distribution is link-first for standalone skills; Codex plugins stay native plugin entries in `plugins/registry.json`.
-- Treat global skills as a minimal default kit; prefer repo scope or repo-local unless a skill is broadly useful across unrelated repos.
+- Treat global skills and global plugins as a minimal default kit; prefer repo scope or repo-local unless a capability is broadly useful across unrelated repos.
 - When a user provides a `skills.sh` URL or upstream skill reference and wants it installed into a repo, prefer `./scripts/bootstrap-skill.sh` over manual registry edits.
 - Do not edit managed skills through repo symlink destinations; edit canonical source paths.
 - Do not split Codex plugins into skill or MCP registries by default. If a plugin capability should become standalone, promote it manually into `skills/registry.json` or `mcp/config/presets.json`.
 - Do not make `claude/config/global.claude.md` diverge from `codex/config/global.agents.md`; it must stay a symlink alias to the shared global guidance source.
-- Managed plugin entries render Codex plugin enable/disable state; standalone skills and MCPs remain separate registries.
+- Managed plugin entries render global plugin state into `~/.codex/config.toml` and repo-scoped plugin state into managed repo `.codex/config.toml`; standalone skills and MCPs remain separate registries.
 - Keep repo-local skills listed in `skills/registry.json` under `unmanaged_repo_local_skills`.
 - Keep `unmanaged_repo_local_skills` honest: if the target repo exists locally, the repo must contain `.agents/skills/<skill>/SKILL.md` or skill sync should fail until the stale registry entry is removed.
 - Keep repo-local plugins listed in `plugins/registry.json` under `unmanaged_repo_local_plugins`.

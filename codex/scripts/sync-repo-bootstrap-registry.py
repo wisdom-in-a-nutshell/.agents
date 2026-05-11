@@ -121,6 +121,14 @@ properties:
     displayName: MCP Count
   mcps:
     displayName: MCPs
+  plugin_count:
+    displayName: Plugin Count
+  plugins:
+    displayName: Plugins
+  global_plugins:
+    displayName: Global Plugins
+  repo_plugins:
+    displayName: Repo Plugins
   skill_count:
     displayName: Skill Count
   repo_local_skill_count:
@@ -144,6 +152,7 @@ views:
     name: Repo Bootstrap
     order:
       - repo_name
+      - plugin_count
       - skill_count
       - repo_local_skill_count
       - mcps
@@ -164,6 +173,8 @@ views:
     filters: 'skill_count > 0'
     order:
       - repo_name
+      - plugin_count
+      - plugins
       - skill_count
       - repo_local_skill_count
       - global_skills
@@ -188,6 +199,7 @@ def generate_registry_items(
             f"repo_name: {_yaml_str(item['repo_name'])}",
             f"path: {_yaml_str(item['path'])}",
             f"mcp_count: {len(item['mcp_presets'])}",
+            f"plugin_count: {len(item['plugins'])}",
             f"skill_count: {len(item['skills'])}",
             f"repo_local_skill_count: {len(item['repo_local_skills'])}",
             f"model: {_yaml_str(_effective_value(defaults, item, 'model'))}",
@@ -195,6 +207,9 @@ def generate_registry_items(
             f"service_tier: {_yaml_str(_effective_value(defaults, item, 'service_tier'))}",
         ]
         _append_yaml_list(lines, "mcps", item["mcp_presets"])
+        _append_yaml_list(lines, "global_plugins", item["global_plugins"])
+        _append_yaml_list(lines, "repo_plugins", item["repo_scoped_plugins"])
+        _append_yaml_list(lines, "plugins", item["plugins"])
         _append_yaml_list(lines, "global_skills", item["global_skills"])
         _append_yaml_list(lines, "repo_skills", item["repo_scoped_skills"])
         _append_yaml_list(lines, "repo_local_skills", item["repo_local_skills"])
@@ -203,7 +218,7 @@ def generate_registry_items(
             [
                 "---",
                 "",
-                "Generated from `codex/config/repo-bootstrap.json` and `skills/registry.json`. Do not edit manually.",
+                "Generated from `codex/config/repo-bootstrap.json`, `plugins/registry.json`, and `skills/registry.json`. Do not edit manually.",
                 "",
             ]
         )
@@ -322,6 +337,50 @@ def _load_skill_assignments(
         item["repo_scoped_skills"] = repo_scoped_list
         item["repo_local_skills"] = repo_local_list
         item["skills"] = skills
+
+
+def _load_plugin_assignments(
+    root_dir: Path, home: Path, repos: list[dict[str, Any]], registry_file: Path
+) -> None:
+    if not registry_file.is_file():
+        for item in repos:
+            item["global_plugins"] = []
+            item["repo_scoped_plugins"] = []
+            item["plugins"] = []
+        return
+
+    if str(root_dir) not in sys.path:
+        sys.path.insert(0, str(root_dir))
+    from plugins.derived import resolve_repo_root, validate_plugin_registry
+
+    data = json.loads(registry_file.read_text(encoding="utf-8"))
+    managed_plugins, _unmanaged_plugins, github_root = validate_plugin_registry(
+        data,
+        root_dir=root_dir,
+        home=home,
+    )
+    repo_by_root = {item["repo_root"]: item for item in repos}
+    repo_scoped: dict[Path, set[str]] = {item["repo_root"]: set() for item in repos}
+    global_plugins = sorted(
+        plugin.plugin_id
+        for plugin in managed_plugins
+        if plugin.enabled and plugin.scope == "global"
+    )
+
+    for plugin in managed_plugins:
+        if not plugin.enabled or plugin.scope != "repo":
+            continue
+        for repo_ref in plugin.repos:
+            repo_root = _resolve_repo_root(resolve_repo_root(repo_ref, github_root, home))
+            if repo_root in repo_scoped:
+                repo_scoped[repo_root].add(plugin.plugin_id)
+
+    for repo_root, item in repo_by_root.items():
+        repo_scoped_list = sorted(repo_scoped.get(repo_root, set()))
+        plugins = sorted(set(global_plugins) | set(repo_scoped_list))
+        item["global_plugins"] = global_plugins
+        item["repo_scoped_plugins"] = repo_scoped_list
+        item["plugins"] = plugins
 
 
 def generate_mcp_registry_base(views_dir: Path) -> None:
@@ -573,6 +632,11 @@ def parse_args() -> argparse.Namespace:
         default=str(Path.home() / ".agents" / "mcp" / "config" / "presets.json"),
         help="Path to shared MCP registry JSON file.",
     )
+    parser.add_argument(
+        "--plugin-registry",
+        default=None,
+        help="Path to native Codex plugin registry JSON file.",
+    )
     return parser.parse_args()
 
 
@@ -599,6 +663,14 @@ def main() -> int:
 
     config_dir = registry_file.parent
     root_dir = config_dir.parent.parent
+    plugin_registry_file = (
+        Path(args.plugin_registry).expanduser().resolve()
+        if args.plugin_registry
+        else (root_dir / "plugins" / "registry.json").resolve()
+    )
+    if not plugin_registry_file.is_file():
+        print(f"Plugin registry not found: {plugin_registry_file}", file=sys.stderr)
+        return 1
     home = Path.home()
     try:
         presets, global_presets = validate_mcp_registry(mcp_data)
@@ -608,6 +680,7 @@ def main() -> int:
         return 1
 
     views_dir = generated_views_dir(root_dir)
+    _load_plugin_assignments(root_dir, home, repos, plugin_registry_file)
     _load_skill_assignments(root_dir, home, repos)
     generate_registry_base(views_dir)
     generate_registry_items(views_dir, defaults, repos)

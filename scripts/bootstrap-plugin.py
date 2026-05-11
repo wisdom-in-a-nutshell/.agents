@@ -42,9 +42,10 @@ def emit_plain(payload: dict[str, Any]) -> None:
     if payload["status"] == "ok":
         data = payload["data"]
         enabled = "enabled" if data["enabled"] else "disabled"
+        repos = ",".join(data.get("repos", [])) or "-"
         print(
             f"ok plugin={data['plugin']} marketplace={data['marketplace']} "
-            f"state={enabled} "
+            f"state={enabled} scope={data['scope']} repos={repos} "
             f"registry_changed={str(data['registry_changed']).lower()}"
         )
         for action in data["actions"]:
@@ -142,6 +143,30 @@ def parse_plugin_ref(raw: str) -> tuple[str, str]:
     return raw, "openai-curated"
 
 
+def expand_path(raw: str, home: Path) -> Path:
+    if raw.startswith("~/"):
+        return home / raw[2:]
+    return Path(raw)
+
+
+def resolve_repo_root(repo: str, github_root: Path, home: Path) -> Path:
+    if repo.startswith("~/") or repo.startswith("/"):
+        return expand_path(repo, home).resolve()
+    return (github_root / repo).resolve()
+
+
+def unique_repos(values: list[str]) -> list[str]:
+    seen: set[str] = set()
+    out: list[str] = []
+    for value in values:
+        repo = value.strip()
+        if not repo or repo in seen:
+            continue
+        seen.add(repo)
+        out.append(repo)
+    return out
+
+
 def run(
     cmd: list[str],
     *,
@@ -166,6 +191,18 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "plugin_ref",
         help="Plugin name, plugin id (name@marketplace), or official openai/plugins GitHub tree URL.",
+    )
+    parser.add_argument(
+        "--repo",
+        action="append",
+        default=[],
+        help="Repo target under ~/GitHub or an explicit path. Repeat for multiple repos.",
+    )
+    parser.add_argument(
+        "--scope",
+        choices=["global", "repo", "dormant"],
+        default="global",
+        help="Native plugin scope in Codex config (default: global).",
     )
     parser.add_argument(
         "--disabled",
@@ -237,6 +274,7 @@ def main() -> int:
         )
 
     root_dir = registry_file.parent.parent.resolve()
+    home = Path.home()
 
     try:
         registry = json.loads(registry_file.read_text(encoding="utf-8"))
@@ -247,6 +285,40 @@ def main() -> int:
             code="E_INVALID_REGISTRY_JSON",
             message=f"Invalid JSON in {registry_file}: {exc}",
             hint="Repair plugins/registry.json before bootstrapping a plugin.",
+            exit_code=EXIT_USAGE,
+            plain=args.plain,
+        )
+
+    github_root_raw = registry.get("paths", {}).get("github_root", "~/GitHub")
+    github_root = expand_path(str(github_root_raw), home).resolve()
+    repos = unique_repos(args.repo)
+    if args.scope == "repo" and not repos:
+        return finish_error(
+            request_id,
+            started_at,
+            code="E_REPO_REQUIRED",
+            message="repo scope requires at least one --repo target",
+            hint="Pass --repo <name> for repo scope, or use --scope global.",
+            exit_code=EXIT_USAGE,
+            plain=args.plain,
+        )
+    if args.scope != "repo":
+        repos = []
+
+    missing_repos = []
+    resolved_repo_roots: dict[str, str] = {}
+    for repo in repos:
+        repo_root = resolve_repo_root(repo, github_root, home)
+        resolved_repo_roots[repo] = str(repo_root)
+        if not repo_root.exists():
+            missing_repos.append(f"{repo} -> {repo_root}")
+    if missing_repos:
+        return finish_error(
+            request_id,
+            started_at,
+            code="E_REPO_NOT_FOUND",
+            message="One or more repo targets do not exist",
+            hint="Fix the repo names or paths: " + "; ".join(missing_repos),
             exit_code=EXIT_USAGE,
             plain=args.plain,
         )
@@ -263,7 +335,7 @@ def main() -> int:
             plain=args.plain,
         )
 
-    enabled = not args.disabled
+    enabled = not args.disabled and args.scope != "dormant"
     existing_entry: dict[str, Any] | None = None
     for entry in managed:
         if not isinstance(entry, dict):
@@ -279,6 +351,8 @@ def main() -> int:
         "plugin": plugin_name,
         "marketplace": marketplace,
         "enabled": enabled,
+        "scope": args.scope,
+        "repos": repos,
         "category": args.category,
     }
 
@@ -350,6 +424,9 @@ def main() -> int:
         "marketplace": marketplace,
         "plugin_id": f"{plugin_name}@{marketplace}",
         "enabled": enabled,
+        "scope": args.scope,
+        "repos": repos,
+        "resolved_repo_roots": resolved_repo_roots,
         "category": args.category,
         "registry_file": str(registry_file),
         "registry_changed": registry_changed,
