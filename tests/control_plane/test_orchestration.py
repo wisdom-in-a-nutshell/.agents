@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
 from pathlib import Path
 
 from tests.control_plane.support import (
@@ -143,7 +142,6 @@ class AutoApplyRoutingTests(TempDirTestCase):
         write_executable(root / "scripts/sync-plugins-registry.sh", STUB_SCRIPT)
         write_executable(root / "scripts/sync-managed-git-hooks.sh", STUB_SCRIPT)
         write_executable(root / "scripts/sync-copilot-hooks.sh", STUB_SCRIPT)
-        write_executable(root / "scripts/refresh-external-plugins.sh", STUB_SCRIPT)
         write_executable(root / "codex/scripts/bootstrap-machine-codex.sh", STUB_SCRIPT)
         write_executable(root / "claude/scripts/bootstrap-machine-claude.sh", STUB_SCRIPT)
         commit_all(root, "initial")
@@ -155,20 +153,9 @@ class AutoApplyRoutingTests(TempDirTestCase):
         log_path: Path,
         stamp_file: Path,
         *,
-        skip_daily_plugin_refresh: bool = True,
         env: dict[str, str] | None = None,
     ) -> str:
         home = self.temp_path / "home"
-        if skip_daily_plugin_refresh:
-            refresh_stamp = (
-                home
-                / ".local/state/agents-control-plane/last-external-plugin-refresh.date"
-            )
-            refresh_stamp.parent.mkdir(parents=True, exist_ok=True)
-            refresh_stamp.write_text(
-                datetime.now(timezone.utc).date().isoformat() + "\n",
-                encoding="utf-8",
-            )
         result = run_command(
             [
                 str(REPO_ROOT / "scripts/auto-apply-agent-control-planes.sh"),
@@ -342,26 +329,6 @@ class AutoApplyRoutingTests(TempDirTestCase):
         self.assertIn("APPLY: detected shared agent control-plane changes", output)
         self.assertEqual(
             [
-                f"bootstrap-machine-agent-control-planes.sh|--apply --github-root {self.temp_path / 'GitHub'}",
-            ],
-            log_path.read_text(encoding="utf-8").splitlines(),
-        )
-
-    def test_due_daily_plugin_refresh_runs_before_reconcile(self) -> None:
-        root, log_path, stamp_file = self._make_agents_repo()
-
-        output = self._run_auto_apply(
-            root,
-            log_path,
-            stamp_file,
-            skip_daily_plugin_refresh=False,
-        )
-
-        self.assertIn("APPLY: external plugin refresh is due", output)
-        self.assertEqual(
-            [
-                "refresh-external-plugins.sh|--apply",
-                "sync-plugins-registry.sh|--apply",
                 f"bootstrap-machine-agent-control-planes.sh|--apply --github-root {self.temp_path / 'GitHub'}",
             ],
             log_path.read_text(encoding="utf-8").splitlines(),
