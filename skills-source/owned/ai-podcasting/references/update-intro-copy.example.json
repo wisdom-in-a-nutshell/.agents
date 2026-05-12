@@ -4,6 +4,7 @@
   "instructionsToEditor": "Use first take for opener and tighten pauses.",
   "title": "Final publish-ready episode title",
   "thumbnailText": "Final thumbnail copy",
+  "customNewsletterDraftUrl": "https://ghost.example.com/ghost/#/editor/post/intro123",
   "videoThumbnails": [
     "https://example.com/path/to/video-thumbnail-16x9-primary.png",
     "https://example.com/path/to/video-thumbnail-16x9-alt.png"

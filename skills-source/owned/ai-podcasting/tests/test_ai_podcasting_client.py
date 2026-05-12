@@ -60,6 +60,7 @@ class NormalizeEpisodeItemTests(unittest.TestCase):
         "introTranscript": " Intro transcript ",
         "titleInspiration": " Big idea ",
         "editorInstructions": " Please cut the intro ",
+        "customNewsletterDraftUrl": " https://ghost.example.com/ghost/#/editor/post/summary123 ",
         "guests": [
           {"name": " Ada Lovelace ", "email": " ada@example.com "},
           {"name": " "},
@@ -139,6 +140,10 @@ class NormalizeEpisodeItemTests(unittest.TestCase):
     )
     self.assertEqual(normalized["copy"]["introTranscriptPreview"], "Intro transcript")
     self.assertEqual(normalized["copy"]["editorInstructionsPreview"], "Please cut the intro")
+    self.assertEqual(
+      normalized["customNewsletterDraftUrl"],
+      "https://ghost.example.com/ghost/#/editor/post/summary123",
+    )
     self.assertEqual(normalized["copy"]["editorNotesPreview"], "Tighten the opening.")
     self.assertEqual(normalized["production"]["priority"], "high")
     self.assertEqual(normalized["production"]["editorName"], "Sam")
@@ -349,6 +354,19 @@ class SubmitAndIntroDryRunTests(unittest.TestCase):
     self.assertEqual(error_context.exception.code, "E_VALIDATION")
     self.assertIn("cannot be an MP3 link", error_context.exception.message)
 
+  def test_normalize_intro_copy_payload_maps_newsletter_draft_alias(self) -> None:
+    payload, upload_records = client.normalize_intro_copy_payload(
+      {"ghostNewsletterDraftUrl": " https://ghost.example.com/p/custom-draft "},
+      timeout_seconds=30.0,
+      dry_run=True,
+    )
+
+    self.assertEqual(upload_records, [])
+    self.assertEqual(
+      payload["customNewsletterDraftUrl"],
+      "https://ghost.example.com/p/custom-draft",
+    )
+
   def test_run_submit_episode_dry_run_uses_expected_request_shape(self) -> None:
     args = SimpleNamespace(
       payload_file=str(ROOT / "references" / "submit-episode.example.json"),
@@ -370,6 +388,10 @@ class SubmitAndIntroDryRunTests(unittest.TestCase):
     self.assertEqual(
       len(data["request"]["payload"]["deliverables"]["thumbnails"]["options"]),
       2,
+    )
+    self.assertEqual(
+      data["request"]["payload"]["customNewsletterDraftUrl"],
+      "https://ghost.example.com/ghost/#/editor/post/submit123",
     )
 
   def test_run_update_intro_copy_dry_run_uses_expected_request_shape(self) -> None:
@@ -399,6 +421,10 @@ class SubmitAndIntroDryRunTests(unittest.TestCase):
     self.assertEqual(
       data["request"]["payload"]["files"]["episode_outro"]["edited"],
       "https://example.com/path/to/outro-music.mp3",
+    )
+    self.assertEqual(
+      data["request"]["payload"]["customNewsletterDraftUrl"],
+      "https://ghost.example.com/ghost/#/editor/post/intro123",
     )
 
 

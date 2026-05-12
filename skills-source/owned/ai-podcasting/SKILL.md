@@ -139,14 +139,21 @@ python3 scripts/aip_local_upload_helper.py \
    For plain-English payloads, the CLI accepts `mainEpisodeFile` and normalizes it to the backend
    submit shape automatically.
    `assetUrls` may also be public URLs or local file paths; local paths are uploaded first.
-   Optional: any additional backend-supported episode fields. The client preserves richer payloads such as `deliverables.thumbnails.options`, `deliverables.thumbnails.video.variants`, and `files.episode_outro`.
+   Optional: any additional backend-supported episode fields. Use `customNewsletterDraftUrl` for
+   a client-provided Ghost newsletter draft, preview, editor, or slug URL. The client preserves
+   richer payloads such as `deliverables.thumbnails.options`,
+   `deliverables.thumbnails.video.variants`, and `files.episode_outro`.
 3. `update-intro-copy`:
    Required (command): `--source-id`, `--payload-file`.
    Intended target: an existing unpublished episode.
    The client supports the current app intro payload directly.
    For conversation-driven usage, prefer these user-facing fields:
    There are no required patch fields beyond `source_id`.
-   Common patch fields: `recordingLink`, `title`, `videoThumbnails`, `thumbnailText`, `transcript`, `instructionsToEditor`, `audioThumbnailLink`, `outroMusicLink`.
+   Common patch fields: `recordingLink`, `title`, `videoThumbnails`, `thumbnailText`,
+   `transcript`, `instructionsToEditor`, `customNewsletterDraftUrl`, `audioThumbnailLink`,
+   `outroMusicLink`.
+   `customNewsletterDraftUrl` stores a client-provided Ghost newsletter draft link under episode
+   submission metadata. It does not publish or replace the generated newsletter by itself.
    `videoThumbnails` may be either:
    - one public HTTP/HTTPS URL
    - a list of public HTTP/HTTPS URLs
@@ -186,6 +193,7 @@ When values are missing in chat context, follow this flow:
    7. scheduledDate
    8. needsGuestReview
    9. guests
+   10. customNewsletterDraftUrl
 4. Use this default submit prompt shape when the file is missing:
    "Send the main episode file as either a public HTTP/HTTPS URL or a local absolute file path.
 
@@ -199,6 +207,7 @@ When values are missing in chat context, follow this flow:
    7. scheduledDate
    8. needsGuestReview
    9. guests
+   10. customNewsletterDraftUrl
 
    If you send them together, I can submit the episode in one pass."
 5. Intro updates are only for unpublished episodes.
@@ -228,15 +237,18 @@ When values are missing in chat context, follow this flow:
    4. thumbnailText
    5. transcript
    6. instructionsToEditor
-   7. audioThumbnailLink
-   8. outroMusicLink
+   7. customNewsletterDraftUrl
+   8. audioThumbnailLink
+   9. outroMusicLink
 
    You only need to send the fields you want to change, and I will patch just those."
    Never ask the user to pick an episode id again after step 1 is completed.
 11. If optional values are unclear, omit them instead of guessing.
 12. Use `--dry-run` only if the user explicitly wants a preview before the write call.
     It is an internal preview/debug tool, not a normal client-facing step.
-13. For file-type fields (`recordingLink`, `videoThumbnails`, `audioThumbnailLink`, `outroMusicLink`, submit main file link, and submit `assetUrls` entries):
+13. For `customNewsletterDraftUrl`, provide a public HTTP/HTTPS Ghost draft, preview, editor, or
+   slug URL. It is not a local file upload field.
+14. For file-type fields (`recordingLink`, `videoThumbnails`, `audioThumbnailLink`, `outroMusicLink`, submit main file link, and submit `assetUrls` entries):
    - The client accepts either public HTTP/HTTPS URLs or local file paths.
    - If the user provides a local file path, run `scripts/aip_local_upload_helper.py` first and use its returned public URL.
    - Do not pass unresolved local filesystem paths to the episode API payload.

@@ -4,6 +4,7 @@
   "editorInstructions": "Use the first clean take and keep cuts aggressive.",
   "title": "Final publish-ready episode title",
   "thumbnailText": "Final thumbnail copy",
+  "customNewsletterDraftUrl": "https://ghost.example.com/ghost/#/editor/post/intro123",
   "deliverables": {
     "thumbnails": {
       "video": {

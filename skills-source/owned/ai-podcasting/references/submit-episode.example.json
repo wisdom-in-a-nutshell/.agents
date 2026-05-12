@@ -47,6 +47,7 @@
   "editorNotes": "Please remove long pauses and keep intro pacing tight.",
   "title": "Draft working title",
   "thumbnailText": "Draft thumbnail line",
+  "customNewsletterDraftUrl": "https://ghost.example.com/ghost/#/editor/post/submit123",
   "priority": "normal",
   "scheduledDate": null,
   "needsGuestReview": false,

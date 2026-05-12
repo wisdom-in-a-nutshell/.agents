@@ -18,6 +18,7 @@ from urllib import parse as urlparse
 from urllib import request as urlrequest
 from aip_local_upload_helper import (
   UploadHelperError,
+  is_public_http_url,
   resolve_upload_source_url,
   validate_upload_source_list,
 )
@@ -40,6 +41,9 @@ INTRO_COPY_FIELDS = {
   "videoThumbnailLinks",
   "audioThumbnailLink",
   "outroMusicLink",
+  "customNewsletterDraftUrl",
+  "newsletterDraftUrl",
+  "ghostNewsletterDraftUrl",
 }
 
 INTRO_COPY_FIELD_MAP = {
@@ -53,11 +57,19 @@ INTRO_COPY_FIELD_MAP = {
   "videoThumbnailLinks": "videoThumbnailLinks",
   "audioThumbnailLink": "audioThumbnailLink",
   "outroMusicLink": "outroMusicLink",
+  "customNewsletterDraftUrl": "customNewsletterDraftUrl",
+  "newsletterDraftUrl": "customNewsletterDraftUrl",
+  "ghostNewsletterDraftUrl": "customNewsletterDraftUrl",
   # Backward-compatible aliases
   "introFile": "introFile",
   "introTranscript": "introTranscript",
   "editorInstructions": "editorInstructions",
 }
+CUSTOM_NEWSLETTER_DRAFT_URL_FIELDS = (
+  "customNewsletterDraftUrl",
+  "newsletterDraftUrl",
+  "ghostNewsletterDraftUrl",
+)
 TCR_MAIN_MP3_MESSAGE = (
   "TCR submit-episode main file cannot be an MP3 link."
 )
@@ -318,6 +330,8 @@ def ensure_video_thumbnail_payload(video: dict[str, Any]) -> None:
 
 
 def validate_submit_payload(payload: dict[str, Any]) -> None:
+  normalize_custom_newsletter_draft_url_aliases(payload)
+
   show = payload.get("show")
   if show is not None and str(show).strip().upper() not in ("", FIXED_SHOW):
     raise ClientError(
@@ -381,6 +395,7 @@ def validate_submit_payload(payload: dict[str, Any]) -> None:
       hint=TCR_MAIN_MP3_HINT,
       exit_code=2,
     )
+  validate_custom_newsletter_draft_url(payload)
 
 
 def looks_like_mp3_source(value: str) -> bool:
@@ -394,7 +409,65 @@ def looks_like_mp3_source(value: str) -> bool:
   return urlparse.unquote(path).lower().endswith(".mp3")
 
 
+def normalize_custom_newsletter_draft_url_aliases(payload: dict[str, Any]) -> None:
+  """Normalize supported custom newsletter draft URL aliases to one backend field."""
+  canonical_value = payload.get("customNewsletterDraftUrl")
+  for field in CUSTOM_NEWSLETTER_DRAFT_URL_FIELDS:
+    value = payload.get(field)
+    if not isinstance(value, str) or not value.strip():
+      continue
+    if (
+      isinstance(canonical_value, str)
+      and canonical_value.strip()
+      and canonical_value.strip() != value.strip()
+    ):
+      raise ClientError(
+        code="E_VALIDATION",
+        message=(
+          "custom newsletter draft URL aliases conflict. "
+          "Provide only one of customNewsletterDraftUrl, newsletterDraftUrl, or ghostNewsletterDraftUrl."
+        ),
+        retryable=False,
+        hint="Use customNewsletterDraftUrl as the canonical field name.",
+        exit_code=2,
+      )
+    canonical_value = value.strip()
+
+  for field in CUSTOM_NEWSLETTER_DRAFT_URL_FIELDS:
+    if field != "customNewsletterDraftUrl":
+      payload.pop(field, None)
+
+  if isinstance(canonical_value, str) and canonical_value.strip():
+    payload["customNewsletterDraftUrl"] = canonical_value.strip()
+
+
+def validate_custom_newsletter_draft_url(payload: dict[str, Any]) -> None:
+  value = payload.get("customNewsletterDraftUrl")
+  if "customNewsletterDraftUrl" not in payload:
+    return
+  if not isinstance(value, str) or not value.strip():
+    raise ClientError(
+      code="E_VALIDATION",
+      message=(
+        "customNewsletterDraftUrl must be a non-empty public HTTP/HTTPS URL when provided."
+      ),
+      retryable=False,
+      hint="Omit customNewsletterDraftUrl if you are not setting it.",
+      exit_code=2,
+    )
+  if not is_public_http_url(value):
+    raise ClientError(
+      code="E_VALIDATION",
+      message="customNewsletterDraftUrl must be a valid public HTTP/HTTPS URL.",
+      retryable=False,
+      hint="Use the Ghost draft, preview, editor, or slug URL.",
+      exit_code=2,
+    )
+
+
 def validate_intro_copy_payload(payload: dict[str, Any]) -> None:
+  normalize_custom_newsletter_draft_url_aliases(payload)
+
   if not payload:
     raise ClientError(
       code="E_VALIDATION",
@@ -466,6 +539,8 @@ def validate_intro_copy_payload(payload: dict[str, Any]) -> None:
   if isinstance(outro_music_link, str) and outro_music_link.strip():
     validate_upload_source_list("outroMusicLink", [outro_music_link.strip()])
 
+  validate_custom_newsletter_draft_url(payload)
+
 
 def normalize_submit_payload(
   payload: dict[str, Any],
@@ -473,6 +548,7 @@ def normalize_submit_payload(
   dry_run: bool,
 ) -> tuple[dict[str, Any], list[dict[str, Any]]]:
   normalized = json.loads(json.dumps(payload))
+  normalize_custom_newsletter_draft_url_aliases(normalized)
   upload_records: list[dict[str, Any]] = []
   main_file_value = ""
   main_file_field = ""
@@ -539,6 +615,7 @@ def normalize_intro_copy_payload(
   timeout_seconds: float,
   dry_run: bool,
 ) -> tuple[dict[str, Any], list[dict[str, Any]]]:
+  normalize_custom_newsletter_draft_url_aliases(payload)
   normalized: dict[str, Any] = {}
   upload_records: list[dict[str, Any]] = []
   for key, value in payload.items():
@@ -1089,6 +1166,9 @@ def normalize_episode_item(item: dict[str, Any], include_raw: bool = False) -> d
       ),
       "guests": normalize_guests(submission.get("guests")),
       "assetUrls": normalize_string_list(submission.get("assetUrls")),
+      "customNewsletterDraftUrl": normalize_optional_string(
+        submission.get("customNewsletterDraftUrl")
+      ),
       "publishing": compact_mapping(
         {
           "status": status,
