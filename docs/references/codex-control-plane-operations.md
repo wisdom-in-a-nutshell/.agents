@@ -344,5 +344,8 @@ Fix:
 
 - Both current machines were aligned through this control-plane layout:
   - local machine under `/Users/dobby`
-  - MacBook via SSH alias `macbook-wan` under `/Users/adi`
+  - Adi MacBook via SSH alias `adithyans-macbook-pro` under `/Users/adi`
+    - this alias is managed by `~/GitHub/scripts/setup/reconcile-ssh-machine-hosts.sh`
+    - it reaches the MacBook through Tailscale with `ProxyCommand tailscale nc %h %p`
+    - older references to `macbook-wan` are stale and should not be used as current setup guidance
 - The control plane is designed to be home-relative at apply time, not by committing one machine's absolute paths into canonical templates.
