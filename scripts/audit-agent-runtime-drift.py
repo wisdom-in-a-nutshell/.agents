@@ -164,6 +164,25 @@ def resolve_registry_repo(repo: str, github_root: Path, home: Path) -> Path:
     return (github_root / repo).resolve()
 
 
+def git_worktree_root(path: Path) -> Path | None:
+    try:
+        completed = subprocess.run(
+            ["git", "-C", str(path), "rev-parse", "--show-toplevel"],
+            capture_output=True,
+            text=True,
+            check=False,
+            timeout=10,
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        return None
+    if completed.returncode != 0:
+        return None
+    root = completed.stdout.strip()
+    if not root:
+        return None
+    return Path(root).resolve()
+
+
 def registry_plugin_entries(agents_repo: Path, home: Path) -> list[dict[str, Any]]:
     registry_path = agents_repo / "plugins" / "registry.json"
     if not registry_path.is_file():
@@ -339,14 +358,22 @@ def audit_required_codex_plugins(agents_repo: Path, home: Path) -> dict[str, Any
             continue
 
         existing_targets: list[Path] = []
+        skipped_non_git_targets: list[str] = []
         github_root = entry["github_root"]
         if not isinstance(github_root, Path):
             continue
         for repo_ref in entry["repos"]:
             repo_root = resolve_registry_repo(str(repo_ref), github_root, home)
-            if repo_root.exists():
-                existing_targets.append(repo_root)
+            if not repo_root.exists():
+                continue
+            git_root = git_worktree_root(repo_root)
+            if git_root is None:
+                skipped_non_git_targets.append(str(repo_root))
+                continue
+            existing_targets.append(git_root)
         if not existing_targets:
+            if skipped_non_git_targets:
+                details.setdefault("skipped_non_git_repo_plugin_targets", {})[plugin_id] = skipped_non_git_targets
             continue
 
         repo_targets[plugin_id] = [str(path) for path in existing_targets]
