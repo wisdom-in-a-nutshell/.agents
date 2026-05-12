@@ -291,6 +291,12 @@ for plugin in plugins:
 PY
 }
 
+extract_openai_bundled_marketplace_entries() {
+  local marketplace_path="${CODEX_BUNDLED_MARKETPLACE:-/Applications/Codex.app/Contents/Resources/plugins/openai-bundled}"
+  printf 'marketplaces.openai-bundled\x1Fsource_type\x1F"local"\n'
+  printf 'marketplaces.openai-bundled\x1Fsource\x1F%s\n' "$(quote_toml_string "$marketplace_path")"
+}
+
 ensure_no_conflict_markers() {
   local file="$1"
   [[ -f "$file" ]] || return 0
@@ -512,6 +518,11 @@ render_global_config() {
     [[ -n "$key" ]] || continue
     upsert_section_key "$target_file" "$section" "$key" "$value"
   done < <(extract_codex_plugin_entries "$plugin_registry_file")
+
+  while IFS=$'\x1f' read -r section key value; do
+    [[ -n "$key" ]] || continue
+    upsert_section_key "$target_file" "$section" "$key" "$value"
+  done < <(extract_openai_bundled_marketplace_entries)
 
   # Codex turn-end automation now lives in hooks/registry.json -> Stop.
   remove_top_level_key "$target_file" "notify"
@@ -1124,9 +1135,14 @@ from plugins.derived import validate_plugin_registry
 
 plugin_registry = Path(sys.argv[1]).expanduser().resolve()
 home = Path(sys.argv[2])
-bundle_marketplace = Path("/Applications/Codex.app/Contents/Resources/plugins/openai-bundled")
-runtime_marketplace = home / ".codex/.tmp/bundled-marketplaces/openai-bundled"
+bundle_marketplace = Path(
+    os.environ.get(
+        "CODEX_BUNDLED_MARKETPLACE",
+        "/Applications/Codex.app/Contents/Resources/plugins/openai-bundled",
+    )
+).expanduser()
 runtime_cache = home / ".codex/plugins/cache/openai-bundled"
+stale_runtime_marketplace = home / ".codex/.tmp/bundled-marketplaces/openai-bundled"
 registry_data = json.loads(plugin_registry.read_text(encoding="utf-8"))
 plugins, _, _ = validate_plugin_registry(
     registry_data,
@@ -1146,7 +1162,11 @@ def tree_matches(source: Path, target: Path) -> bool:
     if source.is_dir():
         if not target.is_dir():
             return False
-        return all(tree_matches(child, target / child.name) for child in source.iterdir())
+        source_children = {child.name: child for child in source.iterdir()}
+        target_children = {child.name: child for child in target.iterdir()}
+        if set(source_children) != set(target_children):
+            return False
+        return all(tree_matches(child, target / name) for name, child in source_children.items())
     if source.is_file():
         return target.is_file() and source.stat().st_size == target.stat().st_size
     return True
@@ -1196,10 +1216,19 @@ def copy_plugin_tree(source: Path, target: Path) -> None:
     if tree_matches(source, target):
         return
     target.parent.mkdir(parents=True, exist_ok=True)
+    if target.exists() or target.is_symlink():
+        remove_path(target)
     copy_entry_without_xattrs(source, target)
     if not tree_matches(source, target):
         raise RuntimeError(f"plugin copy incomplete: {source} -> {target}")
 
+
+if stale_runtime_marketplace.exists():
+    remove_path(stale_runtime_marketplace)
+    print(f"Removed stale bundled marketplace mirror: {stale_runtime_marketplace}")
+
+if not bundle_marketplace.is_dir():
+    print(f"Warning: bundled plugin marketplace is missing: {bundle_marketplace}", file=sys.stderr)
 
 for plugin_name in enabled_plugin_names:
     plugin_id = f"{plugin_name}@openai-bundled"
@@ -1211,14 +1240,7 @@ for plugin_name in enabled_plugin_names:
 
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
     version = str(manifest.get("version") or "unknown")
-    copy_plugin_tree(source, runtime_marketplace / "plugins" / plugin_name)
     copy_plugin_tree(source, runtime_cache / plugin_name / version)
-
-    marketplace_manifest = bundle_marketplace / ".agents/plugins/marketplace.json"
-    if marketplace_manifest.is_file():
-        target_manifest = runtime_marketplace / ".agents/plugins/marketplace.json"
-        target_manifest.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copy2(marketplace_manifest, target_manifest)
 
     print(f"Ensured: {plugin_id} {version}")
 PY

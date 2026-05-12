@@ -775,6 +775,95 @@ class HooksControlPlaneTests(TempDirTestCase):
             "python3 ~/.agents/hooks/scripts/stop.py --runtime codex",
         )
 
+    def test_codex_sync_config_uses_native_bundled_marketplace_and_caches_enabled_plugins(self) -> None:
+        root = make_control_plane_root(self.temp_path)
+        home = self.temp_path / "home"
+        bundled_marketplace = self.temp_path / "Codex.app/Contents/Resources/plugins/openai-bundled"
+        stale_marketplace_mirror = home / ".codex/.tmp/bundled-marketplaces/openai-bundled"
+        write_json(root / "mcp/config/presets.json", default_mcp_registry())
+        write_json(
+            root / "plugins/registry.json",
+            {
+                "version": 1,
+                "paths": {
+                    "github_root": str(self.temp_path),
+                },
+                "managed_plugins": [
+                    {
+                        "plugin": "chrome",
+                        "marketplace": "openai-bundled",
+                        "enabled": True,
+                        "scope": "global",
+                        "repos": [],
+                        "category": "Productivity",
+                    },
+                    {
+                        "plugin": "browser-use",
+                        "marketplace": "openai-bundled",
+                        "enabled": False,
+                        "scope": "global",
+                        "repos": [],
+                        "category": "Engineering",
+                    },
+                ],
+                "unmanaged_repo_local_plugins": [],
+            },
+        )
+        write_json(
+            bundled_marketplace / ".agents/plugins/marketplace.json",
+            {
+                "name": "openai-bundled",
+                "plugins": [
+                    {"name": "chrome", "source": {"source": "local", "path": "./plugins/chrome"}},
+                    {"name": "browser-use", "source": {"source": "local", "path": "./plugins/browser-use"}},
+                ],
+            },
+        )
+        write_json(
+            bundled_marketplace / "plugins/chrome/.codex-plugin/plugin.json",
+            {"name": "chrome", "version": "0.1.7"},
+        )
+        write_json(
+            bundled_marketplace / "plugins/browser-use/.codex-plugin/plugin.json",
+            {"name": "browser-use", "version": "0.1.0-alpha2"},
+        )
+        write_text(stale_marketplace_mirror / "plugins/chrome/stale.txt", "stale\n")
+
+        run_command(
+            [
+                str(REPO_ROOT / "codex/scripts/sync-config.sh"),
+                "--apply",
+                "--global-only",
+                "--global-config",
+                str(home / ".codex/config.toml"),
+                "--global-hooks",
+                str(home / ".codex/hooks.json"),
+                "--canonical-dir",
+                str(root / "codex/config"),
+                "--mcp-registry",
+                str(root / "mcp/config/presets.json"),
+                "--plugin-registry",
+                str(root / "plugins/registry.json"),
+                "--hooks-registry",
+                str(root / "hooks/registry.json"),
+            ],
+            env={
+                "HOME": str(home),
+                "CODEX_BUNDLED_MARKETPLACE": str(bundled_marketplace),
+            },
+        )
+
+        rendered_config = (home / ".codex/config.toml").read_text(encoding="utf-8")
+        self.assertIn("[marketplaces.openai-bundled]", rendered_config)
+        self.assertIn(f'source = "{bundled_marketplace}"', rendered_config)
+        self.assertIn('[plugins."chrome@openai-bundled"]', rendered_config)
+        self.assertIn('[plugins."browser-use@openai-bundled"]', rendered_config)
+        self.assertTrue(
+            (home / ".codex/plugins/cache/openai-bundled/chrome/0.1.7/.codex-plugin/plugin.json").is_file()
+        )
+        self.assertFalse((home / ".codex/plugins/cache/openai-bundled/browser-use").exists())
+        self.assertFalse(stale_marketplace_mirror.exists())
+
     def test_sync_copilot_hooks_renders_repo_local_github_hook_file(self) -> None:
         repo = init_git_repo(self.temp_path / "repo")
         registry = self.temp_path / "repo-bootstrap.json"

@@ -45,7 +45,7 @@ Source of truth:
 
 - `plugins/registry.json`
 
-Plugins remain native Codex plugins. The registry supports `global`, `repo`, and `dormant` scope: global entries render into `~/.codex/config.toml`, repo entries render only into assigned repo `.codex/config.toml`, and dormant entries stay tracked without rendering. The control plane does not split plugin packages into skill or MCP registries.
+Plugins remain native Codex plugins. The registry supports `global`, `repo`, and `dormant` scope: global entries render into `~/.codex/config.toml`, repo entries render only into assigned repo `.codex/config.toml`, and dormant entries stay tracked without rendering. Bundled plugin discovery points at the marketplace inside `Codex.app`; the control plane only seeds the installed plugin cache for enabled bundled plugins. The control plane does not split plugin packages into skill or MCP registries.
 
 ## Skills
 

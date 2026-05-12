@@ -56,6 +56,7 @@ These files are the source of truth.
 - `sync-config.sh` prunes stale managed agent role declarations and role files from older versions of this control plane.
 - It preserves machine-specific/runtime-specific state that should not live in git.
 - It renders only global-scope native Codex plugin entries from `plugins/registry.json` and writes disabled bundled-skill entries from `bundled-skills-policy.json`.
+- It points Codex at the native bundled plugin marketplace inside `Codex.app` and only seeds `~/.codex/plugins/cache` for bundled plugins that are explicitly enabled by the registry.
 - It also prunes stale managed keys when the canonical templates no longer want them, while preserving unrelated runtime MCP sections and only injecting the shared global MCP defaults.
 
 Example:
