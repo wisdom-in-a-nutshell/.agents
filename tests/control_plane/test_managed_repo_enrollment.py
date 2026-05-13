@@ -51,7 +51,7 @@ class ManagedRepoEnrollmentTests(TempDirTestCase):
         self.assertEqual(
             [
                 str(already),
-                str(new_repo),
+                str(new_repo.resolve()),
             ],
             paths,
         )
@@ -75,5 +75,5 @@ class ManagedRepoEnrollmentTests(TempDirTestCase):
             ]
         )
 
-        self.assertIn(f"ADD {new_repo}", result.stdout)
+        self.assertIn(f"ADD {new_repo.resolve()}", result.stdout)
         self.assertEqual(before, registry_path.read_text(encoding="utf-8"))

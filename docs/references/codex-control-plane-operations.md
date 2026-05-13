@@ -38,6 +38,10 @@ Use [Codex Control Plane Ownership](/Users/dobby/.agents/docs/references/codex-c
   - [`auto-apply-agent-control-planes.sh`](/Users/dobby/.agents/scripts/auto-apply-agent-control-planes.sh)
   - `~/.agents/scripts/auto-apply-agent-control-planes.sh --apply`
   - this is the machine-facing post-sync entrypoint that external bootstrap repos should call
+- Enroll top-level GitHub repos into the managed repo bootstrap registry:
+  - [`enroll-managed-repos.sh`](/Users/dobby/.agents/scripts/enroll-managed-repos.sh)
+  - `~/.agents/scripts/enroll-managed-repos.sh --apply --github-root ~/GitHub`
+  - this scans only direct child Git repos under the GitHub root, adds missing minimal entries to [`repo-bootstrap.json`](/Users/dobby/.agents/codex/config/repo-bootstrap.json), and regenerates the repo bootstrap registry views
 - Validate shared skills, plugins, repo-local hook files, plus Codex and Claude rendered runtime state:
   - [`check-agent-control-planes.sh`](/Users/dobby/.agents/scripts/check-agent-control-planes.sh)
   - `~/.agents/scripts/check-agent-control-planes.sh`

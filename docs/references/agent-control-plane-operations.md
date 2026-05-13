@@ -20,6 +20,11 @@ For repo authors adding `scripts/hooks/*.py`, start with
   - machine-facing post-sync reconcile entrypoint
   - checks the current `~/.agents` commit against a machine-local stamp
   - runs the minimum shared apply steps needed for runtime-relevant changes
+- `scripts/enroll-managed-repos.sh`
+  - machine-facing repo enrollment entrypoint
+  - scans direct child Git repos under `~/GitHub`
+  - appends missing repos to `codex/config/repo-bootstrap.json` as minimal entries
+  - regenerates the repo bootstrap registry views
 - `scripts/check-agent-control-planes.sh`
   - shared validation entrypoint
   - validates skills registry artifacts, managed repo local Git hook config, repo-local hook config, plus Codex and Claude rendered runtime state
@@ -82,6 +87,8 @@ Current apply rules:
 cd ~/.agents
 ./scripts/bootstrap-machine-agent-control-planes.sh
 ./scripts/bootstrap-machine-agent-control-planes.sh --apply
+./scripts/enroll-managed-repos.sh --dry-run
+./scripts/enroll-managed-repos.sh --apply
 ./scripts/auto-apply-agent-control-planes.sh --dry-run
 ./scripts/auto-apply-agent-control-planes.sh --apply
 ./scripts/audit-agent-runtime-drift.py --plain
