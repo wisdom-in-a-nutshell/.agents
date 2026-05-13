@@ -31,10 +31,10 @@ global_skills:
 repo_skills:
   - "fal-seedance"
   - "imagegen"
+  - "impeccable"
   - "media-toolkit"
   - "remotion"
   - "vercel-react-best-practices"
-  - "web-design-guidelines"
 repo_local_skills:
   - "creating-video"
 skills:
@@ -47,6 +47,7 @@ skills:
   - "fal-seedance"
   - "find-skills"
   - "imagegen"
+  - "impeccable"
   - "media-toolkit"
   - "pdf"
   - "project"
@@ -55,7 +56,6 @@ skills:
   - "skill-creator"
   - "symphony"
   - "vercel-react-best-practices"
-  - "web-design-guidelines"
 ---
 
 Generated from `codex/config/repo-bootstrap.json`, `plugins/registry.json`, and `skills/registry.json`. Do not edit manually.

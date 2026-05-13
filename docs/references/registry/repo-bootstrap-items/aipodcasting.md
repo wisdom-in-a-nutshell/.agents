@@ -31,10 +31,10 @@ global_skills:
 repo_skills:
   - "ai-podcasting"
   - "azure-webapp-config"
+  - "impeccable"
   - "modal-function-sync"
   - "show-password-setup"
   - "vercel-react-best-practices"
-  - "web-design-guidelines"
   - "win-aip-contract-sync"
 repo_local_skills: []
 skills:
@@ -46,6 +46,7 @@ skills:
   - "client-interface-guidelines"
   - "defuddle"
   - "find-skills"
+  - "impeccable"
   - "modal-function-sync"
   - "pdf"
   - "project"
@@ -54,7 +55,6 @@ skills:
   - "skill-creator"
   - "symphony"
   - "vercel-react-best-practices"
-  - "web-design-guidelines"
   - "win-aip-contract-sync"
 ---
 

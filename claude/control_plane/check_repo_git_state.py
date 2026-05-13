@@ -9,6 +9,7 @@ from .common import ControlPlaneError, git_repo_root, main_guard, normalize_path
 
 
 TRACKED_SURFACES = (
+    ".agents/skills",
     ".claude/skills",
 )
 
@@ -16,7 +17,7 @@ TRACKED_SURFACES = (
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description=(
-            "Check managed repo-local Claude generated surfaces for untracked files in "
+            "Check managed repo-local generated skill surfaces for untracked files in "
             "repos that already track those surfaces."
         )
     )
@@ -107,7 +108,7 @@ def main() -> int:
                     [
                         f"repo: {actual_repo}",
                         f"surface: {surface}",
-                        "untracked generated Claude files:",
+                        "untracked generated skill files:",
                         *[f"  - {entry}" for entry in untracked_entries],
                         "These files were rendered into a repo surface that is already tracked.",
                         "Add or ignore them intentionally instead of leaving the repo in a mixed state.",
@@ -117,10 +118,11 @@ def main() -> int:
 
     if failures:
         raise ControlPlaneError(
-            "Managed repo-local Claude files need git attention:\n\n" + "\n\n".join(failures)
+            "Managed repo-local generated skill files need git attention:\n\n"
+            + "\n\n".join(failures)
         )
 
-    print("OK: no untracked generated Claude repo files in tracked repo-local surfaces.")
+    print("OK: no untracked generated skill repo files in tracked repo-local surfaces.")
     return 0
 
 

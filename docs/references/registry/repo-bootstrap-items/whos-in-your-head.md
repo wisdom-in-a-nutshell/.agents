@@ -3,7 +3,7 @@ repo_name: "whos-in-your-head"
 path: "~/GitHub/whos-in-your-head"
 mcp_count: 0
 plugin_count: 2
-skill_count: 11
+skill_count: 14
 repo_local_skill_count: 0
 model: "gpt-5.5"
 reasoning: "high"
@@ -28,7 +28,10 @@ global_skills:
   - "secret-management"
   - "skill-creator"
   - "symphony"
-repo_skills: []
+repo_skills:
+  - "impeccable"
+  - "openai-docs"
+  - "vercel-react-best-practices"
 repo_local_skills: []
 skills:
   - "agent-browser"
@@ -37,11 +40,14 @@ skills:
   - "client-interface-guidelines"
   - "defuddle"
   - "find-skills"
+  - "impeccable"
+  - "openai-docs"
   - "pdf"
   - "project"
   - "secret-management"
   - "skill-creator"
   - "symphony"
+  - "vercel-react-best-practices"
 ---
 
 Generated from `codex/config/repo-bootstrap.json`, `plugins/registry.json`, and `skills/registry.json`. Do not edit manually.

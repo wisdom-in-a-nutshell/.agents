@@ -488,6 +488,8 @@ class ClaudeControlPlaneCheckTests(TempDirTestCase):
             ],
             env=env,
         )
+        manual_link = adi / ".claude/skills/manual-helper"
+        write_text(manual_link, "untracked generated surface fixture\n")
 
         result = run_command(
             [
@@ -518,9 +520,12 @@ class ClaudeControlPlaneCheckTests(TempDirTestCase):
         )
 
         self.assertNotEqual(0, result.returncode)
-        self.assertIn("Managed repo-local Claude files need git attention:", result.stderr)
+        self.assertIn(
+            "Managed repo-local generated skill files need git attention:",
+            result.stderr,
+        )
         self.assertIn("surface: .claude/skills", result.stderr)
-        self.assertIn(".claude/skills/repo-helper", result.stderr)
+        self.assertIn(".claude/skills/manual-helper", result.stderr)
 
     def test_validate_inputs_fails_when_global_claude_forks_global_agents(self) -> None:
         root = make_control_plane_root(self.temp_path)

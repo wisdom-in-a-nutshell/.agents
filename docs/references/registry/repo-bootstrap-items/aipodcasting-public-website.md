@@ -31,8 +31,8 @@ global_skills:
 repo_skills:
   - "aip-company"
   - "azure-webapp-config"
+  - "impeccable"
   - "vercel-react-best-practices"
-  - "web-design-guidelines"
 repo_local_skills: []
 skills:
   - "agent-browser"
@@ -43,13 +43,13 @@ skills:
   - "client-interface-guidelines"
   - "defuddle"
   - "find-skills"
+  - "impeccable"
   - "pdf"
   - "project"
   - "secret-management"
   - "skill-creator"
   - "symphony"
   - "vercel-react-best-practices"
-  - "web-design-guidelines"
 ---
 
 Generated from `codex/config/repo-bootstrap.json`, `plugins/registry.json`, and `skills/registry.json`. Do not edit manually.

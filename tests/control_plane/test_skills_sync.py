@@ -3,6 +3,7 @@ from __future__ import annotations
 from tests.control_plane.support import (
     REPO_ROOT,
     TempDirTestCase,
+    commit_all,
     init_git_repo,
     make_control_plane_root,
     make_skill_source,
@@ -131,6 +132,66 @@ class ManagedSkillsRegistrySyncTests(TempDirTestCase):
         repo_local_text = repo_local_item.read_text(encoding="utf-8")
         self.assertIn('repo: "adi"', repo_local_text)
         self.assertIn('skill: "local-review"', repo_local_text)
+
+    def test_stages_repo_skill_link_additions_and_pruned_stale_links(self) -> None:
+        root = make_control_plane_root(self.temp_path)
+        home = self.temp_path / "home"
+        github_root = home / "GitHub"
+        adi = init_git_repo(github_root / "adi", with_initial_commit=True)
+
+        repo_source = make_skill_source(
+            root / "skills-source/owned/repo-helper",
+            "repo-helper",
+        )
+        stale_source = make_skill_source(
+            root / "skills-source/owned/stale-helper",
+            "stale-helper",
+        )
+        stale_link = adi / ".agents/skills/stale-helper"
+        stale_link.parent.mkdir(parents=True, exist_ok=True)
+        stale_link.symlink_to(stale_source)
+        commit_all(adi, "track stale generated skill link")
+
+        registry_path = root / "skills/registry.json"
+        write_json(
+            registry_path,
+            {
+                "managed_skills": [
+                    {
+                        "skill": "repo-helper",
+                        "origin": "owned",
+                        "scope": "repo",
+                        "repos": ["adi"],
+                        "source_path": "skills-source/owned/repo-helper",
+                    }
+                ],
+                "paths": {
+                    "github_root": str(github_root),
+                },
+                "unmanaged_repo_local_skills": [],
+            },
+        )
+
+        run_command(
+            [
+                "python3",
+                str(REPO_ROOT / "scripts/sync-skills-registry.py"),
+                "--apply",
+                str(registry_path),
+            ],
+            env={"HOME": str(home)},
+        )
+
+        repo_link = adi / ".agents/skills/repo-helper"
+        self.assertTrue(repo_link.is_symlink())
+        self.assertEqual(repo_source.resolve(), repo_link.resolve())
+        self.assertFalse(stale_link.exists())
+
+        status = run_command(
+            ["git", "-C", str(adi), "status", "--short", "--", ".agents/skills"],
+        ).stdout
+        self.assertIn("A  .agents/skills/repo-helper", status)
+        self.assertIn("D  .agents/skills/stale-helper", status)
 
     def test_rejects_missing_repo_local_skill_source_for_existing_repo(self) -> None:
         root = make_control_plane_root(self.temp_path)
@@ -266,6 +327,12 @@ class ClaudeSkillsSyncTests(TempDirTestCase):
         self.assertEqual(repo_local_source.resolve(), repo_local_link.resolve())
         self.assertFalse(stale_global_link.exists())
         self.assertFalse(stale_repo_link.exists())
+
+        status = run_command(
+            ["git", "-C", str(adi), "status", "--short", "--", ".claude/skills"],
+        ).stdout
+        self.assertIn("A  .claude/skills/repo-helper", status)
+        self.assertIn("A  .claude/skills/local-review", status)
 
     def test_prunes_stale_repo_local_link_when_registry_entry_source_is_missing(self) -> None:
         root = make_control_plane_root(self.temp_path)

@@ -5,6 +5,7 @@ import argparse
 import json
 import os
 import shutil
+import subprocess
 import sys
 from pathlib import Path
 from typing import Any
@@ -55,15 +56,15 @@ def repo_local_skill_source(repo_root: Path, skill: str) -> Path:
     return repo_root / ".agents" / "skills" / skill / "SKILL.md"
 
 
-def sync_link(dst: Path, src: Path, apply: bool) -> None:
+def sync_link(dst: Path, src: Path, apply: bool) -> bool:
     rel = rel_link(dst, src)
     if dst.is_symlink() and resolved_target(dst) == src.resolve():
         print(f"UNCHANGED {dst}")
-        return
+        return False
 
     print(f"SYNC {dst} -> {rel}")
     if not apply:
-        return
+        return True
 
     dst.parent.mkdir(parents=True, exist_ok=True)
     if dst.is_symlink() or dst.is_file():
@@ -73,6 +74,52 @@ def sync_link(dst: Path, src: Path, apply: bool) -> None:
     elif dst.exists():
         dst.unlink()
     dst.symlink_to(rel)
+    return True
+
+
+def git_root_for(path: Path) -> Path | None:
+    probe = path.parent if path.is_symlink() or not path.is_dir() else path
+    result = subprocess.run(
+        ["git", "-C", str(probe), "rev-parse", "--show-toplevel"],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    if result.returncode != 0:
+        return None
+    root = result.stdout.strip()
+    if not root:
+        return None
+    return Path(root).resolve()
+
+
+def stage_git_paths(paths: set[Path]) -> None:
+    grouped: dict[Path, list[str]] = {}
+    for path in sorted(paths):
+        git_root = git_root_for(path)
+        if git_root is None:
+            continue
+        try:
+            rel = Path(os.path.abspath(path)).relative_to(git_root)
+        except ValueError:
+            continue
+        if not path.exists() and not path.is_symlink():
+            tracked = subprocess.run(
+                ["git", "-C", str(git_root), "ls-files", "--error-unmatch", "--", str(rel)],
+                check=False,
+                capture_output=True,
+                text=True,
+            )
+            if tracked.returncode != 0:
+                continue
+        grouped.setdefault(git_root, []).append(str(rel))
+
+    for git_root, rel_paths in sorted(grouped.items()):
+        print(f"TRACK {git_root}: {' '.join(rel_paths)}")
+        subprocess.run(
+            ["git", "-C", str(git_root), "add", "-A", "--", *rel_paths],
+            check=True,
+        )
 
 
 def _yaml_str(value: str) -> str:
@@ -324,13 +371,15 @@ def run_sync(
     home = Path.home()
     desired_links: dict[Path, Path] = {}
     dormant_skills: set[str] = set()
+    touched_links: set[Path] = set()
     for item in managed:
         skill = item["skill"]
         src = item["source_abs"]
         if item["scope"] == "global":
             dst = root_dir / "skills" / skill
             desired_links[dst] = src
-            sync_link(dst, src, apply)
+            if sync_link(dst, src, apply):
+                touched_links.add(dst)
             continue
         if item["scope"] == "dormant":
             dormant_skills.add(skill)
@@ -340,24 +389,32 @@ def run_sync(
             repo_root = resolve_repo_root(repo, github_root, home)
             dst = repo_root / ".agents" / "skills" / skill
             desired_links[dst] = src
-            sync_link(dst, src, apply)
+            if sync_link(dst, src, apply):
+                touched_links.add(dst)
 
-    prune_obsolete_global_links(root_dir, desired_links, apply)
-    prune_dormant_repo_links(root_dir, github_root, dormant_skills, apply)
+    touched_links.update(prune_obsolete_global_links(root_dir, desired_links, apply))
+    touched_links.update(prune_obsolete_repo_links(root_dir, github_root, desired_links, apply))
+    touched_links.update(
+        prune_dormant_repo_links(root_dir, github_root, dormant_skills, apply)
+    )
+    if apply:
+        touched_links.update(desired_links)
+        stage_git_paths(touched_links)
 
 
 def prune_obsolete_global_links(
     root_dir: Path,
     desired_links: dict[Path, Path],
     apply: bool,
-) -> None:
+) -> set[Path]:
+    touched_links: set[Path] = set()
     managed_source_roots = [
         (root_dir / "skills-source").resolve(),
         (root_dir / "plugins-source").resolve(),
     ]
     skills_dir = root_dir / "skills"
     if not skills_dir.exists():
-        return
+        return touched_links
     for entry in sorted(skills_dir.iterdir()):
         if not entry.is_symlink():
             continue
@@ -369,6 +426,63 @@ def prune_obsolete_global_links(
         print(f"PRUNE {entry}")
         if apply:
             entry.unlink()
+        touched_links.add(entry)
+    return touched_links
+
+
+def prune_obsolete_repo_links(
+    root_dir: Path,
+    github_root: Path,
+    desired_links: dict[Path, Path],
+    apply: bool,
+) -> set[Path]:
+    touched_links: set[Path] = set()
+    managed_source_roots = [
+        (root_dir / "skills-source").resolve(),
+        (root_dir / "plugins-source").resolve(),
+    ]
+    candidate_dirs: set[Path] = {root_dir / ".agents" / "skills"}
+    if github_root.is_dir():
+        candidate_dirs.update(
+            repo_root / ".agents" / "skills"
+            for repo_root in github_root.iterdir()
+            if repo_root.is_dir()
+        )
+
+    for skills_dir in sorted(candidate_dirs):
+        touched_links.update(
+            prune_obsolete_managed_links_in_dir(
+                skills_dir,
+                desired_links,
+                managed_source_roots,
+                apply,
+            )
+        )
+    return touched_links
+
+
+def prune_obsolete_managed_links_in_dir(
+    skills_dir: Path,
+    desired_links: dict[Path, Path],
+    managed_source_roots: list[Path],
+    apply: bool,
+) -> set[Path]:
+    touched_links: set[Path] = set()
+    if not skills_dir.exists():
+        return touched_links
+    for entry in sorted(skills_dir.iterdir()):
+        if not entry.is_symlink():
+            continue
+        target = resolved_target(entry)
+        if not any(is_relative_to(target, root) for root in managed_source_roots):
+            continue
+        if entry in desired_links:
+            continue
+        print(f"PRUNE {entry}")
+        if apply:
+            entry.unlink()
+        touched_links.add(entry)
+    return touched_links
 
 
 def prune_dormant_links_in_dir(
@@ -376,9 +490,10 @@ def prune_dormant_links_in_dir(
     dormant_skills: set[str],
     managed_source_roots: list[Path],
     apply: bool,
-) -> None:
+) -> set[Path]:
+    touched_links: set[Path] = set()
     if not skills_dir.exists():
-        return
+        return touched_links
     for entry in sorted(skills_dir.iterdir()):
         if entry.name not in dormant_skills:
             continue
@@ -390,6 +505,8 @@ def prune_dormant_links_in_dir(
         print(f"PRUNE {entry}")
         if apply:
             entry.unlink()
+        touched_links.add(entry)
+    return touched_links
 
 
 def prune_dormant_repo_links(
@@ -397,9 +514,10 @@ def prune_dormant_repo_links(
     github_root: Path,
     dormant_skills: set[str],
     apply: bool,
-) -> None:
+) -> set[Path]:
     if not dormant_skills:
-        return
+        return set()
+    touched_links: set[Path] = set()
     managed_source_roots = [
         (root_dir / "skills-source").resolve(),
         (root_dir / "plugins-source").resolve(),
@@ -414,12 +532,15 @@ def prune_dormant_repo_links(
         )
 
     for skills_dir in sorted(candidate_dirs):
-        prune_dormant_links_in_dir(
-            skills_dir,
-            dormant_skills,
-            managed_source_roots,
-            apply,
+        touched_links.update(
+            prune_dormant_links_in_dir(
+                skills_dir,
+                dormant_skills,
+                managed_source_roots,
+                apply,
+            )
         )
+    return touched_links
 
 
 def parse_args() -> argparse.Namespace:

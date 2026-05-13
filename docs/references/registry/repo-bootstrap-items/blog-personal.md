@@ -32,9 +32,9 @@ repo_skills:
   - "adi-writing"
   - "aip-company"
   - "imagegen"
+  - "impeccable"
   - "pretty-mermaid"
   - "vercel-react-best-practices"
-  - "web-design-guidelines"
   - "web-typography"
 repo_local_skills:
   - "blog-posting"
@@ -49,6 +49,7 @@ skills:
   - "defuddle"
   - "find-skills"
   - "imagegen"
+  - "impeccable"
   - "pdf"
   - "pretty-mermaid"
   - "project"
@@ -56,7 +57,6 @@ skills:
   - "skill-creator"
   - "symphony"
   - "vercel-react-best-practices"
-  - "web-design-guidelines"
   - "web-typography"
 ---
 

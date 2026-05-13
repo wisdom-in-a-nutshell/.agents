@@ -2,7 +2,9 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import shutil
+import subprocess
 import sys
 from pathlib import Path
 from typing import Any
@@ -22,15 +24,15 @@ ALLOWED_ORIGINS = {"external", "owned"}
 ALLOWED_SCOPES = {"global", "repo", "dormant"}
 
 
-def sync_link(dst: Path, src: Path, *, apply: bool) -> None:
+def sync_link(dst: Path, src: Path, *, apply: bool) -> bool:
     rel = rel_link(dst, src)
     if dst.is_symlink() and resolved_target(dst) == src.resolve():
         print(f"UNCHANGED {dst}")
-        return
+        return False
 
     print(f"SYNC {dst} -> {rel}")
     if not apply:
-        return
+        return True
 
     dst.parent.mkdir(parents=True, exist_ok=True)
     if dst.is_symlink() or dst.is_file():
@@ -40,6 +42,52 @@ def sync_link(dst: Path, src: Path, *, apply: bool) -> None:
     elif dst.exists():
         dst.unlink()
     dst.symlink_to(rel)
+    return True
+
+
+def git_root_for(path: Path) -> Path | None:
+    probe = path.parent if path.is_symlink() or not path.is_dir() else path
+    result = subprocess.run(
+        ["git", "-C", str(probe), "rev-parse", "--show-toplevel"],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    if result.returncode != 0:
+        return None
+    root = result.stdout.strip()
+    if not root:
+        return None
+    return Path(root).resolve()
+
+
+def stage_git_paths(paths: set[Path]) -> None:
+    grouped: dict[Path, list[str]] = {}
+    for path in sorted(paths):
+        git_root = git_root_for(path)
+        if git_root is None:
+            continue
+        try:
+            rel = Path(os.path.abspath(path)).relative_to(git_root)
+        except ValueError:
+            continue
+        if not path.exists() and not path.is_symlink():
+            tracked = subprocess.run(
+                ["git", "-C", str(git_root), "ls-files", "--error-unmatch", "--", str(rel)],
+                check=False,
+                capture_output=True,
+                text=True,
+            )
+            if tracked.returncode != 0:
+                continue
+        grouped.setdefault(git_root, []).append(str(rel))
+
+    for git_root, rel_paths in sorted(grouped.items()):
+        print(f"TRACK {git_root}: {' '.join(rel_paths)}")
+        subprocess.run(
+            ["git", "-C", str(git_root), "add", "-A", "--", *rel_paths],
+            check=True,
+        )
 
 
 def prune_dir(
@@ -49,9 +97,10 @@ def prune_dir(
     managed_source_roots: tuple[Path, ...],
     repo_local_source_root: Path | None,
     apply: bool,
-) -> None:
+) -> set[Path]:
+    touched_links: set[Path] = set()
     if not skills_dir.exists():
-        return
+        return touched_links
     for entry in sorted(skills_dir.iterdir()):
         if not entry.is_symlink():
             continue
@@ -68,6 +117,8 @@ def prune_dir(
         print(f"PRUNE {entry}")
         if apply:
             entry.unlink()
+        touched_links.add(entry)
+    return touched_links
 
 
 def ensure_skill_source(path: Path, *, label: str) -> bool:
@@ -148,6 +199,7 @@ def main() -> int:
 
     desired_links: dict[Path, Path] = {}
     repo_dirs_to_prune: dict[Path, dict[Path, Path]] = {}
+    touched_links: set[Path] = set()
 
     for label, items in (
         ("managed_skills", managed),
@@ -185,7 +237,8 @@ def main() -> int:
                 if dst in desired_links and desired_links[dst] != src:
                     raise ControlPlaneError(f"conflicting Claude skill targets for {dst}")
                 desired_links[dst] = src
-                sync_link(dst, src, apply=args.apply)
+                if sync_link(dst, src, apply=args.apply):
+                    touched_links.add(dst)
                 continue
             if scope == "dormant":
                 continue
@@ -205,7 +258,8 @@ def main() -> int:
                     raise ControlPlaneError(f"conflicting Claude skill targets for {dst}")
                 desired_links[dst] = src
                 repo_dirs_to_prune.setdefault(actual_repo, {})[dst] = src
-                sync_link(dst, src, apply=args.apply)
+                if sync_link(dst, src, apply=args.apply):
+                    touched_links.add(dst)
 
     for idx, item in enumerate(unmanaged):
         if not isinstance(item, dict):
@@ -237,24 +291,37 @@ def main() -> int:
             raise ControlPlaneError(f"conflicting Claude skill targets for {dst}")
         desired_links[dst] = src
         repo_dirs_to_prune[actual_repo][dst] = src
-        sync_link(dst, src, apply=args.apply)
+        if sync_link(dst, src, apply=args.apply):
+            touched_links.add(dst)
 
-    prune_dir(
-        global_skills_dir,
-        {path: src for path, src in desired_links.items() if path.parent == global_skills_dir},
-        managed_source_roots=managed_source_roots,
-        repo_local_source_root=None,
-        apply=args.apply,
+    touched_links.update(
+        prune_dir(
+            global_skills_dir,
+            {
+                path: src
+                for path, src in desired_links.items()
+                if path.parent == global_skills_dir
+            },
+            managed_source_roots=managed_source_roots,
+            repo_local_source_root=None,
+            apply=args.apply,
+        )
     )
 
     for repo_root_path, repo_desired in sorted(repo_dirs_to_prune.items()):
-        prune_dir(
-            repo_root_path / ".claude" / "skills",
-            repo_desired,
-            managed_source_roots=managed_source_roots,
-            repo_local_source_root=repo_root_path / ".agents" / "skills",
-            apply=args.apply,
+        touched_links.update(
+            prune_dir(
+                repo_root_path / ".claude" / "skills",
+                repo_desired,
+                managed_source_roots=managed_source_roots,
+                repo_local_source_root=repo_root_path / ".agents" / "skills",
+                apply=args.apply,
+            )
         )
+
+    if args.apply:
+        touched_links.update(desired_links)
+        stage_git_paths(touched_links)
 
     if args.apply:
         print("Apply complete.")
