@@ -278,7 +278,8 @@
       "origin": "external",
       "scope": "repo",
       "repos": [
-        "~/.agents"
+        "~/.agents",
+        "whos-in-your-head"
       ],
       "source_path": "skills-source/external/openai-docs",
       "upstream_ref": "openai/skills:skills/.curated/openai-docs@main"
@@ -382,23 +383,25 @@
         "adithyan-ai-videos",
         "aipodcasting",
         "aipodcasting-public-website",
-        "blog-personal"
+        "blog-personal",
+        "whos-in-your-head"
       ],
       "source_path": "skills-source/external/vercel-react-best-practices",
       "upstream_ref": "vercel-labs/agent-skills:skills/react-best-practices@main"
     },
     {
-      "skill": "web-design-guidelines",
+      "skill": "impeccable",
       "origin": "external",
       "scope": "repo",
       "repos": [
         "adithyan-ai-videos",
         "aipodcasting",
         "aipodcasting-public-website",
-        "blog-personal"
+        "blog-personal",
+        "whos-in-your-head"
       ],
-      "source_path": "skills-source/external/web-design-guidelines",
-      "upstream_ref": "vercel-labs/agent-skills:skills/web-design-guidelines@main"
+      "source_path": "skills-source/external/impeccable",
+      "upstream_ref": "pbakaus/impeccable:skill@main"
     },
     {
       "skill": "copilot-sdk",
