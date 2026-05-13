@@ -53,14 +53,6 @@
       "scope": "global",
       "repos": [],
       "category": "Productivity"
-    },
-    {
-      "plugin": "openai-developers",
-      "marketplace": "openai-curated",
-      "enabled": true,
-      "scope": "global",
-      "repos": [],
-      "category": "Engineering"
     }
   ],
   "unmanaged_repo_local_plugins": []

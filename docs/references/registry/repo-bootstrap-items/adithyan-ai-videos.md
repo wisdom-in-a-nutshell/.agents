@@ -2,7 +2,7 @@
 repo_name: "adithyan-ai-videos"
 path: "~/GitHub/adithyan-ai-videos"
 mcp_count: 0
-plugin_count: 3
+plugin_count: 2
 skill_count: 18
 repo_local_skill_count: 1
 model: "gpt-5.5"
@@ -12,12 +12,10 @@ mcps: []
 global_plugins:
   - "browser-use@openai-bundled"
   - "computer-use@openai-bundled"
-  - "openai-developers@openai-curated"
 repo_plugins: []
 plugins:
   - "browser-use@openai-bundled"
   - "computer-use@openai-bundled"
-  - "openai-developers@openai-curated"
 global_skills:
   - "agent-browser"
   - "agent-native-repo-playbook"
