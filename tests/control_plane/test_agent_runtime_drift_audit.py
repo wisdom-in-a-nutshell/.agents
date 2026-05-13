@@ -2,7 +2,14 @@ from __future__ import annotations
 
 import json
 
-from tests.control_plane.support import REPO_ROOT, TempDirTestCase, run_command, write_json, write_text
+from tests.control_plane.support import (
+    REPO_ROOT,
+    TempDirTestCase,
+    read_json,
+    run_command,
+    write_json,
+    write_text,
+)
 
 
 class AgentRuntimeDriftAuditTests(TempDirTestCase):
@@ -51,6 +58,11 @@ class AgentRuntimeDriftAuditTests(TempDirTestCase):
         if include_computer_use:
             self._write_plugin(home, "openai-bundled", "computer-use")
 
+    def _write_managed_settings(self) -> str:
+        target = self.temp_path / "policy/managed-settings.json"
+        write_json(target, read_json(REPO_ROOT / "claude/config/managed-settings.json"))
+        return str(target)
+
     def test_audit_passes_for_known_required_codex_plugin(self) -> None:
         home = self.temp_path / "home"
         self._write_live_codex_config(home)
@@ -63,6 +75,8 @@ class AgentRuntimeDriftAuditTests(TempDirTestCase):
                 "--skip-control-plane-check",
                 "--home",
                 str(home),
+                "--claude-managed-settings-target",
+                self._write_managed_settings(),
             ]
         )
 
@@ -83,6 +97,8 @@ class AgentRuntimeDriftAuditTests(TempDirTestCase):
                 "--skip-control-plane-check",
                 "--home",
                 str(home),
+                "--claude-managed-settings-target",
+                self._write_managed_settings(),
             ],
             check=False,
         )
@@ -106,6 +122,8 @@ class AgentRuntimeDriftAuditTests(TempDirTestCase):
                 "--skip-control-plane-check",
                 "--home",
                 str(home),
+                "--claude-managed-settings-target",
+                self._write_managed_settings(),
             ]
         )
 
@@ -125,6 +143,8 @@ class AgentRuntimeDriftAuditTests(TempDirTestCase):
                 "--skip-control-plane-check",
                 "--home",
                 str(home),
+                "--claude-managed-settings-target",
+                self._write_managed_settings(),
             ],
             check=False,
         )

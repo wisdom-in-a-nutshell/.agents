@@ -9,6 +9,7 @@ CANONICAL_DIR="${CONTROL_PLANE_DIR}/config"
 GLOBAL_CLAUDE_MD="${HOME}/.claude/CLAUDE.md"
 GLOBAL_SETTINGS="${HOME}/.claude/settings.json"
 GLOBAL_CONFIG="${HOME}/.claude.json"
+MANAGED_SETTINGS_TARGET=""
 REPO_REGISTRY="${ROOT_DIR}/codex/config/repo-bootstrap.json"
 BOOTSTRAP_FILE="${CANONICAL_DIR}/bootstrap.json"
 MCP_REGISTRY="${ROOT_DIR}/mcp/config/presets.json"
@@ -28,6 +29,8 @@ Options:
   --global-claude-md <path> Override runtime ~/.claude/CLAUDE.md path
   --global-settings <path>  Override runtime ~/.claude/settings.json path
   --global-config <path>    Override runtime ~/.claude.json path
+  --managed-settings-target <path>
+                            Override OS-level managed-settings target
   --registry <path>         Override shared repo bootstrap registry path
   --bootstrap <path>        Override Claude bootstrap defaults/overrides path
   --mcp-registry <path>     Override shared MCP registry path
@@ -56,6 +59,10 @@ while [[ $# -gt 0 ]]; do
       ;;
     --global-config)
       GLOBAL_CONFIG="${2:-}"
+      shift 2
+      ;;
+    --managed-settings-target)
+      MANAGED_SETTINGS_TARGET="${2:-}"
       shift 2
       ;;
     --registry)
@@ -117,6 +124,11 @@ for repo in "${REPO_FILTERS[@]}"; do
   REPO_ARGS+=(--repo "$repo")
 done
 
+MANAGED_SETTINGS_ARGS=()
+if [[ -n "$MANAGED_SETTINGS_TARGET" ]]; then
+  MANAGED_SETTINGS_ARGS+=(--policy-target "$MANAGED_SETTINGS_TARGET")
+fi
+
 run_and_require_clean() {
   local label="$1"
   shift
@@ -140,7 +152,7 @@ run_and_require_clean "global Claude guidance" \
 run_and_require_clean "global Claude settings" \
   bash "${SCRIPT_DIR}/sync-settings.sh" --dry-run --global-settings "$GLOBAL_SETTINGS" --canonical-settings "${CANONICAL_DIR}/settings.json" --hooks-registry "$HOOKS_REGISTRY"
 run_and_require_clean "Claude managed settings" \
-  bash "${SCRIPT_DIR}/sync-managed-settings.sh" --dry-run --canonical-policy "${CANONICAL_DIR}/managed-settings.json"
+  bash "${SCRIPT_DIR}/sync-managed-settings.sh" --dry-run --canonical-policy "${CANONICAL_DIR}/managed-settings.json" "${MANAGED_SETTINGS_ARGS[@]}"
 run_and_require_clean "global Claude MCP" \
   bash "${SCRIPT_DIR}/sync-global-mcp.sh" --dry-run --global-config "$GLOBAL_CONFIG" --mcp-registry "$MCP_REGISTRY"
 run_and_require_clean "Claude skills sync" \

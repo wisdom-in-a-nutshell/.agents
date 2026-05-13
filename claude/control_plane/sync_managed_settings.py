@@ -115,11 +115,11 @@ def install_with_sudo(rendered: Path, target: Path) -> None:
     target_parent = str(target.parent)
 
     subprocess.run(
-        ["sudo", "mkdir", "-p", target_parent],
+        ["sudo", "/usr/bin/install", "-d", "-m", "0755", target_parent],
         check=True,
     )
     subprocess.run(
-        ["sudo", "install", "-m", "0644", str(rendered), target_str],
+        ["sudo", "/usr/bin/install", "-m", "0644", str(rendered), target_str],
         check=True,
     )
 

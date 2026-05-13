@@ -412,10 +412,18 @@ def claude_managed_settings_target() -> Path | None:
     return None
 
 
-def audit_claude_managed_settings(agents_repo: Path) -> dict[str, Any]:
+def audit_claude_managed_settings(
+    agents_repo: Path,
+    *,
+    target_override: str | None = None,
+) -> dict[str, Any]:
     name = "claude_managed_settings"
     canonical = agents_repo / "claude" / "config" / "managed-settings.json"
-    target = claude_managed_settings_target()
+    target = (
+        Path(target_override).expanduser().resolve()
+        if target_override
+        else claude_managed_settings_target()
+    )
 
     if target is None:
         return check_result(
@@ -510,7 +518,10 @@ def build_payload(args: argparse.Namespace) -> tuple[dict[str, Any], int]:
         run_control_plane_check(agents_repo, args.timeout_sec, skip=args.skip_control_plane_check),
         audit_codex_plugins(agents_repo, home),
         audit_required_codex_plugins(agents_repo, home),
-        audit_claude_managed_settings(agents_repo),
+        audit_claude_managed_settings(
+            agents_repo,
+            target_override=args.claude_managed_settings_target,
+        ),
     ]
 
     error_checks = [check for check in checks if check["status"] == "error"]
@@ -591,6 +602,11 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     parser.add_argument("--agents-repo", default=str(Path(__file__).resolve().parents[1]), help="Path to the .agents repo.")
     parser.add_argument("--home", default=str(Path.home()), help="Home directory whose agent runtimes should be audited.")
     parser.add_argument("--timeout-sec", type=int, default=600, help="Timeout for the shared control-plane check.")
+    parser.add_argument(
+        "--claude-managed-settings-target",
+        default=None,
+        help="Override the Claude managed-settings policy target; intended for focused tests.",
+    )
     parser.add_argument(
         "--skip-control-plane-check",
         action="store_true",

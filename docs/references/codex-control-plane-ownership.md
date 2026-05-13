@@ -88,7 +88,7 @@ Use [Codex Control Plane](/Users/dobby/.agents/docs/architecture/codex-control-p
 - [codex/config/repo-bootstrap.json](/Users/dobby/.agents/codex/config/repo-bootstrap.json): canonical repo bootstrap registry for managed repos plus repo-local model/agent/MCP assignment.
 - [mcp/config/presets.json](/Users/dobby/.agents/mcp/config/presets.json): canonical shared MCP definitions plus machine-wide default MCP enablement.
 - [plugins/registry.json](/Users/dobby/.agents/plugins/registry.json): canonical native Codex plugin scope and enable/disable registry.
-- [codex/scripts/install-sudoers-codex-ops.sh](/Users/dobby/.agents/codex/scripts/install-sudoers-codex-ops.sh): canonical Codex sudoers installer.
+- [codex/scripts/install-sudoers-codex-ops.sh](/Users/dobby/.agents/codex/scripts/install-sudoers-codex-ops.sh): canonical Codex sudoers installer, including the fixed Claude managed-settings install commands used by unattended control-plane repair.
 
 ## Ongoing Direction
 

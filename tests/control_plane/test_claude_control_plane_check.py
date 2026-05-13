@@ -18,6 +18,11 @@ from tests.control_plane.support import (
 
 
 class ClaudeControlPlaneCheckTests(TempDirTestCase):
+    def _write_managed_settings_target(self, root) -> str:  # noqa: ANN001
+        target = self.temp_path / "policy/managed-settings.json"
+        write_json(target, read_json(root / "claude/config/managed-settings.json"))
+        return str(target)
+
     def test_check_script_passes_for_rendered_skills_and_mcp(self) -> None:
         root = make_control_plane_root(self.temp_path)
         home = self.temp_path / "home"
@@ -147,6 +152,8 @@ class ClaudeControlPlaneCheckTests(TempDirTestCase):
                 str(home / ".claude/settings.json"),
                 "--global-config",
                 str(home / ".claude.json"),
+                "--managed-settings-target",
+                self._write_managed_settings_target(root),
                 "--registry",
                 str(root / "codex/config/repo-bootstrap.json"),
                 "--bootstrap",
@@ -301,6 +308,8 @@ class ClaudeControlPlaneCheckTests(TempDirTestCase):
                 str(home / ".claude/settings.json"),
                 "--global-config",
                 str(home / ".claude.json"),
+                "--managed-settings-target",
+                self._write_managed_settings_target(root),
                 "--registry",
                 str(root / "codex/config/repo-bootstrap.json"),
                 "--bootstrap",
@@ -502,6 +511,8 @@ class ClaudeControlPlaneCheckTests(TempDirTestCase):
                 str(home / ".claude/settings.json"),
                 "--global-config",
                 str(home / ".claude.json"),
+                "--managed-settings-target",
+                self._write_managed_settings_target(root),
                 "--registry",
                 str(root / "codex/config/repo-bootstrap.json"),
                 "--bootstrap",

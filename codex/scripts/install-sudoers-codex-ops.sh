@@ -28,6 +28,8 @@ Allowed command groups:
   - /usr/sbin/softwareupdate *
   - /usr/bin/defaults write /Library/Preferences/com.apple.SoftwareUpdate *
   - /usr/bin/defaults write /Library/Preferences/com.apple.commerce AutoUpdate -bool true
+  - /usr/bin/install -d -m 0755 /Library/Application Support/ClaudeCode
+  - /usr/bin/install -m 0644 * /Library/Application Support/ClaudeCode/managed-settings.json
 USAGE
 }
 
@@ -70,7 +72,7 @@ if [[ -z "$TARGET_USER" ]]; then
   exit 2
 fi
 
-RULE="${TARGET_USER} ALL=(root) NOPASSWD: /opt/homebrew/bin/brew services *, /opt/homebrew/bin/tailscale *, /bin/launchctl *, /usr/sbin/softwareupdate *, /usr/bin/defaults write /Library/Preferences/com.apple.SoftwareUpdate *, /usr/bin/defaults write /Library/Preferences/com.apple.commerce AutoUpdate -bool true"
+RULE="${TARGET_USER} ALL=(root) NOPASSWD: /opt/homebrew/bin/brew services *, /opt/homebrew/bin/tailscale *, /bin/launchctl *, /usr/sbin/softwareupdate *, /usr/bin/defaults write /Library/Preferences/com.apple.SoftwareUpdate *, /usr/bin/defaults write /Library/Preferences/com.apple.commerce AutoUpdate -bool true, /usr/bin/install -d -m 0755 /Library/Application\\ Support/ClaudeCode, /usr/bin/install -m 0644 * /Library/Application\\ Support/ClaudeCode/managed-settings.json"
 
 if [[ "$APPLY" -ne 1 ]]; then
   echo "$RULE"

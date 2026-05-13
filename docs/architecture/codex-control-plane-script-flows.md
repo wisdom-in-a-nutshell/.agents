@@ -295,6 +295,7 @@ flowchart TD
 
 - [`install-sudoers-codex-ops.sh`](/Users/dobby/.agents/codex/scripts/install-sudoers-codex-ops.sh)
   - installs the narrow sudo policy used by Codex machine-ops workflows
+  - includes the fixed Claude managed-settings install commands needed by unattended control-plane repair
 
 ## Reading Order
 
