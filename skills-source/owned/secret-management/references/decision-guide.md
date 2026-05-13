@@ -49,6 +49,9 @@ Use the `GitHub CI` lane.
 
 - Keep only CI bootstrap/auth or deliberate CI-only third-party credentials in GitHub.
 - Use `vars` for non-secret identifiers such as Azure client/tenant/subscription IDs.
+- Prefer repo or environment `vars` for Azure OIDC identifiers in deploy workflows.
+  Org-level vars can exist for shared defaults, but do not rely on org secrets for
+  runtime app configuration and do not add per-app runtime values to GitHub.
 - Prefer OIDC for Azure access.
 
 Typical examples:

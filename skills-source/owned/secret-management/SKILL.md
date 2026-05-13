@@ -65,6 +65,9 @@ Use for credentials shared across repos on one machine for operator tooling.
 Use only for CI bootstrap/auth or intentionally CI-only third-party credentials.
 
 - Azure identifiers belong in GitHub `vars`, not `secrets`.
+- Prefer repo or environment `vars` for deploy workflow Azure OIDC identifiers;
+  org-level vars can exist, but runtime app configuration should not depend on
+  GitHub org secrets.
 - Prefer Azure OIDC over long-lived Azure credential blobs.
 - If CI needs a real runtime secret, fetch it after Azure login instead of making GitHub the owner.
 
