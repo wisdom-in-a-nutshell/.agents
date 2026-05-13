@@ -2,7 +2,7 @@
 repo_name: "stadia-macos-controller"
 path: "~/GitHub/stadia-macos-controller"
 mcp_count: 0
-plugin_count: 2
+plugin_count: 3
 skill_count: 11
 repo_local_skill_count: 0
 model: "gpt-5.5"
@@ -12,10 +12,12 @@ mcps: []
 global_plugins:
   - "browser-use@openai-bundled"
   - "computer-use@openai-bundled"
+  - "openai-developers@openai-curated"
 repo_plugins: []
 plugins:
   - "browser-use@openai-bundled"
   - "computer-use@openai-bundled"
+  - "openai-developers@openai-curated"
 global_skills:
   - "agent-browser"
   - "agent-native-repo-playbook"
