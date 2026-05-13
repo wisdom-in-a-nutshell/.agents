@@ -3,7 +3,7 @@ repo_name: "whos-in-your-head"
 path: "~/GitHub/whos-in-your-head"
 mcp_count: 0
 plugin_count: 2
-skill_count: 14
+skill_count: 15
 repo_local_skill_count: 0
 model: "gpt-5.5"
 reasoning: "high"
@@ -29,6 +29,7 @@ global_skills:
   - "skill-creator"
   - "symphony"
 repo_skills:
+  - "azure-webapp-deploy"
   - "impeccable"
   - "openai-docs"
   - "vercel-react-best-practices"
@@ -37,6 +38,7 @@ skills:
   - "agent-browser"
   - "agent-native-repo-playbook"
   - "architecture-docs"
+  - "azure-webapp-deploy"
   - "client-interface-guidelines"
   - "defuddle"
   - "find-skills"
