@@ -64,6 +64,16 @@
       "upstream_ref": "kepano/obsidian-skills:skills/obsidian-markdown@main"
     },
     {
+      "skill": "obsidian-bases",
+      "origin": "external",
+      "scope": "repo",
+      "repos": [
+        "~/.agents"
+      ],
+      "source_path": "skills-source/external/obsidian-bases",
+      "upstream_ref": "kepano/obsidian-skills:skills/obsidian-bases@main"
+    },
+    {
       "skill": "find-skills",
       "origin": "external",
       "scope": "global",
