@@ -1,0 +1,4 @@
+interface:
+  display_name: "WIYH GPT Hill Climb"
+  short_description: "Analyze and improve WIYH GPT game telemetry."
+  default_prompt: "Use $whiyh-gpt-hill-climb to review recent Who's In Your Head GPT telemetry, summarize failures, and recommend one focused next improvement."
