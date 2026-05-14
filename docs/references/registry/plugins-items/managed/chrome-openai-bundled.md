@@ -3,7 +3,7 @@ registry_kind: managed
 plugin: "chrome"
 plugin_id: "chrome@openai-bundled"
 marketplace: "openai-bundled"
-enabled: false
+enabled: true
 scope: "global"
 repos_csv: "*"
 category: "Productivity"

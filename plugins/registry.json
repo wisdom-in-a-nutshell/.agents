@@ -15,7 +15,7 @@
     {
       "plugin": "chrome",
       "marketplace": "openai-bundled",
-      "enabled": false,
+      "enabled": true,
       "scope": "global",
       "repos": [],
       "category": "Productivity"
