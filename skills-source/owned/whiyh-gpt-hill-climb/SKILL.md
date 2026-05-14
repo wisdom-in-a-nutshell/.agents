@@ -35,6 +35,9 @@ Choose the narrowest mode that matches the request.
 - For a recurring automation, prefer every 2 hours unless the user asks for a
   tighter loop. A 2-hour report reduces noise and gives enough completed games
   to avoid overfitting.
+- Hourly reports are reasonable during high traffic when the last hour has
+  roughly 30+ completed games. Still compare against a 2-hour window before
+  editing when the pattern is noisy.
 - After a deploy, wait a full telemetry window before judging the change unless
   checking deployment health or obvious route failures.
 
@@ -210,5 +213,5 @@ Keep reports compact and operator-friendly:
 For a recurring report, use a prompt like:
 
 ```text
-Use $whiyh-gpt-hill-climb in report-only mode. In /Users/dobby/GitHub/whos-in-your-head, review the last 2 hours of GPT/default game telemetry, including misses, dropoffs, latency, cache/token efficiency, model errors, and share signals when available. Focus optimization on the `gpt-chat-latest` turn path and adaptive `gpt-5.5` late path: make turns cheaper and faster where possible without hurting correctness. Summarize what changed, identify the most likely reason for any failures, and recommend at most one next action. Do not edit code.
+Use $whiyh-gpt-hill-climb in report-only mode. In /Users/dobby/GitHub/whos-in-your-head, review the last 60 minutes of GPT/default game telemetry and compare with the last 2 hours when the sample is noisy, including misses, dropoffs, latency, cache/token efficiency, model errors, and share signals when available. Focus optimization on the `gpt-chat-latest` turn path and adaptive `gpt-5.5` late path: make turns cheaper and faster where possible without hurting correctness. Summarize what changed, identify the most likely reason for any failures, and recommend at most one next action. Do not edit code.
 ```
