@@ -2,7 +2,7 @@
 repo_name: "symphony"
 path: "~/GitHub/symphony"
 mcp_count: 1
-plugin_count: 3
+plugin_count: 2
 skill_count: 12
 repo_local_skill_count: 0
 model: "gpt-5.5"
@@ -12,12 +12,10 @@ mcps:
   - "openaiDeveloperDocs"
 global_plugins:
   - "browser-use@openai-bundled"
-  - "chrome@openai-bundled"
   - "computer-use@openai-bundled"
 repo_plugins: []
 plugins:
   - "browser-use@openai-bundled"
-  - "chrome@openai-bundled"
   - "computer-use@openai-bundled"
 global_skills:
   - "agent-browser"

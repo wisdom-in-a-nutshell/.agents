@@ -13,14 +13,6 @@
       "category": "Engineering"
     },
     {
-      "plugin": "chrome",
-      "marketplace": "openai-bundled",
-      "enabled": true,
-      "scope": "global",
-      "repos": [],
-      "category": "Productivity"
-    },
-    {
       "plugin": "build-ios-apps",
       "marketplace": "openai-curated",
       "enabled": true,
