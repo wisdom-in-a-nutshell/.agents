@@ -2,7 +2,7 @@
 repo_name: "codexclaw"
 path: "~/GitHub/codexclaw"
 mcp_count: 0
-plugin_count: 4
+plugin_count: 3
 skill_count: 15
 repo_local_skill_count: 0
 model: "gpt-5.5"
@@ -12,14 +12,12 @@ mcps: []
 global_plugins:
   - "browser-use@openai-bundled"
   - "chrome@openai-bundled"
-  - "computer-use@openai-bundled"
 repo_plugins:
   - "build-ios-apps@openai-curated"
 plugins:
   - "browser-use@openai-bundled"
   - "build-ios-apps@openai-curated"
   - "chrome@openai-bundled"
-  - "computer-use@openai-bundled"
 global_skills:
   - "agent-browser"
   - "agent-native-repo-playbook"
