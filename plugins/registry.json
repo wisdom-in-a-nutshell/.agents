@@ -31,6 +31,14 @@
       "category": "Coding"
     },
     {
+      "plugin": "computer-use",
+      "marketplace": "openai-bundled",
+      "enabled": true,
+      "scope": "global",
+      "repos": [],
+      "category": "Productivity"
+    },
+    {
       "plugin": "gmail",
       "marketplace": "openai-curated",
       "enabled": false,
