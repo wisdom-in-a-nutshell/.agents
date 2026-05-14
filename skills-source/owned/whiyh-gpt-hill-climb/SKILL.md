@@ -8,9 +8,12 @@ description: "Monitor, analyze, and improve the Who's In Your Head GPT/default g
 Use this skill for the repeatable improvement loop around the live game at
 `/Users/dobby/GitHub/whos-in-your-head`.
 
-The product target is concrete: make model turns fast and final guesses correct.
-Supporting signals are completion rate up, drop rate down, route/model errors
-low, cache/token efficiency healthy, and reported misses down.
+The product target is concrete: make model turns fast, cheap, and correct.
+Optimize the GPT default path first: cheap/fast `gpt-chat-latest` turns, then
+adaptive `gpt-5.5` late-path correctness only where it earns its extra latency
+and token cost. Supporting signals are completion rate up, drop rate down,
+route/model errors low, cache/token efficiency healthy, and reported misses
+down.
 
 ## Modes
 
@@ -47,6 +50,22 @@ Do not judge the GPT path only by completed rows whose final model is
 `gpt-chat-latest`; late escalation can make the final model differ from the
 early-turn model. Use Gemini and Claude as comparison groups, but optimize GPT
 unless the user redirects.
+
+## Cost And Speed Bias
+
+Focus optimization only on the GPT default path unless the user redirects:
+
+- Keep `gpt-chat-latest` cheap and fast for ordinary turns.
+- Use `gpt-5.5` only where the late/hard-turn correctness benefit is plausible.
+- Watch average model latency, route latency, total tokens, reasoning tokens,
+  cached tokens, and cache read rate.
+- Prefer prompt/mechanics/routing changes that reduce wasted questions, repeated
+  retries, unnecessary escalation, or low-value expensive turns.
+- Use instant/local deterministic handling only for app-owned mechanics such as
+  the fixed opener, validation, state transitions, retry guards, warmups, and
+  avoiding unnecessary model calls. Do not replace the model's gameplay
+  judgment with hardcoded question trees or local guesses.
+- Do not trade a meaningful correctness drop for small cost savings.
 
 ## Telemetry Pass
 
@@ -191,5 +210,5 @@ Keep reports compact and operator-friendly:
 For a recurring report, use a prompt like:
 
 ```text
-Use $whiyh-gpt-hill-climb in report-only mode. In /Users/dobby/GitHub/whos-in-your-head, review the last 2 hours of GPT/default game telemetry, including misses, dropoffs, latency, cache/token efficiency, model errors, and share signals when available. Summarize what changed, identify the most likely reason for any failures, and recommend at most one next action. Do not edit code.
+Use $whiyh-gpt-hill-climb in report-only mode. In /Users/dobby/GitHub/whos-in-your-head, review the last 2 hours of GPT/default game telemetry, including misses, dropoffs, latency, cache/token efficiency, model errors, and share signals when available. Focus optimization on the `gpt-chat-latest` turn path and adaptive `gpt-5.5` late path: make turns cheaper and faster where possible without hurting correctness. Summarize what changed, identify the most likely reason for any failures, and recommend at most one next action. Do not edit code.
 ```
