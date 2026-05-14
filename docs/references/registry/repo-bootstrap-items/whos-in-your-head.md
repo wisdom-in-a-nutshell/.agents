@@ -2,7 +2,7 @@
 repo_name: "whos-in-your-head"
 path: "~/GitHub/whos-in-your-head"
 mcp_count: 0
-plugin_count: 2
+plugin_count: 3
 skill_count: 15
 repo_local_skill_count: 0
 model: "gpt-5.5"
@@ -11,10 +11,12 @@ service_tier: "-"
 mcps: []
 global_plugins:
   - "browser-use@openai-bundled"
+  - "chrome@openai-bundled"
   - "computer-use@openai-bundled"
 repo_plugins: []
 plugins:
   - "browser-use@openai-bundled"
+  - "chrome@openai-bundled"
   - "computer-use@openai-bundled"
 global_skills:
   - "agent-browser"

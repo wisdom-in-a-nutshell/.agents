@@ -131,6 +131,55 @@ def validate_no_agent_declarations(config_path: Path) -> None:
         fail(f"{config_path} declares managed agents; this control plane no longer materializes agent roles")
 
 
+def validate_global_plugin_runtime(
+    config_path: Path,
+    config_data: dict,
+    managed_plugins: list,
+) -> None:
+    plugins_table = config_data.get("plugins", {}) or {}
+    if not isinstance(plugins_table, dict):
+        fail(f"`plugins` must be a TOML table in {config_path}")
+
+    for plugin in managed_plugins:
+        if plugin.scope != "global":
+            continue
+        plugin_config = plugins_table.get(plugin.plugin_id)
+        if not isinstance(plugin_config, dict):
+            fail(
+                f"global Codex config missing managed plugin `{plugin.plugin_id}` in {config_path}. "
+                "Re-run codex/scripts/sync-config.sh --apply"
+            )
+        actual_enabled = plugin_config.get("enabled")
+        if actual_enabled is not plugin.enabled:
+            fail(
+                f"global Codex config has plugins.\"{plugin.plugin_id}\".enabled={actual_enabled!r}; "
+                f"expected {plugin.enabled!r}. Re-run codex/scripts/sync-config.sh --apply"
+            )
+
+    bundled_marketplace = Path(
+        os.environ.get(
+            "CODEX_BUNDLED_MARKETPLACE",
+            "/Applications/Codex.app/Contents/Resources/plugins/openai-bundled",
+        )
+    ).expanduser()
+    if not bundled_marketplace.is_dir():
+        return
+
+    cache_root = Path.home() / ".codex/plugins/cache/openai-bundled"
+    for plugin in managed_plugins:
+        if not (plugin.enabled and plugin.marketplace == "openai-bundled" and plugin.scope in {"global", "repo"}):
+            continue
+        source = bundled_marketplace / "plugins" / plugin.plugin / ".codex-plugin/plugin.json"
+        if not source.is_file():
+            continue
+        cached_manifests = list((cache_root / plugin.plugin).glob("*/.codex-plugin/plugin.json"))
+        if not cached_manifests:
+            fail(
+                f"enabled bundled plugin `{plugin.plugin_id}` is missing from {cache_root}. "
+                "Re-run codex/scripts/sync-config.sh --apply"
+            )
+
+
 FEATURE_RENAMES = {
     "codex_hooks": "hooks",
 }
@@ -356,7 +405,7 @@ except Exception as exc:
     fail(str(exc))
 try:
     plugin_registry = json.loads(plugin_registry_path.read_text(encoding="utf-8"))
-    validate_plugin_registry(
+    managed_plugins, _unmanaged_plugins, _plugin_github_root = validate_plugin_registry(
         plugin_registry,
         root_dir=plugin_registry_path.parent.parent,
         home=Path.home(),
@@ -420,6 +469,7 @@ for item in repos:
 if global_config.exists():
     global_data = load_toml(global_config)
     validate_disabled_skill_entries(global_config, bundled_skills_policy)
+    validate_global_plugin_runtime(global_config, global_data, managed_plugins)
     features = global_data.get("features", {})
     hooks_enabled = isinstance(features, dict) and features.get("hooks") is True
     if hooks_enabled and not global_hooks.is_file():

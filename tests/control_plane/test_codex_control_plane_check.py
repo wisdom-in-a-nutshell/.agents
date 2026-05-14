@@ -128,6 +128,33 @@ class CodexControlPlaneCheckTests(TempDirTestCase):
         self.assertIn("repo-local Codex files are out of sync", result.stderr)
         self.assertIn(".codex/config.toml", result.stderr)
 
+    def test_check_script_fails_when_global_plugin_config_is_missing(self) -> None:
+        root, home, adi = self._make_codex_repo_fixture()
+        self._render_repo_configs(root, home)
+        write_json(
+            root / "codex/config/bundled-skills-policy.json",
+            {"version": 1, "roots": {}},
+        )
+        write_text(
+            home / ".codex/config.toml",
+            'model = "gpt-5.5"\n\n[features]\nhooks = false\n',
+        )
+
+        result = run_command(
+            self._check_command(root, home, adi),
+            env={
+                "HOME": str(home),
+                "CODEX_BUNDLED_MARKETPLACE": str(home / "missing-bundled-marketplace"),
+            },
+            check=False,
+        )
+
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn(
+            "global Codex config missing managed plugin `computer-use@openai-bundled`",
+            result.stderr,
+        )
+
     def test_check_script_fails_when_repo_config_drifted_from_registry(self) -> None:
         root, home, adi = self._make_codex_repo_fixture()
         self._render_repo_configs(root, home)
