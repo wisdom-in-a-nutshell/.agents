@@ -218,6 +218,14 @@ python3 ~/.agents/skills-source/owned/social-media-publishing/scripts/linkedin/c
   --dry-run
 ```
 
+Comment route behavior:
+- `comment` defaults to `--comment-route auto`
+- auto currently selects LinkedIn's legacy `/v2/socialActions/{urn}/comments` route
+- the newer `/rest/socialActions/{urn}/comments` route can fail for this app with `ACCESS_DENIED partnerApiSocialActions.CREATE`
+- if you explicitly need to test the newer REST route, pass `--comment-route rest`
+
+Dry-run and live comment results include `requested_route`, `selected_route`, `routes`, `result.state`, and `next_action` so agents can see exactly which route was used or skipped.
+
 ### Fetch one post by URN
 
 ```bash
@@ -261,7 +269,7 @@ Video posts use LinkedIn's `/rest/videos` plus `/rest/posts` endpoints:
 When `--video-url` is used, the current client adds one convenience step before that flow:
 - download the public direct video URL to a temporary local file
 
-Comments use LinkedIn's `/rest/socialActions/{postUrn}/comments` endpoint.
+Comments use LinkedIn's legacy `/v2/socialActions/{postUrn}/comments` endpoint by default because it works with the current member-social app permissions. The newer `/rest/socialActions/{postUrn}/comments` endpoint remains available behind `comment --comment-route rest`, but it may require LinkedIn partner social-actions permission.
 
 Single-image posts use the same image upload path as multi-image posts, but publish a `media` payload instead of `multiImage`.
 

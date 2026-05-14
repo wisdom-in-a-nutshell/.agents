@@ -35,6 +35,7 @@ INITIALIZE_IMAGE_UPLOAD_URL = "https://api.linkedin.com/rest/images?action=initi
 INITIALIZE_VIDEO_UPLOAD_URL = f"{REST_VIDEOS_URL}?action=initializeUpload"
 FINALIZE_VIDEO_UPLOAD_URL = f"{REST_VIDEOS_URL}?action=finalizeUpload"
 SOCIAL_ACTIONS_URL = "https://api.linkedin.com/rest/socialActions"
+V2_SOCIAL_ACTIONS_URL = "https://api.linkedin.com/v2/socialActions"
 DEFAULT_SCOPE = "openid profile w_member_social"
 DEFAULT_REDIRECT_URI = "http://127.0.0.1:8765/callback"
 DEFAULT_LINKEDIN_VERSION = "202603"
@@ -444,6 +445,20 @@ def post_rest_json(config: Config, access_token: str, url: str, payload: dict[st
         "POST",
         url,
         headers=linkedin_rest_headers(access_token, version=version, extra=extra_headers),
+        data=json.dumps(payload).encode("utf-8"),
+        timeout_seconds=config.request_timeout_seconds,
+    )
+
+
+def post_v2_json(config: Config, access_token: str, url: str, payload: dict[str, Any]) -> tuple[int, dict[str, str], bytes]:
+    return http_request(
+        "POST",
+        url,
+        headers={
+            "Authorization": f"Bearer {access_token}",
+            "Content-Type": "application/json",
+            "X-Restli-Protocol-Version": "2.0.0",
+        },
         data=json.dumps(payload).encode("utf-8"),
         timeout_seconds=config.request_timeout_seconds,
     )
@@ -1632,36 +1647,98 @@ def command_list_posts(args: argparse.Namespace) -> dict[str, Any]:
     }
 
 
+def build_comment_routes(requested_route: str, selected_route: str) -> list[dict[str, str]]:
+    routes: list[dict[str, str]] = []
+    for route in ["v2_social_actions", "rest_social_actions"]:
+        if route == "v2_social_actions":
+            status = "available"
+            if selected_route == route:
+                decision = "selected"
+                reason_code = "LEGACY_V2_COMMENTS_WORK_WITH_MEMBER_SOCIAL"
+            elif requested_route == "rest":
+                decision = "not_selected"
+                reason_code = "EXPLICIT_REST_ROUTE_REQUESTED"
+            else:
+                decision = "not_selected"
+                reason_code = "LOWER_PRIORITY"
+        else:
+            status = "blocked" if requested_route == "auto" else "available"
+            if selected_route == route:
+                decision = "selected"
+                reason_code = "EXPLICIT_REST_ROUTE_REQUESTED"
+            elif requested_route == "auto":
+                decision = "skipped"
+                reason_code = "REST_COMMENTS_REQUIRES_PARTNER_SOCIAL_ACTIONS_CREATE"
+            else:
+                decision = "not_selected"
+                reason_code = "EXPLICIT_V2_ROUTE_REQUESTED"
+        routes.append(
+            {
+                "route": route,
+                "status": status,
+                "decision": decision,
+                "reason_code": reason_code,
+            }
+        )
+    return routes
+
+
 def command_comment(args: argparse.Namespace) -> dict[str, Any]:
     config = build_config(args)
     tokens = ensure_member_context(config, load_tokens(config.tokens_path))
     actor = build_author_urn(tokens)
+    text = load_post_text(args)
     payload: dict[str, Any] = {
         "actor": actor,
         "object": args.post_urn,
-        "message": {"text": load_post_text(args)},
+        "message": {"text": text},
     }
     if args.parent_comment:
         payload["parentComment"] = args.parent_comment
-    if args.dry_run:
-        return {"dry_run": True, "payload": payload}
+    requested_route = args.comment_route
+    selected_route = "v2_social_actions" if requested_route in {"auto", "v2"} else "rest_social_actions"
+    routes = build_comment_routes(requested_route, selected_route)
     encoded_target = encode_urn(args.parent_comment if args.parent_comment else args.post_urn)
-    status, headers, body = post_rest_json(
-        config,
-        tokens["access_token"],
-        f"{SOCIAL_ACTIONS_URL}/{encoded_target}/comments",
-        payload,
-        version=config.linkedin_version,
+    endpoint = (
+        f"{V2_SOCIAL_ACTIONS_URL}/{encoded_target}/comments"
+        if selected_route == "v2_social_actions"
+        else f"{SOCIAL_ACTIONS_URL}/{encoded_target}/comments"
     )
+    if args.dry_run:
+        return {
+            "dry_run": True,
+            "requested_route": requested_route,
+            "selected_route": selected_route,
+            "routes": routes,
+            "endpoint": endpoint,
+            "payload": payload,
+            "result": {"state": "validated"},
+            "next_action": None,
+        }
+    if selected_route == "v2_social_actions":
+        status, headers, body = post_v2_json(config, tokens["access_token"], endpoint, payload)
+    else:
+        status, headers, body = post_rest_json(
+            config,
+            tokens["access_token"],
+            endpoint,
+            payload,
+            version=config.linkedin_version,
+        )
     body_json = json.loads(body.decode("utf-8")) if body else {}
     comment_id = headers.get("x-restli-id") or headers.get("X-RestLi-Id") or body_json.get("id")
     return {
         "dry_run": False,
+        "requested_route": requested_route,
+        "selected_route": selected_route,
+        "routes": routes,
         "http_status": status,
         "comment_id": comment_id,
         "comment_urn": body_json.get("commentUrn"),
         "post_urn": args.post_urn,
         "response": body_json,
+        "result": {"state": "comment_created"},
+        "next_action": None,
     }
 
 
@@ -1769,6 +1846,12 @@ def build_parser() -> argparse.ArgumentParser:
     comment.add_argument("--text", help="Inline comment text.")
     comment.add_argument("--text-file", help="Path to a file containing comment text.")
     comment.add_argument("--parent-comment", help="Optional parent comment URN for nested comments.")
+    comment.add_argument(
+        "--comment-route",
+        choices=["auto", "v2", "rest"],
+        default="auto",
+        help="Comment API route. Default auto uses LinkedIn v2 socialActions because the REST route can require partner permissions.",
+    )
     comment.add_argument("--dry-run", action="store_true", help="Print the request payload without publishing the comment.")
     comment.set_defaults(func=command_comment, command_path="linkedin comment")
 
