@@ -191,3 +191,5 @@ await client.beta.sessions.archive(sessionId);
 ```
 
 > Archiving a **session** is routine cleanup — sessions are per-run and disposable. **Do not generalize this to agents or environments**: those are persistent, reusable resources, and archiving them is permanent (no unarchive; new sessions cannot reference them). See `shared/managed-agents-overview.md` → Common Pitfalls.
+
+
