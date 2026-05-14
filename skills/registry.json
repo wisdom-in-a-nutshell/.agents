@@ -452,6 +452,16 @@
       ],
       "source_path": "skills-source/external/web-typography",
       "upstream_ref": "wondelai/skills:web-typography@main"
+    },
+    {
+      "skill": "claude-api",
+      "origin": "external",
+      "scope": "repo",
+      "repos": [
+        "whos-in-your-head"
+      ],
+      "source_path": "skills-source/external/claude-api",
+      "upstream_ref": "anthropics/skills:skills/claude-api@main"
     }
   ],
   "unmanaged_repo_local_skills": [
