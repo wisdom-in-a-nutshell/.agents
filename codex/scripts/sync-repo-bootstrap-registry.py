@@ -323,7 +323,11 @@ def _load_skill_assignments(
             if repo_ref.startswith(("~/", "/"))
             else github_root / repo_ref
         )
-        if repo_root in repo_local and _repo_local_skill_source(repo_root, skill).is_file():
+        # Registry docs should describe the declared control-plane assignment,
+        # not the set of checkouts present on this particular machine. The
+        # skill registry validator owns checking that declared repo-local skills
+        # have a source SKILL.md on a full development machine.
+        if repo_root in repo_local:
             repo_local[repo_root].add(skill)
 
     global_skill_list = sorted(global_skills)
