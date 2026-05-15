@@ -60,7 +60,7 @@ class SharedBootstrapWrapperTests(TempDirTestCase):
 
         self.assertEqual(
             [
-                "sync-skills-registry.sh|--apply",
+                f"sync-skills-registry.sh|--apply --repo {repo_a} --repo {repo_b}",
                 "sync-plugins-registry.sh|--apply",
                 f"sync-managed-git-hooks.sh|--apply --repo {repo_a} --repo {repo_b}",
                 f"sync-copilot-hooks.sh|--apply --repo {repo_a} --repo {repo_b}",

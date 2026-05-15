@@ -144,6 +144,9 @@ def main() -> int:
     args = parse_args()
     policy_target = Path(args.policy_target)
     canonical_policy = Path(args.canonical_policy).expanduser().resolve()
+    default_target = Path(
+        DEFAULT_MACOS_TARGET if sys.platform == "darwin" else DEFAULT_LINUX_TARGET
+    )
 
     if not str(args.policy_target).startswith("/"):
         raise ControlPlaneError("--policy-target must be an absolute path")
@@ -162,7 +165,8 @@ def main() -> int:
 
         print("=== Claude Managed Settings ===")
         if (
-            not policy_target.exists()
+            policy_target == default_target
+            and not policy_target.exists()
             and not _claude_runtime_present()
             and os.environ.get("CLAUDE_MANAGED_SETTINGS_REQUIRED") != "1"
         ):

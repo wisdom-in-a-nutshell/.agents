@@ -102,7 +102,7 @@ class RegistryViewsGenerationTests(TempDirTestCase):
         self.assertIn('transport: "http"', cloudflare_text)
         self.assertIn('  - "adi"', cloudflare_text)
 
-    def test_omits_missing_repo_local_skills_from_repo_bootstrap_views(self) -> None:
+    def test_includes_declared_repo_local_skills_in_repo_bootstrap_views(self) -> None:
         root = make_control_plane_root(self.temp_path)
         home = self.temp_path / "home"
         github_root = home / "GitHub"
@@ -164,5 +164,5 @@ class RegistryViewsGenerationTests(TempDirTestCase):
         repo_item = root / "docs/references/registry/repo-bootstrap-items/adi.md"
         repo_text = repo_item.read_text(encoding="utf-8")
         self.assertIn('repo_name: "adi"', repo_text)
-        self.assertIn('repo_local_skill_count: 0', repo_text)
-        self.assertNotIn('  - "missing-local"', repo_text)
+        self.assertIn('repo_local_skill_count: 1', repo_text)
+        self.assertIn('  - "missing-local"', repo_text)
