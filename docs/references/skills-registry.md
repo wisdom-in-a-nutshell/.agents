@@ -34,7 +34,7 @@ flowchart LR
 ## 3) Normal Workflow
 
 - Edit `skills/registry.json`.
-- Run `./scripts/sync-skills-registry.sh --apply`.
+- Run `./scripts/sync-skills-registry.sh --apply`. For a machine with only one target checkout, scope repo-local linking with `--repo <repo-path-or-name>` so missing registry repos are skipped without creating placeholder folders.
 - Run `./scripts/check-skills-registry.sh`.
 - Generated Obsidian views land under [`docs/references/registry/`](/Users/dobby/.agents/docs/references/registry).
 

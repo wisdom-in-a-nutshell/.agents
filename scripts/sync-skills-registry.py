@@ -386,8 +386,10 @@ def run_sync(
     root_dir: Path,
     github_root: Path,
     apply: bool,
+    repo_filters: set[Path] | None = None,
 ) -> None:
     home = Path.home()
+    repo_filters = repo_filters or set()
     desired_links: dict[Path, Path] = {}
     dormant_skills: set[str] = set()
     touched_links: set[Path] = set()
@@ -406,9 +408,13 @@ def run_sync(
 
         for repo in item["repos"]:
             repo_root = resolve_repo_root(repo, github_root, home)
+            if repo_filters and repo_root not in repo_filters:
+                continue
             actual_repo = repo_git_root(repo_root)
             if actual_repo is None:
                 print(f"WARNING: skipping non-git path: {repo_root}", file=sys.stderr)
+                continue
+            if repo_filters and actual_repo not in repo_filters:
                 continue
             dst = actual_repo / ".agents" / "skills" / skill
             desired_links[dst] = src
@@ -416,9 +422,11 @@ def run_sync(
                 touched_links.add(dst)
 
     touched_links.update(prune_obsolete_global_links(root_dir, desired_links, apply))
-    touched_links.update(prune_obsolete_repo_links(root_dir, github_root, desired_links, apply))
     touched_links.update(
-        prune_dormant_repo_links(root_dir, github_root, dormant_skills, apply)
+        prune_obsolete_repo_links(root_dir, github_root, desired_links, apply, repo_filters)
+    )
+    touched_links.update(
+        prune_dormant_repo_links(root_dir, github_root, dormant_skills, apply, repo_filters)
     )
     if apply:
         touched_links.update(desired_links)
@@ -458,19 +466,25 @@ def prune_obsolete_repo_links(
     github_root: Path,
     desired_links: dict[Path, Path],
     apply: bool,
+    repo_filters: set[Path] | None = None,
 ) -> set[Path]:
     touched_links: set[Path] = set()
+    repo_filters = repo_filters or set()
     managed_source_roots = [
         (root_dir / "skills-source").resolve(),
         (root_dir / "plugins-source").resolve(),
     ]
-    candidate_dirs: set[Path] = {root_dir / ".agents" / "skills"}
+    candidate_dirs: set[Path] = set()
+    if not repo_filters or root_dir.resolve() in repo_filters:
+        candidate_dirs.add(root_dir / ".agents" / "skills")
     if github_root.is_dir():
-        candidate_dirs.update(
-            repo_root / ".agents" / "skills"
-            for repo_root in github_root.iterdir()
-            if repo_git_root(repo_root) is not None
-        )
+        for repo_root in github_root.iterdir():
+            actual_repo = repo_git_root(repo_root)
+            if actual_repo is None:
+                continue
+            if repo_filters and actual_repo not in repo_filters:
+                continue
+            candidate_dirs.add(actual_repo / ".agents" / "skills")
 
     for skills_dir in sorted(candidate_dirs):
         touched_links.update(
@@ -537,22 +551,27 @@ def prune_dormant_repo_links(
     github_root: Path,
     dormant_skills: set[str],
     apply: bool,
+    repo_filters: set[Path] | None = None,
 ) -> set[Path]:
     if not dormant_skills:
         return set()
     touched_links: set[Path] = set()
+    repo_filters = repo_filters or set()
     managed_source_roots = [
         (root_dir / "skills-source").resolve(),
         (root_dir / "plugins-source").resolve(),
     ]
     candidate_dirs: set[Path] = set()
-    candidate_dirs.add(root_dir / ".agents" / "skills")
+    if not repo_filters or root_dir.resolve() in repo_filters:
+        candidate_dirs.add(root_dir / ".agents" / "skills")
     if github_root.is_dir():
-        candidate_dirs.update(
-            repo_root / ".agents" / "skills"
-            for repo_root in github_root.iterdir()
-            if repo_git_root(repo_root) is not None
-        )
+        for repo_root in github_root.iterdir():
+            actual_repo = repo_git_root(repo_root)
+            if actual_repo is None:
+                continue
+            if repo_filters and actual_repo not in repo_filters:
+                continue
+            candidate_dirs.add(actual_repo / ".agents" / "skills")
 
     for skills_dir in sorted(candidate_dirs):
         touched_links.update(
@@ -582,6 +601,12 @@ def parse_args() -> argparse.Namespace:
         "--no-generate",
         action="store_true",
         help="Skip generating Obsidian registry view files.",
+    )
+    parser.add_argument(
+        "--repo",
+        action="append",
+        default=[],
+        help="Limit repo-local sync to an exact repo path or repo name (repeatable).",
     )
     parser.add_argument(
         "registry_file",
@@ -615,13 +640,19 @@ def main() -> int:
         print(f"Registry validation failed: {exc}", file=sys.stderr)
         return 1
 
+    repo_filters = {
+        resolve_repo_root(raw.strip(), github_root, home)
+        for raw in args.repo
+        if raw.strip()
+    }
+
     if not args.no_generate:
         views_dir = generated_views_dir(root_dir)
         generate_registry_base(views_dir)
         generate_registry_items(views_dir, managed, unmanaged)
         print(f"Generated registry Base artifacts in {views_dir}")
 
-    run_sync(managed, root_dir, github_root, args.apply)
+    run_sync(managed, root_dir, github_root, args.apply, repo_filters)
 
     if args.apply:
         print("Apply complete.")

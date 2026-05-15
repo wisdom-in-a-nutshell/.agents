@@ -99,6 +99,7 @@ done
 sync_skills_cmd=(
   "$SYNC_SKILLS_SCRIPT"
   "${SYNC_ARGS[@]}"
+  "${REPO_ARGS[@]}"
 )
 log "+ ${sync_skills_cmd[*]}"
 "${sync_skills_cmd[@]}"
