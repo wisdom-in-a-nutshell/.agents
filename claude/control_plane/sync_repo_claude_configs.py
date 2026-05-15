@@ -340,12 +340,7 @@ def build_actions(
 
         root_agents_md_path = repo_root_path / "AGENTS.md"
         claude_md_path = repo_root_path / "CLAUDE.md"
-        if not root_agents_md_path.is_file():
-            print(
-                f"WARNING: skipping root CLAUDE.md for {actual_repo}; missing AGENTS.md",
-                file=sys.stderr,
-            )
-        else:
+        if root_agents_md_path.is_file():
             root_claude_path = temp_dir / (
                 f"{hashlib.sha256((actual_repo + ':root-claude').encode()).hexdigest()}.md"
             )
