@@ -23,6 +23,14 @@
       "category": "Coding"
     },
     {
+      "plugin": "chrome",
+      "marketplace": "openai-bundled",
+      "enabled": true,
+      "scope": "global",
+      "repos": [],
+      "category": "Productivity"
+    },
+    {
       "plugin": "computer-use",
       "marketplace": "openai-bundled",
       "enabled": true,
