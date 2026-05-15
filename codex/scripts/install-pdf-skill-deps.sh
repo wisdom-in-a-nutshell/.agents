@@ -4,6 +4,14 @@ set -euo pipefail
 APPLY=0
 PYTHON_BIN="${PYTHON_BIN:-python3}"
 BREW_BIN="${BREW_BIN:-$(command -v brew || true)}"
+if [[ -z "$BREW_BIN" ]]; then
+  for candidate in /opt/homebrew/bin/brew /usr/local/bin/brew; do
+    if [[ -x "$candidate" ]]; then
+      BREW_BIN="$candidate"
+      break
+    fi
+  done
+fi
 
 usage() {
   cat <<USAGE
@@ -89,8 +97,13 @@ if [[ -z "$missing_modules" ]]; then
   log "OK: Python PDF modules already available"
 else
   if (( APPLY == 1 )); then
-    log "+ $PYTHON_BIN -m pip install --user --break-system-packages reportlab pdfplumber pypdf"
-    "$PYTHON_BIN" -m pip install --user --break-system-packages reportlab pdfplumber pypdf
+    pip_args=(install --user)
+    if "$PYTHON_BIN" -m pip install --help 2>/dev/null | grep -q -- "--break-system-packages"; then
+      pip_args+=(--break-system-packages)
+    fi
+    pip_args+=(reportlab pdfplumber pypdf)
+    log "+ $PYTHON_BIN -m pip ${pip_args[*]}"
+    "$PYTHON_BIN" -m pip "${pip_args[@]}"
     "$PYTHON_BIN" - <<'PY'
 for name in ("reportlab", "pdfplumber", "pypdf"):
     __import__(name)
