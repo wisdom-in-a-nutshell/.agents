@@ -412,7 +412,8 @@ def run_sync(
                 continue
             actual_repo = repo_git_root(repo_root)
             if actual_repo is None:
-                print(f"WARNING: skipping non-git path: {repo_root}", file=sys.stderr)
+                if repo_root.exists():
+                    print(f"WARNING: skipping existing non-git path: {repo_root}", file=sys.stderr)
                 continue
             if repo_filters and actual_repo not in repo_filters:
                 continue

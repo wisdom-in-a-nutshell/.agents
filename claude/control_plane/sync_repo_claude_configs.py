@@ -223,9 +223,15 @@ def build_actions(
             raise ControlPlaneError("repo.path must be a non-empty string")
 
         declared_repo_path = Path(normalize_path(raw_path))
+        if filters and str(declared_repo_path) not in filters:
+            continue
         actual_repo_path = git_repo_root(declared_repo_path)
         if actual_repo_path is None:
-            print(f"WARNING: skipping non-git path: {declared_repo_path}", file=sys.stderr)
+            if declared_repo_path.exists():
+                print(
+                    f"WARNING: skipping existing non-git path: {declared_repo_path}",
+                    file=sys.stderr,
+                )
             continue
 
         actual_repo = str(actual_repo_path)

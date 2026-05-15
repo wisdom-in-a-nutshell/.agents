@@ -187,6 +187,8 @@ for item in repos:
     if not isinstance(raw_path, str) or not raw_path.strip():
         continue
     repo_path = Path(raw_path).expanduser().resolve()
+    if filters and str(repo_path) not in filters:
+        continue
     try:
         actual_repo = subprocess.run(
             ["git", "-C", str(repo_path), "rev-parse", "--show-toplevel"],
@@ -195,7 +197,8 @@ for item in repos:
             text=True,
         ).stdout.strip()
     except subprocess.CalledProcessError:
-        print(f"WARNING: skipping non-git path: {repo_path}", file=sys.stderr)
+        if repo_path.exists():
+            print(f"WARNING: skipping existing non-git path: {repo_path}", file=sys.stderr)
         continue
 
     actual_repo_path = Path(actual_repo).resolve()

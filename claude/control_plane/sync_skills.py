@@ -245,9 +245,15 @@ def main() -> int:
 
             for repo in repos:
                 repo_root_path = resolve_repo_root(str(repo), github_root, home)
+                if filters and str(repo_root_path) not in filters:
+                    continue
                 actual_repo = git_repo_root(repo_root_path)
                 if actual_repo is None:
-                    print(f"WARNING: skipping non-git path: {repo_root_path}", file=sys.stderr)
+                    if repo_root_path.exists():
+                        print(
+                            f"WARNING: skipping existing non-git path: {repo_root_path}",
+                            file=sys.stderr,
+                        )
                     continue
                 actual_repo_str = str(actual_repo)
                 if filters and actual_repo_str not in filters:
@@ -272,9 +278,15 @@ def main() -> int:
             )
 
         repo_root_path = resolve_repo_root(repo, github_root, home)
+        if filters and str(repo_root_path) not in filters:
+            continue
         actual_repo = git_repo_root(repo_root_path)
         if actual_repo is None:
-            print(f"WARNING: skipping non-git path: {repo_root_path}", file=sys.stderr)
+            if repo_root_path.exists():
+                print(
+                    f"WARNING: skipping existing non-git path: {repo_root_path}",
+                    file=sys.stderr,
+                )
             continue
         actual_repo_str = str(actual_repo)
         if filters and actual_repo_str not in filters:

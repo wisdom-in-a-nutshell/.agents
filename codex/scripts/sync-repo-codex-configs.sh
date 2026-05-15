@@ -411,6 +411,8 @@ for item in repos_raw:
     if not isinstance(raw_path, str) or not raw_path.strip():
         raise TypeError("repo.path must be a non-empty string")
     repo_path = Path(normalize_path(raw_path))
+    if filters and str(repo_path) not in filters:
+        continue
     try:
         actual_repo = subprocess.run(
             ["git", "-C", str(repo_path), "rev-parse", "--show-toplevel"],
@@ -419,7 +421,8 @@ for item in repos_raw:
             text=True,
         ).stdout.strip()
     except subprocess.CalledProcessError:
-        print(f"WARNING: skipping non-git path: {repo_path}", file=sys.stderr)
+        if repo_path.exists():
+            print(f"WARNING: skipping existing non-git path: {repo_path}", file=sys.stderr)
         continue
 
     actual_repo = str(Path(actual_repo).resolve())

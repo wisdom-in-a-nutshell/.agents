@@ -145,7 +145,6 @@ skipped_count=0
 
 for repo in ${REPOS[@]+"${REPOS[@]}"}; do
   if [[ ! -d "$repo" ]]; then
-    log "SKIP missing repo: $repo"
     (( skipped_count += 1 ))
     continue
   fi

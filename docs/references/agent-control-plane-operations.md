@@ -4,6 +4,11 @@ Use this page for the shared machine-facing apply and validation entrypoints tha
 
 These wrappers exist so external machine bootstrap repos such as `~/GitHub/scripts` can call one stable `.agents` surface instead of reaching into Codex- or Claude-specific internals directly.
 
+Sparse machines are normal. A repo listed in the shared registries but not
+cloned on the current machine is skipped silently by sync/check commands.
+Existing non-git folders at managed repo paths still warn because they may be
+broken placeholders that should be deleted or replaced with a real checkout.
+
 For repo authors adding `scripts/hooks/*.py`, start with
 [`repo-lifecycle-hook-adapter.md`](/Users/dobby/.agents/docs/references/repo-lifecycle-hook-adapter.md).
 

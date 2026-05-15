@@ -34,7 +34,7 @@ flowchart LR
 ## 3) Normal Workflow
 
 - Edit `skills/registry.json`.
-- Run `./scripts/sync-skills-registry.sh --apply`. For a machine with only one target checkout, scope repo-local linking with `--repo <repo-path-or-name>` so missing registry repos are skipped without creating placeholder folders.
+- Run `./scripts/sync-skills-registry.sh --apply`. Missing repo checkouts are expected on sparse machines and are skipped silently; existing non-git folders still warn because they may be broken placeholders.
 - Run `./scripts/check-skills-registry.sh`.
 - Generated Obsidian views land under [`docs/references/registry/`](/Users/dobby/.agents/docs/references/registry).
 
@@ -65,7 +65,7 @@ flowchart LR
 - `repos`: target repos for repo-scoped links.
   - When a skill depends on a repo MCP preset, keep this list aligned with the repos that declare that preset in `codex/config/repo-bootstrap.json`.
   - Entries can be repo names under `~/GitHub` or explicit repo roots such as `~/.agents`.
-  - Sync skips repo entries that are missing or are not real Git checkouts on the current machine. It must not create placeholder folders under `~/GitHub` just because a repo is listed in the registry.
+  - Sync skips missing repo checkouts silently on the current machine. Existing non-git folders still warn because they may be broken placeholders. Sync must not create placeholder folders under `~/GitHub` just because a repo is listed in the registry.
   - Dormant skills keep their source tracked but must use an empty `repos` list and are not linked into any runtime.
 - `source_path`: real source folder under `skills-source/...`.
 - `upstream_ref`: upstream source for external skills.
