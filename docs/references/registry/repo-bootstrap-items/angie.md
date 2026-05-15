@@ -3,7 +3,7 @@ repo_name: "angie"
 path: "~/GitHub/angie"
 mcp_count: 0
 plugin_count: 3
-skill_count: 18
+skill_count: 19
 repo_local_skill_count: 0
 model: "gpt-5.5"
 reasoning: "high"
@@ -31,6 +31,7 @@ global_skills:
   - "skill-creator"
   - "symphony"
 repo_skills:
+  - "cv-creator"
   - "dobby-calendar"
   - "dobby-lifecycle"
   - "dobby-shelf"
@@ -44,6 +45,7 @@ skills:
   - "agent-native-repo-playbook"
   - "architecture-docs"
   - "client-interface-guidelines"
+  - "cv-creator"
   - "defuddle"
   - "dobby-calendar"
   - "dobby-lifecycle"

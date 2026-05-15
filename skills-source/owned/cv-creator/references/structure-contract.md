@@ -3,7 +3,7 @@
 ## Minimal layout
 
 ```text
-memory/areas/builder/career/
+<career-root>/
   README.md
   profile.md
   tailoring-guide.md
@@ -20,6 +20,16 @@ memory/areas/builder/career/
           resume.tex
           cover-letter.tex
 ```
+
+
+## Career root detection
+
+The shared CLI auto-detects the career root from repo-local files. Supported roots are:
+
+- `memory/areas/career/` — direct career area, used by focused personal workspaces such as Angie.
+- `memory/areas/builder/career/` — nested career area, used when career belongs under a broader builder area such as Adi.
+
+If both exist and contain career signals, pass `--career-root <path>` to the CLI. Do not duplicate the same CV packet under both roots.
 
 ## Intent
 
@@ -42,7 +52,7 @@ When migrating from a flat `latex/` folder:
 
 ## Git ignore
 
-Keep a `.gitignore` inside `memory/areas/builder/career/cv/latex/` that ignores build products like:
+Keep a `.gitignore` inside `<career-root>/cv/latex/` that ignores build products like:
 
 - `*.pdf`
 - `*.aux`

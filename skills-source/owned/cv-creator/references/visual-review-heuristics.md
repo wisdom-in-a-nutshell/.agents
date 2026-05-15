@@ -72,8 +72,8 @@ document the hiring team would read.
 - Italic is for subtitles, company names, and journal names. Bold is for role
   titles, section headings, and emphasized keywords. Underline is never used.
 - Use en-dash (`--`) for date ranges and as the bullet marker. Do NOT use em-dash
-  (`---`, `\textemdash{}`, or U+2014) anywhere in prose. Adi's writing voice
-  explicitly forbids em-dashes. Use commas or periods instead. Do not use
+  (`---`, `\textemdash{}`, or U+2014) anywhere in prose. This skill's house style
+  forbids em-dashes. Use commas or periods instead. Do not use
   U+2011, U+2013, or U+2014 literal characters. For date ranges, LaTeX's `--`
   is correct.
 - Set `\raggedright` globally for the body. Justified text with a short line

@@ -1,6 +1,6 @@
 ---
 name: cv-creator
-description: Generate, update, tailor, compile, and visually review a repo-local LaTeX CV/resume and cover letter. Use when the user wants to create or improve a CV, tailor a resume for a role or company, compile LaTeX CV files to PDF, review formatting, or set up a clean `memory/areas/builder/career/` structure with `cv/latex/base/` and `cv/latex/tailored/`.
+description: Generate, update, tailor, compile, and visually review a repo-local LaTeX CV/resume and cover letter. Use when the user wants to create or improve a CV, tailor a resume for a role or company, compile LaTeX CV files to PDF, review formatting, or set up a clean repo-local career CV structure under `memory/areas/career/` or `memory/areas/builder/career/`.
 ---
 
 # CV Creator
@@ -9,18 +9,18 @@ Use this skill for repo-local career materials. Keep the workflow shared, but ke
 
 ## Repo contract
 
-Expect this layout unless the repo clearly documents a different one:
+The skill auto-detects the career root in this order based on existing files: `memory/areas/career/`, then `memory/areas/builder/career/`. Use `--career-root <path>` when a repo intentionally has multiple career areas. Expect this layout under the selected career root unless the repo clearly documents a different one:
 
-- `memory/areas/builder/career/README.md`
-- `memory/areas/builder/career/profile.md`
-- `memory/areas/builder/career/tailoring-guide.md`
-- `memory/areas/builder/career/job-tracker/`
-- `memory/areas/builder/career/cv/latex/.gitignore`
-- `memory/areas/builder/career/cv/latex/base/resume.tex`
-- `memory/areas/builder/career/cv/latex/base/cover-letter.tex`
-- `memory/areas/builder/career/cv/latex/tailored/<company>/job-description.md`
-- `memory/areas/builder/career/cv/latex/tailored/<company>/resume.tex`
-- `memory/areas/builder/career/cv/latex/tailored/<company>/cover-letter.tex`
+- `<career-root>/README.md`
+- `<career-root>/profile.md`
+- `<career-root>/tailoring-guide.md`
+- `<career-root>/job-tracker/`
+- `<career-root>/cv/latex/.gitignore`
+- `<career-root>/cv/latex/base/resume.tex`
+- `<career-root>/cv/latex/base/cover-letter.tex`
+- `<career-root>/cv/latex/tailored/<company>/job-description.md`
+- `<career-root>/cv/latex/tailored/<company>/resume.tex`
+- `<career-root>/cv/latex/tailored/<company>/cover-letter.tex`
 
 If the contract is missing, create the minimal structure first instead of improvising files in random places.
 
@@ -30,16 +30,16 @@ Read `references/template-patterns.md` when you need to understand or modify the
 
 ## Core workflow
 
-1. Read `memory/areas/builder/career/profile.md` first for source-of-truth career facts.
-2. Read `memory/areas/builder/career/tailoring-guide.md` if tailoring or summary changes are needed. Pay particular attention to the "Competitor awareness" section, which governs how to handle product-level references to the target company's rivals (e.g. do not send an Anthropic application full of Codex name-drops).
-3. If `memory/areas/builder/career/cv/latex/tailored/<company>/job-description.md` already exists, read that first when reviewing or continuing a tailored packet.
-4. If the tailored JD snapshot does not exist yet, read the relevant JD from `memory/areas/builder/career/job-tracker/` or the user-provided source, then store a frozen copy beside the tailored files as `cv/latex/tailored/<company>/job-description.md` so later review is self-contained.
+1. Read `<career-root>/profile.md` first for source-of-truth career facts.
+2. Read `<career-root>/tailoring-guide.md` if tailoring or summary changes are needed. Pay particular attention to the "Competitor awareness" section, which governs how to handle product-level references to the target company's rivals (e.g. do not send an Anthropic application full of Codex name-drops).
+3. If `<career-root>/cv/latex/tailored/<company>/job-description.md` already exists, read that first when reviewing or continuing a tailored packet.
+4. If the tailored JD snapshot does not exist yet, read the relevant JD from `<career-root>/job-tracker/` or the user-provided source, then store a frozen copy beside the tailored files as `cv/latex/tailored/<company>/job-description.md` so later review is self-contained.
 5. When starting a new tailored packet, initialize it with `cv.py init --company <slug>` instead of manually copying files.
 6. Keep the base LaTeX files in `cv/latex/base/` clean and generic.
 7. Put company-specific versions in `cv/latex/tailored/<company>/`.
 8. Never invent experience, skills, tools, certifications, customers, or outcomes.
 9. Compile and visually review before calling the output done.
-10. Before committing the final PDF, run a competitor-awareness grep against the target's rival products and companies. See the "Competitor awareness" section of `tailoring-guide.md` for the current map and the audit checklist.
+10. Before committing the final PDF, run a competitor-awareness grep against the target's rival products and companies. See the "Competitor awareness" section of `<career-root>/tailoring-guide.md` for the current map and the audit checklist.
 
 ## Build and review
 
@@ -74,7 +74,7 @@ JSON is the default contract. Use `--plain` only for quick operator inspection. 
 - Keep cover letters alongside the tailored resume for the same company.
 - If the user has only raw notes, normalize them into `profile.md` before heavy tailoring.
 - Never invent experience, skills, tools, certifications, customers, or outcomes.
-- **Competitor awareness**: before compiling, audit the `.tex` files for prominent references to the target company's direct rivals. Do not send a resume that reads as a love letter to the target's competitor. See the repo-local `memory/areas/builder/career/tailoring-guide.md` "Competitor awareness" section for the current competitor map, rewrite strategies, and audit checklist. Reframe product-level name-drops (Codex, Claude, ChatGPT) into category-level language (agent harness, coding agent, LLM application engineering) when the target is a rival's rival.
+- **Competitor awareness**: before compiling, audit the `.tex` files for prominent references to the target company's direct rivals. Do not send a resume that reads as a love letter to the target's competitor. See the repo-local `<career-root>/tailoring-guide.md` "Competitor awareness" section for the current competitor map, rewrite strategies, and audit checklist. Reframe product-level name-drops (Codex, Claude, ChatGPT) into category-level language (agent harness, coding agent, LLM application engineering) when the target is a rival's rival.
 
 For the full structural and formatting rules, read `references/template-patterns.md`.
 
@@ -109,12 +109,12 @@ identified.
 
 ## Pre-submission audit (run before every batch submit)
 
-When multiple tailored packs are ready for submission, run a cross-pack audit before Adi clicks submit. This catches mistakes that per-pack review misses (wrong company name leaked from a copy-paste, competitor name-drops that slipped through, contact info drift).
+When multiple tailored packs are ready for submission, run a cross-pack audit before the human clicks submit. This catches mistakes that per-pack review misses (wrong company name leaked from a copy-paste, competitor name-drops that slipped through, contact info drift).
 
 ### Audit checklist (grep across all `tailored/*/resume.tex` and `tailored/*/cover-letter.tex`)
 
 1. **Wrong company name**: does each file reference only its own target company? A Cresta cover letter must not say "Synthesia."
-2. **Competitor name-drops in prose**: grep for product-level rival names. Flag any occurrence NOT inside a literal quoted blog title or URL slug. The competitor map lives in `memory/areas/builder/career/tailoring-guide.md` "Competitor awareness" section. Key rules:
+2. **Competitor name-drops in prose**: grep for product-level rival names. Flag any occurrence NOT inside a literal quoted blog title or URL slug. The competitor map lives in `<career-root>/tailoring-guide.md` "Competitor awareness" section. The examples below are AI-market defaults; extend or replace them for non-AI career tracks:
    - Applying to Anthropic: no OpenAI, Codex, ChatGPT, GPT-4, GPT-5
    - Applying to OpenAI: no Anthropic, Claude
    - Applying to Mistral/Cohere/HuggingFace: no Claude, GPT, ChatGPT
@@ -125,28 +125,29 @@ When multiple tailored packs are ready for submission, run a cross-pack audit be
    - General: category-level language ("frontier coding agents", "voice AI platform") is always safe
 3. **Em-dashes**: grep for `---`, `\textemdash`, `—`, `–` in visible prose (not LaTeX comments). Zero tolerance.
 4. **AI-smell words**: grep for delve, underscore, pivotal, realm, harness (as verb/metaphor), illuminate, facilitate, shed light, bolster, differentiate, streamline. Zero tolerance.
-5. **Contact info**: every resume must have Name=Adithyan Ilangovan, Email=adi@aipodcast.ing in header, Phone=+49 178 7369173 in Details section (NOT in header).
+5. **Contact info**: every resume must use the candidate name, email, phone, location, and work-authorization facts from `<career-root>/profile.md` or the repo-local canonical career notes. Do not copy another person's contact details across repos.
 6. **Page count**: every resume PDF must be exactly 2 pages (not 1, not 3). Check with `pdfinfo`.
 7. **Sign-off**: every cover letter must end with "Thanks," (not "Sincerely," or "Best regards," or "Warm regards,").
-8. **Invented content**: spot-check 5-6 packs for claims not supported by `memory/areas/builder/career/profile.md`. Tools, customers, certifications, outcomes, revenue figures must all trace back to profile.md.
+8. **Invented content**: spot-check 5-6 packs for claims not supported by `<career-root>/profile.md`. Tools, customers, certifications, outcomes, revenue figures must all trace back to profile.md.
 
 ### How to run
 
 ```bash
 # Competitor names (adjust per target)
-grep -rn "Codex\|Claude\|ChatGPT\|GPT-4\|GPT-5\|OpenAI\|Anthropic\|Cursor\|Devin\|Windsurf\|Poolside\|Deepgram\|Speechmatics\|AssemblyAI\|Whisper" memory/areas/builder/career/cv/latex/tailored/*/resume.tex memory/areas/builder/career/cv/latex/tailored/*/cover-letter.tex
+CAREER_ROOT=memory/areas/career  # or memory/areas/builder/career
+grep -rn "Codex\|Claude\|ChatGPT\|GPT-4\|GPT-5\|OpenAI\|Anthropic\|Cursor\|Devin\|Windsurf\|Poolside\|Deepgram\|Speechmatics\|AssemblyAI\|Whisper" "$CAREER_ROOT"/cv/latex/tailored/*/resume.tex "$CAREER_ROOT"/cv/latex/tailored/*/cover-letter.tex
 
 # Em-dashes
-grep -rn "textemdash\|—\|–" memory/areas/builder/career/cv/latex/tailored/*/resume.tex memory/areas/builder/career/cv/latex/tailored/*/cover-letter.tex | grep -v "^%"
+grep -rn "textemdash\|—\|–" "$CAREER_ROOT"/cv/latex/tailored/*/resume.tex "$CAREER_ROOT"/cv/latex/tailored/*/cover-letter.tex | grep -v "^%"
 
 # AI-smell
-grep -rni "delve\|underscore\|pivotal\|realm\|illuminate\|facilitate\|shed light\|bolster\|differentiate\|streamline" memory/areas/builder/career/cv/latex/tailored/*/resume.tex memory/areas/builder/career/cv/latex/tailored/*/cover-letter.tex
+grep -rni "delve\|underscore\|pivotal\|realm\|illuminate\|facilitate\|shed light\|bolster\|differentiate\|streamline" "$CAREER_ROOT"/cv/latex/tailored/*/resume.tex "$CAREER_ROOT"/cv/latex/tailored/*/cover-letter.tex
 
 # Sign-off
-grep -rn "Sincerely\|Best regards\|Warm regards\|Kind regards" memory/areas/builder/career/cv/latex/tailored/*/cover-letter.tex
+grep -rn "Sincerely\|Best regards\|Warm regards\|Kind regards" "$CAREER_ROOT"/cv/latex/tailored/*/cover-letter.tex
 
 # Page count
-for f in memory/areas/builder/career/cv/latex/tailored/*/resume.pdf; do echo "$f: $(pdfinfo "$f" 2>/dev/null | grep Pages)"; done
+for f in "$CAREER_ROOT"/cv/latex/tailored/*/resume.pdf; do echo "$f: $(pdfinfo "$f" 2>/dev/null | grep Pages)"; done
 ```
 
 ### Report format
@@ -172,7 +173,7 @@ The `mistral-fde` resume was tailored in the first wave before the competitor-aw
 ## Output hygiene
 
 Track source `.tex`, tailored `job-description.md`, and notes files.
-Ignore generated PDFs and LaTeX build artifacts via `memory/areas/builder/career/cv/latex/.gitignore`.
+Ignore generated PDFs and LaTeX build artifacts via `<career-root>/cv/latex/.gitignore`.
 
 ## Submitting applications via browser
 
@@ -191,14 +192,14 @@ agent-browser wait --load networkidle
 agent-browser snapshot -i
 
 # 3. Fill text fields and click radios/buttons using the @eN refs
-agent-browser fill @e13 "Adithyan Ilangovan"
-agent-browser fill @e14 "adi@aipodcast.ing"
+agent-browser fill @e13 "<candidate name>"
+agent-browser fill @e14 "<candidate email>"
 agent-browser click @e33  # radio button
 agent-browser click @e5   # combobox option after fill
 
 # 4. Upload resume + cover letter PDFs (this is the bit Claude-in-Chrome cannot do)
-agent-browser upload @e15 "$HOME/GitHub/adi/memory/areas/builder/career/cv/latex/tailored/<slug>/resume.pdf"
-agent-browser upload @eN "$HOME/GitHub/adi/memory/areas/builder/career/cv/latex/tailored/<slug>/cover-letter.pdf"
+agent-browser upload @e15 "$REPO_ROOT/$CAREER_ROOT/cv/latex/tailored/<slug>/resume.pdf"
+agent-browser upload @eN "$REPO_ROOT/$CAREER_ROOT/cv/latex/tailored/<slug>/cover-letter.pdf"
 
 # 5. Screenshot for verification before the final click
 agent-browser screenshot /tmp/<slug>-before-submit.png
@@ -214,12 +215,12 @@ agent-browser screenshot /tmp/<slug>-after-submit.png
 - Combobox selection is a two-step dance: `fill` then `click` the matching option ref. The option ref appears in a fresh `snapshot -i` after the fill.
 - `agent-browser` uses a separate Chrome instance from Claude-in-Chrome. Any login state from the extension does not carry over. Most Ashby/Greenhouse/Lever application forms do not require login, so this is usually fine.
 - Before every `click @eN` on a submit button, take a screenshot and show it to the user. Submission is irreversible.
-- After submission, capture a confirmation screenshot (`agent-browser screenshot`) as evidence and note the result in the relevant tracker file (for example `memory/areas/builder/career/job-tracker/<batch>/STATUS.md`).
+- After submission, capture a confirmation screenshot (`agent-browser screenshot`) as evidence and note the result in the relevant tracker file (for example `<career-root>/job-tracker/<batch>/STATUS.md`).
 - If the form has many essay questions, draft all answers before opening the form and fill them in a single pass. Reviewing drafts in source is easier than scrolling a populated form.
 - **Refs renumber aggressively.** Any interaction that changes the DOM (combobox selection, radio click, upload) can shift every ref below it by one. If you drafted fills using refs from an early snapshot and then interacted with the form, your essays will land in the wrong fields. Always re-snapshot right before a batch of fills, and verify filled content with `agent-browser eval` after.
 - **Ashby has invisible reCAPTCHA and will flag automated submissions as spam.** The form will appear to submit successfully, then replace itself with "Your application submission was flagged as possible spam. If you believe this was a mistake, please submit your application again." The reCAPTCHA token is generated from user gesture signals (mouse movement, genuine clicks, focus patterns) that programmatic fills do not produce. Retry does not help. Presence of `textarea[name=g-recaptcha-response]` on the form is the tell.
-  - **Workaround**: fill everything with agent-browser, verify the filled state in a screenshot, then hand the already-filled form to Adi and ask him to click Submit. Same handoff pattern as the Chrome file_upload workaround.
-  - Do NOT close the agent-browser window after filling. Adi needs the populated tab still open to click Submit.
+  - **Workaround**: fill everything with agent-browser, verify the filled state in a screenshot, then hand the already-filled form to the human and ask them to click Submit. Same handoff pattern as the Chrome file_upload workaround.
+  - Do NOT close the agent-browser window after filling. The human needs the populated tab still open to click Submit.
   - Greenhouse and Lever do not generally trip this. Ashby is the problem surface.
 
 ### When to prefer Claude-in-Chrome
