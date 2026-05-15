@@ -97,6 +97,22 @@ def _has_tty() -> bool:
         return False
 
 
+def _claude_runtime_present() -> bool:
+    """Return True when this machine appears to have a Claude runtime installed."""
+    if shutil.which("claude"):
+        return True
+    if sys.platform == "darwin":
+        for app_path in (
+            Path("/Applications/Claude.app"),
+            Path.home() / "Applications/Claude.app",
+            Path("/Applications/Claude Code.app"),
+            Path.home() / "Applications/Claude Code.app",
+        ):
+            if app_path.exists():
+                return True
+    return False
+
+
 def install_with_sudo(rendered: Path, target: Path) -> None:
     """Install rendered file at the policy path using sudo.
 
@@ -145,6 +161,17 @@ def main() -> int:
         rendered.write_text(render_json(data), encoding="utf-8")
 
         print("=== Claude Managed Settings ===")
+        if (
+            not policy_target.exists()
+            and not _claude_runtime_present()
+            and os.environ.get("CLAUDE_MANAGED_SETTINGS_REQUIRED") != "1"
+        ):
+            print(
+                "SKIP: Claude runtime is not installed and the OS-level policy file "
+                f"is absent: {policy_target}"
+            )
+            return 0
+
         show_diff(policy_target, rendered)
 
         if not args.apply:
