@@ -93,6 +93,25 @@ def git_root_for(path: Path) -> Path | None:
     return Path(root).resolve()
 
 
+def repo_git_root(repo_root: Path) -> Path | None:
+    if not repo_root.exists():
+        return None
+    if not repo_root.is_dir():
+        return None
+    result = subprocess.run(
+        ["git", "-C", str(repo_root), "rev-parse", "--show-toplevel"],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    if result.returncode != 0:
+        return None
+    root = result.stdout.strip()
+    if not root:
+        return None
+    return Path(root).resolve()
+
+
 def stage_git_paths(paths: set[Path]) -> None:
     grouped: dict[Path, list[str]] = {}
     for path in sorted(paths):
@@ -387,7 +406,11 @@ def run_sync(
 
         for repo in item["repos"]:
             repo_root = resolve_repo_root(repo, github_root, home)
-            dst = repo_root / ".agents" / "skills" / skill
+            actual_repo = repo_git_root(repo_root)
+            if actual_repo is None:
+                print(f"WARNING: skipping non-git path: {repo_root}", file=sys.stderr)
+                continue
+            dst = actual_repo / ".agents" / "skills" / skill
             desired_links[dst] = src
             if sync_link(dst, src, apply):
                 touched_links.add(dst)
@@ -446,7 +469,7 @@ def prune_obsolete_repo_links(
         candidate_dirs.update(
             repo_root / ".agents" / "skills"
             for repo_root in github_root.iterdir()
-            if repo_root.is_dir()
+            if repo_git_root(repo_root) is not None
         )
 
     for skills_dir in sorted(candidate_dirs):
@@ -528,7 +551,7 @@ def prune_dormant_repo_links(
         candidate_dirs.update(
             repo_root / ".agents" / "skills"
             for repo_root in github_root.iterdir()
-            if repo_root.is_dir()
+            if repo_git_root(repo_root) is not None
         )
 
     for skills_dir in sorted(candidate_dirs):
