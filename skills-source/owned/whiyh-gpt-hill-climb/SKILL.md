@@ -205,6 +205,11 @@ Keep reports compact and operator-friendly:
   and public-company/private-company splits.
 - Persona/fictional-character boundary questions are useful only with strong
   character-prone clues, not generic actor/TV clues.
+- After the deterministic Alive = No opener, split real deceased humans from
+  fictional, legendary, video-game, holiday, religious, folklore, and
+  screen-persona figures before normal dead-person career checklists. Misses
+  like Mario -> Momotaro and Master Chief -> historical warrior indicate this
+  boundary failed.
 - Some misses come from noisy user answers; do not prompt-tune around a single
   case where the user answered a key geography/category incorrectly.
 
