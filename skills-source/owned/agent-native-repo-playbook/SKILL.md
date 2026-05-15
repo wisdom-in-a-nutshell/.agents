@@ -1,6 +1,6 @@
 ---
 name: agent-native-repo-playbook
-description: Provide agent-native repository best-practice recommendations for a solo developer workflow where humans provide intent and agents write 100% of code. Use when asked how to improve AGENTS/docs/guardrails, reduce agent drift, improve autonomous execution loops, or align a repo to OpenAI harness-engineering style practices without overcomplicating process.
+description: Provide agent-native repository best-practice recommendations and autonomous execution guidance for a solo developer workflow where humans provide intent and agents write 100% of code. Use when asked how to improve AGENTS/docs/guardrails, reduce agent drift, improve autonomous execution loops or automations, avoid waiting for human feedback in agent loops, or align a repo to OpenAI harness-engineering style practices without overcomplicating process.
 ---
 
 # Agent Native Repo Playbook
@@ -12,6 +12,10 @@ Operating model:
 - Solo developer sets intent and priorities.
 - Agents always write 100% of code and maintain docs.
 - Repository structure is optimized for agent legibility and repeatability.
+- In automation, heartbeat, or active-goal contexts, agents should assume the
+  human has delegated execution. Do not wait for feedback unless truly blocked;
+  make the best conservative decision, implement it, validate it, document
+  durable behavior, and report what changed.
 
 ## Workflow
 1. Read the repo's current guidance and structure:
@@ -29,7 +33,13 @@ Operating model:
    - Immediate (high leverage, low effort)
    - Near-term (high leverage, medium effort)
    - Later (structural improvements)
-4. Keep output recommendation-first. Do not implement unless user asks.
+4. Keep output recommendation-first for advisory requests. Implement directly
+   when the user asks, when automation/goal instructions authorize execution,
+   or when the request is explicitly to make the repo more autonomous.
+5. In automation mode, prefer one useful validated change over asking for
+   permission. Ask only when the next step is destructive, irreversible,
+   requires a missing secret/account decision, or conflicts with repo-local
+   guidance.
 
 ## Output Format
 1. `What is working`: short bullets.
@@ -45,6 +55,10 @@ Operating model:
 - Prefer recommendations that reduce human coordination load.
 - Prefer mechanical guardrails over prose-only guidance.
 - Preserve the operating principle: humans set intent; agents write 100% of code.
+- For autonomous loops, bias toward action: inspect, decide, edit, validate,
+  document, and summarize. Do not pause for human approval just because several
+  reasonable implementation choices exist; choose the smallest reversible
+  option that matches repo guidance.
 - Keep root guidance concise; move durable detail into the repo's chosen canonical layer.
 - For normal software repos, keep root `AGENTS.md` as a router and use nested `AGENTS.md` only where local boundary rules materially differ. If a repo intentionally rejects `AGENTS.md` and uses another passive/bootstrapped map such as `STRUCTURE.md`, honor that design.
 - When editing or proposing `AGENTS.md`, follow `references/agents-md-best-practices.md`; when the repo uses `STRUCTURE.md` or equivalent, audit that root guidance instead.

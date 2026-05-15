@@ -21,11 +21,20 @@ Choose the narrowest mode that matches the request.
 - **Report-only mode**: Use for recurring automation, "check recent games",
   "how are misses/dropoffs/latency/cache doing", or "what happened recently".
   Read telemetry, summarize, and recommend at most one next investigation or
-  change. Do not edit code.
+  change. Do not edit code when the user or automation prompt explicitly asks
+  for report-only behavior.
 - **Improvement mode**: Use only when the user asks to change behavior or when
-  an active goal explicitly authorizes hill-climbing. Work on a short-lived
-  branch, make one focused change, validate, then return to `main` only when the
-  branch is ready for the normal hook/deploy path.
+  an active goal, heartbeat, or automation prompt explicitly authorizes
+  hill-climbing. This includes user language such as "continue", "improve",
+  "do the best you can", "fix what is worth fixing", or similar standing
+  permission. Work on a short-lived branch, make one focused change, validate,
+  then return to `main` only when the branch is ready for the normal hook/deploy
+  path.
+
+In improvement mode, prefer doing the best focused fix over merely reporting
+when telemetry shows a concrete repeated failure, route/model error, duplicate
+turn, or clear latency/cost waste. Fix damage caps first when needed, then fix
+the root cause if it is visible and low-risk.
 
 ## Cadence Guard
 
@@ -121,6 +130,13 @@ inspect route/model timing. The most important distinction is whether the player
 left because the model was slow, the app errored, or the narrowing path became
 bad.
 
+If a slow outlier looks like a stale duplicate turn, check whether the same
+game state and answer created more than one model call. The intended route
+behavior is server-side idempotency for `answer`: same state plus same answer
+within a short runtime window should replay one generated result, not start a
+second OpenAI request or write duplicate turn telemetry. Failed turns should not
+be cached, so real retries still work.
+
 Known prior issue: GPT content-filter incomplete near Q20 once triggered a slow
 non-GPT fallback before GPT retry, producing a very long wait. Non-GPT fallback
 paths have since been removed; the intended behavior is to retry the supported
@@ -212,11 +228,20 @@ Keep reports compact and operator-friendly:
   boundary failed.
 - Some misses come from noisy user answers; do not prompt-tune around a single
   case where the user answered a key geography/category incorrectly.
+- A 242s stale duplicate GPT turn showed that capping OpenAI SDK requests is
+  not enough by itself. Keep the answer-turn replay/idempotency guard intact and
+  watch duplicate same-state turns after deploys.
 
 ## Automation Prompt
 
-For a recurring report, use a prompt like:
+For a recurring report-only check, use a prompt like:
 
 ```text
 Use $whiyh-gpt-hill-climb in report-only mode. In /Users/dobby/GitHub/whos-in-your-head, review the last 60 minutes of GPT/default game telemetry and compare with the last 2 hours when the sample is noisy, including misses, dropoffs, latency, cache/token efficiency, model errors, and share signals when available. Focus optimization on `gpt-chat-latest` and the fast GPT option `gpt-5.4-mini`: make turns cheaper and faster where possible without hurting correctness. Summarize what changed, identify the most likely reason for any failures, and recommend at most one next action. Do not edit code.
+```
+
+For the same-thread hill-climb loop, use improvement mode:
+
+```text
+Use $whiyh-gpt-hill-climb in improvement mode. In /Users/dobby/GitHub/whos-in-your-head, review recent GPT/default game telemetry, then improve the product when there is a concrete repeated failure, route/model error, duplicate stale turn, or clear cost/latency waste worth fixing. Optimize accuracy first, then speed and cost without hurting correctness. Work on a short-lived `codex/*` branch, make one focused prompt/mechanics/routing/client/telemetry/docs change, validate with targeted tests plus `scripts/check-fast.sh`, return the validated patch to `main` for the normal hook/deploy path, and delete the short-lived branch. If the data is healthy or too noisy, report only.
 ```

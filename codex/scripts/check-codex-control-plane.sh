@@ -101,9 +101,11 @@ import sys
 from pathlib import Path
 
 try:
+    if os.environ.get("CODEX_FORCE_TOML_FALLBACK"):
+        raise ModuleNotFoundError
     import tomllib
 except ModuleNotFoundError:  # pragma: no cover
-    import tomli as tomllib  # type: ignore
+    tomllib = None  # type: ignore[assignment]
 
 
 def fail(message: str) -> None:
@@ -114,12 +116,205 @@ def load_toml(path: Path) -> dict:
     if not path.is_file():
         fail(f"missing file: {path}")
     try:
-        data = tomllib.loads(path.read_text(encoding="utf-8"))
+        if tomllib is None:
+            data = parse_toml_fallback(path.read_text(encoding="utf-8"))
+        else:
+            data = tomllib.loads(path.read_text(encoding="utf-8"))
     except Exception as exc:
         fail(f"invalid TOML in {path}: {exc}")
     if not isinstance(data, dict):
         fail(f"TOML root must be a table: {path}")
     return data
+
+
+def split_toml_path(raw: str) -> list[str]:
+    parts: list[str] = []
+    current: list[str] = []
+    in_string = False
+    escaped = False
+    for char in raw:
+        if escaped:
+            current.append(char)
+            escaped = False
+            continue
+        if char == "\\" and in_string:
+            escaped = True
+            current.append(char)
+            continue
+        if char == '"':
+            in_string = not in_string
+            current.append(char)
+            continue
+        if char == "." and not in_string:
+            parts.append("".join(current).strip())
+            current = []
+            continue
+        current.append(char)
+    if current or raw.endswith("."):
+        parts.append("".join(current).strip())
+    return [unquote_toml_key(part) for part in parts if part]
+
+
+def unescape_toml_basic_string(value: str) -> str:
+    result: list[str] = []
+    idx = 0
+    while idx < len(value):
+        char = value[idx]
+        if char != "\\":
+            result.append(char)
+            idx += 1
+            continue
+        idx += 1
+        if idx >= len(value):
+            result.append("\\")
+            break
+        escaped = value[idx]
+        replacements = {
+            "b": "\b",
+            "t": "\t",
+            "n": "\n",
+            "f": "\f",
+            "r": "\r",
+            '"': '"',
+            "\\": "\\",
+        }
+        result.append(replacements.get(escaped, escaped))
+        idx += 1
+    return "".join(result)
+
+
+def unquote_toml_key(key: str) -> str:
+    key = key.strip()
+    if len(key) >= 2 and key[0] == '"' and key[-1] == '"':
+        return unescape_toml_basic_string(key[1:-1])
+    return key
+
+
+def strip_inline_comment(value: str) -> str:
+    in_string = False
+    escaped = False
+    for idx, char in enumerate(value):
+        if escaped:
+            escaped = False
+            continue
+        if char == "\\" and in_string:
+            escaped = True
+            continue
+        if char == '"':
+            in_string = not in_string
+            continue
+        if char == "#" and not in_string:
+            return value[:idx].rstrip()
+    return value.strip()
+
+
+def parse_toml_value(value: str):
+    value = strip_inline_comment(value.strip())
+    lowered = value.lower()
+    if lowered == "true":
+        return True
+    if lowered == "false":
+        return False
+    if len(value) >= 2 and value[0] == '"' and value[-1] == '"':
+        return unescape_toml_basic_string(value[1:-1])
+    if value.startswith("[") and value.endswith("]"):
+        inner = value[1:-1].strip()
+        if not inner:
+            return []
+        items: list[object] = []
+        current: list[str] = []
+        in_string = False
+        escaped = False
+        for char in inner:
+            if escaped:
+                current.append(char)
+                escaped = False
+                continue
+            if char == "\\" and in_string:
+                current.append(char)
+                escaped = True
+                continue
+            if char == '"':
+                current.append(char)
+                in_string = not in_string
+                continue
+            if char == "," and not in_string:
+                items.append(parse_toml_value("".join(current).strip()))
+                current = []
+                continue
+            current.append(char)
+        if current or inner.endswith(","):
+            item = "".join(current).strip()
+            if item:
+                items.append(parse_toml_value(item))
+        return items
+    if value.isdigit() or (value.startswith("-") and value[1:].isdigit()):
+        return int(value)
+    return value
+
+
+def table_at(root: dict, parts: list[str]) -> dict:
+    table = root
+    for part in parts:
+        next_table = table.setdefault(part, {})
+        if not isinstance(next_table, dict):
+            next_table = {}
+            table[part] = next_table
+        table = next_table
+    return table
+
+
+def parse_toml_fallback(text: str) -> dict:
+    """Parse the small TOML subset used by managed Codex configs.
+
+    This keeps bootstrap validation working on macOS Python 3.9, where neither
+    stdlib tomllib nor a user-installed tomli package is guaranteed.
+    """
+
+    root: dict = {}
+    current = root
+    in_multiline_string = False
+
+    for raw_line in text.splitlines():
+        line = raw_line.strip()
+        if in_multiline_string:
+            if '"""' in line:
+                in_multiline_string = False
+            continue
+        if not line or line.startswith("#"):
+            continue
+        if "=" in line and '"""' in line:
+            before, _sep, _after = line.partition("=")
+            current[before.strip()] = ""
+            if line.count('"""') == 1:
+                in_multiline_string = True
+            continue
+        if line.startswith("[[") and line.endswith("]]"):
+            parts = split_toml_path(line[2:-2].strip())
+            if not parts:
+                continue
+            parent = table_at(root, parts[:-1])
+            arr = parent.setdefault(parts[-1], [])
+            if not isinstance(arr, list):
+                arr = []
+                parent[parts[-1]] = arr
+            item: dict = {}
+            arr.append(item)
+            current = item
+            continue
+        if line.startswith("[") and line.endswith("]"):
+            current = table_at(root, split_toml_path(line[1:-1].strip()))
+            continue
+        if "=" not in line:
+            continue
+        raw_key, raw_value = line.split("=", 1)
+        key_parts = split_toml_path(raw_key.strip())
+        if not key_parts:
+            continue
+        target = table_at(current, key_parts[:-1])
+        target[key_parts[-1]] = parse_toml_value(raw_value)
+
+    return root
 
 
 def validate_no_agent_declarations(config_path: Path) -> None:
