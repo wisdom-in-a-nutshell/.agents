@@ -1,4 +1,4 @@
 interface:
   display_name: "Agent Native Repo Playbook"
-  short_description: "Improve agent-native repos and autonomous loops."
-  default_prompt: "Review this repository and recommend or implement the highest-leverage agent-native improvements for a solo developer workflow where agents write all code. In automation or goal contexts, do not wait for human feedback unless truly blocked; choose a conservative path, validate it, document durable behavior, and report what changed."
+  short_description: "Recommend agent-native repository improvements."
+  default_prompt: "Review this repository and recommend the highest-leverage agent-native improvements for a solo developer workflow where agents write all code. Output: what is working, highest-leverage gaps, and immediate/near-term/later actions with file-path evidence."

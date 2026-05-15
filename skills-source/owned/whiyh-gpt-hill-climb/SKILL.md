@@ -36,6 +36,14 @@ when telemetry shows a concrete repeated failure, route/model error, duplicate
 turn, or clear latency/cost waste. Fix damage caps first when needed, then fix
 the root cause if it is visible and low-risk.
 
+When this skill runs from automation, a heartbeat, or an active goal, treat the
+human's standing instruction as permission to act. Do not wait for human
+feedback just because multiple reasonable fixes exist. Choose the smallest
+conservative change that improves the product, work on a short-lived branch,
+validate it, return it to `main` for the normal hook/deploy path, and report
+what changed. Ask only if the next step is destructive, exposes private data,
+requires a missing secret/account decision, or conflicts with repo guidance.
+
 ## Cadence Guard
 
 - Do not poll telemetry more often than every 30 minutes unless the user
