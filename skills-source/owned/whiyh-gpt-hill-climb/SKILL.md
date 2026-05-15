@@ -1,6 +1,6 @@
 ---
 name: whiyh-gpt-hill-climb
-description: "Monitor, analyze, and improve the Who's In Your Head GPT/default game path. Use when Codex is asked to check recent games, misses, dropoffs, abandoned sessions, model latency, cache/token efficiency, model errors, share signals, or GPT vs Gemini/Claude performance for this repo; when running a recurring telemetry automation/report; or when hill-climbing prompts, routing, mechanics, clients, telemetry, Mongo indexes, or tests to improve speed, completion rate, correct rate, and reported-miss rate."
+description: "Monitor, analyze, and improve the Who's In Your Head GPT/default game path. Use when Codex is asked to check recent games, misses, dropoffs, abandoned sessions, model latency, cache/token efficiency, model errors, share signals, or GPT model performance for this repo; when running a recurring telemetry automation/report; or when hill-climbing prompts, routing, mechanics, clients, telemetry, Mongo indexes, or tests to improve speed, completion rate, correct rate, and reported-miss rate."
 ---
 
 # WIYH GPT Hill Climb
@@ -9,11 +9,10 @@ Use this skill for the repeatable improvement loop around the live game at
 `/Users/dobby/GitHub/whos-in-your-head`.
 
 The product target is concrete: make model turns fast, cheap, and correct.
-Optimize the GPT default path first: cheap/fast `gpt-chat-latest` turns, then
-adaptive `gpt-5.5` late-path correctness only where it earns its extra latency
-and token cost. Supporting signals are completion rate up, drop rate down,
-route/model errors low, cache/token efficiency healthy, and reported misses
-down.
+Optimize only the GPT product paths: `gpt-chat-latest` as the default and the
+fast GPT option (`gpt-5.4-mini`) when selected. Supporting signals are
+completion rate up, drop rate down, route/model errors low, cache/token
+efficiency healthy, and reported misses down.
 
 ## Modes
 
@@ -43,23 +42,23 @@ Choose the narrowest mode that matches the request.
 
 ## GPT Path
 
-Treat the GPT workflow as both:
+Treat the GPT workflow as:
 
 - `gpt-chat-latest` turn telemetry.
-- Adaptive `gpt-5.5` final outcomes when the runtime escalates late or hard
-  turns.
+- The fast GPT path (`gpt-5.4-mini`) when selected.
 
 Do not judge the GPT path only by completed rows whose final model is
-`gpt-chat-latest`; late escalation can make the final model differ from the
-early-turn model. Use Gemini and Claude as comparison groups, but optimize GPT
-unless the user redirects.
+`gpt-chat-latest`; players can explicitly choose the fast GPT option. Gemini,
+Claude, and unsupported GPT paths are intentionally removed from the product;
+do not optimize, compare, or route live games through them.
 
 ## Cost And Speed Bias
 
 Focus optimization only on the GPT default path unless the user redirects:
 
 - Keep `gpt-chat-latest` cheap and fast for ordinary turns.
-- Use `gpt-5.5` only where the late/hard-turn correctness benefit is plausible.
+- Do not reintroduce Gemini, Claude, or unsupported GPT paths while
+  hill-climbing.
 - Watch average model latency, route latency, total tokens, reasoning tokens,
   cached tokens, and cache read rate.
 - Prefer prompt/mechanics/routing changes that reduce wasted questions, repeated
@@ -123,8 +122,9 @@ left because the model was slow, the app errored, or the narrowing path became
 bad.
 
 Known prior issue: GPT content-filter incomplete near Q20 once triggered a slow
-Claude fallback before GPT retry, producing a very long wait. The intended
-behavior is to retry the primary GPT path before a slow configured fallback.
+non-GPT fallback before GPT retry, producing a very long wait. Non-GPT fallback
+paths have since been removed; the intended behavior is to retry the supported
+GPT path before any supported GPT fallback.
 
 ## Improvement Workflow
 
@@ -218,5 +218,5 @@ Keep reports compact and operator-friendly:
 For a recurring report, use a prompt like:
 
 ```text
-Use $whiyh-gpt-hill-climb in report-only mode. In /Users/dobby/GitHub/whos-in-your-head, review the last 60 minutes of GPT/default game telemetry and compare with the last 2 hours when the sample is noisy, including misses, dropoffs, latency, cache/token efficiency, model errors, and share signals when available. Focus optimization on the `gpt-chat-latest` turn path and adaptive `gpt-5.5` late path: make turns cheaper and faster where possible without hurting correctness. Summarize what changed, identify the most likely reason for any failures, and recommend at most one next action. Do not edit code.
+Use $whiyh-gpt-hill-climb in report-only mode. In /Users/dobby/GitHub/whos-in-your-head, review the last 60 minutes of GPT/default game telemetry and compare with the last 2 hours when the sample is noisy, including misses, dropoffs, latency, cache/token efficiency, model errors, and share signals when available. Focus optimization on `gpt-chat-latest` and the fast GPT option `gpt-5.4-mini`: make turns cheaper and faster where possible without hurting correctness. Summarize what changed, identify the most likely reason for any failures, and recommend at most one next action. Do not edit code.
 ```
