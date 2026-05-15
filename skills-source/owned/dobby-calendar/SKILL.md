@@ -40,8 +40,7 @@ $HOME/.agents/skills-source/owned/dobby-calendar/scripts/dobby-calendar upsert-e
 
 ## Bridge
 
-The CLI prefers the native Dobby Calendar Bridge helper and falls back to
-Homebrew `ical`. For setup/debugging, read `references/bridge.md`.
+The CLI uses the native Dobby Calendar Bridge helper only. For setup/debugging, read `references/bridge.md`.
 
 ## Testing
 

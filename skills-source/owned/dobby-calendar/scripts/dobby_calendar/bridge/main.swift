@@ -103,6 +103,7 @@ Usage:
   DobbyCalendarBridge list --from <date> --to <date> [--query <text>] [--calendar <name>|--all-calendars] [--limit <n>] [--no-recurring] [--no-input]
   DobbyCalendarBridge add --title <title> --start <date> [--end <date>] --calendar <name> [--all-day] [--location <text>] [--notes <text>] [--url <url>] [--repeat daily|weekly|monthly|yearly] [--repeat-until <date>] [--no-alert] [--no-input]
   DobbyCalendarBridge update --id <event-id> [--title <title>] [--start <date>] [--end <date>] [--calendar <name>] [--location <text>] [--notes <text>] [--url <url>] [--no-alert] [--no-input]
+  DobbyCalendarBridge delete --id <event-id> [--no-input]
   DobbyCalendarBridge --version
 
 Output is always one JSON envelope on stdout. Diagnostics go to stderr.
@@ -124,7 +125,7 @@ func parseArgs(_ raw: [String]) throws -> ParsedArgs {
         return ParsedArgs(command: "help")
     }
     let command = args.removeFirst()
-    let knownCommands = ["doctor", "calendars", "list", "add", "update"]
+    let knownCommands = ["doctor", "calendars", "list", "add", "update", "delete"]
     guard knownCommands.contains(command) else {
         throw BridgeError("E_VALIDATION", "unknown command: \(command)", hint: usage())
     }
@@ -373,6 +374,22 @@ final class CalendarBridge {
         return eventInfo(event)
     }
 
+
+    func deleteEvent(args: ParsedArgs) throws -> [String: Any] {
+        try ensureAccess(requestIfNeeded: false)
+        let id = try requireValue(args, "id")
+        guard let event = store.event(withIdentifier: id) else {
+            throw BridgeError("E_NOT_FOUND", "event not found: \(id)")
+        }
+        let info = eventInfo(event)
+        do {
+            try store.remove(event, span: .thisEvent, commit: true)
+        } catch {
+            throw BridgeError("E_RUNTIME", "failed to delete event: \(error.localizedDescription)")
+        }
+        return ["deleted": true, "event": info]
+    }
+
     private enum DateRole { case rangeStart, rangeEnd, eventStart, eventEnd, allDayEnd }
 
     private func parseDate(_ text: String, role: DateRole) throws -> Date {
@@ -592,6 +609,8 @@ func executeParsed(_ parsed: ParsedArgs) throws -> (command: String, data: Any) 
         result = try bridge.addEvent(args: parsed)
     case "update":
         result = try bridge.updateEvent(args: parsed)
+    case "delete":
+        result = try bridge.deleteEvent(args: parsed)
     default:
         throw BridgeError("E_VALIDATION", "unknown command: \(parsed.command)", hint: usage())
     }

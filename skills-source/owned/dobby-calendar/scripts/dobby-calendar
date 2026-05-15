@@ -17,7 +17,7 @@ from lib.workspace import WorkspaceError  # noqa: E402
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = DobbyArgumentParser(prog="dobby-calendar", description="Dobby calendar operations via EventKit bridge/ical backends")
+    parser = DobbyArgumentParser(prog="dobby-calendar", description="Dobby calendar operations via Dobby Calendar Bridge")
     parser.add_argument("--version", action="version", version="dobby-calendar 0.1.0")
     calendar.add_subparsers(parser)
     return parser

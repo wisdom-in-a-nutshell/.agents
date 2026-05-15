@@ -1,9 +1,5 @@
 #!/usr/bin/env bash
-# Live round-trip test for `dobby-calendar add-event`.
-#
-# This catches the EventKit/ical behavior where `ical add --output json` may
-# create the event but still return a human "Created:" block. The wrapper must
-# normalize that backend output into the Dobby JSON envelope.
+# Live round-trip test for `dobby-calendar add-event` through the bridge.
 set -euo pipefail
 source "$(dirname "$0")/../lib/assert.sh"
 
@@ -18,7 +14,7 @@ cleanup_calendar_event() {
         | jq -r '.data.events[]?.id' 2>/dev/null || true)
     for id in $ids; do
         [[ -z "$id" ]] && continue
-        ical delete --id "$id" --force >/dev/null 2>&1 || true
+        "$HOME/Applications/Dobby Calendar Bridge.app/Contents/MacOS/DobbyCalendarBridge" send delete --id "$id" >/dev/null 2>&1 || true
     done
 }
 trap cleanup_calendar_event EXIT

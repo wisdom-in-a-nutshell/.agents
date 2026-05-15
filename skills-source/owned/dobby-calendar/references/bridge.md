@@ -63,16 +63,14 @@ installer therefore refuses ad-hoc signing by default and prefers, in order:
 Use `--allow-adhoc-signing` only as a last-resort repair path, and expect to
 grant Calendar permission again afterward.
 
-## Backends
+## Backend
 
-`dobby-calendar` backend order:
-
-1. native bridge socket
-2. Homebrew `ical` fallback
+`dobby-calendar` uses the native bridge socket as its only supported backend.
+`DOBBY_CALENDAR_BACKEND=auto` remains accepted for old environments, but it
+resolves to the bridge; no secondary calendar client is used.
 
 Diagnostics:
 
 ```bash
 DOBBY_CALENDAR_BACKEND=bridge ~/.agents/skills-source/owned/dobby-calendar/scripts/dobby-calendar doctor
-DOBBY_CALENDAR_BACKEND=ical ~/.agents/skills-source/owned/dobby-calendar/scripts/dobby-calendar doctor
 ```
