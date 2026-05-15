@@ -44,7 +44,8 @@
       "event": "PostCompact",
       "id": "repo-post-compact",
       "repos": [
-        "adi"
+        "adi",
+        "angie"
       ],
       "runtimes": [
         "codex",

@@ -3,7 +3,7 @@ repo_name: "angie"
 path: "~/GitHub/angie"
 mcp_count: 0
 plugin_count: 3
-skill_count: 17
+skill_count: 18
 repo_local_skill_count: 0
 model: "gpt-5.5"
 reasoning: "high"
@@ -35,6 +35,7 @@ repo_skills:
   - "dobby-lifecycle"
   - "dobby-shelf"
   - "dobby-workspace"
+  - "health"
   - "imagegen"
   - "journal-checkin"
 repo_local_skills: []
@@ -49,6 +50,7 @@ skills:
   - "dobby-shelf"
   - "dobby-workspace"
   - "find-skills"
+  - "health"
   - "imagegen"
   - "journal-checkin"
   - "pdf"

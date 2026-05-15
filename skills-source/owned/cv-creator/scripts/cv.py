@@ -17,9 +17,13 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 SCHEMA_VERSION = "1.0"
-TOOL_VERSION = "0.1.2"
+TOOL_VERSION = "0.2.0"
 REVIEW_TMP_ROOT = Path("/tmp/cv-review")
 COMPANY_SLUG_RE = re.compile(r"^[A-Za-z0-9._-]+$")
+CAREER_ROOT_CANDIDATES = (
+    Path("memory/areas/career"),
+    Path("memory/areas/builder/career"),
+)
 JOB_DESCRIPTION_PLACEHOLDER = """# Job Description
 
 - **Role:** 
@@ -35,6 +39,14 @@ _Paste the exact job description used for this tailored packet here._
 
 class CLIUsageError(Exception):
     pass
+
+
+class CVConfigError(Exception):
+    def __init__(self, code: str, message: str, hint: str):
+        self.code = code
+        self.message = message
+        self.hint = hint
+        super().__init__(message)
 
 
 class CVArgumentParser(argparse.ArgumentParser):
@@ -109,26 +121,94 @@ def validate_company_slug(company: str) -> bool:
     return bool(COMPANY_SLUG_RE.fullmatch(company))
 
 
-def source_for(repo_root: Path, kind: str, company: str | None) -> Path:
-    latex_root = repo_root / "memory" / "areas" / "builder" / "career" / "cv" / "latex"
+def _career_root_signal(candidate: Path) -> bool:
+    return any(
+        path.exists()
+        for path in (
+            candidate / "profile.md",
+            candidate / "tailoring-guide.md",
+            candidate / "job-tracker",
+            candidate / "cv" / "latex",
+        )
+    )
+
+
+def career_root_for(repo_root: Path, career_root_override: str | None = None) -> Path:
+    if career_root_override:
+        override = Path(career_root_override).expanduser()
+        if not override.is_absolute():
+            override = repo_root / override
+        return override.resolve()
+
+    candidates = [repo_root / rel for rel in CAREER_ROOT_CANDIDATES]
+    signaled = [candidate for candidate in candidates if _career_root_signal(candidate)]
+
+    if not signaled:
+        return candidates[0]
+
+    with_latex = [
+        candidate
+        for candidate in signaled
+        if (candidate / "cv" / "latex" / "base" / "resume.tex").exists()
+        or (candidate / "cv" / "latex").exists()
+    ]
+    if len(with_latex) == 1:
+        return with_latex[0]
+    if len(signaled) == 1:
+        return signaled[0]
+
+    rels = ", ".join(str(path.relative_to(repo_root)) for path in signaled)
+    raise CVConfigError(
+        "E_AMBIGUOUS_CAREER_ROOT",
+        f"Multiple career roots found: {rels}",
+        "Pass --career-root <path> to select the career area for this command.",
+    )
+
+
+def latex_root_for(repo_root: Path, career_root_override: str | None = None) -> Path:
+    return career_root_for(repo_root, career_root_override) / "cv" / "latex"
+
+
+def source_for(
+    repo_root: Path,
+    kind: str,
+    company: str | None,
+    career_root_override: str | None = None,
+) -> Path:
+    latex_root = latex_root_for(repo_root, career_root_override)
     if company:
         return latex_root / "tailored" / company / f"{kind}.tex"
     return latex_root / "base" / f"{kind}.tex"
 
 
-def job_description_for(repo_root: Path, company: str | None) -> Path | None:
+def job_description_for(
+    repo_root: Path,
+    company: str | None,
+    career_root_override: str | None = None,
+) -> Path | None:
     if not company:
         return None
-    latex_root = repo_root / "memory" / "areas" / "builder" / "career" / "cv" / "latex"
+    latex_root = latex_root_for(repo_root, career_root_override)
     return latex_root / "tailored" / company / "job-description.md"
 
 
-def review_dir_for(company: str | None, kind: str) -> Path:
+def review_dir_for(repo_root: Path, company: str | None, kind: str) -> Path:
     label = company or "base"
-    return REVIEW_TMP_ROOT / label / kind
+    return REVIEW_TMP_ROOT / repo_root.name / label / kind
 
 
-def run_init(repo_root: Path, company: str | None, plain: bool) -> int:
+def config_error_result(command: str, exc: CVConfigError, plain: bool, t0: float) -> int:
+    err = {
+        "code": exc.code,
+        "message": exc.message,
+        "retryable": False,
+        "hint": exc.hint,
+    }
+    emit(result(command, "error", error=err, duration_ms=(time.monotonic() - t0) * 1000), plain)
+    return 2
+
+
+def run_init(repo_root: Path, company: str | None, plain: bool, career_root_override: str | None) -> int:
     t0 = time.monotonic()
     command = "cv.init"
 
@@ -142,19 +222,24 @@ def run_init(repo_root: Path, company: str | None, plain: bool) -> int:
         emit(result(command, "error", error=err, duration_ms=(time.monotonic() - t0) * 1000), plain)
         return 2
 
-    base_resume = source_for(repo_root, "resume", None)
-    base_cover_letter = source_for(repo_root, "cover-letter", None)
-    tailored_dir = source_for(repo_root, "resume", company).parent
-    resume_target = source_for(repo_root, "resume", company)
-    cover_letter_target = source_for(repo_root, "cover-letter", company)
-    job_description = job_description_for(repo_root, company)
+    try:
+        career_root = career_root_for(repo_root, career_root_override)
+        latex_root = career_root / "cv" / "latex"
+        base_resume = source_for(repo_root, "resume", None, career_root_override)
+        base_cover_letter = source_for(repo_root, "cover-letter", None, career_root_override)
+        tailored_dir = source_for(repo_root, "resume", company, career_root_override).parent
+        resume_target = source_for(repo_root, "resume", company, career_root_override)
+        cover_letter_target = source_for(repo_root, "cover-letter", company, career_root_override)
+        job_description = job_description_for(repo_root, company, career_root_override)
+    except CVConfigError as exc:
+        return config_error_result(command, exc, plain, t0)
 
     if not base_resume.exists():
         err = {
             "code": "E_FILE_NOT_FOUND",
             "message": f"Base resume source not found: {base_resume}",
             "retryable": False,
-            "hint": "Create `memory/areas/builder/career/cv/latex/base/resume.tex` before initializing a tailored packet.",
+            "hint": f"Create `{latex_root.relative_to(repo_root)}/base/resume.tex` before initializing a tailored packet.",
         }
         emit(result(command, "error", error=err, duration_ms=(time.monotonic() - t0) * 1000), plain)
         return 2
@@ -195,6 +280,8 @@ def run_init(repo_root: Path, company: str | None, plain: bool) -> int:
 
     data = {
         "message": f"{action} → {tailored_dir}",
+        "career_root": str(career_root),
+        "latex_root": str(latex_root),
         "company": company,
         "directory": str(tailored_dir),
         "directory_created": directory_created,
@@ -208,11 +295,16 @@ def run_init(repo_root: Path, company: str | None, plain: bool) -> int:
     return 0
 
 
-def run_build(repo_root: Path, kind: str, company: str | None, plain: bool) -> int:
+def run_build(repo_root: Path, kind: str, company: str | None, plain: bool, career_root_override: str | None) -> int:
     t0 = time.monotonic()
     command = "cv.build"
-    source = source_for(repo_root, kind, company)
-    job_description = job_description_for(repo_root, company)
+    try:
+        career_root = career_root_for(repo_root, career_root_override)
+        latex_root = career_root / "cv" / "latex"
+        source = source_for(repo_root, kind, company, career_root_override)
+        job_description = job_description_for(repo_root, company, career_root_override)
+    except CVConfigError as exc:
+        return config_error_result(command, exc, plain, t0)
 
     if not source.exists():
         err = {
@@ -254,6 +346,8 @@ def run_build(repo_root: Path, kind: str, company: str | None, plain: bool) -> i
     pdf = source.with_suffix(".pdf")
     data = {
         "message": f"Compiled successfully → {pdf}",
+        "career_root": str(career_root),
+        "latex_root": str(latex_root),
         "source": str(source),
         "pdf": str(pdf),
     }
@@ -264,13 +358,18 @@ def run_build(repo_root: Path, kind: str, company: str | None, plain: bool) -> i
     return 0
 
 
-def run_review(repo_root: Path, kind: str, company: str | None, plain: bool) -> int:
+def run_review(repo_root: Path, kind: str, company: str | None, plain: bool, career_root_override: str | None) -> int:
     t0 = time.monotonic()
     command = "cv.review"
-    source = source_for(repo_root, kind, company)
-    job_description = job_description_for(repo_root, company)
+    try:
+        career_root = career_root_for(repo_root, career_root_override)
+        latex_root = career_root / "cv" / "latex"
+        source = source_for(repo_root, kind, company, career_root_override)
+        job_description = job_description_for(repo_root, company, career_root_override)
+    except CVConfigError as exc:
+        return config_error_result(command, exc, plain, t0)
     pdf = source.with_suffix(".pdf")
-    review_dir = review_dir_for(company, kind)
+    review_dir = review_dir_for(repo_root, company, kind)
 
     if not pdf.exists():
         err = {
@@ -313,6 +412,8 @@ def run_review(repo_root: Path, kind: str, company: str | None, plain: bool) -> 
     pages = sorted(str(p) for p in review_dir.glob("page-*.png"))
     data = {
         "message": f"Rendered {len(pages)} page(s) to {review_dir}",
+        "career_root": str(career_root),
+        "latex_root": str(latex_root),
         "source": str(source),
         "pdf": str(pdf),
         "pages": pages,
@@ -365,6 +466,10 @@ def main(argv=None) -> int:
     parser.add_argument("--kind", choices=["resume", "cover-letter"], default="resume")
     parser.add_argument("--company", help="Company slug under tailored/<company>/")
     parser.add_argument("--root", help="Repo root override. Defaults to the current repo.")
+    parser.add_argument(
+        "--career-root",
+        help="Career area root override, relative to repo root or absolute. Defaults to auto-detecting memory/areas/career or memory/areas/builder/career.",
+    )
 
     try:
         args = parser.parse_args(argv)
@@ -407,11 +512,11 @@ def main(argv=None) -> int:
         return 2
 
     if args.command == "init":
-        return run_init(repo_root, args.company, args.plain)
+        return run_init(repo_root, args.company, args.plain, args.career_root)
     if args.command == "build":
-        return run_build(repo_root, args.kind, args.company, args.plain)
+        return run_build(repo_root, args.kind, args.company, args.plain, args.career_root)
     if args.command == "review":
-        return run_review(repo_root, args.kind, args.company, args.plain)
+        return run_review(repo_root, args.kind, args.company, args.plain, args.career_root)
     return run_clean(args.plain)
 
 

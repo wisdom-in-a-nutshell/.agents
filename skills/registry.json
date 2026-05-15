@@ -332,7 +332,8 @@
       "origin": "owned",
       "scope": "repo",
       "repos": [
-        "adi"
+        "adi",
+        "angie"
       ],
       "source_path": "skills-source/owned/health",
       "upstream_ref": "-"
