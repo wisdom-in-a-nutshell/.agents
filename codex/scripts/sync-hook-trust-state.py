@@ -9,7 +9,7 @@ from pathlib import Path
 try:
     import tomllib
 except ModuleNotFoundError:  # pragma: no cover
-    import tomli as tomllib  # type: ignore
+    tomllib = None  # type: ignore[assignment]
 
 
 EVENT_LABELS = {
@@ -70,7 +70,102 @@ def load_json(path: Path) -> dict:
 def load_toml(path: Path) -> dict:
     if not path.is_file():
         return {}
+    if tomllib is None:
+        return {"hooks": {"state": parse_hook_state_toml_fallback(path)}}
     return tomllib.loads(path.read_text(encoding="utf-8"))
+
+
+def unescape_toml_basic_string(value: str) -> str:
+    result: list[str] = []
+    idx = 0
+    while idx < len(value):
+        char = value[idx]
+        if char != "\\":
+            result.append(char)
+            idx += 1
+            continue
+        idx += 1
+        if idx >= len(value):
+            result.append("\\")
+            break
+        escaped = value[idx]
+        replacements = {
+            "b": "\b",
+            "t": "\t",
+            "n": "\n",
+            "f": "\f",
+            "r": "\r",
+            '"': '"',
+            "\\": "\\",
+        }
+        result.append(replacements.get(escaped, escaped))
+        idx += 1
+    return "".join(result)
+
+
+def parse_hook_state_table(line: str) -> str | None:
+    prefix = '[hooks.state."'
+    suffix = '"]'
+    if not line.startswith(prefix) or not line.endswith(suffix):
+        return None
+    return unescape_toml_basic_string(line[len(prefix) : -len(suffix)])
+
+
+def strip_inline_comment(value: str) -> str:
+    in_string = False
+    escaped = False
+    for idx, char in enumerate(value):
+        if escaped:
+            escaped = False
+            continue
+        if char == "\\" and in_string:
+            escaped = True
+            continue
+        if char == '"':
+            in_string = not in_string
+            continue
+        if char == "#" and not in_string:
+            return value[:idx].rstrip()
+    return value.strip()
+
+
+def parse_hook_state_toml_fallback(path: Path) -> dict[str, dict[str, object]]:
+    """Parse the narrow TOML subset this script renders for hooks.state.
+
+    Angie’s laptop can have an older Python without tomllib/tomli. The bootstrap
+    should still be able to preserve existing hook trust state without requiring
+    a local package install.
+    """
+
+    if not path.is_file():
+        return {}
+
+    state: dict[str, dict[str, object]] = {}
+    current_key: str | None = None
+
+    for raw_line in path.read_text(encoding="utf-8").splitlines():
+        line = raw_line.strip()
+        if not line or line.startswith("#"):
+            continue
+        if line.startswith("["):
+            current_key = parse_hook_state_table(line)
+            if current_key is not None:
+                state.setdefault(current_key, {})
+            continue
+        if current_key is None or "=" not in line:
+            continue
+
+        name, raw_value = line.split("=", 1)
+        name = name.strip()
+        value = strip_inline_comment(raw_value.strip())
+        if name == "enabled":
+            lowered = value.lower()
+            if lowered in {"true", "false"}:
+                state[current_key]["enabled"] = lowered == "true"
+        elif name == "trusted_hash" and len(value) >= 2 and value[0] == '"' and value[-1] == '"':
+            state[current_key]["trusted_hash"] = unescape_toml_basic_string(value[1:-1])
+
+    return state
 
 
 def hook_hash(event_label: str, group: dict, handler: dict) -> str:
