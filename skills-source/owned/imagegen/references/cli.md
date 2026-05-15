@@ -106,7 +106,7 @@ cat > tmp/imagegen/prompts.jsonl << 'EOF'
 {"prompt":"Gray wolf in profile in a snowy forest, crisp fur texture","use_case":"wildlife photography print","composition":"100mm, eye-level, shallow depth of field","constraints":"no logos or trademarks; no watermark","size":"1024x1024"}
 EOF
 
-python "$IMAGE_GEN" generate-batch --input tmp/imagegen/prompts.jsonl --out-dir out --concurrency 5
+python "$IMAGE_GEN" generate-batch --input tmp/imagegen/prompts.jsonl --out-dir tmp/imagegen --concurrency 5
 
 # Cleanup (recommended)
 rm -f tmp/imagegen/prompts.jsonl
@@ -127,7 +127,8 @@ python "$IMAGE_GEN" edit --image input.png --mask mask.png --prompt "Replace the
 ## CLI notes
 - Supported sizes: `1024x1024`, `1536x1024`, `1024x1536`, or `auto`.
 - `gpt-image-2` does not currently support transparent backgrounds. Use a clean plain background for cutout prep, then post-process alpha separately when needed.
-- Default output is `output.png`; multiple images become `output-1.png`, `output-2.png`, etc.
+- The CLI default is `output.png`, so pass `--out tmp/imagegen/<name>.png` or `--out-dir tmp/imagegen`.
+- Do not leave loose `output.png` or top-level `output/` artifacts.
 - Use `--no-augment` to skip prompt augmentation.
 
 ## See also

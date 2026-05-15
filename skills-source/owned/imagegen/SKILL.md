@@ -95,8 +95,9 @@ If the work stabilizes into a reusable visual family, create or update a style g
 
 ## Temp and output conventions
 - Do not rely on repo-local virtualenv auto-switching for this owned skill. Treat the runtime as machine-global.
-- Use `tmp/imagegen/` only for truly temporary intermediate files (for example JSONL batches or disposable seed files), and delete them when done.
-- Write final artifacts under `output/imagegen/` when working in this repo unless the project has a more specific destination.
+- Default all generated image outputs and intermediate files to `tmp/imagegen/` unless the user names a deliberate durable destination.
+- Treat `tmp/imagegen/` as disposable workspace scratch: keep only what is useful for the current task, and delete throwaway inputs such as JSONL batch files when done.
+- Do not create top-level `output/`, loose `output.png`, or other ad hoc output folders. If an artifact becomes durable, move it to a specific project/area path instead of leaving it in temp.
 - Keep cross-project reusable support assets with the skill itself under `assets/shared-assets/`, not in the active repo.
 - If a canonical SVG or similar reusable asset already exists under `assets/shared-assets/`, refer to that existing file as the reference/anchor instead of regenerating it, re-downloading it, or copying it into the active repo.
 - Prefer SVG as the canonical stored version for reusable logos/icons, but render a PNG derivative when the image model needs a concrete raster reference input for edits/compositing.
