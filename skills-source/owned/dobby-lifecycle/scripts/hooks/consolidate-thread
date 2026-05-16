@@ -385,6 +385,14 @@ def fork_thread(client: AppServerClient, source_thread: str) -> str:
     return thread_id
 
 
+def archive_sidecar_thread(client: AppServerClient, sidecar_thread: str) -> None:
+    try:
+        client.request("thread/archive", {"threadId": sidecar_thread}, timeout_sec=60)
+        log(f"archived sidecar thread {sidecar_thread}")
+    except Exception as exc:
+        log(f"failed to archive sidecar thread {sidecar_thread}: {exc}")
+
+
 def append_consolidated_thread_marker(root: Path, *, source_thread: str, sidecar_thread: str, source_label: str) -> None:
     path = root / CONSOLIDATED_THREADS_LOG
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -430,6 +438,7 @@ def run_consolidation(
 
     client = AppServerClient(root=root, codex_bin=codex_bin, debug=debug)
     client.start()
+    sidecar_thread: str | None = None
     try:
         client.request(
             "initialize",
@@ -479,6 +488,8 @@ def run_consolidation(
         else:
             log("consolidation completed without captured final reply")
     finally:
+        if sidecar_thread:
+            archive_sidecar_thread(client, sidecar_thread)
         client.close()
 
 

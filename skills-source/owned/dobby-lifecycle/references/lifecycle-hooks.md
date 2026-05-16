@@ -86,6 +86,7 @@ It is intentionally policy-free:
 - it does not archive or delete the source thread
 - it does not decide when cleanup should happen
 - it does not use transcript summarization
+- after the sidecar turn finishes, it archives the sidecar thread it created
 - it may write `memory/sessions/...` and may promote durable facts according to
   the shared `dobby-workspace` body map
 
