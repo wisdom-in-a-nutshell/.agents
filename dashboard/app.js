@@ -6,7 +6,6 @@ const state = {
 };
 
 const els = {
-  repoRoot: document.querySelector("#repoRoot"),
   lastUpdated: document.querySelector("#lastUpdated"),
   refreshButton: document.querySelector("#refreshButton"),
   searchInput: document.querySelector("#searchInput"),
@@ -133,8 +132,7 @@ function render() {
 }
 
 function updateChrome() {
-  const { counts, repo_root: repoRoot, generated_at_utc: generatedAt } = state.data;
-  els.repoRoot.textContent = repoRoot;
+  const { counts, generated_at_utc: generatedAt } = state.data;
   els.lastUpdated.textContent = `Updated ${formatDate(generatedAt)}`;
   els.navCountOverview.textContent = counts.items;
   els.navCountRepos.textContent = counts.repos;
@@ -533,7 +531,7 @@ function availabilityBlock(item) {
     wrap.append(createElement("span", "muted", "No repo assignment"));
     return wrap;
   }
-  appendChips(wrap, repos.map(repoDisplayName), item.kind, 6);
+  appendChips(wrap, repos.map(repoDisplayName), item.kind);
   return wrap;
 }
 
@@ -542,8 +540,8 @@ function mcpAvailabilityBlock(item) {
   if (scopeHas(item, "global")) {
     wrap.append(createChip("Global", "mcp"));
   }
-  appendChips(wrap, cleanArray(item.repos).map(repoDisplayName), "repo", 5);
-  appendChips(wrap, cleanArray(item.details.plugins).map((plugin) => `Plugin: ${plugin}`), "plugin", 4);
+  appendChips(wrap, cleanArray(item.repos).map(repoDisplayName), "repo");
+  appendChips(wrap, cleanArray(item.details.plugins).map((plugin) => `Plugin: ${plugin}`), "plugin");
   if (!wrap.childElementCount) {
     wrap.append(createChip("Unassigned", "warning"));
   }
@@ -577,7 +575,7 @@ function capabilityBlock(title, items, tone, emptyText) {
   heading.append(createElement("h3", "", title), createElement("strong", "", String(items.length)));
   const chips = createElement("div", "chip-list");
   if (items.length) {
-    appendChips(chips, items.map((item) => item.title || item.name), tone, 6);
+    appendChips(chips, items.map((item) => item.title || item.name), tone);
   } else {
     chips.append(createElement("span", "muted", emptyText));
   }
@@ -599,12 +597,8 @@ function createChip(text, tone = "") {
   return createElement("span", `chip ${tone}`, text);
 }
 
-function appendChips(parent, values, tone, limit) {
-  const visible = values.slice(0, limit);
-  visible.forEach((value) => parent.append(createChip(value, tone)));
-  if (values.length > limit) {
-    parent.append(createChip(`+${values.length - limit}`, tone));
-  }
+function appendChips(parent, values, tone) {
+  values.forEach((value) => parent.append(createChip(value, tone)));
 }
 
 function filteredItems(groupName) {
