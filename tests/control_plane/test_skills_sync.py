@@ -13,7 +13,7 @@ from tests.control_plane.support import (
 
 
 class ManagedSkillsRegistrySyncTests(TempDirTestCase):
-    def test_syncs_managed_skill_links_and_generated_registry_views(self) -> None:
+    def test_syncs_managed_skill_links_and_prunes_stale_links(self) -> None:
         root = make_control_plane_root(self.temp_path)
         home = self.temp_path / "home"
         github_root = home / "GitHub"
@@ -106,32 +106,7 @@ class ManagedSkillsRegistrySyncTests(TempDirTestCase):
         self.assertFalse(dormant_global_link.exists())
         self.assertFalse(dormant_repo_link.exists())
 
-        skills_base = root / "docs/references/registry/skills.base"
-        global_item = root / "docs/references/registry/skills-items/managed/global-helper.md"
-        dormant_item = root / "docs/references/registry/skills-items/managed/dormant-helper.md"
-        repo_local_item = (
-            root / "docs/references/registry/skills-items/repo-local/adi--local-review.md"
-        )
-
-        self.assertTrue(skills_base.is_file())
-        self.assertTrue(global_item.is_file())
-        self.assertTrue(dormant_item.is_file())
-        self.assertTrue(repo_local_item.is_file())
-
-        global_item_text = global_item.read_text(encoding="utf-8")
-        self.assertIn('skill: "global-helper"', global_item_text)
-        self.assertIn('scope: "global"', global_item_text)
-        self.assertIn('source_path: "skills-source/owned/global-helper"', global_item_text)
-
-        dormant_item_text = dormant_item.read_text(encoding="utf-8")
-        self.assertIn('skill: "dormant-helper"', dormant_item_text)
-        self.assertIn('scope: "dormant"', dormant_item_text)
-        self.assertIn('repos_csv: "-"', dormant_item_text)
-        self.assertIn('  - "-"', dormant_item_text)
-
-        repo_local_text = repo_local_item.read_text(encoding="utf-8")
-        self.assertIn('repo: "adi"', repo_local_text)
-        self.assertIn('skill: "local-review"', repo_local_text)
+        self.assertFalse((root / "docs/references/registry").exists())
 
     def test_stages_repo_skill_link_additions_and_pruned_stale_links(self) -> None:
         root = make_control_plane_root(self.temp_path)

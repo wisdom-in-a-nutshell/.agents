@@ -212,7 +212,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--category",
         default="Coding",
-        help="Category shown in the Obsidian registry view (default: Coding).",
+        help="Dashboard grouping category (default: Coding).",
     )
     parser.add_argument(
         "--apply",
@@ -413,10 +413,10 @@ def main() -> int:
                     exit_code=EXIT_DEPENDENCY,
                     plain=args.plain,
                 )
-        actions.append("Regenerated Codex plugin registry views.")
+        actions.append("Validated Codex plugin registry.")
         actions.append("Applied shared Codex control plane.")
     else:
-        actions.append("Would regenerate Codex plugin registry views.")
+        actions.append("Would validate Codex plugin registry.")
         actions.append("Would apply shared Codex control plane.")
 
     data = {

@@ -41,18 +41,18 @@ Use [Codex Control Plane Ownership](/Users/dobby/.agents/docs/references/codex-c
 - Enroll top-level GitHub repos into the managed repo bootstrap registry:
   - [`enroll-managed-repos.sh`](/Users/dobby/.agents/scripts/enroll-managed-repos.sh)
   - `~/.agents/scripts/enroll-managed-repos.sh --apply --github-root ~/GitHub`
-  - this scans only direct child Git repos under the GitHub root, adds missing minimal entries to [`repo-bootstrap.json`](/Users/dobby/.agents/codex/config/repo-bootstrap.json), and regenerates the repo bootstrap registry views
+  - this scans only direct child Git repos under the GitHub root and adds missing minimal entries to [`repo-bootstrap.json`](/Users/dobby/.agents/codex/config/repo-bootstrap.json)
 - Validate shared skills, plugins, repo-local hook files, and Codex rendered runtime state:
   - [`check-agent-control-planes.sh`](/Users/dobby/.agents/scripts/check-agent-control-planes.sh)
   - `~/.agents/scripts/check-agent-control-planes.sh`
-- Sync managed plugins and regenerate the Obsidian registry views:
+- Validate managed plugins:
   - [`sync-plugins-registry.sh`](/Users/dobby/.agents/scripts/sync-plugins-registry.sh)
   - `~/.agents/scripts/sync-plugins-registry.sh --apply`
   - global native Codex plugin enable/disable state is rendered by `sync-config.sh`; repo-scoped native plugin assignments are rendered by `sync-repo-codex-configs.sh`
 - Bootstrap one managed plugin into the canonical registry:
   - [`bootstrap-plugin.sh`](/Users/dobby/.agents/scripts/bootstrap-plugin.sh)
   - `~/.agents/scripts/bootstrap-plugin.sh build-ios-apps --apply`
-  - this writes the registry entry, regenerates plugin registry views, and reapplies the shared control planes
+  - this writes the registry entry, validates it, and reapplies the shared control planes
 - Apply the full Codex bootstrap batch:
   - [`bootstrap-machine-codex.sh`](/Users/dobby/.agents/codex/scripts/bootstrap-machine-codex.sh)
   - `~/.agents/codex/scripts/bootstrap-machine-codex.sh --apply`
@@ -82,7 +82,7 @@ Use [Codex Control Plane Ownership](/Users/dobby/.agents/docs/references/codex-c
 - Sync repo-local `.codex/config.toml` and `.codex/hooks.json` files from the canonical registries:
   - [`sync-repo-codex-configs.sh`](/Users/dobby/.agents/codex/scripts/sync-repo-codex-configs.sh)
   - `~/.agents/codex/scripts/sync-repo-codex-configs.sh --apply`
-- Regenerate the Obsidian Base artifacts for the repo bootstrap registry:
+- Validate the repo bootstrap registry:
   - [`sync-repo-bootstrap-registry.sh`](/Users/dobby/.agents/codex/scripts/sync-repo-bootstrap-registry.sh)
   - `~/.agents/codex/scripts/sync-repo-bootstrap-registry.sh`
 - Link the shared shell config:
@@ -169,12 +169,9 @@ Use [Codex Control Plane Ownership](/Users/dobby/.agents/docs/references/codex-c
   - fails if managed agent declarations reappear in canonical or generated Codex config
   - runs `sync-repo-codex-configs.sh --check`, so stale or hand-edited repo-local `.codex/config.toml`, `.codex/hooks.json`, and older managed `.codex/agents/*.toml` files fail validation
 - [`sync-repo-bootstrap-registry.sh`](/Users/dobby/.agents/codex/scripts/sync-repo-bootstrap-registry.sh)
-  - regenerates the Obsidian Base artifacts from [`repo-bootstrap.json`](/Users/dobby/.agents/codex/config/repo-bootstrap.json)
+  - validates [`repo-bootstrap.json`](/Users/dobby/.agents/codex/config/repo-bootstrap.json)
   - pulls MCP preset definitions from [`mcp/config/presets.json`](/Users/dobby/.agents/mcp/config/presets.json)
-  - enriches the per-repo view with effective standalone skills from [`skills/registry.json`](/Users/dobby/.agents/skills/registry.json)
-  - enriches the per-repo view with repo MCP assignments from canonical standalone preset groups
-  - updates the user-facing registry views under [`docs/references/registry/`](/Users/dobby/.agents/docs/references/registry)
-  - includes [`repo-bootstrap.base`](/Users/dobby/.agents/docs/references/registry/repo-bootstrap.base), [`repo-bootstrap-items/`](/Users/dobby/.agents/docs/references/registry/repo-bootstrap-items), [`mcp-registry.base`](/Users/dobby/.agents/docs/references/registry/mcp-registry.base), and [`mcp-registry-items/`](/Users/dobby/.agents/docs/references/registry/mcp-registry-items)
+  - validates repo MCP assignments against canonical standalone preset groups
 - [`bootstrap-machine-codex.sh`](/Users/dobby/.agents/codex/scripts/bootstrap-machine-codex.sh)
   - runs config sync
   - runs trusted-project sync
@@ -254,7 +251,7 @@ Use [Codex Control Plane Ownership](/Users/dobby/.agents/docs/references/codex-c
 - Launchd still lives in [`~/GitHub/scripts/sync/git-auto-sync.sh`](/Users/dobby/GitHub/scripts/sync/git-auto-sync.sh), because scheduler ownership is part of the generic machine-ops repo.
 - Machine-facing multi-surface apply now lives in [`auto-apply-agent-control-planes.sh`](/Users/dobby/.agents/scripts/auto-apply-agent-control-planes.sh), which calls the Codex and shared repo-local entrypoints as needed after `~/.agents` sync.
 - When shared skill inputs change, that wrapper also reruns the Codex bootstrap so machine-side dependencies for managed skills such as `pdf` stay converged.
-- That same wrapper re-syncs plugin registry views and reapplies Codex config when plugin state changes.
+- That same wrapper validates the plugin registry and reapplies Codex config when plugin state changes.
 - When `hooks/registry.json` or `codex/config/repo-bootstrap.json` changes, that wrapper syncs global Codex hooks and repo-local Codex hooks in managed repos.
 - Codex-specific post-sync apply logic still lives in [`auto-apply-codex-control-plane.sh`](/Users/dobby/.agents/codex/scripts/auto-apply-codex-control-plane.sh) as an optional lower-level Codex-only reconcile helper.
 - Practical flow:

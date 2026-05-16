@@ -99,13 +99,6 @@ def write_json(path: Path, data: dict[str, Any]) -> None:
     path.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
 
 
-def generate_repo_bootstrap_views(root_dir: Path, registry_path: Path) -> None:
-    script = root_dir / "codex/scripts/sync-repo-bootstrap-registry.sh"
-    if not script.is_file():
-        raise ValueError(f"Missing repo bootstrap view renderer: {script}")
-    subprocess.run([str(script), str(registry_path)], check=True, cwd=str(root_dir))
-
-
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description=(
@@ -131,11 +124,6 @@ def parse_args() -> argparse.Namespace:
         default=str(Path.home() / ".agents/codex/config/repo-bootstrap.json"),
         help="Repo bootstrap registry path",
     )
-    parser.add_argument(
-        "--no-generate-views",
-        action="store_true",
-        help="Do not regenerate repo bootstrap registry views after applying",
-    )
     return parser.parse_args()
 
 
@@ -144,8 +132,6 @@ def main() -> int:
     home = Path.home().resolve()
     github_root = expand_path(str(args.github_root), home).resolve()
     registry_path = expand_path(str(args.registry), home).resolve()
-    root_dir = registry_path.parent.parent.parent
-
     if not registry_path.is_file():
         print(f"Registry not found: {registry_path}", file=sys.stderr)
         return 1
@@ -184,9 +170,6 @@ def main() -> int:
     repos.sort(key=lambda item: repo_sort_key(item, home))
     write_json(registry_path, data)
     print(f"Updated: {registry_path}")
-
-    if not args.no_generate_views:
-        generate_repo_bootstrap_views(root_dir, registry_path)
 
     print("Apply complete.")
     return 0

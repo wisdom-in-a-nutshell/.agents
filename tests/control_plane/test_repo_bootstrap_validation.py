@@ -12,8 +12,8 @@ from tests.control_plane.support import (
 )
 
 
-class RegistryViewsGenerationTests(TempDirTestCase):
-    def test_generates_repo_mcp_and_skill_registry_views_from_shared_inputs(self) -> None:
+class RepoBootstrapRegistryValidationTests(TempDirTestCase):
+    def test_validates_repo_mcp_and_skill_inputs_without_legacy_outputs(self) -> None:
         root = make_control_plane_root(self.temp_path)
         home = self.temp_path / "home"
         github_root = home / "GitHub"
@@ -70,7 +70,7 @@ class RegistryViewsGenerationTests(TempDirTestCase):
         )
         write_json(root / "mcp/config/presets.json", default_mcp_registry())
 
-        run_command(
+        result = run_command(
             [
                 "python3",
                 str(REPO_ROOT / "codex/scripts/sync-repo-bootstrap-registry.py"),
@@ -81,28 +81,12 @@ class RegistryViewsGenerationTests(TempDirTestCase):
             env={"HOME": str(home)},
         )
 
-        repo_item = root / "docs/references/registry/repo-bootstrap-items/adi.md"
-        cloudflare_item = root / "docs/references/registry/mcp-registry-items/cloudflare-docs.md"
+        self.assertIn("Repo bootstrap registry validated.", result.stdout)
+        self.assertIn("Repos: 1", result.stdout)
+        self.assertIn("MCP presets:", result.stdout)
+        self.assertFalse((root / "docs/references/registry").exists())
 
-        self.assertTrue(repo_item.is_file())
-        self.assertTrue(cloudflare_item.is_file())
-
-        repo_text = repo_item.read_text(encoding="utf-8")
-        self.assertIn('repo_name: "adi"', repo_text)
-        self.assertNotIn("custom_agents:", repo_text)
-        self.assertNotIn("agents:", repo_text)
-        self.assertIn('skills:', repo_text)
-        self.assertIn('  - "global-helper"', repo_text)
-        self.assertIn('  - "repo-helper"', repo_text)
-        self.assertIn('  - "local-review"', repo_text)
-
-        cloudflare_text = cloudflare_item.read_text(encoding="utf-8")
-        self.assertIn('mcp_name: "cloudflare-docs"', cloudflare_text)
-        self.assertIn('effective_scope: "repo"', cloudflare_text)
-        self.assertIn('transport: "http"', cloudflare_text)
-        self.assertIn('  - "adi"', cloudflare_text)
-
-    def test_includes_declared_repo_local_skills_in_repo_bootstrap_views(self) -> None:
+    def test_accepts_declared_repo_local_skills_without_legacy_outputs(self) -> None:
         root = make_control_plane_root(self.temp_path)
         home = self.temp_path / "home"
         github_root = home / "GitHub"
@@ -150,7 +134,7 @@ class RegistryViewsGenerationTests(TempDirTestCase):
         )
         write_json(root / "mcp/config/presets.json", default_mcp_registry())
 
-        run_command(
+        result = run_command(
             [
                 "python3",
                 str(REPO_ROOT / "codex/scripts/sync-repo-bootstrap-registry.py"),
@@ -161,8 +145,6 @@ class RegistryViewsGenerationTests(TempDirTestCase):
             env={"HOME": str(home)},
         )
 
-        repo_item = root / "docs/references/registry/repo-bootstrap-items/adi.md"
-        repo_text = repo_item.read_text(encoding="utf-8")
-        self.assertIn('repo_name: "adi"', repo_text)
-        self.assertIn('repo_local_skill_count: 1', repo_text)
-        self.assertIn('  - "missing-local"', repo_text)
+        self.assertIn("Repo bootstrap registry validated.", result.stdout)
+        self.assertIn("Repos: 1", result.stdout)
+        self.assertFalse((root / "docs/references/registry").exists())

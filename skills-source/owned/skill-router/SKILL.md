@@ -153,4 +153,4 @@ cd ~/.agents
 
 Use these only for focused troubleshooting or tests:
 
-- `scripts/sync-skills-registry.sh`: materializes Codex/OpenAI skill links and generated registry views.
+- `scripts/sync-skills-registry.sh`: validates the skill registry and materializes Codex/OpenAI skill links.

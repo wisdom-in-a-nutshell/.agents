@@ -10,7 +10,7 @@ for exact commands.
 
 ```mermaid
 flowchart TD
-    P["plugins/registry.json"] --> Q["sync-plugins-registry.sh"]
+    P["plugins/registry.json"] --> Q["validate plugin registry"]
     P --> B["sync-config.sh"]
     A["bootstrap-machine-codex.sh"] --> B
     A --> C["sync-trusted-projects.sh"]
@@ -25,7 +25,6 @@ flowchart TD
     B --> F["~/.codex/config.toml + ~/.codex/hooks.json"]
     C --> F
     D --> G["repo .codex/config.toml + .codex/hooks.json"]
-    Q --> V["plugin registry views"]
     E --> I["Ghostty config"]
 ```
 
@@ -34,7 +33,7 @@ Main scripts:
 - `codex/scripts/bootstrap-machine-codex.sh`: Codex-specific bootstrap batch.
 - `codex/scripts/sync-config.sh`: global Codex config, global hooks, MCPs, and global plugins.
 - `codex/scripts/sync-repo-codex-configs.sh`: managed repo `.codex/config.toml` and `.codex/hooks.json`.
-- `scripts/sync-plugins-registry.sh`: validates plugin registry and writes plugin registry views.
+- `scripts/sync-plugins-registry.sh`: validates the plugin registry.
 - `codex/config/repo-bootstrap.json`: managed repo set and repo-local Codex overrides.
 
 ## Post-Sync Reconcile
@@ -48,7 +47,7 @@ flowchart TD
     C -->|"git hooks or repo registry"| F["sync-managed-git-hooks.sh"]
     C -->|"Codex/runtime inputs"| G["bootstrap-machine-codex.sh --apply"]
     D --> H["Update runtime skill links"]
-    E --> I["Update plugin registry views"]
+    E --> I["Validate plugin registry"]
     F --> J["Update repo core.hooksPath"]
     G --> K["Update Codex runtime"]
     H --> L["Update reconcile stamp"]

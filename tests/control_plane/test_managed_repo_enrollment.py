@@ -41,7 +41,6 @@ class ManagedRepoEnrollmentTests(TempDirTestCase):
                 str(github_root),
                 "--registry",
                 str(registry_path),
-                "--no-generate-views",
             ]
         )
 
@@ -71,7 +70,6 @@ class ManagedRepoEnrollmentTests(TempDirTestCase):
                 str(github_root),
                 "--registry",
                 str(registry_path),
-                "--no-generate-views",
             ]
         )
 

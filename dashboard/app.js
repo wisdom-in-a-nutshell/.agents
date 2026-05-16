@@ -23,6 +23,7 @@ const els = {
   filterBar: document.querySelector("#filterBar"),
   contentRegion: document.querySelector("#contentRegion"),
   navCountOverview: document.querySelector("#navCountOverview"),
+  navCountAttention: document.querySelector("#navCountAttention"),
   navCountRepos: document.querySelector("#navCountRepos"),
   navCountSkills: document.querySelector("#navCountSkills"),
   navCountPlugins: document.querySelector("#navCountPlugins"),
@@ -34,6 +35,10 @@ const sections = {
   overview: {
     eyebrow: "Overview",
     title: "Control-plane status",
+  },
+  attention: {
+    eyebrow: "Attention",
+    title: "Needs attention",
   },
   repos: {
     eyebrow: "Repos",
@@ -59,6 +64,14 @@ const sections = {
 
 const filterOptions = {
   overview: [{ id: "all", label: "All" }],
+  attention: [
+    { id: "all", label: "All" },
+    { id: "warnings", label: "Warnings" },
+    { id: "unassigned", label: "Unassigned" },
+    { id: "disabled", label: "Disabled" },
+    { id: "dormant", label: "Dormant" },
+    { id: "unscoped", label: "Missing repos" },
+  ],
   repos: [
     { id: "all", label: "All" },
     { id: "repo-skills", label: "Repo skills" },
@@ -149,6 +162,7 @@ function updateChrome() {
   els.lastUpdated.textContent = `Updated ${formatDate(generatedAt)}`;
   els.refreshStatus.textContent = "Auto-refresh every 5m";
   els.navCountOverview.textContent = counts.items;
+  els.navCountAttention.textContent = attentionCount();
   els.navCountRepos.textContent = counts.repos;
   els.navCountSkills.textContent = counts.skills;
   els.navCountPlugins.textContent = counts.plugins;
@@ -177,6 +191,9 @@ function renderMetrics() {
 function metricsForSection(section) {
   const groups = state.data.groups;
   const counts = state.data.counts;
+  if (section === "attention") {
+    return attentionMetrics();
+  }
   if (section === "skills") {
     return [
       metric("Global", countItems(groups.skills, (item) => item.scope === "global")),
@@ -229,6 +246,16 @@ function metricsForSection(section) {
   ];
 }
 
+function attentionMetrics() {
+  return [
+    metric("Warnings", state.data.warnings.length, state.data.warnings.length ? "warning" : ""),
+    metric("Unassigned MCP", unassignedMcp().length, unassignedMcp().length ? "warning" : ""),
+    metric("Disabled", disabledItems().length, disabledItems().length ? "warning" : ""),
+    metric("Dormant", dormantSkills().length, dormantSkills().length ? "warning" : ""),
+    metric("Missing repos", missingRepoAssignments().length, missingRepoAssignments().length ? "warning" : ""),
+  ];
+}
+
 function metric(label, value, tone = "") {
   return { label, value, tone };
 }
@@ -237,7 +264,7 @@ function renderWarnings() {
   const warnings = state.data.warnings;
   els.warningList.replaceChildren();
   els.warningCount.textContent = warnings.length;
-  els.warningPanel.classList.toggle("hidden", warnings.length === 0);
+  els.warningPanel.classList.toggle("hidden", warnings.length === 0 || state.section === "attention");
   warnings.slice(0, 8).forEach((warning) => {
     const item = createElement("div", `warning-item ${warning.severity === "error" ? "error" : ""}`);
     item.append(
@@ -278,6 +305,9 @@ function renderFilters() {
 }
 
 function countForFilter(section, filter) {
+  if (section === "attention") {
+    return filterAttentionItems(filter, false).length;
+  }
   if (section === "repos") {
     return filterRepos(state.data.groups.repos, filter, false).length;
   }
@@ -293,6 +323,8 @@ function renderActiveSection() {
   els.contentRegion.replaceChildren();
   if (state.section === "overview") {
     renderOverview();
+  } else if (state.section === "attention") {
+    renderAttention();
   } else if (state.section === "repos") {
     renderRepos();
   } else if (state.section === "skills") {
@@ -332,15 +364,63 @@ function renderOverview() {
 }
 
 function attentionLines() {
-  const disabledPlugins = countItems(state.data.groups.plugins, (item) => item.status === "disabled");
-  const disabledHooks = countItems(state.data.groups.hooks, (item) => item.status === "disabled");
-  const unassignedMcp = countItems(state.data.groups.mcp, (item) => item.scope === "unassigned");
   return [
     statLine("Warnings", state.data.counts.warnings),
-    statLine("Disabled plugins", disabledPlugins),
-    statLine("Disabled hooks", disabledHooks),
-    statLine("Unassigned MCP", unassignedMcp),
+    statLine("Unassigned MCP", unassignedMcp().length),
+    statLine("Disabled", disabledItems().length),
+    statLine("Dormant", dormantSkills().length),
+    statLine("Missing repos", missingRepoAssignments().length),
   ];
+}
+
+function renderAttention() {
+  const items = filterAttentionItems(state.filter, true);
+  if (!items.length) {
+    els.contentRegion.append(emptyState("Nothing needs attention in this view."));
+    return;
+  }
+
+  const groups = [
+    ["Registry warnings", items.filter((item) => item.attentionType === "warnings")],
+    ["Unassigned MCP definitions", items.filter((item) => item.attentionType === "unassigned")],
+    ["Disabled capabilities", items.filter((item) => item.attentionType === "disabled")],
+    ["Dormant skills", items.filter((item) => item.attentionType === "dormant")],
+    ["Missing repo assignments", items.filter((item) => item.attentionType === "unscoped")],
+  ];
+  renderPanels(groups, attentionRow, "Nothing needs attention in this view.");
+}
+
+function attentionRow(item) {
+  if (item.kind === "warning") {
+    const row = createElement("article", "entity-row attention-row");
+    row.append(
+      createEntityMain(item.title, compact([item.details.code, item.source]).join(" / ")),
+      createChipBlock([item.status], "warning"),
+      createElement("div", "row-actions"),
+    );
+    return row;
+  }
+
+  const row = createElement("article", "entity-row attention-row");
+  const meta = compact([item.kind.toUpperCase(), labelForScope(item), item.status]).join(" / ");
+  row.append(createEntityMain(item.title, meta), attentionReasonBlock(item), rowActions(item));
+  return row;
+}
+
+function attentionReasonBlock(item) {
+  if (item.attentionType === "unassigned") {
+    return createChipBlock(["Not used by global, repo, or plugin config"], "warning");
+  }
+  if (item.attentionType === "disabled") {
+    return createChipBlock(["Disabled"], "warning");
+  }
+  if (item.attentionType === "dormant") {
+    return createChipBlock(["Dormant"], "warning");
+  }
+  if (item.attentionType === "unscoped") {
+    return createChipBlock(["Repo scope without repos"], "warning");
+  }
+  return createChipBlock(["Review"], "warning");
 }
 
 function overviewPanel(title, lines) {
@@ -562,6 +642,12 @@ function mcpAvailabilityBlock(item) {
   return wrap;
 }
 
+function createChipBlock(values, tone) {
+  const wrap = createElement("div", "availability-block");
+  appendChips(wrap, values, tone);
+  return wrap;
+}
+
 function rowActions(item) {
   const actions = createElement("div", "row-actions");
   const link = createElement("a", "", sourceLabel(item));
@@ -618,6 +704,72 @@ function appendChips(parent, values, tone) {
 function filteredItems(groupName) {
   const items = state.data.groups[groupName] || [];
   return items.filter((item) => itemPassesFilter(item, groupName, state.filter) && itemMatchesQuery(item));
+}
+
+function filterAttentionItems(filter, includeQuery) {
+  return attentionItems().filter((item) => {
+    if (filter !== "all" && item.attentionType !== filter) {
+      return false;
+    }
+    return !includeQuery || attentionItemMatchesQuery(item);
+  });
+}
+
+function attentionCount() {
+  return attentionItems().length;
+}
+
+function attentionItems() {
+  return [
+    ...state.data.warnings.map((warning) => ({
+      id: `warning:${warning.code}:${warning.message}`,
+      kind: "warning",
+      title: warning.message,
+      name: warning.code,
+      scope: "registry",
+      status: warning.severity || "warning",
+      source: warning.source,
+      repos: [],
+      details: {
+        code: warning.code,
+      },
+      attentionType: "warnings",
+      search_text: `${warning.code} ${warning.message} ${warning.source}`.toLowerCase(),
+    })),
+    ...unassignedMcp().map((item) => ({ ...item, attentionType: "unassigned" })),
+    ...disabledItems().map((item) => ({ ...item, attentionType: "disabled" })),
+    ...dormantSkills().map((item) => ({ ...item, attentionType: "dormant" })),
+    ...missingRepoAssignments().map((item) => ({ ...item, attentionType: "unscoped" })),
+  ];
+}
+
+function attentionItemMatchesQuery(item) {
+  const query = els.searchInput.value.trim().toLowerCase();
+  if (!query) {
+    return true;
+  }
+  if (item.kind === "warning") {
+    return item.search_text.includes(query);
+  }
+  return itemMatchesQuery(item);
+}
+
+function unassignedMcp() {
+  return state.data.groups.mcp.filter((item) => item.scope === "unassigned");
+}
+
+function disabledItems() {
+  return [...state.data.groups.plugins, ...state.data.groups.hooks].filter((item) => item.status === "disabled");
+}
+
+function dormantSkills() {
+  return state.data.groups.skills.filter((item) => item.status === "dormant" || item.scope === "dormant");
+}
+
+function missingRepoAssignments() {
+  return [...state.data.groups.skills, ...state.data.groups.plugins, ...state.data.groups.hooks].filter(
+    (item) => item.scope === "repo" && cleanArray(item.repos).length === 0,
+  );
 }
 
 function filteredRepos() {

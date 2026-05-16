@@ -33,7 +33,7 @@ Canonical personal Codex control-plane assets live here.
 - `config/repo-bootstrap.json` decides managed repo inventory plus per-repo Codex defaults and overrides.
 - `config/bundled-skills-policy.json` decides which OpenAI-bundled Codex skills are allowed to remain available and which are disabled in managed runtime config.
 - MCP preset definitions belong in `../mcp/config/presets.json`, not in `repo-bootstrap.json`.
-- Generated Obsidian registry views belong under `../docs/references/registry/`.
+- Browser dashboard data is served from canonical registries by `../scripts/control-plane-dashboard.py`.
 
 ## References
 

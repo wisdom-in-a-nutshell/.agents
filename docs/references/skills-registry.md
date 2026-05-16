@@ -13,7 +13,7 @@ flowchart LR
     A[skills/registry.json] --> B[Real skill folder in skills-source/...]
     B --> C[Global symlink: ~/.agents/skills/{skill}]
     B --> D[Repo symlink: ~/GitHub/{repo}/.agents/skills/{skill}]
-    A --> E[Generated Obsidian views in docs/references/registry/]
+    A --> E[Dashboard API summary]
 ```
 
 ## 2) Two Entry Types
@@ -21,7 +21,7 @@ flowchart LR
 - `managed_skills`: actively synced by this repo (links are created/updated).
 - `unmanaged_repo_local_skills`: tracked for visibility only (no managed links created here).
   - If the target repo exists locally, the repo must actually contain `.agents/skills/<skill>/SKILL.md`.
-  - Registry sync now fails early for stale repo-local entries instead of letting them leak into generated views or downstream runtime warnings.
+  - Registry sync fails early for stale repo-local entries instead of letting them leak into dashboard data or downstream runtime warnings.
 
 ```mermaid
 flowchart LR
@@ -36,7 +36,6 @@ flowchart LR
 - Edit `skills/registry.json`.
 - Run `./scripts/sync-skills-registry.sh --apply`. Missing repo checkouts are expected on sparse machines and are skipped silently; existing non-git folders still warn because they may be broken placeholders.
 - Run `./scripts/check-skills-registry.sh`.
-- Generated Obsidian views land under [`docs/references/registry/`](/Users/dobby/.agents/docs/references/registry).
 
 ```mermaid
 flowchart LR

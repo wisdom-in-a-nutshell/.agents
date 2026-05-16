@@ -713,6 +713,10 @@ input:focus-visible {
     justify-self: end;
   }
 
+  .sidebar-toggle {
+    display: none;
+  }
+
   .nav-stack {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }

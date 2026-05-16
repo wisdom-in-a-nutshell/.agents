@@ -141,153 +141,6 @@ def stage_git_paths(paths: set[Path]) -> None:
         )
 
 
-def _yaml_str(value: str) -> str:
-    return json.dumps(value)
-
-
-def _write_if_changed(path: Path, content: str) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    old = path.read_text(encoding="utf-8") if path.exists() else None
-    if old != content:
-        path.write_text(content, encoding="utf-8")
-
-
-def generated_views_dir(root_dir: Path) -> Path:
-    return root_dir / "docs" / "references" / "registry"
-
-
-def generate_registry_base(views_dir: Path) -> None:
-    content = """filters:
-  and:
-    - 'file.inFolder("docs/references/registry/skills-items")'
-formulas:
-  scope_badge: 'if(scope == "global", "🌍 global", if(scope == "repo", "📦 repo", if(scope == "dormant", "⏸ dormant", scope)))'
-  origin_badge: 'if(origin == "external", "↗ external", if(origin == "owned", "✳ owned", origin))'
-properties:
-  registry_kind:
-    displayName: Type
-  skill:
-    displayName: Skill
-  origin:
-    displayName: Origin
-  scope:
-    displayName: Scope
-  formula.scope_badge:
-    displayName: Scope
-  repos:
-    displayName: Repos
-  repos_csv:
-    displayName: Repos CSV
-  upstream_ref:
-    displayName: Upstream
-  formula.origin_badge:
-    displayName: Origin
-  repo:
-    displayName: Repo
-  source_path:
-    displayName: Source Path
-views:
-  - type: table
-    name: Managed Skills
-    filters: 'registry_kind == "managed"'
-    order:
-      - skill
-      - formula.origin_badge
-      - formula.scope_badge
-      - repos
-      - upstream_ref
-    sort:
-      - property: scope
-        direction: ASC
-      - property: origin
-        direction: ASC
-      - property: skill
-        direction: ASC
-  - type: table
-    name: Repo-Local Skills
-    filters: 'registry_kind == "repo_local"'
-    order:
-      - repo
-      - skill
-"""
-    _write_if_changed(views_dir / "skills.base", content)
-
-
-def _sanitize_file_name(name: str) -> str:
-    safe = []
-    for ch in name:
-        if ch.isalnum() or ch in {"-", "_", "."}:
-            safe.append(ch)
-        else:
-            safe.append("-")
-    return "".join(safe).strip("-")
-
-
-def generate_registry_items(
-    views_dir: Path,
-    managed: list[dict[str, Any]],
-    unmanaged: list[dict[str, Any]],
-) -> None:
-    root = views_dir / "skills-items"
-    managed_dir = root / "managed"
-    repo_local_dir = root / "repo-local"
-
-    shutil.rmtree(managed_dir, ignore_errors=True)
-    shutil.rmtree(repo_local_dir, ignore_errors=True)
-    managed_dir.mkdir(parents=True, exist_ok=True)
-    repo_local_dir.mkdir(parents=True, exist_ok=True)
-
-    for item in managed:
-        repos = item.get("repos", [])
-        repos_csv = ",".join(repos) if repos else ("*" if item["scope"] == "global" else "-")
-        lines = [
-            "---",
-            "registry_kind: managed",
-            f"skill: {_yaml_str(item['skill'])}",
-            f"origin: {_yaml_str(item['origin'])}",
-            f"scope: {_yaml_str(item['scope'])}",
-            f"repos_csv: {_yaml_str(repos_csv)}",
-            f"source_path: {_yaml_str(item['source_path'])}",
-            f"upstream_ref: {_yaml_str(item.get('upstream_ref', '-'))}",
-            "repos:",
-        ]
-        if repos:
-            lines.extend([f"  - {_yaml_str(repo)}" for repo in repos])
-        elif item["scope"] == "global":
-            lines.append("  - \"*\"")
-        else:
-            lines.append("  - \"-\"")
-        lines.extend(
-            [
-                "---",
-                "",
-                "Generated from `skills/registry.json`. Do not edit manually.",
-                "",
-            ]
-        )
-        _write_if_changed(
-            managed_dir / f"{_sanitize_file_name(item['skill'])}.md",
-            "\n".join(lines),
-        )
-
-    for item in unmanaged:
-        file_name = (
-            f"{_sanitize_file_name(item['repo'])}--"
-            f"{_sanitize_file_name(item['skill'])}.md"
-        )
-        lines = [
-            "---",
-            "registry_kind: repo_local",
-            f"repo: {_yaml_str(item['repo'])}",
-            f"skill: {_yaml_str(item['skill'])}",
-            "---",
-            "",
-            "Generated from `skills/registry.json`. Do not edit manually.",
-            "",
-        ]
-        _write_if_changed(repo_local_dir / file_name, "\n".join(lines))
-
-
 def validate_registry(
     data: dict[str, Any], root_dir: Path, home: Path
 ) -> tuple[list[dict[str, Any]], list[dict[str, Any]], Path]:
@@ -589,19 +442,13 @@ def prune_dormant_repo_links(
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description=(
-            "Sync skill symlinks from a canonical JSON registry and generate "
-            "Obsidian Base artifacts."
+            "Validate the canonical skill registry and sync managed skill symlinks."
         )
     )
     parser.add_argument(
         "--apply",
         action="store_true",
         help="Apply link changes (default is dry-run for linking).",
-    )
-    parser.add_argument(
-        "--no-generate",
-        action="store_true",
-        help="Skip generating Obsidian registry view files.",
     )
     parser.add_argument(
         "--repo",
@@ -646,12 +493,6 @@ def main() -> int:
         for raw in args.repo
         if raw.strip()
     }
-
-    if not args.no_generate:
-        views_dir = generated_views_dir(root_dir)
-        generate_registry_base(views_dir)
-        generate_registry_items(views_dir, managed, unmanaged)
-        print(f"Generated registry Base artifacts in {views_dir}")
 
     run_sync(managed, root_dir, github_root, args.apply, repo_filters)
 

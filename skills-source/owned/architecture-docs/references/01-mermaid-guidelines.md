@@ -23,7 +23,7 @@ Top-down is the default because it is usually easiest to scan quickly.
   Arrows should connect actual components, not the names of groups or ownership blocks.
 - Use consistent color by zone when it improves scanability.
   Color should reinforce grouping, not carry critical meaning by itself.
-- If the diagram will be read in a specific renderer such as Obsidian, verify the real render when possible.
+- If the diagram will be read in a specific renderer, verify the real render when possible.
 
 ## Prefer
 

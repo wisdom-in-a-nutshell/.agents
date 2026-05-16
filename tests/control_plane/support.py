@@ -109,7 +109,6 @@ def make_control_plane_root(base_dir: Path) -> Path:
     (root / "mcp/config").mkdir(parents=True, exist_ok=True)
     (root / "plugins").mkdir(parents=True, exist_ok=True)
     (root / "skills").mkdir(parents=True, exist_ok=True)
-    (root / "docs/references/registry").mkdir(parents=True, exist_ok=True)
     write_json(root / "plugins/registry.json", default_plugin_registry())
     return root
 

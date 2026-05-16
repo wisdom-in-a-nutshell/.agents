@@ -57,7 +57,7 @@ Keep architecture docs visual-first and simple.
 
 6. Keep the document easy to skim.
    Use short sections, direct wording, and minimal jargon.
-   If the target renderer is available (for example Obsidian), verify the actual render and refine from what a human will really see.
+   If the target renderer is available, verify the actual render and refine from what a human will really see.
 
 7. If exact facts are needed, create or update a companion doc in `docs/references/` and link it.
 

@@ -11,4 +11,3 @@ Use `docs/references/` for exact commands, lookup facts, and operational details
 - [Capability Bootstrap Model](/Users/dobby/.agents/docs/architecture/capability-bootstrap-model.md)
 - [Codex Config Layers](/Users/dobby/.agents/docs/architecture/codex-config-layers.md)
 - [Codex Control Plane Script Flows](/Users/dobby/.agents/docs/architecture/codex-control-plane-script-flows.md)
-- [Obsidian Documentation Modes](/Users/dobby/.agents/docs/architecture/obsidian-documentation-modes.md)

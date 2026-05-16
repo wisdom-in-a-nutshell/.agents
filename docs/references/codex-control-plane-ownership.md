@@ -20,7 +20,7 @@ Use [Codex Control Plane](/Users/dobby/.agents/docs/architecture/codex-control-p
 - native Codex plugin registry
 - canonical config fragments and presets
 - MCP preset definitions and ownership docs
-- generated user-facing Obsidian registry views under `docs/references/registry/`
+- local control-plane dashboard source and docs
 - any launchd or apply logic that is specifically about Codex behavior across machines
 - the Codex-specific post-sync reconcile logic that decides whether a new `~/.agents/codex/` revision must be applied on a machine
 

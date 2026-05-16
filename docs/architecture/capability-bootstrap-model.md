@@ -16,27 +16,29 @@ flowchart TD
     E[sync-skills-registry.sh]
     F[sync-repo-codex-configs.sh]
     G[sync-config.sh]
-    H[sync-repo-bootstrap-registry.sh]
+    H[validate repo bootstrap registry]
+    D[control-plane-dashboard.py]
     I[Global Codex runtime]
     J[Repo-local runtime]
-    K[Registry views]
+    K[Dashboard]
 
     P --> PS
     P --> G
     P --> F
-    P --> H
-    PS --> K
+    P --> D
     A --> E
-    A --> H
+    A --> D
     B --> F
     B --> H
+    B --> D
     C --> F
     C --> G
     C --> H
+    C --> D
     E --> I
     F --> J
     G --> I
-    H --> K
+    D --> K
 ```
 
 ## Codex Plugins
@@ -53,7 +55,7 @@ Source of truth:
 
 - `skills/registry.json`
 
-Skills are standalone agent guidance. They can be global, repo-scoped, or unmanaged repo-local. The generated repo bootstrap views include effective skill availability per repo.
+Skills are standalone agent guidance. They can be global, repo-scoped, or unmanaged repo-local. The dashboard shows effective skill availability per repo.
 
 ## MCPs
 
@@ -76,4 +78,4 @@ MCPs are standalone endpoints and transports. If a plugin contains MCP internall
 
 - [Codex Control Plane](/Users/dobby/.agents/docs/architecture/codex-control-plane.md)
 - [Codex Config Layers](/Users/dobby/.agents/docs/architecture/codex-config-layers.md)
-- [Registry Views](/Users/dobby/.agents/docs/references/registry/AGENTS.md)
+- [Control Plane Dashboard](/Users/dobby/.agents/docs/references/control-plane-dashboard.md)

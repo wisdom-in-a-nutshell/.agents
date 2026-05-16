@@ -36,13 +36,8 @@ Personal agent, Codex, and repo-local lifecycle hook control plane.
   - `skills-source/owned/<skill>/`
 - Codex-native plugin scope and enablement lives in `plugins/registry.json`.
 - Global runtime skills live in `skills/<skill>` as symlinks.
-- Generated views for Obsidian live in:
-  - `docs/references/registry/skills.base`
-  - `docs/references/registry/skills-items/`
-  - `docs/references/registry/repo-bootstrap.base`
-  - `docs/references/registry/repo-bootstrap-items/`
-  - `docs/references/registry/mcp-registry.base`
-  - `docs/references/registry/mcp-registry-items/`
+- Read-only browser dashboard assets live in `dashboard/` and are served by
+  `scripts/control-plane-dashboard.py`.
 - Shared lifecycle hook scripts live in:
   - `hooks/scripts/`
 - Shared local Git hook scripts live in:
@@ -65,11 +60,6 @@ Detailed operations live in:
 - `docs/references/repo-lifecycle-hook-adapter.md`
 - `docs/references/codex-control-plane-operations.md`
 - `docs/references/cli-interface-contract.md`
-
-## Rendered Surfaces
-
-- Treat paths listed in `docs/references/rendered-surfaces.md` as linked, rendered, or generated outputs.
-- Do not hand-edit rendered outputs; update the canonical source and rerun the documented renderer/check.
 
 ## Rules
 

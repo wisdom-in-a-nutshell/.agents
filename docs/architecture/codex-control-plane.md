@@ -42,7 +42,7 @@ flowchart TD
     A[Edit ~/.agents] --> B[bootstrap-machine-codex.sh]
     A --> P[plugins/registry.json]
     A --> R[repo-bootstrap.json]
-    P --> Q[sync-plugins-registry.sh]
+    P --> Q[validate plugin registry]
     P --> C
     P --> E
     A --> V[bundled-skills-policy.json]
@@ -50,8 +50,6 @@ flowchart TD
     B --> D[sync-trusted-projects.sh]
     B --> E[sync-repo-codex-configs.sh]
     B --> F[configure-ghostty-cwd.sh]
-    Q --> K[plugin registry views]
-    Q --> R
     C --> G[~/.codex/config.toml]
     V --> C
     R --> D

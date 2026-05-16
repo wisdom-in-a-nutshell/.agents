@@ -21,4 +21,4 @@ Use this file as the docs contract for the `.agents` control-plane repo.
 - Use nested `AGENTS.md` only where local rules materially differ from the parent scope.
 - Do not use nested `AGENTS.md` as navigation aids; move durable detail into `docs/architecture/` or `docs/references/`.
 - Keep one canonical doc per topic and link to it instead of duplicating guidance.
-- Keep reference docs only when they are exact lookup material, operational contracts, generated views, or source-of-truth maps. Delete or archive prose-only summaries that merely restate code, tests, or another doc.
+- Keep reference docs only when they are exact lookup material, operational contracts, or source-of-truth maps. Delete or archive prose-only summaries that merely restate code, tests, or another doc.

@@ -108,7 +108,6 @@ def should_skip_link(target: str) -> bool:
         or lowered.startswith("http://")
         or lowered.startswith("https://")
         or lowered.startswith("mailto:")
-        or lowered.startswith("obsidian://")
         or lowered.startswith("app://")
         or lowered.startswith("plugin://")
     )

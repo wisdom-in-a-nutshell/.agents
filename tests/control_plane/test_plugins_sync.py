@@ -10,7 +10,7 @@ from tests.control_plane.support import (
 
 
 class ManagedPluginsRegistrySyncTests(TempDirTestCase):
-    def test_generates_registry_views_for_native_codex_plugins(self) -> None:
+    def test_validates_native_codex_plugins_without_legacy_outputs(self) -> None:
         root = make_control_plane_root(self.temp_path)
         registry_path = root / "plugins/registry.json"
         write_json(
@@ -39,7 +39,7 @@ class ManagedPluginsRegistrySyncTests(TempDirTestCase):
             },
         )
 
-        run_command(
+        result = run_command(
             [
                 "python3",
                 str(REPO_ROOT / "scripts/sync-plugins-registry.py"),
@@ -48,27 +48,11 @@ class ManagedPluginsRegistrySyncTests(TempDirTestCase):
             ]
         )
 
-        plugins_base = root / "docs/references/registry/plugins.base"
-        managed_item = (
-            root
-            / "docs/references/registry/plugins-items/managed/build-ios-apps-openai-curated.md"
-        )
-        repo_local_item = (
-            root / "docs/references/registry/plugins-items/repo-local/adi--local-review.md"
-        )
-
-        self.assertTrue(plugins_base.is_file())
-        self.assertTrue(managed_item.is_file())
-        self.assertTrue(repo_local_item.is_file())
-
-        managed_text = managed_item.read_text(encoding="utf-8")
-        self.assertIn('plugin: "build-ios-apps"', managed_text)
-        self.assertIn('plugin_id: "build-ios-apps@openai-curated"', managed_text)
-        self.assertIn('marketplace: "openai-curated"', managed_text)
-        self.assertIn("enabled: true", managed_text)
-        self.assertIn('scope: "repo"', managed_text)
-        self.assertIn('  - "adi"', managed_text)
-        self.assertNotIn("targets", managed_text)
+        self.assertIn("Plugin registry validated.", result.stdout)
+        self.assertIn("Managed plugins: 1", result.stdout)
+        self.assertIn("Enabled plugins: 1", result.stdout)
+        self.assertIn("Repo-local plugins: 1", result.stdout)
+        self.assertFalse((root / "docs/references/registry").exists())
 
     def test_empty_managed_plugins_is_valid(self) -> None:
         root = make_control_plane_root(self.temp_path)
@@ -95,4 +79,4 @@ class ManagedPluginsRegistrySyncTests(TempDirTestCase):
 
         self.assertIn("Managed plugins: 0", result.stdout)
         self.assertIn("Enabled plugins: 0", result.stdout)
-        self.assertTrue((root / "docs/references/registry/plugins.base").is_file())
+        self.assertFalse((root / "docs/references/registry").exists())

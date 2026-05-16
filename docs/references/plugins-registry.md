@@ -7,7 +7,7 @@ Canonical source of truth: [`plugins/registry.json`](/Users/dobby/.agents/plugin
 - `plugins/registry.json` is the canonical list of native Codex plugin scope and state.
 - `codex/scripts/sync-config.sh` renders global plugin sections into the global Codex config.
 - `codex/scripts/sync-repo-codex-configs.sh` renders repo-scoped plugin sections into assigned repo-local Codex configs.
-- `sync-plugins-registry.sh` regenerates the Obsidian plugin registry views under `docs/references/registry/`.
+- `sync-plugins-registry.sh` validates the plugin registry.
 - Standalone skills stay in `skills/registry.json`.
 - Standalone MCP presets stay in `mcp/config/presets.json`.
 
@@ -16,7 +16,7 @@ flowchart LR
     A[plugins/registry.json] --> B[sync-plugins-registry.sh]
     A --> C[codex/scripts/sync-config.sh]
     A --> F[codex/scripts/sync-repo-codex-configs.sh]
-    B --> D[docs/references/registry plugin views]
+    B --> D[validation output]
     C --> E[~/.codex/config.toml]
     F --> G[repo .codex/config.toml]
 ```
@@ -56,4 +56,4 @@ If you only need to add or update one plugin entry, use:
 - `enabled`: whether Codex should enable the plugin
 - `scope`: `global`, `repo`, or `dormant`
 - `repos`: repo names under `paths.github_root` or explicit paths; required for `repo` scope
-- `category`: Obsidian registry category only
+- `category`: dashboard grouping category only

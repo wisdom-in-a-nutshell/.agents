@@ -79,7 +79,6 @@ LOCAL_TOP_LEVEL_IGNORES = {
     ".git",
     ".venv",
     ".ruff_cache",
-    ".obsidian",
     ".DS_Store",
 }
 

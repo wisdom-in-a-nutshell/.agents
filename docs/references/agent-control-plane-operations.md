@@ -29,7 +29,7 @@ For repo authors adding `scripts/hooks/*.py`, start with
 - `scripts/enroll-managed-repos.sh`
   - scans direct child Git repos under `~/GitHub`
   - appends missing repos to `codex/config/repo-bootstrap.json` as minimal entries
-  - regenerates the repo bootstrap registry views
+  - leaves visualization to the local control-plane dashboard
 - `scripts/check-agent-control-planes.sh`
   - validates hygiene, skills, plugins, managed Git hooks, Codex rendered state, and tests
 - `scripts/audit-agent-runtime-drift.py`
