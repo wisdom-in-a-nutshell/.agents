@@ -22,6 +22,7 @@ HOOK_EVENT = "PreCompact"
 SCHEMA_VERSION = "1.0"
 DEFAULT_TIMEOUT_SEC = 900
 PRE_COMPACT_DIR = Path("tmp/dobby-lifecycle/pre-compact")
+SIDECAR_ENV_FLAG = "DOBBY_LIFECYCLE_CONSOLIDATION_SIDECAR"
 
 
 def utc_now_iso_z() -> str:
@@ -191,6 +192,10 @@ def main() -> int:
 
     root = repo_root(payload)
     os.chdir(root)
+
+    if os.environ.get(SIDECAR_ENV_FLAG):
+        write_run_record(root, payload=payload, status="skipped", reason="consolidation sidecar")
+        return 0
 
     thread_id = source_thread_id(payload)
     if not thread_id:

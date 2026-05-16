@@ -35,6 +35,7 @@ CLIENT_TITLE = "Dobby Thread Consolidator"
 CLIENT_VERSION = "0.1.0"
 THREAD_CONSOLIDATION_DIR = Path("tmp/dobby-lifecycle/thread-consolidation")
 CONSOLIDATED_THREADS_LOG = THREAD_CONSOLIDATION_DIR / "consolidated-threads.jsonl"
+SIDECAR_ENV_FLAG = "DOBBY_LIFECYCLE_CONSOLIDATION_SIDECAR"
 
 
 def log(message: str) -> None:
@@ -210,6 +211,7 @@ class AppServerClient:
             stdin=subprocess.PIPE,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
+            env={**os.environ, SIDECAR_ENV_FLAG: "1"},
             text=True,
             bufsize=1,
         )

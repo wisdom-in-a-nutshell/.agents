@@ -64,3 +64,44 @@ if ! grep -R '"source_label": "pre-compact"' "$repo/tmp/dobby-lifecycle/pre-comp
   echo "pre-compact job should label the source" >&2
   exit 1
 fi
+
+sidecar_repo="$tmp_dir/sidecar-repo"
+mkdir -p "$sidecar_repo"
+sidecar_payload="$tmp_dir/pre-compact-sidecar-payload.json"
+cat >"$sidecar_payload" <<JSON
+{
+  "schema_version": "1.0",
+  "hook_event_name": "PreCompact",
+  "runtime": "codex",
+  "cwd": "$sidecar_repo",
+  "repo_root": "$sidecar_repo",
+  "session_id": "sidecar-thread-test",
+  "turn_id": "sidecar-turn-test",
+  "raw_payload": {
+    "thread_id": "sidecar-thread-test",
+    "turn_id": "sidecar-turn-test"
+  }
+}
+JSON
+
+sidecar_output="$(DOBBY_LIFECYCLE_CONSOLIDATION_SIDECAR=1 DOBBY_CODEX_BIN="$fake_codex" "$SKILL_DIR/scripts/hooks/pre-compact" <"$sidecar_payload")"
+if [[ -n "$sidecar_output" ]]; then
+  echo "sidecar pre-compact guard should not write stdout" >&2
+  exit 1
+fi
+
+if [[ -d "$sidecar_repo/tmp/dobby-lifecycle/pre-compact/jobs" ]]; then
+  sidecar_job_count="$(find "$sidecar_repo/tmp/dobby-lifecycle/pre-compact/jobs" -type f | wc -l | tr -d ' ')"
+else
+  sidecar_job_count="0"
+fi
+sidecar_run_count="$(find "$sidecar_repo/tmp/dobby-lifecycle/pre-compact/runs" -type f | wc -l | tr -d ' ')"
+if [[ "$sidecar_job_count" != "0" || "$sidecar_run_count" != "1" ]]; then
+  echo "sidecar pre-compact guard should write one skipped run and no job" >&2
+  exit 1
+fi
+
+if ! grep -R '"reason": "consolidation sidecar"' "$sidecar_repo/tmp/dobby-lifecycle/pre-compact/runs" >/dev/null; then
+  echo "sidecar pre-compact guard should record skip reason" >&2
+  exit 1
+fi

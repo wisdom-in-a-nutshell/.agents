@@ -114,6 +114,12 @@ background, writes a run record under `tmp/dobby-lifecycle/pre-compact/runs/`,
 and prints nothing to stdout. It is fail-open: any hook or worker failure should
 not block Codex from compacting the live thread.
 
+When `consolidate-thread` starts its private App Server, it marks that process
+with `DOBBY_LIFECYCLE_CONSOLIDATION_SIDECAR=1`. If PreCompact fires inside that
+sidecar, it writes a skipped run record and does not enqueue another job. This
+prevents recursive consolidation while leaving other hooks available to the
+sidecar runtime.
+
 SessionEnd writes a compact record under `tmp/hooks/session-end/` and exits
 successfully. It does not launch a consolidation sidecar because Codex continuity
 is handled by PreCompact and explicit `consolidate-thread` calls.

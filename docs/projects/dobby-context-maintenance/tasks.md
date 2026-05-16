@@ -26,19 +26,19 @@ Adi uses Dobby through both direct Codex desktop threads and the CodexClaw mobil
 - User decision: prefer the shared Dobby lifecycle / precompact model over a mobile-gateway-only token-delta design.
 - `../adi/.codex/config.toml` and `../angie/.codex/config.toml` are generated from `~/.agents/codex/config/repo-bootstrap.json`; do not hand-edit them.
 - Dobby lifecycle `PreCompact` is now wired as a best-effort sidecar launch; `consolidate-thread` remains the reusable memory-writing primitive.
-- Sidecar consolidation should still get a recursion guard later, but the user chose to ship the basic path first.
+- Sidecar consolidation uses `DOBBY_LIFECYCLE_CONSOLIDATION_SIDECAR=1` to skip recursive PreCompact launches inside the consolidation App Server.
 
 ## Done When
 - [x] Dobby workspace repos have a repo-local Codex auto-compaction threshold around 75% of the active model context window.
 - [x] Direct Codex Dobby threads have a safe precompact memory-preservation path.
 - [ ] Gateway Dobby threads can use the same lifecycle primitive without racing live compaction.
-- [ ] Sidecar consolidation cannot recursively trigger another consolidation from its own compaction.
+- [x] Sidecar consolidation cannot recursively trigger another consolidation from its own compaction.
 - [x] Validation covers control-plane rendering and the critical lifecycle path.
 
 ## Milestones
 - [x] Milestone 1 - Repo-local Codex threshold is rendered for Dobby workspaces. Acceptance: `adi` and `angie` repo configs include `model_auto_compact_token_limit = 204000`, globals remain unchanged. Validate: `./codex/scripts/check-codex-control-plane.sh`.
 - [x] Milestone 2 - PreCompact policy is wired for Dobby workspaces. Acceptance: direct Codex compaction in `adi` enqueues memory work without blocking compaction. Validate: local hook smoke plus App Server compact smoke.
-- [ ] Milestone 3 - Sidecar recursion guard is implemented. Acceptance: memory-consolidation sidecar compaction does not enqueue another memory-consolidation job. Validate: unit/smoke test with sidecar-labeled payload.
+- [x] Milestone 3 - Sidecar recursion guard is implemented. Acceptance: memory-consolidation sidecar compaction does not enqueue another memory-consolidation job. Validate: unit/smoke test with sidecar-labeled payload.
 - [ ] Milestone 4 - Gateway maintenance is aligned to lifecycle. Acceptance: gateway compact/end/threshold paths trigger the shared maintenance primitive without reintroducing token-delta config. Validate: mobile-gateway tests and local gateway smoke.
 
 ## Execution Rules
@@ -52,22 +52,22 @@ Adi uses Dobby through both direct Codex desktop threads and the CodexClaw mobil
 - Use `~/.agents` as the source of truth for Codex runtime/bootstrap policy.
 - Use repo-local `model_auto_compact_token_limit` for Dobby workspace repos, not global config.
 - Treat `204000` as the initial 75% threshold for current `gpt-5.5` context window (`272000`).
-- Keep `consolidate-thread` sidecar-based. Ship PreCompact as a fail-open background launch first; add the recursion guard in a later batch.
+- Keep `consolidate-thread` sidecar-based. The consolidation App Server marks itself with `DOBBY_LIFECYCLE_CONSOLIDATION_SIDECAR=1`; PreCompact skips when that marker is present.
 
 ## Open Questions / Blockers
-- Need decide the exact sidecar recursion guard marker/skip condition: payload label, thread source kind, env flag, or config profile.
+- None for the direct Codex path.
 
 ## Current Batch
 | Status | Work Item | Role | Resource |
 | --- | --- | --- | --- |
 | done | Add and validate repo-local `model_auto_compact_token_limit` support and set `204000` for `adi`/`angie`. | parent | `/Users/dobby/.agents/codex/config/repo-bootstrap.json` |
 | done | Wire and validate best-effort `PreCompact` sidecar launch for direct Codex threads. | parent | `/Users/dobby/.agents/skills-source/owned/dobby-lifecycle/scripts/hooks/pre-compact` |
-| todo | Design and implement the sidecar recursion guard after the basic path has settled. | parent | `/Users/dobby/GitHub/adi/.agents/skills/dobby-lifecycle` |
+| done | Design and implement the sidecar recursion guard after the basic path has settled. | parent | `/Users/dobby/.agents/skills-source/owned/dobby-lifecycle` |
 
 ## Backlog / Remaining Work
 - [x] Wire `PreCompact` hook assignment for `adi` and `angie` after local App Server behavior is verified.
 - [x] Add a fast hook path that enqueues memory work without doing slow synthesis inline.
-- [ ] Add sidecar recursion guard and tests.
+- [x] Add sidecar recursion guard and tests.
 - [ ] Align CodexClaw gateway maintenance with the shared lifecycle primitive.
 - [ ] Update lifecycle docs after behavior is proven.
 - [ ] Review and finalize `docs/projects/dobby-context-maintenance/learnings/README.md` before archive.
@@ -85,3 +85,4 @@ Adi uses Dobby through both direct Codex desktop threads and the CodexClaw mobil
 - 2026-05-16: [IN-PROGRESS] Created project tracker and started repo-local Codex threshold support.
 - 2026-05-16: [DONE] Rendered `model_auto_compact_token_limit = 204000` for `adi` and `angie` only. `204000` is 75% of the current cached `gpt-5.5` context window (`272000`). Global Codex config remains unchanged. Validation passed: `python3 ./codex/scripts/sync-repo-bootstrap-registry.py`, `./codex/scripts/sync-repo-codex-configs.sh --check`, `python3 -m unittest tests.control_plane.test_codex_repo_sync`, and `./codex/scripts/check-codex-control-plane.sh --repo /Users/dobby/GitHub/adi --repo /Users/dobby/GitHub/angie`.
 - 2026-05-16: [DONE] Wired `PreCompact` for `adi` and `angie` through existing `.agents` hook plumbing. The Dobby lifecycle hook writes a small job under `tmp/dobby-lifecycle/pre-compact/`, starts `consolidate-thread` in the background, and returns with no stdout so live compaction can continue. Validation passed: Dobby lifecycle tests, shared hook unit tests, full control-plane test suite, Codex control-plane check, direct dispatcher smoke, and App Server `thread/compact/start` smoke with a fake consolidation binary.
+- 2026-05-16: [DONE] Added the sidecar recursion guard. `consolidate-thread` marks its private App Server with `DOBBY_LIFECYCLE_CONSOLIDATION_SIDECAR=1`; PreCompact sees that marker, writes a skipped run record, and does not create another job. Validation added to Dobby lifecycle tests.
