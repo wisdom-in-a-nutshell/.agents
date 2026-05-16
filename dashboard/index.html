@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <title>Control Plane</title>
+    <link rel="stylesheet" href="/dashboard/styles.css">
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="sidebar" aria-label="Dashboard navigation">
+        <div class="brand-block">
+          <p class="eyebrow">.agents</p>
+          <h1>Control Plane</h1>
+          <p id="repoRoot" class="muted path-value"></p>
+        </div>
+
+        <nav class="nav-stack" aria-label="Registry sections">
+          <button class="nav-button active" data-kind="all" type="button">
+            <span>All</span>
+            <strong id="navCountAll">0</strong>
+          </button>
+          <button class="nav-button" data-kind="skill" type="button">
+            <span>Skills</span>
+            <strong id="navCountSkills">0</strong>
+          </button>
+          <button class="nav-button" data-kind="plugin" type="button">
+            <span>Plugins</span>
+            <strong id="navCountPlugins">0</strong>
+          </button>
+          <button class="nav-button" data-kind="mcp" type="button">
+            <span>MCP</span>
+            <strong id="navCountMcp">0</strong>
+          </button>
+          <button class="nav-button" data-kind="repo" type="button">
+            <span>Repos</span>
+            <strong id="navCountRepos">0</strong>
+          </button>
+          <button class="nav-button" data-kind="hook" type="button">
+            <span>Hooks</span>
+            <strong id="navCountHooks">0</strong>
+          </button>
+        </nav>
+
+        <section class="source-list" aria-label="Canonical sources">
+          <h2>Sources</h2>
+          <div id="sourceLinks"></div>
+        </section>
+      </aside>
+
+      <main class="main-panel">
+        <header class="topbar">
+          <div class="toolbar-group">
+            <label class="search-box">
+              <span>Search</span>
+              <input id="searchInput" type="search" placeholder="name, repo, source, scope">
+            </label>
+            <label class="select-box">
+              <span>Scope</span>
+              <select id="scopeFilter">
+                <option value="all">All scopes</option>
+                <option value="global">Global</option>
+                <option value="repo">Repo</option>
+                <option value="repo-local">Repo local</option>
+                <option value="managed">Managed repos</option>
+                <option value="dormant">Dormant</option>
+                <option value="unassigned">Unassigned</option>
+              </select>
+            </label>
+            <label class="select-box">
+              <span>Status</span>
+              <select id="statusFilter">
+                <option value="all">All status</option>
+                <option value="active">Active</option>
+                <option value="enabled">Enabled</option>
+                <option value="disabled">Disabled</option>
+                <option value="configured">Configured</option>
+                <option value="unmanaged">Unmanaged</option>
+                <option value="unassigned">Unassigned</option>
+              </select>
+            </label>
+          </div>
+          <button id="refreshButton" class="refresh-button" type="button">Refresh</button>
+        </header>
+
+        <section class="metrics-grid" aria-label="Registry totals">
+          <div class="metric-block">
+            <span>Total</span>
+            <strong id="metricItems">0</strong>
+          </div>
+          <div class="metric-block">
+            <span>Global</span>
+            <strong id="metricGlobal">0</strong>
+          </div>
+          <div class="metric-block">
+            <span>Repo scoped</span>
+            <strong id="metricRepoScoped">0</strong>
+          </div>
+          <div class="metric-block">
+            <span>Warnings</span>
+            <strong id="metricWarnings">0</strong>
+          </div>
+        </section>
+
+        <section id="warningPanel" class="warning-panel hidden" aria-label="Registry warnings">
+          <div class="section-heading">
+            <h2>Warnings</h2>
+            <span id="warningCount">0</span>
+          </div>
+          <div id="warningList" class="warning-list"></div>
+        </section>
+
+        <section class="content-region" aria-label="Registry items">
+          <div class="section-heading">
+            <div>
+              <h2 id="tableTitle">All Items</h2>
+              <p id="resultMeta" class="muted"></p>
+            </div>
+            <p id="lastUpdated" class="muted"></p>
+          </div>
+
+          <div class="table-frame">
+            <table>
+              <thead>
+                <tr>
+                  <th>Name</th>
+                  <th>Type</th>
+                  <th>Scope</th>
+                  <th>Status</th>
+                  <th>Repos</th>
+                  <th>Source</th>
+                </tr>
+              </thead>
+              <tbody id="itemTable"></tbody>
+            </table>
+          </div>
+        </section>
+      </main>
+
+      <aside class="detail-panel" aria-label="Item detail">
+        <div class="detail-header">
+          <p class="eyebrow" id="detailKind">Detail</p>
+          <h2 id="detailTitle">Select an item</h2>
+        </div>
+        <dl id="detailFacts" class="detail-facts"></dl>
+        <div class="detail-actions">
+          <a id="detailSourceLink" href="#" target="_blank" rel="noreferrer">Open source</a>
+        </div>
+        <pre id="detailJson" class="detail-json"></pre>
+      </aside>
+    </div>
+
+    <script src="/dashboard/app.js" defer></script>
+  </body>
+</html>

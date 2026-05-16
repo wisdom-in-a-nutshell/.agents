@@ -1,0 +1,191 @@
+from __future__ import annotations
+
+import json
+import sys
+
+from tests.control_plane.support import REPO_ROOT, TempDirTestCase, write_json, write_text, run_command
+
+
+class ControlPlaneDashboardDataTests(TempDirTestCase):
+    def write_minimal_control_plane(self) -> None:
+        root = self.temp_path
+        write_text(root / "skills-source/owned/global-helper/SKILL.md", "# global-helper\n")
+        write_json(
+            root / "skills/registry.json",
+            {
+                "managed_skills": [
+                    {
+                        "skill": "global-helper",
+                        "origin": "owned",
+                        "scope": "global",
+                        "repos": [],
+                        "source_path": "skills-source/owned/global-helper",
+                        "upstream_ref": "-",
+                    },
+                    {
+                        "skill": "repo-helper",
+                        "origin": "owned",
+                        "scope": "repo",
+                        "repos": ["adi"],
+                        "source_path": "skills-source/owned/repo-helper",
+                        "upstream_ref": "-",
+                    },
+                ],
+                "unmanaged_repo_local_skills": [
+                    {
+                        "repo": "adi",
+                        "skill": "local-review",
+                    }
+                ],
+            },
+        )
+        write_json(
+            root / "plugins/registry.json",
+            {
+                "version": 1,
+                "managed_plugins": [
+                    {
+                        "plugin": "browser-use",
+                        "marketplace": "openai-bundled",
+                        "enabled": True,
+                        "scope": "global",
+                        "repos": [],
+                        "category": "Engineering",
+                    },
+                    {
+                        "plugin": "build-ios-apps",
+                        "marketplace": "openai-curated",
+                        "enabled": True,
+                        "scope": "repo",
+                        "repos": ["codexclaw"],
+                        "category": "Coding",
+                    },
+                ],
+                "unmanaged_repo_local_plugins": [],
+            },
+        )
+        write_json(
+            root / "mcp/config/presets.json",
+            {
+                "presets": {
+                    "openaiDeveloperDocs": {
+                        "transport": "http",
+                        "url": "https://developers.openai.com/mcp",
+                    },
+                    "cloudflare-docs": {
+                        "transport": "http",
+                        "url": "https://docs.mcp.cloudflare.com/mcp",
+                    },
+                },
+                "global_presets": ["openaiDeveloperDocs"],
+                "plugin_presets": {},
+                "plugin_global_presets": [],
+            },
+        )
+        write_json(
+            root / "hooks/registry.json",
+            {
+                "version": 1,
+                "managed_hooks": [
+                    {
+                        "id": "global-stop",
+                        "event": "Stop",
+                        "enabled": True,
+                        "scope": "global",
+                        "runtimes": ["codex"],
+                        "timeout": 900,
+                        "command": "python3 ~/.agents/hooks/scripts/stop.py",
+                    }
+                ],
+            },
+        )
+        write_json(
+            root / "codex/config/repo-bootstrap.json",
+            {
+                "defaults": {
+                    "model": "gpt-5.5",
+                    "model_reasoning_effort": "high",
+                    "plan_mode_reasoning_effort": "high",
+                    "service_tier": None,
+                },
+                "repos": [
+                    {
+                        "path": "~/GitHub/adi",
+                        "mcp_presets": ["cloudflare-docs"],
+                    },
+                    {
+                        "path": "~/GitHub/codexclaw",
+                    },
+                ],
+            },
+        )
+
+    def test_data_command_emits_agent_contract_and_normalized_groups(self) -> None:
+        self.write_minimal_control_plane()
+
+        result = run_command(
+            [
+                sys.executable,
+                str(REPO_ROOT / "scripts/control-plane-dashboard.py"),
+                "data",
+                "--root",
+                str(self.temp_path),
+                "--no-input",
+            ]
+        )
+
+        payload = json.loads(result.stdout)
+        self.assertEqual(result.stderr, "")
+        self.assertEqual(payload["schema_version"], "1.0")
+        self.assertEqual(payload["command"], "control-plane-dashboard data")
+        self.assertEqual(payload["status"], "ok")
+        self.assertIsNone(payload["error"])
+        self.assertIn("request_id", payload["meta"])
+
+        data = payload["data"]
+        self.assertEqual(data["counts"]["skills"], 3)
+        self.assertEqual(data["counts"]["plugins"], 2)
+        self.assertEqual(data["counts"]["mcp"], 2)
+        self.assertEqual(data["counts"]["repos"], 2)
+        self.assertEqual(data["counts"]["hooks"], 1)
+        self.assertEqual(data["groups"]["repos"][0]["details"]["skill_count"], 3)
+        self.assertEqual(data["groups"]["repos"][0]["details"]["mcp_count"], 2)
+        self.assertEqual(data["groups"]["repos"][1]["details"]["plugin_count"], 2)
+        self.assertTrue(any(item["name"] == "openaiDeveloperDocs" for item in data["groups"]["mcp"]))
+
+    def test_plain_data_command_is_stable_summary(self) -> None:
+        self.write_minimal_control_plane()
+
+        result = run_command(
+            [
+                sys.executable,
+                str(REPO_ROOT / "scripts/control-plane-dashboard.py"),
+                "data",
+                "--root",
+                str(self.temp_path),
+                "--plain",
+                "--no-input",
+            ]
+        )
+
+        self.assertTrue(result.stdout.startswith("ok items="))
+        self.assertIn("skills=3", result.stdout)
+        self.assertEqual(result.stderr, "")
+
+    def test_missing_root_uses_json_error_contract(self) -> None:
+        result = run_command(
+            [
+                sys.executable,
+                str(REPO_ROOT / "scripts/control-plane-dashboard.py"),
+                "data",
+                "--root",
+                str(self.temp_path / "missing"),
+                "--no-input",
+            ],
+            check=False,
+        )
+
+        self.assertEqual(result.returncode, 2)
+        payload = json.loads(result.stdout)
+        self.assertEqual(payload["status"], "error")
+        self.assertEqual(payload["error"]["code"], "E_ROOT_NOT_FOUND")

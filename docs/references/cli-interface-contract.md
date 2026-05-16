@@ -16,6 +16,7 @@ Current agent-facing clients:
 
 - `scripts/bootstrap-skill.sh`
 - `scripts/bootstrap-plugin.sh`
+- `scripts/control-plane-dashboard.py data`
 
 Recommended promotion priority:
 
@@ -23,6 +24,7 @@ Recommended promotion priority:
 - Existing bootstrap/import commands should be promoted when agents need to inspect structured outcomes programmatically.
 - Aggregate validation may stay plain-text while it is used as a pass/fail gate; add JSON only when another tool needs to consume detailed status.
 - Low-level renderers and runtime helpers should stay simple unless their output becomes a machine data API.
+- Operator web servers may keep server lifecycle output simple, but any data payload consumed by the UI or agents should use the JSON contract.
 
 These commands must follow the machine-primary contract:
 
