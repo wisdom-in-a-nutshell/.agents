@@ -135,7 +135,7 @@ publish_tailscale() {
 }
 
 print_urls() {
-  local dns short_name
+  local dns
   dns="$(tailscale_self_dns)"
   if [[ -z "$dns" ]]; then
     printf 'Local URL: %s\n' "$(local_url)"
@@ -143,10 +143,8 @@ print_urls() {
     return
   fi
 
-  short_name="${dns%%.*}"
   printf 'Local URL: %s\n' "$(local_url)"
   printf 'Tailscale URL: https://%s:%s/dashboard/\n' "$dns" "$HTTPS_PORT"
-  printf 'Short MagicDNS URL: https://%s:%s/dashboard/\n' "$short_name" "$HTTPS_PORT"
 }
 
 stop_dashboard() {

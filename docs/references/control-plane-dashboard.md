@@ -38,8 +38,7 @@ Use another port if needed:
 
 Use Tailscale Serve for private access from another tailnet device such as the
 MacBook. The helper starts the local dashboard on `127.0.0.1`, publishes it only
-inside the tailnet, and prints both the full Tailscale DNS URL and the short
-MagicDNS URL:
+inside the tailnet, and prints the full Tailscale DNS URL:
 
 ```bash
 ./scripts/serve-control-plane-dashboard.sh start
@@ -55,12 +54,15 @@ Default URLs on this machine:
 ```text
 http://127.0.0.1:8765/dashboard/
 https://dobbys-mac-mini.tail7857da.ts.net:8765/dashboard/
-https://dobbys-mac-mini:8765/dashboard/
 ```
 
 The URL uses the Mac Mini name because the dashboard runs on the Mac Mini. A
 MacBook such as `adithyans-macbook-pro.tail7857da.ts.net` is the client device,
 not the host for this dashboard.
+
+Use the full `*.tail7857da.ts.net` name for HTTPS. The short MagicDNS name can
+resolve on correctly configured clients, but Tailscale HTTPS certificates are
+for the full tailnet DNS name, so browsers can reject short-name HTTPS URLs.
 
 Check or stop the private exposure:
 
