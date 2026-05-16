@@ -32,8 +32,9 @@ log/
 .codex/*.bak.*
 
 # Obsidian runtime UI state (local/session-specific)
+.obsidian/graph.json
 .obsidian/workspace*.json
-skills/.obsidian/workspace*.json
+skills/.obsidian/
 
 # Local temp artifacts
 /tmp/
