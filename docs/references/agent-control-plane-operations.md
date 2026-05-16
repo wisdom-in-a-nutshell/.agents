@@ -37,6 +37,7 @@ For repo authors adding `scripts/hooks/*.py`, start with
 - `scripts/audit-agent-runtime-drift.py`
   - read-only machine-health audit entrypoint
   - calls the shared control-plane validation, then checks local runtime-only drift such as unclassified OpenAI Codex plugins and enabled plugin availability
+  - skips the Claude OS-level managed-settings check when the Claude runtime is not installed and no policy file exists, matching the renderer's sparse-machine behavior
   - defaults to a stable JSON result contract; use `--plain` for operator-readable health-check logs
   - is intended to be scheduled and notified by `~/GitHub/scripts`, not by launchd directly from this repo
 - `scripts/sync-managed-git-hooks.sh`

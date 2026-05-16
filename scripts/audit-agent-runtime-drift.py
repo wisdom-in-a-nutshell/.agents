@@ -4,6 +4,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import shutil
 import subprocess
 import sys
 import time
@@ -412,6 +413,21 @@ def claude_managed_settings_target() -> Path | None:
     return None
 
 
+def claude_runtime_present() -> bool:
+    if shutil.which("claude"):
+        return True
+    if sys.platform == "darwin":
+        for app_path in (
+            Path("/Applications/Claude.app"),
+            Path.home() / "Applications/Claude.app",
+            Path("/Applications/Claude Code.app"),
+            Path.home() / "Applications/Claude Code.app",
+        ):
+            if app_path.exists():
+                return True
+    return False
+
+
 def audit_claude_managed_settings(
     agents_repo: Path,
     *,
@@ -451,6 +467,17 @@ def audit_claude_managed_settings(
         )
 
     if not target.exists():
+        if (
+            target_override is None
+            and not claude_runtime_present()
+            and os.environ.get("CLAUDE_MANAGED_SETTINGS_REQUIRED") != "1"
+        ):
+            return check_result(
+                name,
+                "skipped",
+                f"Claude runtime is not installed and policy file is absent: {target}",
+                details=details,
+            )
         return check_result(
             name,
             "error",
