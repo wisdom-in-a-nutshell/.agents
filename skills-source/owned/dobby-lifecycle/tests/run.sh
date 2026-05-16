@@ -20,24 +20,13 @@ cat >"$tmp_root/postcompact-payload.json" <<JSON
   "repo_root": "$tmp_root",
   "cwd": "$tmp_root",
   "session_id": "test-source-thread",
-  "turn_id": "test-turn",
-  "model": "test-model",
-  "raw_payload": {
-    "session_id": "test-source-thread",
-    "turn_id": "test-turn",
-    "transcript_path": "$tmp_root/transcript.jsonl"
-  }
+  "turn_id": "test-turn"
 }
 JSON
 
-DOBBY_CONSOLIDATE_THREAD_DISABLED=1 python3 "$SKILL_DIR/scripts/hooks/post-compact" <"$tmp_root/postcompact-payload.json"
-post_record_count="$(find "$tmp_root/tmp/hooks/post-compact" -type f -name '*.json' 2>/dev/null | wc -l | tr -d ' ')"
-if [[ "$post_record_count" != "1" ]]; then
-  echo "expected PostCompact to write exactly one consolidation job record, got $post_record_count" >&2
-  exit 1
-fi
-if [[ -e "$tmp_root/tmp/hooks/session-finalizer/worker.log" ]]; then
-  echo "PostCompact should respect DOBBY_CONSOLIDATE_THREAD_DISABLED and not launch worker" >&2
+python3 "$SKILL_DIR/scripts/hooks/post-compact" <"$tmp_root/postcompact-payload.json"
+if [[ -e "$tmp_root/tmp" ]]; then
+  echo "PostCompact is intentionally inert and should not write tmp artifacts" >&2
   exit 1
 fi
 

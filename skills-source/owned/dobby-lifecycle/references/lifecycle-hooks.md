@@ -17,12 +17,11 @@ flowchart TD
 
     C --> D["Normal conversation / work"]
 
-    D --> E{"Lifecycle save point"}
-    E -->|Codex PostCompact| F["Write small job<br/>tmp/hooks/post-compact"]
-    F --> G["consolidate-thread sidecar<br/>forks source Codex thread"]
+    D --> E["PostCompact<br/>currently inert"]
+    D --> F["Explicit consolidate-thread call"]
+    F --> G["Sidecar forks source Codex thread"]
     G --> H["Sidecar updates memory<br/>memory/sessions/YYYY/MM/DD-HHMMSS.md"]
-
-    E -->|Codex SessionEnd| I["Write handoff record<br/>tmp/hooks/session-end"]
+    G --> I["Sidecar thread archived"]
 
     H --> K["Next SessionStart loads recent notes<br/>so continuity comes back"]
 ```
@@ -31,8 +30,8 @@ Short version:
 
 - **SessionStart is read/inject.** It gathers the current Dobby context and
   gives the agent enough memory to continue well.
-- **PostCompact is write-back.** It preserves what would be lost by writing a
-  compact session note under `memory/sessions/...`.
+- **PostCompact is inert for now.** It does not record events, launch sidecars,
+  or write memory.
 - **SessionEnd is handoff-only.** It records shutdown metadata without launching
   a second consolidation sidecar.
 - **`memory/sessions` is the bridge.** End-of-session notes become part of the
@@ -106,45 +105,31 @@ Optional caller fields:
 - `--instruction <extra caller instruction>`
 - `--job <payload.json>` for existing hook job records
 
-PreCompact is intentionally not enabled for Dobby workspaces. For Codex runtimes, continuity finalization is owned by PostCompact. The
-PostCompact hook records a small job under `tmp/hooks/post-compact/` and starts
-`scripts/hooks/consolidate-thread` in the background. That worker starts a local
-`codex app-server`, forks the source thread, injects a memory-consolidation
-prompt that points to the shared `dobby-workspace` body map, and lets the forked
-agent write directly to workspace memory. The worker starts its forked
-app-server without special lifecycle environment flags for now. The Stop hook is
-intentionally not disabled, so memory notes written by the sidecar can still be
-committed by normal repo automation.
+PreCompact is intentionally not enabled for Dobby workspaces.
 
-`DOBBY_CONSOLIDATE_THREAD_DISABLED=1` remains a manual kill switch to prevent
-hooks from launching consolidation workers during debugging.
+PostCompact is intentionally inert for now. It drains hook stdin and exits `0`.
+It does not record a compaction event, launch `consolidate-thread`, or write
+memory. Memory consolidation is an explicit primitive until a separate caller
+policy is chosen.
 
 SessionEnd writes a compact record under `tmp/hooks/session-end/` and exits
 successfully. It does not launch a consolidation sidecar because Codex
-continuity is handled by PostCompact.
-
-The PostCompact worker does not block session shutdown. If consolidation fails,
-the worker logs to stderr/`tmp/hooks/session-finalizer/worker.log` and exits `0`.
+continuity is handled only by explicit `consolidate-thread` calls.
 
 Stored notes stay plain prose. Do not add templates/frontmatter. Durable
 decisions still get promoted to `now.md`, area canon, or `soul.md` as
 appropriate.
 
-To temporarily prevent the Codex worker from launching from hooks, set
-`DOBBY_CONSOLIDATE_THREAD_DISABLED=1`.
-
 ## Post-compaction hook
 
 Repo-local `scripts/hooks/post_compact.py` wrappers delegate to the
-skill-bundled `scripts/hooks/post-compact`. For Codex runtimes, this is the
-simple sidecar design:
+skill-bundled `scripts/hooks/post-compact`. For now this hook is deliberately
+boring:
 
-1. PostCompact writes one compact job record under `tmp/hooks/post-compact/`.
-2. It starts `consolidate-thread` in the background.
-3. The sidecar forks the source Codex thread.
-4. The sidecar consolidates useful memory into `memory/sessions/...` and, when
-   clearly warranted, the relevant promoted memory file.
-5. Stop still runs normally and commits any resulting memory note.
+1. Drain stdin.
+2. Exit `0`.
+3. Write no files.
+4. Launch no workers.
 
 Canonical IDs for PostCompact:
 

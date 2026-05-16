@@ -1,6 +1,6 @@
 ---
 name: dobby-lifecycle
-description: "Operate Dobby workspace lifecycle hooks and context flow: session start boot context, user-prompt-submit time context, post-compact Codex continuity finalization, session-end handling, hook logs, and debugging why Dobby context/session memory did or did not load/write. Use for hook implementation changes, lifecycle debugging, boot context changes, and session continuity plumbing. For workspace/body routing use the `dobby-workspace` skill."
+description: "Operate Dobby workspace lifecycle hooks and context flow: session start boot context, user-prompt-submit time context, inert post-compact handling, explicit thread consolidation, session-end handling, hook logs, and debugging why Dobby context/session memory did or did not load/write. Use for hook implementation changes, lifecycle debugging, boot context changes, and session continuity plumbing. For workspace/body routing use the `dobby-workspace` skill."
 ---
 
 # Dobby Lifecycle
@@ -15,10 +15,10 @@ session-continuity notes after work ends.
 
 Use this skill for:
 
-- `SessionStart`, `UserPromptSubmit`, `PostCompact`, and `SessionEnd` hook behavior. PreCompact is intentionally not part of the active Dobby lifecycle.
+- `SessionStart`, `UserPromptSubmit`, inert `PostCompact`, explicit `consolidate-thread`, and `SessionEnd` hook behavior. PreCompact is intentionally not part of the active Dobby lifecycle.
 - Boot context assembly: shared `dobby-workspace` body map, `now.md`, recent sessions, Shelf snapshot, calendar snapshot, area manifest.
 - Codex App Server thread consolidation and forked sidecar turns.
-- Hook payload normalization, temporary hook records, worker logs, and lifecycle debugging.
+- Hook payload normalization, temporary hook records where active, worker logs, and lifecycle debugging.
 - Questions like “why did Dobby not load context?”, “why did session memory not write?”, or “change what loads at boot.”
 
 Do **not** use this skill for deciding where a fact belongs in memory. Use the

@@ -1,155 +1,23 @@
 #!/usr/bin/env python3
 """Dobby post-compact hook.
 
-PostCompact runs after the runtime has already compressed the active thread.
-For now it only records a compact event under tmp/hooks/post-compact/. Memory
-consolidation is exposed as the explicit `consolidate-thread` primitive and is
-not launched automatically from this hook.
-"""
+Intentionally inert for now.
 
+Memory consolidation is exposed as the explicit `consolidate-thread` primitive.
+PostCompact should not record events, launch sidecars, or write memory until a
+caller deliberately wires a policy back in.
+"""
 from __future__ import annotations
 
-import json
-import os
-import re
 import sys
-from datetime import datetime, timezone
-from pathlib import Path
-from typing import Any
-
-HOOK_EVENT = "PostCompact"
-SCHEMA_VERSION = "1.0"
-POST_COMPACT_DIR = Path("tmp/hooks/post-compact")
-
-
-def utc_now_iso_z() -> str:
-    return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
-
-
-def utc_now_file_stamp() -> str:
-    return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H-%M-%SZ")
-
-
-def read_payload() -> dict[str, Any]:
-    raw = sys.stdin.read()
-    if not raw.strip():
-        return {}
-    try:
-        payload = json.loads(raw)
-    except json.JSONDecodeError:
-        return {}
-    return payload if isinstance(payload, dict) else {}
-
-
-def repo_root(payload: dict[str, Any]) -> Path:
-    return Path(
-        payload.get("repo_root")
-        or os.environ.get("AGENT_REPO_ROOT")
-        or "."
-    ).expanduser().resolve()
-
-
-def text_field(payload: dict[str, Any], *keys: str) -> str | None:
-    for key in keys:
-        value = payload.get(key)
-        if isinstance(value, str) and value.strip():
-            return value.strip()
-    return None
-
-
-def raw_payload(payload: dict[str, Any]) -> dict[str, Any]:
-    raw = payload.get("raw_payload")
-    return raw if isinstance(raw, dict) else {}
-
-
-def runtime(payload: dict[str, Any]) -> str | None:
-    value = text_field(payload, "runtime") or os.environ.get("AGENT_HOOK_RUNTIME")
-    return value.strip().lower() if isinstance(value, str) and value.strip() else None
-
-
-def source_thread_id(payload: dict[str, Any]) -> str | None:
-    raw = raw_payload(payload)
-    return (
-        text_field(payload, "source_thread_id", "sourceThreadId")
-        or text_field(raw, "source_thread_id", "sourceThreadId")
-        or text_field(raw, "thread_id", "threadId")
-        or text_field(payload, "session_id", "sessionId")
-        or text_field(raw, "session_id", "sessionId")
-    )
-
-
-def source_turn_id(payload: dict[str, Any]) -> str | None:
-    raw = raw_payload(payload)
-    return (
-        text_field(payload, "source_turn_id", "sourceTurnId")
-        or text_field(raw, "source_turn_id", "sourceTurnId")
-        or text_field(payload, "turn_id", "turnId")
-        or text_field(raw, "turn_id", "turnId")
-    )
-
-
-def transcript_path(payload: dict[str, Any]) -> str | None:
-    raw = raw_payload(payload)
-    return (
-        text_field(payload, "transcript_path", "transcriptPath")
-        or text_field(raw, "transcript_path", "transcriptPath")
-    )
-
-
-def safe_file_stem(value: str | None) -> str:
-    if not value:
-        return f"unknown-{utc_now_file_stamp()}"
-    cleaned = re.sub(r"[^A-Za-z0-9._-]+", "-", value.strip()).strip(".-")
-    return cleaned or f"unknown-{utc_now_file_stamp()}"
-
-
-def compact_record(payload: dict[str, Any]) -> dict[str, Any]:
-    return {
-        "schema_version": SCHEMA_VERSION,
-        "recorded_at": utc_now_iso_z(),
-        "hook_event_name": HOOK_EVENT,
-        "runtime": runtime(payload),
-        "repo_root": text_field(payload, "repo_root"),
-        "cwd": text_field(payload, "cwd"),
-        "source_thread_id": source_thread_id(payload),
-        "source_turn_id": source_turn_id(payload),
-        "reason": text_field(payload, "reason"),
-        "model": text_field(payload, "model"),
-        "transcript_path": transcript_path(payload),
-        "raw_payload": raw_payload(payload),
-    }
-
-
-def write_post_compact_record(root: Path, record: dict[str, Any]) -> Path:
-    stem = safe_file_stem(
-        record.get("source_thread_id") if isinstance(record.get("source_thread_id"), str) else None
-    )
-    path = root / POST_COMPACT_DIR / f"{stem}-{utc_now_file_stamp()}.json"
-    path.parent.mkdir(parents=True, exist_ok=True)
-    tmp_path = path.with_suffix(path.suffix + ".tmp")
-    tmp_path.write_text(json.dumps(record, indent=2, sort_keys=True) + "\n")
-    tmp_path.replace(path)
-    return path
-
 
 
 def main() -> int:
-    payload = read_payload()
-    event_name = payload.get("hook_event_name") or os.environ.get("AGENT_HOOK_EVENT")
-    if event_name not in {None, HOOK_EVENT}:
-        return 0
-    if payload.get("schema_version") not in {None, SCHEMA_VERSION}:
-        return 0
-
-    root = repo_root(payload)
-    os.chdir(root)
-    write_post_compact_record(root, compact_record(payload))
+    # Drain stdin so runtimes can send payloads without risking a broken pipe,
+    # but intentionally do nothing with the payload.
+    sys.stdin.read()
     return 0
 
 
 if __name__ == "__main__":
-    try:
-        raise SystemExit(main())
-    except Exception as exc:
-        print(f"post-compact: {exc}", file=sys.stderr)
-        raise SystemExit(0)
+    raise SystemExit(main())
