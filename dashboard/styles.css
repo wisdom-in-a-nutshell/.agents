@@ -70,12 +70,11 @@ a:hover {
   top: 18px;
   align-self: start;
   display: grid;
-  gap: 14px;
+  gap: 12px;
   max-height: calc(100vh - 36px);
   min-width: 0;
 }
 
-.brand-block,
 .sidebar-footer,
 .warning-panel,
 .section-panel,
@@ -85,10 +84,6 @@ a:hover {
   border: 1px solid var(--border);
   border-radius: 8px;
   box-shadow: var(--shadow);
-}
-
-.brand-block {
-  padding: 16px;
 }
 
 .eyebrow {
@@ -107,12 +102,6 @@ p {
   margin-top: 0;
 }
 
-h1 {
-  margin-bottom: 8px;
-  font-size: 23px;
-  line-height: 1.08;
-}
-
 h2 {
   margin-bottom: 0;
   font-size: 17px;
@@ -128,8 +117,23 @@ h3 {
 .path-value {
   margin: 0;
   color: var(--muted);
-  font-size: 12px;
+  font-size: 11px;
   overflow-wrap: anywhere;
+}
+
+.workspace-bar {
+  display: grid;
+  gap: 2px;
+  padding: 2px 2px 10px;
+  border-bottom: 1px solid var(--border);
+}
+
+.workspace-kicker {
+  color: var(--accent);
+  font-size: 11px;
+  font-weight: 850;
+  letter-spacing: 0;
+  text-transform: uppercase;
 }
 
 .muted {
