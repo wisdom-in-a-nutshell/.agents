@@ -383,7 +383,7 @@
         "aipodcasting-public-website",
         "blog-personal",
         "whos-in-your-head",
-        "/Users/dobby/.agents"
+        "~/.agents"
       ],
       "source_path": "skills-source/external/impeccable",
       "upstream_ref": "pbakaus/impeccable:skill@main"
