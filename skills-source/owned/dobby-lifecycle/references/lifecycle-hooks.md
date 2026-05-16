@@ -3,6 +3,43 @@
 Lifecycle details live here so the shared `dobby-workspace` body map can stay
 focused on workspace meaning instead of becoming a hook runbook.
 
+## Simple lifecycle map
+
+```mermaid
+flowchart TD
+    A["SessionStart<br/>Dobby wakes up"] --> B["Read durable context"]
+    B --> B1["soul.md<br/>identity + durable user truth"]
+    B --> B2["dobby-workspace body map<br/>where things belong"]
+    B --> B3["memory/now.md<br/>this week's orientation"]
+    B --> B4["memory/sessions<br/>recent continuity notes"]
+    B --> B5["Shelf + calendar + area manifest"]
+    B --> C["Inject compact boot context<br/>into the active agent thread"]
+
+    C --> D["Normal conversation / work"]
+
+    D --> E{"Lifecycle save point"}
+    E -->|Codex PostCompact| F["Write small job<br/>tmp/hooks/post-compact"]
+    F --> G["Background finalizer<br/>forks source Codex thread"]
+    G --> H["Finalizer writes note<br/>memory/sessions/YYYY/MM/DD-HHMMSS.md"]
+
+    E -->|SessionEnd non-Codex| I["Write small job<br/>tmp/hooks/session-memory"]
+    I --> J["Legacy transcript worker"]
+    J --> H
+
+    H --> K["Next SessionStart loads recent notes<br/>so continuity comes back"]
+```
+
+Short version:
+
+- **SessionStart is read/inject.** It gathers the current Dobby context and
+  gives the agent enough memory to continue well.
+- **PostCompact / SessionEnd are write-back.** They preserve what would be lost
+  by writing a compact session note under `memory/sessions/...`.
+- **`memory/sessions` is the bridge.** End-of-session notes become part of the
+  next boot context.
+- **`memory/now.md`, area files, and `soul.md` are promotion targets only.**
+  They should be updated when something durable changes, not for every session.
+
 ## Boot
 
 Boot context is delivered by the repo's `SessionStart` hook
