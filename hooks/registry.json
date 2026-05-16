@@ -34,21 +34,6 @@
       "timeout": 5
     },
     {
-      "command": "python3 ~/.agents/hooks/scripts/post_compact.py --runtime {runtime}",
-      "enabled": true,
-      "event": "PostCompact",
-      "id": "repo-post-compact",
-      "repos": [
-        "adi",
-        "angie"
-      ],
-      "runtimes": [
-        "codex"
-      ],
-      "scope": "repo",
-      "timeout": 5
-    },
-    {
       "command": "python3 ~/.agents/hooks/scripts/stop.py --runtime {runtime}",
       "enabled": true,
       "event": "Stop",

@@ -515,7 +515,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--job", help="Optional normalized lifecycle payload JSON.")
     parser.add_argument("--thread-id", help="Source Codex/App Server thread id. Overrides job source_thread_id.")
     parser.add_argument("--source-turn-id", help="Optional source turn id for context. Overrides job source_turn_id.")
-    parser.add_argument("--source-label", help="Optional caller/source label, e.g. manual, post-compact, codexclaw-end-chat.")
+    parser.add_argument("--source-label", help="Optional caller/source label, e.g. manual, codexclaw-end-chat.")
     parser.add_argument("--repo-root", "--workspace-root", dest="repo_root", help="Dobby workspace root override.")
     parser.add_argument("--note-path", help="Optional suggested note path, absolute or workspace-relative.")
     parser.add_argument("--instruction", help="Optional caller instruction to include in the sidecar prompt.")

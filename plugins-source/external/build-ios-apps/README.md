@@ -36,10 +36,6 @@ with this shape:
   - required plugin manifest
   - defines plugin metadata and points Codex at the plugin contents
 
-- `.mcp.json`
-  - plugin-local MCP config
-  - wires in XcodeBuildMCP for simulator build/run/debug workflows
-
 - `agents/`
   - plugin-level agent metadata
   - currently includes `agents/openai.yaml` for the OpenAI surface

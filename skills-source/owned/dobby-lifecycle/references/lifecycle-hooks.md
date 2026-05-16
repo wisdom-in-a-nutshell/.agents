@@ -17,7 +17,6 @@ flowchart TD
 
     C --> D["Normal conversation / work"]
 
-    D --> E["PostCompact<br/>currently inert"]
     D --> F["Explicit consolidate-thread call"]
     F --> G["Sidecar forks source Codex thread"]
     G --> H["Sidecar updates memory<br/>memory/sessions/YYYY/MM/DD-HHMMSS.md"]
@@ -30,8 +29,6 @@ Short version:
 
 - **SessionStart is read/inject.** It gathers the current Dobby context and
   gives the agent enough memory to continue well.
-- **PostCompact is inert for now.** It does not record events, launch sidecars,
-  or write memory.
 - **SessionEnd is handoff-only.** It records shutdown metadata without launching
   a second consolidation sidecar.
 - **`memory/sessions` is the bridge.** End-of-session notes become part of the
@@ -72,8 +69,7 @@ Session continuity lives in `memory/sessions/YYYY/MM/DD-HHMMSS.md`, not in
 
 ## Consolidate-thread primitive
 
-`scripts/hooks/consolidate-thread` is the reusable memory-consolidation
-primitive.
+`scripts/consolidate-thread` is the reusable memory-consolidation primitive.
 
 It takes a source Codex/App Server thread, forks it into a sidecar thread, runs
 a memory-consolidation prompt inside that sidecar, and lets the forked Dobby
@@ -92,7 +88,7 @@ It is intentionally policy-free:
 Supported direct invocation shape:
 
 ```bash
-$HOME/.agents/skills-source/owned/dobby-lifecycle/scripts/hooks/consolidate-thread \
+$HOME/.agents/skills-source/owned/dobby-lifecycle/scripts/consolidate-thread \
   --workspace-root /Users/dobby/GitHub/adi \
   --thread-id <codex-thread-id>
 ```
@@ -100,41 +96,21 @@ $HOME/.agents/skills-source/owned/dobby-lifecycle/scripts/hooks/consolidate-thre
 Optional caller fields:
 
 - `--source-turn-id <turn-id>`
-- `--source-label <manual|post-compact|codexclaw-end-chat|...>`
+- `--source-label <manual|codexclaw-end-chat|...>`
 - `--note-path <absolute-or-workspace-relative-path>`
 - `--instruction <extra caller instruction>`
 - `--job <payload.json>` for existing hook job records
 
-PreCompact is intentionally not enabled for Dobby workspaces.
-
-PostCompact is intentionally inert for now. It drains hook stdin and exits `0`.
-It does not record a compaction event, launch `consolidate-thread`, or write
-memory. Memory consolidation is an explicit primitive until a separate caller
-policy is chosen.
+PreCompact is intentionally not wired for Dobby workspaces right now. Memory
+consolidation is an explicit primitive until a separate caller policy is chosen.
 
 SessionEnd writes a compact record under `tmp/hooks/session-end/` and exits
-successfully. It does not launch a consolidation sidecar because Codex
-continuity is handled only by explicit `consolidate-thread` calls.
+successfully. It does not launch a consolidation sidecar because Codex continuity
+is handled only by explicit `consolidate-thread` calls.
 
 Stored notes stay plain prose. Do not add templates/frontmatter. Durable
 decisions still get promoted to `now.md`, area canon, or `soul.md` as
 appropriate.
-
-## Post-compaction hook
-
-Repo-local `scripts/hooks/post_compact.py` wrappers delegate to the
-skill-bundled `scripts/hooks/post-compact`. For now this hook is deliberately
-boring:
-
-1. Drain stdin.
-2. Exit `0`.
-3. Write no files.
-4. Launch no workers.
-
-Canonical IDs for PostCompact:
-
-- `source_thread_id` — Codex/App Server thread being compacted
-- `source_turn_id` — current turn if provided by the runtime
 
 Do not put Dobby memory synthesis directly in the shared `~/.agents` dispatcher.
 The dispatcher routes lifecycle events; this skill owns Dobby-specific behavior.

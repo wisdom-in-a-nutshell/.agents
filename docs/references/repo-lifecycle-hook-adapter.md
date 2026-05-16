@@ -14,13 +14,11 @@ flowchart TD
     E -->|yes| F[scripts/hooks/session_start.py]
     E -->|yes| G[scripts/hooks/user_prompt_submit.py]
     E -->|yes| H[scripts/hooks/pre_compact.py]
-    E -->|yes| I[scripts/hooks/post_compact.py]
     E -->|yes| K[scripts/hooks/session_end.py]
     E -->|no| N[exit successfully]
     F --> J[stdout can become context]
     G --> J
     H --> L[stdout passes through raw]
-    I --> L
     K --> M[stdout is logged only]
 ```
 
@@ -55,7 +53,6 @@ Create these files only when a repo needs them:
 scripts/hooks/session_start.py
 scripts/hooks/user_prompt_submit.py
 scripts/hooks/pre_compact.py
-scripts/hooks/post_compact.py
 scripts/hooks/session_end.py
 ```
 
@@ -79,13 +76,6 @@ All repo lifecycle hooks are Python. Do not add shell compatibility shims.
 
 - Runs before Codex compacts a session, where supported.
 - Good for last-chance preservation or guardrails before context is compressed.
-- Repo stdout is passed through raw; emit only valid runtime hook JSON or nothing.
-- Keep it fast. Enqueue slow consolidation instead of doing it inline.
-
-`PostCompact`
-
-- Runs after Codex compacts a session, where supported.
-- Good for observing compaction or enqueueing follow-up consolidation.
 - Repo stdout is passed through raw; emit only valid runtime hook JSON or nothing.
 - Keep it fast. Enqueue slow consolidation instead of doing it inline.
 
@@ -135,7 +125,7 @@ Important fields:
 
 - `schema_version`: current adapter contract version. Today this is `1.0`.
 - `hook_event_name`: `SessionStart`, `UserPromptSubmit`, `PreCompact`,
-  `PostCompact`, or `SessionEnd`.
+  or `SessionEnd`.
 - `runtime`: `codex`.
 - `cwd`: where the Codex session was running.
 - `repo_root`: resolved Git top-level directory.
@@ -152,7 +142,7 @@ runtime-specific detail is genuinely needed.
 Repo hooks also receive:
 
 ```text
-AGENT_HOOK_EVENT=SessionStart | UserPromptSubmit | PreCompact | PostCompact | SessionEnd
+AGENT_HOOK_EVENT=SessionStart | UserPromptSubmit | PreCompact | SessionEnd
 AGENT_HOOK_RUNTIME=codex
 AGENT_REPO_ROOT=/absolute/repo/root
 AGENT_HOOK_SCHEMA_VERSION=1.0
@@ -217,9 +207,9 @@ if __name__ == "__main__":
 For `session_start.py` and `user_prompt_submit.py`, stdout may become model
 context for Codex. Print only concise context that should be shown to the agent.
 
-For `pre_compact.py` and `post_compact.py`, stdout is passed through raw to the
-runtime. Print nothing unless you intentionally want to return a valid hook JSON
-payload for that runtime.
+For `pre_compact.py`, stdout is passed through raw to the runtime. Print nothing
+unless you intentionally want to return a valid hook JSON payload for that
+runtime.
 
 For `session_end.py`, stdout is only logged. Use it for diagnostics, not model
 instructions.
@@ -253,8 +243,8 @@ background worker or next SessionStart processes it
 SessionStart injects the useful compact summary
 ```
 
-The same principle applies to `PreCompact` and `PostCompact`: use them to
-capture pointers or enqueue work, not to run slow summarization inline.
+The same principle applies to `PreCompact`: use it to capture pointers or
+enqueue work, not to run slow summarization inline.
 
 ## Local Smoke Tests
 
@@ -288,15 +278,13 @@ For compaction:
 cd /path/to/repo
 printf '{"hook_event_name":"PreCompact","cwd":"%s","session_id":"test-session"}' "$PWD" \
   | python3 ~/.agents/hooks/scripts/pre_compact.py --runtime codex
-printf '{"hook_event_name":"PostCompact","cwd":"%s","session_id":"test-session"}' "$PWD" \
-  | python3 ~/.agents/hooks/scripts/post_compact.py --runtime codex
 ```
 
 Expected behavior:
 
 - Missing repo hook: exits `0`, no output.
 - `SessionStart` / `UserPromptSubmit`: stdout may be wrapped and forwarded for Codex.
-- `PreCompact` / `PostCompact`: stdout passes through raw to the runtime.
+- `PreCompact`: stdout passes through raw to the runtime.
 - `SessionEnd`: stdout goes to
   `~/.local/state/agents-control-plane/log/hooks-session-end.log`.
 
@@ -322,7 +310,6 @@ python3 -m py_compile \
   hooks/scripts/session_start.py \
   hooks/scripts/user_prompt_submit.py \
   hooks/scripts/pre_compact.py \
-  hooks/scripts/post_compact.py \
   hooks/scripts/session_end.py
 python3 -m unittest tests.control_plane.test_hooks_control_plane
 ./scripts/test-control-plane.sh

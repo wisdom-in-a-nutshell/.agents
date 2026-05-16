@@ -1,6 +1,6 @@
 ---
 name: dobby-lifecycle
-description: "Operate Dobby workspace lifecycle hooks and context flow: session start boot context, user-prompt-submit time context, inert post-compact handling, explicit thread consolidation, session-end handling, hook logs, and debugging why Dobby context/session memory did or did not load/write. Use for hook implementation changes, lifecycle debugging, boot context changes, and session continuity plumbing. For workspace/body routing use the `dobby-workspace` skill."
+description: "Operate Dobby workspace lifecycle hooks and context flow: session start boot context, user-prompt-submit time context, explicit thread consolidation, session-end handling, hook logs, and debugging why Dobby context/session memory did or did not load/write. Use for hook implementation changes, lifecycle debugging, boot context changes, and session continuity plumbing. For workspace/body routing use the `dobby-workspace` skill."
 ---
 
 # Dobby Lifecycle
@@ -8,14 +8,14 @@ description: "Operate Dobby workspace lifecycle hooks and context flow: session 
 Dobby Lifecycle is the runtime context-flow layer for a Dobby workspace.
 
 It owns the hook machinery that lets Dobby wake up with useful context, keep
-per-turn context lightweight, preserve state before compaction, and write
-session-continuity notes after work ends.
+per-turn context lightweight, and expose explicit thread consolidation when a
+caller decides memory should be written.
 
 ## Boundary
 
 Use this skill for:
 
-- `SessionStart`, `UserPromptSubmit`, inert `PostCompact`, explicit `consolidate-thread`, and `SessionEnd` hook behavior. PreCompact is intentionally not part of the active Dobby lifecycle.
+- `SessionStart`, `UserPromptSubmit`, explicit `consolidate-thread`, and `SessionEnd` behavior. PreCompact is intentionally not part of the active Dobby lifecycle.
 - Boot context assembly: shared `dobby-workspace` body map, `now.md`, recent sessions, Shelf snapshot, calendar snapshot, area manifest.
 - Codex App Server thread consolidation and forked sidecar turns.
 - Hook payload normalization, temporary hook records where active, worker logs, and lifecycle debugging.
@@ -41,7 +41,6 @@ Repo-local hook wrappers delegate to this skill’s scripts through the repo’s
 ```text
 scripts/hooks/session_start.py      -> scripts/hooks/session-start
 scripts/hooks/user_prompt_submit.py -> scripts/hooks/user-prompt-submit
-scripts/hooks/post_compact.py       -> scripts/hooks/post-compact
 scripts/hooks/session_end.py        -> scripts/hooks/session-end
 ```
 
@@ -50,16 +49,15 @@ The hook scripts live here:
 ```bash
 $HOME/.agents/skills-source/owned/dobby-lifecycle/scripts/hooks/session-start
 $HOME/.agents/skills-source/owned/dobby-lifecycle/scripts/hooks/user-prompt-submit
-$HOME/.agents/skills-source/owned/dobby-lifecycle/scripts/hooks/post-compact
 $HOME/.agents/skills-source/owned/dobby-lifecycle/scripts/hooks/session-end
-$HOME/.agents/skills-source/owned/dobby-lifecycle/scripts/hooks/consolidate-thread
+$HOME/.agents/skills-source/owned/dobby-lifecycle/scripts/consolidate-thread
 ```
 
 ## Reference files
 
 Load on demand:
 
-- `references/lifecycle-hooks.md` — boot, session notes, post-compaction consolidation internals, operational limits.
+- `references/lifecycle-hooks.md` — boot, session notes, explicit thread consolidation, operational limits.
 
 ## Design principle
 

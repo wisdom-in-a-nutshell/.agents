@@ -30,7 +30,7 @@ soul.md
 | `projects/` | Active Dobby/app/system improvement trackers. |
 | `scripts/` | Repo-local checks, lifecycle wrappers, and local helpers. |
 | `.agents/skills/` | Repo-local links to operational skills. |
-| `.codex/`, `.mcp.json` | Runtime/tooling configuration. |
+| `.codex/` | Runtime/tooling configuration. |
 | `tmp/` | Disposable scratch and hook logs. |
 
 ## Routing table

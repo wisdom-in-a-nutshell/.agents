@@ -14,7 +14,6 @@ EVENT_RUNTIME_SUPPORT = {
     "SessionStart": {"codex"},
     "UserPromptSubmit": {"codex"},
     "PreCompact": {"codex"},
-    "PostCompact": {"codex"},
     "Stop": {"codex"},
     "SessionEnd": {"codex"},
 }

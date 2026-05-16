@@ -71,7 +71,6 @@ ALLOWED_TOP_LEVEL = {
     ".codex",
     ".github",
     ".gitignore",
-    ".mcp.json",
     ".envrc",
     "tmp",
 }

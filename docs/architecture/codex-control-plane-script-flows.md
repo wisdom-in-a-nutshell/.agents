@@ -80,12 +80,6 @@ flowchart TD
     L --> M["forward stdout as additional context"]
     K -->|"no"| N["silent success"]
 
-    B --> O["Codex PostCompact"]
-    O --> P["hooks/scripts/post_compact.py"]
-    P --> Q{"repo scripts/hooks/post_compact.py exists?"}
-    Q -->|"yes"| R["run Python hook from repo root"]
-    R --> S["pass stdout through raw"]
-    Q -->|"no"| T["silent success"]
 
     B --> U["Codex SessionEnd"]
     U --> V["hooks/scripts/session_end.py"]

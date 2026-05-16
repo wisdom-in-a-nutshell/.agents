@@ -97,7 +97,7 @@ Scoped validation/bootstrap:
 - Codex global hooks render into `~/.codex/hooks.json`.
 - Codex repo-local hooks render into managed repo `.codex/hooks.json`.
 - `Stop` is global so the git conveyor does not depend on repo-local hook loading.
-- `SessionStart`, `UserPromptSubmit`, `PostCompact`, and `SessionEnd` are repo-scoped to `adi` and `angie`.
+- `SessionStart`, `UserPromptSubmit`, and `SessionEnd` are repo-scoped to `adi` and `angie`.
 - Event entrypoints live in [`hooks/scripts/`](/Users/dobby/.agents/hooks/scripts).
 - Repo-specific lifecycle behavior belongs in optional Python scripts under `scripts/hooks/`.
 - Missing repo scripts are successful no-ops.

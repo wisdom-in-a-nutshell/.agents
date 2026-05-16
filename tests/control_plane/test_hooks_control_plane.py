@@ -54,7 +54,7 @@ class HooksControlPlaneTests(TempDirTestCase):
         codex_hooks = render_codex_hooks(registry, repo_name="adi")
         self.assertEqual(
             set(codex_hooks["hooks"].keys()),
-            {"SessionStart", "UserPromptSubmit", "PostCompact", "SessionEnd"},
+            {"SessionStart", "UserPromptSubmit", "SessionEnd"},
         )
         self.assertEqual(
             codex_hooks["hooks"]["SessionStart"][0]["matcher"],
@@ -63,10 +63,6 @@ class HooksControlPlaneTests(TempDirTestCase):
         self.assertEqual(
             codex_hooks["hooks"]["UserPromptSubmit"][0]["hooks"][0]["command"],
             "python3 ~/.agents/hooks/scripts/user_prompt_submit.py --runtime codex",
-        )
-        self.assertEqual(
-            codex_hooks["hooks"]["PostCompact"][0]["hooks"][0]["command"],
-            "python3 ~/.agents/hooks/scripts/post_compact.py --runtime codex",
         )
         self.assertEqual(
             codex_hooks["hooks"]["SessionEnd"][0]["hooks"][0]["command"],
@@ -131,7 +127,6 @@ class HooksControlPlaneTests(TempDirTestCase):
             "SessionStart": REPO_ROOT / "hooks/scripts/session_start.py",
             "UserPromptSubmit": REPO_ROOT / "hooks/scripts/user_prompt_submit.py",
             "PreCompact": REPO_ROOT / "hooks/scripts/pre_compact.py",
-            "PostCompact": REPO_ROOT / "hooks/scripts/post_compact.py",
             "Stop": REPO_ROOT / "hooks/scripts/stop.py",
             "SessionEnd": REPO_ROOT / "hooks/scripts/session_end.py",
         }
@@ -140,7 +135,6 @@ class HooksControlPlaneTests(TempDirTestCase):
             "SessionStart",
             "UserPromptSubmit",
             "PreCompact",
-            "PostCompact",
             "Stop",
             "SessionEnd",
         ):
@@ -419,7 +413,7 @@ class HooksControlPlaneTests(TempDirTestCase):
             f"runtime=codex\nevent=SessionEnd\nschema=1.0\nrepo_root={repo.resolve()}\ntranscript_format=None\n",
         )
 
-    def test_compact_hooks_run_individual_repo_scripts_and_pass_stdout_raw(self) -> None:
+    def test_pre_compact_hook_runs_individual_repo_script_and_passes_stdout_raw(self) -> None:
         repo = init_git_repo(self.temp_path / "repo")
         write_executable(
             repo / "scripts/hooks/pre_compact.py",
@@ -433,53 +427,31 @@ class HooksControlPlaneTests(TempDirTestCase):
                 ]
             ),
         )
-        write_executable(
-            repo / "scripts/hooks/post_compact.py",
-            "\n".join(
-                [
-                    "#!/usr/bin/env python3",
-                    "import json",
-                    "payload = json.load(__import__('sys').stdin)",
-                    "print(json.dumps({'hookSpecificOutput': {'hookEventName': payload['hook_event_name']}}))",
-                    "",
-                ]
+
+        result = subprocess.run(
+            [
+                sys.executable,
+                str(REPO_ROOT / "hooks/scripts/pre_compact.py"),
+                "--runtime",
+                "codex",
+            ],
+            input=json.dumps(
+                {
+                    "cwd": str(repo),
+                    "hook_event_name": "PreCompact",
+                    "model": "gpt-5.5",
+                    "session_id": "session",
+                }
             ),
+            capture_output=True,
+            text=True,
+            check=False,
         )
 
-        for event, script_name in (
-            ("PreCompact", "pre_compact.py"),
-            ("PostCompact", "post_compact.py"),
-        ):
-            result = subprocess.run(
-                [
-                    sys.executable,
-                    str(REPO_ROOT / "hooks/scripts" / script_name),
-                    "--runtime",
-                    "codex",
-                ],
-                input=json.dumps(
-                    {
-                        "cwd": str(repo),
-                        "hook_event_name": event,
-                        "model": "gpt-5.5",
-                        "session_id": "session",
-                    }
-                ),
-                capture_output=True,
-                text=True,
-                check=False,
-            )
-
-            self.assertEqual(result.returncode, 0)
-            self.assertEqual(result.stderr, "")
-            output = json.loads(result.stdout)
-            if event == "PreCompact":
-                self.assertEqual(output["reason"], "pre PreCompact")
-            else:
-                self.assertEqual(
-                    output["hookSpecificOutput"],
-                    {"hookEventName": "PostCompact"},
-                )
+        self.assertEqual(result.returncode, 0)
+        self.assertEqual(result.stderr, "")
+        output = json.loads(result.stdout)
+        self.assertEqual(output["reason"], "pre PreCompact")
 
     def test_codex_sync_config_renders_plan_mode_and_global_stop_hook(self) -> None:
         root = make_control_plane_root(self.temp_path)

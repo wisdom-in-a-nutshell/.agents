@@ -2,9 +2,9 @@
 """Dobby session-end hook.
 
 Session end should stay fast. This hook captures a compact handoff record under
-`<repo>/tmp/hooks/session-end/`, then exits successfully. Codex continuity
-finalization is handled by PostCompact so SessionEnd does not launch a second
-worker.
+`<repo>/tmp/hooks/session-end/`, then exits successfully. Codex continuity is
+handled only by explicit `consolidate-thread` calls, so SessionEnd does not
+launch a worker.
 """
 
 from __future__ import annotations
