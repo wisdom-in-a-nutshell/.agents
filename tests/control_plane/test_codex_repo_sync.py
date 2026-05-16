@@ -37,6 +37,7 @@ class CodexRepoSyncTests(TempDirTestCase):
             {
                 "defaults": {
                     "model": "gpt-5.5",
+                    "model_auto_compact_token_limit": 204000,
                     "model_reasoning_effort": "high",
                     "service_tier": None,
                 },
@@ -73,6 +74,7 @@ class CodexRepoSyncTests(TempDirTestCase):
         repo_hooks = (adi / ".codex/hooks.json").read_text(encoding="utf-8")
 
         self.assertIn('model = "gpt-5.5"', repo_config)
+        self.assertIn("model_auto_compact_token_limit = 204000", repo_config)
         self.assertIn('model_reasoning_effort = "high"', repo_config)
         self.assertIn("[mcp_servers.cloudflare-docs]", repo_config)
         self.assertIn('url = "https://docs.mcp.cloudflare.com/mcp"', repo_config)

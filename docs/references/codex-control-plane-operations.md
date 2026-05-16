@@ -232,6 +232,7 @@ Use [Codex Control Plane Ownership](/Users/dobby/.agents/docs/references/codex-c
 - [`repo-bootstrap.json`](/Users/dobby/.agents/codex/config/repo-bootstrap.json) currently controls these per-repo fields:
   - `mcp_presets`
   - `model`
+  - `model_auto_compact_token_limit`
   - `model_reasoning_effort`
   - `plan_mode_reasoning_effort`
   - `model_verbosity`

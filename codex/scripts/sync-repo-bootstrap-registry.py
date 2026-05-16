@@ -17,6 +17,7 @@ except ModuleNotFoundError:  # pragma: no cover
 
 ALLOWED_SCALAR_KEYS = {
     "model",
+    "model_auto_compact_token_limit",
     "model_reasoning_effort",
     "plan_mode_reasoning_effort",
     "service_tier",

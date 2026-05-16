@@ -187,6 +187,7 @@ from pathlib import Path
 REPO_SCALAR_KEYS = [
     "profile",
     "model",
+    "model_auto_compact_token_limit",
     "model_reasoning_effort",
     "plan_mode_reasoning_effort",
     "model_reasoning_summary",

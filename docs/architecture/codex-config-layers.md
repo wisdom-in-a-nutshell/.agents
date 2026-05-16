@@ -79,6 +79,7 @@ So trust sync is part of config layering, not a separate unrelated feature.
 Current per-repo fields in `repo-bootstrap.json`:
 - `mcp_presets`
 - `model`
+- `model_auto_compact_token_limit`
 - `model_reasoning_effort`
 - `model_verbosity`
 - `personality`
