@@ -4,10 +4,6 @@
       "transport": "http",
       "url": "https://developers.openai.com/mcp"
     },
-    "paper": {
-      "transport": "http",
-      "url": "http://127.0.0.1:29979/mcp"
-    },
     "cloudflare-api": {
       "transport": "http",
       "url": "https://mcp.cloudflare.com/mcp"
