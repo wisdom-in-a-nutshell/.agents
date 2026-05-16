@@ -17,7 +17,7 @@ Use this skill for:
 
 - `SessionStart`, `UserPromptSubmit`, `PostCompact`, and `SessionEnd` hook behavior. PreCompact is intentionally not part of the active Dobby lifecycle.
 - Boot context assembly: shared `dobby-workspace` body map, `now.md`, recent sessions, Shelf snapshot, calendar snapshot, area manifest.
-- Codex App Server session finalization and forked finalizer turns.
+- Codex App Server thread consolidation and forked sidecar turns.
 - Hook payload normalization, temporary hook records, worker logs, and lifecycle debugging.
 - Questions like “why did Dobby not load context?”, “why did session memory not write?”, or “change what loads at boot.”
 
@@ -53,14 +53,13 @@ $HOME/.agents/skills-source/owned/dobby-lifecycle/scripts/hooks/user-prompt-subm
 $HOME/.agents/skills-source/owned/dobby-lifecycle/scripts/hooks/post-compact
 $HOME/.agents/skills-source/owned/dobby-lifecycle/scripts/hooks/session-end
 $HOME/.agents/skills-source/owned/dobby-lifecycle/scripts/hooks/consolidate-thread
-$HOME/.agents/skills-source/owned/dobby-lifecycle/scripts/hooks/codex-finalize-session  # compatibility wrapper
 ```
 
 ## Reference files
 
 Load on demand:
 
-- `references/lifecycle-hooks.md` — boot, session notes, post-compaction finalizer internals, operational limits.
+- `references/lifecycle-hooks.md` — boot, session notes, post-compaction consolidation internals, operational limits.
 
 ## Design principle
 

@@ -2,7 +2,7 @@
 """Dobby post-compact hook.
 
 PostCompact runs after the runtime has already compressed the active thread. This
-is a safer place than PreCompact to launch Dobby's sidecar continuity finalizer:
+is a safer place than PreCompact to launch Dobby's sidecar memory consolidation:
 the hot compaction path is done, and the normal Stop hook still runs afterward.
 """
 
@@ -20,7 +20,7 @@ from typing import Any
 HOOK_EVENT = "PostCompact"
 SCHEMA_VERSION = "1.0"
 POST_COMPACT_DIR = Path("tmp/hooks/post-compact")
-SESSION_FINALIZER_DIR = Path("tmp/hooks/session-finalizer")
+CONSOLIDATION_WORKER_DIR = Path("tmp/hooks/session-finalizer")
 
 
 def utc_now_iso_z() -> str:
@@ -133,13 +133,13 @@ def write_post_compact_record(root: Path, record: dict[str, Any]) -> Path:
     return path
 
 
-def launch_codex_finalizer_worker(root: Path, job_path: Path) -> None:
-    if os.environ.get("DOBBY_CODEX_FINALIZER_DISABLED") == "1":
+def launch_consolidate_thread_worker(root: Path, job_path: Path) -> None:
+    if os.environ.get("DOBBY_CONSOLIDATE_THREAD_DISABLED") == "1":
         return
 
-    worker = Path(__file__).resolve().parent / "codex-finalize-session"
+    worker = Path(__file__).resolve().parent / "consolidate-thread"
     if not worker.is_file():
-        print(f"post-compact: missing Codex finalizer worker: {worker}", file=sys.stderr)
+        print(f"post-compact: missing consolidate-thread worker: {worker}", file=sys.stderr)
         return
 
     log_path = root / SESSION_FINALIZER_DIR / "worker.log"
@@ -175,7 +175,7 @@ def main() -> int:
     os.chdir(root)
     record_path = write_post_compact_record(root, compact_record(payload))
     if runtime(payload) == "codex" and source_thread_id(payload):
-        launch_codex_finalizer_worker(root, record_path)
+        launch_consolidate_thread_worker(root, record_path)
     return 0
 
 
