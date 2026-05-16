@@ -588,6 +588,15 @@ tr:focus-visible {
   .repo-list {
     max-width: none;
   }
+
+  .source-cell {
+    grid-template-columns: 1fr;
+    max-width: none;
+  }
+
+  .source-cell::before {
+    margin-bottom: 2px;
+  }
 }
 
 @media (min-width: 781px) {

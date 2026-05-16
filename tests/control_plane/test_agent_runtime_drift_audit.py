@@ -20,7 +20,7 @@ class AgentRuntimeDriftAuditTests(TempDirTestCase):
         include_computer_use: bool = True,
     ):
         sections = [
-            '[plugins."browser-use@openai-bundled"]\n'
+            '[plugins."browser@openai-bundled"]\n'
             "enabled = true\n",
             '[plugins."build-ios-apps@openai-curated"]\n'
             "enabled = true\n",
@@ -50,7 +50,7 @@ class AgentRuntimeDriftAuditTests(TempDirTestCase):
         )
 
     def _write_required_plugins(self, home, *, include_chrome: bool = True, include_computer_use: bool = True) -> None:  # noqa: ANN001
-        self._write_plugin(home, "openai-bundled", "browser-use")
+        self._write_plugin(home, "openai-bundled", "browser")
         self._write_plugin(home, "openai-curated", "build-ios-apps")
         if include_chrome:
             self._write_plugin(home, "openai-bundled", "chrome")

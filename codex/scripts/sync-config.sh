@@ -1154,6 +1154,7 @@ enabled_plugin_names = [
     for plugin in plugins
     if plugin.enabled and plugin.marketplace == "openai-bundled" and plugin.scope in {"global", "repo"}
 ]
+enabled_plugin_name_set = set(enabled_plugin_names)
 
 
 def tree_matches(source: Path, target: Path) -> bool:
@@ -1230,13 +1231,18 @@ if stale_runtime_marketplace.exists():
 if not bundle_marketplace.is_dir():
     print(f"Warning: bundled plugin marketplace is missing: {bundle_marketplace}", file=sys.stderr)
 
+if runtime_cache.is_dir():
+    for cached_plugin in runtime_cache.iterdir():
+        if cached_plugin.name not in enabled_plugin_name_set:
+            remove_path(cached_plugin)
+            print(f"Removed stale bundled plugin cache: {cached_plugin}")
+
 for plugin_name in enabled_plugin_names:
     plugin_id = f"{plugin_name}@openai-bundled"
     source = bundle_marketplace / "plugins" / plugin_name
     manifest_path = source / ".codex-plugin/plugin.json"
     if not manifest_path.is_file():
-        print(f"Warning: enabled bundled plugin source is missing: {source}", file=sys.stderr)
-        continue
+        raise RuntimeError(f"enabled bundled plugin source is missing for {plugin_id}: {source}")
 
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
     version = str(manifest.get("version") or "unknown")

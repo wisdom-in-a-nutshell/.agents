@@ -553,7 +553,7 @@ class HooksControlPlaneTests(TempDirTestCase):
                         "category": "Productivity",
                     },
                     {
-                        "plugin": "browser-use",
+                        "plugin": "browser",
                         "marketplace": "openai-bundled",
                         "enabled": False,
                         "scope": "global",
@@ -570,7 +570,7 @@ class HooksControlPlaneTests(TempDirTestCase):
                 "name": "openai-bundled",
                 "plugins": [
                     {"name": "chrome", "source": {"source": "local", "path": "./plugins/chrome"}},
-                    {"name": "browser-use", "source": {"source": "local", "path": "./plugins/browser-use"}},
+                    {"name": "browser", "source": {"source": "local", "path": "./plugins/browser"}},
                 ],
             },
         )
@@ -579,7 +579,11 @@ class HooksControlPlaneTests(TempDirTestCase):
             {"name": "chrome", "version": "0.1.7"},
         )
         write_json(
-            bundled_marketplace / "plugins/browser-use/.codex-plugin/plugin.json",
+            bundled_marketplace / "plugins/browser/.codex-plugin/plugin.json",
+            {"name": "browser", "version": "0.1.0-alpha2"},
+        )
+        write_json(
+            home / ".codex/plugins/cache/openai-bundled/browser-use/0.1.0-alpha2/.codex-plugin/plugin.json",
             {"name": "browser-use", "version": "0.1.0-alpha2"},
         )
         write_text(stale_marketplace_mirror / "plugins/chrome/stale.txt", "stale\n")
@@ -612,7 +616,7 @@ class HooksControlPlaneTests(TempDirTestCase):
         self.assertIn("[marketplaces.openai-bundled]", rendered_config)
         self.assertIn(f'source = "{bundled_marketplace}"', rendered_config)
         self.assertIn('[plugins."chrome@openai-bundled"]', rendered_config)
-        self.assertIn('[plugins."browser-use@openai-bundled"]', rendered_config)
+        self.assertIn('[plugins."browser@openai-bundled"]', rendered_config)
         self.assertTrue(
             (home / ".codex/plugins/cache/openai-bundled/chrome/0.1.7/.codex-plugin/plugin.json").is_file()
         )

@@ -366,13 +366,28 @@ def validate_global_plugin_runtime(
             continue
         source = bundled_marketplace / "plugins" / plugin.plugin / ".codex-plugin/plugin.json"
         if not source.is_file():
-            continue
+            fail(
+                f"enabled bundled plugin `{plugin.plugin_id}` is missing from the bundled marketplace at "
+                f"{bundled_marketplace / 'plugins' / plugin.plugin}. Update plugins/registry.json or Codex.app."
+            )
         cached_manifests = list((cache_root / plugin.plugin).glob("*/.codex-plugin/plugin.json"))
         if not cached_manifests:
             fail(
                 f"enabled bundled plugin `{plugin.plugin_id}` is missing from {cache_root}. "
                 "Re-run codex/scripts/sync-config.sh --apply"
             )
+    expected_cached = {
+        plugin.plugin
+        for plugin in managed_plugins
+        if plugin.enabled and plugin.marketplace == "openai-bundled" and plugin.scope in {"global", "repo"}
+    }
+    if cache_root.is_dir():
+        for cached_plugin in cache_root.iterdir():
+            if cached_plugin.name not in expected_cached:
+                fail(
+                    f"stale bundled plugin cache `{cached_plugin.name}` exists in {cache_root}. "
+                    "Re-run codex/scripts/sync-config.sh --apply"
+                )
 
 
 FEATURE_RENAMES = {

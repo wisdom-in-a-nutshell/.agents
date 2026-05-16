@@ -1,7 +1,7 @@
 ---
 registry_kind: managed
-plugin: "browser-use"
-plugin_id: "browser-use@openai-bundled"
+plugin: "browser"
+plugin_id: "browser@openai-bundled"
 marketplace: "openai-bundled"
 enabled: true
 scope: "global"

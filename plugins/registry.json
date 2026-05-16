@@ -5,7 +5,7 @@
   },
   "managed_plugins": [
     {
-      "plugin": "browser-use",
+      "plugin": "browser",
       "marketplace": "openai-bundled",
       "enabled": true,
       "scope": "global",

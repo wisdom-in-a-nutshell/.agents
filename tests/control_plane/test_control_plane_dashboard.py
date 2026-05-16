@@ -45,7 +45,7 @@ class ControlPlaneDashboardDataTests(TempDirTestCase):
                 "version": 1,
                 "managed_plugins": [
                     {
-                        "plugin": "browser-use",
+                        "plugin": "browser",
                         "marketplace": "openai-bundled",
                         "enabled": True,
                         "scope": "global",

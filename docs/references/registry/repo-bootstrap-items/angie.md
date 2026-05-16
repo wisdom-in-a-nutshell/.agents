@@ -10,12 +10,12 @@ reasoning: "high"
 service_tier: "fast"
 mcps: []
 global_plugins:
-  - "browser-use@openai-bundled"
+  - "browser@openai-bundled"
   - "chrome@openai-bundled"
   - "computer-use@openai-bundled"
 repo_plugins: []
 plugins:
-  - "browser-use@openai-bundled"
+  - "browser@openai-bundled"
   - "chrome@openai-bundled"
   - "computer-use@openai-bundled"
 global_skills:

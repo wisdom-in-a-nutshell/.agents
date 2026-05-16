@@ -10,13 +10,13 @@ reasoning: "high"
 service_tier: "-"
 mcps: []
 global_plugins:
-  - "browser-use@openai-bundled"
+  - "browser@openai-bundled"
   - "chrome@openai-bundled"
   - "computer-use@openai-bundled"
 repo_plugins:
   - "build-ios-apps@openai-curated"
 plugins:
-  - "browser-use@openai-bundled"
+  - "browser@openai-bundled"
   - "build-ios-apps@openai-curated"
   - "chrome@openai-bundled"
   - "computer-use@openai-bundled"
