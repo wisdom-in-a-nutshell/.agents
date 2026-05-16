@@ -17,7 +17,11 @@ flowchart TD
 
     C --> D["Normal conversation / work"]
 
+    D --> P["PreCompact<br/>best-effort hook"]
+    P --> Q["Record job + launch sidecar worker"]
+
     D --> F["Explicit consolidate-thread call"]
+    Q --> F
     F --> G["Sidecar forks source Codex thread"]
     G --> H["Sidecar updates memory<br/>memory/sessions/YYYY/MM/DD-HHMMSS.md"]
     G --> I["Sidecar thread archived"]
@@ -29,6 +33,9 @@ Short version:
 
 - **SessionStart is read/inject.** It gathers the current Dobby context and
   gives the agent enough memory to continue well.
+- **PreCompact is best-effort sidecar launch.** It starts the existing
+  `consolidate-thread` worker in the background and exits so live compaction can
+  proceed.
 - **SessionEnd is handoff-only.** It records shutdown metadata without launching
   a second consolidation sidecar.
 - **`memory/sessions` is the bridge.** End-of-session notes become part of the
@@ -101,12 +108,15 @@ Optional caller fields:
 - `--instruction <extra caller instruction>`
 - `--job <payload.json>` for existing hook job records
 
-PreCompact is intentionally not wired for Dobby workspaces right now. Memory
-consolidation is an explicit primitive until a separate caller policy is chosen.
+PreCompact records a small job under
+`tmp/dobby-lifecycle/pre-compact/jobs/`, starts `consolidate-thread` in the
+background, writes a run record under `tmp/dobby-lifecycle/pre-compact/runs/`,
+and prints nothing to stdout. It is fail-open: any hook or worker failure should
+not block Codex from compacting the live thread.
 
 SessionEnd writes a compact record under `tmp/hooks/session-end/` and exits
 successfully. It does not launch a consolidation sidecar because Codex continuity
-is handled only by explicit `consolidate-thread` calls.
+is handled by PreCompact and explicit `consolidate-thread` calls.
 
 Stored notes stay plain prose. Do not add templates/frontmatter. Durable
 decisions still get promoted to `now.md`, area canon, or `soul.md` as

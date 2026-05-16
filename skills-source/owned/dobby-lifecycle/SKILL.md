@@ -15,7 +15,7 @@ caller decides memory should be written.
 
 Use this skill for:
 
-- `SessionStart`, `UserPromptSubmit`, explicit `consolidate-thread`, and `SessionEnd` behavior. PreCompact is intentionally not part of the active Dobby lifecycle.
+- `SessionStart`, `UserPromptSubmit`, `PreCompact`, explicit `consolidate-thread`, and `SessionEnd` behavior.
 - Boot context assembly: shared `dobby-workspace` body map, `now.md`, recent sessions, Shelf snapshot, calendar snapshot, area manifest.
 - Codex App Server thread consolidation and forked sidecar turns.
 - Hook payload normalization, temporary hook records where active, worker logs, and lifecycle debugging.
@@ -41,6 +41,7 @@ Repo-local hook wrappers delegate to this skill’s scripts through the repo’s
 ```text
 scripts/hooks/session_start.py      -> scripts/hooks/session-start
 scripts/hooks/user_prompt_submit.py -> scripts/hooks/user-prompt-submit
+scripts/hooks/pre_compact.py        -> scripts/hooks/pre-compact
 scripts/hooks/session_end.py        -> scripts/hooks/session-end
 ```
 
@@ -49,6 +50,7 @@ The hook scripts live here:
 ```bash
 $HOME/.agents/skills-source/owned/dobby-lifecycle/scripts/hooks/session-start
 $HOME/.agents/skills-source/owned/dobby-lifecycle/scripts/hooks/user-prompt-submit
+$HOME/.agents/skills-source/owned/dobby-lifecycle/scripts/hooks/pre-compact
 $HOME/.agents/skills-source/owned/dobby-lifecycle/scripts/hooks/session-end
 $HOME/.agents/skills-source/owned/dobby-lifecycle/scripts/consolidate-thread
 ```
