@@ -7,6 +7,7 @@ const state = {
   loadError: null,
   loading: false,
   sidebarCollapsed: localStorage.getItem("agentControlSidebarCollapsed") === "true",
+  focusedRepoKey: "",
 };
 
 const els = {
@@ -159,6 +160,7 @@ function render() {
 
 function updateChrome() {
   const { counts, generated_at_utc: generatedAt } = state.data;
+  updateActiveNav();
   els.lastUpdated.textContent = `Updated ${formatDate(generatedAt)}`;
   els.refreshStatus.textContent = "Auto-refresh every 5m";
   els.navCountOverview.textContent = counts.items;
@@ -196,9 +198,9 @@ function metricsForSection(section) {
   }
   if (section === "skills") {
     return [
-      metric("Global", countItems(groups.skills, (item) => item.scope === "global")),
-      metric("Repo scoped", countItems(groups.skills, (item) => item.scope === "repo")),
-      metric("Repo local", countItems(groups.skills, (item) => item.scope === "repo-local")),
+      metric("Global", countItems(groups.skills, (item) => item.scope === "global"), "scope-global"),
+      metric("Repo scoped", countItems(groups.skills, (item) => item.scope === "repo"), "scope-local"),
+      metric("Repo local", countItems(groups.skills, (item) => item.scope === "repo-local"), "scope-local"),
       metric("Owned", countItems(groups.skills, (item) => item.details.origin === "owned")),
       metric("External", countItems(groups.skills, (item) => item.details.origin === "external")),
     ];
@@ -207,15 +209,15 @@ function metricsForSection(section) {
     return [
       metric("Enabled", countItems(groups.plugins, (item) => item.status === "enabled")),
       metric("Disabled", countItems(groups.plugins, (item) => item.status === "disabled"), "warning"),
-      metric("Global", countItems(groups.plugins, (item) => item.scope === "global")),
-      metric("Repo scoped", countItems(groups.plugins, (item) => item.scope === "repo")),
-      metric("Repo local", countItems(groups.plugins, (item) => item.scope === "repo-local")),
+      metric("Global", countItems(groups.plugins, (item) => item.scope === "global"), "scope-global"),
+      metric("Repo scoped", countItems(groups.plugins, (item) => item.scope === "repo"), "scope-local"),
+      metric("Repo local", countItems(groups.plugins, (item) => item.scope === "repo-local"), "scope-local"),
     ];
   }
   if (section === "mcp") {
     return [
-      metric("Global", countItems(groups.mcp, (item) => scopeHas(item, "global"))),
-      metric("Repo", countItems(groups.mcp, (item) => scopeHas(item, "repo"))),
+      metric("Global", countItems(groups.mcp, (item) => scopeHas(item, "global")), "scope-global"),
+      metric("Repo", countItems(groups.mcp, (item) => scopeHas(item, "repo")), "scope-local"),
       metric("Plugin", countItems(groups.mcp, (item) => scopeHas(item, "plugin"))),
       metric("Unassigned", countItems(groups.mcp, (item) => item.scope === "unassigned"), "warning"),
     ];
@@ -233,8 +235,8 @@ function metricsForSection(section) {
     return [
       metric("Enabled", countItems(groups.hooks, (item) => item.status === "enabled")),
       metric("Disabled", countItems(groups.hooks, (item) => item.status === "disabled"), "warning"),
-      metric("Global", countItems(groups.hooks, (item) => item.scope === "global")),
-      metric("Repo scoped", countItems(groups.hooks, (item) => item.scope === "repo")),
+      metric("Global", countItems(groups.hooks, (item) => item.scope === "global"), "scope-global"),
+      metric("Repo scoped", countItems(groups.hooks, (item) => item.scope === "repo"), "scope-local"),
     ];
   }
   return [
@@ -289,7 +291,10 @@ function renderFilters() {
     state.filter = "all";
   }
   visibleOptions.forEach((option) => {
-    const button = createElement("button", `filter-chip ${state.filter === option.id ? "active" : ""}`);
+    const button = createElement(
+      "button",
+      `filter-chip ${scopeToneForFilter(option.id)} ${state.filter === option.id ? "active" : ""}`,
+    );
     button.type = "button";
     button.dataset.filter = option.id;
     button.append(
@@ -302,6 +307,16 @@ function renderFilters() {
     });
     els.filterBar.append(button);
   });
+}
+
+function scopeToneForFilter(filter) {
+  if (filter === "global") {
+    return "scope-global";
+  }
+  if (["repo", "repo-scoped", "repo-local", "repo-skills", "repo-plugins", "repo-mcp", "custom"].includes(filter)) {
+    return "scope-local";
+  }
+  return "";
 }
 
 function countForFilter(section, filter) {
@@ -346,13 +361,13 @@ function renderOverview() {
       statLine("Plugins", enabledGlobalPlugins().length),
       statLine("Hooks", enabledGlobalHooks().length),
       statLine("MCP", globalMcp().length),
-    ]),
+    ], "scope-global"),
     overviewPanel("Repo-specific additions", [
       statLine("Repos with skills", countItems(state.data.groups.repos, (repo) => repoScopedSkillsForRepo(repo).length)),
       statLine("Repos with plugins", countItems(state.data.groups.repos, (repo) => repoScopedPluginsForRepo(repo).length)),
       statLine("Repos with MCP", countItems(state.data.groups.repos, (repo) => repoDirectMcpForRepo(repo).length)),
       statLine("Repo-local skills", countItems(state.data.groups.skills, (item) => item.scope === "repo-local")),
-    ]),
+    ], "scope-local"),
     overviewPanel("Attention", attentionLines()),
   );
   els.contentRegion.append(summary);
@@ -423,8 +438,8 @@ function attentionReasonBlock(item) {
   return createChipBlock(["Review"], "warning");
 }
 
-function overviewPanel(title, lines) {
-  const panel = createElement("section", "overview-panel");
+function overviewPanel(title, lines, tone = "") {
+  const panel = createElement("section", `overview-panel ${tone}`);
   panel.append(createElement("h2", "", title));
   const list = createElement("div", "stat-list");
   lines.forEach((line) => list.append(line));
@@ -440,15 +455,16 @@ function statLine(label, value) {
 
 function repoOverviewRow(repo) {
   const caps = repoCapabilitySummary(repo);
-  const row = createElement("article", "compact-row repo-overview-row");
+  const row = createElement("article", "compact-row repo-overview-row clickable-row");
   const main = createEntityMain(repo.name, repo.details.path || repo.name);
   const totals = createElement("div", "mini-totals");
   totals.append(
-    smallCount("Base", caps.baseTotal),
-    smallCount("Local", caps.localTotal),
-    smallCount("MCP", caps.directMcp.length),
+    smallCount("Base", caps.baseTotal, "scope-global"),
+    smallCount("Local", caps.localTotal, "scope-local"),
+    smallCount("MCP", caps.directMcp.length, "scope-local"),
   );
   row.append(main, totals);
+  wireRepoNavigation(row, repo.name);
   return row;
 }
 
@@ -467,6 +483,11 @@ function renderRepos() {
 function repoCard(repo) {
   const caps = repoCapabilitySummary(repo);
   const card = createElement("article", "repo-card");
+  card.dataset.repoKey = repoKey(repo.name);
+  card.tabIndex = -1;
+  if (state.focusedRepoKey && state.focusedRepoKey === repoKey(repo.name)) {
+    card.classList.add("repo-card-focused");
+  }
 
   const head = createElement("div", "repo-card-head");
   const title = createEntityMain(repo.name, repo.details.path || repo.name);
@@ -479,18 +500,18 @@ function repoCard(repo) {
 
   const base = createElement("div", "base-kit");
   base.append(
-    smallCount("Global skills", caps.globalSkills.length),
-    smallCount("Global plugins", caps.globalPlugins.length),
-    smallCount("Global hooks", caps.globalHooks.length),
-    smallCount("Global MCP", caps.globalMcp.length),
+    smallCount("Global skills", caps.globalSkills.length, "scope-global"),
+    smallCount("Global plugins", caps.globalPlugins.length, "scope-global"),
+    smallCount("Global hooks", caps.globalHooks.length, "scope-global"),
+    smallCount("Global MCP", caps.globalMcp.length, "scope-global"),
   );
 
   const grid = createElement("div", "capability-grid");
   grid.append(
-    capabilityBlock("Repo skills", caps.repoSkills, "skill", "Base only"),
-    capabilityBlock("Repo plugins", caps.repoPlugins, "plugin", "None"),
-    capabilityBlock("MCP", caps.directMcp, "mcp", "None"),
-    capabilityBlock("Repo hooks", caps.repoHooks, "hook", "Global only"),
+    capabilityBlock("Repo skills", caps.repoSkills, "skill", "Base only", "scope-local"),
+    capabilityBlock("Repo plugins", caps.repoPlugins, "plugin", "None", "scope-local"),
+    capabilityBlock("MCP", caps.directMcp, "mcp", "None", "scope-local"),
+    capabilityBlock("Repo hooks", caps.repoHooks, "hook", "Global only", "scope-local"),
   );
 
   card.append(head, base, grid);
@@ -613,7 +634,7 @@ function createEntityMain(title, subtitle) {
 function availabilityBlock(item) {
   const wrap = createElement("div", "availability-block");
   if (item.scope === "global") {
-    wrap.append(createChip("All repos", item.kind));
+    wrap.append(createChip("All repos", item.kind, "scope-global"));
     return wrap;
   }
   if (item.status === "dormant" || item.scope === "dormant") {
@@ -625,16 +646,16 @@ function availabilityBlock(item) {
     wrap.append(createElement("span", "muted", "No repo assignment"));
     return wrap;
   }
-  appendChips(wrap, repos.map(repoDisplayName), item.kind);
+  appendRepoChips(wrap, repos, item.kind, scopeToneForItem(item));
   return wrap;
 }
 
 function mcpAvailabilityBlock(item) {
   const wrap = createElement("div", "availability-block");
   if (scopeHas(item, "global")) {
-    wrap.append(createChip("Global", "mcp"));
+    wrap.append(createChip("Global", "mcp", "scope-global"));
   }
-  appendChips(wrap, cleanArray(item.repos).map(repoDisplayName), "repo");
+  appendRepoChips(wrap, cleanArray(item.repos), "repo", "scope-local");
   appendChips(wrap, cleanArray(item.details.plugins).map((plugin) => `Plugin: ${plugin}`), "plugin");
   if (!wrap.childElementCount) {
     wrap.append(createChip("Unassigned", "warning"));
@@ -669,13 +690,13 @@ function sourceLabel(item) {
   return item.kind === "skill" && item.details.source_path ? "SKILL.md" : "Registry";
 }
 
-function capabilityBlock(title, items, tone, emptyText) {
-  const block = createElement("section", "capability-block");
+function capabilityBlock(title, items, tone, emptyText, scopeTone = "") {
+  const block = createElement("section", `capability-block ${scopeTone}`);
   const heading = createElement("div", "capability-heading");
   heading.append(createElement("h3", "", title), createElement("strong", "", String(items.length)));
   const chips = createElement("div", "chip-list");
   if (items.length) {
-    appendChips(chips, items.map((item) => item.title || item.name), tone);
+    appendChips(chips, items.map((item) => item.title || item.name), tone, scopeTone);
   } else {
     chips.append(createElement("span", "muted", emptyText));
   }
@@ -683,8 +704,8 @@ function capabilityBlock(title, items, tone, emptyText) {
   return block;
 }
 
-function smallCount(label, value) {
-  const item = createElement("span", "small-count");
+function smallCount(label, value, tone = "") {
+  const item = createElement("span", `small-count ${tone}`);
   item.append(createElement("span", "", label), createElement("strong", "", String(value)));
   return item;
 }
@@ -693,12 +714,37 @@ function runtimePill(text) {
   return createElement("span", "runtime-pill", text);
 }
 
-function createChip(text, tone = "") {
-  return createElement("span", `chip ${tone}`, text);
+function createRepoChip(repo, tone = "", scopeTone = "") {
+  const button = createElement("button", `chip repo-link ${tone} ${scopeTone}`, repoDisplayName(repo));
+  button.type = "button";
+  button.title = `Show ${repoDisplayName(repo)} in Repos`;
+  button.addEventListener("click", (event) => {
+    event.stopPropagation();
+    navigateToRepo(repo);
+  });
+  return button;
 }
 
-function appendChips(parent, values, tone) {
-  values.forEach((value) => parent.append(createChip(value, tone)));
+function createChip(text, tone = "", scopeTone = "") {
+  return createElement("span", `chip ${tone} ${scopeTone}`, text);
+}
+
+function appendRepoChips(parent, repos, tone, scopeTone = "") {
+  repos.forEach((repo) => parent.append(createRepoChip(repo, tone, scopeTone)));
+}
+
+function appendChips(parent, values, tone, scopeTone = "") {
+  values.forEach((value) => parent.append(createChip(value, tone, scopeTone)));
+}
+
+function scopeToneForItem(item) {
+  if (item.scope === "global" || item.details.global === true || scopeHas(item, "global")) {
+    return "scope-global";
+  }
+  if (item.scope === "repo" || item.scope === "repo-local" || scopeHas(item, "repo")) {
+    return "scope-local";
+  }
+  return "";
 }
 
 function filteredItems(groupName) {
@@ -966,6 +1012,39 @@ function repoDisplayName(value) {
   return key || String(value);
 }
 
+function navigateToRepo(repo) {
+  const key = repoKey(repo);
+  state.section = "repos";
+  state.filter = "all";
+  state.focusedRepoKey = key;
+  els.searchInput.value = repoDisplayName(repo);
+  render();
+  requestAnimationFrame(() => {
+    const card = repoCardByKey(key);
+    if (card) {
+      card.scrollIntoView({ behavior: "smooth", block: "center" });
+      card.focus({ preventScroll: true });
+    }
+  });
+}
+
+function repoCardByKey(key) {
+  return Array.from(document.querySelectorAll("[data-repo-key]")).find((card) => card.dataset.repoKey === key) || null;
+}
+
+function wireRepoNavigation(node, repo) {
+  node.setAttribute("role", "button");
+  node.tabIndex = 0;
+  node.title = `Show ${repoDisplayName(repo)} in Repos`;
+  node.addEventListener("click", () => navigateToRepo(repo));
+  node.addEventListener("keydown", (event) => {
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      navigateToRepo(repo);
+    }
+  });
+}
+
 function scopeHas(item, scope) {
   return String(item.scope || "")
     .split("+")
@@ -1043,13 +1122,18 @@ function createElement(tag, className = "", text = "") {
 
 document.querySelectorAll(".nav-button").forEach((button) => {
   button.addEventListener("click", () => {
-    document.querySelectorAll(".nav-button").forEach((item) => item.classList.remove("active"));
-    button.classList.add("active");
     state.section = button.dataset.section;
     state.filter = "all";
+    state.focusedRepoKey = "";
     render();
   });
 });
+
+function updateActiveNav() {
+  document.querySelectorAll(".nav-button").forEach((button) => {
+    button.classList.toggle("active", button.dataset.section === state.section);
+  });
+}
 
 function applySidebarState() {
   document.body.classList.toggle("sidebar-collapsed", state.sidebarCollapsed);
