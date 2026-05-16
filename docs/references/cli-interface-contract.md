@@ -60,7 +60,6 @@ Examples:
 - `scripts/sync-skills-registry.sh`
 - `scripts/sync-plugins-registry.sh`
 - `codex/scripts/bootstrap-machine-codex.sh`
-- `claude/scripts/bootstrap-machine-claude.sh`
 
 These scripts are automation surfaces, but they are not required to expose the full JSON contract unless they become productized agent-facing clients or another command needs to consume their detailed output.
 

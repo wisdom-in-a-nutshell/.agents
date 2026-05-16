@@ -19,7 +19,7 @@ dependencies:
       value: "github"
       description: "GitHub MCP server"
       transport: "streamable_http"
-      url: "https://api.githubcopilot.com/mcp/"
+      url: "https://example.com/mcp/"
 ```
 
 ## Field descriptions and constraints

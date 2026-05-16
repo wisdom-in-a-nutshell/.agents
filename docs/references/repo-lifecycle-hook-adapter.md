@@ -1,13 +1,13 @@
 # Repo Lifecycle Hook Adapter
 
-Use this page when adding repo-specific behavior to agent lifecycle hooks.
+Use this page when adding repo-specific behavior to Codex lifecycle hooks.
 
-The shared `.agents` control plane owns runtime integration and dispatch. Each
+The shared `.agents` control plane owns Codex integration and dispatch. Each
 repository owns what it wants to do when a lifecycle event arrives.
 
 ```mermaid
 flowchart TD
-    A[Codex / Claude / Copilot] --> B[shared .agents hook dispatcher]
+    A[Codex] --> B[shared .agents hook dispatcher]
     B --> C[hooks/scripts/hook_runtime.py]
     C --> D[normalized JSON adapter payload]
     D --> E{repo hook exists?}
@@ -29,7 +29,7 @@ flowchart TD
 Put repo policy in the repo. Keep the shared control plane boring.
 
 - Shared `.agents` layer:
-  - receives runtime-specific hook payloads
+  - receives Codex hook payloads
   - runs event-specific entrypoints such as `session_start.py`
   - keeps common dispatch plumbing in `hooks/scripts/hook_runtime.py`
   - resolves the Git repo root
@@ -65,39 +65,36 @@ All repo lifecycle hooks are Python. Do not add shell compatibility shims.
 
 `SessionStart`
 
-- Runs when a supported client starts or resumes a session.
-- Codex and Claude can receive stdout as startup context.
-- Copilot JSON hooks currently ignore startup stdout.
+- Runs when Codex starts or resumes a session.
+- Stdout can become startup context.
 - Good for loading compact repo-local orientation.
 
 `UserPromptSubmit`
 
 - Runs before a user prompt is processed.
-- Codex and Claude can receive stdout as additional prompt context.
-- Copilot JSON hooks currently ignore prompt-submit stdout.
+- Stdout can become additional prompt context.
 - Good for very small, current-time or current-state context.
 
 `PreCompact`
 
-- Runs before Codex or Claude compacts a session, where supported.
+- Runs before Codex compacts a session, where supported.
 - Good for last-chance preservation or guardrails before context is compressed.
 - Repo stdout is passed through raw; emit only valid runtime hook JSON or nothing.
 - Keep it fast. Enqueue slow consolidation instead of doing it inline.
 
 `PostCompact`
 
-- Runs after Codex or Claude compacts a session, where supported.
+- Runs after Codex compacts a session, where supported.
 - Good for observing compaction or enqueueing follow-up consolidation.
 - Repo stdout is passed through raw; emit only valid runtime hook JSON or nothing.
 - Keep it fast. Enqueue slow consolidation instead of doing it inline.
 
 `SessionEnd`
 
-- Runs for Claude and Copilot where supported.
-- Codex does not currently expose a separate documented `SessionEnd` hook.
+- Rendered for Codex-managed repos when assigned in the shared registry.
 - Stdout is logged, not injected into context, because the session is ending.
 - Good for enqueueing cleanup, summary, or memory jobs.
-- Keep it fast. Do not do slow LLM summarization inline.
+- Keep it fast. Do not do slow summarization inline.
 
 `Stop`
 
@@ -108,17 +105,14 @@ All repo lifecycle hooks are Python. Do not add shell compatibility shims.
 
 ## Payload Contract
 
-Repo hooks receive one JSON object on stdin.
-
-The shape is intentionally stable across Codex, Claude, Copilot JSON hooks, and
-Copilot SDK adapters. Runtime-specific details are preserved under
-`raw_payload`.
+Repo hooks receive one JSON object on stdin. Runtime-specific details are
+preserved under `raw_payload`.
 
 ```json
 {
   "schema_version": "1.0",
   "hook_event_name": "SessionEnd",
-  "runtime": "claude",
+  "runtime": "codex",
   "cwd": "/Users/dobby/GitHub/example/services/api",
   "repo_root": "/Users/dobby/GitHub/example",
   "session_id": "optional",
@@ -142,11 +136,11 @@ Important fields:
 - `schema_version`: current adapter contract version. Today this is `1.0`.
 - `hook_event_name`: `SessionStart`, `UserPromptSubmit`, `PreCompact`,
   `PostCompact`, or `SessionEnd`.
-- `runtime`: `codex`, `claude`, or `copilot`.
-- `cwd`: where the client session was running.
+- `runtime`: `codex`.
+- `cwd`: where the Codex session was running.
 - `repo_root`: resolved Git top-level directory.
-- `session_id`: present when the runtime or adapter provides one.
-- `transcript_path`: present when a runtime or adapter exposes a transcript file.
+- `session_id`: present when Codex provides one.
+- `transcript_path`: present when Codex exposes a transcript file.
 - `transcript_format`: format label for `transcript_path`.
 - `raw_payload`: original runtime-specific input.
 
@@ -159,7 +153,7 @@ Repo hooks also receive:
 
 ```text
 AGENT_HOOK_EVENT=SessionStart | UserPromptSubmit | PreCompact | PostCompact | SessionEnd
-AGENT_HOOK_RUNTIME=codex | claude | copilot
+AGENT_HOOK_RUNTIME=codex
 AGENT_REPO_ROOT=/absolute/repo/root
 AGENT_HOOK_SCHEMA_VERSION=1.0
 ```
@@ -221,8 +215,7 @@ if __name__ == "__main__":
 ```
 
 For `session_start.py` and `user_prompt_submit.py`, stdout may become model
-context for Codex and Claude. Print only concise context that should be shown to
-the agent.
+context for Codex. Print only concise context that should be shown to the agent.
 
 For `pre_compact.py` and `post_compact.py`, stdout is passed through raw to the
 runtime. Print nothing unless you intentionally want to return a valid hook JSON
@@ -263,44 +256,13 @@ SessionStart injects the useful compact summary
 The same principle applies to `PreCompact` and `PostCompact`: use them to
 capture pointers or enqueue work, not to run slow summarization inline.
 
-## Runtime Notes
-
-Claude:
-
-- Native `SessionEnd` can provide `transcript_path`.
-- Use that path instead of trying to reconstruct the conversation.
-- `PreCompact` and `PostCompact` are rendered by this control plane for managed
-  repos that opt into the shared compact hooks.
-
-Copilot JSON hooks:
-
-- Repo-local `.github/hooks/agent-control-plane.json` is rendered from the
-  shared registry.
-- Local Copilot CLI can run those hooks on this machine.
-- GitHub cloud agent no-ops when `~/.agents` is absent.
-- Transcript fields may be absent.
-
-Copilot SDK adapters:
-
-- SDK wrappers that own the session loop should emit the same normalized payload.
-- If they persist or can locate a transcript, they should pass `transcript_path`
-  and `transcript_format`.
-- Codexclaw's mobile gateway uses this pattern for its Copilot SDK bridge.
-
-Codex:
-
-- `SessionStart`, `UserPromptSubmit`, `PreCompact`, and `PostCompact` are
-  supported by this control plane.
-- A separate `SessionEnd` is not rendered for Codex today.
-- Use `Stop` for turn-end commit/check automation.
-
 ## Local Smoke Tests
 
 Run a repo hook directly:
 
 ```bash
 cd /path/to/repo
-printf '{"schema_version":"1.0","hook_event_name":"SessionStart","runtime":"claude","cwd":"%s","repo_root":"%s","raw_payload":{}}' "$PWD" "$PWD" \
+printf '{"schema_version":"1.0","hook_event_name":"SessionStart","runtime":"codex","cwd":"%s","repo_root":"%s","raw_payload":{}}' "$PWD" "$PWD" \
   | python3 scripts/hooks/session_start.py
 ```
 
@@ -309,7 +271,7 @@ Run through the shared dispatcher:
 ```bash
 cd /path/to/repo
 printf '{"hook_event_name":"SessionStart","cwd":"%s","session_id":"test-session","source":"startup"}' "$PWD" \
-  | python3 ~/.agents/hooks/scripts/session_start.py --runtime claude
+  | python3 ~/.agents/hooks/scripts/session_start.py --runtime codex
 ```
 
 For `SessionEnd`:
@@ -317,7 +279,7 @@ For `SessionEnd`:
 ```bash
 cd /path/to/repo
 printf '{"hook_event_name":"SessionEnd","cwd":"%s","session_id":"test-session","reason":"other"}' "$PWD" \
-  | python3 ~/.agents/hooks/scripts/session_end.py --runtime claude
+  | python3 ~/.agents/hooks/scripts/session_end.py --runtime codex
 ```
 
 For compaction:
@@ -327,14 +289,13 @@ cd /path/to/repo
 printf '{"hook_event_name":"PreCompact","cwd":"%s","session_id":"test-session"}' "$PWD" \
   | python3 ~/.agents/hooks/scripts/pre_compact.py --runtime codex
 printf '{"hook_event_name":"PostCompact","cwd":"%s","session_id":"test-session"}' "$PWD" \
-  | python3 ~/.agents/hooks/scripts/post_compact.py --runtime claude
+  | python3 ~/.agents/hooks/scripts/post_compact.py --runtime codex
 ```
 
 Expected behavior:
 
 - Missing repo hook: exits `0`, no output.
-- `SessionStart` / `UserPromptSubmit`: stdout may be wrapped and forwarded for
-  Codex or Claude.
+- `SessionStart` / `UserPromptSubmit`: stdout may be wrapped and forwarded for Codex.
 - `PreCompact` / `PostCompact`: stdout passes through raw to the runtime.
 - `SessionEnd`: stdout goes to
   `~/.local/state/agents-control-plane/log/hooks-session-end.log`.
@@ -377,11 +338,7 @@ Use this when asking another agent to add repo-specific hook behavior:
 Use ~/.agents/docs/references/repo-lifecycle-hook-adapter.md.
 
 Add repo-specific lifecycle behavior only under scripts/hooks/*.py.
-Do not edit rendered .github/hooks/agent-control-plane.json.
-Read the normalized JSON payload from stdin.
-Prefer top-level fields over raw_payload.
-Keep the hook non-interactive, fast, deterministic, and Python-only.
-For PreCompact, PostCompact, and SessionEnd, enqueue slow summary/memory work
-instead of doing it inline.
-Run the repo's fast check before finishing.
+Do not edit rendered .codex/hooks.json.
+Keep the hook fast and non-interactive.
+Run the control-plane tests before handing back.
 ```

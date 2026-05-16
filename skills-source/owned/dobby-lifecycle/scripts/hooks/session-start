@@ -16,16 +16,8 @@ snapshots go through the `dobby-calendar` skill CLI because EventKit is a
 non-trivial integration and is worth the CLI contract.
 
 The user's durable identity lives in `soul.md`. It is normally loaded as
-the system prompt by:
-  - codex: via `model_instructions_file` in `.codex/config.toml`
-  - claude (terminal): via the `.claude/bin/claude` wrapper, which uses
-    `--system-prompt-file` and exports `DOBBY_SOUL_ALREADY_LOADED=1` so
-    the hook knows to skip re-emission
-
-For Claude clients without a system-prompt mechanism (e.g. the desktop
-app), the hook emits soul.md as additional context so the identity is
-still loaded. Other runtimes (codex, copilot, future clients) skip
-emission — they either have their own mechanism or are unverified.
+the Codex system prompt through `model_instructions_file` in `.codex/config.toml`,
+so this hook does not emit `soul.md`.
 
 Workspace-agnostic: resolves the active workspace via `AGENT_REPO_ROOT`,
 `DOBBY_REPO_ROOT`, or `git rev-parse --show-toplevel`, in that order.
@@ -421,22 +413,8 @@ def print_recent_sessions(notes: list[dict]) -> None:
         print(str(note["content"]).strip())
 
 
-def should_emit_soul() -> bool:
-    """Emit soul.md as additional context only for Claude clients that have
-    no system-prompt mechanism (e.g. the desktop app). Skip for any other
-    runtime, and skip when `DOBBY_SOUL_ALREADY_LOADED=1` indicates the
-    terminal wrapper has loaded soul.md as the system prompt.
-    """
-    if os.environ.get("AGENT_HOOK_RUNTIME") != "claude":
-        return False
-    if os.environ.get("DOBBY_SOUL_ALREADY_LOADED") == "1":
-        return False
-    return True
-
-
 def print_soul() -> None:
-    if not should_emit_soul():
-        return
+    return
     content = read_memory_file(REPO_ROOT / "soul.md").strip()
     if not content:
         return
@@ -507,7 +485,7 @@ def main() -> int:
     print(f"areas:        {areas_count} files")
 
     # --- Sections ------------------------------------------------------------
-    # soul is emitted only for Claude clients without a system-prompt mechanism.
+    # soul.md is loaded by Codex through model_instructions_file.
     print_soul()
     print_workspace_body_map()
 

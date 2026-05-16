@@ -4,7 +4,7 @@ Canonical shared MCP preset definitions live here.
 
 ## Purpose
 
-- Keep one neutral MCP registry that both Codex and Claude can render from.
+- Keep one neutral MCP registry that Codex renders from.
 - Keep repo assignment separate from MCP definition.
 - Keep machine-wide default MCP enablement explicit.
 
@@ -16,6 +16,6 @@ Canonical shared MCP preset definitions live here.
 
 ## Rules
 
-- Use a neutral schema here; do not store runtime-specific `claude` or `codex` blocks.
+- Use a neutral schema here; do not store runtime-specific blocks.
 - Repo assignment belongs in `codex/config/repo-bootstrap.json`, not here.
 - Renderers may translate `transport` into runtime-specific output shapes.

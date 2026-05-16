@@ -6,7 +6,6 @@
       "event": "SessionStart",
       "id": "repo-session-start",
       "matchers": {
-        "claude": "startup|resume|clear|compact",
         "codex": "startup|resume|clear"
       },
       "repos": [
@@ -14,9 +13,7 @@
         "angie"
       ],
       "runtimes": [
-        "codex",
-        "claude",
-        "copilot"
+        "codex"
       ],
       "scope": "repo",
       "timeout": 5
@@ -31,9 +28,7 @@
         "angie"
       ],
       "runtimes": [
-        "codex",
-        "claude",
-        "copilot"
+        "codex"
       ],
       "scope": "repo",
       "timeout": 5
@@ -48,8 +43,7 @@
         "angie"
       ],
       "runtimes": [
-        "codex",
-        "claude"
+        "codex"
       ],
       "scope": "repo",
       "timeout": 5
@@ -60,24 +54,9 @@
       "event": "Stop",
       "id": "global-stop",
       "runtimes": [
-        "codex",
-        "claude"
+        "codex"
       ],
       "scope": "global",
-      "timeout": 900
-    },
-    {
-      "command": "python3 ~/.agents/hooks/scripts/stop.py --runtime {runtime}",
-      "enabled": true,
-      "event": "Stop",
-      "id": "repo-stop-copilot",
-      "repos": [
-        "*"
-      ],
-      "runtimes": [
-        "copilot"
-      ],
-      "scope": "repo",
       "timeout": 900
     },
     {
@@ -85,17 +64,12 @@
       "enabled": true,
       "event": "SessionEnd",
       "id": "repo-session-end",
-      "matchers": {
-        "claude": "clear|resume|logout|prompt_input_exit|bypass_permissions_disabled|other"
-      },
       "repos": [
         "adi",
         "angie"
       ],
       "runtimes": [
-        "codex",
-        "claude",
-        "copilot"
+        "codex"
       ],
       "scope": "repo",
       "timeout": 5

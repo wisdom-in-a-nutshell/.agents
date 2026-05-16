@@ -65,8 +65,8 @@ Treat the GPT workflow as:
 - The fast GPT path (`gpt-5.4-mini`) when selected.
 
 Do not judge the GPT path only by completed rows whose final model is
-`gpt-chat-latest`; players can explicitly choose the fast GPT option. Gemini,
-Claude, and unsupported GPT paths are intentionally removed from the product;
+`gpt-chat-latest`; players can explicitly choose the fast GPT option. Non-GPT
+and unsupported GPT paths are intentionally removed from the product;
 do not optimize, compare, or route live games through them.
 
 ## Cost And Speed Bias
@@ -74,7 +74,7 @@ do not optimize, compare, or route live games through them.
 Focus optimization only on the GPT default path unless the user redirects:
 
 - Keep `gpt-chat-latest` cheap and fast for ordinary turns.
-- Do not reintroduce Gemini, Claude, or unsupported GPT paths while
+- Do not reintroduce non-GPT or unsupported GPT paths while
   hill-climbing.
 - Watch average model latency, route latency, total tokens, reasoning tokens,
   cached tokens, and cache read rate.

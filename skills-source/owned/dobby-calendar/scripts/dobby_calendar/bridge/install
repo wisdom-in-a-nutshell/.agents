@@ -19,7 +19,7 @@ Build/install the native Dobby Calendar Bridge helper app.
 
 The bridge is a per-user LaunchAgent/socket EventKit helper with a stable macOS
 bundle identity (io.adithyan.dobby.calendar-bridge). Dobby's calendar CLI can
-call it from Codex.app, Claude, Terminal, or other local agents without
+call it from Codex.app, Terminal, or other local agents without
 inheriting the caller app's Calendar permission state.
 
 Options:

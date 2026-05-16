@@ -22,9 +22,7 @@ flowchart TD
     F --> G["Background finalizer<br/>forks source Codex thread"]
     G --> H["Finalizer writes note<br/>memory/sessions/YYYY/MM/DD-HHMMSS.md"]
 
-    E -->|SessionEnd non-Codex| I["Write small job<br/>tmp/hooks/session-memory"]
-    I --> J["Legacy transcript worker"]
-    J --> H
+    E -->|Codex SessionEnd| I["Write handoff record<br/>tmp/hooks/session-end"]
 
     H --> K["Next SessionStart loads recent notes<br/>so continuity comes back"]
 ```
@@ -33,8 +31,10 @@ Short version:
 
 - **SessionStart is read/inject.** It gathers the current Dobby context and
   gives the agent enough memory to continue well.
-- **PostCompact / SessionEnd are write-back.** They preserve what would be lost
-  by writing a compact session note under `memory/sessions/...`.
+- **PostCompact is write-back.** It preserves what would be lost by writing a
+  compact session note under `memory/sessions/...`.
+- **SessionEnd is handoff-only.** It records shutdown metadata without launching
+  a second finalizer.
 - **`memory/sessions` is the bridge.** End-of-session notes become part of the
   next boot context.
 - **`memory/now.md`, area files, and `soul.md` are promotion targets only.**
@@ -71,35 +71,71 @@ Operational limits:
 Session continuity lives in `memory/sessions/YYYY/MM/DD-HHMMSS.md`, not in
 `memory/now.md`.
 
+## Consolidate-thread primitive
+
+`scripts/hooks/consolidate-thread` is the reusable memory-consolidation
+primitive.
+
+It takes a source Codex/App Server thread, forks it into a sidecar thread, runs
+a memory-consolidation prompt inside that sidecar, and lets the forked Dobby
+agent update workspace memory directly.
+
+It is intentionally policy-free:
+
+- it does not compact the source thread
+- it does not archive or delete the source thread
+- it does not decide when cleanup should happen
+- it does not use transcript summarization
+- it may write `memory/sessions/...` and may promote durable facts according to
+  the shared `dobby-workspace` body map
+
+Supported direct invocation shape:
+
+```bash
+$HOME/.agents/skills-source/owned/dobby-lifecycle/scripts/hooks/consolidate-thread \
+  --workspace-root /Users/dobby/GitHub/adi \
+  --thread-id <codex-thread-id>
+```
+
+Optional caller fields:
+
+- `--source-turn-id <turn-id>`
+- `--source-label <manual|post-compact|codexclaw-end-chat|...>`
+- `--note-path <absolute-or-workspace-relative-path>`
+- `--instruction <extra caller instruction>`
+- `--job <payload.json>` for existing hook job records
+
+`codex-finalize-session` is now only a compatibility wrapper around
+`consolidate-thread` so current PostCompact wiring keeps working until callers
+are rewired deliberately.
+
 PreCompact is intentionally not enabled for Dobby workspaces. For Codex runtimes, continuity finalization is owned by PostCompact. The
 PostCompact hook records a small job under `tmp/hooks/post-compact/` and starts
-`scripts/hooks/codex-finalize-session` in the background. That worker starts a
-local `codex app-server`, forks the source thread, injects a finalization prompt
-that points to the shared `dobby-workspace` body map, and lets the forked agent
-write directly to `memory/sessions/...`. The worker starts its forked app-server
-without special lifecycle environment flags for now. The Stop hook is
+`scripts/hooks/codex-finalize-session` in the background. That compatibility
+wrapper delegates to `scripts/hooks/consolidate-thread`, which starts a local
+`codex app-server`, forks the source thread, injects a memory-consolidation
+prompt that points to the shared `dobby-workspace` body map, and lets the forked
+agent write directly to workspace memory. The worker starts its forked
+app-server without special lifecycle environment flags for now. The Stop hook is
 intentionally not disabled, so memory notes written by the sidecar can still be
 committed by normal repo automation.
 
 `DOBBY_CODEX_FINALIZER_DISABLED=1` remains a manual kill switch to prevent hooks
 from launching Codex finalizer workers during debugging.
 
-For non-Codex runtimes, `scripts/hooks/write-session-note` is the legacy
-transcript path. It renders the transcript when the runtime provides
-`transcript_path`, passes it to a note-generation placeholder, and writes one
-new note when a generator returns text.
+SessionEnd writes a compact record under `tmp/hooks/session-end/` and exits
+successfully. It does not launch a finalizer because Codex continuity is handled
+by PostCompact.
 
-Neither worker blocks session shutdown. If finalization fails, the worker logs
-to stderr/`tmp/hooks/session-finalizer/worker.log` for Codex or
-`tmp/hooks/session-memory/worker.log` for the legacy worker and exits `0`.
+The PostCompact worker does not block session shutdown. If finalization fails,
+the worker logs to stderr/`tmp/hooks/session-finalizer/worker.log` and exits `0`.
 
 Stored notes stay plain prose. Do not add templates/frontmatter. Durable
 decisions still get promoted to `now.md`, area canon, or `soul.md` as
 appropriate.
 
-For smoke tests of the legacy worker only, `DOBBY_SESSION_MEMORY_FAKE_NOTE` or
-`--fake-note` can supply the note body. To temporarily prevent the Codex worker
-from launching from hooks, set `DOBBY_CODEX_FINALIZER_DISABLED=1`.
+To temporarily prevent the Codex worker from launching from hooks, set
+`DOBBY_CODEX_FINALIZER_DISABLED=1`.
 
 ## Post-compaction hook
 
@@ -108,9 +144,11 @@ skill-bundled `scripts/hooks/post-compact`. For Codex runtimes, this is the
 simple sidecar design:
 
 1. PostCompact writes one compact job record under `tmp/hooks/post-compact/`.
-2. It starts `codex-finalize-session` in the background.
+2. It starts `codex-finalize-session` in the background, currently a wrapper
+   around `consolidate-thread`.
 3. The sidecar forks the source Codex thread.
-4. The sidecar writes one concise session note under `memory/sessions/...`.
+4. The sidecar consolidates useful memory into `memory/sessions/...` and, when
+   clearly warranted, the relevant promoted memory file.
 5. Stop still runs normally and commits any resulting memory note.
 
 Canonical IDs for PostCompact:

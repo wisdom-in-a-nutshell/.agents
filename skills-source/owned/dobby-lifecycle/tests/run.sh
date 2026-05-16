@@ -7,8 +7,7 @@ python3 -m py_compile \
   "$SKILL_DIR/scripts/hooks/user-prompt-submit" \
   "$SKILL_DIR/scripts/hooks/post-compact" \
   "$SKILL_DIR/scripts/hooks/session-end" \
-  "$SKILL_DIR/scripts/hooks/codex-finalize-session" \
-  "$SKILL_DIR/scripts/hooks/write-session-note"
+  "$SKILL_DIR/scripts/hooks/codex-finalize-session"
 
 tmp_root="$(mktemp -d)"
 trap 'rm -rf "$tmp_root"' EXIT

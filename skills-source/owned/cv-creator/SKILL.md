@@ -74,7 +74,7 @@ JSON is the default contract. Use `--plain` only for quick operator inspection. 
 - Keep cover letters alongside the tailored resume for the same company.
 - If the user has only raw notes, normalize them into `profile.md` before heavy tailoring.
 - Never invent experience, skills, tools, certifications, customers, or outcomes.
-- **Competitor awareness**: before compiling, audit the `.tex` files for prominent references to the target company's direct rivals. Do not send a resume that reads as a love letter to the target's competitor. See the repo-local `<career-root>/tailoring-guide.md` "Competitor awareness" section for the current competitor map, rewrite strategies, and audit checklist. Reframe product-level name-drops (Codex, Claude, ChatGPT) into category-level language (agent harness, coding agent, LLM application engineering) when the target is a rival's rival.
+- **Competitor awareness**: before compiling, audit the `.tex` files for prominent references to the target company's direct rivals. Do not send a resume that reads as a love letter to the target's competitor. See the repo-local `<career-root>/tailoring-guide.md` "Competitor awareness" section for the current competitor map, rewrite strategies, and audit checklist. Reframe product-level name-drops into category-level language (agent harness, coding agent, LLM application engineering) when the target is a rival's rival.
 
 For the full structural and formatting rules, read `references/template-patterns.md`.
 
@@ -116,8 +116,8 @@ When multiple tailored packs are ready for submission, run a cross-pack audit be
 1. **Wrong company name**: does each file reference only its own target company? A Cresta cover letter must not say "Synthesia."
 2. **Competitor name-drops in prose**: grep for product-level rival names. Flag any occurrence NOT inside a literal quoted blog title or URL slug. The competitor map lives in `<career-root>/tailoring-guide.md` "Competitor awareness" section. The examples below are AI-market defaults; extend or replace them for non-AI career tracks:
    - Applying to Anthropic: no OpenAI, Codex, ChatGPT, GPT-4, GPT-5
-   - Applying to OpenAI: no Anthropic, Claude
-   - Applying to Mistral/Cohere/HuggingFace: no Claude, GPT, ChatGPT
+   - Applying to OpenAI: no Anthropic product names
+   - Applying to Mistral/Cohere/HuggingFace: no rival assistant or GPT product names
    - Applying to Cognition/Poolside/Cursor: no other coding-agent product names
    - Applying to Synthesia: no HeyGen, D-ID, Runway, Pika
    - Applying to Speechmatics: no Deepgram, AssemblyAI, Whisper
@@ -135,7 +135,7 @@ When multiple tailored packs are ready for submission, run a cross-pack audit be
 ```bash
 # Competitor names (adjust per target)
 CAREER_ROOT=memory/areas/career  # or memory/areas/builder/career
-grep -rn "Codex\|Claude\|ChatGPT\|GPT-4\|GPT-5\|OpenAI\|Anthropic\|Cursor\|Devin\|Windsurf\|Poolside\|Deepgram\|Speechmatics\|AssemblyAI\|Whisper" "$CAREER_ROOT"/cv/latex/tailored/*/resume.tex "$CAREER_ROOT"/cv/latex/tailored/*/cover-letter.tex
+grep -rn "Codex\|ChatGPT\|GPT-4\|GPT-5\|OpenAI\|Anthropic\|Cursor\|Devin\|Windsurf\|Poolside\|Deepgram\|Speechmatics\|AssemblyAI\|Whisper" "$CAREER_ROOT"/cv/latex/tailored/*/resume.tex "$CAREER_ROOT"/cv/latex/tailored/*/cover-letter.tex
 
 # Em-dashes
 grep -rn "textemdash\|—\|–" "$CAREER_ROOT"/cv/latex/tailored/*/resume.tex "$CAREER_ROOT"/cv/latex/tailored/*/cover-letter.tex | grep -v "^%"
@@ -177,9 +177,9 @@ Ignore generated PDFs and LaTeX build artifacts via `<career-root>/cv/latex/.git
 
 ## Submitting applications via browser
 
-When the user asks you to actually submit a compiled CV to a web form, do NOT reach for the Claude-in-Chrome `file_upload` tool. It is broken as of 2026-04-15 (CDP error `-32000 "Not allowed"` on all origins, tracked as [anthropics/claude-code#32561](https://github.com/anthropics/claude-code/issues/32561)). Attempting it wastes time and blocks the rest of the submission.
-
-Use the `agent-browser` CLI instead. It drives Chrome via CDP directly with no extension bridge and handles file uploads cleanly.
+When the user asks you to actually submit a compiled CV to a web form, use the
+`agent-browser` CLI. It drives Chrome via CDP directly and handles file uploads
+cleanly.
 
 ### Canonical submission flow
 
@@ -197,7 +197,7 @@ agent-browser fill @e14 "<candidate email>"
 agent-browser click @e33  # radio button
 agent-browser click @e5   # combobox option after fill
 
-# 4. Upload resume + cover letter PDFs (this is the bit Claude-in-Chrome cannot do)
+# 4. Upload resume + cover letter PDFs
 agent-browser upload @e15 "$REPO_ROOT/$CAREER_ROOT/cv/latex/tailored/<slug>/resume.pdf"
 agent-browser upload @eN "$REPO_ROOT/$CAREER_ROOT/cv/latex/tailored/<slug>/cover-letter.pdf"
 
@@ -213,7 +213,7 @@ agent-browser screenshot /tmp/<slug>-after-submit.png
 ### Workflow notes
 
 - Combobox selection is a two-step dance: `fill` then `click` the matching option ref. The option ref appears in a fresh `snapshot -i` after the fill.
-- `agent-browser` uses a separate Chrome instance from Claude-in-Chrome. Any login state from the extension does not carry over. Most Ashby/Greenhouse/Lever application forms do not require login, so this is usually fine.
+- `agent-browser` uses its own Chrome profile. Any login state from the daily browser does not carry over. Most Ashby/Greenhouse/Lever application forms do not require login, so this is usually fine.
 - Before every `click @eN` on a submit button, take a screenshot and show it to the user. Submission is irreversible.
 - After submission, capture a confirmation screenshot (`agent-browser screenshot`) as evidence and note the result in the relevant tracker file (for example `<career-root>/job-tracker/<batch>/STATUS.md`).
 - If the form has many essay questions, draft all answers before opening the form and fill them in a single pass. Reviewing drafts in source is easier than scrolling a populated form.
@@ -223,6 +223,8 @@ agent-browser screenshot /tmp/<slug>-after-submit.png
   - Do NOT close the agent-browser window after filling. The human needs the populated tab still open to click Submit.
   - Greenhouse and Lever do not generally trip this. Ashby is the problem surface.
 
-### When to prefer Claude-in-Chrome
+### When to prefer the daily browser
 
-Claude-in-Chrome is still the right tool when the task needs an already-logged-in session, cookies, or extensions you have configured in your daily browser. For stateless public application forms, agent-browser is simpler and more reliable.
+Use the daily browser when the task needs an already-logged-in session, cookies,
+or extensions configured in the user's normal profile. For stateless public
+application forms, agent-browser is simpler and more reliable.

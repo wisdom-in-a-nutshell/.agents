@@ -1,12 +1,10 @@
 from __future__ import annotations
 
-import importlib.util
 import json
 
 from tests.control_plane.support import (
     REPO_ROOT,
     TempDirTestCase,
-    read_json,
     run_command,
     write_json,
     write_text,
@@ -14,15 +12,6 @@ from tests.control_plane.support import (
 
 
 class AgentRuntimeDriftAuditTests(TempDirTestCase):
-    def _load_audit_module(self):  # noqa: ANN001
-        module_path = REPO_ROOT / "scripts/audit-agent-runtime-drift.py"
-        spec = importlib.util.spec_from_file_location("audit_agent_runtime_drift", module_path)
-        if spec is None or spec.loader is None:
-            self.fail(f"Unable to load audit module from {module_path}")
-        module = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(module)
-        return module
-
     def _write_live_codex_config(  # noqa: ANN001
         self,
         home,
@@ -68,11 +57,6 @@ class AgentRuntimeDriftAuditTests(TempDirTestCase):
         if include_computer_use:
             self._write_plugin(home, "openai-bundled", "computer-use")
 
-    def _write_managed_settings(self) -> str:
-        target = self.temp_path / "policy/managed-settings.json"
-        write_json(target, read_json(REPO_ROOT / "claude/config/managed-settings.json"))
-        return str(target)
-
     def test_audit_passes_for_known_required_codex_plugin(self) -> None:
         home = self.temp_path / "home"
         self._write_live_codex_config(home)
@@ -85,8 +69,6 @@ class AgentRuntimeDriftAuditTests(TempDirTestCase):
                 "--skip-control-plane-check",
                 "--home",
                 str(home),
-                "--claude-managed-settings-target",
-                self._write_managed_settings(),
             ]
         )
 
@@ -107,8 +89,6 @@ class AgentRuntimeDriftAuditTests(TempDirTestCase):
                 "--skip-control-plane-check",
                 "--home",
                 str(home),
-                "--claude-managed-settings-target",
-                self._write_managed_settings(),
             ],
             check=False,
         )
@@ -132,8 +112,6 @@ class AgentRuntimeDriftAuditTests(TempDirTestCase):
                 "--skip-control-plane-check",
                 "--home",
                 str(home),
-                "--claude-managed-settings-target",
-                self._write_managed_settings(),
             ]
         )
 
@@ -153,8 +131,6 @@ class AgentRuntimeDriftAuditTests(TempDirTestCase):
                 "--skip-control-plane-check",
                 "--home",
                 str(home),
-                "--claude-managed-settings-target",
-                self._write_managed_settings(),
             ],
             check=False,
         )
@@ -162,23 +138,3 @@ class AgentRuntimeDriftAuditTests(TempDirTestCase):
         self.assertEqual(result.returncode, 1)
         self.assertIn("required Codex plugin availability check failed", result.stdout)
         self.assertIn("computer-use@openai-bundled is not enabled", result.stdout)
-
-    def test_claude_managed_settings_skips_when_runtime_absent(self) -> None:
-        module = self._load_audit_module()
-        module.claude_managed_settings_target = lambda: self.temp_path / "missing-policy.json"
-        module.claude_runtime_present = lambda: False
-
-        result = module.audit_claude_managed_settings(REPO_ROOT)
-
-        self.assertEqual(result["status"], "skipped")
-        self.assertIn("Claude runtime is not installed", result["summary"])
-
-    def test_claude_managed_settings_still_fails_when_runtime_present(self) -> None:
-        module = self._load_audit_module()
-        module.claude_managed_settings_target = lambda: self.temp_path / "missing-policy.json"
-        module.claude_runtime_present = lambda: True
-
-        result = module.audit_claude_managed_settings(REPO_ROOT)
-
-        self.assertEqual(result["status"], "error")
-        self.assertEqual(result["error_code"], "E_CLAUDE_MANAGED_SETTINGS_TARGET_MISSING")

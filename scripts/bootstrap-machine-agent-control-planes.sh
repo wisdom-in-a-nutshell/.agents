@@ -10,15 +10,13 @@ ROOT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
 SYNC_SKILLS_SCRIPT="${SCRIPT_DIR}/sync-skills-registry.sh"
 SYNC_PLUGINS_SCRIPT="${SCRIPT_DIR}/sync-plugins-registry.sh"
 SYNC_GIT_HOOKS_SCRIPT="${SCRIPT_DIR}/sync-managed-git-hooks.sh"
-SYNC_COPILOT_HOOKS_SCRIPT="${SCRIPT_DIR}/sync-copilot-hooks.sh"
 CODEX_BOOTSTRAP_SCRIPT="${ROOT_DIR}/codex/scripts/bootstrap-machine-codex.sh"
-CLAUDE_BOOTSTRAP_SCRIPT="${ROOT_DIR}/claude/scripts/bootstrap-machine-claude.sh"
 
 usage() {
   cat <<USAGE
 Usage: $(basename "$0") [options]
 
-Run the machine-facing agent control-plane bootstrap batch from ~/.agents.
+Run the machine-facing Codex control-plane bootstrap batch from ~/.agents.
 
 Default mode is dry-run. Use --apply to write changes.
 
@@ -88,9 +86,7 @@ fi
 [[ -x "$SYNC_SKILLS_SCRIPT" ]] || die "Missing executable: $SYNC_SKILLS_SCRIPT"
 [[ -x "$SYNC_PLUGINS_SCRIPT" ]] || die "Missing executable: $SYNC_PLUGINS_SCRIPT"
 [[ -x "$SYNC_GIT_HOOKS_SCRIPT" ]] || die "Missing executable: $SYNC_GIT_HOOKS_SCRIPT"
-[[ -x "$SYNC_COPILOT_HOOKS_SCRIPT" ]] || die "Missing executable: $SYNC_COPILOT_HOOKS_SCRIPT"
 [[ -x "$CODEX_BOOTSTRAP_SCRIPT" ]] || die "Missing executable: $CODEX_BOOTSTRAP_SCRIPT"
-[[ -x "$CLAUDE_BOOTSTRAP_SCRIPT" ]] || die "Missing executable: $CLAUDE_BOOTSTRAP_SCRIPT"
 REPO_ARGS=()
 for repo in "${REPO_FILTERS[@]}"; do
   REPO_ARGS+=(--repo "$repo")
@@ -119,14 +115,6 @@ sync_git_hooks_cmd=(
 log "+ ${sync_git_hooks_cmd[*]}"
 "${sync_git_hooks_cmd[@]}"
 
-sync_copilot_hooks_cmd=(
-  "$SYNC_COPILOT_HOOKS_SCRIPT"
-  "$MODE_FLAG"
-  "${REPO_ARGS[@]}"
-)
-log "+ ${sync_copilot_hooks_cmd[*]}"
-"${sync_copilot_hooks_cmd[@]}"
-
 codex_cmd=(
   "$CODEX_BOOTSTRAP_SCRIPT"
   "$MODE_FLAG"
@@ -135,11 +123,3 @@ codex_cmd=(
 )
 log "+ ${codex_cmd[*]}"
 "${codex_cmd[@]}"
-
-claude_cmd=(
-  "$CLAUDE_BOOTSTRAP_SCRIPT"
-  "$MODE_FLAG"
-  "${REPO_ARGS[@]}"
-)
-log "+ ${claude_cmd[*]}"
-"${claude_cmd[@]}"

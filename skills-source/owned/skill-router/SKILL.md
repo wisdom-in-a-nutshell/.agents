@@ -58,7 +58,6 @@ cd ~/.agents
 Examples:
 
 ```bash
-./scripts/bootstrap-skill.sh https://skills.sh/microsoft/skills/copilot-sdk --repo codexclaw --apply
 ./scripts/bootstrap-skill.sh openai/skills:skills/.curated/openai-docs@main --repo win --apply
 ```
 
@@ -68,8 +67,7 @@ Behavior:
 2. Adds or updates the managed external entry in `skills/registry.json`.
 3. Runs `refresh-external-skills` for that skill.
 4. Runs `sync-skills-registry --apply`.
-5. Runs the Claude skill sync internally for the affected repo targets so Claude sees the same managed skill.
-6. Regenerates repo bootstrap registry artifacts.
+5. Regenerates repo bootstrap registry artifacts.
 
 Defaults:
 
@@ -136,7 +134,7 @@ cd ~/.agents
 3. If needed, remove old unmanaged repo-local entry.
 4. Run sync/check.
 
-For repo-scoped managed skills, use `--repo <repo-root>` with the Claude sync/check when you want a scoped run:
+For repo-scoped managed skills, use `--repo <repo-root>` with the shared bootstrap/check when you want a scoped run:
 
 ```bash
 cd ~/.agents
@@ -144,12 +142,10 @@ cd ~/.agents
 ./scripts/check-agent-control-planes.sh --repo <repo-root>
 ```
 
-If the target repo already tracks `.claude/skills/`, any newly generated Claude skill symlink must be staged/committed with the registry change. Do not leave generated Claude skill links untracked.
-
 ## Safety Rules
 
 - Edit canonical skill sources, not symlink destinations.
-- If `skills/registry.json` changes, use the shared root bootstrap/check path so Codex/OpenAI and Claude skill surfaces stay aligned.
+- If `skills/registry.json` changes, use the shared root bootstrap/check path so Codex/OpenAI skill surfaces stay aligned.
 - Keep distribution link-only.
 - Do not create additional mapping manifests; use `skills/registry.json` only.
 
@@ -158,4 +154,3 @@ If the target repo already tracks `.claude/skills/`, any newly generated Claude 
 Use these only for focused troubleshooting or tests:
 
 - `scripts/sync-skills-registry.sh`: materializes Codex/OpenAI skill links and generated registry views.
-- `claude/scripts/sync-skills.sh`: materializes Claude skill links.

@@ -35,7 +35,6 @@ class RepoHygieneTests(TempDirTestCase):
                 str(REPO_ROOT),
                 "check-ignore",
                 ".codex/config.toml.bak.20990101-000000",
-                ".claude/settings.json.bak.20990101-000000",
             ]
         )
 
@@ -43,7 +42,6 @@ class RepoHygieneTests(TempDirTestCase):
         self.assertEqual(
             {
                 ".codex/config.toml.bak.20990101-000000",
-                ".claude/settings.json.bak.20990101-000000",
             },
             ignored,
         )

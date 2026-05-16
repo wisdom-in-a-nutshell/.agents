@@ -2,7 +2,7 @@
 
 This repo has three capability families: Codex plugins, standalone skills, and standalone MCPs.
 
-Agent delegation is intentionally not modeled here. Codex and Claude can still spawn subagents through their native runtime behavior, but this control plane does not keep a registry of named agents or assign those agents to repos.
+Agent delegation is intentionally not modeled here. Codex can still spawn subagents through its native runtime behavior, but this control plane does not keep a registry of named agents or assign those agents to repos.
 
 ## Control-Plane Shape
 

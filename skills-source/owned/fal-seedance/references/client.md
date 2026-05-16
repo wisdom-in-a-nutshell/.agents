@@ -1,6 +1,6 @@
 # fal Seedance Client Contract
 
-This repo uses `.claude/skills/fal-seedance/scripts/fal_seedance_ref2v.py` (Python, official `fal-client` SDK) as the machine-primary client for fal.ai Seedance reference-to-video runs. The skill is fully self-contained — script, references, and contract all live under `.claude/skills/fal-seedance/`.
+This repo uses `.agents/skills/fal-seedance/scripts/fal_seedance_ref2v.py` (Python, official `fal-client` SDK) as the machine-primary client for fal.ai Seedance reference-to-video runs. The skill is fully self-contained: script, references, and contract all live under `.agents/skills/fal-seedance/`.
 
 ## Purpose
 
@@ -33,13 +33,13 @@ The client reads the generated file directly. Do not pass fal keys through flags
 Local validation only:
 
 ```bash
-python3 .claude/skills/fal-seedance/scripts/fal_seedance_ref2v.py validate
+python3 .agents/skills/fal-seedance/scripts/fal_seedance_ref2v.py validate
 ```
 
 Provider connectivity without video inference:
 
 ```bash
-python3 .claude/skills/fal-seedance/scripts/fal_seedance_ref2v.py doctor --remote
+python3 .agents/skills/fal-seedance/scripts/fal_seedance_ref2v.py doctor --remote
 ```
 
 `doctor --remote` uploads a tiny text file to fal storage with immediate lifecycle expiry. It verifies the API key and provider connectivity without submitting a Seedance generation.
@@ -49,7 +49,7 @@ If `doctor --remote` returns `E_BILLING_REQUIRED`, the configured key reached fa
 Dry-run a reference-to-video request:
 
 ```bash
-python3 .claude/skills/fal-seedance/scripts/fal_seedance_ref2v.py run \
+python3 .agents/skills/fal-seedance/scripts/fal_seedance_ref2v.py run \
   --project <project-id> \
   --name <shot-name> \
   --ref projects/<project-id>/storyboard/frame-01.png \

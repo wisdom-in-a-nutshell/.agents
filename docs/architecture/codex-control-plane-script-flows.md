@@ -1,306 +1,132 @@
 # Codex Control Plane Script Flows
 
-This page breaks the Codex control-plane scripts into smaller figures.
+This page breaks the Codex control-plane scripts into a few small flows. Use
+[Codex Control Plane](/Users/dobby/.agents/docs/architecture/codex-control-plane.md)
+for the top-level system shape and
+[Codex Control Plane Operations](/Users/dobby/.agents/docs/references/codex-control-plane-operations.md)
+for exact commands.
 
-Use [Codex Control Plane](/Users/dobby/.agents/docs/architecture/codex-control-plane.md) for the top-level system shape.
-Use [Codex Control Plane Operations](/Users/dobby/.agents/docs/references/codex-control-plane-operations.md) for exact commands and checks.
-
-## Overview
-
-The scripts are easier to understand if you split them into three groups:
-
-- plugin registry scripts that render native Codex plugin scope and state
-- apply scripts that write config and trust state
-- post-sync reconcile scripts that auto-apply new control-plane revisions
-- startup scripts that shape the terminal and Ghostty experience
-- shared hook scripts that run at session start, prompt submit, turn stop, and supported session end events
-
-## Figure 1: Plugin And Apply Scripts
+## Apply Flow
 
 ```mermaid
 flowchart TD
-    P[plugins/registry.json] --> Q[sync-plugins-registry.sh]
-    P --> B[sync-config.sh]
-    P --> D
-    Q --> V[plugin registry views]
-    A[bootstrap-machine-codex.sh] --> B[sync-config.sh]
-    A --> C[sync-trusted-projects.sh]
-    A --> D[sync-repo-codex-configs.sh]
-    A --> E[configure-ghostty-cwd.sh]
-    R[repo-bootstrap.json] --> C
+    P["plugins/registry.json"] --> Q["sync-plugins-registry.sh"]
+    P --> B["sync-config.sh"]
+    A["bootstrap-machine-codex.sh"] --> B
+    A --> C["sync-trusted-projects.sh"]
+    A --> D["sync-repo-codex-configs.sh"]
+    A --> E["configure-ghostty-cwd.sh"]
+    R["repo-bootstrap.json"] --> C
     R --> D
-    M[mcp/config/presets.json] --> B
+    M["mcp/config/presets.json"] --> B
     M --> D
-    B --> F[~/.codex/config.toml]
+    H["hooks/registry.json"] --> B
+    H --> D
+    B --> F["~/.codex/config.toml + ~/.codex/hooks.json"]
     C --> F
-    D --> H[Repo-local .codex/config.toml]
-    E --> I[Ghostty config]
+    D --> G["repo .codex/config.toml + .codex/hooks.json"]
+    Q --> V["plugin registry views"]
+    E --> I["Ghostty config"]
 ```
 
-### What This Group Does
+Main scripts:
 
-- [`refresh-external-plugins.sh`](/Users/dobby/.agents/scripts/refresh-external-plugins.sh)
-  - legacy helper for mirrored plugin source, not part of the native plugin path
-- [`sync-plugins-registry.sh`](/Users/dobby/.agents/scripts/sync-plugins-registry.sh)
-  - validates `plugins/registry.json`
-  - writes plugin registry views
-- [`bootstrap-machine-codex.sh`](/Users/dobby/.agents/codex/scripts/bootstrap-machine-codex.sh)
-  - orchestrates the main Codex-specific bootstrap batch
-- [`sync-config.sh`](/Users/dobby/.agents/codex/scripts/sync-config.sh)
-  - writes the managed global Codex config
-  - injects machine-wide global MCP servers from [`mcp/config/presets.json`](/Users/dobby/.agents/mcp/config/presets.json)
-  - renders global-scope native Codex plugin enable/disable state from [`plugins/registry.json`](/Users/dobby/.agents/plugins/registry.json)
-- [`sync-trusted-projects.sh`](/Users/dobby/.agents/codex/scripts/sync-trusted-projects.sh)
-  - writes exact trust entries for discovered Git repos
-- [`sync-repo-codex-configs.sh`](/Users/dobby/.agents/codex/scripts/sync-repo-codex-configs.sh)
-  - renders managed repo-local `.codex/config.toml` files for all registered repos
-  - renders repo-scoped native Codex plugin assignments from [`plugins/registry.json`](/Users/dobby/.agents/plugins/registry.json)
-  - prunes stale managed repo-local `.codex/agents/*.toml` files left by older control-plane versions
-  - resolves repo MCP presets through [`mcp/config/presets.json`](/Users/dobby/.agents/mcp/config/presets.json)
-- [`repo-bootstrap.json`](/Users/dobby/.agents/codex/config/repo-bootstrap.json)
-  - defines the managed repo set, repo MCP assignment, and per-repo model/service-tier/reasoning overrides
-- [`configure-ghostty-cwd.sh`](/Users/dobby/.agents/codex/scripts/configure-ghostty-cwd.sh)
-  - rewrites Ghostty config so Codex startup and cwd handling stay consistent
+- `codex/scripts/bootstrap-machine-codex.sh`: Codex-specific bootstrap batch.
+- `codex/scripts/sync-config.sh`: global Codex config, global hooks, MCPs, and global plugins.
+- `codex/scripts/sync-repo-codex-configs.sh`: managed repo `.codex/config.toml` and `.codex/hooks.json`.
+- `scripts/sync-plugins-registry.sh`: validates plugin registry and writes plugin registry views.
+- `codex/config/repo-bootstrap.json`: managed repo set and repo-local Codex overrides.
 
-## Figure 2: Post-Sync Reconcile
+## Post-Sync Reconcile
 
 ```mermaid
 flowchart TD
-    A[git-auto-sync.sh] --> B[auto-apply-agent-control-planes.sh]
-    B --> C{What changed in ~/.agents?}
-    C -->|skills| D[sync-skills-registry.sh]
-    C -->|plugins| P[sync-plugins-registry.sh]
-    C -->|skills, plugins, codex, or mcp| E[bootstrap-machine-codex.sh --apply]
-    C -->|skills, plugins, claude, or shared inputs| F[bootstrap-machine-claude.sh --apply]
-    D --> G[Update shared runtime links]
-    P --> G2[Update plugin registry views]
-    E --> H[Codex runtime updated]
-    F --> I[Claude runtime updated]
-    G --> J[Update machine-local reconcile stamp]
-    G2 --> J
-    H --> J
-    I --> J
+    A["git-auto-sync.sh"] --> B["auto-apply-agent-control-planes.sh"]
+    B --> C{"What changed in ~/.agents?"}
+    C -->|"skills"| D["sync-skills-registry.sh"]
+    C -->|"plugins"| E["sync-plugins-registry.sh"]
+    C -->|"git hooks or repo registry"| F["sync-managed-git-hooks.sh"]
+    C -->|"Codex/runtime inputs"| G["bootstrap-machine-codex.sh --apply"]
+    D --> H["Update runtime skill links"]
+    E --> I["Update plugin registry views"]
+    F --> J["Update repo core.hooksPath"]
+    G --> K["Update Codex runtime"]
+    H --> L["Update reconcile stamp"]
+    I --> L
+    J --> L
+    K --> L
 ```
 
-### What This Group Does
+`scripts/auto-apply-agent-control-planes.sh` keeps a machine-local stamp under
+`~/.local/state/agents-control-plane/` so each machine can apply only changes it
+has not already reconciled.
 
-- [`git-auto-sync.sh`](/Users/dobby/GitHub/scripts/sync/git-auto-sync.sh)
-  - remains the launchd-driven machine sync loop in the generic `scripts` repo
-- [`auto-apply-agent-control-planes.sh`](/Users/dobby/.agents/scripts/auto-apply-agent-control-planes.sh)
-  - checks whether the current `~/.agents` revision contains new runtime-relevant shared control-plane changes since the last successful reconcile on that machine
-  - runs the minimum shared apply steps needed for skills, Codex, and Claude
-  - keeps a machine-local stamp under `~/.local/state/agents-control-plane/`
-  - the surrounding `~/GitHub/scripts/sync/git-auto-sync.sh` loop also reapplies the shared `~/.zshrc` and `~/.zprofile` links after the shared agent reconcile step
-- [`auto-apply-codex-control-plane.sh`](/Users/dobby/.agents/codex/scripts/auto-apply-codex-control-plane.sh)
-  - remains the lower-level Codex-only reconcile helper for targeted Codex-only troubleshooting or component-scoped automation
-
-## Figure 3: Shell And Startup Scripts
+## Session And Prompt Dispatch
 
 ```mermaid
 flowchart TD
-    A[zshrc.shared] --> B[codex-shell.zsh]
-    A2[zprofile.shared] --> G[Codex CLI]
-    C[Ghostty initial-command] --> D[ghostty-codex-then-shell.sh]
-    B --> E[codex_jump]
-    H[Optional Ghostty helpers] --> I[open-ghostty-codex-picker-current.sh / open-ghostty-codex-tab.sh / open-ghostty-codex-picker-tab.sh]
-    D --> G[Codex CLI]
-    I --> G
+    A["hooks/registry.json"] --> B["managed repo .codex/hooks.json"]
+    B --> C["Codex SessionStart"]
+    C --> D["hooks/scripts/session_start.py"]
+    D --> E{"repo scripts/hooks/session_start.py exists?"}
+    E -->|"yes"| F["run Python hook from repo root"]
+    F --> G["forward stdout as additional context"]
+    E -->|"no"| H["silent success"]
+
+    B --> I["Codex UserPromptSubmit"]
+    I --> J["hooks/scripts/user_prompt_submit.py"]
+    J --> K{"repo scripts/hooks/user_prompt_submit.py exists?"}
+    K -->|"yes"| L["run Python hook from repo root"]
+    L --> M["forward stdout as additional context"]
+    K -->|"no"| N["silent success"]
+
+    B --> O["Codex PostCompact"]
+    O --> P["hooks/scripts/post_compact.py"]
+    P --> Q{"repo scripts/hooks/post_compact.py exists?"}
+    Q -->|"yes"| R["run Python hook from repo root"]
+    R --> S["pass stdout through raw"]
+    Q -->|"no"| T["silent success"]
+
+    B --> U["Codex SessionEnd"]
+    U --> V["hooks/scripts/session_end.py"]
+    V --> W{"repo scripts/hooks/session_end.py exists?"}
+    W -->|"yes"| X["run Python hook from repo root"]
+    X --> Y["log stdout"]
+    W -->|"no"| Z["silent success"]
 ```
 
-### What This Group Does
+The shared dispatcher resolves the git root from the hook payload `cwd`, passes a
+normalized JSON payload to the repo hook on stdin, and sets
+`AGENT_HOOK_EVENT`, `AGENT_HOOK_RUNTIME`, `AGENT_REPO_ROOT`, and
+`AGENT_HOOK_SCHEMA_VERSION`.
 
-- [`zshrc.shared`](/Users/dobby/GitHub/scripts/setup/codex/zshrc.shared)
-  - generic shared shell file that sources the Codex shell fragment
-- [`zprofile.shared`](/Users/dobby/GitHub/scripts/setup/codex/zprofile.shared)
-  - shared login-shell bootstrap that hydrates machine-local shared env and trusted repo-local env for `zsh -lc` shells
-- [`codex-shell.zsh`](/Users/dobby/.agents/codex/shell/codex-shell.zsh)
-  - defines Codex shell behavior such as the jump picker and Ghostty auto-start logic
-- [`ghostty-codex-then-shell.sh`](/Users/dobby/.agents/codex/scripts/ghostty-codex-then-shell.sh)
-  - runs Codex first, then falls back to a normal login shell
-- [`link-shared-zshrc.sh`](/Users/dobby/GitHub/scripts/setup/codex/link-shared-zshrc.sh)
-  - links `~/.zshrc` to the tracked shared shell file
-- [`link-shared-zprofile.sh`](/Users/dobby/GitHub/scripts/setup/codex/link-shared-zprofile.sh)
-  - links `~/.zprofile` to the tracked shared login-shell file
-
-## Figure 4: Session And Prompt Dispatch
-
-One hook registry defines the shared event implementations and the repo assignment policy. Session, prompt, compact, and session-end hooks are rendered repo-locally only for repos that need them. Today that means `adi` and `angie`; other managed repos do not get these extra lifecycle hooks.
+## Post-Turn Automation
 
 ```mermaid
 flowchart TD
-    A[hooks/registry.json<br/>shared hook definitions] --> B2[managed repo<br/>.codex/hooks.json]
-    A --> C[managed repo<br/>.claude/settings.json]
-    A --> Y[managed repo<br/>.github/hooks/agent-control-plane.json]
-    B2 --> D[Codex session starts]
-    C --> E[Claude session starts]
-    Y --> Z[Copilot session starts]
-    D --> F[hooks/scripts/session_start.py]
-    E --> F
-    Z --> F
-    F --> G[resolve git root from hook cwd]
-    G --> H{scripts/hooks/session_start.py exists?}
-    H -->|yes| I[run Python hook from repo root]
-    I --> J[forward or ignore stdout per runtime]
-    H -->|no| K[silent success]
-    B2 --> L[Codex prompt submitted]
-    C --> M[Claude prompt submitted]
-    Y --> M2[Copilot prompt submitted]
-    L --> N[hooks/scripts/user_prompt_submit.py]
-    M --> N
-    M2 --> N
-    N --> O{scripts/hooks/user_prompt_submit.py exists?}
-    O -->|yes| P[run Python hook from repo root]
-    P --> Q[forward or ignore stdout per runtime]
-    O -->|no| R[silent success]
-    B2 --> AA[Codex compacts]
-    C --> AB[Claude compacts]
-    AA --> AC[hooks/scripts/pre_compact.py / post_compact.py]
-    AB --> AC
-    AC --> AD{scripts/hooks/pre_compact.py or post_compact.py exists?}
-    AD -->|yes| AE[run Python compact hook from repo root]
-    AE --> AF[pass stdout through raw]
-    AD -->|no| AG[silent success]
-    C --> S[Claude session ends]
-    Y --> S2[Copilot session ends]
-    S --> T[hooks/scripts/session_end.py]
-    S2 --> T
-    T --> U{scripts/hooks/session_end.py exists?}
-    U -->|yes| V[run Python cleanup from repo root]
-    V --> W[log stdout; stderr stays visible]
-    U -->|no| X[silent success]
+    A["hooks/registry.json global Stop"] --> B["~/.codex/hooks.json"]
+    B --> C["Codex turn reaches Stop"]
+    C --> D["hooks/scripts/stop.py"]
+    D --> E["git add -A"]
+    E --> F["git commit"]
+    F --> G["Git uses repo core.hooksPath"]
+    G --> H["hooks/git/pre-commit"]
+    H --> I{"scripts/check-fast.sh exists?"}
+    I -->|"yes"| J["run repo fast gate"]
+    I -->|"no"| K["allow commit"]
+    J --> L{"checks passed?"}
+    L -->|"no"| M["Stop returns hook block with failure details"]
+    L -->|"yes"| N["commit succeeds"]
+    K --> N
+    N --> O{"tracked branch?"}
+    O -->|"yes"| P["git push remote HEAD"]
+    P --> Q{"remote ahead?"}
+    Q -->|"yes"| R["git pull --rebase"]
+    R --> S["git push remote HEAD again"]
+    Q -->|"no"| T["done"]
+    O -->|"no upstream"| U["git push -u remote HEAD"]
 ```
 
-### What This Group Does
-
-- `hooks/registry.json`
-  - owns which repos receive each lifecycle event
-  - currently assigns `SessionStart`, `UserPromptSubmit`, `PreCompact`, `PostCompact`, and `SessionEnd` only to `adi` and `angie`
-- [`session_start.py`](/Users/dobby/.agents/hooks/scripts/session_start.py)
-  - runs as the shared Codex, Claude, and GitHub Copilot `SessionStart` hook when that event is assigned to the repo
-  - resolves the current git root from the hook payload `cwd`
-  - runs repo-owned `scripts/hooks/session_start.py` when present
-  - passes a normalized JSON adapter payload to the repo Python hook on stdin; the original runtime payload is kept under `raw_payload`
-  - sets `AGENT_HOOK_EVENT`, `AGENT_HOOK_RUNTIME`, `AGENT_REPO_ROOT`, and `AGENT_HOOK_SCHEMA_VERSION`
-  - forwards repo script stdout as startup context for runtimes that process it, capped at a rough `30000` token budget (`120000` characters); Copilot currently ignores `sessionStart` output
-- [`user_prompt_submit.py`](/Users/dobby/.agents/hooks/scripts/user_prompt_submit.py)
-  - runs as the shared Codex, Claude, and GitHub Copilot prompt-submit hook when that event is assigned to the repo
-  - runs repo-owned `scripts/hooks/user_prompt_submit.py` when present
-  - passes the same normalized JSON adapter payload shape, with `hook_event_name=UserPromptSubmit`
-  - forwards repo script stdout as additional prompt context for runtimes that process it, capped at a rough `30000` token budget (`120000` characters); Copilot currently ignores `userPromptSubmitted` output
-- [`pre_compact.py`](/Users/dobby/.agents/hooks/scripts/pre_compact.py)
-  - runs as the shared Codex and Claude `PreCompact` hook when that event is assigned to the repo
-  - runs repo-owned `scripts/hooks/pre_compact.py` when present
-  - passes the same normalized JSON adapter payload shape, with `hook_event_name=PreCompact`
-  - passes repo script stdout through raw so the repo hook can return runtime-specific hook JSON when needed
-- [`post_compact.py`](/Users/dobby/.agents/hooks/scripts/post_compact.py)
-  - runs as the shared Codex and Claude `PostCompact` hook when that event is assigned to the repo
-  - runs repo-owned `scripts/hooks/post_compact.py` when present
-  - passes the same normalized JSON adapter payload shape, with `hook_event_name=PostCompact`
-  - passes repo script stdout through raw so the repo hook can return runtime-specific hook JSON when needed
-- [`session_end.py`](/Users/dobby/.agents/hooks/scripts/session_end.py)
-  - runs as the shared Claude and GitHub Copilot `SessionEnd` hook when that event is assigned to the repo
-  - runs repo-owned `scripts/hooks/session_end.py` when present
-  - passes the same normalized JSON adapter payload shape, with `hook_event_name=SessionEnd`
-  - logs repo script stdout instead of injecting context because the session is ending
-- `scripts/hooks/session_start.py`
-  - optional repo-owned startup context command
-  - should stay fast, deterministic, and non-interactive
-  - should print only the context the agent should receive at session start
-- `scripts/hooks/user_prompt_submit.py`
-  - optional repo-owned prompt context command
-  - should stay fast, deterministic, and non-interactive
-  - should print only context that should be added before processing that prompt
-- `scripts/hooks/pre_compact.py`
-  - optional repo-owned pre-compaction command
-  - should stay fast, deterministic, and non-interactive
-  - should print nothing unless returning valid hook JSON for the runtime
-- `scripts/hooks/post_compact.py`
-  - optional repo-owned post-compaction command
-  - should stay fast, deterministic, and non-interactive
-  - should print nothing unless returning valid hook JSON for the runtime
-- `scripts/hooks/session_end.py`
-  - optional Claude and GitHub Copilot cleanup command
-  - should stay fast and local because it runs while the agent exits the session
-
-## Figure 5: Post-Turn Automation
-
-The `Stop` hook is a global Codex and Claude registry entry so the git conveyor does not depend on repo-local hook loading. GitHub Copilot still receives the same logical stop hook through repo-local `agentStop` config, then commit-time validation delegates to each repo's own `scripts/check-fast.sh`.
-
-```mermaid
-flowchart TD
-    A[hooks/registry.json<br/>global Stop] --> B[~/.codex/hooks.json]
-    A --> C[~/.claude/settings.json]
-    A --> Y[managed repo<br/>.github/hooks/agent-control-plane.json]
-    B --> D[Codex turn reaches Stop]
-    C --> E[Claude turn reaches Stop]
-    Y --> E2[Copilot turn reaches agentStop]
-    D --> F[hooks/scripts/stop.py]
-    E --> F
-    E2 --> F
-    F --> G[git add -A]
-    G --> H[git commit]
-    H --> I[Git uses repo core.hooksPath]
-    I --> J[hooks/git/pre-commit]
-    J --> K{scripts/check-fast.sh exists?}
-    K -->|yes| L[run repo-owned fast commit gate]
-    K -->|no| M[allow commit]
-    L --> N{checks passed?}
-    N -->|no| O[commit fails]
-    O --> P[Stop returns hook block with failure details]
-    N -->|yes| Q[commit succeeds]
-    M --> Q
-    Q --> R{tracked branch?}
-    R -->|yes| S[git push remote HEAD]
-    S --> T{remote ahead?}
-    T -->|no| V[done]
-    T -->|yes| W[git pull --rebase]
-    W --> X[git push remote HEAD again]
-    R -->|no upstream| U[git push -u remote HEAD]
-```
-
-### What This Group Does
-
-- [`stop.py`](/Users/dobby/.agents/hooks/scripts/stop.py)
-  - runs as the shared turn-stop hook for Codex, Claude, and GitHub Copilot in each managed repo
-  - stages all repo changes and runs `git commit`
-  - does not directly call repo validation; Git calls the shared local hook because managed repos set `core.hooksPath` to [`hooks/git/`](/Users/dobby/.agents/hooks/git)
-  - if commit checks fail, returns hook continuation JSON with the failure output so the current agent can fix it
-  - for tracked branches, commits then pushes first and only runs `git pull --rebase` if the push reports that the remote is ahead
-  - for brand-new local branches without upstream tracking, uses `git push -u <remote> HEAD` to establish upstream automatically
-  - logs phase timing to `~/.local/state/agents-control-plane/log/hooks-stop.log`
-- [`hooks/git/pre-commit`](/Users/dobby/.agents/hooks/git/pre-commit)
-  - shared local Git hook used by managed repos
-  - delegates to repo-owned `scripts/check-fast.sh` when present
-  - exits successfully when a repo has no `scripts/check-fast.sh`
-- `scripts/check-fast.sh`
-  - repo-owned fast commit gate for agent-made changes
-  - should contain fast deterministic checks that answer whether the commit is acceptable
-  - should not become a general after-turn lifecycle hook; use a future explicit lifecycle hook for non-validation side effects
-- Hook dispatch scripts:
-  - `session_start.py` runs optional repo-owned `scripts/hooks/session_start.py` where the registry assigns `SessionStart`
-  - `user_prompt_submit.py` runs optional repo-owned `scripts/hooks/user_prompt_submit.py` where the registry assigns `UserPromptSubmit`
-  - `pre_compact.py` runs optional repo-owned `scripts/hooks/pre_compact.py` where the registry assigns `PreCompact`
-  - `post_compact.py` runs optional repo-owned `scripts/hooks/post_compact.py` where the registry assigns `PostCompact`
-  - `session_end.py` runs optional Claude and GitHub Copilot repo-owned `scripts/hooks/session_end.py` where the registry assigns `SessionEnd`
-
-## Figure 6: Optional Machine Policy Script
-
-```mermaid
-flowchart TD
-    A[install-sudoers-codex-ops.sh] --> B["/etc/sudoers.d/codex-ops"]
-    B --> C[Codex machine ops without password prompts]
-```
-
-### What This Script Does
-
-- [`install-sudoers-codex-ops.sh`](/Users/dobby/.agents/codex/scripts/install-sudoers-codex-ops.sh)
-  - installs the narrow sudo policy used by Codex machine-ops workflows
-  - includes the fixed Claude managed-settings install commands needed by unattended control-plane repair
-
-## Reading Order
-
-If you want the fastest mental model, read in this order:
-
-1. [Codex Control Plane](/Users/dobby/.agents/docs/architecture/codex-control-plane.md)
-2. [Codex Control Plane Script Flows](/Users/dobby/.agents/docs/architecture/codex-control-plane-script-flows.md)
-3. [Codex Control Plane Operations](/Users/dobby/.agents/docs/references/codex-control-plane-operations.md)
+`scripts/check-fast.sh` is the repo-owned fast commit gate for agent-made
+changes. Put slower repo-wide validation in `scripts/check-full.sh` or another
+explicit command.

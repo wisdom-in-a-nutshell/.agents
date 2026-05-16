@@ -33,7 +33,7 @@ Use [Codex Control Plane Ownership](/Users/dobby/.agents/docs/references/codex-c
 - Apply the shared machine-facing agent bootstrap batch:
   - [`bootstrap-machine-agent-control-planes.sh`](/Users/dobby/.agents/scripts/bootstrap-machine-agent-control-planes.sh)
   - `~/.agents/scripts/bootstrap-machine-agent-control-planes.sh --apply`
-  - this syncs managed skill links, native Codex plugin state, repo-local hook files, plus the Codex and Claude runtime control planes from one stable root entrypoint
+  - this syncs managed skill links, native Codex plugin state, repo-local hook files, and the Codex runtime control plane from one stable root entrypoint
 - Auto-apply the shared agent control plane after `~/.agents` sync when runtime-relevant files changed:
   - [`auto-apply-agent-control-planes.sh`](/Users/dobby/.agents/scripts/auto-apply-agent-control-planes.sh)
   - `~/.agents/scripts/auto-apply-agent-control-planes.sh --apply`
@@ -42,7 +42,7 @@ Use [Codex Control Plane Ownership](/Users/dobby/.agents/docs/references/codex-c
   - [`enroll-managed-repos.sh`](/Users/dobby/.agents/scripts/enroll-managed-repos.sh)
   - `~/.agents/scripts/enroll-managed-repos.sh --apply --github-root ~/GitHub`
   - this scans only direct child Git repos under the GitHub root, adds missing minimal entries to [`repo-bootstrap.json`](/Users/dobby/.agents/codex/config/repo-bootstrap.json), and regenerates the repo bootstrap registry views
-- Validate shared skills, plugins, repo-local hook files, plus Codex and Claude rendered runtime state:
+- Validate shared skills, plugins, repo-local hook files, and Codex rendered runtime state:
   - [`check-agent-control-planes.sh`](/Users/dobby/.agents/scripts/check-agent-control-planes.sh)
   - `~/.agents/scripts/check-agent-control-planes.sh`
 - Sync managed plugins and regenerate the Obsidian registry views:
@@ -116,7 +116,7 @@ Use [Codex Control Plane Ownership](/Users/dobby/.agents/docs/references/codex-c
 - `~/.codex/config.toml` enables Codex hooks through `[features].hooks = true`
 - `~/.codex/config.toml` contains `[hooks.state]` trust hashes for managed hooks rendered by this control plane, so global and repo-local lifecycle hooks do not need repeated `/hooks` review on every machine bootstrap.
 - `~/.codex/config.toml` explicitly preserves enabled native Codex plugins such as `computer-use@openai-bundled`, points `openai-bundled` at the marketplace inside `Codex.app`, and disables bundled Codex skills classified as `disabled` in [`bundled-skills-policy.json`](/Users/dobby/.agents/codex/config/bundled-skills-policy.json)
-- `~/.codex/hooks.json` is rendered from `hooks/registry.json` for global Codex hooks. The managed `Stop` hook renders there; repo-specific lifecycle hooks such as `SessionStart`, `UserPromptSubmit`, `PreCompact`, and `PostCompact` still render into repo `.codex/hooks.json`. Codex does not currently expose a separate documented `SessionEnd` hook.
+- `~/.codex/hooks.json` is rendered from `hooks/registry.json` for global Codex hooks. The managed `Stop` hook renders there; repo-specific lifecycle hooks such as `SessionStart`, `UserPromptSubmit`, `PreCompact`, `PostCompact`, and `SessionEnd` render into repo `.codex/hooks.json`.
 - `com.<user>.codex-session-archiver` is loaded as a LaunchAgent and runs [`archive-stale-sessions.py`](/Users/dobby/.agents/codex/scripts/archive-stale-sessions.py) every 6 hours against managed repo paths from [`repo-bootstrap.json`](/Users/dobby/.agents/codex/config/repo-bootstrap.json).
 - `~/.codex/config.toml` contains no Git conflict markers
 - `~/.codex/vendor_imports/skills` is a valid Git checkout:
@@ -161,11 +161,6 @@ Use [Codex Control Plane Ownership](/Users/dobby/.agents/docs/references/codex-c
   - applies local-only `core.hooksPath` for every managed repo in [`repo-bootstrap.json`](/Users/dobby/.agents/codex/config/repo-bootstrap.json)
   - points Git at [`hooks/git/pre-commit`](/Users/dobby/.agents/hooks/git/pre-commit)
   - does not edit repo worktree files and does not affect GitHub Actions
-- [`sync-copilot-hooks.sh`](/Users/dobby/.agents/scripts/sync-copilot-hooks.sh)
-  - renders managed repo-local GitHub Copilot hook files from [`hooks/registry.json`](/Users/dobby/.agents/hooks/registry.json)
-  - writes `.github/hooks/agent-control-plane.json` for every managed repo in [`repo-bootstrap.json`](/Users/dobby/.agents/codex/config/repo-bootstrap.json)
-  - guards local `~/.agents` hook dispatcher calls so GitHub cloud agent sessions no-op when this personal control plane is absent
-  - supports `--check` to fail when rendered repo-local Copilot hook files are missing or stale
 - [`check-codex-control-plane.sh`](/Users/dobby/.agents/codex/scripts/check-codex-control-plane.sh)
   - validates canonical `global.config.toml`, `repo-bootstrap.json`, and `mcp/config/presets.json`
   - validates [`bundled-skills-policy.json`](/Users/dobby/.agents/codex/config/bundled-skills-policy.json) and fails if a local OpenAI-bundled Codex skill exists under `~/.codex/skills/.system` or `~/.codex/skills/codex-primary-runtime` without being classified as `allowed` or `disabled`
@@ -257,16 +252,16 @@ Use [Codex Control Plane Ownership](/Users/dobby/.agents/docs/references/codex-c
 ## Automatic Cross-Machine Apply
 
 - Launchd still lives in [`~/GitHub/scripts/sync/git-auto-sync.sh`](/Users/dobby/GitHub/scripts/sync/git-auto-sync.sh), because scheduler ownership is part of the generic machine-ops repo.
-- Machine-facing multi-surface apply now lives in [`auto-apply-agent-control-planes.sh`](/Users/dobby/.agents/scripts/auto-apply-agent-control-planes.sh), which calls the Codex, Claude, and repo-local GitHub Copilot hook entrypoints as needed after `~/.agents` sync.
+- Machine-facing multi-surface apply now lives in [`auto-apply-agent-control-planes.sh`](/Users/dobby/.agents/scripts/auto-apply-agent-control-planes.sh), which calls the Codex and shared repo-local entrypoints as needed after `~/.agents` sync.
 - When shared skill inputs change, that wrapper also reruns the Codex bootstrap so machine-side dependencies for managed skills such as `pdf` stay converged.
 - That same wrapper re-syncs plugin registry views and reapplies Codex config when plugin state changes.
-- When `hooks/registry.json` or `codex/config/repo-bootstrap.json` changes, that wrapper syncs global Codex/Claude hooks and repo-local hooks for Codex, Claude, and GitHub Copilot in managed repos.
+- When `hooks/registry.json` or `codex/config/repo-bootstrap.json` changes, that wrapper syncs global Codex hooks and repo-local Codex hooks in managed repos.
 - Codex-specific post-sync apply logic still lives in [`auto-apply-codex-control-plane.sh`](/Users/dobby/.agents/codex/scripts/auto-apply-codex-control-plane.sh) as an optional lower-level Codex-only reconcile helper.
 - Practical flow:
   1. one machine pushes a change in `~/.agents`
   2. the other machine pulls it on the next git auto-sync cycle
   3. `git-auto-sync.sh` calls `auto-apply-agent-control-planes.sh`
-  4. that script runs the required shared skills, GitHub Copilot hook, Codex, and Claude apply steps based on what changed
+  4. that script runs the required shared skills, plugin, Git hook, and Codex apply steps based on what changed
 - Result:
   - no daily manual Codex bootstrap is needed on healthy machines
   - offline machines catch up on the next successful sync after they come online

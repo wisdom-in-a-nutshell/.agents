@@ -426,16 +426,6 @@
       "upstream_ref": "pbakaus/impeccable:skill@main"
     },
     {
-      "skill": "copilot-sdk",
-      "origin": "external",
-      "scope": "repo",
-      "repos": [
-        "codexclaw"
-      ],
-      "source_path": "skills-source/external/copilot-sdk",
-      "upstream_ref": "microsoft/skills:.github/skills/copilot-sdk@main"
-    },
-    {
       "skill": "remotion",
       "origin": "external",
       "scope": "repo",
@@ -454,16 +444,6 @@
       ],
       "source_path": "skills-source/external/web-typography",
       "upstream_ref": "wondelai/skills:web-typography@main"
-    },
-    {
-      "skill": "claude-api",
-      "origin": "external",
-      "scope": "repo",
-      "repos": [
-        "whos-in-your-head"
-      ],
-      "source_path": "skills-source/external/claude-api",
-      "upstream_ref": "anthropics/skills:skills/claude-api@main"
     }
   ],
   "unmanaged_repo_local_skills": [

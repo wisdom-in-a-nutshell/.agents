@@ -22,7 +22,7 @@ Before gathering assessments, do two small bookkeeping steps. They cost almost n
 
 Launch two independent assessments. **Neither may see the other's output.** This isolation is what makes the combined score honest. Running both in one head silently anchors them to each other; do not shortcut it for cost, speed, or context-size reasons.
 
-Delegate each assessment to a separate sub-agent (Claude Code's `Agent` tool, Codex's subagent spawning, etc.). Each returns structured findings as text. Do NOT output findings to the user yet.
+Delegate each assessment to a separate sub-agent when the harness supports it. Each returns structured findings as text. Do NOT output findings to the user yet.
 
 Fall back to sequential in-head work only if the environment genuinely cannot spawn sub-agents.
 

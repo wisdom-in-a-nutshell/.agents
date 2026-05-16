@@ -52,8 +52,8 @@ $HOME/.agents/skills-source/owned/dobby-lifecycle/scripts/hooks/session-start
 $HOME/.agents/skills-source/owned/dobby-lifecycle/scripts/hooks/user-prompt-submit
 $HOME/.agents/skills-source/owned/dobby-lifecycle/scripts/hooks/post-compact
 $HOME/.agents/skills-source/owned/dobby-lifecycle/scripts/hooks/session-end
-$HOME/.agents/skills-source/owned/dobby-lifecycle/scripts/hooks/codex-finalize-session
-$HOME/.agents/skills-source/owned/dobby-lifecycle/scripts/hooks/write-session-note
+$HOME/.agents/skills-source/owned/dobby-lifecycle/scripts/hooks/consolidate-thread
+$HOME/.agents/skills-source/owned/dobby-lifecycle/scripts/hooks/codex-finalize-session  # compatibility wrapper
 ```
 
 ## Reference files

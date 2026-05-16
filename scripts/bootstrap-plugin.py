@@ -414,10 +414,10 @@ def main() -> int:
                     plain=args.plain,
                 )
         actions.append("Regenerated Codex plugin registry views.")
-        actions.append("Applied shared Codex and Claude control planes.")
+        actions.append("Applied shared Codex control plane.")
     else:
         actions.append("Would regenerate Codex plugin registry views.")
-        actions.append("Would apply shared Codex and Claude control planes.")
+        actions.append("Would apply shared Codex control plane.")
 
     data = {
         "plugin": plugin_name,

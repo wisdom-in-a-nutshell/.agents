@@ -1,6 +1,6 @@
 # .agents repo
 
-Personal agent, Codex, Claude, and repo-local lifecycle hook control plane.
+Personal agent, Codex, and repo-local lifecycle hook control plane.
 
 ## Purpose
 
@@ -14,9 +14,9 @@ Personal agent, Codex, Claude, and repo-local lifecycle hook control plane.
 - `skills/registry.json` is the canonical skill registry.
 - `plugins/registry.json` is the canonical plugin registry.
 - `mcp/config/presets.json` is the canonical shared MCP registry.
-- `hooks/registry.json` is the canonical shared lifecycle hook registry for Codex, Claude, and GitHub Copilot.
+- `hooks/registry.json` is the canonical Codex lifecycle hook registry.
 - `codex/` holds canonical personal Codex control-plane inputs.
-- `codex/config/global.agents.md` is the single canonical machine-wide guidance source for both `~/.codex/AGENTS.md` and `~/.claude/CLAUDE.md`.
+- `codex/config/global.agents.md` is the canonical machine-wide guidance source for `~/.codex/AGENTS.md`.
 - `codex/config/bundled-skills-policy.json` is the canonical policy for classifying OpenAI-bundled Codex skills that appear under `~/.codex/skills/.system` or `~/.codex/skills/codex-primary-runtime`.
 - `codex/config/repo-bootstrap.json` is the canonical shared repo registry for managed repo-local behavior.
   - Per repo it can define:
@@ -52,7 +52,7 @@ Personal agent, Codex, Claude, and repo-local lifecycle hook control plane.
 
 - Apply all shared agent control planes: `./scripts/bootstrap-machine-agent-control-planes.sh --apply`
 - Reconcile after git sync: `./scripts/auto-apply-agent-control-planes.sh --apply`
-- Validate shared skills, plugins, Codex, Claude, and regression tests: `./scripts/check-agent-control-planes.sh`
+- Validate shared skills, plugins, Codex, and regression tests: `./scripts/check-agent-control-planes.sh`
 - Audit applied local agent runtime drift for machine health checks: `./scripts/audit-agent-runtime-drift.py --plain`
 - Run hermetic regression tests only: `./scripts/test-control-plane.sh`
 - Bootstrap external skills/plugins through the agent-facing clients:
@@ -64,7 +64,6 @@ Detailed operations live in:
 - `docs/references/agent-control-plane-operations.md`
 - `docs/references/repo-lifecycle-hook-adapter.md`
 - `docs/references/codex-control-plane-operations.md`
-- `docs/references/claude-control-plane-operations.md`
 - `docs/references/cli-interface-contract.md`
 
 ## Rendered Surfaces
@@ -79,7 +78,6 @@ Detailed operations live in:
 - When a user provides a `skills.sh` URL or upstream skill reference and wants it installed into a repo, prefer `./scripts/bootstrap-skill.sh` over manual registry edits.
 - Do not edit managed skills through repo symlink destinations; edit canonical source paths.
 - Do not split Codex plugins into skill or MCP registries by default. If a plugin capability should become standalone, promote it manually into `skills/registry.json` or `mcp/config/presets.json`.
-- Do not make `claude/config/global.claude.md` diverge from `codex/config/global.agents.md`; it must stay a symlink alias to the shared global guidance source.
 - Managed plugin entries render global plugin state into `~/.codex/config.toml` and repo-scoped plugin state into managed repo `.codex/config.toml`; standalone skills and MCPs remain separate registries.
 - Keep repo-local skills listed in `skills/registry.json` under `unmanaged_repo_local_skills`.
 - Keep `unmanaged_repo_local_skills` honest: if the target repo exists locally, the repo must contain `.agents/skills/<skill>/SKILL.md` or skill sync should fail until the stale registry entry is removed.
@@ -91,7 +89,7 @@ Detailed operations live in:
 - Do not hand-edit rendered runtime hook files. Update `hooks/registry.json` or `hooks/scripts/*`, then rerun the shared bootstrap/check.
 - Repo lifecycle hook authoring contract lives in `docs/references/repo-lifecycle-hook-adapter.md`.
 - Repo-specific lifecycle behavior belongs in optional Python scripts under `scripts/hooks/session_start.py`, `scripts/hooks/user_prompt_submit.py`, `scripts/hooks/pre_compact.py`, `scripts/hooks/post_compact.py`, and `scripts/hooks/session_end.py`.
-- Managed repos get rendered repo-local hook config at `.codex/hooks.json`, `.claude/settings.json`, and `.github/hooks/agent-control-plane.json` according to `hooks/registry.json`; do not hand-edit those hook surfaces. Update `hooks/registry.json`, `hooks/scripts/*`, or `codex/config/repo-bootstrap.json`, then rerun the shared bootstrap wrapper.
+- Managed repos get rendered repo-local hook config at `.codex/hooks.json` according to `hooks/registry.json`; do not hand-edit that surface. Update `hooks/registry.json`, `hooks/scripts/*`, or `codex/config/repo-bootstrap.json`, then rerun the shared bootstrap wrapper.
 - Managed repos use local Git `core.hooksPath` pointing at `hooks/git/`; the shared commit-time hook delegates to repo-owned `scripts/check-fast.sh` when present.
 - Use `scripts/check-fast.sh` as the fast, deterministic, repo-owned validation entrypoint. Prefer staged/affected checks there; keep slower repo-wide validation in `scripts/check-full.sh`.
 - If `skills/registry.json` changes, run sync/check in the same change.
@@ -99,7 +97,7 @@ Detailed operations live in:
 - Do not hand-edit generated repo-local `.codex/config.toml` files in managed repos; update `codex/config/repo-bootstrap.json` and re-run the sync scripts.
 - Do not hand-edit generated repo-local `.codex/hooks.json` files in managed repos; update `hooks/registry.json` and re-run the sync scripts.
 - When a new OpenAI-bundled Codex skill appears locally, classify it in `codex/config/bundled-skills-policy.json` as either `allowed` or `disabled`; do not leave it as untracked local runtime drift.
-- When changing shared bootstrap inputs such as `mcp/config/presets.json`, `codex/config/repo-bootstrap.json`, or repo MCP assignment, prefer `./scripts/bootstrap-machine-agent-control-planes.sh --apply --repo <repo>` so Codex, Claude, and repo-local Copilot hook state are re-rendered together. Use component-only scripts only for intentional single-surface troubleshooting.
-- If `mcp/config/presets.json` changes, run both Codex and Claude control-plane validation in the same change.
-- If `hooks/registry.json`, `hooks/scripts/*`, `hooks/git/*`, `scripts/sync-managed-git-hooks.sh`, or `scripts/sync-copilot-hooks.sh` changes, run shared bootstrap/check plus `./scripts/test-control-plane.sh` in the same change.
+- When changing shared bootstrap inputs such as `mcp/config/presets.json`, `codex/config/repo-bootstrap.json`, or repo MCP assignment, prefer `./scripts/bootstrap-machine-agent-control-planes.sh --apply --repo <repo>` so Codex runtime and repo-local Codex hook state are re-rendered together. Use component-only scripts only for intentional single-surface troubleshooting.
+- If `mcp/config/presets.json` changes, run Codex control-plane validation in the same change.
+- If `hooks/registry.json`, `hooks/scripts/*`, `hooks/git/*`, or `scripts/sync-managed-git-hooks.sh` changes, run shared bootstrap/check plus `./scripts/test-control-plane.sh` in the same change.
 - If `codex/config/global.config.toml` or `codex/config/repo-bootstrap.json` changes, run the Codex control-plane validation script in the same change.

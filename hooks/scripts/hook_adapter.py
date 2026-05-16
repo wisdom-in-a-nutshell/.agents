@@ -50,10 +50,6 @@ def _transcript_format(
         return explicit
     if not transcript_path:
         return None
-    if runtime == "claude":
-        return "claude-jsonl"
-    if runtime == "copilot":
-        return "copilot-gateway-jsonl"
     return "unknown"
 
 

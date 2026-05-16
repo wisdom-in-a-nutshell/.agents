@@ -3,7 +3,7 @@ repo_name: "codexclaw"
 path: "~/GitHub/codexclaw"
 mcp_count: 0
 plugin_count: 4
-skill_count: 15
+skill_count: 14
 repo_local_skill_count: 0
 model: "gpt-5.5"
 reasoning: "high"
@@ -35,7 +35,6 @@ global_skills:
 repo_skills:
   - "codex-agent-loop"
   - "codex-app-server"
-  - "copilot-sdk"
   - "imagegen"
 repo_local_skills: []
 skills:
@@ -45,7 +44,6 @@ skills:
   - "client-interface-guidelines"
   - "codex-agent-loop"
   - "codex-app-server"
-  - "copilot-sdk"
   - "defuddle"
   - "find-skills"
   - "imagegen"

@@ -102,7 +102,7 @@ class BootstrapSkillClientContractTests(TempDirTestCase):
         self.assertTrue(result.stdout.startswith("ok skill=example-skill scope=global"))
         self.assertEqual(result.stderr, "")
 
-    def test_apply_syncs_claude_skill_links_for_repo_targets(self) -> None:
+    def test_apply_syncs_codex_skill_links_for_repo_targets(self) -> None:
         root = self.temp_path
         github_root = root / "GitHub"
         repo = github_root / "target-repo"
@@ -132,16 +132,6 @@ class BootstrapSkillClientContractTests(TempDirTestCase):
                     ]
                 ),
             )
-        write_text(
-            root / "claude/scripts/sync-skills.sh",
-            "\n".join(
-                [
-                    "#!/usr/bin/env bash",
-                    f"printf '%s\\n' \"$0 $*\" >> {str(log)!r}",
-                ]
-            ),
-        )
-
         result = run_command(
             [
                 sys.executable,
@@ -159,13 +149,13 @@ class BootstrapSkillClientContractTests(TempDirTestCase):
         payload = json.loads(result.stdout)
         self.assertEqual(payload["status"], "ok")
         self.assertIn(
-            str(repo.resolve() / ".claude" / "skills" / "example-skill"),
-            payload["data"]["expected_claude_links"],
+            str(repo.resolve() / ".agents" / "skills" / "example-skill"),
+            payload["data"]["expected_links"],
         )
         command_log = log.read_text(encoding="utf-8")
-        self.assertIn("claude/scripts/sync-skills.sh", command_log)
-        self.assertIn("--apply --registry", command_log)
-        self.assertIn(f"--repo {repo.resolve()}", command_log)
+        self.assertIn("scripts/refresh-external-skills.py --apply --skill example-skill", command_log)
+        self.assertIn("scripts/sync-skills-registry.py --apply", command_log)
+        self.assertIn("codex/scripts/sync-repo-bootstrap-registry.py", command_log)
 
 
 class BootstrapPluginClientContractTests(TempDirTestCase):

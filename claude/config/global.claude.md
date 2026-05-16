@@ -1,1 +1,0 @@
-../../codex/config/global.agents.md

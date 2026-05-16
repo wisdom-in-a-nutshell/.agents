@@ -18,14 +18,7 @@ class SudoersInstallerTests(TempDirTestCase):
         )
 
         self.assertIn("test-user ALL=(root) NOPASSWD:", result.stdout)
-        self.assertIn(
-            "/usr/bin/install -d -m 0755 /Library/Application\\ Support/ClaudeCode",
-            result.stdout,
-        )
-        self.assertIn(
-            "/usr/bin/install -m 0644 * /Library/Application\\ Support/ClaudeCode/managed-settings.json",
-            result.stdout,
-        )
+        self.assertIn("/opt/homebrew/bin/brew services *", result.stdout)
         self.assertFalse(target.exists())
 
     def test_apply_no_input_fails_without_root_instead_of_prompting(self) -> None:

@@ -68,7 +68,6 @@ REQUIRED_TOP_LEVEL = {
 ALLOWED_TOP_LEVEL = {
     *REQUIRED_TOP_LEVEL.keys(),
     ".agents",
-    ".claude",
     ".codex",
     ".github",
     ".gitignore",
@@ -113,10 +112,6 @@ SECOND_LEVEL = {
     ".codex": {
         "files": {"config.toml", "hooks.json"},
         "dirs": {"agents", "environments"},
-    },
-    ".claude": {
-        "files": {"harness-minimal.md", "settings.json"},
-        "dirs": {"agents", "bin", "skills"},
     },
     ".github": {
         "files": set(),

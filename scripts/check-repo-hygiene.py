@@ -85,7 +85,6 @@ def markdown_files(root: Path, files: list[Path]) -> list[Path]:
         if rel.parts[0] == "docs" or rel in {
             Path("AGENTS.md"),
             Path("codex/AGENTS.md"),
-            Path("claude/AGENTS.md"),
             Path("mcp/AGENTS.md"),
         }:
             docs.append(path)

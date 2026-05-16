@@ -33,9 +33,7 @@ class SharedBootstrapWrapperTests(TempDirTestCase):
         write_executable(root / "scripts/sync-skills-registry.sh", STUB_SCRIPT)
         write_executable(root / "scripts/sync-plugins-registry.sh", STUB_SCRIPT)
         write_executable(root / "scripts/sync-managed-git-hooks.sh", STUB_SCRIPT)
-        write_executable(root / "scripts/sync-copilot-hooks.sh", STUB_SCRIPT)
         write_executable(root / "codex/scripts/bootstrap-machine-codex.sh", STUB_SCRIPT)
-        write_executable(root / "claude/scripts/bootstrap-machine-claude.sh", STUB_SCRIPT)
         return root, log_path
 
     def test_apply_mode_runs_shared_bootstrap_steps_with_forwarded_args(self) -> None:
@@ -63,9 +61,7 @@ class SharedBootstrapWrapperTests(TempDirTestCase):
                 f"sync-skills-registry.sh|--apply --repo {repo_a} --repo {repo_b}",
                 "sync-plugins-registry.sh|--apply",
                 f"sync-managed-git-hooks.sh|--apply --repo {repo_a} --repo {repo_b}",
-                f"sync-copilot-hooks.sh|--apply --repo {repo_a} --repo {repo_b}",
                 f"bootstrap-machine-codex.sh|--apply --github-root {github_root} --repo {repo_a} --repo {repo_b}",
-                f"bootstrap-machine-claude.sh|--apply --repo {repo_a} --repo {repo_b}",
             ],
             log_path.read_text(encoding="utf-8").splitlines(),
         )
@@ -84,13 +80,11 @@ class SharedCheckWrapperTests(TempDirTestCase):
         write_executable(root / "scripts/check-skills-registry.sh", STUB_SCRIPT)
         write_executable(root / "scripts/check-plugins-registry.sh", STUB_SCRIPT)
         write_executable(root / "scripts/sync-managed-git-hooks.sh", STUB_SCRIPT)
-        write_executable(root / "scripts/sync-copilot-hooks.sh", STUB_SCRIPT)
         write_executable(root / "codex/scripts/check-codex-control-plane.sh", STUB_SCRIPT)
-        write_executable(root / "claude/scripts/check-claude-control-plane.sh", STUB_SCRIPT)
         write_executable(root / "scripts/test-control-plane.sh", STUB_SCRIPT)
         return root, log_path
 
-    def test_repo_filter_is_forwarded_to_codex_and_claude_checks(self) -> None:
+    def test_repo_filter_is_forwarded_to_codex_checks(self) -> None:
         root, log_path = self._make_stub_control_plane()
         repo_a = self.temp_path / "repo-a"
         repo_b = self.temp_path / "repo-b"
@@ -112,9 +106,7 @@ class SharedCheckWrapperTests(TempDirTestCase):
                 "check-skills-registry.sh|",
                 "check-plugins-registry.sh|",
                 f"sync-managed-git-hooks.sh|--check --repo {repo_a} --repo {repo_b}",
-                f"sync-copilot-hooks.sh|--check --repo {repo_a} --repo {repo_b}",
                 f"check-codex-control-plane.sh|--repo {repo_a} --repo {repo_b}",
-                f"check-claude-control-plane.sh|--repo {repo_a} --repo {repo_b}",
                 "test-control-plane.sh|",
             ],
             log_path.read_text(encoding="utf-8").splitlines(),
@@ -132,7 +124,6 @@ class AutoApplyRoutingTests(TempDirTestCase):
             "skills/registry.json",
             "mcp/config/presets.json",
             "codex/config/repo-bootstrap.json",
-            "claude/config/bootstrap.json",
             "hooks/registry.json",
         ):
             write_text(root / relative_path, "{}\n")
@@ -141,9 +132,7 @@ class AutoApplyRoutingTests(TempDirTestCase):
         write_executable(root / "scripts/sync-skills-registry.sh", STUB_SCRIPT)
         write_executable(root / "scripts/sync-plugins-registry.sh", STUB_SCRIPT)
         write_executable(root / "scripts/sync-managed-git-hooks.sh", STUB_SCRIPT)
-        write_executable(root / "scripts/sync-copilot-hooks.sh", STUB_SCRIPT)
         write_executable(root / "codex/scripts/bootstrap-machine-codex.sh", STUB_SCRIPT)
-        write_executable(root / "claude/scripts/bootstrap-machine-claude.sh", STUB_SCRIPT)
         commit_all(root, "initial")
         return root, log_path, stamp_file
 
@@ -192,7 +181,7 @@ class AutoApplyRoutingTests(TempDirTestCase):
         ).stdout.strip()
         self.assertEqual(head_sha, stamp_file.read_text(encoding="utf-8").strip())
 
-    def test_skills_registry_change_triggers_skill_sync_and_both_runtimes(self) -> None:
+    def test_skills_registry_change_triggers_skill_sync_and_codex_bootstrap(self) -> None:
         root, log_path, stamp_file = self._make_agents_repo()
         baseline_sha = run_command(
             ["git", "-C", str(root), "rev-parse", "HEAD"],
@@ -218,12 +207,11 @@ class AutoApplyRoutingTests(TempDirTestCase):
             [
                 "sync-skills-registry.sh|--apply",
                 f"bootstrap-machine-codex.sh|--apply --github-root {self.temp_path / 'GitHub'}",
-                "bootstrap-machine-claude.sh|--apply",
             ],
             log_path.read_text(encoding="utf-8").splitlines(),
         )
 
-    def test_plugins_registry_change_triggers_plugin_sync_and_both_runtimes(self) -> None:
+    def test_plugins_registry_change_triggers_plugin_sync_and_codex_bootstrap(self) -> None:
         root, log_path, stamp_file = self._make_agents_repo()
         baseline_sha = run_command(
             ["git", "-C", str(root), "rev-parse", "HEAD"],
@@ -250,12 +238,11 @@ class AutoApplyRoutingTests(TempDirTestCase):
             [
                 "sync-plugins-registry.sh|--apply",
                 f"bootstrap-machine-codex.sh|--apply --github-root {self.temp_path / 'GitHub'}",
-                "bootstrap-machine-claude.sh|--apply",
             ],
             log_path.read_text(encoding="utf-8").splitlines(),
         )
 
-    def test_hooks_registry_change_triggers_copilot_sync_and_both_runtimes(self) -> None:
+    def test_hooks_registry_change_triggers_codex_bootstrap(self) -> None:
         root, log_path, stamp_file = self._make_agents_repo()
         baseline_sha = run_command(
             ["git", "-C", str(root), "rev-parse", "HEAD"],
@@ -276,32 +263,7 @@ class AutoApplyRoutingTests(TempDirTestCase):
         self.assertIn("APPLY: detected shared agent control-plane changes", output)
         self.assertEqual(
             [
-                "sync-copilot-hooks.sh|--apply",
                 f"bootstrap-machine-codex.sh|--apply --github-root {self.temp_path / 'GitHub'}",
-                "bootstrap-machine-claude.sh|--apply",
-            ],
-            log_path.read_text(encoding="utf-8").splitlines(),
-        )
-
-    def test_copilot_hook_renderer_change_triggers_only_copilot_sync(self) -> None:
-        root, log_path, stamp_file = self._make_agents_repo()
-        baseline_sha = run_command(
-            ["git", "-C", str(root), "rev-parse", "HEAD"],
-        ).stdout.strip()
-        write_text(stamp_file, baseline_sha + "\n")
-
-        write_executable(
-            root / "scripts/sync-copilot-hooks.sh",
-            STUB_SCRIPT + "\n# changed\n",
-        )
-        commit_all(root, "update copilot hook renderer")
-
-        output = self._run_auto_apply(root, log_path, stamp_file)
-
-        self.assertIn("APPLY: detected shared agent control-plane changes", output)
-        self.assertEqual(
-            [
-                "sync-copilot-hooks.sh|--apply",
             ],
             log_path.read_text(encoding="utf-8").splitlines(),
         )

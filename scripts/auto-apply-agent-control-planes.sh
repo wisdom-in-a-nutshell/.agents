@@ -10,9 +10,7 @@ ROOT_BOOTSTRAP_SCRIPT=""
 SYNC_SKILLS_SCRIPT=""
 SYNC_PLUGINS_SCRIPT=""
 SYNC_GIT_HOOKS_SCRIPT=""
-SYNC_COPILOT_HOOKS_SCRIPT=""
 CODEX_BOOTSTRAP_SCRIPT=""
-CLAUDE_BOOTSTRAP_SCRIPT=""
 
 usage() {
   cat <<USAGE
@@ -88,18 +86,14 @@ ROOT_BOOTSTRAP_SCRIPT="${AGENTS_REPO}/scripts/bootstrap-machine-agent-control-pl
 SYNC_SKILLS_SCRIPT="${AGENTS_REPO}/scripts/sync-skills-registry.sh"
 SYNC_PLUGINS_SCRIPT="${AGENTS_REPO}/scripts/sync-plugins-registry.sh"
 SYNC_GIT_HOOKS_SCRIPT="${AGENTS_REPO}/scripts/sync-managed-git-hooks.sh"
-SYNC_COPILOT_HOOKS_SCRIPT="${AGENTS_REPO}/scripts/sync-copilot-hooks.sh"
 CODEX_BOOTSTRAP_SCRIPT="${AGENTS_REPO}/codex/scripts/bootstrap-machine-codex.sh"
-CLAUDE_BOOTSTRAP_SCRIPT="${AGENTS_REPO}/claude/scripts/bootstrap-machine-claude.sh"
 
 [[ -d "$AGENTS_REPO/.git" ]] || die "Missing ~/.agents git repo: $AGENTS_REPO"
 [[ -x "$ROOT_BOOTSTRAP_SCRIPT" ]] || die "Missing executable: $ROOT_BOOTSTRAP_SCRIPT"
 [[ -x "$SYNC_SKILLS_SCRIPT" ]] || die "Missing executable: $SYNC_SKILLS_SCRIPT"
 [[ -x "$SYNC_PLUGINS_SCRIPT" ]] || die "Missing executable: $SYNC_PLUGINS_SCRIPT"
 [[ -x "$SYNC_GIT_HOOKS_SCRIPT" ]] || die "Missing executable: $SYNC_GIT_HOOKS_SCRIPT"
-[[ -x "$SYNC_COPILOT_HOOKS_SCRIPT" ]] || die "Missing executable: $SYNC_COPILOT_HOOKS_SCRIPT"
 [[ -x "$CODEX_BOOTSTRAP_SCRIPT" ]] || die "Missing executable: $CODEX_BOOTSTRAP_SCRIPT"
-[[ -x "$CLAUDE_BOOTSTRAP_SCRIPT" ]] || die "Missing executable: $CLAUDE_BOOTSTRAP_SCRIPT"
 
 current_sha="$(git -C "$AGENTS_REPO" rev-parse HEAD)"
 last_sha=""
@@ -136,7 +130,6 @@ while IFS= read -r path; do
   fi
 done < <(
   git -C "$AGENTS_REPO" diff --name-only "$last_sha" "$current_sha" -- \
-    claude \
     codex \
     hooks \
     mcp \
@@ -155,10 +148,8 @@ fi
 skills_changed=0
 plugins_changed=0
 codex_changed=0
-claude_changed=0
 hooks_changed=0
 git_hooks_changed=0
-copilot_hooks_changed=0
 root_bootstrap_changed=0
 shared_mcp_changed=0
 repo_registry_changed=0
@@ -172,11 +163,6 @@ for path in "${changed_paths[@]}"; do
   case "$path" in
     hooks/*)
       hooks_changed=1
-      ;;
-  esac
-  case "$path" in
-    hooks/*|scripts/sync-copilot-hooks.sh)
-      copilot_hooks_changed=1
       ;;
   esac
   case "$path" in
@@ -200,11 +186,6 @@ for path in "${changed_paths[@]}"; do
       ;;
   esac
   case "$path" in
-    claude/*)
-      claude_changed=1
-      ;;
-  esac
-  case "$path" in
     mcp/*)
       shared_mcp_changed=1
       ;;
@@ -217,10 +198,8 @@ done
 need_sync_skills=0
 need_sync_plugins=0
 need_sync_git_hooks=0
-need_sync_copilot_hooks=0
 need_root_bootstrap=0
 need_bootstrap_codex=0
-need_bootstrap_claude=0
 
 if (( root_bootstrap_changed == 1 )); then
   need_root_bootstrap=1
@@ -234,14 +213,8 @@ fi
 if (( git_hooks_changed == 1 || repo_registry_changed == 1 )); then
   need_sync_git_hooks=1
 fi
-if (( copilot_hooks_changed == 1 || repo_registry_changed == 1 )); then
-  need_sync_copilot_hooks=1
-fi
 if (( skills_changed == 1 || plugins_changed == 1 || codex_changed == 1 || hooks_changed == 1 || shared_mcp_changed == 1 )); then
   need_bootstrap_codex=1
-fi
-if (( claude_changed == 1 || hooks_changed == 1 || shared_mcp_changed == 1 || skills_changed == 1 || plugins_changed == 1 || repo_registry_changed == 1 )); then
-  need_bootstrap_claude=1
 fi
 
 actions=()
@@ -257,14 +230,8 @@ else
   if (( need_sync_git_hooks == 1 )); then
     actions+=("sync_managed_git_hooks")
   fi
-  if (( need_sync_copilot_hooks == 1 )); then
-    actions+=("sync_copilot_hooks")
-  fi
   if (( need_bootstrap_codex == 1 )); then
     actions+=("bootstrap_codex")
-  fi
-  if (( need_bootstrap_claude == 1 )); then
-    actions+=("bootstrap_claude")
   fi
 fi
 
@@ -297,25 +264,8 @@ for action in "${actions[@]}"; do
     sync_managed_git_hooks)
       cmd=("$SYNC_GIT_HOOKS_SCRIPT" "$MODE")
       ;;
-    sync_copilot_hooks)
-      cmd=("$SYNC_COPILOT_HOOKS_SCRIPT" "$MODE")
-      ;;
     bootstrap_codex)
       cmd=("$CODEX_BOOTSTRAP_SCRIPT" "$MODE" --github-root "$GITHUB_ROOT")
-      ;;
-    bootstrap_claude)
-      # Claude bootstrap may need sudo to write the OS-level managed-settings
-      # policy file. Pre-warm a sudo credential once when running interactively
-      # so the bootstrap chain doesn't stall partway through. In non-interactive
-      # contexts (cron, post-pull hooks without a TTY), let sync-managed-settings.sh
-      # surface its own clear error if a write is actually required.
-      if [[ "$MODE" == "--apply" ]] && [[ -t 0 && -t 2 ]]; then
-        if ! sudo -n true 2>/dev/null; then
-          log "Pre-warming sudo for Claude managed-settings policy write"
-          sudo -v || die "sudo pre-warm failed; cannot apply Claude managed-settings policy"
-        fi
-      fi
-      cmd=("$CLAUDE_BOOTSTRAP_SCRIPT" "$MODE")
       ;;
     *)
       die "Unknown reconcile action: $action"

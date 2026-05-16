@@ -17,7 +17,6 @@ Keep active campaign state in the project-local `resources/reddit/` folder. Keep
 - `r/vibecoding` — useful when the angle is builder workflow, tool composition, or practical agent-native software building.
 
 ### Contextual / optional
-- `r/ClaudeCode` — only when the post is relevant to agent engineering or coding-agent architecture more broadly, not only Codex-specific usage.
 - `r/singularity` — only when the post has broader AI-systems or industry-interest framing.
 - `r/LocalLLaMA` — only when there is a real systems / infra / agent-runtime angle that fits the community, not just product usage.
 

@@ -41,7 +41,6 @@ A Mermaid diagram rendering skill for AI, supporting both SVG and ASCII output f
 
 Seamlessly integrates with the following AI coding environments:
 
-- **Claude Code**
 - **Cursor**
 - **Gemini CLI**
 - **Antigravity**

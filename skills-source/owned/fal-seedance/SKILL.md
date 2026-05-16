@@ -20,8 +20,8 @@ Use this skill when a task involves fal.ai Seedance, reference-to-video, image-t
 - Secret lane: machine-local shared integration `fal`
 - Secret mapping: `/Users/dobby/GitHub/scripts/sync/machine-secrets/fal.env.map`
 - Generated secret file: `~/.secrets/fal/env`
-- CLI: `python3 .claude/skills/fal-seedance/scripts/fal_seedance_ref2v.py` (Python, uses the official `fal-client` PyPI SDK)
-- Client contract: `.claude/skills/fal-seedance/references/client.md`
+- CLI: `python3 .agents/skills/fal-seedance/scripts/fal_seedance_ref2v.py` (Python, uses the official `fal-client` PyPI SDK)
+- Client contract: `.agents/skills/fal-seedance/references/client.md`
 
 The CLI reads `~/.secrets/fal/env` directly. Do not pass fal keys through flags, tracked files, or chat-visible shell commands.
 
@@ -41,19 +41,19 @@ If `fal-client` isn't installed: `python3 -m pip install --user --break-system-p
 Validate the local secret bootstrap:
 
 ```bash
-python3 .claude/skills/fal-seedance/scripts/fal_seedance_ref2v.py validate
+python3 .agents/skills/fal-seedance/scripts/fal_seedance_ref2v.py validate
 ```
 
 Verify fal provider connectivity without video inference:
 
 ```bash
-python3 .claude/skills/fal-seedance/scripts/fal_seedance_ref2v.py doctor --remote
+python3 .agents/skills/fal-seedance/scripts/fal_seedance_ref2v.py doctor --remote
 ```
 
 Dry-run a canary:
 
 ```bash
-python3 .claude/skills/fal-seedance/scripts/fal_seedance_ref2v.py run \
+python3 .agents/skills/fal-seedance/scripts/fal_seedance_ref2v.py run \
   --project <project-id> \
   --name portrait-motion-canary \
   --ref projects/<project-id>/storyboard/frame-01.png \
@@ -68,7 +68,7 @@ Run after the dry-run looks right by removing `--dry-run`.
 Image-to-video (deterministic start→end morph) on Kling O3 Pro:
 
 ```bash
-python3 .claude/skills/fal-seedance/scripts/fal_seedance_ref2v.py i2v \
+python3 .agents/skills/fal-seedance/scripts/fal_seedance_ref2v.py i2v \
   --project <project-id> \
   --name <beat-name> \
   --start-image projects/<project-id>/keyframes/start.png \
@@ -84,7 +84,7 @@ Drop `--dry-run` to render. Use `o3/standard` for cheaper iterations and `o3/pro
 Multi-reference storyboard canary:
 
 ```bash
-python3 .claude/skills/fal-seedance/scripts/fal_seedance_ref2v.py run \
+python3 .agents/skills/fal-seedance/scripts/fal_seedance_ref2v.py run \
   --project <project-id> \
   --name anchored-portrait-motion \
   --ref projects/<project-id>/storyboard/primary-frame.png \

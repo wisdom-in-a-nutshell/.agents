@@ -99,10 +99,6 @@ def make_control_plane_root(base_dir: Path) -> Path:
         "codex/config/bundled-skills-policy.json",
         "codex/config/global.agents.md",
         "codex/config/global.config.toml",
-        "claude/config/bootstrap.json",
-        "claude/config/global.claude.md",
-        "claude/config/managed-settings.json",
-        "claude/config/settings.json",
         "hooks/__init__.py",
         "hooks/control_plane.py",
         "hooks/registry.json",
@@ -110,7 +106,6 @@ def make_control_plane_root(base_dir: Path) -> Path:
     ):
         copy_repo_file(relative_path, root)
     (root / "codex/config").mkdir(parents=True, exist_ok=True)
-    (root / "claude/config").mkdir(parents=True, exist_ok=True)
     (root / "mcp/config").mkdir(parents=True, exist_ok=True)
     (root / "plugins").mkdir(parents=True, exist_ok=True)
     (root / "skills").mkdir(parents=True, exist_ok=True)

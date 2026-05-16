@@ -30,7 +30,6 @@ log/
 
 # Local rendered runtime backups
 .codex/*.bak.*
-.claude/*.bak.*
 
 # Obsidian runtime UI state (local/session-specific)
 .obsidian/workspace*.json

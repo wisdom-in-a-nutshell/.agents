@@ -30,7 +30,7 @@ class RepoHookSpec:
     forward_stdout_as_context: bool = False
     forward_stdout_raw: bool = False
     ignore_stdout_context_runtimes: frozenset[str] = field(
-        default_factory=lambda: frozenset({"copilot"})
+        default_factory=frozenset
     )
     ignore_mismatched_event_name: bool = False
     log_stdout: bool = False

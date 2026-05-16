@@ -13,7 +13,6 @@ Keep a reference doc only when it gives exact facts an agent needs to change or 
 - [Agent Control-Plane Operations](/Users/dobby/.agents/docs/references/agent-control-plane-operations.md)
 - [Codex Control Plane Ownership](/Users/dobby/.agents/docs/references/codex-control-plane-ownership.md)
 - [Codex Control Plane Operations](/Users/dobby/.agents/docs/references/codex-control-plane-operations.md)
-- [Claude Control Plane Operations](/Users/dobby/.agents/docs/references/claude-control-plane-operations.md)
 - [Repo Lifecycle Hook Adapter](/Users/dobby/.agents/docs/references/repo-lifecycle-hook-adapter.md)
 - [Rendered Surfaces](/Users/dobby/.agents/docs/references/rendered-surfaces.md)
 - [Skills Registry](/Users/dobby/.agents/docs/references/skills-registry.md)
