@@ -142,7 +142,7 @@ def launch_consolidate_thread_worker(root: Path, job_path: Path) -> None:
         print(f"post-compact: missing consolidate-thread worker: {worker}", file=sys.stderr)
         return
 
-    log_path = root / SESSION_FINALIZER_DIR / "worker.log"
+    log_path = root / CONSOLIDATION_WORKER_DIR / "worker.log"
     log_path.parent.mkdir(parents=True, exist_ok=True)
     with log_path.open("a", encoding="utf-8") as stderr_log:
         subprocess.Popen(
