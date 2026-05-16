@@ -54,7 +54,7 @@ class HooksControlPlaneTests(TempDirTestCase):
         codex_hooks = render_codex_hooks(registry, repo_name="adi")
         self.assertEqual(
             set(codex_hooks["hooks"].keys()),
-            {"SessionStart", "UserPromptSubmit", "SessionEnd"},
+            {"SessionStart", "UserPromptSubmit", "PreCompact", "SessionEnd"},
         )
         self.assertEqual(
             codex_hooks["hooks"]["SessionStart"][0]["matcher"],
@@ -63,6 +63,10 @@ class HooksControlPlaneTests(TempDirTestCase):
         self.assertEqual(
             codex_hooks["hooks"]["UserPromptSubmit"][0]["hooks"][0]["command"],
             "python3 ~/.agents/hooks/scripts/user_prompt_submit.py --runtime codex",
+        )
+        self.assertEqual(
+            codex_hooks["hooks"]["PreCompact"][0]["hooks"][0]["command"],
+            "python3 ~/.agents/hooks/scripts/pre_compact.py --runtime codex",
         )
         self.assertEqual(
             codex_hooks["hooks"]["SessionEnd"][0]["hooks"][0]["command"],

@@ -1,0 +1,214 @@
+#!/usr/bin/env python3
+"""Dobby pre-compact hook.
+
+PreCompact must stay out of the live conversation path. This hook records a
+small consolidation job, starts the existing `consolidate-thread` sidecar
+worker in the background, and exits successfully so Codex can proceed with
+compaction.
+"""
+
+from __future__ import annotations
+
+import json
+import os
+import re
+import subprocess
+import sys
+from datetime import datetime, timezone
+from pathlib import Path
+from typing import Any
+
+HOOK_EVENT = "PreCompact"
+SCHEMA_VERSION = "1.0"
+DEFAULT_TIMEOUT_SEC = 900
+PRE_COMPACT_DIR = Path("tmp/dobby-lifecycle/pre-compact")
+
+
+def utc_now_iso_z() -> str:
+    return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+
+
+def utc_now_file_stamp() -> str:
+    return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H-%M-%SZ")
+
+
+def read_payload() -> dict[str, Any]:
+    raw = sys.stdin.read()
+    if not raw.strip():
+        return {}
+    try:
+        payload = json.loads(raw)
+    except json.JSONDecodeError:
+        return {}
+    return payload if isinstance(payload, dict) else {}
+
+
+def repo_root(payload: dict[str, Any]) -> Path:
+    return Path(
+        payload.get("repo_root")
+        or os.environ.get("AGENT_REPO_ROOT")
+        or "."
+    ).expanduser().resolve()
+
+
+def raw_payload(payload: dict[str, Any]) -> dict[str, Any]:
+    raw = payload.get("raw_payload")
+    return raw if isinstance(raw, dict) else {}
+
+
+def first_text(payload: dict[str, Any], *keys: str) -> str | None:
+    for key in keys:
+        value = payload.get(key)
+        if isinstance(value, str) and value.strip():
+            return value.strip()
+    return None
+
+
+def source_thread_id(payload: dict[str, Any]) -> str | None:
+    raw = raw_payload(payload)
+    return (
+        first_text(payload, "source_thread_id", "sourceThreadId")
+        or first_text(raw, "source_thread_id", "sourceThreadId")
+        or first_text(raw, "thread_id", "threadId")
+        or first_text(payload, "session_id", "sessionId")
+        or first_text(raw, "session_id", "sessionId")
+    )
+
+
+def source_turn_id(payload: dict[str, Any]) -> str | None:
+    raw = raw_payload(payload)
+    return (
+        first_text(payload, "source_turn_id", "sourceTurnId")
+        or first_text(raw, "source_turn_id", "sourceTurnId")
+        or first_text(payload, "turn_id", "turnId")
+        or first_text(raw, "turn_id", "turnId")
+    )
+
+
+def safe_file_stem(value: str | None) -> str:
+    if not value:
+        return f"unknown-{utc_now_file_stamp()}"
+    cleaned = re.sub(r"[^A-Za-z0-9._-]+", "-", value.strip()).strip(".-")
+    return cleaned or f"unknown-{utc_now_file_stamp()}"
+
+
+def write_json_atomic(path: Path, value: dict[str, Any]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp_path = path.with_suffix(path.suffix + ".tmp")
+    tmp_path.write_text(json.dumps(value, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    tmp_path.replace(path)
+
+
+def write_run_record(
+    root: Path,
+    *,
+    payload: dict[str, Any],
+    status: str,
+    reason: str | None = None,
+    job_path: Path | None = None,
+    log_path: Path | None = None,
+    pid: int | None = None,
+) -> None:
+    thread_id = source_thread_id(payload)
+    stem = f"{utc_now_file_stamp()}-{safe_file_stem(thread_id)}"
+    record = {
+        "schema_version": SCHEMA_VERSION,
+        "recorded_at": utc_now_iso_z(),
+        "hook_event_name": HOOK_EVENT,
+        "status": status,
+        "reason": reason,
+        "source_thread_id": thread_id,
+        "source_turn_id": source_turn_id(payload),
+        "cwd": first_text(payload, "cwd"),
+        "job_path": str(job_path) if job_path else None,
+        "log_path": str(log_path) if log_path else None,
+        "pid": pid,
+    }
+    write_json_atomic(root / PRE_COMPACT_DIR / "runs" / f"{stem}.json", record)
+
+
+def build_job_payload(root: Path, payload: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "schema_version": SCHEMA_VERSION,
+        "created_at": utc_now_iso_z(),
+        "hook_event_name": HOOK_EVENT,
+        "source_label": "pre-compact",
+        "source_thread_id": source_thread_id(payload),
+        "source_turn_id": source_turn_id(payload),
+        "repo_root": str(root),
+        "cwd": first_text(payload, "cwd"),
+        "session_id": first_text(payload, "session_id", "sessionId"),
+        "turn_id": first_text(payload, "turn_id", "turnId"),
+        "model": first_text(payload, "model"),
+        "reason": first_text(payload, "reason"),
+        "timestamp": payload.get("timestamp"),
+        "raw_payload": raw_payload(payload),
+        "instruction": (
+            "This job was launched by Dobby PreCompact. Preserve only context "
+            "that would make a future Dobby session worse if lost."
+        ),
+    }
+
+
+def launch_consolidation(root: Path, job_path: Path, log_path: Path) -> int:
+    consolidate_thread = Path(__file__).resolve().parent.parent / "consolidate-thread"
+    command = [
+        sys.executable,
+        str(consolidate_thread),
+        "--job",
+        str(job_path),
+        "--repo-root",
+        str(root),
+        "--timeout-sec",
+        str(DEFAULT_TIMEOUT_SEC),
+    ]
+    log_path.parent.mkdir(parents=True, exist_ok=True)
+    env = {**os.environ, "PYTHONUNBUFFERED": "1"}
+    log_handle = log_path.open("ab")
+    try:
+        proc = subprocess.Popen(
+            command,
+            cwd=str(root),
+            stdin=subprocess.DEVNULL,
+            stdout=log_handle,
+            stderr=subprocess.STDOUT,
+            env=env,
+            start_new_session=True,
+            close_fds=True,
+        )
+    finally:
+        log_handle.close()
+    return proc.pid
+
+
+def main() -> int:
+    payload = read_payload()
+    event_name = payload.get("hook_event_name") or os.environ.get("AGENT_HOOK_EVENT")
+    if event_name not in {None, HOOK_EVENT}:
+        return 0
+    if payload.get("schema_version") not in {None, SCHEMA_VERSION}:
+        return 0
+
+    root = repo_root(payload)
+    os.chdir(root)
+
+    thread_id = source_thread_id(payload)
+    if not thread_id:
+        write_run_record(root, payload=payload, status="skipped", reason="missing source thread id")
+        return 0
+
+    stem = f"{utc_now_file_stamp()}-{safe_file_stem(thread_id)}"
+    job_path = root / PRE_COMPACT_DIR / "jobs" / f"{stem}.json"
+    log_path = root / PRE_COMPACT_DIR / "logs" / f"{stem}.log"
+    write_json_atomic(job_path, build_job_payload(root, payload))
+    pid = launch_consolidation(root, job_path, log_path)
+    write_run_record(root, payload=payload, status="started", job_path=job_path, log_path=log_path, pid=pid)
+    return 0
+
+
+if __name__ == "__main__":
+    try:
+        raise SystemExit(main())
+    except Exception as exc:
+        print(f"pre-compact: {exc}", file=sys.stderr)
+        raise SystemExit(0)
