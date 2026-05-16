@@ -62,4 +62,4 @@ The normalized `data` object contains:
 
 The dashboard is an operator inspection surface. Automation should consume
 `scripts/control-plane-dashboard.py data --no-input` or `/api/control-plane`,
-not scrape the HTML table.
+not scrape the browser UI.

@@ -1,47 +1,98 @@
 const state = {
   data: null,
-  selectedKind: "all",
-  selectedId: null,
+  section: "overview",
+  filter: "all",
+  loadError: null,
 };
 
 const els = {
   repoRoot: document.querySelector("#repoRoot"),
-  sourceLinks: document.querySelector("#sourceLinks"),
-  searchInput: document.querySelector("#searchInput"),
-  scopeFilter: document.querySelector("#scopeFilter"),
-  statusFilter: document.querySelector("#statusFilter"),
-  refreshButton: document.querySelector("#refreshButton"),
-  itemTable: document.querySelector("#itemTable"),
-  tableTitle: document.querySelector("#tableTitle"),
-  resultMeta: document.querySelector("#resultMeta"),
   lastUpdated: document.querySelector("#lastUpdated"),
+  refreshButton: document.querySelector("#refreshButton"),
+  searchInput: document.querySelector("#searchInput"),
+  sectionEyebrow: document.querySelector("#sectionEyebrow"),
+  sectionTitle: document.querySelector("#sectionTitle"),
+  metricsGrid: document.querySelector("#metricsGrid"),
   warningPanel: document.querySelector("#warningPanel"),
   warningList: document.querySelector("#warningList"),
   warningCount: document.querySelector("#warningCount"),
-  detailKind: document.querySelector("#detailKind"),
-  detailTitle: document.querySelector("#detailTitle"),
-  detailFacts: document.querySelector("#detailFacts"),
-  detailJson: document.querySelector("#detailJson"),
-  detailSourceLink: document.querySelector("#detailSourceLink"),
-  metricItems: document.querySelector("#metricItems"),
-  metricGlobal: document.querySelector("#metricGlobal"),
-  metricRepoScoped: document.querySelector("#metricRepoScoped"),
-  metricWarnings: document.querySelector("#metricWarnings"),
-  navCountAll: document.querySelector("#navCountAll"),
+  filterBar: document.querySelector("#filterBar"),
+  contentRegion: document.querySelector("#contentRegion"),
+  navCountOverview: document.querySelector("#navCountOverview"),
+  navCountRepos: document.querySelector("#navCountRepos"),
   navCountSkills: document.querySelector("#navCountSkills"),
   navCountPlugins: document.querySelector("#navCountPlugins"),
   navCountMcp: document.querySelector("#navCountMcp"),
-  navCountRepos: document.querySelector("#navCountRepos"),
   navCountHooks: document.querySelector("#navCountHooks"),
 };
 
-const labels = {
-  all: "All Items",
-  skill: "Skills",
-  plugin: "Plugins",
-  mcp: "MCP Presets",
-  repo: "Repos",
-  hook: "Hooks",
+const sections = {
+  overview: {
+    eyebrow: "Overview",
+    title: "Control-plane status",
+  },
+  repos: {
+    eyebrow: "Repos",
+    title: "Managed repo map",
+  },
+  skills: {
+    eyebrow: "Skills",
+    title: "Skill availability",
+  },
+  plugins: {
+    eyebrow: "Plugins",
+    title: "Codex plugin state",
+  },
+  mcp: {
+    eyebrow: "MCP",
+    title: "MCP presets",
+  },
+  hooks: {
+    eyebrow: "Hooks",
+    title: "Lifecycle hooks",
+  },
+};
+
+const filterOptions = {
+  overview: [{ id: "all", label: "All" }],
+  repos: [
+    { id: "all", label: "All" },
+    { id: "repo-skills", label: "Repo skills" },
+    { id: "repo-plugins", label: "Repo plugins" },
+    { id: "repo-mcp", label: "Repo MCP" },
+    { id: "custom", label: "Custom config" },
+  ],
+  skills: [
+    { id: "all", label: "All" },
+    { id: "global", label: "Global" },
+    { id: "repo", label: "Repo scoped" },
+    { id: "repo-local", label: "Repo local" },
+    { id: "owned", label: "Owned" },
+    { id: "external", label: "External" },
+    { id: "dormant", label: "Dormant" },
+  ],
+  plugins: [
+    { id: "all", label: "All" },
+    { id: "enabled", label: "Enabled" },
+    { id: "disabled", label: "Disabled" },
+    { id: "global", label: "Global" },
+    { id: "repo", label: "Repo scoped" },
+    { id: "repo-local", label: "Repo local" },
+  ],
+  mcp: [
+    { id: "all", label: "All" },
+    { id: "global", label: "Global" },
+    { id: "repo", label: "Repo" },
+    { id: "plugin", label: "Plugin" },
+    { id: "unassigned", label: "Unassigned" },
+  ],
+  hooks: [
+    { id: "all", label: "All" },
+    { id: "enabled", label: "Enabled" },
+    { id: "disabled", label: "Disabled" },
+    { id: "global", label: "Global" },
+    { id: "repo", label: "Repo scoped" },
+  ],
 };
 
 async function loadData() {
@@ -53,12 +104,11 @@ async function loadData() {
       throw new Error(`Dashboard API returned ${response.status}`);
     }
     state.data = await response.json();
-    if (!state.selectedId && state.data.items.length > 0) {
-      state.selectedId = state.data.items[0].id;
-    }
+    state.loadError = null;
     render();
   } catch (error) {
-    renderLoadError(error);
+    state.loadError = error;
+    render();
   } finally {
     els.refreshButton.disabled = false;
     els.refreshButton.textContent = "Refresh";
@@ -66,275 +116,729 @@ async function loadData() {
 }
 
 function render() {
-  const data = state.data;
-  if (!data) {
+  if (state.loadError) {
+    renderLoadError(state.loadError);
     return;
   }
-  const counts = data.counts;
-  els.repoRoot.textContent = data.repo_root;
-  els.metricItems.textContent = counts.items;
-  els.metricGlobal.textContent = counts.global;
-  els.metricRepoScoped.textContent = counts.repo_scoped;
-  els.metricWarnings.textContent = counts.warnings;
-  els.navCountAll.textContent = counts.items;
+  if (!state.data) {
+    return;
+  }
+
+  updateChrome();
+  renderHeader();
+  renderMetrics();
+  renderWarnings();
+  renderFilters();
+  renderActiveSection();
+}
+
+function updateChrome() {
+  const { counts, repo_root: repoRoot, generated_at_utc: generatedAt } = state.data;
+  els.repoRoot.textContent = repoRoot;
+  els.lastUpdated.textContent = `Updated ${formatDate(generatedAt)}`;
+  els.navCountOverview.textContent = counts.items;
+  els.navCountRepos.textContent = counts.repos;
   els.navCountSkills.textContent = counts.skills;
   els.navCountPlugins.textContent = counts.plugins;
   els.navCountMcp.textContent = counts.mcp;
-  els.navCountRepos.textContent = counts.repos;
   els.navCountHooks.textContent = counts.hooks;
-  els.lastUpdated.textContent = `Updated ${formatDate(data.generated_at_utc)}`;
-
-  renderSources(data.sources);
-  renderWarnings(data.warnings);
-  renderTable(filteredItems());
-  renderDetail(findSelectedItem());
 }
 
-function renderSources(sources) {
-  els.sourceLinks.replaceChildren();
-  Object.entries(sources).forEach(([name, source]) => {
-    const link = document.createElement("a");
-    link.className = "source-link";
-    link.href = `/source/${source.path}`;
-    link.target = "_blank";
-    link.rel = "noreferrer";
-    link.textContent = `${name}: ${source.path}`;
-    els.sourceLinks.append(link);
+function renderHeader() {
+  const meta = sections[state.section] || sections.overview;
+  els.sectionEyebrow.textContent = meta.eyebrow;
+  els.sectionTitle.textContent = meta.title;
+}
+
+function renderMetrics() {
+  els.metricsGrid.replaceChildren();
+  metricsForSection(state.section).forEach((metric) => {
+    const block = createElement("article", `metric-block ${metric.tone || ""}`);
+    block.append(
+      createElement("span", "", metric.label),
+      createElement("strong", "", String(metric.value)),
+    );
+    els.metricsGrid.append(block);
   });
 }
 
-function renderWarnings(warnings) {
+function metricsForSection(section) {
+  const groups = state.data.groups;
+  const counts = state.data.counts;
+  if (section === "skills") {
+    return [
+      metric("Global", countItems(groups.skills, (item) => item.scope === "global")),
+      metric("Repo scoped", countItems(groups.skills, (item) => item.scope === "repo")),
+      metric("Repo local", countItems(groups.skills, (item) => item.scope === "repo-local")),
+      metric("Owned", countItems(groups.skills, (item) => item.details.origin === "owned")),
+      metric("External", countItems(groups.skills, (item) => item.details.origin === "external")),
+    ];
+  }
+  if (section === "plugins") {
+    return [
+      metric("Enabled", countItems(groups.plugins, (item) => item.status === "enabled")),
+      metric("Disabled", countItems(groups.plugins, (item) => item.status === "disabled"), "warning"),
+      metric("Global", countItems(groups.plugins, (item) => item.scope === "global")),
+      metric("Repo scoped", countItems(groups.plugins, (item) => item.scope === "repo")),
+      metric("Repo local", countItems(groups.plugins, (item) => item.scope === "repo-local")),
+    ];
+  }
+  if (section === "mcp") {
+    return [
+      metric("Global", countItems(groups.mcp, (item) => scopeHas(item, "global"))),
+      metric("Repo", countItems(groups.mcp, (item) => scopeHas(item, "repo"))),
+      metric("Plugin", countItems(groups.mcp, (item) => scopeHas(item, "plugin"))),
+      metric("Unassigned", countItems(groups.mcp, (item) => item.scope === "unassigned"), "warning"),
+    ];
+  }
+  if (section === "repos") {
+    return [
+      metric("Managed", groups.repos.length),
+      metric("Repo skills", countItems(groups.repos, (repo) => repoScopedSkillsForRepo(repo).length)),
+      metric("Repo plugins", countItems(groups.repos, (repo) => repoScopedPluginsForRepo(repo).length)),
+      metric("Repo MCP", countItems(groups.repos, (repo) => repoDirectMcpForRepo(repo).length)),
+      metric("Warnings", counts.warnings, counts.warnings ? "warning" : ""),
+    ];
+  }
+  if (section === "hooks") {
+    return [
+      metric("Enabled", countItems(groups.hooks, (item) => item.status === "enabled")),
+      metric("Disabled", countItems(groups.hooks, (item) => item.status === "disabled"), "warning"),
+      metric("Global", countItems(groups.hooks, (item) => item.scope === "global")),
+      metric("Repo scoped", countItems(groups.hooks, (item) => item.scope === "repo")),
+    ];
+  }
+  return [
+    metric("Repos", counts.repos),
+    metric("Skills", counts.skills),
+    metric("Plugins", counts.plugins),
+    metric("MCP", counts.mcp),
+    metric("Warnings", counts.warnings, counts.warnings ? "warning" : ""),
+  ];
+}
+
+function metric(label, value, tone = "") {
+  return { label, value, tone };
+}
+
+function renderWarnings() {
+  const warnings = state.data.warnings;
   els.warningList.replaceChildren();
   els.warningCount.textContent = warnings.length;
   els.warningPanel.classList.toggle("hidden", warnings.length === 0);
   warnings.slice(0, 8).forEach((warning) => {
-    const item = document.createElement("div");
-    item.className = `warning-item ${warning.severity === "error" ? "error" : ""}`;
-
-    const title = document.createElement("strong");
-    title.textContent = warning.message;
-
-    const meta = document.createElement("span");
-    meta.textContent = `${warning.code} / ${warning.source}`;
-
-    item.append(title, meta);
+    const item = createElement("div", `warning-item ${warning.severity === "error" ? "error" : ""}`);
+    item.append(
+      createElement("strong", "", warning.message),
+      createElement("span", "", `${warning.code} / ${warning.source}`),
+    );
     els.warningList.append(item);
   });
 }
 
-function filteredItems() {
-  const data = state.data;
-  if (!data) {
-    return [];
+function renderFilters() {
+  els.filterBar.replaceChildren();
+  const options = filterOptions[state.section] || filterOptions.overview;
+  const visibleOptions = options.filter((option) => option.id === "all" || countForFilter(state.section, option.id) > 0);
+  if (visibleOptions.length <= 1) {
+    els.filterBar.classList.add("hidden");
+    state.filter = "all";
+    return;
   }
-  const query = els.searchInput.value.trim().toLowerCase();
-  const scope = els.scopeFilter.value;
-  const status = els.statusFilter.value;
-  return data.items.filter((item) => {
-    if (state.selectedKind !== "all" && item.kind !== state.selectedKind) {
+  els.filterBar.classList.remove("hidden");
+  if (!visibleOptions.some((option) => option.id === state.filter)) {
+    state.filter = "all";
+  }
+  visibleOptions.forEach((option) => {
+    const button = createElement("button", `filter-chip ${state.filter === option.id ? "active" : ""}`);
+    button.type = "button";
+    button.dataset.filter = option.id;
+    button.append(
+      createElement("span", "", option.label),
+      createElement("strong", "", String(countForFilter(state.section, option.id))),
+    );
+    button.addEventListener("click", () => {
+      state.filter = option.id;
+      render();
+    });
+    els.filterBar.append(button);
+  });
+}
+
+function countForFilter(section, filter) {
+  if (section === "repos") {
+    return filterRepos(state.data.groups.repos, filter, false).length;
+  }
+  const kind = section === "mcp" ? "mcp" : section;
+  const items = state.data.groups[kind] || [];
+  if (filter === "all") {
+    return items.length;
+  }
+  return items.filter((item) => itemPassesFilter(item, section, filter)).length;
+}
+
+function renderActiveSection() {
+  els.contentRegion.replaceChildren();
+  if (state.section === "overview") {
+    renderOverview();
+  } else if (state.section === "repos") {
+    renderRepos();
+  } else if (state.section === "skills") {
+    renderSkills();
+  } else if (state.section === "plugins") {
+    renderPlugins();
+  } else if (state.section === "mcp") {
+    renderMcp();
+  } else if (state.section === "hooks") {
+    renderHooks();
+  }
+}
+
+function renderOverview() {
+  const summary = createElement("section", "overview-grid");
+  summary.append(
+    overviewPanel("Global base kit", [
+      statLine("Skills", globalSkills().length),
+      statLine("Plugins", enabledGlobalPlugins().length),
+      statLine("Hooks", enabledGlobalHooks().length),
+      statLine("MCP", globalMcp().length),
+    ]),
+    overviewPanel("Repo-specific additions", [
+      statLine("Repos with skills", countItems(state.data.groups.repos, (repo) => repoScopedSkillsForRepo(repo).length)),
+      statLine("Repos with plugins", countItems(state.data.groups.repos, (repo) => repoScopedPluginsForRepo(repo).length)),
+      statLine("Repos with MCP", countItems(state.data.groups.repos, (repo) => repoDirectMcpForRepo(repo).length)),
+      statLine("Repo-local skills", countItems(state.data.groups.skills, (item) => item.scope === "repo-local")),
+    ]),
+    overviewPanel("Attention", attentionLines()),
+  );
+  els.contentRegion.append(summary);
+
+  const repoRows = filteredRepos().slice(0, 8);
+  els.contentRegion.append(
+    groupedPanel("Repos with the most local shape", repoRows, repoOverviewRow, "No repos match this search."),
+  );
+}
+
+function attentionLines() {
+  const disabledPlugins = countItems(state.data.groups.plugins, (item) => item.status === "disabled");
+  const disabledHooks = countItems(state.data.groups.hooks, (item) => item.status === "disabled");
+  const unassignedMcp = countItems(state.data.groups.mcp, (item) => item.scope === "unassigned");
+  return [
+    statLine("Warnings", state.data.counts.warnings),
+    statLine("Disabled plugins", disabledPlugins),
+    statLine("Disabled hooks", disabledHooks),
+    statLine("Unassigned MCP", unassignedMcp),
+  ];
+}
+
+function overviewPanel(title, lines) {
+  const panel = createElement("section", "overview-panel");
+  panel.append(createElement("h2", "", title));
+  const list = createElement("div", "stat-list");
+  lines.forEach((line) => list.append(line));
+  panel.append(list);
+  return panel;
+}
+
+function statLine(label, value) {
+  const row = createElement("div", "stat-line");
+  row.append(createElement("span", "", label), createElement("strong", "", String(value)));
+  return row;
+}
+
+function repoOverviewRow(repo) {
+  const caps = repoCapabilitySummary(repo);
+  const row = createElement("article", "compact-row repo-overview-row");
+  const main = createEntityMain(repo.name, repo.details.path || repo.name);
+  const totals = createElement("div", "mini-totals");
+  totals.append(
+    smallCount("Base", caps.baseTotal),
+    smallCount("Local", caps.localTotal),
+    smallCount("MCP", caps.directMcp.length),
+  );
+  row.append(main, totals);
+  return row;
+}
+
+function renderRepos() {
+  const repos = filteredRepos();
+  if (!repos.length) {
+    els.contentRegion.append(emptyState("No repos match this view."));
+    return;
+  }
+
+  const list = createElement("div", "repo-list-view");
+  repos.forEach((repo) => list.append(repoCard(repo)));
+  els.contentRegion.append(list);
+}
+
+function repoCard(repo) {
+  const caps = repoCapabilitySummary(repo);
+  const card = createElement("article", "repo-card");
+
+  const head = createElement("div", "repo-card-head");
+  const title = createEntityMain(repo.name, repo.details.path || repo.name);
+  const meta = createElement("div", "repo-runtime");
+  meta.append(
+    runtimePill(repo.details.model || "default model"),
+    runtimePill(`reasoning ${repo.details.reasoning || "default"}`),
+  );
+  head.append(title, meta);
+
+  const base = createElement("div", "base-kit");
+  base.append(
+    smallCount("Global skills", caps.globalSkills.length),
+    smallCount("Global plugins", caps.globalPlugins.length),
+    smallCount("Global hooks", caps.globalHooks.length),
+    smallCount("Global MCP", caps.globalMcp.length),
+  );
+
+  const grid = createElement("div", "capability-grid");
+  grid.append(
+    capabilityBlock("Repo skills", caps.repoSkills, "skill", "Base only"),
+    capabilityBlock("Repo plugins", caps.repoPlugins, "plugin", "None"),
+    capabilityBlock("MCP", caps.directMcp, "mcp", "None"),
+    capabilityBlock("Repo hooks", caps.repoHooks, "hook", "Global only"),
+  );
+
+  card.append(head, base, grid);
+  return card;
+}
+
+function renderSkills() {
+  const items = filteredItems("skills");
+  const groups = [
+    ["Global skills", items.filter((item) => item.scope === "global")],
+    ["Repo-scoped skills", items.filter((item) => item.scope === "repo")],
+    ["Repo-local skills", items.filter((item) => item.scope === "repo-local")],
+    ["Dormant skills", items.filter((item) => item.status === "dormant")],
+  ];
+  renderPanels(groups, skillRow, "No skills match this view.");
+}
+
+function skillRow(item) {
+  const row = createElement("article", "entity-row");
+  const sourcePath = item.details.source_path || item.details.repo || "";
+  const main = createEntityMain(item.title, compact([titleCase(item.details.origin), labelForScope(item), item.status]).join(" / "));
+  if (sourcePath) {
+    main.append(createElement("p", "entity-path", sourcePath));
+  }
+  row.append(main, availabilityBlock(item), rowActions(item));
+  return row;
+}
+
+function renderPlugins() {
+  const items = filteredItems("plugins");
+  const groups = [
+    ["Enabled global plugins", items.filter((item) => item.scope === "global" && item.status === "enabled")],
+    ["Repo-scoped plugins", items.filter((item) => item.scope === "repo")],
+    ["Repo-local plugins", items.filter((item) => item.scope === "repo-local")],
+    ["Disabled plugins", items.filter((item) => item.status === "disabled")],
+  ];
+  renderPanels(groups, pluginRow, "No plugins match this view.");
+}
+
+function pluginRow(item) {
+  const row = createElement("article", "entity-row");
+  const meta = compact([item.details.marketplace, item.details.category, labelForScope(item), item.status]).join(" / ");
+  row.append(createEntityMain(item.title, meta), availabilityBlock(item), rowActions(item));
+  return row;
+}
+
+function renderMcp() {
+  const items = filteredItems("mcp");
+  const groups = [
+    ["Global MCP presets", items.filter((item) => scopeHas(item, "global"))],
+    ["Repo MCP presets", items.filter((item) => !scopeHas(item, "global") && scopeHas(item, "repo"))],
+    ["Plugin MCP presets", items.filter((item) => !scopeHas(item, "global") && !scopeHas(item, "repo") && scopeHas(item, "plugin"))],
+    ["Unassigned MCP definitions", items.filter((item) => item.scope === "unassigned")],
+  ];
+  renderPanels(groups, mcpRow, "No MCP presets match this view.");
+}
+
+function mcpRow(item) {
+  const row = createElement("article", "entity-row mcp-row");
+  const meta = compact([item.details.transport, item.details.url]).join(" / ") || item.status;
+  row.append(createEntityMain(item.title, meta), mcpAvailabilityBlock(item), rowActions(item));
+  return row;
+}
+
+function renderHooks() {
+  const items = filteredItems("hooks");
+  const groups = [
+    ["Global hooks", items.filter((item) => item.scope === "global")],
+    ["Repo hooks", items.filter((item) => item.scope === "repo")],
+    ["Disabled hooks", items.filter((item) => item.status === "disabled")],
+  ];
+  renderPanels(groups, hookRow, "No hooks match this view.");
+}
+
+function hookRow(item) {
+  const row = createElement("article", "entity-row");
+  const runtimes = cleanArray(item.details.runtimes).join(", ");
+  const meta = compact([item.details.event, runtimes, item.details.timeout ? `${item.details.timeout}s` : ""]).join(" / ");
+  row.append(createEntityMain(item.title, meta), availabilityBlock(item), rowActions(item));
+  return row;
+}
+
+function renderPanels(groups, renderer, emptyMessage) {
+  let rendered = 0;
+  groups.forEach(([title, items]) => {
+    if (!items.length) {
+      return;
+    }
+    els.contentRegion.append(groupedPanel(title, items, renderer, emptyMessage));
+    rendered += items.length;
+  });
+  if (!rendered) {
+    els.contentRegion.append(emptyState(emptyMessage));
+  }
+}
+
+function groupedPanel(title, items, renderer, emptyMessage) {
+  const panel = createElement("section", "section-panel");
+  const heading = createElement("div", "panel-heading");
+  heading.append(createElement("h2", "", title), createElement("span", "", String(items.length)));
+  const rows = createElement("div", "row-stack");
+  if (items.length) {
+    items.forEach((item) => rows.append(renderer(item)));
+  } else {
+    rows.append(emptyState(emptyMessage));
+  }
+  panel.append(heading, rows);
+  return panel;
+}
+
+function createEntityMain(title, subtitle) {
+  const main = createElement("div", "entity-main");
+  main.append(createElement("h3", "", title));
+  if (subtitle) {
+    main.append(createElement("p", "", subtitle));
+  }
+  return main;
+}
+
+function availabilityBlock(item) {
+  const wrap = createElement("div", "availability-block");
+  if (item.scope === "global") {
+    wrap.append(createChip("All repos", item.kind));
+    return wrap;
+  }
+  if (item.status === "dormant" || item.scope === "dormant") {
+    wrap.append(createChip("Dormant", "warning"));
+    return wrap;
+  }
+  const repos = cleanArray(item.repos);
+  if (!repos.length) {
+    wrap.append(createElement("span", "muted", "No repo assignment"));
+    return wrap;
+  }
+  appendChips(wrap, repos.map(repoDisplayName), item.kind, 6);
+  return wrap;
+}
+
+function mcpAvailabilityBlock(item) {
+  const wrap = createElement("div", "availability-block");
+  if (scopeHas(item, "global")) {
+    wrap.append(createChip("Global", "mcp"));
+  }
+  appendChips(wrap, cleanArray(item.repos).map(repoDisplayName), "repo", 5);
+  appendChips(wrap, cleanArray(item.details.plugins).map((plugin) => `Plugin: ${plugin}`), "plugin", 4);
+  if (!wrap.childElementCount) {
+    wrap.append(createChip("Unassigned", "warning"));
+  }
+  return wrap;
+}
+
+function rowActions(item) {
+  const actions = createElement("div", "row-actions");
+  const link = createElement("a", "", sourceLabel(item));
+  link.href = sourceHref(item);
+  link.target = "_blank";
+  link.rel = "noreferrer";
+  actions.append(link);
+  return actions;
+}
+
+function sourceHref(item) {
+  if (item.kind === "skill" && item.details.source_path) {
+    return `/source/${item.details.source_path}/SKILL.md`;
+  }
+  return `/source/${item.source}`;
+}
+
+function sourceLabel(item) {
+  return item.kind === "skill" && item.details.source_path ? "SKILL.md" : "Registry";
+}
+
+function capabilityBlock(title, items, tone, emptyText) {
+  const block = createElement("section", "capability-block");
+  const heading = createElement("div", "capability-heading");
+  heading.append(createElement("h3", "", title), createElement("strong", "", String(items.length)));
+  const chips = createElement("div", "chip-list");
+  if (items.length) {
+    appendChips(chips, items.map((item) => item.title || item.name), tone, 6);
+  } else {
+    chips.append(createElement("span", "muted", emptyText));
+  }
+  block.append(heading, chips);
+  return block;
+}
+
+function smallCount(label, value) {
+  const item = createElement("span", "small-count");
+  item.append(createElement("span", "", label), createElement("strong", "", String(value)));
+  return item;
+}
+
+function runtimePill(text) {
+  return createElement("span", "runtime-pill", text);
+}
+
+function createChip(text, tone = "") {
+  return createElement("span", `chip ${tone}`, text);
+}
+
+function appendChips(parent, values, tone, limit) {
+  const visible = values.slice(0, limit);
+  visible.forEach((value) => parent.append(createChip(value, tone)));
+  if (values.length > limit) {
+    parent.append(createChip(`+${values.length - limit}`, tone));
+  }
+}
+
+function filteredItems(groupName) {
+  const items = state.data.groups[groupName] || [];
+  return items.filter((item) => itemPassesFilter(item, groupName, state.filter) && itemMatchesQuery(item));
+}
+
+function filteredRepos() {
+  return filterRepos(state.data.groups.repos, state.filter, true);
+}
+
+function filterRepos(repos, filter, includeQuery) {
+  return repos.filter((repo) => {
+    if (filter === "repo-skills" && !repoScopedSkillsForRepo(repo).length) {
       return false;
     }
-    if (scope !== "all" && item.scope !== scope && !item.scope.includes(scope)) {
+    if (filter === "repo-plugins" && !repoScopedPluginsForRepo(repo).length) {
       return false;
     }
-    if (status !== "all" && item.status !== status) {
+    if (filter === "repo-mcp" && !repoDirectMcpForRepo(repo).length) {
       return false;
     }
-    if (query && !item.search_text.includes(query)) {
+    if (filter === "custom" && !repoHasCustomConfig(repo)) {
+      return false;
+    }
+    if (includeQuery && !repoMatchesQuery(repo)) {
       return false;
     }
     return true;
   });
 }
 
-function renderTable(items) {
-  els.itemTable.replaceChildren();
-  els.tableTitle.textContent = labels[state.selectedKind] || "Items";
-  els.resultMeta.textContent = `${items.length} shown`;
-
-  if (items.length === 0) {
-    const row = document.createElement("tr");
-    row.className = "empty-row";
-    const cell = document.createElement("td");
-    cell.colSpan = 6;
-    cell.textContent = "No matching registry items";
-    row.append(cell);
-    els.itemTable.append(row);
-    return;
+function itemPassesFilter(item, section, filter) {
+  if (filter === "all") {
+    return true;
   }
+  if (section === "skills") {
+    if (filter === "owned" || filter === "external") {
+      return item.details.origin === filter;
+    }
+    if (filter === "dormant") {
+      return item.status === "dormant" || item.scope === "dormant";
+    }
+    return item.scope === filter;
+  }
+  if (section === "plugins" || section === "hooks") {
+    if (filter === "enabled" || filter === "disabled") {
+      return item.status === filter;
+    }
+    return item.scope === filter;
+  }
+  if (section === "mcp") {
+    if (filter === "unassigned") {
+      return item.scope === "unassigned";
+    }
+    return scopeHas(item, filter);
+  }
+  return true;
+}
 
-  items.forEach((item) => {
-    const row = document.createElement("tr");
-    row.className = item.id === state.selectedId ? "selected" : "";
-    row.tabIndex = 0;
-    row.addEventListener("click", () => {
-      state.selectedId = item.id;
-      renderTable(filteredItems());
-      renderDetail(item);
-    });
-    row.addEventListener("keydown", (event) => {
-      if (event.key === "Enter" || event.key === " ") {
-        event.preventDefault();
-        state.selectedId = item.id;
-        renderTable(filteredItems());
-        renderDetail(item);
-      }
-    });
+function itemMatchesQuery(item) {
+  const query = els.searchInput.value.trim().toLowerCase();
+  if (!query) {
+    return true;
+  }
+  const detailsText = Object.values(item.details || {})
+    .flatMap((value) => (Array.isArray(value) ? value : [value]))
+    .filter((value) => value !== null && value !== undefined)
+    .join(" ");
+  return `${item.search_text} ${detailsText}`.toLowerCase().includes(query);
+}
 
-    row.append(
-      cellName(item),
-      cellBadge(item.kind, item.kind, "Type"),
-      cellBadge(item.scope, item.scope, "Scope"),
-      cellBadge(item.status, item.status, "Status"),
-      cellRepos(item.repos),
-      cellSource(item.source),
-    );
-    els.itemTable.append(row);
+function repoMatchesQuery(repo) {
+  const query = els.searchInput.value.trim().toLowerCase();
+  if (!query) {
+    return true;
+  }
+  const caps = repoCapabilitySummary(repo);
+  const capabilityNames = [
+    ...caps.globalSkills,
+    ...caps.repoSkills,
+    ...caps.globalPlugins,
+    ...caps.repoPlugins,
+    ...caps.globalMcp,
+    ...caps.directMcp,
+    ...caps.globalHooks,
+    ...caps.repoHooks,
+  ]
+    .map((item) => item.name)
+    .join(" ");
+  return `${repo.search_text} ${capabilityNames}`.toLowerCase().includes(query);
+}
+
+function repoCapabilitySummary(repo) {
+  const globalSkillsForRepo = globalSkills();
+  const repoSkills = repoScopedSkillsForRepo(repo);
+  const globalPluginsForRepo = enabledGlobalPlugins();
+  const repoPlugins = repoScopedPluginsForRepo(repo);
+  const globalHooksForRepo = enabledGlobalHooks();
+  const repoHooks = repoScopedHooksForRepo(repo);
+  const globalMcpForRepo = globalMcp();
+  const directMcp = repoDirectMcpForRepo(repo);
+  return {
+    globalSkills: globalSkillsForRepo,
+    repoSkills,
+    globalPlugins: globalPluginsForRepo,
+    repoPlugins,
+    globalHooks: globalHooksForRepo,
+    repoHooks,
+    globalMcp: globalMcpForRepo,
+    directMcp,
+    baseTotal: globalSkillsForRepo.length + globalPluginsForRepo.length + globalHooksForRepo.length + globalMcpForRepo.length,
+    localTotal: repoSkills.length + repoPlugins.length + repoHooks.length,
+  };
+}
+
+function repoScopedSkillsForRepo(repo) {
+  return state.data.groups.skills.filter((item) => item.scope !== "global" && itemAppliesToRepo(item, repo));
+}
+
+function repoScopedPluginsForRepo(repo) {
+  return state.data.groups.plugins.filter((item) => item.scope !== "global" && item.status !== "disabled" && itemAppliesToRepo(item, repo));
+}
+
+function repoScopedHooksForRepo(repo) {
+  return state.data.groups.hooks.filter((item) => item.scope !== "global" && item.status === "enabled" && itemAppliesToRepo(item, repo));
+}
+
+function repoDirectMcpForRepo(repo) {
+  const pluginNames = repoPluginNames(repo);
+  return state.data.groups.mcp.filter((item) => {
+    if (scopeHas(item, "global")) {
+      return false;
+    }
+    if (cleanArray(item.repos).some((repoName) => sameRepo(repoName, repo.name))) {
+      return true;
+    }
+    return cleanArray(item.details.plugins).some((plugin) => pluginNames.has(plugin));
   });
 }
 
-function cellName(item) {
-  const cell = document.createElement("td");
-  cell.className = "name-cell";
-  cell.dataset.label = "Name";
-
-  const name = document.createElement("strong");
-  name.textContent = item.title;
-
-  const sub = document.createElement("span");
-  sub.textContent = subtitleFor(item);
-
-  cell.append(name, sub);
-  return cell;
+function repoPluginNames(repo) {
+  return new Set(
+    state.data.groups.plugins
+      .filter((item) => item.status !== "disabled" && itemAppliesToRepo(item, repo))
+      .map((item) => item.name),
+  );
 }
 
-function subtitleFor(item) {
-  if (item.kind === "skill") {
-    return compact([item.details.origin, item.details.source_path]).join(" / ");
+function repoHasCustomConfig(repo) {
+  return Boolean(
+    cleanArray(repo.details.mcp_presets).length ||
+      repoScopedSkillsForRepo(repo).length ||
+      repoScopedPluginsForRepo(repo).length ||
+      repoScopedHooksForRepo(repo).length ||
+      Object.keys(repo.details.features || {}).length,
+  );
+}
+
+function globalSkills() {
+  return state.data.groups.skills.filter((item) => item.scope === "global" && item.status !== "dormant");
+}
+
+function enabledGlobalPlugins() {
+  return state.data.groups.plugins.filter((item) => item.scope === "global" && item.status === "enabled");
+}
+
+function enabledGlobalHooks() {
+  return state.data.groups.hooks.filter((item) => item.scope === "global" && item.status === "enabled");
+}
+
+function globalMcp() {
+  return state.data.groups.mcp.filter((item) => scopeHas(item, "global"));
+}
+
+function itemAppliesToRepo(item, repo) {
+  if (item.scope === "global" || item.details.global === true) {
+    return true;
   }
-  if (item.kind === "plugin") {
-    return compact([item.details.marketplace, item.details.category]).join(" / ");
+  return cleanArray(item.repos).some((repoName) => sameRepo(repoName, repo.name || repo));
+}
+
+function sameRepo(left, right) {
+  return repoKey(left) === repoKey(right);
+}
+
+function repoKey(value) {
+  const cleaned = String(value || "").replace(/\/$/, "");
+  const withoutHome = cleaned.startsWith("~/") ? cleaned.slice(2) : cleaned;
+  if (withoutHome.includes("/")) {
+    const parts = withoutHome.split("/");
+    return parts[parts.length - 1].toLowerCase();
   }
-  if (item.kind === "mcp") {
-    return compact([item.details.transport, item.details.url]).join(" / ");
+  return withoutHome.toLowerCase();
+}
+
+function repoDisplayName(value) {
+  const key = repoKey(value);
+  return key || String(value);
+}
+
+function scopeHas(item, scope) {
+  return String(item.scope || "")
+    .split("+")
+    .includes(scope);
+}
+
+function labelForScope(item) {
+  if (item.scope === "repo") {
+    return "repo scoped";
   }
-  if (item.kind === "repo") {
-    return item.details.path || item.name;
+  if (item.scope === "repo-local") {
+    return "repo local";
   }
-  if (item.kind === "hook") {
-    return compact([item.details.event, `timeout ${item.details.timeout}s`]).join(" / ");
-  }
-  return item.source;
+  return item.scope;
 }
 
-function cellBadge(text, tone, label) {
-  const cell = document.createElement("td");
-  cell.dataset.label = label;
-  const badge = document.createElement("span");
-  badge.className = `badge ${tone}`;
-  badge.textContent = text;
-  cell.append(badge);
-  return cell;
+function countItems(items, predicate) {
+  return items.filter(predicate).length;
 }
 
-function cellRepos(repos) {
-  const cell = document.createElement("td");
-  cell.dataset.label = "Repos";
-  const wrap = document.createElement("div");
-  wrap.className = "repo-list";
-  if (!repos.length) {
-    const span = document.createElement("span");
-    span.className = "muted";
-    span.textContent = "-";
-    wrap.append(span);
-  } else {
-    repos.slice(0, 6).forEach((repo) => {
-      const badge = document.createElement("span");
-      badge.className = "badge";
-      badge.textContent = repoName(repo);
-      wrap.append(badge);
-    });
-    if (repos.length > 6) {
-      const more = document.createElement("span");
-      more.className = "badge";
-      more.textContent = `+${repos.length - 6}`;
-      wrap.append(more);
-    }
-  }
-  cell.append(wrap);
-  return cell;
-}
-
-function cellSource(source) {
-  const cell = document.createElement("td");
-  cell.className = "source-cell";
-  cell.dataset.label = "Source";
-  const link = document.createElement("a");
-  link.href = `/source/${source}`;
-  link.target = "_blank";
-  link.rel = "noreferrer";
-  link.textContent = source;
-  cell.append(link);
-  return cell;
-}
-
-function renderDetail(item) {
-  if (!item) {
-    els.detailKind.textContent = "Detail";
-    els.detailTitle.textContent = "Select an item";
-    els.detailFacts.replaceChildren();
-    els.detailJson.textContent = "";
-    els.detailSourceLink.href = "#";
-    return;
-  }
-
-  els.detailKind.textContent = item.kind;
-  els.detailTitle.textContent = item.title;
-  els.detailSourceLink.href = `/source/${item.source}`;
-  els.detailFacts.replaceChildren();
-
-  addFact("Name", item.name);
-  addFact("Scope", item.scope);
-  addFact("Status", item.status);
-  addFact("Repos", item.repos.length ? item.repos.map(repoName).join(", ") : "-");
-  addFact("Source", item.source);
-
-  Object.entries(item.details).forEach(([key, value]) => {
-    if (value === null || value === undefined || value === "" || key === "command") {
-      return;
-    }
-    addFact(formatKey(key), formatValue(value));
-  });
-
-  els.detailJson.textContent = JSON.stringify(item, null, 2);
-}
-
-function addFact(label, value) {
-  const dt = document.createElement("dt");
-  dt.textContent = label;
-  const dd = document.createElement("dd");
-  dd.textContent = value;
-  els.detailFacts.append(dt, dd);
-}
-
-function findSelectedItem() {
-  const items = filteredItems();
-  return items.find((item) => item.id === state.selectedId) || items[0] || null;
-}
-
-function renderLoadError(error) {
-  els.itemTable.replaceChildren();
-  const row = document.createElement("tr");
-  row.className = "empty-row";
-  const cell = document.createElement("td");
-  cell.colSpan = 6;
-  cell.textContent = error.message;
-  row.append(cell);
-  els.itemTable.append(row);
+function cleanArray(value) {
+  return Array.isArray(value) ? value.filter(Boolean) : [];
 }
 
 function compact(values) {
   return values.filter((value) => value !== null && value !== undefined && value !== "");
+}
+
+function titleCase(value) {
+  if (!value) {
+    return "";
+  }
+  return String(value).charAt(0).toUpperCase() + String(value).slice(1);
 }
 
 function formatDate(value) {
@@ -342,52 +846,50 @@ function formatDate(value) {
   if (Number.isNaN(date.getTime())) {
     return value;
   }
-  return date.toLocaleString();
+  return date.toLocaleString([], {
+    month: "numeric",
+    day: "numeric",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
 }
 
-function formatKey(value) {
-  return value
-    .split("_")
-    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-    .join(" ");
+function emptyState(message) {
+  const empty = createElement("div", "empty-state");
+  empty.append(createElement("p", "", message));
+  return empty;
 }
 
-function formatValue(value) {
-  if (Array.isArray(value)) {
-    return value.length ? value.join(", ") : "-";
-  }
-  if (typeof value === "object") {
-    return JSON.stringify(value);
-  }
-  return String(value);
+function renderLoadError(error) {
+  els.metricsGrid.replaceChildren();
+  els.filterBar.replaceChildren();
+  els.warningPanel.classList.add("hidden");
+  els.contentRegion.replaceChildren(emptyState(error.message));
 }
 
-function repoName(value) {
-  const cleaned = String(value).replace(/\/$/, "");
-  if (cleaned.startsWith("~/")) {
-    const parts = cleaned.slice(2).split("/");
-    return parts[parts.length - 1];
+function createElement(tag, className = "", text = "") {
+  const node = document.createElement(tag);
+  if (className) {
+    node.className = className;
   }
-  if (cleaned.includes("/")) {
-    const parts = cleaned.split("/");
-    return parts[parts.length - 1];
+  if (text !== "") {
+    node.textContent = text;
   }
-  return cleaned;
+  return node;
 }
 
 document.querySelectorAll(".nav-button").forEach((button) => {
   button.addEventListener("click", () => {
     document.querySelectorAll(".nav-button").forEach((item) => item.classList.remove("active"));
     button.classList.add("active");
-    state.selectedKind = button.dataset.kind;
-    state.selectedId = null;
+    state.section = button.dataset.section;
+    state.filter = "all";
     render();
   });
 });
 
 els.searchInput.addEventListener("input", render);
-els.scopeFilter.addEventListener("change", render);
-els.statusFilter.addEventListener("change", render);
 els.refreshButton.addEventListener("click", loadData);
 
 loadData();
