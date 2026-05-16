@@ -9,16 +9,22 @@
   <body>
     <div class="app-shell">
       <aside class="sidebar" aria-label="Dashboard navigation">
-        <button
-          id="sidebarToggle"
-          class="sidebar-toggle"
-          type="button"
-          aria-label="Collapse navigation"
-          aria-expanded="true"
-          title="Collapse navigation"
-        >
-          <span aria-hidden="true">&lt;</span>
-        </button>
+        <div class="sidebar-head">
+          <div class="brand-lockup">
+            <span>Agent Control</span>
+            <strong>.agents</strong>
+          </div>
+          <button
+            id="sidebarToggle"
+            class="sidebar-toggle"
+            type="button"
+            aria-label="Collapse navigation"
+            aria-expanded="true"
+            title="Collapse navigation"
+          >
+            <span aria-hidden="true">&lt;</span>
+          </button>
+        </div>
 
         <nav class="nav-stack" aria-label="Control-plane sections">
           <button class="nav-button active" data-section="overview" type="button">
@@ -75,6 +81,7 @@
             <p class="eyebrow" id="sectionEyebrow">Overview</p>
             <h2 id="sectionTitle">Control-plane status</h2>
           </div>
+          <div id="topbarMeta" class="topbar-meta" aria-label="Control-plane status"></div>
         </header>
 
         <section id="metricsGrid" class="metrics-grid" aria-label="Section totals"></section>

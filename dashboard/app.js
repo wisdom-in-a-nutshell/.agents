@@ -17,6 +17,7 @@ const els = {
   searchInput: document.querySelector("#searchInput"),
   sectionEyebrow: document.querySelector("#sectionEyebrow"),
   sectionTitle: document.querySelector("#sectionTitle"),
+  topbarMeta: document.querySelector("#topbarMeta"),
   metricsGrid: document.querySelector("#metricsGrid"),
   warningPanel: document.querySelector("#warningPanel"),
   warningList: document.querySelector("#warningList"),
@@ -113,6 +114,16 @@ const filterOptions = {
   ],
 };
 
+const sourceOrder = ["skills", "plugins", "mcp", "hooks", "repos"];
+
+const sourceLabels = {
+  skills: "Skills registry",
+  plugins: "Plugin registry",
+  mcp: "MCP presets",
+  hooks: "Hook registry",
+  repos: "Repo bootstrap",
+};
+
 async function loadData(options = {}) {
   if (state.loading) {
     return;
@@ -176,6 +187,23 @@ function renderHeader() {
   const meta = sections[state.section] || sections.overview;
   els.sectionEyebrow.textContent = meta.eyebrow;
   els.sectionTitle.textContent = meta.title;
+  renderTopbarMeta();
+}
+
+function renderTopbarMeta() {
+  const sourceCount = Object.keys(state.data.sources || {}).length;
+  const warningCount = state.data.counts.warnings;
+  els.topbarMeta.replaceChildren(
+    topbarPill("Root", rootName(state.data.repo_root)),
+    topbarPill("Sources", sourceCount),
+    topbarPill("Warnings", warningCount, warningCount ? "warning" : "ok"),
+  );
+}
+
+function topbarPill(label, value, tone = "") {
+  const pill = createElement("span", `topbar-pill ${tone}`);
+  pill.append(createElement("span", "", label), createElement("strong", "", String(value)));
+  return pill;
 }
 
 function renderMetrics() {
@@ -240,10 +268,10 @@ function metricsForSection(section) {
     ];
   }
   return [
-    metric("Repos", counts.repos),
-    metric("Skills", counts.skills),
-    metric("Plugins", counts.plugins),
-    metric("MCP", counts.mcp),
+    metric("Control items", counts.items),
+    metric("Managed repos", counts.repos),
+    metric("Global base", globalBaseCount(), "scope-global"),
+    metric("Repo additions", counts.repo_scoped, "scope-local"),
     metric("Warnings", counts.warnings, counts.warnings ? "warning" : ""),
   ];
 }
@@ -371,6 +399,7 @@ function renderOverview() {
     overviewPanel("Attention", attentionLines()),
   );
   els.contentRegion.append(summary);
+  els.contentRegion.append(sourcePanel());
 
   const repoRows = filteredRepos().slice(0, 8);
   els.contentRegion.append(
@@ -451,6 +480,29 @@ function statLine(label, value) {
   const row = createElement("div", "stat-line");
   row.append(createElement("span", "", label), createElement("strong", "", String(value)));
   return row;
+}
+
+function sourcePanel() {
+  const sources = state.data.sources || {};
+  const panel = createElement("section", "section-panel source-panel");
+  const heading = createElement("div", "panel-heading");
+  heading.append(createElement("h2", "", "Canonical sources"), createElement("span", "", String(Object.keys(sources).length)));
+  const list = createElement("div", "source-list");
+  sourceOrder
+    .filter((key) => sources[key])
+    .forEach((key) => list.append(sourceRow(key, sources[key])));
+  panel.append(heading, list);
+  return panel;
+}
+
+function sourceRow(key, source) {
+  const link = createElement("a", "source-row");
+  link.href = `/source/${source.path}`;
+  link.target = "_blank";
+  link.rel = "noreferrer";
+  link.title = source.absolute_path || source.path;
+  link.append(createElement("span", "", sourceLabels[key] || titleCase(key)), createElement("code", "", source.path));
+  return link;
 }
 
 function repoOverviewRow(repo) {
@@ -986,6 +1038,10 @@ function globalMcp() {
   return state.data.groups.mcp.filter((item) => scopeHas(item, "global"));
 }
 
+function globalBaseCount() {
+  return globalSkills().length + enabledGlobalPlugins().length + enabledGlobalHooks().length + globalMcp().length;
+}
+
 function itemAppliesToRepo(item, repo) {
   if (item.scope === "global" || item.details.global === true) {
     return true;
@@ -1080,6 +1136,11 @@ function titleCase(value) {
   return String(value).charAt(0).toUpperCase() + String(value).slice(1);
 }
 
+function rootName(value) {
+  const parts = String(value || "").split("/").filter(Boolean);
+  return parts.length ? parts[parts.length - 1] : value;
+}
+
 function formatDate(value) {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) {
@@ -1103,6 +1164,7 @@ function emptyState(message) {
 function renderLoadError(error) {
   els.metricsGrid.replaceChildren();
   els.filterBar.replaceChildren();
+  els.topbarMeta.replaceChildren(topbarPill("Status", "Offline", "warning"));
   els.warningPanel.classList.add("hidden");
   els.lastUpdated.textContent = "Not loaded";
   els.refreshStatus.textContent = "Auto-refresh failed";
