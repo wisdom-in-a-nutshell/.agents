@@ -1,13 +1,18 @@
+const AUTO_REFRESH_MS = 5 * 60 * 1000;
+
 const state = {
   data: null,
   section: "overview",
   filter: "all",
   loadError: null,
+  loading: false,
+  sidebarCollapsed: localStorage.getItem("agentControlSidebarCollapsed") === "true",
 };
 
 const els = {
+  sidebarToggle: document.querySelector("#sidebarToggle"),
   lastUpdated: document.querySelector("#lastUpdated"),
-  refreshButton: document.querySelector("#refreshButton"),
+  refreshStatus: document.querySelector("#refreshStatus"),
   searchInput: document.querySelector("#searchInput"),
   sectionEyebrow: document.querySelector("#sectionEyebrow"),
   sectionTitle: document.querySelector("#sectionTitle"),
@@ -94,9 +99,14 @@ const filterOptions = {
   ],
 };
 
-async function loadData() {
-  els.refreshButton.disabled = true;
-  els.refreshButton.textContent = "Loading";
+async function loadData(options = {}) {
+  if (state.loading) {
+    return;
+  }
+  state.loading = true;
+  if (!options.background) {
+    els.refreshStatus.textContent = "Updating";
+  }
   try {
     const response = await fetch("/api/control-plane", { cache: "no-store" });
     if (!response.ok) {
@@ -106,11 +116,14 @@ async function loadData() {
     state.loadError = null;
     render();
   } catch (error) {
+    if (state.data && options.background) {
+      els.refreshStatus.textContent = "Auto-refresh failed";
+      return;
+    }
     state.loadError = error;
     render();
   } finally {
-    els.refreshButton.disabled = false;
-    els.refreshButton.textContent = "Refresh";
+    state.loading = false;
   }
 }
 
@@ -134,6 +147,7 @@ function render() {
 function updateChrome() {
   const { counts, generated_at_utc: generatedAt } = state.data;
   els.lastUpdated.textContent = `Updated ${formatDate(generatedAt)}`;
+  els.refreshStatus.textContent = "Auto-refresh every 5m";
   els.navCountOverview.textContent = counts.items;
   els.navCountRepos.textContent = counts.repos;
   els.navCountSkills.textContent = counts.skills;
@@ -859,6 +873,8 @@ function renderLoadError(error) {
   els.metricsGrid.replaceChildren();
   els.filterBar.replaceChildren();
   els.warningPanel.classList.add("hidden");
+  els.lastUpdated.textContent = "Not loaded";
+  els.refreshStatus.textContent = "Auto-refresh failed";
   els.contentRegion.replaceChildren(emptyState(error.message));
 }
 
@@ -883,7 +899,25 @@ document.querySelectorAll(".nav-button").forEach((button) => {
   });
 });
 
-els.searchInput.addEventListener("input", render);
-els.refreshButton.addEventListener("click", loadData);
+function applySidebarState() {
+  document.body.classList.toggle("sidebar-collapsed", state.sidebarCollapsed);
+  els.sidebarToggle.setAttribute("aria-expanded", String(!state.sidebarCollapsed));
+  els.sidebarToggle.setAttribute(
+    "aria-label",
+    state.sidebarCollapsed ? "Expand navigation" : "Collapse navigation",
+  );
+  els.sidebarToggle.title = state.sidebarCollapsed ? "Expand navigation" : "Collapse navigation";
+  els.sidebarToggle.querySelector("span").textContent = state.sidebarCollapsed ? ">" : "<";
+}
 
+els.sidebarToggle.addEventListener("click", () => {
+  state.sidebarCollapsed = !state.sidebarCollapsed;
+  localStorage.setItem("agentControlSidebarCollapsed", String(state.sidebarCollapsed));
+  applySidebarState();
+});
+
+els.searchInput.addEventListener("input", render);
+
+applySidebarState();
 loadData();
+setInterval(() => loadData({ background: true }), AUTO_REFRESH_MS);

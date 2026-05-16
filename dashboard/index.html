@@ -9,36 +9,58 @@
   <body>
     <div class="app-shell">
       <aside class="sidebar" aria-label="Dashboard navigation">
+        <button
+          id="sidebarToggle"
+          class="sidebar-toggle"
+          type="button"
+          aria-label="Collapse navigation"
+          aria-expanded="true"
+          title="Collapse navigation"
+        >
+          <span aria-hidden="true">&lt;</span>
+        </button>
+
         <nav class="nav-stack" aria-label="Control-plane sections">
           <button class="nav-button active" data-section="overview" type="button">
-            <span>Overview</span>
+            <span class="nav-label">Overview</span>
+            <span class="nav-short" aria-hidden="true">O</span>
             <strong id="navCountOverview">0</strong>
           </button>
           <button class="nav-button" data-section="repos" type="button">
-            <span>Repos</span>
+            <span class="nav-label">Repos</span>
+            <span class="nav-short" aria-hidden="true">R</span>
             <strong id="navCountRepos">0</strong>
           </button>
           <button class="nav-button" data-section="skills" type="button">
-            <span>Skills</span>
+            <span class="nav-label">Skills</span>
+            <span class="nav-short" aria-hidden="true">S</span>
             <strong id="navCountSkills">0</strong>
           </button>
           <button class="nav-button" data-section="plugins" type="button">
-            <span>Plugins</span>
+            <span class="nav-label">Plugins</span>
+            <span class="nav-short" aria-hidden="true">P</span>
             <strong id="navCountPlugins">0</strong>
           </button>
           <button class="nav-button" data-section="mcp" type="button">
-            <span>MCP</span>
+            <span class="nav-label">MCP</span>
+            <span class="nav-short" aria-hidden="true">M</span>
             <strong id="navCountMcp">0</strong>
           </button>
           <button class="nav-button" data-section="hooks" type="button">
-            <span>Hooks</span>
+            <span class="nav-label">Hooks</span>
+            <span class="nav-short" aria-hidden="true">H</span>
             <strong id="navCountHooks">0</strong>
           </button>
         </nav>
 
+        <label class="search-box sidebar-search">
+          <span>Search</span>
+          <input id="searchInput" type="search" placeholder="Search names, repos, paths">
+        </label>
+
         <div class="sidebar-footer">
           <span id="lastUpdated">Not loaded</span>
-          <button id="refreshButton" class="refresh-button" type="button">Refresh</button>
+          <span id="refreshStatus">Auto-refresh every 5m</span>
         </div>
       </aside>
 
@@ -48,10 +70,6 @@
             <p class="eyebrow" id="sectionEyebrow">Overview</p>
             <h2 id="sectionTitle">Control-plane status</h2>
           </div>
-          <label class="search-box">
-            <span>Search</span>
-            <input id="searchInput" type="search" placeholder="Search names, repos, paths">
-          </label>
         </header>
 
         <section id="metricsGrid" class="metrics-grid" aria-label="Section totals"></section>
