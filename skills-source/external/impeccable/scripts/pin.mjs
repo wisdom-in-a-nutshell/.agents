@@ -9,7 +9,7 @@
  * `pin audit` creates a lightweight /audit skill that redirects to /impeccable audit.
  * `unpin audit` removes that shortcut.
  *
- * The script discovers harness directories (.cursor/skills, .codex/skills, etc.)
+ * The script discovers harness directories (.claude/skills, .cursor/skills, etc.)
  * in the project root and creates/removes the pin in all of them.
  */
 
@@ -21,7 +21,7 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 
 // All known harness directories
 const HARNESS_DIRS = [
-  '.cursor', '.gemini', '.codex', '.agents',
+  '.claude', '.cursor', '.gemini', '.codex', '.agents',
   '.trae', '.trae-cn', '.pi', '.opencode', '.kiro', '.rovodev',
 ];
 
