@@ -5,7 +5,9 @@ import json
 from tests.control_plane.support import (
     REPO_ROOT,
     TempDirTestCase,
+    make_control_plane_root,
     run_command,
+    write_executable,
     write_json,
     write_text,
 )
@@ -75,6 +77,37 @@ class AgentRuntimeDriftAuditTests(TempDirTestCase):
         payload = json.loads(result.stdout)
         self.assertEqual(payload["status"], "ok")
         self.assertEqual(payload["data"]["summary"]["errors"], 0)
+
+    def test_audit_runs_control_plane_check_when_not_skipped(self) -> None:
+        home = self.temp_path / "home"
+        agents_repo = make_control_plane_root(self.temp_path)
+        write_executable(
+            agents_repo / "scripts/check-agent-control-planes.sh",
+            "#!/usr/bin/env bash\nset -euo pipefail\necho control-plane-ok\n",
+        )
+        write_text(
+            home / ".codex/config.toml",
+            '[plugins."computer-use@openai-bundled"]\n'
+            "enabled = true\n",
+        )
+        self._write_plugin(home, "openai-bundled", "computer-use")
+
+        result = run_command(
+            [
+                str(REPO_ROOT / "scripts/audit-agent-runtime-drift.py"),
+                "--json",
+                "--agents-repo",
+                str(agents_repo),
+                "--home",
+                str(home),
+            ]
+        )
+
+        payload = json.loads(result.stdout)
+        self.assertEqual(payload["status"], "ok")
+        self.assertEqual(payload["data"]["summary"]["errors"], 0)
+        self.assertEqual(payload["data"]["checks"][0]["name"], "agent_control_plane")
+        self.assertEqual(payload["data"]["checks"][0]["status"], "ok")
 
     def test_audit_fails_for_unknown_openai_plugin(self) -> None:
         home = self.temp_path / "home"
