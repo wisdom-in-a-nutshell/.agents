@@ -61,6 +61,10 @@ Use [Codex Control Plane Ownership](/Users/dobby/.agents/docs/references/codex-c
   - [`archive-stale-sessions.py`](/Users/dobby/.agents/codex/scripts/archive-stale-sessions.py)
   - `~/.agents/codex/scripts/archive-stale-sessions.py --dry-run --older-than-days 2`
   - eligibility is based on Codex `thread.updatedAt`, not creation time
+- Check stale Codex Desktop sidebar projects without changing state:
+  - [`prune-sidebar-projects.py`](/Users/dobby/.agents/codex/scripts/prune-sidebar-projects.py)
+  - `~/.agents/codex/scripts/prune-sidebar-projects.py --older-than-days 5 --plain`
+  - for a MacBook sidebar showing Mac mini remote projects, add `--remote-host macmini`; use `--no-unsaved-thread-projects` when pruning only saved/remote sidebar entries
 - Install/update the stale-session archive LaunchAgent:
   - [`install-archive-stale-sessions-launchagent.sh`](/Users/dobby/.agents/codex/scripts/install-archive-stale-sessions-launchagent.sh)
   - `~/.agents/codex/scripts/install-archive-stale-sessions-launchagent.sh --apply`
@@ -186,6 +190,14 @@ Use [Codex Control Plane Ownership](/Users/dobby/.agents/docs/references/codex-c
   - does not try to detect what the Desktop app currently has loaded; the safety boundary is the last-activity cutoff
   - defaults to dry-run; use `--apply` for actual archiving
   - uses a machine-local lock under `~/.local/state/codex-control-plane/` so overlapping launchd runs do not race
+- [`prune-sidebar-projects.py`](/Users/dobby/.agents/codex/scripts/prune-sidebar-projects.py)
+  - removes stale project roots from Codex Desktop sidebar state without deleting repo files or session files
+  - reads Codex thread activity from app-server `thread/list` by default, so cleanup follows Codex's listable active-thread view rather than every Desktop workspace bookkeeping row
+  - supports `--activity-source sqlite` as a read-only diagnostic/fallback when the exact local state DB view is needed
+  - uses app-server `thread/archive` for stale unarchived threads when `--apply` is used, so it does not write thread archive flags directly into SQLite
+  - prunes local saved roots from `electron-saved-workspace-roots` and stale remote entries from `remote-projects`; matching `project-order` entries are removed at the same time
+  - backs up `.codex-global-state.json` and `state_5.sqlite*` under `~/.local/state/codex-control-plane/sidebar-project-prune/backups/` before applying changes
+  - defaults to dry-run and emits JSON by default; use `--plain` for compact operator inspection
 - [`install-archive-stale-sessions-launchagent.sh`](/Users/dobby/.agents/codex/scripts/install-archive-stale-sessions-launchagent.sh)
   - renders `~/Library/LaunchAgents/com.<user>.codex-session-archiver.plist`
   - schedules [`archive-stale-sessions.py`](/Users/dobby/.agents/codex/scripts/archive-stale-sessions.py) every 6 hours by default
