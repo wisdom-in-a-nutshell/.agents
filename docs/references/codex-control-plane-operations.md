@@ -69,6 +69,12 @@ Use [Codex Control Plane Ownership](/Users/dobby/.agents/docs/references/codex-c
   - [`install-archive-stale-sessions-launchagent.sh`](/Users/dobby/.agents/codex/scripts/install-archive-stale-sessions-launchagent.sh)
   - `~/.agents/codex/scripts/install-archive-stale-sessions-launchagent.sh --apply`
   - default schedule is every 6 hours, archiving managed-repo sessions whose last update is older than 48 hours
+- Install/update the nightly sidebar project prune LaunchAgent:
+  - [`install-sidebar-project-prune-launchagent.sh`](/Users/dobby/.agents/codex/scripts/install-sidebar-project-prune-launchagent.sh)
+  - `~/.agents/codex/scripts/install-sidebar-project-prune-launchagent.sh --apply`
+  - default schedule is 01:00 daily; it quits Codex, prunes stale sidebar state, then reopens Codex so the app does not rewrite the old in-memory sidebar list
+  - on a MacBook showing Mac mini remote projects, use `--remote-host macmini --no-unsaved-thread-projects`
+  - install this only on machines where the restart behavior is wanted; it is not part of the default bootstrap batch
 - Auto-apply the Codex control plane after `~/.agents` sync when `codex/` changed:
   - [`auto-apply-codex-control-plane.sh`](/Users/dobby/.agents/codex/scripts/auto-apply-codex-control-plane.sh)
   - `~/.agents/codex/scripts/auto-apply-codex-control-plane.sh --apply`
@@ -202,6 +208,12 @@ Use [Codex Control Plane Ownership](/Users/dobby/.agents/docs/references/codex-c
 - [`install-archive-stale-sessions-launchagent.sh`](/Users/dobby/.agents/codex/scripts/install-archive-stale-sessions-launchagent.sh)
   - renders `~/Library/LaunchAgents/com.<user>.codex-session-archiver.plist`
   - schedules [`archive-stale-sessions.py`](/Users/dobby/.agents/codex/scripts/archive-stale-sessions.py) every 6 hours by default
+  - writes logs under `~/.local/state/codex-control-plane/log/`
+  - supports dry-run output before writing or loading launchd state
+- [`install-sidebar-project-prune-launchagent.sh`](/Users/dobby/.agents/codex/scripts/install-sidebar-project-prune-launchagent.sh)
+  - renders `~/Library/LaunchAgents/com.<user>.codex-sidebar-project-pruner.plist`
+  - schedules [`prune-sidebar-projects.py`](/Users/dobby/.agents/codex/scripts/prune-sidebar-projects.py) at 01:00 daily by default
+  - forwards `--quit-codex-app --reopen-codex-app` so the disk state is changed while Codex Desktop is not holding stale sidebar state in memory
   - writes logs under `~/.local/state/codex-control-plane/log/`
   - supports dry-run output before writing or loading launchd state
 - [`auto-apply-codex-control-plane.sh`](/Users/dobby/.agents/codex/scripts/auto-apply-codex-control-plane.sh)

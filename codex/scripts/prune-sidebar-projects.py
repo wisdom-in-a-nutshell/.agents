@@ -833,6 +833,43 @@ def acquire_lock(lock_path: Path) -> Any:
     return lock_file
 
 
+def is_codex_app_running(app_name: str) -> bool:
+    proc = subprocess.run(
+        ["pgrep", "-x", app_name],
+        check=False,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+    )
+    return proc.returncode == 0
+
+
+def quit_codex_app(app_name: str, timeout_seconds: float) -> bool:
+    was_running = is_codex_app_running(app_name)
+    if not was_running:
+        return False
+    subprocess.run(
+        ["osascript", "-e", f'tell application "{app_name}" to quit'],
+        check=False,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+    )
+    deadline = time.monotonic() + timeout_seconds
+    while time.monotonic() < deadline:
+        if not is_codex_app_running(app_name):
+            return True
+        time.sleep(0.5)
+    raise TimeoutToolError(f"timed out waiting for {app_name} to quit")
+
+
+def reopen_codex_app(app_name: str) -> None:
+    subprocess.run(
+        ["open", "-a", app_name],
+        check=False,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+    )
+
+
 def project_output(
     *,
     root: str,
@@ -954,6 +991,10 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--lock", type=Path, default=DEFAULT_LOCK)
     parser.add_argument("--slack-webhook-file", type=Path, default=Path.home() / ".secrets/slack/env")
     parser.add_argument("--no-slack", action="store_true")
+    parser.add_argument("--quit-codex-app", action="store_true", help="Quit the local Codex app before applying.")
+    parser.add_argument("--reopen-codex-app", action="store_true", help="Reopen the local Codex app after the run.")
+    parser.add_argument("--codex-app-name", default="Codex", help="macOS app name for quit/reopen. Default: Codex.")
+    parser.add_argument("--quit-timeout-seconds", type=float, default=30.0)
     parser.add_argument("--no-input", action="store_true", help="Accepted for agent callers; this command never prompts.")
     parser.add_argument("--json", action="store_true", help="Emit structured JSON (default).")
     parser.add_argument("--plain", action="store_true", help="Emit compact plain text.")
@@ -971,6 +1012,8 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
         raise UsageError("--page-limit must be positive")
     if args.timeout_seconds <= 0:
         raise UsageError("--timeout-seconds must be positive")
+    if args.quit_timeout_seconds <= 0:
+        raise UsageError("--quit-timeout-seconds must be positive")
     if args.max_archive < 0:
         raise UsageError("--max-archive cannot be negative")
     include_archived_activity = not args.exclude_archived_activity
@@ -979,6 +1022,10 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
     global_state_path = codex_home / ".codex-global-state.json"
     remote_host_ids = selected_remote_host_ids(args.remote_host)
     keep_roots = {str(Path(root).expanduser()) if root.startswith("~") else root for root in args.keep_root}
+
+    codex_app_was_running = False
+    if args.apply and args.quit_codex_app:
+        codex_app_was_running = quit_codex_app(args.codex_app_name, args.quit_timeout_seconds)
 
     lock_file = acquire_lock(args.lock.expanduser())
     clients: dict[str | None, AppServerClient] = {}
@@ -1146,12 +1193,17 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
             "pruned_remote_project_count": len(stale_remote_ids),
             "archived_thread_count": archived_count if args.apply else sum(len(a.thread_ids) for a in stale_activities_to_archive),
             "backup_dir": backup_dir,
+            "codex_app_quit": bool(args.apply and args.quit_codex_app),
+            "codex_app_was_running": codex_app_was_running,
+            "codex_app_reopened": bool(args.apply and args.reopen_codex_app),
             "projects": project_items,
         }
     finally:
         for client in clients.values():
             client.close()
         lock_file.close()
+        if args.apply and args.reopen_codex_app:
+            reopen_codex_app(args.codex_app_name)
 
 
 def main() -> int:
