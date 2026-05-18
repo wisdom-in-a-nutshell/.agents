@@ -334,6 +334,21 @@
       "upstream_ref": "-"
     },
     {
+      "skill": "local-transcription",
+      "origin": "owned",
+      "scope": "repo",
+      "repos": [
+        "~/.agents",
+        "adi",
+        "adithyan-ai-videos",
+        "angie",
+        "codexclaw",
+        "scripts"
+      ],
+      "source_path": "skills-source/owned/local-transcription",
+      "upstream_ref": "-"
+    },
+    {
       "skill": "fal-seedance",
       "origin": "owned",
       "scope": "repo",

@@ -1,9 +1,9 @@
 ---
-name: transcribe-local-audio
-description: Transcribe local audio files through the machine-local Superwhisper transcription repo. Use when the user asks Codex to transcribe, diarize, inspect, or validate a local audio file such as .wav, .m4a, .mp3, or .aac using /Users/dobby/GitHub/local-transcription/bin/transcribe, including requests for speaker labels, plain transcript text, JSON output, readiness checks, or saved transcript files.
+name: local-transcription
+description: Transcribe, diarize, inspect, or validate local audio files through the machine-local Superwhisper transcription repo. Use when the user asks Codex to transcribe local audio, produce transcript text, add speaker labels, diarize a meeting, run readiness checks, return JSON transcription output, or save transcript files from local audio such as .wav, .m4a, .mp3, or .aac using /Users/dobby/GitHub/local-transcription/bin/transcribe.
 ---
 
-# Transcribe Local Audio
+# Local Transcription
 
 ## Overview
 

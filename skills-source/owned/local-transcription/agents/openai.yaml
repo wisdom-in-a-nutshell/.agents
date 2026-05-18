@@ -1,0 +1,4 @@
+interface:
+  display_name: "Local Transcription"
+  short_description: "Transcribe audio through Superwhisper"
+  default_prompt: "Use $local-transcription to transcribe this local audio file."

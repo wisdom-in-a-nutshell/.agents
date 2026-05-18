@@ -22,7 +22,7 @@ from typing import Any
 
 SCHEMA_VERSION = "1.0"
 COMMAND = "codex-sidebar-project-prune"
-DEFAULT_DAYS = 5.0
+DEFAULT_DAYS = 3.0
 DEFAULT_TIMEOUT_SECONDS = 30.0
 DEFAULT_PAGE_LIMIT = 200
 DEFAULT_LOCK = Path.home() / ".local/state/codex-control-plane/sidebar-project-prune.lock"
@@ -39,6 +39,7 @@ REQUIRED_GLOBAL_KEYS = {
 REQUIRED_THREAD_COLUMNS = {
     "id",
     "cwd",
+    "created_at",
     "updated_at",
     "archived",
     "archived_at",
@@ -82,7 +83,9 @@ class TimeoutToolError(ToolError):
 class ThreadRef:
     thread_id: str
     cwd: str
+    created_at: int
     updated_at: int
+    archived: bool
     host_id: str | None
     status: Any
 
@@ -138,7 +141,8 @@ def emit_plain(payload: dict[str, Any]) -> None:
     data = payload["data"]
     mode = "apply" if data["applied"] else "dry-run"
     print(
-        f"ok mode={mode} cutoff={data['cutoff_utc']} "
+        f"ok mode={mode} activity={data['activity_source']}:{data['activity_timestamp']} "
+        f"include_archived={data['include_archived_activity']} cutoff={data['cutoff_utc']} "
         f"stale={data['stale_project_count']} pruned_remote={data['pruned_remote_project_count']} "
         f"pruned_saved={data['pruned_saved_root_count']} archived={data['archived_thread_count']}"
     )
@@ -402,20 +406,28 @@ def project_root_for_cwd(cwd: str, host_id: str | None) -> str | None:
     return direct_remote_project_root(cwd)
 
 
-def list_unarchived_threads(
+def list_threads_for_archived_state(
     client: AppServerClient,
     *,
+    archived: bool,
     page_limit: int,
     use_state_db_only: bool,
+    activity_timestamp: str,
 ) -> list[ThreadRef]:
     threads: list[ThreadRef] = []
     cursor: str | None = None
     while True:
+        if activity_timestamp == "updated_at":
+            sort_key = "updated_at"
+        elif activity_timestamp == "created_or_unarchived_updated" and not archived:
+            sort_key = "updated_at"
+        else:
+            sort_key = "created_at"
         params: dict[str, Any] = {
-            "archived": False,
+            "archived": archived,
             "cursor": cursor,
             "limit": page_limit,
-            "sortKey": "updated_at",
+            "sortKey": sort_key,
             "sortDirection": "desc",
             "useStateDbOnly": use_state_db_only,
         }
@@ -428,16 +440,24 @@ def list_unarchived_threads(
                 raise SchemaError(f"{client.target.label} thread/list returned a non-object thread")
             thread_id = item.get("id")
             cwd = item.get("cwd")
+            created_at = item.get("createdAt")
             updated_at = item.get("updatedAt")
-            if not isinstance(thread_id, str) or not isinstance(cwd, str) or not isinstance(updated_at, int):
+            if (
+                not isinstance(thread_id, str)
+                or not isinstance(cwd, str)
+                or not isinstance(created_at, int)
+                or not isinstance(updated_at, int)
+            ):
                 raise SchemaError(
-                    f"{client.target.label} thread/list thread missing id/cwd/updatedAt with expected types"
+                    f"{client.target.label} thread/list thread missing id/cwd/createdAt/updatedAt with expected types"
                 )
             threads.append(
                 ThreadRef(
                     thread_id=thread_id,
                     cwd=cwd,
+                    created_at=created_at,
                     updated_at=updated_at,
+                    archived=archived,
                     host_id=client.target.host_id,
                     status=item.get("status"),
                 )
@@ -450,7 +470,39 @@ def list_unarchived_threads(
         cursor = cursor_value
 
 
-def activity_by_root(threads: list[ThreadRef]) -> dict[tuple[str | None, str], ProjectActivity]:
+def list_threads(
+    client: AppServerClient,
+    *,
+    page_limit: int,
+    use_state_db_only: bool,
+    activity_timestamp: str,
+    include_archived_activity: bool,
+) -> list[ThreadRef]:
+    threads = list_threads_for_archived_state(
+        client,
+        archived=False,
+        page_limit=page_limit,
+        use_state_db_only=use_state_db_only,
+        activity_timestamp=activity_timestamp,
+    )
+    if include_archived_activity:
+        threads.extend(
+            list_threads_for_archived_state(
+                client,
+                archived=True,
+                page_limit=page_limit,
+                use_state_db_only=use_state_db_only,
+                activity_timestamp=activity_timestamp,
+            )
+        )
+    return threads
+
+
+def activity_by_root(
+    threads: list[ThreadRef],
+    *,
+    activity_timestamp: str,
+) -> dict[tuple[str | None, str], ProjectActivity]:
     ids: dict[tuple[str | None, str], list[str]] = {}
     last: dict[tuple[str | None, str], int] = {}
     for thread in threads:
@@ -458,8 +510,18 @@ def activity_by_root(threads: list[ThreadRef]) -> dict[tuple[str | None, str], P
         if root is None:
             continue
         key = (thread.host_id, root)
-        ids.setdefault(key, []).append(thread.thread_id)
-        last[key] = max(last.get(key, 0), thread.updated_at)
+        ids.setdefault(key, [])
+        if not thread.archived:
+            ids[key].append(thread.thread_id)
+        if activity_timestamp == "created_at":
+            timestamp = thread.created_at
+        elif activity_timestamp == "updated_at":
+            timestamp = thread.updated_at
+        elif thread.archived:
+            timestamp = thread.created_at
+        else:
+            timestamp = max(thread.created_at, thread.updated_at)
+        last[key] = max(last.get(key, 0), timestamp)
     return {
         key: ProjectActivity(
             root=key[1],
@@ -510,18 +572,24 @@ def validate_sqlite_schema(conn: sqlite3.Connection, label: str) -> None:
         raise SchemaError(f"{label} Codex thread DB schema missing column(s): {', '.join(sorted(missing))}")
 
 
-def read_sqlite_threads(sqlite_path: Path, host_id: str | None) -> list[ThreadRef]:
+def read_sqlite_threads(
+    sqlite_path: Path,
+    host_id: str | None,
+    *,
+    include_archived_activity: bool,
+) -> list[ThreadRef]:
     if not sqlite_path.exists():
         raise SchemaError(f"missing Codex thread database: {sqlite_path}")
     label = host_id or "local"
     conn = sqlite3.connect(f"file:{sqlite_path}?mode=ro", uri=True, timeout=10)
     try:
         validate_sqlite_schema(conn, label)
+        where = "" if include_archived_activity else "WHERE archived = 0"
         rows = conn.execute(
-            """
-            SELECT id, cwd, updated_at
+            f"""
+            SELECT id, cwd, created_at, updated_at, archived
             FROM threads
-            WHERE archived = 0
+            {where}
             ORDER BY updated_at DESC, id DESC
             """
         ).fetchall()
@@ -529,14 +597,22 @@ def read_sqlite_threads(sqlite_path: Path, host_id: str | None) -> list[ThreadRe
         conn.close()
 
     threads: list[ThreadRef] = []
-    for thread_id, cwd, updated_at in rows:
-        if not isinstance(thread_id, str) or not isinstance(cwd, str) or not isinstance(updated_at, int):
-            raise SchemaError(f"{label} Codex thread DB returned unexpected id/cwd/updated_at types")
+    for thread_id, cwd, created_at, updated_at, archived in rows:
+        if (
+            not isinstance(thread_id, str)
+            or not isinstance(cwd, str)
+            or not isinstance(created_at, int)
+            or not isinstance(updated_at, int)
+            or not isinstance(archived, int)
+        ):
+            raise SchemaError(f"{label} Codex thread DB returned unexpected id/cwd/created_at/updated_at/archived types")
         threads.append(
             ThreadRef(
                 thread_id=thread_id,
                 cwd=cwd,
+                created_at=created_at,
                 updated_at=updated_at,
+                archived=bool(archived),
                 host_id=host_id,
                 status={"type": "unknown"},
             )
@@ -549,18 +625,20 @@ import json
 import sqlite3
 import sys
 from pathlib import Path
+include_archived = sys.argv[1] == "1"
 path = Path.home() / ".codex/state_5.sqlite"
 conn = sqlite3.connect(f"file:{path}?mode=ro", uri=True, timeout=10)
 try:
     rows = conn.execute("PRAGMA table_info(threads)").fetchall()
     columns = {str(row[1]) for row in rows}
-    required = {"id", "cwd", "updated_at", "archived", "archived_at"}
+    required = {"id", "cwd", "created_at", "updated_at", "archived", "archived_at"}
     missing = sorted(required - columns)
     if missing:
         print(json.dumps({"status": "error", "code": "schema", "message": ",".join(missing)}))
         raise SystemExit(2)
+    where = "" if include_archived else "WHERE archived = 0"
     data = conn.execute(
-        "SELECT id, cwd, updated_at FROM threads WHERE archived = 0 ORDER BY updated_at DESC, id DESC"
+        f"SELECT id, cwd, created_at, updated_at, archived FROM threads {where} ORDER BY updated_at DESC, id DESC"
     ).fetchall()
 finally:
     conn.close()
@@ -568,13 +646,18 @@ print(json.dumps({"status": "ok", "data": data}, separators=(",", ":")))
 """
 
 
-def read_remote_sqlite_threads(ssh_bin: str, host_id: str) -> list[ThreadRef]:
+def read_remote_sqlite_threads(
+    ssh_bin: str,
+    host_id: str,
+    *,
+    include_archived_activity: bool,
+) -> list[ThreadRef]:
     alias = ssh_alias_for_host_id(host_id)
     if alias is None:
         raise UsageError(f"remote host id is not SSH-discovered and cannot be queried safely: {host_id}")
     try:
         proc = subprocess.run(
-            [ssh_bin, "-T", alias, "python3 -"],
+            [ssh_bin, "-T", alias, "python3 -", "1" if include_archived_activity else "0"],
             check=False,
             text=True,
             input=REMOTE_SQLITE_READER,
@@ -600,21 +683,50 @@ def read_remote_sqlite_threads(ssh_bin: str, host_id: str) -> list[ThreadRef]:
     for row in payload["data"]:
         if (
             not isinstance(row, list)
-            or len(row) != 3
+            or len(row) != 5
             or not isinstance(row[0], str)
             or not isinstance(row[1], str)
             or not isinstance(row[2], int)
+            or not isinstance(row[3], int)
+            or not isinstance(row[4], int)
         ):
             raise SchemaError(f"remote Codex activity read from {host_id} returned unexpected row shape")
-        threads.append(ThreadRef(thread_id=row[0], cwd=row[1], updated_at=row[2], host_id=host_id, status={"type": "unknown"}))
+        threads.append(
+            ThreadRef(
+                thread_id=row[0],
+                cwd=row[1],
+                created_at=row[2],
+                updated_at=row[3],
+                archived=bool(row[4]),
+                host_id=host_id,
+                status={"type": "unknown"},
+            )
+        )
     return threads
 
 
-def load_sqlite_activity(codex_home: Path, ssh_bin: str, remote_host_ids: set[str]) -> dict[tuple[str | None, str], ProjectActivity]:
-    threads = read_sqlite_threads(codex_home / "state_5.sqlite", None)
+def load_sqlite_activity(
+    codex_home: Path,
+    ssh_bin: str,
+    remote_host_ids: set[str],
+    *,
+    activity_timestamp: str,
+    include_archived_activity: bool,
+) -> dict[tuple[str | None, str], ProjectActivity]:
+    threads = read_sqlite_threads(
+        codex_home / "state_5.sqlite",
+        None,
+        include_archived_activity=include_archived_activity,
+    )
     for host_id in sorted(remote_host_ids):
-        threads.extend(read_remote_sqlite_threads(ssh_bin, host_id))
-    return activity_by_root(threads)
+        threads.extend(
+            read_remote_sqlite_threads(
+                ssh_bin,
+                host_id,
+                include_archived_activity=include_archived_activity,
+            )
+        )
+    return activity_by_root(threads, activity_timestamp=activity_timestamp)
 
 
 def load_threads_for_targets(
@@ -623,6 +735,8 @@ def load_threads_for_targets(
     timeout_seconds: float,
     page_limit: int,
     use_state_db_only: bool,
+    activity_timestamp: str,
+    include_archived_activity: bool,
 ) -> tuple[dict[tuple[str | None, str], ProjectActivity], dict[str | None, AppServerClient]]:
     clients: dict[str | None, AppServerClient] = {}
     all_threads: list[ThreadRef] = []
@@ -632,13 +746,15 @@ def load_threads_for_targets(
             client.start()
             clients[target.host_id] = client
             all_threads.extend(
-                list_unarchived_threads(
+                list_threads(
                     client,
                     page_limit=page_limit,
                     use_state_db_only=use_state_db_only,
+                    activity_timestamp=activity_timestamp,
+                    include_archived_activity=include_archived_activity,
                 )
             )
-        return activity_by_root(all_threads), clients
+        return activity_by_root(all_threads, activity_timestamp=activity_timestamp), clients
     except Exception:
         for client in clients.values():
             client.close()
@@ -730,6 +846,8 @@ def project_output(
     return {
         "root": root,
         "host_id": host_id,
+        "last_activity": last_updated,
+        "last_activity_utc": format_utc(last_updated),
         "last_updated": last_updated,
         "last_updated_utc": format_utc(last_updated),
         "thread_count": len(activity.thread_ids) if activity else 0,
@@ -810,6 +928,20 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--no-unsaved-thread-projects", action="store_true")
     parser.add_argument("--state-db-only", action="store_true")
     parser.add_argument(
+        "--activity-timestamp",
+        choices=("created_or_unarchived_updated", "created_at", "updated_at"),
+        default="created_or_unarchived_updated",
+        help=(
+            "Timestamp used to decide recent project activity. Default keeps projects with "
+            "recently created threads, plus unarchived threads updated recently."
+        ),
+    )
+    parser.add_argument(
+        "--exclude-archived-activity",
+        action="store_true",
+        help="Do not count archived threads as evidence of recent project activity.",
+    )
+    parser.add_argument(
         "--activity-source",
         choices=("sqlite", "app-server"),
         default="app-server",
@@ -841,6 +973,7 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
         raise UsageError("--timeout-seconds must be positive")
     if args.max_archive < 0:
         raise UsageError("--max-archive cannot be negative")
+    include_archived_activity = not args.exclude_archived_activity
 
     codex_home = args.codex_home.expanduser()
     global_state_path = codex_home / ".codex-global-state.json"
@@ -865,6 +998,8 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
                 codex_home,
                 args.ssh_bin,
                 {item["hostId"] for item in selected_remote_projects},
+                activity_timestamp=args.activity_timestamp,
+                include_archived_activity=include_archived_activity,
             )
         else:
             activity, clients = load_threads_for_targets(
@@ -872,6 +1007,8 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
                 timeout_seconds=args.timeout_seconds,
                 page_limit=args.page_limit,
                 use_state_db_only=bool(args.state_db_only),
+                activity_timestamp=args.activity_timestamp,
+                include_archived_activity=include_archived_activity,
             )
 
         now = int(time.time())
@@ -985,6 +1122,8 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
                         timeout_seconds=args.timeout_seconds,
                         page_limit=args.page_limit,
                         use_state_db_only=True,
+                        activity_timestamp=args.activity_timestamp,
+                        include_archived_activity=False,
                     )
                 archived_count = archive_threads(
                     clients,
@@ -996,6 +1135,9 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
             "applied": bool(args.apply),
             "codex_home": str(codex_home),
             "older_than_hours": older_than_hours,
+            "activity_source": args.activity_source,
+            "activity_timestamp": args.activity_timestamp,
+            "include_archived_activity": include_archived_activity,
             "cutoff_epoch": cutoff,
             "cutoff_utc": format_utc(cutoff),
             "selected_remote_host_ids": sorted(remote_host_ids),

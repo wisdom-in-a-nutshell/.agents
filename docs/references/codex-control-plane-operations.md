@@ -63,7 +63,7 @@ Use [Codex Control Plane Ownership](/Users/dobby/.agents/docs/references/codex-c
   - eligibility is based on Codex `thread.updatedAt`, not creation time
 - Check stale Codex Desktop sidebar projects without changing state:
   - [`prune-sidebar-projects.py`](/Users/dobby/.agents/codex/scripts/prune-sidebar-projects.py)
-  - `~/.agents/codex/scripts/prune-sidebar-projects.py --older-than-days 5 --plain`
+  - `~/.agents/codex/scripts/prune-sidebar-projects.py --plain`
   - for a MacBook sidebar showing Mac mini remote projects, add `--remote-host macmini`; use `--no-unsaved-thread-projects` when pruning only saved/remote sidebar entries
 - Install/update the stale-session archive LaunchAgent:
   - [`install-archive-stale-sessions-launchagent.sh`](/Users/dobby/.agents/codex/scripts/install-archive-stale-sessions-launchagent.sh)
@@ -192,7 +192,8 @@ Use [Codex Control Plane Ownership](/Users/dobby/.agents/docs/references/codex-c
   - uses a machine-local lock under `~/.local/state/codex-control-plane/` so overlapping launchd runs do not race
 - [`prune-sidebar-projects.py`](/Users/dobby/.agents/codex/scripts/prune-sidebar-projects.py)
   - removes stale project roots from Codex Desktop sidebar state without deleting repo files or session files
-  - reads Codex thread activity from app-server `thread/list` by default, so cleanup follows Codex's listable active-thread view rather than every Desktop workspace bookkeeping row
+  - reads Codex thread activity from app-server `thread/list` by default, so cleanup follows Codex's listable thread view rather than every Desktop workspace bookkeeping row
+  - default activity logic keeps a project when it has a recently created thread, including archived threads, or a recently updated unarchived thread
   - supports `--activity-source sqlite` as a read-only diagnostic/fallback when the exact local state DB view is needed
   - uses app-server `thread/archive` for stale unarchived threads when `--apply` is used, so it does not write thread archive flags directly into SQLite
   - prunes local saved roots from `electron-saved-workspace-roots` and stale remote entries from `remote-projects`; matching `project-order` entries are removed at the same time
