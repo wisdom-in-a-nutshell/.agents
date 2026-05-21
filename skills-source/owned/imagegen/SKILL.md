@@ -119,9 +119,13 @@ If installation isn't possible in this environment, tell the user which dependen
 ## Defaults & rules
 - Use `gpt-image-2`.
 - Assume the user wants a new image unless they explicitly ask for an edit.
-- Unless the user specifies otherwise, call the CLI as if the default size is `1536x1024`.
-- Default size should generally bias toward `1536x1024` unless the user clearly wants square or portrait.
-- Use `1536x1024` by default for comic/story/explainer visuals (`illustration-story` with a panel-like composition).
+- Unless the user specifies otherwise, saved outputs are normalized to 16:9 by
+  default. The CLI may still request `1536x1024` from the API, then crop the
+  saved result to 16:9.
+- Use `--aspect-ratio none` only when the caller explicitly needs the provider's
+  native square, portrait, or 3:2 output.
+- Default visual direction should generally bias toward wide landscape unless
+  the user clearly wants square or portrait.
 - Use `1024x1024` when the image is primarily icon-like, avatar-like, or meant to crop square.
 - Use the OpenAI Python SDK (`openai` package) for all API calls; do not use raw HTTP.
 - If the user requests edits, use `client.images.edit(...)` and include input images (and mask if provided).
@@ -139,7 +143,8 @@ If installation isn't possible in this environment, tell the user which dependen
 Reformat user prompts into a structured, production-oriented spec. Only make implicit details explicit; do not invent new requirements.
 
 Aspect-ratio guidance:
-- Prefer a wide landscape canvas and default to `1536x1024` unless the user specifies otherwise.
+- Prefer a wide landscape canvas and default saved outputs to 16:9 unless the
+  user specifies otherwise.
 - Use `1024x1024` when the image is primarily icon-like, avatar-like, or meant to crop square.
 - Use `1024x1536` when the user clearly wants a tall/portrait composition.
 
@@ -240,7 +245,8 @@ Asset-type templates (website assets, game assets, wireframes, logo) are consoli
 - Optional deterministic post-processing helper: `references/post-processing.md`
 - API parameter quick reference: `references/image-api.md`
 - If network approvals / sandbox settings are getting in the way: `references/codex-network.md`
-- The owned CLI now defaults to `1536x1024`; only override with `--size` when square/portrait is actually desired.
+- The owned CLI now normalizes saved outputs to 16:9 by default; pass
+  `--aspect-ratio none` only when the native API output is desired.
 
 ## Reference map
 - **`references/cli.md`**: how to *run* AI image generation/edits/batches via `scripts/image_gen.py` (commands, flags, recipes).

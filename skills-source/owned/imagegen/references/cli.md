@@ -43,13 +43,17 @@ python "$IMAGE_GEN" generate --prompt "A cozy alpine cabin at dawn"
 ## Defaults (unless overridden by flags)
 - Model: `gpt-image-2`
 - Size: `1536x1024`
+- Saved output aspect ratio: `16:9`
 - Quality: `auto`
 - Output format: `png`
 - Background: unspecified (API default). `gpt-image-2` supports opaque/auto backgrounds, not transparent alpha.
 
 Practical size convention:
-- Treat `1536x1024` as the practical default for most generated visuals unless square is clearly the better fit.
-- For comic/story/explainer visuals (`illustration-story`) with a panel-like layout, prefer `1536x1024` unless the user asks for square or portrait.
+- The API request defaults to `1536x1024`, then the CLI crops saved outputs to
+  16:9 by default.
+- Pass `--aspect-ratio none` only when you need the provider's native output
+  without the default 16:9 normalization.
+- For comic/story/explainer visuals (`illustration-story`) with a panel-like layout, prefer the default 16:9 saved output unless the user asks for square or portrait.
 - For tall vertical compositions, use `1024x1536`.
 
 ## Quality
@@ -125,7 +129,8 @@ python "$IMAGE_GEN" edit --image input.png --mask mask.png --prompt "Replace the
 ```
 
 ## CLI notes
-- Supported sizes: `1024x1024`, `1536x1024`, `1024x1536`, or `auto`.
+- Supported API sizes: `1024x1024`, `1536x1024`, `1024x1536`, or `auto`.
+- Supported saved output aspect ratios: `16:9` or `none`; default is `16:9`.
 - `gpt-image-2` does not currently support transparent backgrounds. Use a clean plain background for cutout prep, then post-process alpha separately when needed.
 - The CLI default is `output.png`, so pass `--out tmp/imagegen/<name>.png` or `--out-dir tmp/imagegen`.
 - Do not leave loose `output.png` or top-level `output/` artifacts.

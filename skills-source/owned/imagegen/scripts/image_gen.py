@@ -624,6 +624,7 @@ async def _run_generate_batch(args: argparse.Namespace) -> int:
                     "job": i,
                     "outputs": [str(p) for p in outputs],
                     "outputs_downscaled": downscaled,
+                    "output_aspect_ratio": args.aspect_ratio,
                     **job_payload,
                 }
             )
@@ -681,6 +682,7 @@ async def _run_generate_batch(args: argparse.Namespace) -> int:
                 downscale_max_dim=args.downscale_max_dim,
                 downscale_suffix=args.downscale_suffix,
                 output_format=effective_output_format,
+                aspect_ratio=args.aspect_ratio,
             )
             return i, None
         except Exception as exc:
@@ -732,7 +734,13 @@ def _generate(args: argparse.Namespace) -> None:
     output_paths = _build_output_paths(args.out, output_format, args.n, args.out_dir)
 
     if args.dry_run:
-        _print_request({"endpoint": "/v1/images/generations", **payload})
+        _print_request(
+            {
+                "endpoint": "/v1/images/generations",
+                "output_aspect_ratio": args.aspect_ratio,
+                **payload,
+            }
+        )
         return
 
     print(
@@ -753,6 +761,7 @@ def _generate(args: argparse.Namespace) -> None:
         downscale_max_dim=args.downscale_max_dim,
         downscale_suffix=args.downscale_suffix,
         output_format=output_format,
+        aspect_ratio=args.aspect_ratio,
     )
 
 
@@ -793,7 +802,13 @@ def _edit(args: argparse.Namespace) -> None:
         payload_preview["image"] = [str(p) for p in image_paths]
         if mask_path:
             payload_preview["mask"] = str(mask_path)
-        _print_request({"endpoint": "/v1/images/edits", **payload_preview})
+        _print_request(
+            {
+                "endpoint": "/v1/images/edits",
+                "output_aspect_ratio": args.aspect_ratio,
+                **payload_preview,
+            }
+        )
         return
 
     print(
@@ -820,6 +835,7 @@ def _edit(args: argparse.Namespace) -> None:
         downscale_max_dim=args.downscale_max_dim,
         downscale_suffix=args.downscale_suffix,
         output_format=output_format,
+        aspect_ratio=args.aspect_ratio,
     )
 
 
@@ -882,6 +898,12 @@ def _add_shared_args(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--prompt-file")
     parser.add_argument("--n", type=int, default=1)
     parser.add_argument("--size", default=DEFAULT_SIZE)
+    parser.add_argument(
+        "--aspect-ratio",
+        default=DEFAULT_ASPECT_RATIO,
+        choices=sorted(ALLOWED_ASPECT_RATIOS),
+        help="Post-process saved outputs to this aspect ratio. Defaults to 16:9; use none to keep the API's native output.",
+    )
     parser.add_argument("--quality", default=DEFAULT_QUALITY)
     parser.add_argument("--background")
     parser.add_argument("--output-format")
@@ -958,6 +980,7 @@ def main() -> int:
         _die("--downscale-max-dim must be >= 1")
 
     _validate_size(args.size)
+    _validate_aspect_ratio(args.aspect_ratio)
     _validate_quality(args.quality)
     _validate_background(args.background)
     _validate_model(args.model)
