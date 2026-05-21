@@ -31,12 +31,14 @@ ALLOWED_MODELS = {
     "gemini-3-pro-image-preview",
 }
 DEFAULT_SIZE = "1536x1024"
+DEFAULT_ASPECT_RATIO = "16:9"
 DEFAULT_QUALITY = "auto"
 DEFAULT_OUTPUT_FORMAT = "png"
 DEFAULT_CONCURRENCY = 5
 DEFAULT_DOWNSCALE_SUFFIX = "-web"
 
 ALLOWED_SIZES = {"1024x1024", "1536x1024", "1024x1536", "auto"}
+ALLOWED_ASPECT_RATIOS = {"16:9", "none"}
 ALLOWED_QUALITIES = {"low", "medium", "high", "auto"}
 ALLOWED_BACKGROUNDS = {"opaque", "auto", None}
 
@@ -104,6 +106,11 @@ def _validate_size(size: str) -> None:
         _die(
             "size must be one of 1024x1024, 1536x1024, 1024x1536, or auto for GPT image models."
         )
+
+
+def _validate_aspect_ratio(aspect_ratio: str) -> None:
+    if aspect_ratio not in ALLOWED_ASPECT_RATIOS:
+        _die("aspect-ratio must be 16:9 or none.")
 
 
 def _validate_quality(quality: str) -> None:
@@ -283,6 +290,70 @@ def _downscale_image_bytes(image_bytes: bytes, *, max_dim: int, output_format: s
         return out.getvalue()
 
 
+def _aspect_ratio_target(aspect_ratio: str) -> Optional[Tuple[int, int]]:
+    if aspect_ratio == "none":
+        return None
+    if aspect_ratio == "16:9":
+        return (16, 9)
+    _die("aspect-ratio must be 16:9 or none.")
+    return None
+
+
+def _normalize_image_aspect_bytes(
+    image_bytes: bytes,
+    *,
+    aspect_ratio: str,
+    output_format: str,
+) -> bytes:
+    target_ratio = _aspect_ratio_target(aspect_ratio)
+    if target_ratio is None:
+        return image_bytes
+
+    try:
+        from PIL import Image
+    except Exception:
+        _die(
+            "Aspect-ratio normalization requires Pillow. Install with `python3 -m pip install --user --break-system-packages pillow`."
+        )
+
+    target_w, target_h = target_ratio
+    target = target_w / target_h
+
+    with Image.open(BytesIO(image_bytes)) as img:
+        img.load()
+        w, h = img.size
+        current = w / h
+
+        if abs(current - target) < 0.001:
+            return image_bytes
+
+        if current > target:
+            new_w = int(round(h * target))
+            left = max(0, (w - new_w) // 2)
+            box = (left, 0, left + new_w, h)
+        else:
+            new_h = int(round(w / target))
+            top = max(0, (h - new_h) // 2)
+            box = (0, top, w, top + new_h)
+
+        normalized = img.crop(box)
+
+        fmt = output_format.lower()
+        if fmt == "jpg":
+            fmt = "jpeg"
+        if fmt == "jpeg":
+            if normalized.mode in ("RGBA", "LA") or ("transparency" in getattr(normalized, "info", {})):
+                bg = Image.new("RGB", normalized.size, (255, 255, 255))
+                bg.paste(normalized.convert("RGBA"), mask=normalized.convert("RGBA").split()[-1])
+                normalized = bg
+            else:
+                normalized = normalized.convert("RGB")
+
+        out = BytesIO()
+        normalized.save(out, format=fmt.upper())
+        return out.getvalue()
+
+
 def _decode_write_and_downscale(
     images: List[str],
     outputs: List[Path],
@@ -291,6 +362,7 @@ def _decode_write_and_downscale(
     downscale_max_dim: Optional[int],
     downscale_suffix: str,
     output_format: str,
+    aspect_ratio: str,
 ) -> None:
     for idx, image_b64 in enumerate(images):
         if idx >= len(outputs):
@@ -301,7 +373,12 @@ def _decode_write_and_downscale(
         out_path.parent.mkdir(parents=True, exist_ok=True)
 
         raw = base64.b64decode(image_b64)
-        out_path.write_bytes(raw)
+        output_bytes = _normalize_image_aspect_bytes(
+            raw,
+            aspect_ratio=aspect_ratio,
+            output_format=output_format,
+        )
+        out_path.write_bytes(output_bytes)
         print(f"Wrote {out_path}")
 
         if downscale_max_dim is None:
@@ -311,7 +388,7 @@ def _decode_write_and_downscale(
         if derived.exists() and not force:
             _die(f"Output already exists: {derived} (use --force to overwrite)")
         derived.parent.mkdir(parents=True, exist_ok=True)
-        resized = _downscale_image_bytes(raw, max_dim=downscale_max_dim, output_format=output_format)
+        resized = _downscale_image_bytes(output_bytes, max_dim=downscale_max_dim, output_format=output_format)
         derived.write_bytes(resized)
         print(f"Wrote {derived}")
 
