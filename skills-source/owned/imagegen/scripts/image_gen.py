@@ -30,14 +30,13 @@ ALLOWED_MODELS = {
     # an edit (e.g. real-people compositing, faces of minors).
     "gemini-3-pro-image-preview",
 }
-DEFAULT_SIZE = "1536x1024"
-DEFAULT_ASPECT_RATIO = "16:9"
+DEFAULT_SIZE = "1536x864"
+DEFAULT_ASPECT_RATIO = "none"
 DEFAULT_QUALITY = "auto"
 DEFAULT_OUTPUT_FORMAT = "png"
 DEFAULT_CONCURRENCY = 5
 DEFAULT_DOWNSCALE_SUFFIX = "-web"
 
-ALLOWED_SIZES = {"1024x1024", "1536x1024", "1024x1536", "auto"}
 ALLOWED_ASPECT_RATIOS = {"16:9", "none"}
 ALLOWED_QUALITIES = {"low", "medium", "high", "auto"}
 ALLOWED_BACKGROUNDS = {"opaque", "auto", None}
@@ -101,11 +100,33 @@ def _normalize_output_format(fmt: Optional[str]) -> str:
     return "jpeg" if fmt == "jpg" else fmt
 
 
-def _validate_size(size: str) -> None:
-    if size not in ALLOWED_SIZES:
-        _die(
-            "size must be one of 1024x1024, 1536x1024, 1024x1536, or auto for GPT image models."
-        )
+def _validate_size(size: str, model: str = DEFAULT_MODEL) -> None:
+    if size == "auto":
+        return
+
+    standard_sizes = {"1024x1024", "1536x1024", "1024x1536"}
+    if model != "gpt-image-2":
+        if size not in standard_sizes:
+            _die(
+                f"size must be one of {', '.join(sorted(standard_sizes))}, or auto for {model}."
+            )
+        return
+
+    match = re.fullmatch(r"([1-9][0-9]*)x([1-9][0-9]*)", size)
+    if not match:
+        _die("size must be WIDTHxHEIGHT, for example 1536x864, or auto.")
+
+    width = int(match.group(1))
+    height = int(match.group(2))
+    if width % 16 != 0 or height % 16 != 0:
+        _die("gpt-image-2 size width and height must both be divisible by 16.")
+
+    aspect_ratio = width / height
+    if aspect_ratio < 1 / 3 or aspect_ratio > 3:
+        _die("gpt-image-2 size aspect ratio must be between 1:3 and 3:1.")
+
+    if width > 3840 or height > 2160:
+        _die("gpt-image-2 maximum supported resolution is 3840x2160.")
 
 
 def _validate_aspect_ratio(aspect_ratio: str) -> None:
@@ -137,7 +158,7 @@ def _validate_generate_payload(payload: Dict[str, Any]) -> None:
     background = payload.get("background")
     model = str(payload.get("model", DEFAULT_MODEL))
     _validate_model(model)
-    _validate_size(size)
+    _validate_size(size, model)
     _validate_quality(quality)
     _validate_background(background)
     oc = payload.get("output_compression")
@@ -902,7 +923,7 @@ def _add_shared_args(parser: argparse.ArgumentParser) -> None:
         "--aspect-ratio",
         default=DEFAULT_ASPECT_RATIO,
         choices=sorted(ALLOWED_ASPECT_RATIOS),
-        help="Post-process saved outputs to this aspect ratio. Defaults to 16:9; use none to keep the API's native output.",
+        help="Optional post-process crop. Defaults to none so API-native output is preserved; use 16:9 only when explicitly requested.",
     )
     parser.add_argument("--quality", default=DEFAULT_QUALITY)
     parser.add_argument("--background")
@@ -979,7 +1000,7 @@ def main() -> int:
     if getattr(args, "downscale_max_dim", None) is not None and args.downscale_max_dim < 1:
         _die("--downscale-max-dim must be >= 1")
 
-    _validate_size(args.size)
+    _validate_size(args.size, args.model)
     _validate_aspect_ratio(args.aspect_ratio)
     _validate_quality(args.quality)
     _validate_background(args.background)

@@ -119,11 +119,11 @@ If installation isn't possible in this environment, tell the user which dependen
 ## Defaults & rules
 - Use `gpt-image-2`.
 - Assume the user wants a new image unless they explicitly ask for an edit.
-- Unless the user specifies otherwise, saved outputs are normalized to 16:9 by
-  default. The CLI may still request `1536x1024` from the API, then crop the
-  saved result to 16:9.
-- Use `--aspect-ratio none` only when the caller explicitly needs the provider's
-  native square, portrait, or 3:2 output.
+- Unless the user specifies otherwise, request native wide output from
+  `gpt-image-2` using a 16:9 size such as `1536x864`, and preserve the API
+  result without post-processing (`--aspect-ratio none`, the CLI default).
+- Use `--aspect-ratio 16:9` only when the caller explicitly asks for a
+  post-generation crop. Avoid post-generation cropping for text-heavy images.
 - Default visual direction should generally bias toward wide landscape unless
   the user clearly wants square or portrait.
 - Use `1024x1024` when the image is primarily icon-like, avatar-like, or meant to crop square.
@@ -245,8 +245,9 @@ Asset-type templates (website assets, game assets, wireframes, logo) are consoli
 - Optional deterministic post-processing helper: `references/post-processing.md`
 - API parameter quick reference: `references/image-api.md`
 - If network approvals / sandbox settings are getting in the way: `references/codex-network.md`
-- The owned CLI now normalizes saved outputs to 16:9 by default; pass
-  `--aspect-ratio none` only when the native API output is desired.
+- The owned CLI preserves API-native output by default. For `gpt-image-2`, use
+  native wide sizes such as `1536x864` or `2048x1152` instead of requesting a
+  3:2 image and cropping afterward.
 
 ## Reference map
 - **`references/cli.md`**: how to *run* AI image generation/edits/batches via `scripts/image_gen.py` (commands, flags, recipes).
