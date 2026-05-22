@@ -76,6 +76,7 @@
       "scope": "repo",
       "repos": [
         "adi",
+        "adithyan-ai-videos",
         "blog-personal"
       ],
       "source_path": "skills-source/owned/adi-writing",
@@ -86,7 +87,8 @@
       "origin": "owned",
       "scope": "repo",
       "repos": [
-        "adi"
+        "adi",
+        "adithyan-ai-videos"
       ],
       "source_path": "skills-source/owned/social-media-publishing",
       "upstream_ref": "-"
