@@ -35,6 +35,8 @@ Use for:
 ## Watchouts
 - do not make the opening too slow
 - do not over-explain once the point is clear
+- do not turn project/process posts into full execution logs unless Adi explicitly asks for an archive
+- for workflow posts, compress the work into the sharpest lesson and only keep details that support that lesson
 - do not start with greetings or throat-clearing
 - do not narrate the structure of the post before making the point
 - do not add subscribe blocks, quote-of-the-day sections, or sign-off formulas by default
