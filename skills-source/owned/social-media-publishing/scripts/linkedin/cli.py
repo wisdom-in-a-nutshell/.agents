@@ -593,6 +593,20 @@ def load_image_paths(raw_paths: list[str]) -> list[Path]:
     return paths
 
 
+def load_image_path(raw_path: str | None, *, label: str = "Image") -> Path | None:
+    if not raw_path:
+        return None
+    path = Path(raw_path).expanduser()
+    if not path.exists():
+        raise CliError(
+            f"{label} file not found: {path}",
+            code="E_INVALID_INPUT",
+            exit_code=2,
+            hint=f"Check the --{label.lower().replace(' ', '-')} path and try again.",
+        )
+    return path
+
+
 def build_image_entries(image_paths: list[Path], alt_texts: list[str], image_urns: list[str]) -> list[dict[str, str]]:
     if len(alt_texts) not in {0, len(image_paths)}:
         raise CliError(
@@ -735,22 +749,40 @@ def download_video_url_to_tempfile(config: Config, video_url: str, *, progress_c
     return downloaded_path, metadata
 
 
-def initialize_video_upload(config: Config, access_token: str, *, owner: str, video_path: Path, version: str) -> dict[str, Any]:
+def initialize_video_upload(
+    config: Config,
+    access_token: str,
+    *,
+    owner: str,
+    video_path: Path,
+    version: str,
+    upload_thumbnail: bool = False,
+) -> dict[str, Any]:
     payload = {
         "initializeUploadRequest": {
             "owner": owner,
             "fileSizeBytes": video_path.stat().st_size,
         }
     }
+    if upload_thumbnail:
+        payload["initializeUploadRequest"]["uploadThumbnail"] = True
     _, _, body = post_rest_json(config, access_token, INITIALIZE_VIDEO_UPLOAD_URL, payload, version=version)
     response = json.loads(body.decode("utf-8"))
     value = response.get("value") or {}
     video_urn = value.get("video")
     upload_token = value.get("uploadToken", "")
     upload_instructions = value.get("uploadInstructions") or []
+    thumbnail_upload_url = value.get("thumbnailUploadUrl")
     if not video_urn or not upload_instructions:
         raise CliError(
             "LinkedIn video initializeUpload response was missing video or uploadInstructions.",
+            code="E_API",
+            exit_code=1,
+            details=response,
+        )
+    if upload_thumbnail and not thumbnail_upload_url:
+        raise CliError(
+            "LinkedIn video initializeUpload response was missing thumbnailUploadUrl.",
             code="E_API",
             exit_code=1,
             details=response,
@@ -759,6 +791,7 @@ def initialize_video_upload(config: Config, access_token: str, *, owner: str, vi
         "video": str(video_urn),
         "upload_token": str(upload_token),
         "upload_instructions": upload_instructions,
+        "thumbnail_upload_url": str(thumbnail_upload_url) if thumbnail_upload_url else None,
         "raw": response,
     }
 
@@ -1321,6 +1354,7 @@ def publish_video(
     visibility: str,
     video_path: Path,
     title: str | None,
+    thumbnail_path: Path | None,
     dry_run: bool,
 ) -> dict[str, Any]:
     author_urn = build_author_urn(tokens)
@@ -1348,6 +1382,7 @@ def publish_video(
                 "processing_timeout_mode": processing_timeout_mode,
                 "request_timeout_seconds": config.request_timeout_seconds,
                 "transfer_max_attempts": DEFAULT_VIDEO_TRANSFER_MAX_ATTEMPTS,
+                "thumbnail_path": str(thumbnail_path) if thumbnail_path else None,
             },
             "payload": payload,
         }
@@ -1359,7 +1394,26 @@ def publish_video(
         owner=author_urn,
         video_path=video_path,
         version=config.linkedin_version,
+        upload_thumbnail=thumbnail_path is not None,
     )
+    thumbnail_uploaded = False
+    if thumbnail_path:
+        thumbnail_upload_url = initialized.get("thumbnail_upload_url")
+        if not thumbnail_upload_url:
+            raise CliError(
+                "LinkedIn did not return a thumbnailUploadUrl for this video upload.",
+                code="E_API",
+                exit_code=1,
+                details=initialized.get("raw"),
+            )
+        emit_progress(args, f"[linkedin] uploading video thumbnail {thumbnail_path.name}")
+        upload_image_binary(
+            config,
+            tokens["access_token"],
+            upload_url=str(thumbnail_upload_url),
+            image_path=thumbnail_path,
+        )
+        thumbnail_uploaded = True
     instructions = initialized["upload_instructions"]
     uploaded_part_ids: list[str] = []
     with video_path.open("rb") as handle:
@@ -1462,6 +1516,8 @@ def publish_video(
         "processing_timeout_seconds": processing_timeout_seconds,
         "processing_timeout_mode": processing_timeout_mode,
         "uploaded_parts": len(uploaded_part_ids),
+        "thumbnail_uploaded": thumbnail_uploaded,
+        "thumbnail_path": str(thumbnail_path) if thumbnail_path else None,
         "finalize_response": finalize_response,
         "video": video_data,
         "response_body": body.decode("utf-8", errors="replace") if body else None,
@@ -1507,6 +1563,7 @@ def command_post_video(args: argparse.Namespace) -> dict[str, Any]:
         )
     config = build_config(args)
     tokens = ensure_member_context(config, load_tokens(config.tokens_path))
+    thumbnail_path = load_image_path(args.thumbnail, label="Thumbnail")
     if args.video_url:
         if args.dry_run:
             return {
@@ -1520,6 +1577,7 @@ def command_post_video(args: argparse.Namespace) -> dict[str, Any]:
                     "processing_timeout_mode": "explicit" if args.video_processing_timeout_seconds is not None else "auto_after_download",
                     "request_timeout_seconds": config.request_timeout_seconds,
                     "transfer_max_attempts": DEFAULT_VIDEO_TRANSFER_MAX_ATTEMPTS,
+                    "thumbnail_path": str(thumbnail_path) if thumbnail_path else None,
                 },
                 "payload": {
                     "author": build_author_urn(tokens),
@@ -1551,6 +1609,7 @@ def command_post_video(args: argparse.Namespace) -> dict[str, Any]:
                 visibility=args.visibility,
                 video_path=video_path,
                 title=args.title,
+                thumbnail_path=thumbnail_path,
                 dry_run=False,
             )
             result["video_source"] = {
@@ -1571,6 +1630,7 @@ def command_post_video(args: argparse.Namespace) -> dict[str, Any]:
         visibility=args.visibility,
         video_path=video_path,
         title=args.title,
+        thumbnail_path=thumbnail_path,
         dry_run=args.dry_run,
     )
     if not args.dry_run:
@@ -1800,6 +1860,7 @@ def build_parser() -> argparse.ArgumentParser:
     post_video_source.add_argument("--video", help="Local video file path.")
     post_video_source.add_argument("--video-url", help="Direct public video URL. The client downloads it first, then uploads it to LinkedIn.")
     post_video.add_argument("--title", help="Optional video title.")
+    post_video.add_argument("--thumbnail", help="Optional local thumbnail image path for the LinkedIn video cover.")
     post_video.add_argument("--visibility", choices=["PUBLIC", "CONNECTIONS"], default="PUBLIC")
     post_video.add_argument(
         "--video-poll-interval-seconds",
