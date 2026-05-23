@@ -35,10 +35,7 @@ Use for:
 ## Watchouts
 - do not make the opening too slow
 - do not over-explain once the point is clear
-- do not turn project/process posts into full execution logs unless Adi explicitly asks for an archive
-- for workflow posts, compress the work into the sharpest lesson and only keep details that support that lesson
-- for lightweight experiment posts, default short: roughly 250-600 words unless there is a real argument to make
-- avoid grand summary language after a simple experiment; say the concrete thing and stop
+- for experiment/workflow posts, default to a short note: pick one useful point, write roughly 200-500 words, and stop when the point lands unless Adi explicitly asks for a full essay or archive
 - do not start with greetings or throat-clearing
 - do not narrate the structure of the post before making the point
 - do not add subscribe blocks, quote-of-the-day sections, or sign-off formulas by default
