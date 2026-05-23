@@ -1,6 +1,6 @@
 ---
 name: social-media-publishing
-description: Multi-channel social publishing workflow plus blog-post publication prep and channel CLIs for Reddit, LinkedIn, and X. Use when Codex needs to publish or distribute a blog post, video, launch, or visual explainer; prepare blog assets; decide between gallery, image, self, link, or native video format; publish the source post before distribution; post to Reddit; publish LinkedIn text/link/image/video posts; or publish X text/video posts through the channel CLI.
+description: Multi-channel social publishing workflow plus blog-post publication prep and channel CLIs for Reddit, LinkedIn, X, YouTube, Instagram, and TikTok. Use when Codex needs to publish or distribute a blog post, video, launch, or visual explainer; prepare blog assets; decide between gallery, image, self, link, or native video format; publish the source post before distribution; post to Reddit; publish LinkedIn text/link/image/video posts; post X text/video posts; or prepare Instagram/TikTok posts through dry-run channel CLIs.
 ---
 
 # Social Media Publishing
@@ -9,7 +9,7 @@ description: Multi-channel social publishing workflow plus blog-post publication
 
 Use this skill to package publishing and distribution work as a reusable workflow instead of repo-specific one-offs.
 
-Keep campaign assets in the active project. Keep durable repo-specific publishing conventions in the owning repo. The current bundled channel helpers cover Reddit, LinkedIn, X, and Modal-backed YouTube uploads.
+Keep campaign assets in the active project. Keep durable repo-specific publishing conventions in the owning repo. The current bundled channel helpers cover Reddit, LinkedIn, X, Modal-backed YouTube uploads, and initial dry-run scaffolds for Instagram and TikTok.
 
 ## Workflow
 
@@ -104,6 +104,50 @@ For polished LinkedIn native video posts, always pass `--title`; LinkedIn shows 
 
 This helper uses machine-local generated secrets under `~/.secrets/linkedin/` and should stay one-user until the workflow is more mature.
 
+## Instagram
+
+Use the bundled Instagram CLI at `scripts/instagram/cli.py` for local Instagram publishing preparation.
+
+Read first:
+- `references/instagram/posting.md`
+
+Current supported flow:
+- runtime/config inspection via `status`
+- dry-run validation for image posts, video/Reel posts, and carousel posts
+- machine-readable JSON output by default, plus optional `--plain` inspection mode
+- live publishing intentionally disabled pending Meta app/account/token setup
+
+Core commands:
+
+```bash
+python3 ~/.agents/skills-source/owned/social-media-publishing/scripts/instagram/cli.py status
+python3 ~/.agents/skills-source/owned/social-media-publishing/scripts/instagram/cli.py post-image --text-file /abs/path/caption.txt --image-url https://example.com/image.jpg --dry-run
+python3 ~/.agents/skills-source/owned/social-media-publishing/scripts/instagram/cli.py post-video --text-file /abs/path/caption.txt --video-url https://example.com/video.mp4 --reel --share-to-feed --dry-run
+python3 ~/.agents/skills-source/owned/social-media-publishing/scripts/instagram/cli.py post-carousel --text-file /abs/path/caption.txt --media-url https://example.com/1.jpg --media-url https://example.com/2.jpg --dry-run
+```
+
+## TikTok
+
+Use the bundled TikTok CLI at `scripts/tiktok/cli.py` for local TikTok publishing preparation.
+
+Read first:
+- `references/tiktok/posting.md`
+
+Current supported flow:
+- runtime/config inspection via `status`
+- dry-run validation for video posts and photo-mode posts
+- machine-readable JSON output by default, plus optional `--plain` inspection mode
+- live publishing intentionally disabled pending TikTok developer app/OAuth/API review setup
+
+Core commands:
+
+```bash
+python3 ~/.agents/skills-source/owned/social-media-publishing/scripts/tiktok/cli.py status
+python3 ~/.agents/skills-source/owned/social-media-publishing/scripts/tiktok/cli.py post-video --text-file /abs/path/caption.txt --video-url https://example.com/video.mp4 --privacy SELF_ONLY --dry-run
+python3 ~/.agents/skills-source/owned/social-media-publishing/scripts/tiktok/cli.py post-video --text "Short caption" --source FILE_UPLOAD --video /abs/path/video.mp4 --ai-generated --dry-run
+python3 ~/.agents/skills-source/owned/social-media-publishing/scripts/tiktok/cli.py post-photos --title "Photo title" --description-file /abs/path/description.txt --photo-url https://example.com/1.jpg --photo-url https://example.com/2.jpg --cover-index 0 --privacy SELF_ONLY --dry-run
+```
+
 
 ## YouTube
 
@@ -185,3 +229,7 @@ python3 ~/.agents/skills-source/owned/social-media-publishing/scripts/x/cli.py p
 - `scripts/x/cli.py`: local X posting CLI.
 - `references/x/posting.md`: X posting setup and usage.
 - `references/x/copy.md`: X copy defaults.
+- `scripts/instagram/cli.py`: Instagram dry-run publishing prep CLI.
+- `references/instagram/posting.md`: Instagram setup, provider constraints, and dry-run usage.
+- `scripts/tiktok/cli.py`: TikTok dry-run publishing prep CLI.
+- `references/tiktok/posting.md`: TikTok setup, provider constraints, and dry-run usage.
