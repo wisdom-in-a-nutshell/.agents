@@ -93,12 +93,14 @@ python3 ~/.agents/skills-source/owned/social-media-publishing/scripts/linkedin/c
 python3 ~/.agents/skills-source/owned/social-media-publishing/scripts/linkedin/cli.py whoami
 python3 ~/.agents/skills-source/owned/social-media-publishing/scripts/linkedin/cli.py post --text-file /abs/path/body.txt --url https://example.com/post --title "Post title" --description "Short description" --dry-run
 python3 ~/.agents/skills-source/owned/social-media-publishing/scripts/linkedin/cli.py post-image --text-file /abs/path/body.txt --image /abs/path/cover.jpg --dry-run
-python3 ~/.agents/skills-source/owned/social-media-publishing/scripts/linkedin/cli.py post-video --text-file /abs/path/body.txt --video /abs/path/video.mp4 --dry-run
-python3 ~/.agents/skills-source/owned/social-media-publishing/scripts/linkedin/cli.py post-video --text-file /abs/path/body.txt --video-url https://example.com/video.mp4 --dry-run
+python3 ~/.agents/skills-source/owned/social-media-publishing/scripts/linkedin/cli.py post-video --text-file /abs/path/body.txt --video /abs/path/video.mp4 --title "Public video title" --thumbnail /abs/path/thumbnail.png --dry-run
+python3 ~/.agents/skills-source/owned/social-media-publishing/scripts/linkedin/cli.py post-video --text-file /abs/path/body.txt --video-url https://example.com/video.mp4 --title "Public video title" --thumbnail /abs/path/thumbnail.png --dry-run
 python3 ~/.agents/skills-source/owned/social-media-publishing/scripts/linkedin/cli.py post-images --text-file /abs/path/body.txt --image /abs/path/slide-1.jpg --image /abs/path/slide-2.jpg --dry-run
 python3 ~/.agents/skills-source/owned/social-media-publishing/scripts/linkedin/cli.py comment --post-urn urn:li:ugcPost:... --text-file /abs/path/comment.txt --dry-run
 python3 ~/.agents/skills-source/owned/social-media-publishing/scripts/linkedin/cli.py --json list-posts --count 5
 ```
+
+For polished LinkedIn native video posts, always pass `--title`; LinkedIn shows it as the media title below the player. Pass `--thumbnail` when a custom cover is available. If `--title` is omitted, the helper leaves the media title unset instead of deriving one from a temporary download filename.
 
 This helper uses machine-local generated secrets under `~/.secrets/linkedin/` and should stay one-user until the workflow is more mature.
 

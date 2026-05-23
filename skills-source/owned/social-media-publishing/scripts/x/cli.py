@@ -719,7 +719,7 @@ def command_status(args: argparse.Namespace) -> dict[str, Any]:
         },
         "identity": None,
         "capabilities": {
-            "supported_commands": ["status", "post", "post-video"],
+            "supported_commands": ["status", "post", "post-video", "delete"],
             "json_default": True,
             "plain_available": True,
             "can_post": False,
@@ -774,6 +774,31 @@ def command_post(args: argparse.Namespace) -> dict[str, Any]:
     return {
         "dry_run": False,
         "tweet": response.get("data") or {},
+        "raw": response,
+    }
+
+
+def command_delete(args: argparse.Namespace) -> dict[str, Any]:
+    config = build_config(args)
+    require_config(config)
+    tweet_id = str(args.tweet_id).strip()
+    if not tweet_id:
+        raise CliError(
+            "--tweet-id is required.",
+            code="E_INVALID_INPUT",
+            exit_code=2,
+        )
+    if args.dry_run:
+        return {
+            "dry_run": True,
+            "tweet_id": tweet_id,
+            "method": "DELETE",
+            "path": f"/2/tweets/{tweet_id}",
+        }
+    response = x_json_request(config, "DELETE", f"/2/tweets/{urllib.parse.quote(tweet_id, safe='')}")
+    return {
+        "dry_run": False,
+        "tweet_id": tweet_id,
         "raw": response,
     }
 
@@ -978,6 +1003,11 @@ def build_parser() -> argparse.ArgumentParser:
     post.add_argument("--reply-to", help="Tweet ID to reply to. Creates a threaded reply instead of a standalone post.")
     post.add_argument("--dry-run", action="store_true", help="Print the request payload without publishing.")
     post.set_defaults(func=command_post, command_path="x post")
+
+    delete = subparsers.add_parser("delete", help="Delete a post from X by tweet ID.", parents=[common])
+    delete.add_argument("--tweet-id", required=True, help="Tweet ID to delete.")
+    delete.add_argument("--dry-run", action="store_true", help="Print the delete request without deleting.")
+    delete.set_defaults(func=command_delete, command_path="x delete")
 
     post_video = subparsers.add_parser("post-video", help="Publish a video post to X.", parents=[common])
     post_video.add_argument("--text", help="Inline post text.")

@@ -13,9 +13,49 @@ Current minimal workflow:
 - runtime/auth inspection via `status`
 - text posting via `post`
 - native video posting via `post-video`
+- post deletion via `delete`
 - machine-readable CLI output for agent use
 
-This version does not yet cover image uploads, threads, replies, scheduling, or analytics.
+This version does not yet cover image uploads, scheduling, or analytics.
+
+## Video thumbnail / preview policy
+
+For organic X video posts, prefer a native video upload. Do not publish only a
+link to the video unless the user explicitly asks for a link post.
+
+X Premium / Media Studio can expose custom video thumbnail controls in the UI,
+but the current local API path used here only uploads media, waits for
+processing, and attaches the returned `media_id` to a post. It does not have a
+custom thumbnail field for organic video publishing.
+
+Default agent behavior when the preview frame matters:
+- Keep the master video unchanged.
+- Create an X-only derivative video with the intended thumbnail/poster frame
+  held at the very beginning.
+- Use a short hold, normally `0.5s`, so X is likely to choose the intended frame
+  while the viewer experience is only minimally delayed.
+- Name the derivative clearly, for example
+  `name-x-poster-hold-0p5s.mp4`.
+- Publish the derivative with `post-video`.
+
+Avoid this workaround when exact timing is mission-critical or when the video is
+already designed to open on a strong thumbnail frame.
+
+## Copy length policy
+
+Keep API-published X posts under the standard short-post limit unless a long-post
+endpoint is explicitly added and verified. Do not assume Premium account features
+make long-form text available through this CLI.
+
+When credits or context exceed the short-post limit:
+- Prefer one native video post with the full intended copy when the user wants a
+  single post.
+- Dry-run first so the outgoing payload is inspectable.
+- Do not treat an ellipsis in the API response text as proof that the live post
+  is truncated; X may return a shortened representation. Verify the live post
+  before deleting or splitting.
+- Split into replies only when the API rejects the post, the live post is
+  visibly truncated, or the user explicitly wants a thread.
 
 ## Local CLI
 
@@ -60,6 +100,13 @@ python3 ~/.agents/skills-source/owned/social-media-publishing/scripts/x/cli.py p
 ```bash
 python3 ~/.agents/skills-source/owned/social-media-publishing/scripts/x/cli.py post \
   --text-file /abs/path/body.txt
+```
+
+### Delete a post
+
+```bash
+python3 ~/.agents/skills-source/owned/social-media-publishing/scripts/x/cli.py delete \
+  --tweet-id 1234567890
 ```
 
 ### Dry-run a video post

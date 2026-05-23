@@ -130,6 +130,7 @@ python3 ~/.agents/skills-source/owned/social-media-publishing/scripts/linkedin/c
 python3 ~/.agents/skills-source/owned/social-media-publishing/scripts/linkedin/cli.py post-video \
   --text-file /abs/path/body.txt \
   --video /abs/path/video.mp4 \
+  --title "Clear public-facing video title" \
   --dry-run
 ```
 
@@ -139,6 +140,7 @@ python3 ~/.agents/skills-source/owned/social-media-publishing/scripts/linkedin/c
 python3 ~/.agents/skills-source/owned/social-media-publishing/scripts/linkedin/cli.py post-video \
   --text-file /abs/path/body.txt \
   --video-url https://example.com/video.mp4 \
+  --title "Clear public-facing video title" \
   --dry-run
 ```
 
@@ -147,7 +149,8 @@ python3 ~/.agents/skills-source/owned/social-media-publishing/scripts/linkedin/c
 ```bash
 python3 ~/.agents/skills-source/owned/social-media-publishing/scripts/linkedin/cli.py --progress plain post-video \
   --text-file /abs/path/body.txt \
-  --video /abs/path/video.mp4
+  --video /abs/path/video.mp4 \
+  --title "Clear public-facing video title"
 ```
 
 By default the client:
@@ -156,7 +159,7 @@ By default the client:
 - waits for LinkedIn to report the asset as `AVAILABLE`
 - creates the post only after the video is ready
 
-The post body is the main text input. `--title` is optional and can be omitted if you want a body-plus-video post only.
+The post body is the main text input. For polished video posts, pass `--title`; LinkedIn displays it as the media title below the player. If `--title` is omitted, the helper leaves the media title unset instead of deriving one from a local or temporary filename.
 
 If you use `--video-url`, the client first downloads the public direct file to a temporary local path, then performs the same native LinkedIn upload flow.
 
@@ -166,6 +169,7 @@ Important distinction:
 
 Operational note:
 - `--video-url` now sends browser-like download headers to reduce false blocks from source hosts
+- never rely on `--video-url` temporary filenames for public display; always pass `--title` when the title should be visible
 - if the source host still rejects the download, the CLI reports a source-download error rather than a misleading LinkedIn auth error
 - when in doubt, download the file locally and use `--video`
 - transfer operations use adaptive retries and can increase per-attempt timeout on retry, while keeping the normal base request timeout short

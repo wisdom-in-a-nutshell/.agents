@@ -1358,7 +1358,7 @@ def publish_video(
     dry_run: bool,
 ) -> dict[str, Any]:
     author_urn = build_author_urn(tokens)
-    resolved_title = (title or video_path.stem.replace("-", " ").replace("_", " ")).strip() or None
+    resolved_title = title.strip() if title else None
     processing_timeout_seconds, processing_timeout_mode = resolve_video_processing_timeout_seconds(
         args.video_processing_timeout_seconds,
         file_size_bytes=video_path.stat().st_size,
