@@ -83,10 +83,12 @@ def build_parser() -> argparse.ArgumentParser:
     list_submissions.add_argument("--include-hidden", action="store_true")
     list_submissions.set_defaults(func=command_list_submissions, command_path="reddit list-submissions")
 
-    comment = subparsers.add_parser("comment", help="Reply to an existing Reddit post.", parents=[common])
+    comment = subparsers.add_parser("comment", help="Reply to an existing Reddit post or comment.", parents=[common])
     target = comment.add_mutually_exclusive_group(required=True)
     target.add_argument("--post-url")
     target.add_argument("--post-id")
+    target.add_argument("--comment-url")
+    target.add_argument("--comment-id")
     body = comment.add_mutually_exclusive_group(required=True)
     body.add_argument("--text")
     body.add_argument("--text-file")
@@ -205,6 +207,8 @@ def command_comment(args: argparse.Namespace) -> dict[str, Any]:
     payload = {
         "post_url": args.post_url,
         "post_id": args.post_id,
+        "comment_url": args.comment_url,
+        "comment_id": args.comment_id,
         "text": args.text,
         "text_file": args.text_file,
     }
@@ -221,14 +225,18 @@ def command_comment(args: argparse.Namespace) -> dict[str, Any]:
             text=resolved["text"],
             post_url=resolved.get("post_url"),
             post_id=resolved.get("post_id"),
+            comment_url=resolved.get("comment_url"),
+            comment_id=resolved.get("comment_id"),
         )
         return {
             "post_id": resolved.get("post_id"),
             "post_url": resolved.get("post_url"),
+            "parent_comment_id": resolved.get("comment_id"),
+            "parent_comment_url": resolved.get("comment_url"),
             "comment": {"url": comment_url},
         }
     except Exception as exc:
-        raise _classify_runtime_error(exc, hint="Verify Reddit credentials, post access, and comment text.") from exc
+        raise _classify_runtime_error(exc, hint="Verify Reddit credentials, target access, and comment text.") from exc
 
 
 def command_submit_plan(args: argparse.Namespace) -> dict[str, Any]:
@@ -453,8 +461,12 @@ def _resolved_comment_payload(payload: dict[str, Any], *, base_dir: Path) -> dic
     text = resolved.get("text")
     if not isinstance(text, str) or not text.strip():
         raise CliError("Comment requires non-empty text or text_file.", code="E_INVALID_INPUT", exit_code=2)
-    if not resolved.get("post_url") and not resolved.get("post_id"):
-        raise CliError("Comment requires post_url or post_id.", code="E_INVALID_INPUT", exit_code=2)
+    has_target = any(
+        resolved.get(key)
+        for key in ("post_url", "post_id", "comment_url", "comment_id")
+    )
+    if not has_target:
+        raise CliError("Comment requires post_url, post_id, comment_url, or comment_id.", code="E_INVALID_INPUT", exit_code=2)
     resolved["text"] = text
     return resolved
 

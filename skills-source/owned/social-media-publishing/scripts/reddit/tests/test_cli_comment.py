@@ -62,6 +62,23 @@ class RedditCommentCliTests(unittest.TestCase):
         self.assertEqual(envelope['data']['payload']['text'], 'inline comment')
         self.assertIsNone(envelope['data']['payload']['post_url'])
 
+    def test_comment_dry_run_with_comment_url(self):
+        exit_code, stdout, stderr = self.run_main([
+            'comment',
+            '--comment-url', 'https://reddit.com/r/test/comments/abc123/example/def456/',
+            '--text', 'reply to a comment',
+            '--dry-run',
+        ])
+
+        self.assertEqual(exit_code, 0)
+        self.assertEqual(stderr, '')
+        envelope = json.loads(stdout)
+        self.assertEqual(
+            envelope['data']['payload']['comment_url'],
+            'https://reddit.com/r/test/comments/abc123/example/def456/',
+        )
+        self.assertEqual(envelope['data']['payload']['text'], 'reply to a comment')
+
     def test_comment_requires_text_or_text_file(self):
         exit_code, stdout, stderr = self.run_main([
             'comment',
@@ -106,11 +123,43 @@ class RedditCommentCliTests(unittest.TestCase):
             text='hello live',
             post_url=None,
             post_id='abc123',
+            comment_url=None,
+            comment_id=None,
         )
         envelope = json.loads(stdout)
         self.assertEqual(
             envelope['data']['comment']['url'],
             'https://reddit.com/r/test/comments/abc123/example/def456/',
+        )
+
+    def test_comment_live_success_can_reply_to_comment_id(self):
+        fake_client = mock.Mock()
+        fake_client.add_comment.return_value = 'https://reddit.com/r/test/comments/abc123/example/ghi789/'
+        fake_client_cls = mock.Mock(return_value=fake_client)
+
+        with mock.patch.object(cli, 'seed_env_from_file'), \
+             mock.patch.object(cli, 'require_runtime_dependencies'), \
+             mock.patch.object(cli, '_load_praw_client', return_value=fake_client_cls):
+            exit_code, stdout, stderr = self.run_main([
+                'comment',
+                '--comment-id', 'def456',
+                '--text', 'thanks for watching',
+            ])
+
+        self.assertEqual(exit_code, 0)
+        self.assertEqual(stderr, '')
+        fake_client.add_comment.assert_called_once_with(
+            text='thanks for watching',
+            post_url=None,
+            post_id=None,
+            comment_url=None,
+            comment_id='def456',
+        )
+        envelope = json.loads(stdout)
+        self.assertEqual(envelope['data']['parent_comment_id'], 'def456')
+        self.assertEqual(
+            envelope['data']['comment']['url'],
+            'https://reddit.com/r/test/comments/abc123/example/ghi789/',
         )
 
 

@@ -174,18 +174,24 @@ class PrawClient:
         text: str,
         post_url: Optional[str] = None,
         post_id: Optional[str] = None,
+        comment_url: Optional[str] = None,
+        comment_id: Optional[str] = None,
     ) -> str:
-        """Reply to an existing submission and return the comment permalink."""
-        if not post_url and not post_id:
-            raise ValueError("post_url or post_id is required.")
+        """Reply to an existing submission or comment and return the permalink."""
+        if not any((post_url, post_id, comment_url, comment_id)):
+            raise ValueError("post_url, post_id, comment_url, or comment_id is required.")
 
         reddit = self._get_reddit()
-        if post_id:
-            submission = reddit.submission(id=post_id)
+        if comment_id:
+            target = reddit.comment(id=comment_id)
+        elif comment_url:
+            target = reddit.comment(url=comment_url)
+        elif post_id:
+            target = reddit.submission(id=post_id)
         else:
-            submission = reddit.submission(url=post_url)
+            target = reddit.submission(url=post_url)
 
-        comment = submission.reply(text)
+        comment = target.reply(text)
         return f"https://reddit.com{comment.permalink}"
 
 

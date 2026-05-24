@@ -134,6 +134,8 @@ Add a comment to an existing post:
 ```bash
 python3 ~/.agents/skills-source/owned/social-media-publishing/scripts/reddit/cli.py comment --post-url https://reddit.com/r/OpenAI/comments/abc123/example/ --text-file /abs/path/comment.md --dry-run
 python3 ~/.agents/skills-source/owned/social-media-publishing/scripts/reddit/cli.py comment --post-id abc123 --text "Short follow-up"
+python3 ~/.agents/skills-source/owned/social-media-publishing/scripts/reddit/cli.py comment --comment-url https://reddit.com/r/OpenAI/comments/abc123/example/def456/ --text-file /abs/path/reply.md --dry-run
+python3 ~/.agents/skills-source/owned/social-media-publishing/scripts/reddit/cli.py comment --comment-id def456 --text "Short reply"
 ```
 
 Submit a plan:
