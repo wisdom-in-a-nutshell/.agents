@@ -156,6 +156,7 @@ Use [Codex Control Plane Ownership](/Users/dobby/.agents/docs/references/codex-c
   - scans repo roots from the canonical repo bootstrap registry (defaults to `~/GitHub`)
   - includes explicit extra managed repos such as `~/.agents`
   - writes exact `[projects."<path>"] trust_level = "trusted"` entries
+  - removes managed `[projects."<path>"]` entries when a repo registry item sets `codex_trust: false`
   - skips no-op rewrites
 - [`sync-repo-codex-configs.sh`](/Users/dobby/.agents/codex/scripts/sync-repo-codex-configs.sh)
   - renders managed repo-local Codex files from the shared repo inventory plus shared MCP and hook registries
@@ -206,8 +207,8 @@ Use [Codex Control Plane Ownership](/Users/dobby/.agents/docs/references/codex-c
   - default activity logic keeps a project when it has a recently created thread, including archived threads, or a recently updated unarchived thread
   - supports `--activity-source sqlite` as a read-only diagnostic/fallback when the exact local state DB view is needed
   - never archives or finalizes threads; archive behavior belongs only to the stale-thread finalization flow
-  - prunes local saved roots from `electron-saved-workspace-roots` and stale remote entries from `remote-projects`; matching `project-order` entries are removed at the same time
-  - backs up `.codex-global-state.json` and `state_5.sqlite*` under `~/.local/state/codex-control-plane/sidebar-project-prune/backups/` before applying changes
+  - prunes local saved roots from `electron-saved-workspace-roots`, matching `project-order` entries, matching `[projects."<path>"]` trust sections in `~/.codex/config.toml`, and stale remote entries from `remote-projects`
+  - backs up `.codex-global-state.json`, `config.toml`, and `state_5.sqlite*` under `~/.local/state/codex-control-plane/sidebar-project-prune/backups/` before applying changes
   - defaults to dry-run and emits JSON by default; use `--plain` for compact operator inspection
 - [`install-finalize-stale-codex-threads-launchagent.sh`](/Users/dobby/.agents/codex/scripts/install-finalize-stale-codex-threads-launchagent.sh)
   - renders `~/Library/LaunchAgents/com.<user>.codex-thread-finalizer.plist`
@@ -260,6 +261,7 @@ Use [Codex Control Plane Ownership](/Users/dobby/.agents/docs/references/codex-c
 ## Shared Registry Fields
 
 - [`repo-bootstrap.json`](/Users/dobby/.agents/codex/config/repo-bootstrap.json) currently controls these per-repo fields:
+  - `codex_trust`
   - `mcp_presets`
   - `model`
   - `model_auto_compact_token_limit`

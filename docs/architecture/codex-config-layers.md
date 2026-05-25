@@ -45,6 +45,7 @@ flowchart TD
 - `../../plugins/registry.json` defines native Codex plugin scope and enable/disable state.
 - `repo-bootstrap.json` defines:
   - which repos are managed
+  - whether each managed repo is written to global Codex trusted-project config
   - which MCP presets each repo gets
   - optional per-repo model, reasoning, and service-tier overrides
 
@@ -65,6 +66,7 @@ Example:
 ### Trusted Repo Config
 
 - `sync-trusted-projects.sh` writes exact trusted repo roots into the live machine config.
+- Managed repo entries can set `codex_trust: false` to keep repo-local generated files and hook management while removing the repo from global Codex trusted-project config.
 - That matters because repo-local `.codex/config.toml` is only loaded when the repo is trusted.
 
 So trust sync is part of config layering, not a separate unrelated feature.
@@ -77,6 +79,7 @@ So trust sync is part of config layering, not a separate unrelated feature.
 - `control-plane-dashboard.py` serves the same registry data through the local dashboard, including effective plugins from [`plugins/registry.json`](/Users/dobby/.agents/plugins/registry.json) and effective skills from [`skills/registry.json`](/Users/dobby/.agents/skills/registry.json).
 
 Current per-repo fields in `repo-bootstrap.json`:
+- `codex_trust`
 - `mcp_presets`
 - `model`
 - `model_auto_compact_token_limit`
