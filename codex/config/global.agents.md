@@ -45,3 +45,5 @@ This file is machine-wide baseline guidance. Keep it generic and avoid portfolio
 ## Local Environment
 - GitHub CLI (`gh`) is authenticated; use it freely for repo operations.
 - Azure CLI (`az`) is authenticated; use it for Azure resource queries and management.
+- For machine-local shared utilities, first check `~/GitHub/scripts` before creating new cross-repo scripts. It includes helpers for uploads, machine bootstrap, and local process/scheduler setup. Keep app-owned storage, runtime workers, and repo-specific lifecycle rules inside the owning repo.
+- For generic machine-local media uploads, prefer `~/GitHub/scripts/bin/upload-media` when the current repo does not already provide its own storage abstraction. It reads generated credentials from `~/.secrets/media-upload/env`; do not pass storage secrets through flags or ordinary environment variables.
