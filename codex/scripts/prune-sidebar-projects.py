@@ -6,6 +6,7 @@ import fcntl
 import json
 import os
 import queue
+import re
 import shutil
 import sqlite3
 import subprocess
@@ -144,7 +145,8 @@ def emit_plain(payload: dict[str, Any]) -> None:
         f"ok mode={mode} activity={data['activity_source']}:{data['activity_timestamp']} "
         f"cutoff={data['cutoff_utc']} "
         f"stale={data['stale_project_count']} pruned_remote={data['pruned_remote_project_count']} "
-        f"pruned_saved={data['pruned_saved_root_count']}"
+        f"pruned_saved={data['pruned_saved_root_count']} "
+        f"pruned_trusted={data['pruned_trusted_project_count']}"
     )
     for item in data["projects"]:
         if item["decision"] != "stale":
@@ -771,6 +773,9 @@ def backup_state(codex_home: Path, backup_root: Path) -> Path:
     backup_dir = backup_root / time.strftime("%Y%m%d-%H%M%S")
     backup_dir.mkdir(parents=True, exist_ok=False)
     shutil.copy2(codex_home / ".codex-global-state.json", backup_dir / ".codex-global-state.json")
+    config_path = codex_home / "config.toml"
+    if config_path.is_file():
+        shutil.copy2(config_path, backup_dir / "config.toml")
     for path in codex_home.glob("state_5.sqlite*"):
         if path.is_file():
             shutil.copy2(path, backup_dir / path.name)
@@ -870,6 +875,12 @@ def reopen_codex_app(app_name: str) -> None:
     )
 
 
+def close_app_server_clients(clients: dict[str | None, AppServerClient]) -> None:
+    for client in clients.values():
+        client.close()
+    clients.clear()
+
+
 def project_output(
     *,
     root: str,
@@ -917,6 +928,51 @@ def prune_global_state(
             collapsed.pop(root, None)
         for remote_id in stale_remote_ids:
             collapsed.pop(remote_id, None)
+
+
+def unescape_toml_basic_string(value: str) -> str:
+    try:
+        decoded = json.loads(f'"{value}"')
+    except json.JSONDecodeError:
+        return value
+    return decoded if isinstance(decoded, str) else value
+
+
+def prune_global_config_project_sections(codex_home: Path, stale_local_roots: set[str]) -> int:
+    if not stale_local_roots:
+        return 0
+    config_path = codex_home / "config.toml"
+    if not config_path.is_file():
+        return 0
+
+    lines = config_path.read_text(encoding="utf-8").splitlines(keepends=True)
+    project_re = re.compile(r'^\s*\[projects\."((?:[^"\\]|\\.)*)"\]\s*$')
+    any_section_re = re.compile(r"^\s*\[")
+    output: list[str] = []
+    removed = 0
+    i = 0
+    while i < len(lines):
+        line = lines[i]
+        match = project_re.match(line.strip())
+        if not match:
+            output.append(line)
+            i += 1
+            continue
+
+        root = unescape_toml_basic_string(match.group(1))
+        j = i + 1
+        while j < len(lines) and not any_section_re.match(lines[j].strip()):
+            j += 1
+
+        if root in stale_local_roots:
+            removed += 1
+        else:
+            output.extend(lines[i:j])
+        i = j
+
+    if removed:
+        config_path.write_text("".join(output), encoding="utf-8")
+    return removed
 
 
 def parse_args() -> argparse.Namespace:
@@ -1115,6 +1171,7 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
 
         backup_dir: str | None = None
         if args.apply:
+            close_app_server_clients(clients)
             backup_dir = str(backup_state(codex_home, args.backup_root.expanduser()))
             prune_global_state(
                 state,
@@ -1122,6 +1179,9 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
                 stale_remote_ids=stale_remote_ids,
             )
             write_global_state(global_state_path, state)
+            pruned_trusted_project_count = prune_global_config_project_sections(codex_home, stale_local_roots)
+        else:
+            pruned_trusted_project_count = len(stale_local_roots)
 
         return {
             "applied": bool(args.apply),
@@ -1136,6 +1196,7 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
             "stale_project_count": sum(1 for item in project_items if item["decision"] == "stale"),
             "pruned_saved_root_count": len(stale_local_roots),
             "pruned_remote_project_count": len(stale_remote_ids),
+            "pruned_trusted_project_count": pruned_trusted_project_count,
             "backup_dir": backup_dir,
             "codex_app_quit": bool(args.apply and args.quit_codex_app),
             "codex_app_was_running": codex_app_was_running,
@@ -1143,8 +1204,7 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
             "projects": project_items,
         }
     finally:
-        for client in clients.values():
-            client.close()
+        close_app_server_clients(clients)
         lock_file.close()
         if args.apply and args.reopen_codex_app:
             reopen_codex_app(args.codex_app_name)

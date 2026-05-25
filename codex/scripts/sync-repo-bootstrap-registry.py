@@ -16,6 +16,7 @@ except ModuleNotFoundError:  # pragma: no cover
 
 
 ALLOWED_SCALAR_KEYS = {
+    "codex_trust",
     "model",
     "model_auto_compact_token_limit",
     "model_reasoning_effort",
@@ -169,6 +170,8 @@ def validate_registry(
                 continue
             if key not in ALLOWED_SCALAR_KEYS and key not in ALLOWED_DEFAULT_TABLE_KEYS:
                 raise ValueError(f"repos[{idx}] unsupported key: {key}")
+        if "codex_trust" in item and not isinstance(item["codex_trust"], bool):
+            raise ValueError(f"repos[{idx}].codex_trust must be a boolean")
         if "features" in item and not isinstance(item["features"], dict):
             raise ValueError(f"repos[{idx}].features must be an object")
 

@@ -70,6 +70,23 @@ class PruneSidebarProjectsTests(TempDirTestCase):
             "project-order": [root],
             "remote-projects": [],
         }
+        codex_home = self.temp_path / "codex-home"
+        codex_home.mkdir()
+        (codex_home / "config.toml").write_text(
+            "\n".join(
+                [
+                    'model = "gpt-5.5"',
+                    "",
+                    f'[projects."{root}"]',
+                    'trust_level = "trusted"',
+                    "",
+                    '[projects."/tmp/kept"]',
+                    'trust_level = "trusted"',
+                    "",
+                ]
+            ),
+            encoding="utf-8",
+        )
         written_states: list[dict[str, Any]] = []
         client = FailingArchiveClient()
 
@@ -86,6 +103,7 @@ class PruneSidebarProjectsTests(TempDirTestCase):
             module.read_global_state = lambda _path: json.loads(json.dumps(state))
 
             def write_global_state(_path: Path, value: dict[str, Any]) -> None:
+                self.assertTrue(client.closed)
                 written_states.append(json.loads(json.dumps(value)))
 
             def load_threads_for_targets(
@@ -113,7 +131,7 @@ class PruneSidebarProjectsTests(TempDirTestCase):
                     backup_root=self.temp_path / "backups",
                     codex_app_name="Codex",
                     codex_bin="codex",
-                    codex_home=self.temp_path / "codex-home",
+                    codex_home=codex_home,
                     keep_root=[],
                     lock=self.temp_path / "lock",
                     no_unsaved_thread_projects=False,
@@ -138,6 +156,10 @@ class PruneSidebarProjectsTests(TempDirTestCase):
         self.assertNotIn("archived_thread_count", result)
         self.assertEqual(result["older_than_hours"], 48.0)
         self.assertEqual(result["pruned_saved_root_count"], 1)
+        self.assertEqual(result["pruned_trusted_project_count"], 1)
         self.assertEqual(written_states[0]["electron-saved-workspace-roots"], [])
         self.assertEqual(written_states[0]["project-order"], [])
         self.assertEqual(result["projects"][0]["actions"], ["prune_saved_root", "prune_project_order_root"])
+        config_text = (codex_home / "config.toml").read_text(encoding="utf-8")
+        self.assertNotIn(root, config_text)
+        self.assertIn('[projects."/tmp/kept"]', config_text)

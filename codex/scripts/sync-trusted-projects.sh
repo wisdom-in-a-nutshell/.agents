@@ -14,8 +14,9 @@ usage() {
   cat <<USAGE
 Usage: $(basename "$0") [options]
 
-Discover Git repos under one or more roots and mark each repo root as trusted in
-Codex config. Default mode is dry-run. Use --apply to write changes.
+Discover Git repos under one or more roots and mark each trusted repo root in
+Codex config. Registry entries with codex_trust=false are removed from the
+managed trusted-project list. Default mode is dry-run. Use --apply to write changes.
 
 Options:
   --apply                Apply changes in place
@@ -330,7 +331,11 @@ for item in repos:
             print(f"WARNING: skipping non-git repo path: {path}", file=sys.stderr)
         continue
     if repo_root:
-        print(str(Path(repo_root).resolve()))
+        trust = item.get("codex_trust", True)
+        if not isinstance(trust, bool):
+            raise TypeError("repo.codex_trust must be a boolean when present")
+        state = "trusted" if trust else "untrusted"
+        print(f"{state}\t{Path(repo_root).resolve()}")
 PY
 }
 
@@ -345,15 +350,49 @@ apply_trust_entries() {
   done
 }
 
+remove_section() {
+  local file="$1"
+  local section="$2"
+  local tmp_file="$file.tmp"
+
+  awk -v section="$section" '
+    BEGIN {
+      skip = 0
+      section_regex = "^[[:space:]]*\\[" section "\\][[:space:]]*$"
+      any_section_regex = "^[[:space:]]*\\["
+    }
+    {
+      if ($0 ~ any_section_regex) {
+        skip = ($0 ~ section_regex)
+      }
+      if (!skip) {
+        print
+      }
+    }
+  ' "$file" > "$tmp_file"
+  mv "$tmp_file" "$file"
+}
+
+remove_trust_entries() {
+  local target_file="$1"
+  shift
+  local repo project_section
+
+  for repo in "$@"; do
+    project_section="projects.$(quote_toml_string "$repo")"
+    remove_section "$target_file" "$project_section"
+  done
+}
+
 sync_target() {
   local label="$1"
   local original="$2"
-  shift 2
   local rendered="${TMP_DIR}/$(basename "$original").${label}.tmp"
 
   ensure_parent_dir "$original"
   prepare_work_file "$original" "$rendered"
-  apply_trust_entries "$rendered" "$@"
+  remove_trust_entries "$rendered" ${UNTRUSTED_REPO_ROOTS[@]+"${UNTRUSTED_REPO_ROOTS[@]}"}
+  apply_trust_entries "$rendered" ${TRUSTED_REPO_ROOTS[@]+"${TRUSTED_REPO_ROOTS[@]}"}
 
   log ""
   log "=== Trusted Projects (${label}: ${original}) ==="
@@ -364,43 +403,54 @@ sync_target() {
   fi
 }
 
+TRUSTED_REPO_ROOTS=()
+UNTRUSTED_REPO_ROOTS=()
+
 if (( ROOTS_EXPLICIT == 0 )); then
-  REPO_ROOTS=()
-  while IFS= read -r repo; do
-    if [[ -n "$repo" ]]; then
-      REPO_ROOTS+=("$repo")
+  while IFS=$'\t' read -r state repo; do
+    if [[ -z "$repo" ]]; then
+      continue
+    fi
+    if [[ "$state" == "untrusted" ]]; then
+      UNTRUSTED_REPO_ROOTS+=("$repo")
+    else
+      TRUSTED_REPO_ROOTS+=("$repo")
     fi
   done < <(collect_registry_repos)
 fi
 
 if (( ROOTS_EXPLICIT == 1 )); then
-  REPO_ROOTS=()
   while IFS= read -r repo; do
     if [[ -n "$repo" ]]; then
-      REPO_ROOTS+=("$repo")
+      TRUSTED_REPO_ROOTS+=("$repo")
     fi
   done < <(collect_all_repo_roots)
 fi
 
-if (( ${#REPO_ROOTS[@]} == 0 )); then
+if (( ${#TRUSTED_REPO_ROOTS[@]} == 0 && ${#UNTRUSTED_REPO_ROOTS[@]} == 0 )); then
   ROOTS=("${HOME}/GitHub")
-  REPO_ROOTS=()
   while IFS= read -r repo; do
     if [[ -n "$repo" ]]; then
-      REPO_ROOTS+=("$repo")
+      TRUSTED_REPO_ROOTS+=("$repo")
     fi
   done < <(collect_all_repo_roots)
 fi
 
-if (( ${#REPO_ROOTS[@]} == 0 )); then
+if (( ${#TRUSTED_REPO_ROOTS[@]} == 0 && ${#UNTRUSTED_REPO_ROOTS[@]} == 0 )); then
   die "No Git repos discovered under the configured root set."
 fi
 
-log "Discovered ${#REPO_ROOTS[@]} trusted repo roots."
-for repo in ${REPO_ROOTS[@]+"${REPO_ROOTS[@]}"}; do
+log "Discovered ${#TRUSTED_REPO_ROOTS[@]} trusted repo roots."
+for repo in ${TRUSTED_REPO_ROOTS[@]+"${TRUSTED_REPO_ROOTS[@]}"}; do
   log "  - $repo"
 done
+if (( ${#UNTRUSTED_REPO_ROOTS[@]} > 0 )); then
+  log "Discovered ${#UNTRUSTED_REPO_ROOTS[@]} untrusted managed repo roots."
+  for repo in ${UNTRUSTED_REPO_ROOTS[@]+"${UNTRUSTED_REPO_ROOTS[@]}"}; do
+    log "  - $repo"
+  done
+fi
 
 if (( SYNC_GLOBAL == 1 )); then
-  sync_target "global" "$GLOBAL_CONFIG" ${REPO_ROOTS[@]+"${REPO_ROOTS[@]}"}
+  sync_target "global" "$GLOBAL_CONFIG"
 fi

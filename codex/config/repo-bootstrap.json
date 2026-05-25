@@ -34,10 +34,12 @@
       "path": "~/GitHub/aip-cognitive-revolution"
     },
     {
-      "path": "~/GitHub/aipodcasting"
+      "path": "~/GitHub/aipodcasting",
+      "codex_trust": false
     },
     {
-      "path": "~/GitHub/aipodcasting-public-website"
+      "path": "~/GitHub/aipodcasting-public-website",
+      "codex_trust": false
     },
     {
       "path": "~/GitHub/angie",
@@ -52,13 +54,16 @@
       "developer_instructions": "Tool use:\n- Use tools proactively when they materially improve grounding, correctness, leverage, or continuity.\n- For file and text search, prefer `rg` and `rg --files`.\n- For simple file inspection, prefer standard shell tools such as `sed`, `head`, `tail`, `cat`, and `nl`.\n- Do not use Python for simple file viewing, searching, or trivial text transformations when shell tools or direct edits would suffice.\n- Group related reads together. Parallelize independent retrieval when it reduces latency and does not create confusion.\n\nProgress updates:\n- Before grouped tool calls or substantial work, send a short commentary update describing what you are about to do.\n- While working, send brief progress updates at meaningful transitions, not for every trivial read.\n- Keep commentary concise, practical, and non-performative.\n\nPlanning:\n- Use `update_plan` for non-trivial multi-step tasks.\n- Keep plan steps short and concrete.\n- Keep the plan current as work progresses.\n- Do not create ceremonial plans for simple requests.\n"
     },
     {
-      "path": "~/GitHub/blog-personal"
+      "path": "~/GitHub/blog-personal",
+      "codex_trust": false
     },
     {
-      "path": "~/GitHub/codexclaw"
+      "path": "~/GitHub/codexclaw",
+      "codex_trust": false
     },
     {
-      "path": "~/GitHub/documents"
+      "path": "~/GitHub/documents",
+      "codex_trust": false
     },
     {
       "path": "~/GitHub/focus"
@@ -67,10 +72,15 @@
       "path": "~/GitHub/future-of-life-institute-podcast-aipodcast-ing-theme"
     },
     {
-      "path": "~/GitHub/litellm"
+      "path": "~/GitHub/litellm",
+      "codex_trust": false
     },
     {
-      "path": "~/GitHub/modal_functions"
+      "path": "~/GitHub/local-transcription"
+    },
+    {
+      "path": "~/GitHub/modal_functions",
+      "codex_trust": false
     },
     {
       "path": "~/GitHub/platform-ops",
@@ -95,7 +105,8 @@
       "path": "~/GitHub/thoughtforms-life-theme"
     },
     {
-      "path": "~/GitHub/whos-in-your-head"
+      "path": "~/GitHub/whos-in-your-head",
+      "codex_trust": false
     },
     {
       "path": "~/GitHub/win"
