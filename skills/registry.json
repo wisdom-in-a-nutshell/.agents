@@ -345,6 +345,7 @@
         "adithyan-ai-videos",
         "angie",
         "codexclaw",
+        "local-transcription",
         "scripts"
       ],
       "source_path": "skills-source/owned/local-transcription",
