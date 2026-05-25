@@ -3,7 +3,7 @@
 > **Reference Document**
 > This contains operational, financial, and team details for AI Podcasting.
 > For positioning, messaging, and marketing content, see `company-profile.md`.
-> *Last Updated: January 2026*
+> *Last Updated: May 2026*
 
 ---
 
@@ -108,6 +108,9 @@ Adithyan and Sai have known each other for over 16 years (IIT undergrad). Deep r
 
 *   **Company Name:** AI Podcasting
 *   **Legal Entity:** WisdomInANutshell OÜ (Estonia)
+*   **Registry code:** 16853874
+*   **VAT ID:** EE102706082
+*   **Registered address:** Harju maakond, Tallinn, Kesklinna linnaosa, Ahtri tn 12, 15551, Estonia
 *   **Website:** https://aipodcast.ing/
 *   **App:** https://app.aipodcast.ing/
 *   **Contact:** adi@aipodcast.ing
