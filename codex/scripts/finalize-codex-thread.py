@@ -129,6 +129,7 @@ class AppServerClient:
         self.next_id = 1
         self.agent_text_parts: list[str] = []
         self.agent_completed_text: str | None = None
+        self.turn_completed_events: list[dict[str, Any]] = []
 
     def __enter__(self) -> "AppServerClient":
         self.start()
@@ -267,6 +268,9 @@ class AppServerClient:
         turn_id: str | None,
         timeout_seconds: float,
     ) -> dict[str, Any]:
+        for event in self.turn_completed_events:
+            if self._turn_completed_matches(event, thread_id=thread_id, turn_id=turn_id):
+                return event
         deadline = time.monotonic() + timeout_seconds
         while True:
             remaining = deadline - time.monotonic()
@@ -279,18 +283,31 @@ class AppServerClient:
                 continue
             if msg.get("method") != "turn/completed":
                 continue
-            params = msg.get("params") if isinstance(msg.get("params"), dict) else {}
-            completed_thread = extract_id(params, ("threadId",), ("thread", "id"))
-            completed_turn = extract_id(params, ("turnId",), ("turn", "id"))
-            if completed_thread and completed_thread != thread_id:
-                continue
-            if turn_id and completed_turn and completed_turn != turn_id:
-                continue
-            return msg
+            if self._turn_completed_matches(msg, thread_id=thread_id, turn_id=turn_id):
+                return msg
+
+    def _turn_completed_matches(
+        self,
+        msg: dict[str, Any],
+        *,
+        thread_id: str,
+        turn_id: str | None,
+    ) -> bool:
+        params = msg.get("params") if isinstance(msg.get("params"), dict) else {}
+        completed_thread = extract_id(params, ("threadId",), ("thread", "id"))
+        completed_turn = extract_id(params, ("turnId",), ("turn", "id"))
+        if completed_thread and completed_thread != thread_id:
+            return False
+        if turn_id and completed_turn and completed_turn != turn_id:
+            return False
+        return True
 
     def _handle_message_side_effects(self, msg: dict[str, Any]) -> None:
         method = msg.get("method")
         params = msg.get("params") if isinstance(msg.get("params"), dict) else {}
+        if method == "turn/completed":
+            self.turn_completed_events.append(msg)
+            del self.turn_completed_events[:-20]
         if method == "item/agentMessage/delta":
             delta = params.get("delta")
             if isinstance(delta, str):

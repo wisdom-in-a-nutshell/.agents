@@ -43,21 +43,6 @@
       ],
       "scope": "global",
       "timeout": 900
-    },
-    {
-      "command": "python3 ~/.agents/hooks/scripts/session_end.py --runtime {runtime}",
-      "enabled": true,
-      "event": "SessionEnd",
-      "id": "repo-session-end",
-      "repos": [
-        "adi",
-        "angie"
-      ],
-      "runtimes": [
-        "codex"
-      ],
-      "scope": "repo",
-      "timeout": 5
     }
   ],
   "version": 1

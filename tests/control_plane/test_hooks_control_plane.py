@@ -54,7 +54,7 @@ class HooksControlPlaneTests(TempDirTestCase):
         codex_hooks = render_codex_hooks(registry, repo_name="adi")
         self.assertEqual(
             set(codex_hooks["hooks"].keys()),
-            {"SessionStart", "UserPromptSubmit", "SessionEnd"},
+            {"SessionStart", "UserPromptSubmit"},
         )
         self.assertEqual(
             codex_hooks["hooks"]["SessionStart"][0]["matcher"],
@@ -63,10 +63,6 @@ class HooksControlPlaneTests(TempDirTestCase):
         self.assertEqual(
             codex_hooks["hooks"]["UserPromptSubmit"][0]["hooks"][0]["command"],
             "python3 ~/.agents/hooks/scripts/user_prompt_submit.py --runtime codex",
-        )
-        self.assertEqual(
-            codex_hooks["hooks"]["SessionEnd"][0]["hooks"][0]["command"],
-            "python3 ~/.agents/hooks/scripts/session_end.py --runtime codex",
         )
         self.assertEqual(
             set(render_codex_hooks(registry, repo_name="win")["hooks"].keys()),
@@ -127,14 +123,12 @@ class HooksControlPlaneTests(TempDirTestCase):
             "SessionStart": REPO_ROOT / "hooks/scripts/session_start.py",
             "UserPromptSubmit": REPO_ROOT / "hooks/scripts/user_prompt_submit.py",
             "Stop": REPO_ROOT / "hooks/scripts/stop.py",
-            "SessionEnd": REPO_ROOT / "hooks/scripts/session_end.py",
         }
         home = self.temp_path / "home"
         for event in (
             "SessionStart",
             "UserPromptSubmit",
             "Stop",
-            "SessionEnd",
         ):
             payload = {
                 "cwd": str(self.temp_path),
@@ -352,64 +346,6 @@ class HooksControlPlaneTests(TempDirTestCase):
         self.assertEqual(result.stdout, "")
         self.assertEqual(result.stderr, "")
         self.assertFalse(marker.exists())
-
-    def test_session_end_runs_repo_script_without_forwarding_stdout(self) -> None:
-        repo = init_git_repo(self.temp_path / "repo")
-        marker = repo / "tmp/session-end-marker.txt"
-        write_executable(
-            repo / "scripts/hooks/session_end.py",
-            "\n".join(
-                [
-                    "#!/usr/bin/env python3",
-                    "import json",
-                    "import os",
-                    "import pathlib",
-                    "import sys",
-                    "pathlib.Path('tmp').mkdir(exist_ok=True)",
-                    "payload = json.load(sys.stdin)",
-                    "pathlib.Path('tmp/session-end-marker.txt').write_text(",
-                    "    'runtime=' + os.environ['AGENT_HOOK_RUNTIME'] + '\\n'",
-                    "    + 'event=' + payload['hook_event_name'] + '\\n'",
-                    "    + 'schema=' + payload['schema_version'] + '\\n'",
-                    "    + 'repo_root=' + payload['repo_root'] + '\\n'",
-                    "    + 'transcript_format=' + str(payload['transcript_format']) + '\\n',",
-                    "    encoding='utf-8',",
-                    ")",
-                    "print('debug only')",
-                    "",
-                ]
-            ),
-        )
-        payload = {
-            "cwd": str(repo),
-            "hook_event_name": "SessionEnd",
-            "model": "gpt-5.5",
-            "reason": "other",
-            "session_id": "session",
-            "transcript_path": None,
-        }
-
-        result = subprocess.run(
-            [
-                sys.executable,
-                str(REPO_ROOT / "hooks/scripts/session_end.py"),
-                "--runtime",
-                "codex",
-            ],
-            input=json.dumps(payload),
-            env={**os.environ, "HOME": str(self.temp_path / "home")},
-            capture_output=True,
-            text=True,
-            check=False,
-        )
-
-        self.assertEqual(result.returncode, 0)
-        self.assertEqual(result.stdout, "")
-        self.assertEqual(result.stderr, "")
-        self.assertEqual(
-            marker.read_text(encoding="utf-8"),
-            f"runtime=codex\nevent=SessionEnd\nschema=1.0\nrepo_root={repo.resolve()}\ntranscript_format=None\n",
-        )
 
     def test_codex_sync_config_renders_plan_mode_and_global_stop_hook(self) -> None:
         root = make_control_plane_root(self.temp_path)

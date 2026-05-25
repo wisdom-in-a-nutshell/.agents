@@ -14,10 +14,9 @@ EVENT_RUNTIME_SUPPORT = {
     "SessionStart": {"codex"},
     "UserPromptSubmit": {"codex"},
     "Stop": {"codex"},
-    "SessionEnd": {"codex"},
 }
 VALID_EVENTS = set(EVENT_RUNTIME_SUPPORT)
-EVENTS_WITH_MATCHERS = {"SessionStart", "SessionEnd"}
+EVENTS_WITH_MATCHERS = {"SessionStart"}
 
 
 class HookRegistryError(RuntimeError):

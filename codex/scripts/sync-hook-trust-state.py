@@ -18,7 +18,6 @@ EVENT_LABELS = {
     "PostToolUse": "post_tool_use",
     "SessionStart": "session_start",
     "UserPromptSubmit": "user_prompt_submit",
-    "SessionEnd": "session_end",
     "Stop": "stop",
 }
 
