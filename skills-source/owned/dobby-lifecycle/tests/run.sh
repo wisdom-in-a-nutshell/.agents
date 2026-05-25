@@ -5,8 +5,7 @@ SKILL_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 python3 -m py_compile \
   "$SKILL_DIR/scripts/hooks/session-start" \
   "$SKILL_DIR/scripts/hooks/user-prompt-submit" \
-  "$SKILL_DIR/scripts/hooks/finalize-codex-thread" \
-  "$SKILL_DIR/scripts/hooks/session-end"
+  "$SKILL_DIR/scripts/hooks/finalize-codex-thread"
 
 if grep -R "consolidate-thread\|PreCompact\|SIDECAR" "$SKILL_DIR/scripts" "$SKILL_DIR/references" >/dev/null; then
   echo "sidecar/pre-compact/consolidate-thread references should not be part of the simple lifecycle design" >&2

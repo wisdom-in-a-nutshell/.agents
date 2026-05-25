@@ -1,6 +1,6 @@
 ---
 name: dobby-lifecycle
-description: "Operate Dobby workspace lifecycle hooks and context flow: session start boot context, user-prompt-submit time context, explicit thread consolidation, session-end handling, hook logs, and debugging why Dobby context/session memory did or did not load/write. Use for hook implementation changes, lifecycle debugging, boot context changes, and session continuity plumbing. For workspace/body routing use the `dobby-workspace` skill."
+description: "Operate Dobby workspace lifecycle hooks and context flow: session start boot context, user-prompt-submit time context, explicit thread finalization, and debugging why Dobby context/session memory did or did not load/write. Use for hook implementation changes, lifecycle debugging, boot context changes, and session continuity plumbing. For workspace/body routing use the `dobby-workspace` skill."
 ---
 
 # Dobby Lifecycle
@@ -15,7 +15,7 @@ a caller decides a thread should preserve useful memory before archive.
 
 Use this skill for:
 
-- `SessionStart`, `UserPromptSubmit`, `FinalizeCodexThread`, and `SessionEnd` behavior.
+- `SessionStart`, `UserPromptSubmit`, and `FinalizeCodexThread` behavior.
 - Boot context assembly: shared `dobby-workspace` body map, `now.md`, recent sessions, Shelf snapshot, calendar snapshot, area manifest.
 - Codex App Server same-thread finalization before archive.
 - Hook payload normalization, temporary hook records where active, worker logs, and lifecycle debugging.
@@ -42,7 +42,6 @@ Repo-local hook wrappers delegate to this skill’s scripts through the repo’s
 scripts/hooks/session_start.py      -> scripts/hooks/session-start
 scripts/hooks/user_prompt_submit.py -> scripts/hooks/user-prompt-submit
 scripts/hooks/finalize_codex_thread.py -> scripts/hooks/finalize-codex-thread
-scripts/hooks/session_end.py        -> scripts/hooks/session-end
 ```
 
 The hook scripts live here:
@@ -51,7 +50,6 @@ The hook scripts live here:
 $HOME/.agents/skills-source/owned/dobby-lifecycle/scripts/hooks/session-start
 $HOME/.agents/skills-source/owned/dobby-lifecycle/scripts/hooks/user-prompt-submit
 $HOME/.agents/skills-source/owned/dobby-lifecycle/scripts/hooks/finalize-codex-thread
-$HOME/.agents/skills-source/owned/dobby-lifecycle/scripts/hooks/session-end
 ```
 
 ## Reference files

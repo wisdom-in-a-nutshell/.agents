@@ -1,15 +1,16 @@
 # Repo Lifecycle Hook Adapter
 
-Use this page when adding repo-specific behavior to Codex lifecycle hooks.
+Use this page when adding repo-specific behavior to Codex lifecycle hooks or
+explicit thread finalization.
 
 The shared `.agents` control plane owns Codex integration and dispatch. Each
-repository owns what it wants to do when a lifecycle event or explicit thread
-finalization arrives.
+repository owns what it wants to do when a supported lifecycle event or explicit
+thread finalization arrives.
 
 ## Shape
 
 ```text
-Codex runtime event
+Native Codex runtime event
   -> shared ~/.agents hook script
   -> hooks/scripts/hook_runtime.py
   -> normalized JSON adapter payload
@@ -28,7 +29,7 @@ Explicit thread finalization
 Put repo policy in the repo. Keep the shared control plane boring.
 
 - Shared `.agents` layer:
-  - receives Codex hook payloads or explicit finalizer invocations
+  - receives supported Codex hook payloads or explicit finalizer invocations
   - runs event-specific entrypoints such as `session_start.py`
   - keeps common dispatch plumbing in `hooks/scripts/hook_runtime.py`
   - resolves the Git repo root when a runtime hook provides `cwd`
@@ -53,7 +54,6 @@ Create these files only when a repo needs them:
 ```text
 scripts/hooks/session_start.py
 scripts/hooks/user_prompt_submit.py
-scripts/hooks/session_end.py
 scripts/hooks/finalize_codex_thread.py
 ```
 
@@ -63,22 +63,17 @@ All repo lifecycle hooks are Python. Do not add shell compatibility shims.
 
 `SessionStart`
 
+- Native Codex hook event.
 - Runs when Codex starts or resumes a session.
 - Stdout can become startup context.
 - Good for loading compact repo-local orientation.
 
 `UserPromptSubmit`
 
+- Native Codex hook event.
 - Runs before a user prompt is processed.
 - Stdout can become additional prompt context.
 - Good for very small, current-time or current-state context.
-
-`SessionEnd`
-
-- Rendered for Codex-managed repos when assigned in the shared registry.
-- Stdout is logged, not injected into context, because the session is ending.
-- Good for writing a small shutdown record or cleanup pointer.
-- Keep it fast. Do not do slow summarization inline.
 
 `FinalizeCodexThread`
 
@@ -96,10 +91,14 @@ All repo lifecycle hooks are Python. Do not add shell compatibility shims.
 
 `Stop`
 
-- This is the shared turn-end commit gate, not a repo lifecycle script.
+- Native Codex hook event, rendered as the shared global turn-end commit gate.
 - It stages, commits, runs repo `scripts/check-fast.sh` through Git, rebases,
   and pushes.
 - Do not use `scripts/check-fast.sh` as a general after-turn hook.
+
+There is intentionally no managed fake/native-looking `SessionEnd` hook. Current
+Codex hook docs do not expose `SessionEnd`; end-of-thread memory work should use
+explicit `FinalizeCodexThread` instead.
 
 ## Runtime Payload Contract
 
@@ -109,7 +108,7 @@ details are preserved under `raw_payload`.
 ```json
 {
   "schema_version": "1.0",
-  "hook_event_name": "SessionEnd",
+  "hook_event_name": "SessionStart",
   "runtime": "codex",
   "cwd": "/Users/dobby/GitHub/example/services/api",
   "repo_root": "/Users/dobby/GitHub/example",
@@ -118,7 +117,6 @@ details are preserved under `raw_payload`.
   "model": "optional",
   "timestamp": 1760000000000,
   "source": "optional",
-  "reason": "optional",
   "prompt": "optional",
   "initial_prompt": "optional",
   "final_message": "optional",
@@ -132,8 +130,8 @@ details are preserved under `raw_payload`.
 Important fields:
 
 - `schema_version`: current adapter contract version. Today this is `1.0`.
-- `hook_event_name`: `SessionStart`, `UserPromptSubmit`, or `SessionEnd` for
-  native runtime hooks.
+- `hook_event_name`: `SessionStart` or `UserPromptSubmit` for native runtime
+  hooks.
 - `runtime`: `codex`.
 - `cwd`: where the Codex session was running.
 - `repo_root`: resolved Git top-level directory.
@@ -179,7 +177,7 @@ archive the source thread.
 Repo hooks also receive:
 
 ```text
-AGENT_HOOK_EVENT=SessionStart | UserPromptSubmit | SessionEnd | FinalizeCodexThread
+AGENT_HOOK_EVENT=SessionStart | UserPromptSubmit | FinalizeCodexThread
 AGENT_HOOK_RUNTIME=codex        # native runtime hooks only
 AGENT_REPO_ROOT=/absolute/repo/root
 AGENT_HOOK_SCHEMA_VERSION=1.0
@@ -244,35 +242,9 @@ if __name__ == "__main__":
 For `session_start.py` and `user_prompt_submit.py`, stdout may become model
 context for Codex. Print only concise context that should be shown to the agent.
 
-For `session_end.py`, stdout is only logged. Use it for diagnostics, not model
-instructions.
-
 For `finalize_codex_thread.py`, stdout is consumed by
 `finalize-codex-thread.py` as the final-turn instruction. Print no debug text to
 stdout.
-
-## Session-End Pattern
-
-Session end should be quick:
-
-```text
-session_end.py
-  -> read normalized payload
-  -> inspect transcript_path if present
-  -> write a small local record or pointer
-  -> return success quickly
-```
-
-Do not do this directly inside the hook:
-
-```text
-read entire transcript
-call an LLM
-rewrite memory
-run slow validation
-```
-
-Use explicit thread finalization for end-of-thread memory work.
 
 ## Local Smoke Tests
 
@@ -292,15 +264,7 @@ printf '{"hook_event_name":"SessionStart","cwd":"%s","session_id":"test-session"
   | python3 ~/.agents/hooks/scripts/session_start.py --runtime codex
 ```
 
-For `SessionEnd`:
-
-```bash
-cd /path/to/repo
-printf '{"hook_event_name":"SessionEnd","cwd":"%s","session_id":"test-session","reason":"other"}' "$PWD" \
-  | python3 ~/.agents/hooks/scripts/session_end.py --runtime codex
-```
-
-For explicit finalization:
+Run explicit finalization:
 
 ```bash
 ~/.agents/codex/scripts/finalize-codex-thread.py \
@@ -315,8 +279,6 @@ Expected behavior:
 
 - Missing repo hook: exits `0`, no output.
 - `SessionStart` / `UserPromptSubmit`: stdout may be wrapped and forwarded for Codex.
-- `SessionEnd`: stdout goes to
-  `~/.local/state/agents-control-plane/log/hooks-session-end.log`.
 - `FinalizeCodexThread`: stdout/stderr are consumed by
   `finalize-codex-thread.py`; non-zero exit blocks archive.
 
@@ -341,7 +303,8 @@ python3 -m py_compile \
   hooks/scripts/hook_runtime.py \
   hooks/scripts/session_start.py \
   hooks/scripts/user_prompt_submit.py \
-  hooks/scripts/session_end.py
+  hooks/scripts/stop.py \
+  codex/scripts/finalize-codex-thread.py
 python3 -m unittest tests.control_plane.test_hooks_control_plane
 ./scripts/test-control-plane.sh
 ./scripts/bootstrap-machine-agent-control-planes.sh --apply

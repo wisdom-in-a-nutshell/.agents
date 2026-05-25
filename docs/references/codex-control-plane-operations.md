@@ -126,7 +126,7 @@ Use [Codex Control Plane Ownership](/Users/dobby/.agents/docs/references/codex-c
 - `~/.codex/config.toml` enables Codex hooks through `[features].hooks = true`
 - `~/.codex/config.toml` contains `[hooks.state]` trust hashes for managed hooks rendered by this control plane, so global and repo-local lifecycle hooks do not need repeated `/hooks` review on every machine bootstrap.
 - `~/.codex/config.toml` explicitly preserves enabled native Codex plugins such as `computer-use@openai-bundled`, points `openai-bundled` at the marketplace inside `Codex.app`, and disables bundled Codex skills classified as `disabled` in [`bundled-skills-policy.json`](/Users/dobby/.agents/codex/config/bundled-skills-policy.json)
-- `~/.codex/hooks.json` is rendered from `hooks/registry.json` for global Codex hooks. The managed `Stop` hook renders there; repo-specific lifecycle hooks such as `SessionStart`, `UserPromptSubmit`, and `SessionEnd` render into repo `.codex/hooks.json`.
+- `~/.codex/hooks.json` is rendered from `hooks/registry.json` for global Codex hooks. The managed `Stop` hook renders there; repo-specific lifecycle hooks such as `SessionStart` and `UserPromptSubmit` render into repo `.codex/hooks.json`.
 - `com.<user>.codex-thread-finalizer` is loaded as a LaunchAgent and runs [`finalize-stale-codex-threads.py`](/Users/dobby/.agents/codex/scripts/finalize-stale-codex-threads.py) every 6 hours against managed repo paths from [`repo-bootstrap.json`](/Users/dobby/.agents/codex/config/repo-bootstrap.json).
 - `~/.codex/config.toml` contains no Git conflict markers
 - `~/.codex/vendor_imports/skills` is a valid Git checkout:

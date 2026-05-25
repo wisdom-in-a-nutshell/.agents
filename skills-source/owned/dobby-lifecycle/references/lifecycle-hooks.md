@@ -13,7 +13,6 @@ focused on workspace meaning instead of becoming a hook runbook.
   from Codex App Server `thread/read`, asks the repo for a finalization
   instruction, runs one final turn in that same source thread, and archives only
   after that turn succeeds.
-- `SessionEnd`: fast shutdown record only; it does not run memory work.
 - Next `SessionStart`: recent `memory/sessions/...` notes return continuity to
   the next thread.
 
@@ -30,7 +29,6 @@ Short version:
   reading the shared `dobby-workspace` body map.
 - **Archive is conditional.** If the repo hook, final turn, or archive request
   fails, the source thread is left unarchived so stale cleanup can retry later.
-- **SessionEnd is handoff-only.** It records shutdown metadata and exits quickly.
 - **`memory/sessions` is the bridge.** End-of-thread notes become part of the
   next boot context.
 - **`memory/now.md`, area files, and `soul.md` are promotion targets only.** They
@@ -103,10 +101,6 @@ $HOME/.agents/skills-source/owned/dobby-lifecycle/scripts/hooks/finalize-codex-t
 That hook emits a prompt asking the same live Dobby agent to preserve only
 useful memory, using the shared body map as the routing authority. The hook does
 not start Codex, fork a thread, write memory itself, or archive anything.
-
-`SessionEnd` writes a compact record under `tmp/hooks/session-end/` and exits
-successfully. It does not run memory work; end-of-thread memory work belongs to
-explicit finalization.
 
 Do not put Dobby memory synthesis directly in the shared `~/.agents` dispatcher.
 The dispatcher routes lifecycle events; this skill owns Dobby-specific behavior.

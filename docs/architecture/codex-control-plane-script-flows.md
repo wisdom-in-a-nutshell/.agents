@@ -78,19 +78,15 @@ flowchart TD
     K -->|"yes"| L["run Python hook from repo root"]
     L --> M["forward stdout as additional context"]
     K -->|"no"| N["silent success"]
-
-    B --> U["Codex SessionEnd"]
-    U --> V["hooks/scripts/session_end.py"]
-    V --> W{"repo scripts/hooks/session_end.py exists?"}
-    W -->|"yes"| X["run Python hook from repo root"]
-    X --> Y["log stdout"]
-    W -->|"no"| Z["silent success"]
 ```
 
 The shared dispatcher resolves the git root from the hook payload `cwd`, passes a
 normalized JSON payload to the repo hook on stdin, and sets
 `AGENT_HOOK_EVENT`, `AGENT_HOOK_RUNTIME`, `AGENT_REPO_ROOT`, and
 `AGENT_HOOK_SCHEMA_VERSION`.
+
+The control plane does not render a fake native-looking `SessionEnd` hook.
+End-of-thread memory work is handled by explicit thread finalization.
 
 ## Explicit Thread Finalization
 

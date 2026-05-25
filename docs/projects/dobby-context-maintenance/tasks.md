@@ -16,8 +16,10 @@ As of 2026-05-25 this project has been simplified. The active architecture is:
 - Dobby workspaces provide repo policy through
   `scripts/hooks/finalize_codex_thread.py`, which delegates to the
   `dobby-lifecycle` skill hook.
-- Native runtime hooks stay small: `SessionStart`, `UserPromptSubmit`, and
-  `SessionEnd`.
+- Native runtime hooks stay small: `SessionStart` and `UserPromptSubmit`.
+- There is no managed fake/native-looking `SessionEnd`; official Codex hook
+  docs do not expose that event, so end-of-thread work is explicit
+  finalization.
 - Gateway rollover and chat-end cleanup should call the same finalizer instead
   of running memory preservation directly.
 
@@ -28,7 +30,7 @@ mind and introduced more moving parts than the reliability gain justified.
 
 ### In Scope
 
-- Repo-local Codex boot/prompt/session-end context plumbing for Dobby workspace
+- Repo-local Codex boot/prompt/finalization context plumbing for Dobby workspace
   repos.
 - Explicit same-thread finalization before archive.
 - Gateway maintenance triggers for iPhone chat end and daily backend rollover.
@@ -42,7 +44,7 @@ mind and introduced more moving parts than the reliability gain justified.
 
 ## Done When
 
-- [x] Dobby workspace repos have repo-local Codex boot/prompt/session-end hooks.
+- [x] Dobby workspace repos have repo-local Codex boot/prompt/finalization hooks.
 - [x] The global stale-thread cleanup calls `finalize-codex-thread` for each old
   thread.
 - [x] Dobby workspace finalization uses a same-thread final turn, not a side
@@ -92,3 +94,6 @@ mind and introduced more moving parts than the reliability gain justified.
 - 2026-05-25: User pushed for a simpler mental model. Decision: retire the
   hidden side-process model and make `finalize-codex-thread` the single explicit
   primitive for end-of-thread memory preservation and archive.
+- 2026-05-25: Removed the fake `SessionEnd` lifecycle surface. Current official
+  Codex hook docs do not list `SessionEnd`, so Dobby uses only native
+  `SessionStart`/`UserPromptSubmit` plus explicit `FinalizeCodexThread`.
