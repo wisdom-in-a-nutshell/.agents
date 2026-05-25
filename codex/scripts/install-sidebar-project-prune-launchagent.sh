@@ -5,7 +5,7 @@ APPLY=0
 LABEL="com.${USER}.codex-sidebar-project-pruner"
 HOUR=1
 MINUTE=0
-OLDER_THAN_DAYS=3
+OLDER_THAN_DAYS=2
 SCRIPT_PATH="${HOME}/.agents/codex/scripts/prune-sidebar-projects.py"
 PLIST_PATH="${HOME}/Library/LaunchAgents/${LABEL}.plist"
 LOG_DIR="${HOME}/.local/state/codex-control-plane/log"
@@ -29,7 +29,7 @@ Options:
   --label <label>            LaunchAgent label
   --hour <0-23>              Hour to run (default: 1)
   --minute <0-59>            Minute to run (default: 0)
-  --older-than-days <n>      Forwarded prune threshold (default: 3)
+  --older-than-days <n>      Forwarded prune threshold (default: 2)
   --remote-host <host>       Forwarded remote host, e.g. macmini (repeatable)
   --auto-remote-hosts        Include hosts from ~/.codex remote-projects (default)
   --no-auto-remote-hosts     Do not inspect ~/.codex remote-projects

@@ -22,7 +22,7 @@ from typing import Any
 
 SCHEMA_VERSION = "1.0"
 COMMAND = "codex-sidebar-project-prune"
-DEFAULT_DAYS = 3.0
+DEFAULT_DAYS = 2.0
 DEFAULT_TIMEOUT_SECONDS = 30.0
 DEFAULT_PAGE_LIMIT = 200
 DEFAULT_LOCK = Path.home() / ".local/state/codex-control-plane/sidebar-project-prune.lock"
@@ -142,9 +142,9 @@ def emit_plain(payload: dict[str, Any]) -> None:
     mode = "apply" if data["applied"] else "dry-run"
     print(
         f"ok mode={mode} activity={data['activity_source']}:{data['activity_timestamp']} "
-        f"include_archived={data['include_archived_activity']} cutoff={data['cutoff_utc']} "
+        f"cutoff={data['cutoff_utc']} "
         f"stale={data['stale_project_count']} pruned_remote={data['pruned_remote_project_count']} "
-        f"pruned_saved={data['pruned_saved_root_count']} archived={data['archived_thread_count']}"
+        f"pruned_saved={data['pruned_saved_root_count']}"
     )
     for item in data["projects"]:
         if item["decision"] != "stale":
@@ -919,33 +919,12 @@ def prune_global_state(
             collapsed.pop(remote_id, None)
 
 
-def archive_threads(
-    clients: dict[str | None, AppServerClient],
-    activities: list[ProjectActivity],
-    *,
-    max_archive: int,
-) -> int:
-    archived = 0
-    for activity in activities:
-        client = clients.get(activity.host_id)
-        if client is None:
-            raise DependencyError(f"no app-server client is available for host {activity.host_id or 'local'}")
-        for thread_id in activity.thread_ids:
-            if max_archive and archived >= max_archive:
-                return archived
-            result = client.request("thread/archive", {"threadId": thread_id})
-            if result:
-                raise SchemaError("thread/archive returned an unexpected non-empty result")
-            archived += 1
-    return archived
-
-
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="Prune stale Codex Desktop sidebar projects using app-server for threads and guarded local state edits.",
     )
     mode = parser.add_mutually_exclusive_group()
-    mode.add_argument("--apply", action="store_true", help="Write Codex sidebar state and archive eligible threads.")
+    mode.add_argument("--apply", action="store_true", help="Write Codex sidebar state.")
     mode.add_argument("--dry-run", action="store_true", help="Report planned changes only.")
     age = parser.add_mutually_exclusive_group()
     age.add_argument("--older-than-days", type=float, default=DEFAULT_DAYS)
@@ -961,7 +940,6 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument("--keep-root", action="append", default=[], help="Local or remote project root to always keep.")
     parser.add_argument("--allow-active", action="store_true", help="Allow pruning active-workspace-roots.")
-    parser.add_argument("--no-archive-stale-threads", action="store_true")
     parser.add_argument("--no-unsaved-thread-projects", action="store_true")
     parser.add_argument("--state-db-only", action="store_true")
     parser.add_argument(
@@ -974,11 +952,6 @@ def parse_args() -> argparse.Namespace:
         ),
     )
     parser.add_argument(
-        "--exclude-archived-activity",
-        action="store_true",
-        help="Do not count archived threads as evidence of recent project activity.",
-    )
-    parser.add_argument(
         "--activity-source",
         choices=("sqlite", "app-server"),
         default="app-server",
@@ -986,7 +959,6 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument("--page-limit", type=int, default=DEFAULT_PAGE_LIMIT)
     parser.add_argument("--timeout-seconds", type=float, default=DEFAULT_TIMEOUT_SECONDS)
-    parser.add_argument("--max-archive", type=int, default=0, help="Maximum threads to archive; 0 means unlimited.")
     parser.add_argument("--backup-root", type=Path, default=DEFAULT_BACKUP_ROOT)
     parser.add_argument("--lock", type=Path, default=DEFAULT_LOCK)
     parser.add_argument("--slack-webhook-file", type=Path, default=Path.home() / ".secrets/slack/env")
@@ -1014,9 +986,7 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
         raise UsageError("--timeout-seconds must be positive")
     if args.quit_timeout_seconds <= 0:
         raise UsageError("--quit-timeout-seconds must be positive")
-    if args.max_archive < 0:
-        raise UsageError("--max-archive cannot be negative")
-    include_archived_activity = not args.exclude_archived_activity
+    include_archived_activity = True
 
     codex_home = args.codex_home.expanduser()
     global_state_path = codex_home / ".codex-global-state.json"
@@ -1074,7 +1044,6 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
 
         stale_local_roots: set[str] = set()
         stale_remote_ids: set[str] = set()
-        stale_activities_to_archive: list[ProjectActivity] = []
         project_items: list[dict[str, Any]] = []
 
         for host_id, root in sorted(roots, key=lambda item: (item[0] or "", item[1])):
@@ -1131,10 +1100,6 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
             if remote_item is not None:
                 stale_remote_ids.add(remote_item["id"])
                 actions.append("prune_remote_project")
-            if item_activity is not None and item_activity.thread_ids and not args.no_archive_stale_threads:
-                stale_activities_to_archive.append(item_activity)
-                actions.append("archive_threads")
-
             if not actions:
                 actions.append("no_sidebar_state")
             project_items.append(
@@ -1143,13 +1108,12 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
                     host_id=host_id,
                     activity=item_activity,
                     decision="stale",
-                    reason="older_than_cutoff_or_no_unarchived_threads",
+                    reason="older_than_cutoff_or_no_recent_activity",
                     actions=actions,
                 )
             )
 
         backup_dir: str | None = None
-        archived_count = 0
         if args.apply:
             backup_dir = str(backup_state(codex_home, args.backup_root.expanduser()))
             prune_global_state(
@@ -1158,25 +1122,6 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
                 stale_remote_ids=stale_remote_ids,
             )
             write_global_state(global_state_path, state)
-            if not args.no_archive_stale_threads:
-                if args.activity_source == "sqlite":
-                    archive_host_ids = {activity.host_id for activity in stale_activities_to_archive}
-                    archive_targets = [
-                        target for target in targets if target.host_id in archive_host_ids
-                    ]
-                    _, clients = load_threads_for_targets(
-                        archive_targets,
-                        timeout_seconds=args.timeout_seconds,
-                        page_limit=args.page_limit,
-                        use_state_db_only=True,
-                        activity_timestamp=args.activity_timestamp,
-                        include_archived_activity=False,
-                    )
-                archived_count = archive_threads(
-                    clients,
-                    stale_activities_to_archive,
-                    max_archive=args.max_archive,
-                )
 
         return {
             "applied": bool(args.apply),
@@ -1191,7 +1136,6 @@ def run(args: argparse.Namespace) -> dict[str, Any]:
             "stale_project_count": sum(1 for item in project_items if item["decision"] == "stale"),
             "pruned_saved_root_count": len(stale_local_roots),
             "pruned_remote_project_count": len(stale_remote_ids),
-            "archived_thread_count": archived_count if args.apply else sum(len(a.thread_ids) for a in stale_activities_to_archive),
             "backup_dir": backup_dir,
             "codex_app_quit": bool(args.apply and args.quit_codex_app),
             "codex_app_was_running": codex_app_was_running,

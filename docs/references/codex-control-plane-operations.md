@@ -72,7 +72,7 @@ Use [Codex Control Plane Ownership](/Users/dobby/.agents/docs/references/codex-c
 - Install/update the nightly sidebar project prune LaunchAgent:
   - [`install-sidebar-project-prune-launchagent.sh`](/Users/dobby/.agents/codex/scripts/install-sidebar-project-prune-launchagent.sh)
   - `~/.agents/codex/scripts/install-sidebar-project-prune-launchagent.sh --apply`
-  - default schedule is 01:00 daily; it quits Codex, prunes stale sidebar state, then reopens Codex so the app does not rewrite the old in-memory sidebar list
+  - default schedule is 01:00 daily with a 2-day stale threshold; it quits Codex, prunes stale sidebar state, then reopens Codex so the app does not rewrite the old in-memory sidebar list
   - on a MacBook showing Mac mini remote projects, use `--remote-host macmini --no-unsaved-thread-projects`
   - install this only on machines where the restart behavior is wanted; it is not part of the default bootstrap batch
 - Auto-apply the Codex control plane after `~/.agents` sync when `codex/` changed:
@@ -205,7 +205,7 @@ Use [Codex Control Plane Ownership](/Users/dobby/.agents/docs/references/codex-c
   - reads Codex thread activity from app-server `thread/list` by default, so cleanup follows Codex's listable thread view rather than every Desktop workspace bookkeeping row
   - default activity logic keeps a project when it has a recently created thread, including archived threads, or a recently updated unarchived thread
   - supports `--activity-source sqlite` as a read-only diagnostic/fallback when the exact local state DB view is needed
-  - uses app-server `thread/archive` for stale unarchived threads when `--apply` is used, so it does not write thread archive flags directly into SQLite
+  - never archives or finalizes threads; archive behavior belongs only to the stale-thread finalization flow
   - prunes local saved roots from `electron-saved-workspace-roots` and stale remote entries from `remote-projects`; matching `project-order` entries are removed at the same time
   - backs up `.codex-global-state.json` and `state_5.sqlite*` under `~/.local/state/codex-control-plane/sidebar-project-prune/backups/` before applying changes
   - defaults to dry-run and emits JSON by default; use `--plain` for compact operator inspection
@@ -217,7 +217,7 @@ Use [Codex Control Plane Ownership](/Users/dobby/.agents/docs/references/codex-c
   - supports dry-run output before writing or loading launchd state
 - [`install-sidebar-project-prune-launchagent.sh`](/Users/dobby/.agents/codex/scripts/install-sidebar-project-prune-launchagent.sh)
   - renders `~/Library/LaunchAgents/com.<user>.codex-sidebar-project-pruner.plist`
-  - schedules [`prune-sidebar-projects.py`](/Users/dobby/.agents/codex/scripts/prune-sidebar-projects.py) at 01:00 daily by default
+  - schedules [`prune-sidebar-projects.py`](/Users/dobby/.agents/codex/scripts/prune-sidebar-projects.py) at 01:00 daily by default, using the same 2-day stale threshold as stale-thread finalization
   - forwards `--quit-codex-app --reopen-codex-app` so the disk state is changed while Codex Desktop is not holding stale sidebar state in memory
   - writes logs under `~/.local/state/codex-control-plane/log/`
   - supports dry-run output before writing or loading launchd state
