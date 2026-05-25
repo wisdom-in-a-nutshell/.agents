@@ -21,6 +21,8 @@ flowchart TD
     P --> Q["Record job + launch sidecar worker"]
 
     D --> F["Explicit consolidate-thread call"]
+    D --> E["CodexThreadFinalize<br/>pre-archive finalization"]
+    E --> F
     Q --> F
     F --> G["Sidecar forks source Codex thread"]
     G --> H["Sidecar updates memory<br/>memory/sessions/YYYY/MM/DD-HHMMSS.md"]
@@ -36,6 +38,11 @@ Short version:
 - **PreCompact is best-effort sidecar launch.** It starts the existing
   `consolidate-thread` worker in the background and exits so live compaction can
   proceed.
+- **CodexThreadFinalize is explicit pre-archive finalization.** The global
+  `finalize-codex-thread` command derives the repo from `thread/read`, runs the
+  repo-local `scripts/hooks/codex_thread_finalize.py` when present, then owns
+  archiving the source thread. Dobby's repo finalizer runs `consolidate-thread`
+  before archive.
 - **SessionEnd is handoff-only.** It records shutdown metadata without launching
   a second consolidation sidecar.
 - **`memory/sessions` is the bridge.** End-of-session notes become part of the
@@ -107,6 +114,19 @@ Optional caller fields:
 - `--note-path <absolute-or-workspace-relative-path>`
 - `--instruction <extra caller instruction>`
 - `--job <payload.json>` for existing hook job records
+
+The global Codex control-plane finalizer is the preferred end-of-thread entry:
+
+```bash
+$HOME/.agents/codex/scripts/finalize-codex-thread.py \
+  --thread-id <codex-thread-id> \
+  --apply
+```
+
+It uses `thread/read` as the source of truth for `cwd`; callers should pass only
+the thread id. In Dobby workspaces it invokes `scripts/hooks/codex_thread_finalize.py`,
+which delegates here and consolidates memory before the global command archives
+the source thread.
 
 PreCompact records a small job under
 `tmp/dobby-lifecycle/pre-compact/jobs/`, starts `consolidate-thread` in the

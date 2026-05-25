@@ -138,7 +138,7 @@ These settings stay close to the repo because they describe how Codex should beh
 5. The repo bootstrap registry drives both trusted repo discovery and managed repo-local `.codex/config.toml` generation.
 6. Repo-scope native Codex plugin state from `plugins/registry.json` is rendered into assigned repo-local `.codex/config.toml` files.
 7. The hook registry drives global `~/.codex/hooks.json` generation plus managed repo-local `.codex/hooks.json` generation.
-8. The Codex bootstrap installs the stale-session archive LaunchAgent, which uses Codex app-server APIs to archive managed-repo threads after their `updatedAt` timestamp is older than the configured threshold.
+8. The Codex bootstrap installs the stale-thread finalization LaunchAgent, which lists managed-repo threads older than the configured `updatedAt` threshold and sends each one through `finalize-codex-thread` before archive.
 9. Codex starts from `~/.codex/config.toml` and any trusted repo-local `.codex/config.toml` and `.codex/hooks.json` in real project repos.
 10. Repo-local overrides refine behavior for one project without changing the global control plane.
 

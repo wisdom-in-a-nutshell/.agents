@@ -98,6 +98,10 @@ Scoped validation/bootstrap:
 - Codex repo-local hooks render into managed repo `.codex/hooks.json`.
 - `Stop` is global so the git conveyor does not depend on repo-local hook loading.
 - `SessionStart`, `UserPromptSubmit`, `PreCompact`, and `SessionEnd` are repo-scoped to `adi` and `angie`.
+- Explicit Codex thread finalization is not a native hook. The global
+  `codex/scripts/finalize-codex-thread.py` command derives repo policy from
+  `thread/read` and runs optional repo-local
+  `scripts/hooks/codex_thread_finalize.py` before archive.
 - Event entrypoints live in [`hooks/scripts/`](/Users/dobby/.agents/hooks/scripts).
 - Repo-specific lifecycle behavior belongs in optional Python scripts under `scripts/hooks/`.
 - Missing repo scripts are successful no-ops.

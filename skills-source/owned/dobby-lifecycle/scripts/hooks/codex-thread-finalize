@@ -1,0 +1,97 @@
+#!/usr/bin/env python3
+"""Dobby Codex thread finalizer.
+
+This is the repo-specific pre-archive finalization hook used by the global
+`finalize-codex-thread` command. It runs Dobby memory consolidation for the
+source thread and intentionally does not archive the source thread; the global
+finalizer owns archive.
+"""
+
+from __future__ import annotations
+
+import json
+import os
+import subprocess
+import sys
+from pathlib import Path
+from typing import Any
+
+
+HOOK_EVENT = "CodexThreadFinalize"
+SCHEMA_VERSION = "1.0"
+
+
+def read_payload() -> dict[str, Any]:
+    raw = sys.stdin.read()
+    if not raw.strip():
+        return {}
+    try:
+        payload = json.loads(raw)
+    except json.JSONDecodeError:
+        return {}
+    return payload if isinstance(payload, dict) else {}
+
+
+def first_text(payload: dict[str, Any], *keys: str) -> str | None:
+    for key in keys:
+        value = payload.get(key)
+        if isinstance(value, str) and value.strip():
+            return value.strip()
+    return None
+
+
+def repo_root(payload: dict[str, Any]) -> Path:
+    return Path(
+        first_text(payload, "repo_root")
+        or os.environ.get("AGENT_REPO_ROOT")
+        or "."
+    ).expanduser().resolve()
+
+
+def thread_id(payload: dict[str, Any]) -> str | None:
+    return first_text(payload, "thread_id", "source_thread_id", "threadId", "sourceThreadId")
+
+
+def main() -> int:
+    payload = read_payload()
+    event_name = payload.get("hook_event_name") or os.environ.get("AGENT_HOOK_EVENT")
+    if event_name not in {None, HOOK_EVENT}:
+        return 0
+    if payload.get("schema_version") not in {None, SCHEMA_VERSION}:
+        return 0
+
+    root = repo_root(payload)
+    source_thread = thread_id(payload)
+    if not source_thread:
+        print("codex-thread-finalize: missing thread_id", file=sys.stderr)
+        return 2
+
+    reason = first_text(payload, "reason") or "manual"
+    source_label = f"codex-thread-finalize:{reason}"
+    consolidate_thread = Path(__file__).resolve().parent.parent / "consolidate-thread"
+    command = [
+        sys.executable,
+        str(consolidate_thread),
+        "--thread-id",
+        source_thread,
+        "--source-label",
+        source_label,
+        "--repo-root",
+        str(root),
+        "--instruction",
+        (
+            "This job was launched by the global finalize-codex-thread command "
+            "before archiving the source thread. Preserve only context that "
+            "would make a future Dobby session worse if lost. If nothing useful "
+            "changed, write nothing."
+        ),
+    ]
+    if source_turn := first_text(payload, "source_turn_id", "turn_id", "turnId"):
+        command.extend(["--source-turn-id", source_turn])
+
+    result = subprocess.run(command, cwd=str(root), text=True)
+    return result.returncode
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

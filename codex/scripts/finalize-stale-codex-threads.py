@@ -17,13 +17,15 @@ from typing import Any
 
 
 SCHEMA_VERSION = "1.0"
-COMMAND = "archive-stale-codex-sessions"
+COMMAND = "finalize-stale-codex-threads"
 DEFAULT_OLDER_THAN_HOURS = 48.0
 DEFAULT_TIMEOUT_SECONDS = 30.0
+DEFAULT_FINALIZER_TIMEOUT_SECONDS = 900.0
 DEFAULT_PAGE_LIMIT = 100
 DEFAULT_MAX_REPORT = 80
 DEFAULT_REGISTRY = Path.home() / ".agents" / "codex" / "config" / "repo-bootstrap.json"
-DEFAULT_LOCK = Path.home() / ".local" / "state" / "codex-control-plane" / "archive-stale-sessions.lock"
+DEFAULT_LOCK = Path.home() / ".local" / "state" / "codex-control-plane" / "finalize-stale-codex-threads.lock"
+DEFAULT_FINALIZER_COMMAND = Path.home() / ".agents" / "codex" / "scripts" / "finalize-codex-thread.py"
 
 SOURCE_KINDS = [
     "cli",
@@ -126,13 +128,14 @@ def emit_plain(payload: dict[str, Any]) -> None:
         mode = "apply" if data.get("applied") else "dry-run"
         print(
             f"ok mode={mode} candidates={data.get('candidate_count', 0)} "
-            f"archived={data.get('archived_count', 0)} skipped={data.get('skipped_count', 0)}"
+            f"finalized={data.get('finalized_count', 0)} "
+            f"skipped={data.get('skipped_count', 0)}"
         )
         candidates = data.get("candidates", [])
         max_report = int(data.get("max_report", DEFAULT_MAX_REPORT))
         report_items = candidates if max_report == 0 else candidates[:max_report]
         for item in report_items:
-            action = "archived" if item.get("archived") else "would_archive"
+            action = "finalized" if item.get("finalized") else "would_finalize"
             if item.get("skipped_reason"):
                 action = "skipped"
             print(
@@ -211,8 +214,8 @@ class AppServerClient:
             "initialize",
             {
                 "clientInfo": {
-                    "name": "agents_archive_stale_sessions",
-                    "title": "Agents Codex Session Archiver",
+                    "name": "agents_finalize_stale_codex_threads",
+                    "title": "Agents Stale Codex Thread Finalizer",
                     "version": SCHEMA_VERSION,
                 }
             },
@@ -357,7 +360,14 @@ def list_candidates(
             return candidates
 
 
-def candidate_to_output(candidate: Candidate, *, archived: bool, skipped_reason: str | None) -> dict[str, Any]:
+def candidate_to_output(
+    candidate: Candidate,
+    *,
+    finalized: bool,
+    finalizer_status: str | None,
+    finalizer_error: str | None,
+    skipped_reason: str | None,
+) -> dict[str, Any]:
     return {
         "thread_id": candidate.thread_id,
         "name": candidate.name,
@@ -367,9 +377,65 @@ def candidate_to_output(candidate: Candidate, *, archived: bool, skipped_reason:
         "source": candidate.source,
         "status": candidate.status,
         "path": candidate.path,
-        "archived": archived,
+        "finalized": finalized,
+        "finalizer_status": finalizer_status,
+        "finalizer_error": finalizer_error,
         "skipped_reason": skipped_reason,
     }
+
+
+def run_thread_finalizer(
+    *,
+    command: Path,
+    candidate: Candidate,
+    codex_bin: str,
+    timeout_seconds: float,
+    finalizer_timeout_seconds: float,
+) -> dict[str, Any]:
+    if not command.is_file() or not os.access(command, os.X_OK):
+        raise AppServerError(f"finalizer command is not executable: {command}")
+
+    completed = subprocess.run(
+        [
+            str(command),
+            "--thread-id",
+            candidate.thread_id,
+            "--reason",
+            "stale-cleanup",
+            "--codex-bin",
+            codex_bin,
+            "--timeout-seconds",
+            str(timeout_seconds),
+            "--finalizer-timeout-seconds",
+            str(finalizer_timeout_seconds),
+            "--apply",
+            "--json",
+            "--no-input",
+        ],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+        timeout=finalizer_timeout_seconds + max(timeout_seconds, 1.0) + 10.0,
+    )
+    if completed.returncode != 0:
+        stderr = completed.stderr.strip()
+        stdout = completed.stdout.strip()
+        detail = stderr or stdout or f"exit {completed.returncode}"
+        raise AppServerError(f"finalizer failed for {candidate.thread_id}: {detail}")
+    try:
+        payload = json.loads(completed.stdout)
+    except json.JSONDecodeError as exc:
+        raise AppServerError(f"finalizer returned invalid JSON for {candidate.thread_id}: {exc}") from exc
+    if not isinstance(payload, dict):
+        raise AppServerError(f"finalizer returned malformed JSON for {candidate.thread_id}")
+    if payload.get("status") != "ok":
+        error = payload.get("error")
+        message = error.get("message") if isinstance(error, dict) else str(error)
+        raise AppServerError(f"finalizer reported {payload.get('status')} for {candidate.thread_id}: {message}")
+    result = ((payload.get("data") or {}).get("result")) if isinstance(payload.get("data"), dict) else None
+    if not isinstance(result, dict):
+        raise AppServerError(f"finalizer JSON missing data.result for {candidate.thread_id}")
+    return result
 
 
 def acquire_lock(lock_path: Path) -> Any:
@@ -379,7 +445,7 @@ def acquire_lock(lock_path: Path) -> Any:
         fcntl.flock(lock_file.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
     except BlockingIOError as exc:
         lock_file.close()
-        raise RuntimeError(f"another archive run already holds {lock_path}") from exc
+        raise RuntimeError(f"another finalize run already holds {lock_path}") from exc
     lock_file.write(f"{os.getpid()}\n")
     lock_file.flush()
     return lock_file
@@ -387,33 +453,35 @@ def acquire_lock(lock_path: Path) -> Any:
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Archive stale Codex sessions through the Codex app-server API."
+        description="Finalize stale Codex threads through the global finalize-codex-thread command."
     )
     mode = parser.add_mutually_exclusive_group()
-    mode.add_argument("--apply", action="store_true", help="Archive eligible sessions.")
-    mode.add_argument("--dry-run", action="store_true", help="Only report eligible sessions.")
+    mode.add_argument("--apply", action="store_true", help="Finalize eligible threads.")
+    mode.add_argument("--dry-run", action="store_true", help="Only report eligible threads.")
 
     age = parser.add_mutually_exclusive_group()
     age.add_argument(
         "--older-than-hours",
         type=float,
         default=DEFAULT_OLDER_THAN_HOURS,
-        help=f"Archive sessions whose updatedAt is older than this many hours (default: {DEFAULT_OLDER_THAN_HOURS:g}).",
+        help=f"Finalize threads whose updatedAt is older than this many hours (default: {DEFAULT_OLDER_THAN_HOURS:g}).",
     )
     age.add_argument(
         "--older-than-days",
         type=float,
-        help="Archive sessions whose updatedAt is older than this many days.",
+        help="Finalize threads whose updatedAt is older than this many days.",
     )
 
     parser.add_argument("--registry", type=Path, default=DEFAULT_REGISTRY)
     parser.add_argument("--repo", action="append", default=[], help="Limit to an exact repo/cwd path. Repeatable.")
     parser.add_argument("--codex-bin", default="codex")
+    parser.add_argument("--finalizer-command", type=Path, default=DEFAULT_FINALIZER_COMMAND)
     parser.add_argument("--page-limit", type=int, default=DEFAULT_PAGE_LIMIT)
     parser.add_argument("--timeout-seconds", type=float, default=DEFAULT_TIMEOUT_SECONDS)
-    parser.add_argument("--max-archive", type=int, default=0, help="Maximum sessions to archive per run; 0 means unlimited.")
+    parser.add_argument("--finalizer-timeout-seconds", type=float, default=DEFAULT_FINALIZER_TIMEOUT_SECONDS)
+    parser.add_argument("--max-finalize", type=int, default=0, help="Maximum threads to finalize per run; 0 means unlimited.")
     parser.add_argument("--max-report", type=int, default=DEFAULT_MAX_REPORT, help="Maximum candidate detail lines in plain output; 0 means unlimited.")
-    parser.add_argument("--all-source-kinds", action="store_true", help="Include non-interactive and subagent session sources.")
+    parser.add_argument("--all-source-kinds", action="store_true", help="Include non-interactive and subagent thread sources.")
     parser.add_argument("--source-kind", action="append", choices=SOURCE_KINDS, default=[], help="Filter to a Codex thread source kind. Repeatable.")
     parser.add_argument("--state-db-only", action="store_true", help="Use only Codex's state DB instead of scan-and-repair listing.")
     parser.add_argument("--lock", type=Path, default=DEFAULT_LOCK)
@@ -438,10 +506,14 @@ def main() -> int:
             raise ValueError("--older-than-hours/--older-than-days must be positive")
         if args.page_limit <= 0:
             raise ValueError("--page-limit must be positive")
-        if args.max_archive < 0:
-            raise ValueError("--max-archive cannot be negative")
+        if args.max_finalize < 0:
+            raise ValueError("--max-finalize cannot be negative")
         if args.max_report < 0:
             raise ValueError("--max-report cannot be negative")
+        if args.timeout_seconds <= 0:
+            raise ValueError("--timeout-seconds must be positive")
+        if args.finalizer_timeout_seconds <= 0:
+            raise ValueError("--finalizer-timeout-seconds must be positive")
 
         repos = [expand_path(repo) for repo in args.repo]
         if not repos:
@@ -470,29 +542,45 @@ def main() -> int:
                     use_state_db_only=bool(args.state_db_only),
                 )
 
-                archived_count = 0
-                skipped_count = 0
-                output_items: list[dict[str, Any]] = []
-                for candidate in candidates:
-                    skipped_reason: str | None = None
-                    archived = False
-                    if args.max_archive and archived_count >= args.max_archive:
-                        skipped_reason = "max_archive_reached"
+            finalized_count = 0
+            skipped_count = 0
+            output_items: list[dict[str, Any]] = []
+            for candidate in candidates:
+                skipped_reason: str | None = None
+                finalized = False
+                finalizer_status: str | None = None
+                finalizer_error: str | None = None
+                if args.max_finalize and finalized_count >= args.max_finalize:
+                    skipped_reason = "max_finalize_reached"
 
-                    if skipped_reason is None and apply:
-                        client.request("thread/archive", {"threadId": candidate.thread_id})
-                        archived = True
-                        archived_count += 1
-                    elif skipped_reason is not None:
-                        skipped_count += 1
-
-                    output_items.append(
-                        candidate_to_output(
-                            candidate,
-                            archived=archived,
-                            skipped_reason=skipped_reason,
-                        )
+                if skipped_reason is None and apply:
+                    finalizer_result = run_thread_finalizer(
+                        command=args.finalizer_command.expanduser(),
+                        candidate=candidate,
+                        codex_bin=args.codex_bin,
+                        timeout_seconds=args.timeout_seconds,
+                        finalizer_timeout_seconds=args.finalizer_timeout_seconds,
                     )
+                    finalized = True
+                    finalized_count += 1
+                    finalizer_status = str(finalizer_result.get("finalizer_status") or "")
+                    finalizer_error = (
+                        str(finalizer_result.get("error"))
+                        if finalizer_result.get("error") is not None
+                        else None
+                    )
+                elif skipped_reason is not None:
+                    skipped_count += 1
+
+                output_items.append(
+                    candidate_to_output(
+                        candidate,
+                        finalized=finalized,
+                        finalizer_status=finalizer_status,
+                        finalizer_error=finalizer_error,
+                        skipped_reason=skipped_reason,
+                    )
+                )
         finally:
             lock_file.close()
 
@@ -507,7 +595,7 @@ def main() -> int:
                 "cutoff_utc": datetime.fromtimestamp(cutoff_epoch, UTC).isoformat(timespec="seconds"),
                 "repo_count": len(repos),
                 "candidate_count": len(candidates),
-                "archived_count": archived_count,
+                "finalized_count": finalized_count,
                 "skipped_count": skipped_count,
                 "max_report": args.max_report,
                 "candidates": output_items,

@@ -86,6 +86,17 @@ All repo lifecycle hooks are Python. Do not add shell compatibility shims.
 - Good for enqueueing cleanup, summary, or memory jobs.
 - Keep it fast. Do not do slow summarization inline.
 
+`CodexThreadFinalize`
+
+- Not a native runtime hook. It is the repo-policy extension point used by the
+  global `codex/scripts/finalize-codex-thread.py` command.
+- Optional repo script path: `scripts/hooks/codex_thread_finalize.py`.
+- Runs before the global finalizer archives a known Codex thread.
+- Good for repo-specific absorption of useful thread context: Dobby memory,
+  project trackers, docs, or other agent-native repo state.
+- May run longer than runtime hooks because it is an explicit finalization
+  command, but it must remain non-interactive and bounded by timeout.
+
 `Stop`
 
 - This is the shared turn-end commit gate, not a repo lifecycle script.
@@ -125,7 +136,7 @@ Important fields:
 
 - `schema_version`: current adapter contract version. Today this is `1.0`.
 - `hook_event_name`: `SessionStart`, `UserPromptSubmit`, `PreCompact`,
-  or `SessionEnd`.
+  `SessionEnd`, or `CodexThreadFinalize` for explicit thread finalization.
 - `runtime`: `codex`.
 - `cwd`: where the Codex session was running.
 - `repo_root`: resolved Git top-level directory.
@@ -142,7 +153,7 @@ runtime-specific detail is genuinely needed.
 Repo hooks also receive:
 
 ```text
-AGENT_HOOK_EVENT=SessionStart | UserPromptSubmit | PreCompact | SessionEnd
+AGENT_HOOK_EVENT=SessionStart | UserPromptSubmit | PreCompact | SessionEnd | CodexThreadFinalize
 AGENT_HOOK_RUNTIME=codex
 AGENT_REPO_ROOT=/absolute/repo/root
 AGENT_HOOK_SCHEMA_VERSION=1.0
@@ -287,6 +298,8 @@ Expected behavior:
 - `PreCompact`: stdout passes through raw to the runtime.
 - `SessionEnd`: stdout goes to
   `~/.local/state/agents-control-plane/log/hooks-session-end.log`.
+- `CodexThreadFinalize`: stdout/stderr are consumed by
+  `finalize-codex-thread.py`; non-zero exit blocks archive.
 
 ## Change Checklist
 

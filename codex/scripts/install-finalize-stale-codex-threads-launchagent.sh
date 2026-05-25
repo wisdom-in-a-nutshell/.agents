@@ -2,39 +2,41 @@
 set -euo pipefail
 
 APPLY=0
-LABEL="com.${USER}.codex-session-archiver"
+LABEL="com.${USER}.codex-thread-finalizer"
+LEGACY_LABEL="com.${USER}.codex-session-archiver"
 INTERVAL_SECONDS=21600
 OLDER_THAN_HOURS=48
 MAX_REPORT=25
 RUN_AT_LOAD=1
-SCRIPT_PATH="${HOME}/.agents/codex/scripts/archive-stale-sessions.py"
+SCRIPT_PATH="${HOME}/.agents/codex/scripts/finalize-stale-codex-threads.py"
 PLIST_PATH="${HOME}/Library/LaunchAgents/${LABEL}.plist"
+LEGACY_PLIST_PATH="${HOME}/Library/LaunchAgents/${LEGACY_LABEL}.plist"
 LOG_DIR="${HOME}/.local/state/codex-control-plane/log"
-OUT_LOG="${LOG_DIR}/archive-stale-sessions.out.log"
-ERR_LOG="${LOG_DIR}/archive-stale-sessions.err.log"
+OUT_LOG="${LOG_DIR}/finalize-stale-codex-threads.out.log"
+ERR_LOG="${LOG_DIR}/finalize-stale-codex-threads.err.log"
 
 usage() {
   cat <<USAGE
 Usage: $(basename "$0") [options]
 
-Install/update a LaunchAgent that archives stale Codex sessions through the
-Codex app-server API. Default mode is dry-run. Use --apply to write and load.
+Install/update a LaunchAgent that finalizes stale Codex threads through the
+global finalize-codex-thread command. Default mode is dry-run. Use --apply to write and load.
 
 Options:
   --apply                    Write and load the LaunchAgent
   --dry-run                  Print the plist only (default)
-  --label <label>            LaunchAgent label (default: com.<user>.codex-session-archiver)
+  --label <label>            LaunchAgent label (default: com.<user>.codex-thread-finalizer)
   --interval-seconds <n>     StartInterval seconds (default: 21600, six hours)
-  --older-than-hours <n>     Forwarded archive threshold (default: 48)
+  --older-than-hours <n>     Forwarded stale-thread threshold (default: 48)
   --max-report <n>           Candidate detail lines kept in launchd logs (default: 25)
-  --script <path>            Archiver script path
+  --script <path>            Stale-thread finalizer script path
   --run-at-load              Run once immediately when loaded (default)
   --no-run-at-load           Wait until the first interval fires
   -h, --help                 Show this help
 
 Examples:
-  ~/.agents/codex/scripts/install-archive-stale-sessions-launchagent.sh
-  ~/.agents/codex/scripts/install-archive-stale-sessions-launchagent.sh --apply
+  ~/.agents/codex/scripts/install-finalize-stale-codex-threads-launchagent.sh
+  ~/.agents/codex/scripts/install-finalize-stale-codex-threads-launchagent.sh --apply
 USAGE
 }
 
@@ -107,6 +109,15 @@ render_plist() {
 PLIST
 }
 
+remove_legacy_launchagent() {
+  local domain="$1"
+  launchctl bootout "$domain" "$LEGACY_PLIST_PATH" >/dev/null 2>&1 || true
+  launchctl bootout "$domain/${LEGACY_LABEL}" >/dev/null 2>&1 || true
+  if [[ -f "$LEGACY_PLIST_PATH" ]]; then
+    rm -f "$LEGACY_PLIST_PATH"
+  fi
+}
+
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --apply)
@@ -157,7 +168,7 @@ while [[ $# -gt 0 ]]; do
 done
 
 [[ -n "$LABEL" ]] || die "missing --label"
-[[ -x "$SCRIPT_PATH" ]] || die "archiver script is not executable: $SCRIPT_PATH"
+[[ -x "$SCRIPT_PATH" ]] || die "stale-thread finalizer script is not executable: $SCRIPT_PATH"
 is_int "$INTERVAL_SECONDS" || die "invalid --interval-seconds: $INTERVAL_SECONDS"
 (( INTERVAL_SECONDS >= 300 )) || die "--interval-seconds must be >= 300"
 is_number "$OLDER_THAN_HOURS" || die "invalid --older-than-hours: $OLDER_THAN_HOURS"
@@ -180,6 +191,7 @@ if [[ ! -f "$PLIST_PATH" ]] || ! cmp -s "$TMP_PLIST" "$PLIST_PATH"; then
 fi
 
 DOMAIN="gui/$(id -u)"
+remove_legacy_launchagent "$DOMAIN"
 launchctl bootout "$DOMAIN" "$PLIST_PATH" >/dev/null 2>&1 || true
 launchctl bootstrap "$DOMAIN" "$PLIST_PATH"
 if (( RUN_AT_LOAD == 1 )); then
@@ -187,6 +199,7 @@ if (( RUN_AT_LOAD == 1 )); then
 fi
 
 printf 'Loaded %s from %s\n' "$LABEL" "$PLIST_PATH"
+printf 'Removed legacy LaunchAgent if present: %s\n' "$LEGACY_LABEL"
 printf 'Interval: %ss\n' "$INTERVAL_SECONDS"
-printf 'Archive threshold: updatedAt older than %sh\n' "$OLDER_THAN_HOURS"
+printf 'Finalize threshold: updatedAt older than %sh\n' "$OLDER_THAN_HOURS"
 printf 'Logs:\n  %s\n  %s\n' "$OUT_LOG" "$ERR_LOG"

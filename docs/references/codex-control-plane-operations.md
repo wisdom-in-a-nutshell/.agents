@@ -56,19 +56,19 @@ Use [Codex Control Plane Ownership](/Users/dobby/.agents/docs/references/codex-c
 - Apply the full Codex bootstrap batch:
   - [`bootstrap-machine-codex.sh`](/Users/dobby/.agents/codex/scripts/bootstrap-machine-codex.sh)
   - `~/.agents/codex/scripts/bootstrap-machine-codex.sh --apply`
-  - this applies the Codex control-plane outputs only, including the stale-session archive LaunchAgent; shared shell links still come from `~/GitHub/scripts/setup/codex/`
-- Check stale Codex sessions without archiving:
-  - [`archive-stale-sessions.py`](/Users/dobby/.agents/codex/scripts/archive-stale-sessions.py)
-  - `~/.agents/codex/scripts/archive-stale-sessions.py --dry-run --older-than-days 2`
+  - this applies the Codex control-plane outputs only, including the stale-thread finalization LaunchAgent; shared shell links still come from `~/GitHub/scripts/setup/codex/`
+- Check stale Codex threads without finalizing:
+  - [`finalize-stale-codex-threads.py`](/Users/dobby/.agents/codex/scripts/finalize-stale-codex-threads.py)
+  - `~/.agents/codex/scripts/finalize-stale-codex-threads.py --dry-run --older-than-days 2`
   - eligibility is based on Codex `thread.updatedAt`, not creation time
 - Check stale Codex Desktop sidebar projects without changing state:
   - [`prune-sidebar-projects.py`](/Users/dobby/.agents/codex/scripts/prune-sidebar-projects.py)
   - `~/.agents/codex/scripts/prune-sidebar-projects.py --plain`
   - for a MacBook sidebar showing Mac mini remote projects, add `--remote-host macmini`; use `--no-unsaved-thread-projects` when pruning only saved/remote sidebar entries
-- Install/update the stale-session archive LaunchAgent:
-  - [`install-archive-stale-sessions-launchagent.sh`](/Users/dobby/.agents/codex/scripts/install-archive-stale-sessions-launchagent.sh)
-  - `~/.agents/codex/scripts/install-archive-stale-sessions-launchagent.sh --apply`
-  - default schedule is every 6 hours, archiving managed-repo sessions whose last update is older than 48 hours
+- Install/update the stale-thread finalization LaunchAgent:
+  - [`install-finalize-stale-codex-threads-launchagent.sh`](/Users/dobby/.agents/codex/scripts/install-finalize-stale-codex-threads-launchagent.sh)
+  - `~/.agents/codex/scripts/install-finalize-stale-codex-threads-launchagent.sh --apply`
+  - default schedule is every 6 hours, finalizing managed-repo threads whose last update is older than 48 hours
 - Install/update the nightly sidebar project prune LaunchAgent:
   - [`install-sidebar-project-prune-launchagent.sh`](/Users/dobby/.agents/codex/scripts/install-sidebar-project-prune-launchagent.sh)
   - `~/.agents/codex/scripts/install-sidebar-project-prune-launchagent.sh --apply`
@@ -127,7 +127,7 @@ Use [Codex Control Plane Ownership](/Users/dobby/.agents/docs/references/codex-c
 - `~/.codex/config.toml` contains `[hooks.state]` trust hashes for managed hooks rendered by this control plane, so global and repo-local lifecycle hooks do not need repeated `/hooks` review on every machine bootstrap.
 - `~/.codex/config.toml` explicitly preserves enabled native Codex plugins such as `computer-use@openai-bundled`, points `openai-bundled` at the marketplace inside `Codex.app`, and disables bundled Codex skills classified as `disabled` in [`bundled-skills-policy.json`](/Users/dobby/.agents/codex/config/bundled-skills-policy.json)
 - `~/.codex/hooks.json` is rendered from `hooks/registry.json` for global Codex hooks. The managed `Stop` hook renders there; repo-specific lifecycle hooks such as `SessionStart`, `UserPromptSubmit`, `PreCompact`, and `SessionEnd` render into repo `.codex/hooks.json`.
-- `com.<user>.codex-session-archiver` is loaded as a LaunchAgent and runs [`archive-stale-sessions.py`](/Users/dobby/.agents/codex/scripts/archive-stale-sessions.py) every 6 hours against managed repo paths from [`repo-bootstrap.json`](/Users/dobby/.agents/codex/config/repo-bootstrap.json).
+- `com.<user>.codex-thread-finalizer` is loaded as a LaunchAgent and runs [`finalize-stale-codex-threads.py`](/Users/dobby/.agents/codex/scripts/finalize-stale-codex-threads.py) every 6 hours against managed repo paths from [`repo-bootstrap.json`](/Users/dobby/.agents/codex/config/repo-bootstrap.json).
 - `~/.codex/config.toml` contains no Git conflict markers
 - `~/.codex/vendor_imports/skills` is a valid Git checkout:
   - `git -C ~/.codex/vendor_imports/skills rev-parse --show-toplevel`
@@ -187,15 +187,19 @@ Use [Codex Control Plane Ownership](/Users/dobby/.agents/docs/references/codex-c
   - runs trusted-project sync
   - runs repo-local Codex config sync
   - runs Ghostty config reconciliation
-  - installs the stale-session archive LaunchAgent
+  - installs the stale-thread finalization LaunchAgent
   - runs control-plane validation at the end and fails if the rendered state is inconsistent
-- [`archive-stale-sessions.py`](/Users/dobby/.agents/codex/scripts/archive-stale-sessions.py)
-  - starts a short-lived Codex app-server JSONL client and uses the documented `thread/list` and `thread/archive` methods
+- [`finalize-stale-codex-threads.py`](/Users/dobby/.agents/codex/scripts/finalize-stale-codex-threads.py)
+  - starts a short-lived Codex app-server JSONL client, uses `thread/list` for eligibility, then invokes [`finalize-codex-thread.py`](/Users/dobby/.agents/codex/scripts/finalize-codex-thread.py) for each stale thread
   - reads managed repo paths from [`repo-bootstrap.json`](/Users/dobby/.agents/codex/config/repo-bootstrap.json) unless `--repo` filters are supplied
-  - archives only non-archived sessions whose `updatedAt` is older than the configured threshold; default is 48 hours
+  - finalizes only non-archived threads whose `updatedAt` is older than the configured threshold; default is 48 hours
   - does not try to detect what the Desktop app currently has loaded; the safety boundary is the last-activity cutoff
-  - defaults to dry-run; use `--apply` for actual archiving
+  - defaults to dry-run; use `--apply` for actual finalization
   - uses a machine-local lock under `~/.local/state/codex-control-plane/` so overlapping launchd runs do not race
+- [`finalize-codex-thread.py`](/Users/dobby/.agents/codex/scripts/finalize-codex-thread.py)
+  - takes only `--thread-id` as canonical thread identity
+  - uses app-server `thread/read` to derive the thread `cwd`, resolves the repo root, runs optional repo policy at `scripts/hooks/codex_thread_finalize.py`, then archives the source thread through `thread/archive`
+  - for repos without `scripts/hooks/codex_thread_finalize.py`, finalization is archive-only
 - [`prune-sidebar-projects.py`](/Users/dobby/.agents/codex/scripts/prune-sidebar-projects.py)
   - removes stale project roots from Codex Desktop sidebar state without deleting repo files or session files
   - reads Codex thread activity from app-server `thread/list` by default, so cleanup follows Codex's listable thread view rather than every Desktop workspace bookkeeping row
@@ -205,9 +209,10 @@ Use [Codex Control Plane Ownership](/Users/dobby/.agents/docs/references/codex-c
   - prunes local saved roots from `electron-saved-workspace-roots` and stale remote entries from `remote-projects`; matching `project-order` entries are removed at the same time
   - backs up `.codex-global-state.json` and `state_5.sqlite*` under `~/.local/state/codex-control-plane/sidebar-project-prune/backups/` before applying changes
   - defaults to dry-run and emits JSON by default; use `--plain` for compact operator inspection
-- [`install-archive-stale-sessions-launchagent.sh`](/Users/dobby/.agents/codex/scripts/install-archive-stale-sessions-launchagent.sh)
-  - renders `~/Library/LaunchAgents/com.<user>.codex-session-archiver.plist`
-  - schedules [`archive-stale-sessions.py`](/Users/dobby/.agents/codex/scripts/archive-stale-sessions.py) every 6 hours by default
+- [`install-finalize-stale-codex-threads-launchagent.sh`](/Users/dobby/.agents/codex/scripts/install-finalize-stale-codex-threads-launchagent.sh)
+  - renders `~/Library/LaunchAgents/com.<user>.codex-thread-finalizer.plist`
+  - schedules [`finalize-stale-codex-threads.py`](/Users/dobby/.agents/codex/scripts/finalize-stale-codex-threads.py) every 6 hours by default
+  - removes the legacy `com.<user>.codex-session-archiver` LaunchAgent if present during apply
   - writes logs under `~/.local/state/codex-control-plane/log/`
   - supports dry-run output before writing or loading launchd state
 - [`install-sidebar-project-prune-launchagent.sh`](/Users/dobby/.agents/codex/scripts/install-sidebar-project-prune-launchagent.sh)

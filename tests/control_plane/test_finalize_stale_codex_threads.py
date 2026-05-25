@@ -1,0 +1,246 @@
+from __future__ import annotations
+
+import importlib.util
+import json
+import sys
+from pathlib import Path
+from typing import Any
+
+from tests.control_plane.support import REPO_ROOT, TempDirTestCase, run_command, write_executable
+
+
+def load_stale_finalizer_module():  # noqa: ANN202
+    path = REPO_ROOT / "codex/scripts/finalize-stale-codex-threads.py"
+    spec = importlib.util.spec_from_file_location("finalize_stale_codex_threads", path)
+    if spec is None or spec.loader is None:
+        raise RuntimeError(f"could not load {path}")
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
+    return module
+
+
+def load_thread_finalizer_module():  # noqa: ANN202
+    path = REPO_ROOT / "codex/scripts/finalize-codex-thread.py"
+    spec = importlib.util.spec_from_file_location("finalize_codex_thread", path)
+    if spec is None or spec.loader is None:
+        raise RuntimeError(f"could not load {path}")
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
+    return module
+
+
+class FakeAppServerClient:
+    def __init__(self, responses: list[dict[str, Any]]) -> None:
+        self.responses = responses
+        self.calls: list[tuple[str, dict[str, Any]]] = []
+
+    def __enter__(self) -> "FakeAppServerClient":
+        return self
+
+    def __exit__(self, *_exc: object) -> None:
+        return None
+
+    def request(self, method: str, params: dict[str, Any] | None = None) -> dict[str, Any]:
+        self.calls.append((method, params or {}))
+        if not self.responses:
+            raise AssertionError(f"unexpected request: {method}")
+        return self.responses.pop(0)
+
+
+class FakeAppServerFactory:
+    def __init__(self, responses_by_client: list[list[dict[str, Any]]]) -> None:
+        self.responses_by_client = responses_by_client
+        self.clients: list[FakeAppServerClient] = []
+
+    def __call__(self, _codex_bin: str, _timeout_seconds: float) -> FakeAppServerClient:
+        if not self.responses_by_client:
+            raise AssertionError("unexpected app-server client")
+        client = FakeAppServerClient(self.responses_by_client.pop(0))
+        self.clients.append(client)
+        return client
+
+
+class FinalizeStaleCodexThreadsTests(TempDirTestCase):
+    def test_candidate_selection_uses_updated_at_cutoff(self) -> None:
+        module = load_stale_finalizer_module()
+        client = FakeAppServerClient(
+            [
+                {
+                    "data": [
+                        {
+                            "id": "old-thread",
+                            "name": "Old enough",
+                            "cwd": str(self.temp_path),
+                            "updatedAt": 100,
+                            "source": "vscode",
+                            "status": {"type": "notLoaded"},
+                            "path": "/tmp/old.jsonl",
+                        },
+                        {
+                            "id": "fresh-thread",
+                            "name": "Too fresh",
+                            "cwd": str(self.temp_path),
+                            "updatedAt": 200,
+                            "source": "vscode",
+                            "status": {"type": "notLoaded"},
+                            "path": "/tmp/fresh.jsonl",
+                        },
+                    ],
+                    "nextCursor": "ignored-after-cutoff",
+                }
+            ]
+        )
+
+        candidates = module.list_candidates(
+            client,
+            repos=[str(self.temp_path)],
+            cutoff_epoch=150,
+            page_limit=100,
+            source_kinds=None,
+            use_state_db_only=False,
+        )
+
+        self.assertEqual([candidate.thread_id for candidate in candidates], ["old-thread"])
+        self.assertEqual(client.calls[0][0], "thread/list")
+        self.assertEqual(client.calls[0][1]["sortKey"], "updated_at")
+        self.assertEqual(client.calls[0][1]["sortDirection"], "asc")
+
+    def test_help_does_not_claim_loaded_thread_detection(self) -> None:
+        result = run_command(
+            [
+                str(REPO_ROOT / "codex/scripts/finalize-stale-codex-threads.py"),
+                "--help",
+            ]
+        )
+
+        self.assertNotIn("skip-loaded", result.stdout)
+        self.assertNotIn("thread/loaded", result.stdout)
+
+    def test_stale_apply_calls_finalizer_command_with_thread_id_only(self) -> None:
+        module = load_stale_finalizer_module()
+        log_path = self.temp_path / "args.json"
+        finalizer = write_executable(
+            self.temp_path / "finalize-codex-thread.py",
+            """#!/usr/bin/env python3
+import json, pathlib, sys
+path = pathlib.Path(__LOG_PATH__)
+path.write_text(json.dumps(sys.argv[1:]))
+print(json.dumps({
+  "schema_version": "1.0",
+  "command": "finalize-codex-thread",
+  "status": "ok",
+  "data": {"result": {"thread_id": sys.argv[sys.argv.index('--thread-id') + 1], "finalizer_status": "not_found", "archived": True}},
+  "error": None,
+  "meta": {}
+}))
+""".replace("__LOG_PATH__", repr(str(log_path))),
+        )
+        candidate = module.Candidate(
+            thread_id="thread-123",
+            name="Old",
+            cwd="/repo/from/list",
+            updated_at=100,
+            source="vscode",
+            status={"type": "notLoaded"},
+            path=None,
+        )
+
+        result = module.run_thread_finalizer(
+            command=finalizer,
+            candidate=candidate,
+            codex_bin="fake-codex",
+            timeout_seconds=1,
+            finalizer_timeout_seconds=1,
+        )
+
+        argv = json.loads(log_path.read_text())
+        self.assertIn("--thread-id", argv)
+        self.assertEqual(argv[argv.index("--thread-id") + 1], "thread-123")
+        self.assertNotIn("--cwd", argv)
+        self.assertEqual(result["thread_id"], "thread-123")
+
+
+class FinalizeCodexThreadTests(TempDirTestCase):
+    def test_thread_finalizer_derives_repo_from_thread_read_and_archives(self) -> None:
+        module = load_thread_finalizer_module()
+        repo = self.temp_path / "repo"
+        repo.mkdir()
+        finalizer_payload = self.temp_path / "finalizer-payload.json"
+        write_executable(
+            repo / "scripts/hooks/codex_thread_finalize.py",
+            f"""#!/usr/bin/env python3
+import pathlib, sys
+pathlib.Path({str(finalizer_payload)!r}).write_text(sys.stdin.read())
+""",
+        )
+        client_factory = FakeAppServerFactory(
+            [
+                [
+                    {
+                        "thread": {
+                            "id": "thread-123",
+                            "cwd": str(repo),
+                            "name": "Needs finalizing",
+                            "updatedAt": 100,
+                        }
+                    },
+                ],
+                [{}],
+            ]
+        )
+
+        result = module.finalize_thread(
+            thread_id="thread-123",
+            reason="test",
+            dry_run=False,
+            codex_bin="fake-codex",
+            timeout_seconds=5,
+            finalizer_timeout_seconds=5,
+            client_factory=client_factory,
+        )
+
+        self.assertTrue(result.archived)
+        self.assertEqual(result.cwd, str(repo))
+        self.assertEqual(result.repo_root, str(repo.resolve()))
+        self.assertEqual(result.finalizer_status, "completed")
+        self.assertEqual([call[0] for call in client_factory.clients[0].calls], ["thread/read"])
+        self.assertEqual([call[0] for call in client_factory.clients[1].calls], ["thread/archive"])
+        payload = json.loads(finalizer_payload.read_text())
+        self.assertEqual(payload["thread_id"], "thread-123")
+        self.assertEqual(payload["reason"], "test")
+
+    def test_thread_finalizer_dry_run_does_not_archive(self) -> None:
+        module = load_thread_finalizer_module()
+        repo = self.temp_path / "repo"
+        repo.mkdir()
+        client_factory = FakeAppServerFactory(
+            [
+                [
+                    {
+                        "thread": {
+                            "id": "thread-123",
+                            "cwd": str(repo),
+                            "name": "Needs finalizing",
+                            "updatedAt": 100,
+                        }
+                    },
+                ],
+            ]
+        )
+
+        result = module.finalize_thread(
+            thread_id="thread-123",
+            reason="test",
+            dry_run=True,
+            codex_bin="fake-codex",
+            timeout_seconds=5,
+            finalizer_timeout_seconds=5,
+            client_factory=client_factory,
+        )
+
+        self.assertFalse(result.archived)
+        self.assertEqual(result.skipped_reason, "dry_run")
+        self.assertEqual([call[0] for call in client_factory.clients[0].calls], ["thread/read"])
+        self.assertEqual(len(client_factory.clients), 1)
