@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import plistlib
 import sys
 
 from tests.control_plane.support import REPO_ROOT, TempDirTestCase, write_json, write_text, run_command
@@ -189,3 +190,46 @@ class ControlPlaneDashboardDataTests(TempDirTestCase):
         payload = json.loads(result.stdout)
         self.assertEqual(payload["status"], "error")
         self.assertEqual(payload["error"]["code"], "E_ROOT_NOT_FOUND")
+
+
+class ControlPlaneDashboardLaunchAgentTests(TempDirTestCase):
+    def test_launchagent_installer_dry_run_renders_dashboard_service_plist(self) -> None:
+        result = run_command(
+            [
+                "bash",
+                str(REPO_ROOT / "scripts/install-control-plane-dashboard-launchagent.sh"),
+                "--dry-run",
+                "--label",
+                "com.test.agents-dashboard",
+                "--root",
+                str(REPO_ROOT),
+                "--host",
+                "127.0.0.1",
+                "--port",
+                "8765",
+                "--python",
+                sys.executable,
+            ]
+        )
+
+        payload = plistlib.loads(result.stdout.encode("utf-8"))
+        self.assertEqual(payload["Label"], "com.test.agents-dashboard")
+        self.assertTrue(payload["RunAtLoad"])
+        self.assertTrue(payload["KeepAlive"])
+        self.assertEqual(payload["ThrottleInterval"], 60)
+        self.assertEqual(payload["WorkingDirectory"], str(REPO_ROOT))
+        self.assertEqual(
+            payload["ProgramArguments"],
+            [
+                sys.executable,
+                str(REPO_ROOT / "scripts/control-plane-dashboard.py"),
+                "serve",
+                "--root",
+                str(REPO_ROOT),
+                "--host",
+                "127.0.0.1",
+                "--port",
+                "8765",
+                "--no-input",
+            ],
+        )

@@ -71,6 +71,40 @@ Check or stop the private exposure:
 ./scripts/serve-control-plane-dashboard.sh stop
 ```
 
+## Persistent Local Server
+
+For normal use on the Mac Mini, install the local dashboard server as a user
+LaunchAgent and keep Tailscale Serve pointed at the same port:
+
+```bash
+./scripts/install-control-plane-dashboard-launchagent.sh --apply
+./scripts/serve-control-plane-dashboard.sh status
+```
+
+The LaunchAgent keeps `http://127.0.0.1:8765/dashboard/` running at login and
+restarts it if the process exits. Tailscale Serve owns the private tailnet URL:
+
+```text
+https://dobbys-mac-mini.tail7857da.ts.net:8765/dashboard/
+```
+
+Inspect the service:
+
+```bash
+./scripts/install-control-plane-dashboard-launchagent.sh --status
+./scripts/install-control-plane-dashboard-launchagent.sh --logs
+```
+
+Remove only the persistent local server:
+
+```bash
+./scripts/install-control-plane-dashboard-launchagent.sh --uninstall
+```
+
+This does not remove the Tailscale Serve proxy. Use
+`./scripts/serve-control-plane-dashboard.sh stop` only when you also want to
+remove the private tailnet exposure.
+
 For additional local apps, prefer another fixed port rather than path routing:
 
 ```text
