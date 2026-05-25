@@ -92,6 +92,39 @@ class LocalTranscriptionApiClient:
 
         return self._request_json("GET", f"/jobs/{job_id}")
 
+    def fetch_text(self, url: str) -> str:
+        """Fetch a plain-text artifact URL."""
+
+        try:
+            response = self.session.get(url, timeout=self.request_timeout_seconds)
+        except requests.Timeout as exc:
+            raise CliError(
+                code="E_TIMEOUT",
+                message=f"Timed out while fetching transcript artifact {url}.",
+                exit_code=5,
+                retryable=True,
+                hint="Retry the command or increase --request-timeout-seconds.",
+            ) from exc
+        except requests.RequestException as exc:
+            raise CliError(
+                code="E_NETWORK",
+                message=f"Failed to fetch transcript artifact {url}.",
+                exit_code=4,
+                retryable=True,
+                hint="Check network connectivity and artifact URL accessibility.",
+            ) from exc
+
+        if response.status_code >= 400:
+            raise CliError(
+                code=_http_error_code(response.status_code),
+                message=f"Transcript artifact fetch failed with HTTP {response.status_code}.",
+                exit_code=_http_exit_code(response.status_code),
+                retryable=response.status_code >= 500,
+                hint="Inspect the transcript_url returned by the WIN job.",
+                detail={"url": url, "status_code": response.status_code},
+            )
+        return response.text
+
     def wait_for_job(
         self,
         job_id: str,
@@ -455,6 +488,7 @@ def _execute(args: argparse.Namespace) -> dict[str, Any]:
             else api_client.get_job(args.job_id)
         )
         return _data_from_job(
+            api_client=api_client,
             job=job,
             input_meta=None,
             endpoint=None,
@@ -504,6 +538,7 @@ def _execute(args: argparse.Namespace) -> dict[str, Any]:
             progress_callback=_progress_callback(args),
         )
         return _data_from_job(
+            api_client=api_client,
             job=job,
             input_meta=input_meta,
             endpoint=endpoint,
@@ -672,6 +707,7 @@ def upload_local_file(
 
 def _data_from_job(
     *,
+    api_client: LocalTranscriptionApiClient,
     job: dict[str, Any],
     input_meta: dict[str, Any] | None,
     endpoint: str | None,
@@ -681,17 +717,14 @@ def _data_from_job(
     if not isinstance(result, dict):
         result = None
 
+    artifacts = _artifacts_from_result(result)
+    transcript = (result or {}).get("text")
+    if not transcript and artifacts and artifacts.get("transcript_url"):
+        transcript = api_client.fetch_text(str(artifacts["transcript_url"]))
+
     return {
-        "transcript": (result or {}).get("text"),
-        "artifacts": (
-            {
-                "transcript_url": result.get("transcript_url"),
-                "words_url": result.get("words_url"),
-                "sentences_url": result.get("sentences_url"),
-            }
-            if result
-            else None
-        ),
+        "transcript": transcript,
+        "artifacts": artifacts,
         "source_id": (result or {}).get("source_id"),
         "provider": (result or {}).get("provider"),
         "job": {
@@ -702,6 +735,16 @@ def _data_from_job(
         },
         "input": input_meta,
         "result": result,
+    }
+
+
+def _artifacts_from_result(result: dict[str, Any] | None) -> dict[str, Any] | None:
+    if not result:
+        return None
+    return {
+        "transcript_url": result.get("transcript_url"),
+        "words_url": result.get("words_url"),
+        "sentences_url": result.get("sentences_url"),
     }
 
 

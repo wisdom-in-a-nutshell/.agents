@@ -114,6 +114,18 @@ class LocalTranscriptionSkillClientTests(TempDirTestCase):
             payload["data"]["artifacts"]["transcript_url"],
             "https://storage.example/cache/transcript.txt",
         )
+        self.assertEqual(
+            payload["data"]["result"],
+            {
+                "source_id": "source-123",
+                "provider": "local_transcription",
+                "word_count": 2,
+                "sentence_count": 1,
+                "transcript_url": "https://storage.example/cache/transcript.txt",
+                "words_url": "https://storage.example/cache/words.json",
+                "sentences_url": "https://storage.example/cache/sentences.json",
+            },
+        )
         self.assertEqual(fake_client.submissions[0]["media_url"], "https://storage.example/cache/audio.m4a")
         self.assertEqual(fake_client.submissions[0]["provider"], "local_transcription")
         self.assertTrue(fake_client.submissions[0]["diarize"])
@@ -153,9 +165,15 @@ class _FakeApiClient:
             "result": {
                 "source_id": "source-123",
                 "provider": "local_transcription",
-                "text": "Hello world",
+                "word_count": 2,
+                "sentence_count": 1,
                 "transcript_url": "https://storage.example/cache/transcript.txt",
                 "words_url": "https://storage.example/cache/words.json",
                 "sentences_url": "https://storage.example/cache/sentences.json",
             },
         }
+
+    def fetch_text(self, url: str) -> str:
+        if url != "https://storage.example/cache/transcript.txt":
+            raise AssertionError(f"Unexpected transcript URL: {url}")
+        return "Hello world"

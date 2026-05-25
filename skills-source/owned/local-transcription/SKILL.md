@@ -29,7 +29,7 @@ The old `/Users/dobby/GitHub/local-transcription/bin/transcribe` Superwhisper pa
 
 3. Prefer JSON output for agent workflows. It is the default stdout contract and includes `schema_version`, `command`, `status`, `data`, `error`, and `meta`.
 
-4. On success, use `data.transcript` as the transcript text. Use `data.artifacts.transcript_url`, `data.artifacts.words_url`, and `data.artifacts.sentences_url` when downstream work needs the cached bucket artifacts.
+4. On success, use `data.transcript` as the transcript text. WIN stores the heavy transcript payload in cached bucket artifacts and returns only a compact manifest; the skill client fetches `data.artifacts.transcript_url` when transcript text is needed. Use `data.artifacts.words_url` and `data.artifacts.sentences_url` when downstream work needs timing data.
 
 5. Use `--plain` only when the user wants quick readable transcript text or a shell pipeline:
 

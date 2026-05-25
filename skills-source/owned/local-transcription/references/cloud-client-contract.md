@@ -18,6 +18,8 @@ Use it when an agent needs:
   - Inputs: exactly one of `--file` or `--url`
   - Local files are uploaded to R2 `cache/` through `upload-media`
   - Endpoint: `POST /media/transcribe/artifacts`
+  - WIN returns a compact artifact manifest; the client fetches `transcript_url`
+    when it needs to emit transcript text
   - Default provider: `local_transcription`
   - Default diarization: enabled
 - `status`
@@ -54,7 +56,15 @@ Default stdout is one JSON object:
     "input": {
       "used_upload": true
     },
-    "result": {}
+    "result": {
+      "source_id": "...",
+      "provider": "local_transcription",
+      "word_count": 123,
+      "sentence_count": 45,
+      "transcript_url": "https://...",
+      "words_url": "https://...",
+      "sentences_url": "https://..."
+    }
   },
   "error": null,
   "meta": {
