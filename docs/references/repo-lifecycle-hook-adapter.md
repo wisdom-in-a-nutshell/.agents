@@ -3,23 +3,24 @@
 Use this page when adding repo-specific behavior to Codex lifecycle hooks.
 
 The shared `.agents` control plane owns Codex integration and dispatch. Each
-repository owns what it wants to do when a lifecycle event arrives.
+repository owns what it wants to do when a lifecycle event or explicit thread
+finalization arrives.
 
-```mermaid
-flowchart TD
-    A[Codex] --> B[shared .agents hook dispatcher]
-    B --> C[hooks/scripts/hook_runtime.py]
-    C --> D[normalized JSON adapter payload]
-    D --> E{repo hook exists?}
-    E -->|yes| F[scripts/hooks/session_start.py]
-    E -->|yes| G[scripts/hooks/user_prompt_submit.py]
-    E -->|yes| H[scripts/hooks/pre_compact.py]
-    E -->|yes| K[scripts/hooks/session_end.py]
-    E -->|no| N[exit successfully]
-    F --> J[stdout can become context]
-    G --> J
-    H --> L[stdout passes through raw]
-    K --> M[stdout is logged only]
+## Shape
+
+```text
+Codex runtime event
+  -> shared ~/.agents hook script
+  -> hooks/scripts/hook_runtime.py
+  -> normalized JSON adapter payload
+  -> repo script when it exists
+
+Explicit thread finalization
+  -> ~/.agents/codex/scripts/finalize-codex-thread.py --thread-id <id> --apply
+  -> app-server thread/read derives cwd + repo root
+  -> repo scripts/hooks/finalize_codex_thread.py when it exists
+  -> one same-thread finalization turn
+  -> app-server thread/archive after success
 ```
 
 ## Rule Of Thumb
@@ -27,33 +28,33 @@ flowchart TD
 Put repo policy in the repo. Keep the shared control plane boring.
 
 - Shared `.agents` layer:
-  - receives Codex hook payloads
+  - receives Codex hook payloads or explicit finalizer invocations
   - runs event-specific entrypoints such as `session_start.py`
   - keeps common dispatch plumbing in `hooks/scripts/hook_runtime.py`
-  - resolves the Git repo root
+  - resolves the Git repo root when a runtime hook provides `cwd`
   - normalizes the payload shape
   - runs a repo hook if it exists
-  - enforces short, non-interactive execution
+  - enforces short, non-interactive execution for native runtime hooks
 - Repo layer:
   - decides whether the event matters
   - reads repo files or local state
-  - emits context or writes follow-up work
-  - keeps expensive work out of blocking hooks
+  - emits context, a finalization instruction, or writes follow-up records
+  - keeps expensive work out of blocking runtime hooks
 
 ## Repo Hook Locations
 
 Lifecycle events are not enabled just because a script exists. The shared
 [`hooks/registry.json`](/Users/dobby/.agents/hooks/registry.json) decides which
-managed repos receive which events, and the repo script only runs when the
-event is assigned to that repo.
+managed repos receive which native Codex events, and the repo script only runs
+when the event is assigned to that repo.
 
 Create these files only when a repo needs them:
 
 ```text
 scripts/hooks/session_start.py
 scripts/hooks/user_prompt_submit.py
-scripts/hooks/pre_compact.py
 scripts/hooks/session_end.py
+scripts/hooks/finalize_codex_thread.py
 ```
 
 All repo lifecycle hooks are Python. Do not add shell compatibility shims.
@@ -72,30 +73,26 @@ All repo lifecycle hooks are Python. Do not add shell compatibility shims.
 - Stdout can become additional prompt context.
 - Good for very small, current-time or current-state context.
 
-`PreCompact`
-
-- Runs before Codex compacts a session, where supported.
-- Good for last-chance preservation or guardrails before context is compressed.
-- Repo stdout is passed through raw; emit only valid runtime hook JSON or nothing.
-- Keep it fast. Enqueue slow consolidation instead of doing it inline.
-
 `SessionEnd`
 
 - Rendered for Codex-managed repos when assigned in the shared registry.
 - Stdout is logged, not injected into context, because the session is ending.
-- Good for enqueueing cleanup, summary, or memory jobs.
+- Good for writing a small shutdown record or cleanup pointer.
 - Keep it fast. Do not do slow summarization inline.
 
-`CodexThreadFinalize`
+`FinalizeCodexThread`
 
-- Not a native runtime hook. It is the repo-policy extension point used by the
-  global `codex/scripts/finalize-codex-thread.py` command.
-- Optional repo script path: `scripts/hooks/codex_thread_finalize.py`.
+- Not a native Codex runtime hook. It is the repo-policy extension point used by
+  the global `codex/scripts/finalize-codex-thread.py` command.
+- Optional repo script path: `scripts/hooks/finalize_codex_thread.py`.
 - Runs before the global finalizer archives a known Codex thread.
+- The repo script prints the instruction for a final turn in the same source
+  thread. A non-zero exit blocks archive.
 - Good for repo-specific absorption of useful thread context: Dobby memory,
   project trackers, docs, or other agent-native repo state.
-- May run longer than runtime hooks because it is an explicit finalization
-  command, but it must remain non-interactive and bounded by timeout.
+- May run longer than native runtime hooks because it is an explicit
+  finalization command, but it must remain non-interactive and bounded by
+  timeout.
 
 `Stop`
 
@@ -104,10 +101,10 @@ All repo lifecycle hooks are Python. Do not add shell compatibility shims.
   and pushes.
 - Do not use `scripts/check-fast.sh` as a general after-turn hook.
 
-## Payload Contract
+## Runtime Payload Contract
 
-Repo hooks receive one JSON object on stdin. Runtime-specific details are
-preserved under `raw_payload`.
+Native runtime repo hooks receive one JSON object on stdin. Runtime-specific
+details are preserved under `raw_payload`.
 
 ```json
 {
@@ -135,8 +132,8 @@ preserved under `raw_payload`.
 Important fields:
 
 - `schema_version`: current adapter contract version. Today this is `1.0`.
-- `hook_event_name`: `SessionStart`, `UserPromptSubmit`, `PreCompact`,
-  `SessionEnd`, or `CodexThreadFinalize` for explicit thread finalization.
+- `hook_event_name`: `SessionStart`, `UserPromptSubmit`, or `SessionEnd` for
+  native runtime hooks.
 - `runtime`: `codex`.
 - `cwd`: where the Codex session was running.
 - `repo_root`: resolved Git top-level directory.
@@ -148,13 +145,42 @@ Important fields:
 Prefer top-level normalized fields in repo hooks. Read `raw_payload` only when a
 runtime-specific detail is genuinely needed.
 
+## Finalization Payload Contract
+
+`finalize_codex_thread.py` receives one JSON object on stdin from the global
+finalizer:
+
+```json
+{
+  "schema_version": "1.0",
+  "hook_event_name": "FinalizeCodexThread",
+  "command": "finalize-codex-thread",
+  "thread_id": "019e...",
+  "source_thread_id": "019e...",
+  "reason": "stale-cleanup",
+  "cwd": "/Users/dobby/GitHub/adi",
+  "repo_root": "/Users/dobby/GitHub/adi",
+  "archive_requested": true,
+  "finalization_mode": "same_thread_turn",
+  "thread": {}
+}
+```
+
+The script should print either:
+
+- a concise instruction for the same-thread finalization turn; or
+- nothing, if the repo has no memory/state work to do before archive.
+
+A non-zero exit means finalization failed and the global command must not
+archive the source thread.
+
 ## Environment
 
 Repo hooks also receive:
 
 ```text
-AGENT_HOOK_EVENT=SessionStart | UserPromptSubmit | PreCompact | SessionEnd | CodexThreadFinalize
-AGENT_HOOK_RUNTIME=codex
+AGENT_HOOK_EVENT=SessionStart | UserPromptSubmit | SessionEnd | FinalizeCodexThread
+AGENT_HOOK_RUNTIME=codex        # native runtime hooks only
 AGENT_REPO_ROOT=/absolute/repo/root
 AGENT_HOOK_SCHEMA_VERSION=1.0
 ```
@@ -218,12 +244,12 @@ if __name__ == "__main__":
 For `session_start.py` and `user_prompt_submit.py`, stdout may become model
 context for Codex. Print only concise context that should be shown to the agent.
 
-For `pre_compact.py`, stdout is passed through raw to the runtime. Print nothing
-unless you intentionally want to return a valid hook JSON payload for that
-runtime.
-
 For `session_end.py`, stdout is only logged. Use it for diagnostics, not model
 instructions.
+
+For `finalize_codex_thread.py`, stdout is consumed by
+`finalize-codex-thread.py` as the final-turn instruction. Print no debug text to
+stdout.
 
 ## Session-End Pattern
 
@@ -233,7 +259,7 @@ Session end should be quick:
 session_end.py
   -> read normalized payload
   -> inspect transcript_path if present
-  -> write a small local job or summary pointer
+  -> write a small local record or pointer
   -> return success quickly
 ```
 
@@ -246,16 +272,7 @@ rewrite memory
 run slow validation
 ```
 
-The better loop is:
-
-```text
-SessionEnd captures a transcript pointer
-background worker or next SessionStart processes it
-SessionStart injects the useful compact summary
-```
-
-The same principle applies to `PreCompact`: use it to capture pointers or
-enqueue work, not to run slow summarization inline.
+Use explicit thread finalization for end-of-thread memory work.
 
 ## Local Smoke Tests
 
@@ -283,22 +300,24 @@ printf '{"hook_event_name":"SessionEnd","cwd":"%s","session_id":"test-session","
   | python3 ~/.agents/hooks/scripts/session_end.py --runtime codex
 ```
 
-For compaction:
+For explicit finalization:
 
 ```bash
-cd /path/to/repo
-printf '{"hook_event_name":"PreCompact","cwd":"%s","session_id":"test-session"}' "$PWD" \
-  | python3 ~/.agents/hooks/scripts/pre_compact.py --runtime codex
+~/.agents/codex/scripts/finalize-codex-thread.py \
+  --thread-id <codex-thread-id> \
+  --reason manual \
+  --apply \
+  --json \
+  --no-input
 ```
 
 Expected behavior:
 
 - Missing repo hook: exits `0`, no output.
 - `SessionStart` / `UserPromptSubmit`: stdout may be wrapped and forwarded for Codex.
-- `PreCompact`: stdout passes through raw to the runtime.
 - `SessionEnd`: stdout goes to
   `~/.local/state/agents-control-plane/log/hooks-session-end.log`.
-- `CodexThreadFinalize`: stdout/stderr are consumed by
+- `FinalizeCodexThread`: stdout/stderr are consumed by
   `finalize-codex-thread.py`; non-zero exit blocks archive.
 
 ## Change Checklist
@@ -306,12 +325,12 @@ Expected behavior:
 When adding or changing repo lifecycle hooks:
 
 - Keep hooks non-interactive.
-- Keep hooks fast and deterministic.
+- Keep native runtime hooks fast and deterministic.
 - Prefer normalized payload fields over `raw_payload`.
 - Use Python only.
 - Avoid secrets in stdout, stderr, payload files, and logs.
 - If the hook emits context, make it concise and directly useful.
-- If the hook needs slow work, enqueue it and return.
+- If the hook needs slow memory work, move it to explicit finalization.
 
 When changing shared hook dispatchers in `.agents`, run:
 
@@ -322,7 +341,6 @@ python3 -m py_compile \
   hooks/scripts/hook_runtime.py \
   hooks/scripts/session_start.py \
   hooks/scripts/user_prompt_submit.py \
-  hooks/scripts/pre_compact.py \
   hooks/scripts/session_end.py
 python3 -m unittest tests.control_plane.test_hooks_control_plane
 ./scripts/test-control-plane.sh
@@ -339,6 +357,6 @@ Use ~/.agents/docs/references/repo-lifecycle-hook-adapter.md.
 
 Add repo-specific lifecycle behavior only under scripts/hooks/*.py.
 Do not edit rendered .codex/hooks.json.
-Keep the hook fast and non-interactive.
+Keep native runtime hooks fast and non-interactive.
 Run the control-plane tests before handing back.
 ```

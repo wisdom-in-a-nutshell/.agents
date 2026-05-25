@@ -79,13 +79,6 @@ flowchart TD
     L --> M["forward stdout as additional context"]
     K -->|"no"| N["silent success"]
 
-    B --> O["Codex PreCompact"]
-    O --> P["hooks/scripts/pre_compact.py"]
-    P --> Q{"repo scripts/hooks/pre_compact.py exists?"}
-    Q -->|"yes"| R["run Python hook from repo root"]
-    R --> S["forward stdout raw"]
-    Q -->|"no"| T["silent success"]
-
     B --> U["Codex SessionEnd"]
     U --> V["hooks/scripts/session_end.py"]
     V --> W{"repo scripts/hooks/session_end.py exists?"}
@@ -98,6 +91,28 @@ The shared dispatcher resolves the git root from the hook payload `cwd`, passes 
 normalized JSON payload to the repo hook on stdin, and sets
 `AGENT_HOOK_EVENT`, `AGENT_HOOK_RUNTIME`, `AGENT_REPO_ROOT`, and
 `AGENT_HOOK_SCHEMA_VERSION`.
+
+## Explicit Thread Finalization
+
+```mermaid
+flowchart TD
+    A["caller has Codex thread id"] --> B["finalize-codex-thread.py --thread-id"]
+    B --> C["app-server thread/read"]
+    C --> D["derive cwd + repo root"]
+    D --> E{"repo scripts/hooks/finalize_codex_thread.py exists?"}
+    E -->|"yes"| F["run repo hook for final-turn instruction"]
+    E -->|"no"| G["archive-only finalization"]
+    F --> H{"instruction emitted?"}
+    H -->|"yes"| I["app-server turn/start in same source thread"]
+    I --> J["wait for turn/completed"]
+    H -->|"no"| K["skip final turn"]
+    J --> L["app-server thread/archive"]
+    K --> L
+    G --> L
+```
+
+The thread id is the canonical input. Callers should not pass a separate repo
+path or directory hint; the finalizer derives that from Codex App Server state.
 
 ## Post-Turn Automation
 

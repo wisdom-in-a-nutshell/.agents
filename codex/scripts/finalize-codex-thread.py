@@ -5,6 +5,7 @@ import argparse
 import json
 import os
 import queue
+import re
 import subprocess
 import sys
 import threading
@@ -17,10 +18,11 @@ from typing import Any
 
 SCHEMA_VERSION = "1.0"
 COMMAND = "finalize-codex-thread"
+HOOK_EVENT = "FinalizeCodexThread"
 DEFAULT_TIMEOUT_SECONDS = 60.0
-DEFAULT_FINALIZER_TIMEOUT_SECONDS = 900.0
+DEFAULT_FINALIZATION_TIMEOUT_SECONDS = 900.0
 MAX_OUTPUT_CHARS = 12_000
-REPO_FINALIZER = Path("scripts/hooks/codex_thread_finalize.py")
+REPO_FINALIZER = Path("scripts/hooks/finalize_codex_thread.py")
 
 
 class AppServerError(RuntimeError):
@@ -34,6 +36,8 @@ class FinalizeResult:
     repo_root: str | None
     finalizer_path: str | None
     finalizer_status: str
+    finalization_turn_id: str | None
+    finalization_turn_status: str | None
     archived: bool
     skipped_reason: str | None
     error: str | None
@@ -60,11 +64,12 @@ def emit_plain(payload: dict[str, Any]) -> None:
     data = payload.get("data") or {}
     result = data.get("result") or {}
     if status == "ok":
-        action = "archived" if result.get("archived") else "finalized"
+        action = "archived" if result.get("archived") else "resolved"
         print(
             f"ok {action} id={result.get('thread_id')} "
             f"cwd={result.get('cwd') or 'unknown'} "
-            f"finalizer={result.get('finalizer_status')}"
+            f"repo_hook={result.get('finalizer_status')} "
+            f"turn={result.get('finalization_turn_status') or 'none'}"
         )
         return
 
@@ -101,14 +106,29 @@ def finish(
     return exit_code
 
 
+def extract_id(payload: Any, *paths: tuple[str, ...]) -> str | None:
+    for path in paths:
+        current = payload
+        for key in path:
+            if not isinstance(current, dict):
+                current = None
+                break
+            current = current.get(key)
+        if isinstance(current, str) and current.strip():
+            return current.strip()
+    return None
+
+
 class AppServerClient:
     def __init__(self, codex_bin: str, timeout_seconds: float) -> None:
         self.codex_bin = codex_bin
         self.timeout_seconds = timeout_seconds
         self.proc: subprocess.Popen[str] | None = None
-        self.stdout_queue: queue.Queue[str] = queue.Queue()
+        self.messages: queue.Queue[dict[str, Any]] = queue.Queue()
         self.stderr_lines: list[str] = []
         self.next_id = 1
+        self.agent_text_parts: list[str] = []
+        self.agent_completed_text: str | None = None
 
     def __enter__(self) -> "AppServerClient":
         self.start()
@@ -158,7 +178,12 @@ class AppServerClient:
 
     def _read_stdout(self, stream: Any) -> None:
         for line in stream:
-            self.stdout_queue.put(line)
+            try:
+                payload = json.loads(line)
+            except json.JSONDecodeError:
+                continue
+            if isinstance(payload, dict):
+                self.messages.put(payload)
 
     def _read_stderr(self, stream: Any) -> None:
         for line in stream:
@@ -178,17 +203,39 @@ class AppServerClient:
     def notify(self, method: str, params: dict[str, Any]) -> None:
         self._write({"method": method, "params": params})
 
-    def request(self, method: str, params: dict[str, Any] | None = None) -> dict[str, Any]:
+    def request(
+        self,
+        method: str,
+        params: dict[str, Any] | None = None,
+        *,
+        timeout_seconds: float | None = None,
+    ) -> dict[str, Any]:
         request_id = self.next_id
         self.next_id += 1
         message: dict[str, Any] = {"method": method, "id": request_id}
         if params is not None:
             message["params"] = params
         self._write(message)
-        return self._read_response(request_id, method=method)
+        return self._read_response(request_id, method=method, timeout_seconds=timeout_seconds or self.timeout_seconds)
 
-    def _read_response(self, request_id: int, *, method: str) -> dict[str, Any]:
-        deadline = time.monotonic() + self.timeout_seconds
+    def _next_message(self, *, timeout_seconds: float) -> dict[str, Any]:
+        if self.proc is not None and self.proc.poll() is not None and self.messages.empty():
+            stderr_tail = "\n".join(self.stderr_lines[-20:])
+            raise AppServerError(
+                f"app-server exited with code {self.proc.returncode}"
+                + (f"\nstderr:\n{stderr_tail}" if stderr_tail else "")
+            )
+        try:
+            return self.messages.get(timeout=timeout_seconds)
+        except queue.Empty as exc:
+            stderr_tail = "\n".join(self.stderr_lines[-20:])
+            raise AppServerError(
+                "timed out waiting for app-server message"
+                + (f"\nstderr:\n{stderr_tail}" if stderr_tail else "")
+            ) from exc
+
+    def _read_response(self, request_id: int, *, method: str, timeout_seconds: float) -> dict[str, Any]:
+        deadline = time.monotonic() + timeout_seconds
         while True:
             remaining = deadline - time.monotonic()
             if remaining <= 0:
@@ -197,13 +244,10 @@ class AppServerClient:
                     f"timed out waiting for {method} response id={request_id}"
                     + (f"\nstderr:\n{stderr_tail}" if stderr_tail else "")
                 )
-            try:
-                line = self.stdout_queue.get(timeout=remaining)
-            except queue.Empty as exc:
-                raise AppServerError(f"timed out waiting for {method} response id={request_id}") from exc
-            try:
-                payload = json.loads(line)
-            except json.JSONDecodeError:
+            payload = self._next_message(timeout_seconds=remaining)
+            self._handle_message_side_effects(payload)
+            if "id" in payload and "method" in payload:
+                self._handle_server_request(payload)
                 continue
             if payload.get("id") != request_id:
                 continue
@@ -216,6 +260,68 @@ class AppServerClient:
                 return {}
             return result
 
+    def wait_for_turn_completed(
+        self,
+        *,
+        thread_id: str,
+        turn_id: str | None,
+        timeout_seconds: float,
+    ) -> dict[str, Any]:
+        deadline = time.monotonic() + timeout_seconds
+        while True:
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                raise AppServerError("timed out waiting for finalization turn completion")
+            msg = self._next_message(timeout_seconds=remaining)
+            self._handle_message_side_effects(msg)
+            if "id" in msg and "method" in msg:
+                self._handle_server_request(msg)
+                continue
+            if msg.get("method") != "turn/completed":
+                continue
+            params = msg.get("params") if isinstance(msg.get("params"), dict) else {}
+            completed_thread = extract_id(params, ("threadId",), ("thread", "id"))
+            completed_turn = extract_id(params, ("turnId",), ("turn", "id"))
+            if completed_thread and completed_thread != thread_id:
+                continue
+            if turn_id and completed_turn and completed_turn != turn_id:
+                continue
+            return msg
+
+    def _handle_message_side_effects(self, msg: dict[str, Any]) -> None:
+        method = msg.get("method")
+        params = msg.get("params") if isinstance(msg.get("params"), dict) else {}
+        if method == "item/agentMessage/delta":
+            delta = params.get("delta")
+            if isinstance(delta, str):
+                self.agent_text_parts.append(delta)
+        elif method == "item/completed":
+            item = params.get("item") if isinstance(params.get("item"), dict) else {}
+            if item.get("type") == "agentMessage" and isinstance(item.get("text"), str):
+                self.agent_completed_text = item["text"]
+
+    def _handle_server_request(self, msg: dict[str, Any]) -> None:
+        req_id = msg.get("id")
+        method = msg.get("method")
+        if req_id is None:
+            return
+        if method in {
+            "item/commandExecution/requestApproval",
+            "item/fileChange/requestApproval",
+        }:
+            self._write({"id": req_id, "result": {"decision": "acceptForSession"}})
+            return
+        if method == "applyPatchApproval":
+            self._write({"id": req_id, "result": {"decision": "approved_for_session"}})
+            return
+        if method == "execCommandApproval":
+            self._write({"id": req_id, "result": {"decision": "approved_for_session"}})
+            return
+        if isinstance(method, str) and method.startswith("item/") and method.endswith("/requestApproval"):
+            self._write({"id": req_id, "result": {"decision": "decline"}})
+            return
+        self._write({"id": req_id, "result": {}})
+
 
 def thread_read(client: AppServerClient, thread_id: str) -> dict[str, Any]:
     result = client.request("thread/read", {"threadId": thread_id, "includeTurns": False})
@@ -227,28 +333,6 @@ def thread_read(client: AppServerClient, thread_id: str) -> dict[str, Any]:
 
 def archive_thread(client: AppServerClient, thread_id: str) -> None:
     client.request("thread/archive", {"threadId": thread_id})
-
-
-def read_thread_with_client(
-    *,
-    client_factory: Any,
-    codex_bin: str,
-    timeout_seconds: float,
-    thread_id: str,
-) -> dict[str, Any]:
-    with client_factory(codex_bin, timeout_seconds) as client:
-        return thread_read(client, thread_id)
-
-
-def archive_thread_with_client(
-    *,
-    client_factory: Any,
-    codex_bin: str,
-    timeout_seconds: float,
-    thread_id: str,
-) -> None:
-    with client_factory(codex_bin, timeout_seconds) as client:
-        archive_thread(client, thread_id)
 
 
 def repo_root_for_cwd(cwd: str) -> str:
@@ -292,11 +376,12 @@ def run_repo_finalizer(
     thread: dict[str, Any],
     reason: str,
     timeout_seconds: float,
-) -> tuple[bool, str | None]:
+) -> tuple[bool, str | None, str | None]:
     thread_id = str(thread.get("id") or "")
     payload = {
         "schema_version": SCHEMA_VERSION,
-        "hook_event_name": "CodexThreadFinalize",
+        "hook_event_name": HOOK_EVENT,
+        "command": COMMAND,
         "thread_id": thread_id,
         "source_thread_id": thread_id,
         "reason": reason,
@@ -304,11 +389,12 @@ def run_repo_finalizer(
         "repo_root": repo_root,
         "thread": minimal_thread_payload(thread),
         "archive_requested": True,
+        "finalization_mode": "same_thread_turn",
     }
     env = os.environ.copy()
     env.update(
         {
-            "AGENT_HOOK_EVENT": "CodexThreadFinalize",
+            "AGENT_HOOK_EVENT": HOOK_EVENT,
             "AGENT_REPO_ROOT": repo_root,
             "AGENT_HOOK_SCHEMA_VERSION": SCHEMA_VERSION,
         }
@@ -325,15 +411,59 @@ def run_repo_finalizer(
             timeout=timeout_seconds,
         )
     except subprocess.TimeoutExpired as exc:
-        return False, f"repo finalizer timed out after {exc.timeout}s"
+        return False, None, f"repo finalizer timed out after {exc.timeout}s"
     except OSError as exc:
-        return False, f"repo finalizer failed to start: {exc}"
+        return False, None, f"repo finalizer failed to start: {exc}"
 
     if result.returncode == 0:
-        return True, None
+        return True, result.stdout.strip() or None, None
     output = "\n".join(part for part in [result.stderr, result.stdout] if part.strip())
     message = output.strip() or f"repo finalizer exited {result.returncode}"
-    return False, truncate_text(message)
+    return False, None, truncate_text(message)
+
+
+def finalization_turn_status(completed: dict[str, Any]) -> str | None:
+    params = completed.get("params") if isinstance(completed.get("params"), dict) else {}
+    status = params.get("status")
+    turn = params.get("turn") if isinstance(params.get("turn"), dict) else {}
+    if isinstance(turn.get("status"), str):
+        status = turn["status"]
+    return status if isinstance(status, str) else None
+
+
+def run_finalization_turn(
+    *,
+    client: AppServerClient,
+    thread_id: str,
+    repo_root: str,
+    instruction: str,
+    timeout_seconds: float,
+) -> tuple[str | None, str | None, str | None]:
+    response = client.request(
+        "turn/start",
+        {
+            "threadId": thread_id,
+            "input": [{"type": "text", "text": instruction}],
+            "cwd": repo_root,
+        },
+        timeout_seconds=DEFAULT_TIMEOUT_SECONDS,
+    )
+    turn_id = extract_id(response, ("turn", "id"), ("turnId",))
+    completed = client.wait_for_turn_completed(
+        thread_id=thread_id,
+        turn_id=turn_id,
+        timeout_seconds=timeout_seconds,
+    )
+    status = finalization_turn_status(completed)
+    if status and status != "completed":
+        return turn_id, status, f"finalization turn finished with status={status}"
+    final_text = "".join(client.agent_text_parts).strip()
+    if not final_text and client.agent_completed_text:
+        final_text = client.agent_completed_text.strip()
+    if final_text:
+        summary = re.sub(r"\s+", " ", final_text)[:1000]
+        print(f"[finalize-codex-thread] finalization reply: {summary}", file=sys.stderr)
+    return turn_id, status or "completed", None
 
 
 def finalize_thread(
@@ -343,15 +473,11 @@ def finalize_thread(
     dry_run: bool,
     codex_bin: str,
     timeout_seconds: float,
-    finalizer_timeout_seconds: float,
+    finalization_timeout_seconds: float,
     client_factory: Any = AppServerClient,
 ) -> FinalizeResult:
-    thread = read_thread_with_client(
-        client_factory=client_factory,
-        codex_bin=codex_bin,
-        timeout_seconds=timeout_seconds,
-        thread_id=thread_id,
-    )
+    with client_factory(codex_bin, timeout_seconds) as client:
+        thread = thread_read(client, thread_id)
     cwd = thread.get("cwd")
     if not isinstance(cwd, str) or not cwd.strip():
         return FinalizeResult(
@@ -360,6 +486,8 @@ def finalize_thread(
             repo_root=None,
             finalizer_path=None,
             finalizer_status="not_run",
+            finalization_turn_id=None,
+            finalization_turn_status=None,
             archived=False,
             skipped_reason="missing_thread_cwd",
             error="thread/read did not return a usable cwd",
@@ -376,18 +504,22 @@ def finalize_thread(
             repo_root=repo_root,
             finalizer_path=finalizer_path_str,
             finalizer_status="would_run" if finalizer_path_str else "not_found",
+            finalization_turn_id=None,
+            finalization_turn_status="would_run" if finalizer_path_str else None,
             archived=False,
             skipped_reason="dry_run",
             error=None,
         )
 
+    instruction: str | None = None
+    finalizer_status = "not_found"
     if finalizer_path_str:
-        ok, error = run_repo_finalizer(
+        ok, instruction, error = run_repo_finalizer(
             finalizer_path=finalizer_path,
             repo_root=repo_root,
             thread=thread,
             reason=reason,
-            timeout_seconds=finalizer_timeout_seconds,
+            timeout_seconds=timeout_seconds,
         )
         if not ok:
             return FinalizeResult(
@@ -396,32 +528,68 @@ def finalize_thread(
                 repo_root=repo_root,
                 finalizer_path=finalizer_path_str,
                 finalizer_status="failed",
+                finalization_turn_id=None,
+                finalization_turn_status=None,
                 archived=False,
                 skipped_reason="finalizer_failed",
                 error=error,
             )
-        finalizer_status = "completed"
-    else:
-        finalizer_status = "not_found"
+        finalizer_status = "instruction_loaded" if instruction else "empty_instruction"
 
-    try:
-        archive_thread_with_client(
-            client_factory=client_factory,
-            codex_bin=codex_bin,
-            timeout_seconds=timeout_seconds,
-            thread_id=thread_id,
-        )
-    except Exception as exc:
-        return FinalizeResult(
-            thread_id=thread_id,
-            cwd=cwd,
-            repo_root=repo_root,
-            finalizer_path=finalizer_path_str,
-            finalizer_status=finalizer_status,
-            archived=False,
-            skipped_reason="archive_failed",
-            error=str(exc),
-        )
+    finalization_turn_id: str | None = None
+    finalization_status: str | None = None
+    with client_factory(codex_bin, timeout_seconds) as client:
+        if instruction:
+            try:
+                finalization_turn_id, finalization_status, error = run_finalization_turn(
+                    client=client,
+                    thread_id=thread_id,
+                    repo_root=repo_root,
+                    instruction=instruction,
+                    timeout_seconds=finalization_timeout_seconds,
+                )
+            except Exception as exc:
+                return FinalizeResult(
+                    thread_id=thread_id,
+                    cwd=cwd,
+                    repo_root=repo_root,
+                    finalizer_path=finalizer_path_str,
+                    finalizer_status=finalizer_status,
+                    finalization_turn_id=finalization_turn_id,
+                    finalization_turn_status=finalization_status,
+                    archived=False,
+                    skipped_reason="finalization_turn_failed",
+                    error=str(exc),
+                )
+            if error:
+                return FinalizeResult(
+                    thread_id=thread_id,
+                    cwd=cwd,
+                    repo_root=repo_root,
+                    finalizer_path=finalizer_path_str,
+                    finalizer_status=finalizer_status,
+                    finalization_turn_id=finalization_turn_id,
+                    finalization_turn_status=finalization_status,
+                    archived=False,
+                    skipped_reason="finalization_turn_failed",
+                    error=error,
+                )
+
+        try:
+            archive_thread(client, thread_id)
+        except Exception as exc:
+            return FinalizeResult(
+                thread_id=thread_id,
+                cwd=cwd,
+                repo_root=repo_root,
+                finalizer_path=finalizer_path_str,
+                finalizer_status=finalizer_status,
+                finalization_turn_id=finalization_turn_id,
+                finalization_turn_status=finalization_status,
+                archived=False,
+                skipped_reason="archive_failed",
+                error=str(exc),
+            )
 
     return FinalizeResult(
         thread_id=thread_id,
@@ -429,6 +597,8 @@ def finalize_thread(
         repo_root=repo_root,
         finalizer_path=finalizer_path_str,
         finalizer_status=finalizer_status,
+        finalization_turn_id=finalization_turn_id,
+        finalization_turn_status=finalization_status,
         archived=True,
         skipped_reason=None,
         error=None,
@@ -437,7 +607,7 @@ def finalize_thread(
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Finalize a Codex thread by deriving repo policy from thread/read, running an optional repo finalizer, then archiving the thread."
+        description="Finalize a Codex thread by deriving repo policy from thread/read, running an optional same-thread finalization turn, then archiving the thread."
     )
     mode = parser.add_mutually_exclusive_group()
     mode.add_argument("--apply", action="store_true", help="Run finalization and archive the thread.")
@@ -446,7 +616,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--reason", default="manual", help="Reason label passed to repo finalizers.")
     parser.add_argument("--codex-bin", default="codex")
     parser.add_argument("--timeout-seconds", type=float, default=DEFAULT_TIMEOUT_SECONDS)
-    parser.add_argument("--finalizer-timeout-seconds", type=float, default=DEFAULT_FINALIZER_TIMEOUT_SECONDS)
+    parser.add_argument("--finalization-timeout-seconds", type=float, default=DEFAULT_FINALIZATION_TIMEOUT_SECONDS)
     parser.add_argument("--no-input", action="store_true", help="Accepted for non-interactive callers; this command never prompts.")
     parser.add_argument("--json", action="store_true", help="Emit structured JSON.")
     parser.add_argument("--plain", action="store_true", help="Emit compact plain text for operator inspection.")
@@ -462,15 +632,15 @@ def main() -> int:
     try:
         if args.timeout_seconds <= 0:
             raise ValueError("--timeout-seconds must be positive")
-        if args.finalizer_timeout_seconds <= 0:
-            raise ValueError("--finalizer-timeout-seconds must be positive")
+        if args.finalization_timeout_seconds <= 0:
+            raise ValueError("--finalization-timeout-seconds must be positive")
         result = finalize_thread(
             thread_id=args.thread_id,
             reason=args.reason,
             dry_run=dry_run,
             codex_bin=args.codex_bin,
             timeout_seconds=args.timeout_seconds,
-            finalizer_timeout_seconds=args.finalizer_timeout_seconds,
+            finalization_timeout_seconds=args.finalization_timeout_seconds,
         )
         status = "ok" if result.error is None and (dry_run or result.archived) else "error"
         exit_code = 0
@@ -486,7 +656,7 @@ def main() -> int:
             else {
                 "code": "FinalizeFailed",
                 "message": result.error or result.skipped_reason or "thread finalization failed",
-                "hint": "Check the repo finalizer, Codex app-server availability, and thread/archive behavior.",
+                "hint": "Check the repo finalizer, finalization turn, Codex app-server availability, and thread/archive behavior.",
             },
             exit_code=exit_code,
         )

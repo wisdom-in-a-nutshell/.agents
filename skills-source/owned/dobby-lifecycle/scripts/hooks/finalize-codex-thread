@@ -1,0 +1,97 @@
+#!/usr/bin/env python3
+"""Dobby same-thread Codex finalization instruction hook.
+
+The global `finalize-codex-thread` command calls this repo-local hook before it
+archives a source Codex thread. This hook does not start Codex, fork threads, or
+write memory by itself. It prints the instruction for the final turn that will
+run inside the source thread.
+"""
+
+from __future__ import annotations
+
+import json
+import os
+import sys
+from pathlib import Path
+from typing import Any
+
+
+HOOK_EVENT = "FinalizeCodexThread"
+SCHEMA_VERSION = "1.0"
+
+
+def read_payload() -> dict[str, Any]:
+    raw = sys.stdin.read()
+    if not raw.strip():
+        return {}
+    try:
+        payload = json.loads(raw)
+    except json.JSONDecodeError:
+        return {}
+    return payload if isinstance(payload, dict) else {}
+
+
+def first_text(payload: dict[str, Any], *keys: str) -> str | None:
+    for key in keys:
+        value = payload.get(key)
+        if isinstance(value, str) and value.strip():
+            return value.strip()
+    return None
+
+
+def repo_root(payload: dict[str, Any]) -> Path:
+    return Path(
+        first_text(payload, "repo_root")
+        or os.environ.get("AGENT_REPO_ROOT")
+        or "."
+    ).expanduser().resolve()
+
+
+def thread_id(payload: dict[str, Any]) -> str | None:
+    return first_text(payload, "thread_id", "source_thread_id", "threadId", "sourceThreadId")
+
+
+def build_instruction(payload: dict[str, Any]) -> str:
+    root = repo_root(payload)
+    source_thread = thread_id(payload) or "unknown"
+    reason = first_text(payload, "reason") or "manual"
+    return f"""You are running the final turn in this Codex thread before it is archived.
+
+Finalize this thread into Dobby memory. Use the shared `dobby-workspace` body map for memory routing and write directly to the workspace memory files.
+
+Context:
+- Workspace root: `{root}`
+- Source thread id: `{source_thread}`
+- Finalization reason: `{reason}`
+
+Task:
+1. Read `$HOME/.agents/skills-source/owned/dobby-workspace/references/body-map.md` for session continuity and memory routing.
+2. Capture only what would make a future Dobby session worse if lost. Do not summarize everything.
+3. If useful, write one concise session-continuity note under `memory/sessions/YYYY/MM/DD-HHMMSS.md`.
+   - If the thread contains nothing worth preserving, do not invent a note.
+4. Promote durable facts only when the body map clearly says they belong in `memory/now.md`, an area file/log, `soul.md`, or Shelf.
+5. Do not ask the user. Do not archive, delete, compact, or otherwise manage this thread; the external finalizer will archive it after this turn succeeds.
+6. Keep any written memory human, compact, and operationally useful.
+
+When finished, reply briefly with what memory path(s) you changed, or say that no memory changes were needed.
+"""
+
+
+def main() -> int:
+    payload = read_payload()
+    event_name = payload.get("hook_event_name") or os.environ.get("AGENT_HOOK_EVENT")
+    if event_name not in {None, HOOK_EVENT}:
+        return 0
+    if payload.get("schema_version") not in {None, SCHEMA_VERSION}:
+        return 0
+
+    if not thread_id(payload):
+        print("finalize-codex-thread hook: missing thread_id", file=sys.stderr)
+        return 2
+
+    print(build_instruction(payload))
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

@@ -35,6 +35,8 @@ class FakeAppServerClient:
     def __init__(self, responses: list[dict[str, Any]]) -> None:
         self.responses = responses
         self.calls: list[tuple[str, dict[str, Any]]] = []
+        self.agent_text_parts: list[str] = []
+        self.agent_completed_text: str | None = None
 
     def __enter__(self) -> "FakeAppServerClient":
         return self
@@ -42,11 +44,30 @@ class FakeAppServerClient:
     def __exit__(self, *_exc: object) -> None:
         return None
 
-    def request(self, method: str, params: dict[str, Any] | None = None) -> dict[str, Any]:
+    def request(self, method: str, params: dict[str, Any] | None = None, **_kwargs: Any) -> dict[str, Any]:
         self.calls.append((method, params or {}))
         if not self.responses:
             raise AssertionError(f"unexpected request: {method}")
         return self.responses.pop(0)
+
+    def wait_for_turn_completed(
+        self,
+        *,
+        thread_id: str,
+        turn_id: str | None,
+        timeout_seconds: float,
+    ) -> dict[str, Any]:
+        self.calls.append(
+            (
+                "wait_for_turn_completed",
+                {
+                    "thread_id": thread_id,
+                    "turn_id": turn_id,
+                    "timeout_seconds": timeout_seconds,
+                },
+            )
+        )
+        return {"params": {"threadId": thread_id, "turnId": turn_id, "status": "completed"}}
 
 
 class FakeAppServerFactory:
@@ -152,7 +173,7 @@ print(json.dumps({
             candidate=candidate,
             codex_bin="fake-codex",
             timeout_seconds=1,
-            finalizer_timeout_seconds=1,
+            finalization_timeout_seconds=1,
         )
 
         argv = json.loads(log_path.read_text())
@@ -169,10 +190,11 @@ class FinalizeCodexThreadTests(TempDirTestCase):
         repo.mkdir()
         finalizer_payload = self.temp_path / "finalizer-payload.json"
         write_executable(
-            repo / "scripts/hooks/codex_thread_finalize.py",
+            repo / "scripts/hooks/finalize_codex_thread.py",
             f"""#!/usr/bin/env python3
 import pathlib, sys
 pathlib.Path({str(finalizer_payload)!r}).write_text(sys.stdin.read())
+print("finalize this thread")
 """,
         )
         client_factory = FakeAppServerFactory(
@@ -187,7 +209,7 @@ pathlib.Path({str(finalizer_payload)!r}).write_text(sys.stdin.read())
                         }
                     },
                 ],
-                [{}],
+                [{"turnId": "turn-123"}, {}],
             ]
         )
 
@@ -197,16 +219,21 @@ pathlib.Path({str(finalizer_payload)!r}).write_text(sys.stdin.read())
             dry_run=False,
             codex_bin="fake-codex",
             timeout_seconds=5,
-            finalizer_timeout_seconds=5,
+            finalization_timeout_seconds=5,
             client_factory=client_factory,
         )
 
         self.assertTrue(result.archived)
         self.assertEqual(result.cwd, str(repo))
         self.assertEqual(result.repo_root, str(repo.resolve()))
-        self.assertEqual(result.finalizer_status, "completed")
+        self.assertEqual(result.finalizer_status, "instruction_loaded")
+        self.assertEqual(result.finalization_turn_id, "turn-123")
+        self.assertEqual(result.finalization_turn_status, "completed")
         self.assertEqual([call[0] for call in client_factory.clients[0].calls], ["thread/read"])
-        self.assertEqual([call[0] for call in client_factory.clients[1].calls], ["thread/archive"])
+        self.assertEqual(
+            [call[0] for call in client_factory.clients[1].calls],
+            ["turn/start", "wait_for_turn_completed", "thread/archive"],
+        )
         payload = json.loads(finalizer_payload.read_text())
         self.assertEqual(payload["thread_id"], "thread-123")
         self.assertEqual(payload["reason"], "test")
@@ -236,7 +263,7 @@ pathlib.Path({str(finalizer_payload)!r}).write_text(sys.stdin.read())
             dry_run=True,
             codex_bin="fake-codex",
             timeout_seconds=5,
-            finalizer_timeout_seconds=5,
+            finalization_timeout_seconds=5,
             client_factory=client_factory,
         )
 

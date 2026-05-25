@@ -126,7 +126,7 @@ Use [Codex Control Plane Ownership](/Users/dobby/.agents/docs/references/codex-c
 - `~/.codex/config.toml` enables Codex hooks through `[features].hooks = true`
 - `~/.codex/config.toml` contains `[hooks.state]` trust hashes for managed hooks rendered by this control plane, so global and repo-local lifecycle hooks do not need repeated `/hooks` review on every machine bootstrap.
 - `~/.codex/config.toml` explicitly preserves enabled native Codex plugins such as `computer-use@openai-bundled`, points `openai-bundled` at the marketplace inside `Codex.app`, and disables bundled Codex skills classified as `disabled` in [`bundled-skills-policy.json`](/Users/dobby/.agents/codex/config/bundled-skills-policy.json)
-- `~/.codex/hooks.json` is rendered from `hooks/registry.json` for global Codex hooks. The managed `Stop` hook renders there; repo-specific lifecycle hooks such as `SessionStart`, `UserPromptSubmit`, `PreCompact`, and `SessionEnd` render into repo `.codex/hooks.json`.
+- `~/.codex/hooks.json` is rendered from `hooks/registry.json` for global Codex hooks. The managed `Stop` hook renders there; repo-specific lifecycle hooks such as `SessionStart`, `UserPromptSubmit`, and `SessionEnd` render into repo `.codex/hooks.json`.
 - `com.<user>.codex-thread-finalizer` is loaded as a LaunchAgent and runs [`finalize-stale-codex-threads.py`](/Users/dobby/.agents/codex/scripts/finalize-stale-codex-threads.py) every 6 hours against managed repo paths from [`repo-bootstrap.json`](/Users/dobby/.agents/codex/config/repo-bootstrap.json).
 - `~/.codex/config.toml` contains no Git conflict markers
 - `~/.codex/vendor_imports/skills` is a valid Git checkout:
@@ -198,8 +198,8 @@ Use [Codex Control Plane Ownership](/Users/dobby/.agents/docs/references/codex-c
   - uses a machine-local lock under `~/.local/state/codex-control-plane/` so overlapping launchd runs do not race
 - [`finalize-codex-thread.py`](/Users/dobby/.agents/codex/scripts/finalize-codex-thread.py)
   - takes only `--thread-id` as canonical thread identity
-  - uses app-server `thread/read` to derive the thread `cwd`, resolves the repo root, runs optional repo policy at `scripts/hooks/codex_thread_finalize.py`, then archives the source thread through `thread/archive`
-  - for repos without `scripts/hooks/codex_thread_finalize.py`, finalization is archive-only
+  - uses app-server `thread/read` to derive the thread `cwd`, resolves the repo root, runs optional repo policy at `scripts/hooks/finalize_codex_thread.py`, runs one same-thread finalization turn when the repo emits an instruction, then archives the source thread through `thread/archive`
+  - for repos without `scripts/hooks/finalize_codex_thread.py`, finalization is archive-only
 - [`prune-sidebar-projects.py`](/Users/dobby/.agents/codex/scripts/prune-sidebar-projects.py)
   - removes stale project roots from Codex Desktop sidebar state without deleting repo files or session files
   - reads Codex thread activity from app-server `thread/list` by default, so cleanup follows Codex's listable thread view rather than every Desktop workspace bookkeeping row

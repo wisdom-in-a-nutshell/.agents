@@ -5,50 +5,36 @@ focused on workspace meaning instead of becoming a hook runbook.
 
 ## Simple lifecycle map
 
-```mermaid
-flowchart TD
-    A["SessionStart<br/>Dobby wakes up"] --> B["Read durable context"]
-    B --> B1["soul.md<br/>identity + durable user truth"]
-    B --> B2["dobby-workspace body map<br/>where things belong"]
-    B --> B3["memory/now.md<br/>this week's orientation"]
-    B --> B4["memory/sessions<br/>recent continuity notes"]
-    B --> B5["Shelf + calendar + area manifest"]
-    B --> C["Inject compact boot context<br/>into the active agent thread"]
-
-    C --> D["Normal conversation / work"]
-
-    D --> P["PreCompact<br/>best-effort hook"]
-    P --> Q["Record job + launch sidecar worker"]
-
-    D --> F["Explicit consolidate-thread call"]
-    D --> E["CodexThreadFinalize<br/>pre-archive finalization"]
-    E --> F
-    Q --> F
-    F --> G["Sidecar forks source Codex thread"]
-    G --> H["Sidecar updates memory<br/>memory/sessions/YYYY/MM/DD-HHMMSS.md"]
-    G --> I["Sidecar thread archived"]
-
-    H --> K["Next SessionStart loads recent notes<br/>so continuity comes back"]
-```
+- `SessionStart`: read durable context and inject a compact boot packet into the
+  active agent thread.
+- `UserPromptSubmit`: add lightweight per-turn context when useful.
+- Normal conversation/work happens in the live Codex thread.
+- `finalize-codex-thread`: explicit end-of-thread command. It derives the repo
+  from Codex App Server `thread/read`, asks the repo for a finalization
+  instruction, runs one final turn in that same source thread, and archives only
+  after that turn succeeds.
+- `SessionEnd`: fast shutdown record only; it does not run memory work.
+- Next `SessionStart`: recent `memory/sessions/...` notes return continuity to
+  the next thread.
 
 Short version:
 
-- **SessionStart is read/inject.** It gathers the current Dobby context and
-  gives the agent enough memory to continue well.
-- **PreCompact is best-effort sidecar launch.** It starts the existing
-  `consolidate-thread` worker in the background and exits so live compaction can
-  proceed.
-- **CodexThreadFinalize is explicit pre-archive finalization.** The global
-  `finalize-codex-thread` command derives the repo from `thread/read`, runs the
-  repo-local `scripts/hooks/codex_thread_finalize.py` when present, then owns
-  archiving the source thread. Dobby's repo finalizer runs `consolidate-thread`
-  before archive.
-- **SessionEnd is handoff-only.** It records shutdown metadata without launching
-  a second consolidation sidecar.
-- **`memory/sessions` is the bridge.** End-of-session notes become part of the
+- **SessionStart is read/inject.** It gathers the current Dobby context and gives
+  the agent enough memory to continue well.
+- **FinalizeCodexThread is explicit same-thread finalization.** The global
+  `finalize-codex-thread` command is the public primitive. It runs repo policy
+  from `scripts/hooks/finalize_codex_thread.py` when present.
+- **Dobby finalization writes memory directly.** The repo hook emits the prompt
+  for the final turn. That turn decides whether anything should be written under
+  `memory/sessions/...`, `memory/now.md`, an area file, `soul.md`, or Shelf by
+  reading the shared `dobby-workspace` body map.
+- **Archive is conditional.** If the repo hook, final turn, or archive request
+  fails, the source thread is left unarchived so stale cleanup can retry later.
+- **SessionEnd is handoff-only.** It records shutdown metadata and exits quickly.
+- **`memory/sessions` is the bridge.** End-of-thread notes become part of the
   next boot context.
-- **`memory/now.md`, area files, and `soul.md` are promotion targets only.**
-  They should be updated when something durable changes, not for every session.
+- **`memory/now.md`, area files, and `soul.md` are promotion targets only.** They
+  should be updated when something durable changes, not for every session.
 
 ## Boot
 
@@ -70,7 +56,8 @@ What boot context should include:
 
 Operational limits:
 
-- filename format: `memory/sessions/YYYY/MM/DD-HHMMSS.md` with numeric suffixes on collision
+- filename format: `memory/sessions/YYYY/MM/DD-HHMMSS.md` with numeric suffixes
+  on collision
 - shared body-map boot cap: 12000 chars
 - boot context: last 3 notes plus notes from the last 7 days, capped at 10
 - per-note boot cap: 2500 chars
@@ -81,39 +68,11 @@ Operational limits:
 Session continuity lives in `memory/sessions/YYYY/MM/DD-HHMMSS.md`, not in
 `memory/now.md`.
 
-## Consolidate-thread primitive
+Stored notes stay plain prose. Do not add templates/frontmatter. Durable
+decisions still get promoted to `now.md`, area canon, or `soul.md` as
+appropriate.
 
-`scripts/consolidate-thread` is the reusable memory-consolidation primitive.
-
-It takes a source Codex/App Server thread, forks it into a sidecar thread, runs
-a memory-consolidation prompt inside that sidecar, and lets the forked Dobby
-agent update workspace memory directly.
-
-It is intentionally policy-free:
-
-- it does not compact the source thread
-- it does not archive or delete the source thread
-- it does not decide when cleanup should happen
-- it does not use transcript summarization
-- after the sidecar turn finishes, it archives the sidecar thread it created
-- it may write `memory/sessions/...` and may promote durable facts according to
-  the shared `dobby-workspace` body map
-
-Supported direct invocation shape:
-
-```bash
-$HOME/.agents/skills-source/owned/dobby-lifecycle/scripts/consolidate-thread \
-  --workspace-root /Users/dobby/GitHub/adi \
-  --thread-id <codex-thread-id>
-```
-
-Optional caller fields:
-
-- `--source-turn-id <turn-id>`
-- `--source-label <manual|codexclaw-end-chat|...>`
-- `--note-path <absolute-or-workspace-relative-path>`
-- `--instruction <extra caller instruction>`
-- `--job <payload.json>` for existing hook job records
+## FinalizeCodexThread primitive
 
 The global Codex control-plane finalizer is the preferred end-of-thread entry:
 
@@ -123,30 +82,31 @@ $HOME/.agents/codex/scripts/finalize-codex-thread.py \
   --apply
 ```
 
-It uses `thread/read` as the source of truth for `cwd`; callers should pass only
-the thread id. In Dobby workspaces it invokes `scripts/hooks/codex_thread_finalize.py`,
-which delegates here and consolidates memory before the global command archives
-the source thread.
+Callers should pass only the thread id plus a reason label when useful. The
+command uses `thread/read` as the source of truth for the current working
+directory and repo root.
 
-PreCompact records a small job under
-`tmp/dobby-lifecycle/pre-compact/jobs/`, starts `consolidate-thread` in the
-background, writes a run record under `tmp/dobby-lifecycle/pre-compact/runs/`,
-and prints nothing to stdout. It is fail-open: any hook or worker failure should
-not block Codex from compacting the live thread.
+When a repo provides `scripts/hooks/finalize_codex_thread.py`, the finalizer runs
+that script first. The script should print the instruction for the final turn to
+stdout. The global finalizer then:
 
-When `consolidate-thread` starts its private App Server, it marks that process
-with `DOBBY_LIFECYCLE_CONSOLIDATION_SIDECAR=1`. If PreCompact fires inside that
-sidecar, it writes a skipped run record and does not enqueue another job. This
-prevents recursive consolidation while leaving other hooks available to the
-sidecar runtime.
+1. starts a new `turn/start` inside the original source thread;
+2. waits for `turn/completed`;
+3. archives the source thread through `thread/archive` only after success.
 
-SessionEnd writes a compact record under `tmp/hooks/session-end/` and exits
-successfully. It does not launch a consolidation sidecar because Codex continuity
-is handled by PreCompact and explicit `consolidate-thread` calls.
+In Dobby workspaces the repo wrapper delegates to:
 
-Stored notes stay plain prose. Do not add templates/frontmatter. Durable
-decisions still get promoted to `now.md`, area canon, or `soul.md` as
-appropriate.
+```bash
+$HOME/.agents/skills-source/owned/dobby-lifecycle/scripts/hooks/finalize-codex-thread
+```
+
+That hook emits a prompt asking the same live Dobby agent to preserve only
+useful memory, using the shared body map as the routing authority. The hook does
+not start Codex, fork a thread, write memory itself, or archive anything.
+
+`SessionEnd` writes a compact record under `tmp/hooks/session-end/` and exits
+successfully. It does not run memory work; end-of-thread memory work belongs to
+explicit finalization.
 
 Do not put Dobby memory synthesis directly in the shared `~/.agents` dispatcher.
 The dispatcher routes lifecycle events; this skill owns Dobby-specific behavior.

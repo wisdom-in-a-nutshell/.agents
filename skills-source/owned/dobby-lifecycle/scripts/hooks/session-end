@@ -3,8 +3,8 @@
 
 Session end should stay fast. This hook captures a compact handoff record under
 `<repo>/tmp/hooks/session-end/`, then exits successfully. Codex continuity is
-handled only by explicit `consolidate-thread` calls, so SessionEnd does not
-launch a worker.
+handled by explicit `finalize-codex-thread` calls, so SessionEnd does not run
+memory work.
 """
 
 from __future__ import annotations

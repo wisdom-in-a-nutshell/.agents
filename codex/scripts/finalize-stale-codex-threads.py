@@ -20,7 +20,7 @@ SCHEMA_VERSION = "1.0"
 COMMAND = "finalize-stale-codex-threads"
 DEFAULT_OLDER_THAN_HOURS = 48.0
 DEFAULT_TIMEOUT_SECONDS = 30.0
-DEFAULT_FINALIZER_TIMEOUT_SECONDS = 900.0
+DEFAULT_FINALIZATION_TIMEOUT_SECONDS = 900.0
 DEFAULT_PAGE_LIMIT = 100
 DEFAULT_MAX_REPORT = 80
 DEFAULT_REGISTRY = Path.home() / ".agents" / "codex" / "config" / "repo-bootstrap.json"
@@ -390,7 +390,7 @@ def run_thread_finalizer(
     candidate: Candidate,
     codex_bin: str,
     timeout_seconds: float,
-    finalizer_timeout_seconds: float,
+    finalization_timeout_seconds: float,
 ) -> dict[str, Any]:
     if not command.is_file() or not os.access(command, os.X_OK):
         raise AppServerError(f"finalizer command is not executable: {command}")
@@ -406,8 +406,8 @@ def run_thread_finalizer(
             codex_bin,
             "--timeout-seconds",
             str(timeout_seconds),
-            "--finalizer-timeout-seconds",
-            str(finalizer_timeout_seconds),
+            "--finalization-timeout-seconds",
+            str(finalization_timeout_seconds),
             "--apply",
             "--json",
             "--no-input",
@@ -415,7 +415,7 @@ def run_thread_finalizer(
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
         text=True,
-        timeout=finalizer_timeout_seconds + max(timeout_seconds, 1.0) + 10.0,
+        timeout=finalization_timeout_seconds + max(timeout_seconds, 1.0) + 10.0,
     )
     if completed.returncode != 0:
         stderr = completed.stderr.strip()
@@ -478,7 +478,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--finalizer-command", type=Path, default=DEFAULT_FINALIZER_COMMAND)
     parser.add_argument("--page-limit", type=int, default=DEFAULT_PAGE_LIMIT)
     parser.add_argument("--timeout-seconds", type=float, default=DEFAULT_TIMEOUT_SECONDS)
-    parser.add_argument("--finalizer-timeout-seconds", type=float, default=DEFAULT_FINALIZER_TIMEOUT_SECONDS)
+    parser.add_argument("--finalization-timeout-seconds", type=float, default=DEFAULT_FINALIZATION_TIMEOUT_SECONDS)
     parser.add_argument("--max-finalize", type=int, default=0, help="Maximum threads to finalize per run; 0 means unlimited.")
     parser.add_argument("--max-report", type=int, default=DEFAULT_MAX_REPORT, help="Maximum candidate detail lines in plain output; 0 means unlimited.")
     parser.add_argument("--all-source-kinds", action="store_true", help="Include non-interactive and subagent thread sources.")
@@ -512,8 +512,8 @@ def main() -> int:
             raise ValueError("--max-report cannot be negative")
         if args.timeout_seconds <= 0:
             raise ValueError("--timeout-seconds must be positive")
-        if args.finalizer_timeout_seconds <= 0:
-            raise ValueError("--finalizer-timeout-seconds must be positive")
+        if args.finalization_timeout_seconds <= 0:
+            raise ValueError("--finalization-timeout-seconds must be positive")
 
         repos = [expand_path(repo) for repo in args.repo]
         if not repos:
@@ -559,7 +559,7 @@ def main() -> int:
                         candidate=candidate,
                         codex_bin=args.codex_bin,
                         timeout_seconds=args.timeout_seconds,
-                        finalizer_timeout_seconds=args.finalizer_timeout_seconds,
+                        finalization_timeout_seconds=args.finalization_timeout_seconds,
                     )
                     finalized = True
                     finalized_count += 1

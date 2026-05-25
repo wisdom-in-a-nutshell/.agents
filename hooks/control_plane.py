@@ -13,7 +13,6 @@ ALL_REPOS = "*"
 EVENT_RUNTIME_SUPPORT = {
     "SessionStart": {"codex"},
     "UserPromptSubmit": {"codex"},
-    "PreCompact": {"codex"},
     "Stop": {"codex"},
     "SessionEnd": {"codex"},
 }

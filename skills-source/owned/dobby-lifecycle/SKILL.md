@@ -8,16 +8,16 @@ description: "Operate Dobby workspace lifecycle hooks and context flow: session 
 Dobby Lifecycle is the runtime context-flow layer for a Dobby workspace.
 
 It owns the hook machinery that lets Dobby wake up with useful context, keep
-per-turn context lightweight, and expose explicit thread consolidation when a
-caller decides memory should be written.
+per-turn context lightweight, and expose explicit Codex thread finalization when
+a caller decides a thread should preserve useful memory before archive.
 
 ## Boundary
 
 Use this skill for:
 
-- `SessionStart`, `UserPromptSubmit`, `PreCompact`, explicit `consolidate-thread`, `CodexThreadFinalize`, and `SessionEnd` behavior.
+- `SessionStart`, `UserPromptSubmit`, `FinalizeCodexThread`, and `SessionEnd` behavior.
 - Boot context assembly: shared `dobby-workspace` body map, `now.md`, recent sessions, Shelf snapshot, calendar snapshot, area manifest.
-- Codex App Server thread consolidation and forked sidecar turns.
+- Codex App Server same-thread finalization before archive.
 - Hook payload normalization, temporary hook records where active, worker logs, and lifecycle debugging.
 - Questions like “why did Dobby not load context?”, “why did session memory not write?”, or “change what loads at boot.”
 
@@ -41,8 +41,7 @@ Repo-local hook wrappers delegate to this skill’s scripts through the repo’s
 ```text
 scripts/hooks/session_start.py      -> scripts/hooks/session-start
 scripts/hooks/user_prompt_submit.py -> scripts/hooks/user-prompt-submit
-scripts/hooks/pre_compact.py        -> scripts/hooks/pre-compact
-scripts/hooks/codex_thread_finalize.py -> scripts/hooks/codex-thread-finalize
+scripts/hooks/finalize_codex_thread.py -> scripts/hooks/finalize-codex-thread
 scripts/hooks/session_end.py        -> scripts/hooks/session-end
 ```
 
@@ -51,17 +50,15 @@ The hook scripts live here:
 ```bash
 $HOME/.agents/skills-source/owned/dobby-lifecycle/scripts/hooks/session-start
 $HOME/.agents/skills-source/owned/dobby-lifecycle/scripts/hooks/user-prompt-submit
-$HOME/.agents/skills-source/owned/dobby-lifecycle/scripts/hooks/pre-compact
-$HOME/.agents/skills-source/owned/dobby-lifecycle/scripts/hooks/codex-thread-finalize
+$HOME/.agents/skills-source/owned/dobby-lifecycle/scripts/hooks/finalize-codex-thread
 $HOME/.agents/skills-source/owned/dobby-lifecycle/scripts/hooks/session-end
-$HOME/.agents/skills-source/owned/dobby-lifecycle/scripts/consolidate-thread
 ```
 
 ## Reference files
 
 Load on demand:
 
-- `references/lifecycle-hooks.md` — boot, session notes, explicit thread consolidation, operational limits.
+- `references/lifecycle-hooks.md` — boot, session notes, explicit thread finalization, operational limits.
 
 ## Design principle
 

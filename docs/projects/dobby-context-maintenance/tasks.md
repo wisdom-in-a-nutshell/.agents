@@ -1,100 +1,94 @@
 # Dobby Context Maintenance
 
 ## Goal
-Make Dobby conversations preserve memory before Codex context compaction across direct Codex and gateway surfaces.
+Make Dobby conversations preserve useful memory across direct Codex and gateway
+surfaces without hidden sidecar complexity.
 
-## Why / Impact
-Adi uses Dobby through both direct Codex desktop threads and the CodexClaw mobile gateway. Long Dobby conversations need automatic maintenance that keeps the live thread usable while preserving details that should become future Dobby memory.
+## Current Direction
+
+As of 2026-05-25 this project has been simplified. The active architecture is:
+
+- One explicit public primitive: `finalize-codex-thread`.
+- Callers provide only the Codex thread id plus an optional reason label.
+- The global finalizer reads the thread from Codex App Server, derives `cwd` and
+  repo root, asks the repo for a final-turn instruction, runs that final turn in
+  the same source thread, then archives only after success.
+- Dobby workspaces provide repo policy through
+  `scripts/hooks/finalize_codex_thread.py`, which delegates to the
+  `dobby-lifecycle` skill hook.
+- Native runtime hooks stay small: `SessionStart`, `UserPromptSubmit`, and
+  `SessionEnd`.
+- Gateway rollover and chat-end cleanup should call the same finalizer instead
+  of running memory preservation directly.
+
+The earlier sidecar-based design has been retired because it was hard to keep in
+mind and introduced more moving parts than the reliability gain justified.
 
 ## Scope / Non-Goals
+
 ### In Scope
-- Repo-local Codex auto-compaction threshold policy for Dobby workspace repos.
-- Dobby lifecycle `PreCompact` policy and recursion guard.
-- Sidecar memory consolidation behavior around compaction boundaries.
-- Gateway maintenance triggers for iPhone session idle time, chat end, and daily backend rollover.
+
+- Repo-local Codex boot/prompt/session-end context plumbing for Dobby workspace
+  repos.
+- Explicit same-thread finalization before archive.
+- Gateway maintenance triggers for iPhone chat end and daily backend rollover.
+- Durable docs/tests that make the architecture easy to rehydrate later.
 
 ### Out of Scope
+
 - Global Codex auto-compaction defaults for unrelated repos.
-- Replacing Codex App Server compaction internals.
+- Replacing Codex App Server internals.
 - Reworking Dobby memory routing beyond the existing `dobby-workspace` body map.
 
-## Context / Constraints
-- Date started: 2026-05-16
-- `model_auto_compact_token_limit` is an absolute token count, not a ratio.
-- Local `gpt-5.5` model cache currently reports `context_window = 272000`; 75% is `204000`.
-- User decision: leave global Codex defaults alone; apply repo-specific threshold only where needed.
-- User decision: prefer the shared Dobby lifecycle / precompact model over a mobile-gateway-only token-delta design.
-- User decision: Codex `PreCompact` owns token pressure; the gateway should not also schedule memory work from token usage.
-- User decision: gateway idle maintenance starts with one hour of quiet after a gateway-observed iPhone message, compacts the same App Server thread, and lets Codex `PreCompact` run memory preservation as the side effect.
-- User decision: daily backend rollover is gateway-owned maintenance, not a phone-visible `New Chat`. After the local 04:00 window opens, only the latest iPhone session per phone surface can roll over for that local date, and only after it was touched during the just-finished Dobby day plus one quiet hour: direct `consolidate-thread`, map the same visible session to a fresh App Server thread, then archive the old App Server thread.
-- `../adi/.codex/config.toml` and `../angie/.codex/config.toml` are generated from `~/.agents/codex/config/repo-bootstrap.json`; do not hand-edit them.
-- Dobby lifecycle `PreCompact` is now wired as a best-effort sidecar launch; `consolidate-thread` remains the reusable memory-writing primitive.
-- Sidecar consolidation uses `DOBBY_LIFECYCLE_CONSOLIDATION_SIDECAR=1` to skip recursive PreCompact launches inside the consolidation App Server.
-
 ## Done When
-- [x] Dobby workspace repos have a repo-local Codex auto-compaction threshold around 75% of the active model context window.
-- [x] Direct Codex Dobby threads have a safe precompact memory-preservation path.
-- [x] Gateway Dobby threads can use the same lifecycle primitive without racing live compaction.
-- [x] Sidecar consolidation cannot recursively trigger another consolidation from its own compaction.
-- [x] iPhone Dobby sessions get daily backend rollover without asking the phone to clear the visible transcript.
-- [x] Validation covers control-plane rendering and the critical lifecycle path.
 
-## Milestones
-- [x] Milestone 1 - Repo-local Codex threshold is rendered for Dobby workspaces. Acceptance: `adi` and `angie` repo configs include `model_auto_compact_token_limit = 204000`, globals remain unchanged. Validate: `./codex/scripts/check-codex-control-plane.sh`.
-- [x] Milestone 2 - PreCompact policy is wired for Dobby workspaces. Acceptance: direct Codex compaction in `adi` enqueues memory work without blocking compaction. Validate: local hook smoke plus App Server compact smoke.
-- [x] Milestone 3 - Sidecar recursion guard is implemented. Acceptance: memory-consolidation sidecar compaction does not enqueue another memory-consolidation job. Validate: unit/smoke test with sidecar-labeled payload.
-- [x] Milestone 4 - Gateway maintenance is aligned to lifecycle. Acceptance: gateway chat-end and idle paths trigger the shared maintenance primitive, while token pressure remains owned by Codex `PreCompact`. Validate: mobile-gateway tests, fast repo checks, and local gateway health smoke.
-- [x] Milestone 5 - Daily backend rollover is implemented. Acceptance: after local 04:00 and one quiet hour, mapped iPhone sessions touched during the just-finished Dobby day direct-run `consolidate-thread`, remap the same gateway scope to a fresh App Server thread, archive the old App Server thread, and dedupe once per local date. Validate: mobile-gateway tests, fast repo checks, and local gateway health smoke.
+- [x] Dobby workspace repos have repo-local Codex boot/prompt/session-end hooks.
+- [x] The global stale-thread cleanup calls `finalize-codex-thread` for each old
+  thread.
+- [x] Dobby workspace finalization uses a same-thread final turn, not a side
+  process.
+- [ ] CodexClaw chat-end and daily rollover both use `finalize-codex-thread`.
+- [ ] Validation covers control-plane rendering and the critical finalization
+  path.
+- [ ] Tracker is archived after CodexClaw and runtime rollout are verified.
 
 ## Execution Rules
-- Keep global Codex defaults unchanged unless the user explicitly changes that decision.
-- Keep repo-local generated `.codex/config.toml` files generated from `~/.agents`, not hand-edited.
-- Keep slow memory synthesis out of inline hooks; hooks should capture/enqueue quickly.
-- Keep one memory-writing primitive in Dobby lifecycle; gateway should own policy only where it is the caller.
-- Update this tracker after each meaningful batch.
 
-## Decisions
-- Use `~/.agents` as the source of truth for Codex runtime/bootstrap policy.
-- Use repo-local `model_auto_compact_token_limit` for Dobby workspace repos, not global config.
-- Treat `204000` as the initial 75% threshold for current `gpt-5.5` context window (`272000`).
-- Keep `consolidate-thread` sidecar-based. The consolidation App Server marks itself with `DOBBY_LIFECYCLE_CONSOLIDATION_SIDECAR=1`; PreCompact skips when that marker is present.
-
-## Open Questions / Blockers
-- None for the direct Codex path.
+- Keep global Codex defaults unchanged unless the user explicitly changes that
+  decision.
+- Keep repo-local generated `.codex/config.toml` and `.codex/hooks.json` files
+  generated from `~/.agents`, not hand-edited.
+- Keep native runtime hooks fast and deterministic.
+- Use the thread id as the canonical finalization identity. Do not add parallel
+  repo/directory sources of truth.
+- Prefer clean cutovers over compatibility shims for this control-plane code.
 
 ## Current Batch
-| Status | Work Item | Role | Resource |
-| --- | --- | --- | --- |
-| done | Add and validate repo-local `model_auto_compact_token_limit` support and set `204000` for `adi`/`angie`. | parent | `/Users/dobby/.agents/codex/config/repo-bootstrap.json` |
-| done | Wire and validate best-effort `PreCompact` sidecar launch for direct Codex threads. | parent | `/Users/dobby/.agents/skills-source/owned/dobby-lifecycle/scripts/hooks/pre-compact` |
-| done | Design and implement the sidecar recursion guard after the basic path has settled. | parent | `/Users/dobby/.agents/skills-source/owned/dobby-lifecycle` |
-| done | Align CodexClaw gateway policy: remove token-pressure consolidation, keep chat-end consolidation, and add one-hour iPhone idle compaction. | parent | `/Users/dobby/GitHub/codexclaw/services/mobile-gateway` |
-| done | Add daily backend rollover: fixed 04:00 local window, latest-session-per-phone selection, recent-session filter, one quiet hour, direct consolidation, fresh backend thread mapping, old-thread archive, and once-per-local-date dedupe. | parent | `/Users/dobby/GitHub/codexclaw/services/mobile-gateway` |
 
-## Backlog / Remaining Work
-- [x] Wire `PreCompact` hook assignment for `adi` and `angie` after local App Server behavior is verified.
-- [x] Add a fast hook path that enqueues memory work without doing slow synthesis inline.
-- [x] Add sidecar recursion guard and tests.
-- [x] Align CodexClaw gateway maintenance with the shared lifecycle primitive.
-- [x] Add daily backend rollover for iPhone gateway sessions.
-- [x] Update lifecycle docs after behavior is proven.
-- [ ] Review and finalize `docs/projects/dobby-context-maintenance/learnings/README.md` before archive.
-- [ ] Archive the tracker when all milestones are complete.
+| Status | Work Item | Resource |
+| --- | --- | --- |
+| done | Replace Dobby repo finalization hook with `scripts/hooks/finalize_codex_thread.py`. | `/Users/dobby/GitHub/adi`, `/Users/dobby/GitHub/angie` |
+| done | Rewrite global one-thread finalizer to run same-thread finalization before archive. | `/Users/dobby/.agents/codex/scripts/finalize-codex-thread.py` |
+| done | Rename stale cleanup around finalization semantics. | `/Users/dobby/.agents/codex/scripts/finalize-stale-codex-threads.py` |
+| done | Remove retired runtime memory-preservation hook from registry/tests/docs. | `/Users/dobby/.agents` |
+| in_progress | Update CodexClaw gateway rollover/chat-end callers to use the global finalizer only. | `/Users/dobby/GitHub/codexclaw/services/mobile-gateway` |
+| pending | Run full targeted validation and re-apply generated runtime hook state. | `.agents`, `adi`, `angie`, `codexclaw` |
 
 ## Validation / Test Plan
-- `./codex/scripts/sync-repo-bootstrap-registry.py`
-- `./codex/scripts/sync-repo-codex-configs.sh --check`
-- `./codex/scripts/check-codex-control-plane.sh`
-- Hook smoke for `PreCompact` in `../adi`
-- App Server smoke for `thread/compact/start` in `../adi`
-- Mobile-gateway affected tests when gateway behavior changes
+
+- `python3 -m py_compile` for changed Python entrypoints.
+- `python3 -m unittest tests.control_plane.test_finalize_stale_codex_threads`
+- `python3 -m unittest tests.control_plane.test_hooks_control_plane`
+- `./scripts/test-control-plane.sh`
+- `./scripts/check-agent-control-planes.sh`
+- Dobby lifecycle skill tests.
+- CodexClaw mobile-gateway tests and fast checks after gateway changes.
 
 ## Progress Log
-- 2026-05-16: [IN-PROGRESS] Created project tracker and started repo-local Codex threshold support.
-- 2026-05-16: [DONE] Rendered `model_auto_compact_token_limit = 204000` for `adi` and `angie` only. `204000` is 75% of the current cached `gpt-5.5` context window (`272000`). Global Codex config remains unchanged. Validation passed: `python3 ./codex/scripts/sync-repo-bootstrap-registry.py`, `./codex/scripts/sync-repo-codex-configs.sh --check`, `python3 -m unittest tests.control_plane.test_codex_repo_sync`, and `./codex/scripts/check-codex-control-plane.sh --repo /Users/dobby/GitHub/adi --repo /Users/dobby/GitHub/angie`.
-- 2026-05-16: [DONE] Wired `PreCompact` for `adi` and `angie` through existing `.agents` hook plumbing. The Dobby lifecycle hook writes a small job under `tmp/dobby-lifecycle/pre-compact/`, starts `consolidate-thread` in the background, and returns with no stdout so live compaction can continue. Validation passed: Dobby lifecycle tests, shared hook unit tests, full control-plane test suite, Codex control-plane check, direct dispatcher smoke, and App Server `thread/compact/start` smoke with a fake consolidation binary.
-- 2026-05-16: [DONE] Added the sidecar recursion guard. `consolidate-thread` marks its private App Server with `DOBBY_LIFECYCLE_CONSOLIDATION_SIDECAR=1`; PreCompact sees that marker, writes a skipped run record, and does not create another job. Validation added to Dobby lifecycle tests.
-- 2026-05-16: [DONE] Aligned CodexClaw gateway maintenance. Removed gateway token-pressure consolidation and the context-ratio config; added one-hour iPhone idle compaction for sessions updated during the current gateway process; kept `/v1/chat/end` consolidation and mapping cleanup. Validation passed: `npm run -w @codexclaw/mobile-gateway test`, `npm run check:fast`, launchd gateway refresh, and authenticated health smoke.
-- 2026-05-18: [DONE] Implemented daily backend rollover for iPhone Dobby sessions. The gateway now waits for the local 04:00 window plus one quiet hour for sessions touched during the just-finished Dobby day, direct-runs `consolidate-thread`, maps the same visible session scope to a fresh App Server thread, archives the old App Server thread, and records the local rollover date to prevent repeats. Validation passed: `npm run -w @codexclaw/mobile-gateway test`, `npm run check:fast`, `git diff --check`, launchd gateway refresh, and authenticated health smoke.
-- 2026-05-18: [DONE] Rollout hardening: the first live restart exposed that very old thread-map entries could qualify as "quiet"; the implementation was tightened to require a session update after the previous local 04:00 window, so historical archived mappings are not swept on startup.
-- 2026-05-18: [DONE] Simplified rollover selection after user pushback: daily backend rollover now only considers the latest mapped iPhone session per phone surface, rather than every saved historical session mapping.
+
+- 2026-05-16: Started with repo-local Codex threshold and context-maintenance
+  experiments for Dobby workspaces.
+- 2026-05-18: Added gateway daily backend rollover for iPhone Dobby sessions.
+- 2026-05-25: User pushed for a simpler mental model. Decision: retire the
+  hidden side-process model and make `finalize-codex-thread` the single explicit
+  primitive for end-of-thread memory preservation and archive.
