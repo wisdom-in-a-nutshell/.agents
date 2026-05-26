@@ -1,6 +1,6 @@
 ---
 name: local-transcription
-description: Transcribe local files or media URLs through the WIN cloud transcription job path, returning transcript text and cached artifact URLs. Use when the user asks Codex to transcribe audio/video, diarize a meeting, produce transcript text, inspect transcription jobs, or run readiness checks. The legacy machine-local Superwhisper CLI remains an explicit offline/debug fallback only.
+description: Transcribe local files or media URLs through the WIN cloud transcription job path, returning transcript text and cached artifact URLs. Use when the user asks Codex to transcribe audio/video, diarize a meeting, produce transcript text, inspect transcription jobs, or run readiness checks.
 ---
 
 # Local Transcription
@@ -8,8 +8,6 @@ description: Transcribe local files or media URLs through the WIN cloud transcri
 ## Overview
 
 Use the skill-local client as the default interface for transcription. It sends both local files and remote URLs through the WIN job API so transcript state, cache, DB records, and object-storage artifacts stay consolidated.
-
-The old `/Users/dobby/GitHub/local-transcription/bin/transcribe` Superwhisper path still exists, but treat it as an explicit offline/debug fallback. Do not use it for normal agent transcription work when the WIN API path is available.
 
 ## Workflow
 
@@ -75,7 +73,7 @@ If readiness fails, report the structured error and hint. Do not print or reques
 - For local files, let the client upload to R2 `cache/`, then call WIN `/media/transcribe/artifacts`.
 - For URLs, pass the URL to WIN directly. Do not call local audio extraction from the skill.
 - Do not call Superwhisper, ElevenLabs, or the Mac service directly for normal agent transcription.
-- Keep `/Users/dobby/GitHub/local-transcription/bin/transcribe` and `bin/superwhisper` for offline/debug fallback or explicit provider-level checks only.
+- Do not choose or override providers from the skill; the client always requests WIN `local_transcription`, and WIN owns retry/fallback behavior.
 - Keep secrets file-based. Do not pass secret values through flags, ordinary environment variables, chat, or logs.
 - Keep stdout reserved for the final transcript contract. Progress and diagnostics belong on stderr.
 - Use `--progress off` when command chatter would interfere with surrounding automation.
@@ -84,11 +82,3 @@ If readiness fails, report the structured error and hint. Do not print or reques
 ## Output Handling
 
 After running JSON mode, parse stdout before summarizing. On success, use `data.transcript` as the transcript text and inspect `data.artifacts` for cached result URLs. On failure, preserve `error.code`, `error.message`, and `error.hint` in the user-facing summary.
-
-## Fallback
-
-Only use the local provider CLI when the user explicitly asks for offline/local Superwhisper behavior or when WIN/cloud/R2 is unavailable and an offline fallback is acceptable:
-
-```bash
-/Users/dobby/GitHub/local-transcription/bin/transcribe --audio /path/to/audio.wav --diarize
-```

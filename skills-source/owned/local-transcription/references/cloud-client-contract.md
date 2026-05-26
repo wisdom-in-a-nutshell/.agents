@@ -20,8 +20,9 @@ Use it when an agent needs:
   - Endpoint: `POST /media/transcribe/artifacts`
   - WIN returns a compact artifact manifest; the client fetches `transcript_url`
     when it needs to emit transcript text
-  - Default provider: `local_transcription`
-  - Default diarization: enabled
+  - Provider is fixed to WIN `local_transcription`
+  - Diarization is enabled by default
+  - Cache use and local upload destination are fixed by the client
 - `status`
   - Input: `--job-id`
   - Endpoint: `GET /jobs/{job_id}`
@@ -55,15 +56,6 @@ Default stdout is one JSON object:
     },
     "input": {
       "used_upload": true
-    },
-    "result": {
-      "source_id": "...",
-      "provider": "local_transcription",
-      "word_count": 123,
-      "sentence_count": 45,
-      "transcript_url": "https://...",
-      "words_url": "https://...",
-      "sentences_url": "https://..."
     }
   },
   "error": null,
@@ -84,7 +76,7 @@ Default stdout is one JSON object:
 - No prompts; `--no-input` is supported and non-interactive.
 - Do not pass secrets through flags or environment variables.
 - Local upload storage prefix is always `cache`.
-- The local Superwhisper CLI is fallback/debug only, not the default agent path.
+- Do not call local provider CLIs from this skill; WIN owns the provider route and fallback behavior.
 
 ## Exit Codes
 

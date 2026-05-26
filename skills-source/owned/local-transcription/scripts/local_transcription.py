@@ -20,6 +20,8 @@ DEFAULT_API_BASE_URL = (
     "https://aipodcasting-hzbxdueeg4eeatgh.eastus-01.azurewebsites.net"
 )
 DEFAULT_UPLOAD_MEDIA_BIN = Path.home() / "GitHub/scripts/bin/upload-media"
+DEFAULT_UPLOAD_DESTINATION_PREFIX = "local-transcription"
+DEFAULT_PROVIDER = "local_transcription"
 SCHEMA_VERSION = "1.0"
 COMMAND_NAME = "local-transcription"
 TERMINAL_JOB_STATUSES = {"completed", "failed", "canceled"}
@@ -273,11 +275,6 @@ def _build_transcribe_parser(subparsers: argparse._SubParsersAction[Any]) -> Non
     group.add_argument("--file", help="Local audio or media file to upload first.")
     group.add_argument("--url", help="Remote audio or media URL.")
     parser.add_argument(
-        "--provider",
-        default="local_transcription",
-        help="WIN transcription provider. Default: local_transcription.",
-    )
-    parser.add_argument(
         "--diarize",
         dest="diarize",
         action="store_true",
@@ -294,29 +291,6 @@ def _build_transcribe_parser(subparsers: argparse._SubParsersAction[Any]) -> Non
         "--channel-name",
         default="MISC",
         help="WIN channel name used when ingesting a URL. Default: MISC.",
-    )
-    parser.add_argument(
-        "--use-cache",
-        dest="use_cache",
-        action="store_true",
-        default=True,
-        help="Use cached ingest/transcription data when available. Default.",
-    )
-    parser.add_argument(
-        "--no-use-cache",
-        dest="use_cache",
-        action="store_false",
-        help="Bypass cached ingest/transcription data.",
-    )
-    parser.add_argument(
-        "--upload-media-bin",
-        default=str(DEFAULT_UPLOAD_MEDIA_BIN),
-        help="Path to shared upload-media helper for local files.",
-    )
-    parser.add_argument(
-        "--upload-destination-prefix",
-        default="local-transcription",
-        help="Object destination prefix under the cache storage prefix.",
     )
     parser.add_argument(
         "--no-wait",
@@ -340,11 +314,6 @@ def _build_status_parser(subparsers: argparse._SubParsersAction[Any]) -> None:
 def _build_doctor_parser(subparsers: argparse._SubParsersAction[Any]) -> None:
     parser = subparsers.add_parser("doctor", help="Inspect local client readiness.")
     _add_common_args(parser)
-    parser.add_argument(
-        "--upload-media-bin",
-        default=str(DEFAULT_UPLOAD_MEDIA_BIN),
-        help="Path to shared upload-media helper.",
-    )
 
 
 def _add_common_args(parser: argparse.ArgumentParser) -> None:
@@ -522,7 +491,7 @@ def _execute(args: argparse.Namespace) -> dict[str, Any]:
                 "transcript": None,
                 "artifacts": None,
                 "source_id": None,
-                "provider": args.provider,
+                "provider": DEFAULT_PROVIDER,
                 "job": {
                     "job_id": job_id,
                     "cached": bool(submission.get("cached", False)),
@@ -530,7 +499,6 @@ def _execute(args: argparse.Namespace) -> dict[str, Any]:
                     "endpoint": endpoint,
                 },
                 "input": input_meta,
-                "result": None,
             }
 
         job = api_client.wait_for_job(
@@ -566,8 +534,7 @@ def _build_transcribe_payload(
     elif args.file:
         upload = upload_local_file(
             args.file,
-            upload_media_bin=args.upload_media_bin,
-            destination_prefix=args.upload_destination_prefix,
+            upload_media_bin=str(DEFAULT_UPLOAD_MEDIA_BIN),
         )
         input_payload = {"media_url": upload["url"]}
         input_meta = {
@@ -590,10 +557,10 @@ def _build_transcribe_payload(
 
     payload = {
         **input_payload,
-        "provider": args.provider,
+        "provider": DEFAULT_PROVIDER,
         "diarize": bool(args.diarize),
         "channel_name": args.channel_name,
-        "use_cache": bool(args.use_cache),
+        "use_cache": True,
     }
     return payload, input_meta
 
@@ -602,7 +569,6 @@ def upload_local_file(
     file_path: str,
     *,
     upload_media_bin: str,
-    destination_prefix: str,
 ) -> dict[str, Any]:
     """Upload a local file to R2 cache through the shared upload-media helper."""
 
@@ -635,7 +601,7 @@ def upload_local_file(
         "--storage-prefix",
         "cache",
         "--destination-prefix",
-        destination_prefix,
+        DEFAULT_UPLOAD_DESTINATION_PREFIX,
     ]
     try:
         completed = subprocess.run(
@@ -734,7 +700,6 @@ def _data_from_job(
             "endpoint": endpoint or job.get("endpoint"),
         },
         "input": input_meta,
-        "result": result,
     }
 
 
@@ -749,7 +714,7 @@ def _artifacts_from_result(result: dict[str, Any] | None) -> dict[str, Any] | No
 
 
 def _doctor(args: argparse.Namespace) -> dict[str, Any]:
-    upload_bin = Path(args.upload_media_bin).expanduser().resolve()
+    upload_bin = DEFAULT_UPLOAD_MEDIA_BIN.expanduser().resolve()
     upload_media_ready = upload_bin.exists() and os.access(upload_bin, os.X_OK)
     return {
         "ready": {
@@ -762,7 +727,7 @@ def _doctor(args: argparse.Namespace) -> dict[str, Any]:
             "executable": os.access(upload_bin, os.X_OK),
         },
         "default_api_base_url": DEFAULT_API_BASE_URL,
-        "default_provider": "local_transcription",
+        "default_provider": DEFAULT_PROVIDER,
         "default_diarize": True,
         "artifact_storage_prefix": "cache",
     }
