@@ -104,3 +104,29 @@ not start Codex, fork a thread, write memory itself, or archive anything.
 
 Do not put Dobby memory synthesis directly in the shared `~/.agents` dispatcher.
 The dispatcher routes lifecycle events; this skill owns Dobby-specific behavior.
+
+## Repo wrapper note
+
+Dobby workspaces such as `adi` and `angie` keep repo-local files under
+`scripts/hooks/` only as thin wrappers into this shared lifecycle skill.
+
+Native Codex hook wrappers:
+
+- `scripts/hooks/session_start.py` is reached through rendered `SessionStart`
+  config in `.codex/hooks.json`.
+- `scripts/hooks/user_prompt_submit.py` is reached through rendered
+  `UserPromptSubmit` config in `.codex/hooks.json`.
+
+Explicit finalization wrapper:
+
+- `scripts/hooks/finalize_codex_thread.py` is not a native Codex hook and should
+  not appear in `.codex/hooks.json`.
+- It is called by the global `$HOME/.agents/codex/scripts/finalize-codex-thread.py`
+  command when that command derives the repo from `thread/read` and asks the
+  repo for a same-thread finalization instruction before archive.
+
+Intentional non-goals for Dobby workspaces:
+
+- no fake `SessionEnd`
+- no `PreCompact` memory preservation
+- no sidecar consolidation thread
