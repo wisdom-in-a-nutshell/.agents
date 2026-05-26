@@ -329,17 +329,6 @@
       "origin": "owned",
       "scope": "repo",
       "repos": [
-        "adithyan-ai-videos",
-        "win"
-      ],
-      "source_path": "skills-source/owned/media-toolkit",
-      "upstream_ref": "-"
-    },
-    {
-      "skill": "local-transcription",
-      "origin": "owned",
-      "scope": "repo",
-      "repos": [
         "~/.agents",
         "adi",
         "adithyan-ai-videos",
@@ -348,7 +337,7 @@
         "local-transcription",
         "scripts"
       ],
-      "source_path": "skills-source/owned/local-transcription",
+      "source_path": "skills-source/owned/media-toolkit",
       "upstream_ref": "-"
     },
     {

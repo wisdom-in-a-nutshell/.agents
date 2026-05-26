@@ -19,8 +19,13 @@ Use it when an agent needs one command surface for:
   - Inputs: `--file`
   - Optional file output: `--output`
 - `transcribe`
-  - Endpoint: `POST /media/transcribe`
+  - Endpoint: `POST /media/transcribe/artifacts`
   - Inputs: exactly one of `--file` or `--url`
+  - Provider is fixed to WIN `local_transcription`
+  - Cache use is fixed on
+  - Diarization is fixed on
+  - Local files are uploaded to R2 `cache/`
+  - Returns transcript text plus cached transcript/words/sentences artifact URLs
   - Optional file output: `--output`
 - `segment image`
   - Endpoint: `POST /media/segment/image`
@@ -56,6 +61,7 @@ Use it when an agent needs one command surface for:
 - `--no-wait` returns the submitted `job_id` without polling.
 - `status --wait` polls until the job reaches a terminal state.
 - Local files are uploaded to R2 before submission and then passed to the API as `media_url`.
+- `transcribe` is intentionally opinionated; callers do not choose provider, cache, or diarization behavior.
 - `segment video` accepts optional SAM 3.1 initialization controls:
   - `--anchor-seconds`
   - `--anchor-frame-index`
@@ -83,9 +89,11 @@ Each execution returns one JSON object on stdout:
 Success:
 - `status = "ok"`
 - `data.upload` contains upload metadata for the `upload` command
+- `data.transcript` contains transcript text for completed `transcribe` commands
+- `data.artifacts` contains transcript, words, and sentences URLs for completed `transcribe` commands
 - `data.job` contains submitted or fetched job information
 - `data.input` contains input metadata for submit commands
-- `data.result` contains the terminal job result when available
+- `data.result` contains the terminal job result when available for non-transcription commands
 - `meta.output_path` is present when `--output` is used
 
 Failure:

@@ -39,6 +39,37 @@ class MediaToolkitApiClient:
     def get_job(self, job_id: str) -> dict[str, Any]:
         return self._request_json("GET", f"/jobs/{job_id}")
 
+    def fetch_text(self, url: str) -> str:
+        try:
+            response = self.session.get(url, timeout=self.request_timeout_seconds)
+        except requests.Timeout as exc:
+            raise CliError(
+                code="E_TIMEOUT",
+                message=f"Timed out while fetching artifact {url}.",
+                exit_code=5,
+                retryable=True,
+                hint="Retry the command or increase --request-timeout-seconds.",
+            ) from exc
+        except requests.RequestException as exc:
+            raise CliError(
+                code="E_NETWORK",
+                message=f"Failed to fetch artifact {url}.",
+                exit_code=4,
+                retryable=True,
+                hint="Check network connectivity and artifact URL accessibility.",
+            ) from exc
+
+        if response.status_code >= 400:
+            raise CliError(
+                code="E_API",
+                message=f"Artifact fetch failed with HTTP {response.status_code}.",
+                exit_code=4 if response.status_code < 500 else 5,
+                retryable=response.status_code >= 500,
+                hint="Inspect the artifact URL returned by the job.",
+                detail={"url": url, "status_code": response.status_code},
+            )
+        return response.text
+
     def wait_for_job(
         self,
         job_id: str,

@@ -28,6 +28,9 @@ from media_toolkit_lib.io import (
 DEFAULT_API_BASE_URL = (
     "https://aipodcasting-hzbxdueeg4eeatgh.eastus-01.azurewebsites.net"
 )
+TRANSCRIPTION_PROVIDER = "local_transcription"
+TRANSCRIPTION_UPLOAD_STORAGE_PREFIX = "cache"
+TRANSCRIPTION_UPLOAD_DESTINATION_PREFIX = "local-transcription"
 SCHEMA_VERSION = "1.0"
 COMMAND_NAME = "media-toolkit"
 LOGGER = logging.getLogger("media_toolkit")
@@ -107,10 +110,10 @@ def _build_upload_parser(subparsers: argparse._SubParsersAction[Any]) -> None:
 def _build_transcribe_parser(subparsers: argparse._SubParsersAction[Any]) -> None:
     parser = subparsers.add_parser(
         "transcribe",
-        help="Submit a transcription job and return the completed transcript by default.",
+        help="Transcribe local or remote media and return transcript text plus artifacts.",
         description=(
-            "Submit a transcription job from a local file or URL. "
-            "The command waits by default and returns the final JSON result envelope. "
+            "Transcribe a local file or URL through the WIN artifact-backed transcription path. "
+            "The command waits by default and returns transcript text plus cached artifact URLs. "
             "Use --output to write that JSON envelope to disk."
         ),
         epilog=(
@@ -124,16 +127,15 @@ def _build_transcribe_parser(subparsers: argparse._SubParsersAction[Any]) -> Non
     _add_common_runtime_arguments(parser)
     _add_api_runtime_arguments(parser)
     _add_input_arguments(parser)
-    _add_submission_arguments(parser)
     parser.add_argument(
-        "--provider",
-        default="auto",
-        help="Transcription provider override.",
+        "--channel-name",
+        default="MISC",
+        help="Channel name used when ingesting a URL.",
     )
     parser.add_argument(
-        "--diarize",
+        "--no-wait",
         action="store_true",
-        help="Enable speaker diarization.",
+        help="Submit the job and return immediately without polling.",
     )
 
 
@@ -667,6 +669,20 @@ def _execute_command(
         final_job_status = str(job_doc.get("status", "completed"))
         result_payload = job_doc.get("result")
 
+    job_summary = {
+        "job_id": submission["job_id"],
+        "cached": bool(submission.get("cached", False)),
+        "status": final_job_status,
+        "endpoint": endpoint,
+    }
+    if args.subcommand == "transcribe":
+        return _build_transcription_output(
+            api_client=api_client,
+            job_summary=job_summary,
+            input_meta=input_meta,
+            result_payload=result_payload,
+        )
+
     return {
         "job": {
             "job_id": submission["job_id"],
@@ -682,21 +698,30 @@ def _execute_command(
 def _build_command_payload(
     args: argparse.Namespace,
 ) -> tuple[str, dict[str, Any], dict[str, Any]]:
+    if args.subcommand == "transcribe":
+        input_payload, input_meta = _resolve_input_payload(
+            args,
+            storage_prefix=TRANSCRIPTION_UPLOAD_STORAGE_PREFIX,
+            destination_prefix=TRANSCRIPTION_UPLOAD_DESTINATION_PREFIX,
+        )
+        return (
+            "/media/transcribe/artifacts",
+            {
+                **input_payload,
+                "channel_name": args.channel_name,
+                "use_cache": True,
+                "provider": TRANSCRIPTION_PROVIDER,
+                "diarize": True,
+            },
+            input_meta,
+        )
+
     input_payload, input_meta = _resolve_input_payload(args)
     payload: dict[str, Any] = {
         **input_payload,
         "channel_name": args.channel_name,
         "use_cache": args.use_cache,
     }
-
-    if args.subcommand == "transcribe":
-        payload.update(
-            {
-                "provider": args.provider,
-                "diarize": bool(args.diarize),
-            }
-        )
-        return "/media/transcribe", payload, input_meta
 
     if args.subcommand == "transform":
         payload.update(
@@ -772,12 +797,19 @@ def _build_command_payload(
 
 def _resolve_input_payload(
     args: argparse.Namespace,
+    *,
+    storage_prefix: str = "share",
+    destination_prefix: str = "agent-media-toolkit",
 ) -> tuple[dict[str, Any], dict[str, Any]]:
     if args.url:
         return {"media_url": args.url}, {"media_url": args.url, "used_upload": False}
 
     if args.file:
-        upload = upload_local_file(args.file)
+        upload = upload_local_file(
+            args.file,
+            storage_prefix=storage_prefix,
+            destination_prefix=destination_prefix,
+        )
         return (
             {"media_url": upload["url"]},
             {
@@ -798,6 +830,40 @@ def _resolve_input_payload(
         retryable=False,
         hint="Pass exactly one input locator flag for the selected subcommand.",
     )
+
+
+def _build_transcription_output(
+    *,
+    api_client: Any,
+    job_summary: dict[str, Any],
+    input_meta: dict[str, Any],
+    result_payload: dict[str, Any] | None,
+) -> dict[str, Any]:
+    artifacts = _artifacts_from_transcription_result(result_payload)
+    transcript = result_payload.get("text") if isinstance(result_payload, dict) else None
+    if not transcript and artifacts and artifacts.get("transcript_url"):
+        transcript = api_client.fetch_text(str(artifacts["transcript_url"]))
+
+    return {
+        "transcript": transcript,
+        "artifacts": artifacts,
+        "source_id": result_payload.get("source_id") if isinstance(result_payload, dict) else None,
+        "provider": result_payload.get("provider") if isinstance(result_payload, dict) else None,
+        "job": job_summary,
+        "input": input_meta,
+    }
+
+
+def _artifacts_from_transcription_result(
+    result_payload: dict[str, Any] | None,
+) -> dict[str, Any] | None:
+    if not isinstance(result_payload, dict):
+        return None
+    return {
+        "transcript_url": result_payload.get("transcript_url"),
+        "words_url": result_payload.get("words_url"),
+        "sentences_url": result_payload.get("sentences_url"),
+    }
 
 
 def _write_side_effect_outputs(
@@ -907,11 +973,15 @@ def _format_output(output_mode: str, payload: dict[str, Any]) -> str:
 
 
 def _format_plain(payload: dict[str, Any]) -> str:
+    data = payload.get("data") or {}
+    transcript = data.get("transcript")
+    if payload.get("status") == "ok" and transcript:
+        return str(transcript).rstrip() + "\n"
+
     lines = [
         f"status={payload['status']}",
         f"command={payload['command']}",
     ]
-    data = payload.get("data") or {}
     job = data.get("job") or {}
     if job:
         lines.append(f"job_id={job.get('job_id')}")

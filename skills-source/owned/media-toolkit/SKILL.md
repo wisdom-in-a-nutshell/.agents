@@ -1,6 +1,6 @@
 ---
 name: media-toolkit
-description: Use when an agent needs media processing from a local file or URL. This skill provides one machine-primary client that prepares the input, runs the requested media operation, and returns structured results.
+description: Use when an agent needs to upload, transcribe, segment, transform, matte, or inspect media from a local file or URL. Use this for transcription requests too: the transcribe command returns transcript text plus cached artifact URLs through the WIN artifact-backed transcription path.
 ---
 
 # Media Toolkit
@@ -66,6 +66,12 @@ Transcribe a local file:
   transcribe --file $HOME/media/audio.mp3 \
   --output /tmp/transcribe.json
 ```
+
+`transcribe` always uses WIN's artifact-backed transcription path. It requests
+the Mac-backed `local_transcription` provider, keeps cache enabled, uploads
+local files under R2 `cache/`, and returns `data.transcript` plus
+`data.artifacts.transcript_url`, `data.artifacts.words_url`, and
+`data.artifacts.sentences_url`.
 
 Segment an image:
 

@@ -1,4 +1,4 @@
 interface:
   display_name: "Media Toolkit"
-  short_description: "Process media from local files or URLs"
-  default_prompt: "Use $media-toolkit for media processing from a local file or media URL and return structured results."
+  short_description: "Upload, transcribe, and process media"
+  default_prompt: "Use $media-toolkit to transcribe or process this local file or media URL and return structured results."
