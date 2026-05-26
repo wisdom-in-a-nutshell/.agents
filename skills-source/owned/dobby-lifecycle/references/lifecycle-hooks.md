@@ -35,6 +35,18 @@ Short version:
 - **`memory/now.md`, area files, and `soul.md` are promotion targets only.** They
   should be updated when something durable changes, not for every session.
 
+## Finalization boundary rule
+
+Across finalization layers, pass only:
+
+- `thread_id`: the canonical identifier for the Codex thread.
+- `reason`: optional context for why finalization is running.
+
+Do not pass `cwd`, `repo_root`, `source`, thread metadata, timeout config, Codex
+binary config, archive flags, or prompt text across finalization boundaries.
+Each layer derives what it needs from `thread_id`, and runtime tuning stays local
+to the command that uses it.
+
 ## Boot
 
 Boot context is delivered by the repo's `SessionStart` hook

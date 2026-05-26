@@ -152,6 +152,24 @@ for line in sys.stdin:
                 }
             },
         }
+    elif method == "turn/start":
+        thread_id = msg.get("params", {}).get("threadId")
+        response = {"id": request_id, "result": {"turn": {"id": "turn-test"}}}
+        print(json.dumps(response), flush=True)
+        print(
+            json.dumps(
+                {
+                    "method": "turn/completed",
+                    "params": {
+                        "threadId": thread_id,
+                        "turnId": "turn-test",
+                        "status": "completed",
+                    },
+                }
+            ),
+            flush=True,
+        )
+        continue
     else:
         response = {"id": request_id, "result": {}}
     print(json.dumps(response), flush=True)
@@ -167,3 +185,24 @@ if ! FAKE_THREAD_CWD="$repo" "$SKILL_DIR/scripts/remember-session" \
   echo "remember-session --print-instruction should render the Dobby memory prompt" >&2
   exit 1
 fi
+remember_output="$(FAKE_THREAD_CWD="$repo" "$SKILL_DIR/scripts/remember-session" \
+  --thread-id thread-test \
+  --reason codexclaw-daily-rollover \
+  --codex-bin "$fake_codex" \
+  --json \
+  --no-input)"
+python3 - "$remember_output" "$repo" <<'PY'
+import json
+import pathlib
+import sys
+
+payload = json.loads(sys.argv[1])
+repo = str(pathlib.Path(sys.argv[2]).resolve())
+data = payload["data"]
+assert data["threadId"] == "thread-test"
+assert str(pathlib.Path(data["threadCwd"]).resolve()) == repo
+assert str(pathlib.Path(data["workspaceRoot"]).resolve()) == repo
+assert data["source"] == "codexclaw"
+assert data["reason"] == "daily-rollover"
+assert data["turnStatus"] == "completed"
+PY

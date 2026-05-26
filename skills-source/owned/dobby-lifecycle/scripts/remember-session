@@ -75,24 +75,13 @@ def repo_root_for_cwd(cwd: str) -> Path:
     return Path(result.stdout.strip()).expanduser().resolve()
 
 
-def source_and_reason(raw_reason: str | None) -> tuple[str, str]:
-    reason = (raw_reason or "manual").strip() or "manual"
-    for prefix, source in [
-        ("codexclaw-", "codexclaw"),
-        ("codex-cloud-", "codexclaw"),
-        ("desktop-", "codex-desktop"),
-        ("codex-desktop-", "codex-desktop"),
-    ]:
-        if reason.startswith(prefix):
-            return source, reason.removeprefix(prefix) or "manual"
-    if reason == "manual":
-        return "manual", reason
-    return "codex-desktop", reason
+def clean_label(value: str | None, default: str) -> str:
+    label = (value or default).strip()
+    return label or default
 
 
 class AppServerClient:
-    def __init__(self, codex_bin: str, timeout_seconds: float) -> None:
-        self.codex_bin = codex_bin
+    def __init__(self, timeout_seconds: float) -> None:
         self.timeout_seconds = timeout_seconds
         self.proc: subprocess.Popen[str] | None = None
         self.messages: queue.Queue[dict[str, Any]] = queue.Queue()
@@ -111,7 +100,7 @@ class AppServerClient:
 
     def start(self) -> None:
         self.proc = subprocess.Popen(
-            [self.codex_bin, "app-server"],
+            ["codex", "app-server"],
             stdin=subprocess.PIPE,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
@@ -390,19 +379,20 @@ When finished, reply briefly with what memory path(s) you changed, or say that n
 def remember_session(
     *,
     thread_id: str,
+    source: str,
     reason: str,
-    codex_bin: str,
     timeout_seconds: float,
     remember_timeout_seconds: float,
 ) -> dict[str, Any]:
-    source, normalized_reason = source_and_reason(reason)
-    with AppServerClient(codex_bin, timeout_seconds) as client:
+    source = clean_label(source, "remember-session")
+    reason = clean_label(reason, "manual")
+    with AppServerClient(timeout_seconds) as client:
         thread_cwd, workspace_root = resolve_workspace_root(client, thread_id)
         instruction = build_instruction(
             workspace_root=workspace_root,
             thread_id=thread_id,
             source=source,
-            reason=normalized_reason,
+            reason=reason,
         )
         response = client.request(
             "turn/start",
@@ -430,7 +420,7 @@ def remember_session(
         "threadCwd": thread_cwd,
         "workspaceRoot": str(workspace_root),
         "source": source,
-        "reason": normalized_reason,
+        "reason": reason,
         "turnId": turn_id,
         "turnStatus": status,
         "reply": truncate_text(re.sub(r"\s+", " ", final_text), 1000) if final_text else "",
@@ -459,8 +449,8 @@ def print_json(value: dict[str, Any]) -> None:
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Remember useful Dobby session memory from an ending Codex thread.")
     parser.add_argument("--thread-id", required=True)
+    parser.add_argument("--source", default="remember-session")
     parser.add_argument("--reason", default="manual")
-    parser.add_argument("--codex-bin", default="codex")
     parser.add_argument("--timeout-seconds", type=float, default=DEFAULT_TIMEOUT_SECONDS)
     parser.add_argument("--remember-timeout-seconds", type=float, default=DEFAULT_REMEMBER_TIMEOUT_SECONDS)
     parser.add_argument("--finalization-timeout-seconds", type=float, help="Alias for --remember-timeout-seconds.")
@@ -480,22 +470,23 @@ def main() -> int:
         if args.timeout_seconds <= 0 or remember_timeout <= 0:
             raise RememberSessionError("timeouts must be positive")
         if args.print_instruction:
-            source, normalized_reason = source_and_reason(args.reason)
-            with AppServerClient(args.codex_bin, args.timeout_seconds) as client:
+            source = clean_label(args.source, "remember-session")
+            reason = clean_label(args.reason, "manual")
+            with AppServerClient(args.timeout_seconds) as client:
                 _, workspace_root = resolve_workspace_root(client, args.thread_id)
             data = {
                 "instruction": build_instruction(
                     workspace_root=workspace_root,
                     thread_id=args.thread_id,
                     source=source,
-                    reason=normalized_reason,
+                    reason=reason,
                 )
             }
         else:
             data = remember_session(
                 thread_id=args.thread_id,
+                source=args.source,
                 reason=args.reason,
-                codex_bin=args.codex_bin,
                 timeout_seconds=args.timeout_seconds,
                 remember_timeout_seconds=remember_timeout,
             )
