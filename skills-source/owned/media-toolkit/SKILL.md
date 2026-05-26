@@ -1,6 +1,6 @@
 ---
 name: media-toolkit
-description: Use when an agent needs to upload, transcribe, segment, transform, matte, or inspect media from a local file or URL. Use this for transcription requests too: the transcribe command returns transcript text plus cached artifact URLs through the WIN artifact-backed transcription path.
+description: "Use when an agent needs to upload, transcribe, segment, transform, matte, or inspect media from a local file or URL. Use this for transcription requests too: the transcribe command returns transcript text plus cached artifact URLs through the WIN artifact-backed transcription path."
 ---
 
 # Media Toolkit
