@@ -1,0 +1,270 @@
+#!/usr/bin/env python3
+"""Agent-native CLI for Dobby session memory JSON records."""
+
+from __future__ import annotations
+
+import argparse
+import json
+import sys
+import time
+import uuid
+from datetime import datetime, timezone
+from pathlib import Path
+from typing import Any
+
+SCRIPT_DIR = Path(__file__).resolve().parent
+sys.path.insert(0, str(SCRIPT_DIR))
+
+from session_memory_lib import (  # noqa: E402
+    SCHEMA_VERSION,
+    SessionMemoryError,
+    build_recent_session_entries,
+    make_record,
+    read_record,
+    record_from_legacy_md,
+    validate_record,
+    write_record,
+)
+
+OUTPUT_SCHEMA_VERSION = "1.0"
+COMMAND = "session-memory"
+
+EXIT_GENERIC = 1
+EXIT_USAGE = 2
+
+
+def utc_now() -> str:
+    return datetime.now(timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z")
+
+
+def envelope(command: str, status: str, data: dict[str, Any] | None, error: dict[str, Any] | None, started: float) -> dict[str, Any]:
+    return {
+        "schema_version": OUTPUT_SCHEMA_VERSION,
+        "command": command,
+        "status": status,
+        "data": data or {},
+        "error": error,
+        "meta": {
+            "request_id": str(uuid.uuid4()),
+            "duration_ms": int((time.time() - started) * 1000),
+            "timestamp_utc": utc_now(),
+        },
+    }
+
+
+def print_json(value: dict[str, Any]) -> None:
+    print(json.dumps(value, ensure_ascii=False, sort_keys=True))
+
+
+def read_stdin_json() -> Any:
+    raw = sys.stdin.read()
+    if not raw.strip():
+        raise SessionMemoryError("expected JSON on stdin")
+    try:
+        return json.loads(raw)
+    except json.JSONDecodeError as exc:
+        raise SessionMemoryError(f"invalid stdin JSON: {exc}") from exc
+
+
+def add_common(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument("--json", action="store_true", help="Emit JSON envelope; default behavior.")
+    parser.add_argument("--plain", action="store_true", help="Emit stable plain-text inspection output.")
+    parser.add_argument("--no-input", action="store_true", help="Run non-interactively; accepted for agent callers.")
+
+
+def build_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(description="Read, write, and validate Dobby session memory records.")
+    sub = parser.add_subparsers(dest="subcommand", required=True)
+
+    schema = sub.add_parser("schema", help="Print the session-memory v1 schema summary.")
+    add_common(schema)
+
+    validate = sub.add_parser("validate", help="Validate one session-memory JSON file.")
+    validate.add_argument("path")
+    add_common(validate)
+
+    read = sub.add_parser("read", help="Read and validate one session-memory JSON file.")
+    read.add_argument("path")
+    add_common(read)
+
+    write = sub.add_parser("write", help="Write one session-memory JSON file.")
+    write.add_argument("--workspace-root", default=".")
+    write.add_argument("--source")
+    write.add_argument("--reason")
+    write.add_argument("--thread-id")
+    write.add_argument("--created-at")
+    write.add_argument("--summary", action="append", default=[])
+    write.add_argument("--notes", default="")
+    write.add_argument("--stdin-json", action="store_true", help="Read record fields from stdin JSON.")
+    add_common(write)
+
+    render = sub.add_parser("render-boot", help="Render recent session summaries for boot context.")
+    render.add_argument("--workspace-root", default=".")
+    add_common(render)
+
+    migrate = sub.add_parser("migrate-md", help="Migrate legacy Markdown session notes to JSON.")
+    migrate.add_argument("--workspace-root", default=".")
+    migrate.add_argument("--apply", action="store_true")
+    migrate.add_argument("--delete-source", action="store_true")
+    add_common(migrate)
+
+    return parser
+
+
+def command_schema() -> dict[str, Any]:
+    return {
+        "schemaVersion": SCHEMA_VERSION,
+        "required": ["schemaVersion", "createdAt", "source", "reason", "threadId", "summary"],
+        "optional": ["notes"],
+        "record": {
+            "schemaVersion": 1,
+            "createdAt": "ISO-8601 timestamp with timezone",
+            "source": "string",
+            "reason": "string",
+            "threadId": "string or null",
+            "summary": ["non-empty string array loaded at boot"],
+            "notes": "optional string for deeper context",
+        },
+    }
+
+
+def command_write(args: argparse.Namespace) -> dict[str, Any]:
+    if args.stdin_json:
+        raw = read_stdin_json()
+        if not isinstance(raw, dict):
+            raise SessionMemoryError("stdin JSON must be an object")
+        record = make_record(
+            source=str(raw.get("source") or ""),
+            reason=str(raw.get("reason") or ""),
+            thread_id=raw.get("threadId") if isinstance(raw.get("threadId"), str) else None,
+            summary=raw.get("summary"),
+            notes=raw.get("notes") if isinstance(raw.get("notes"), str) else None,
+            created_at=raw.get("createdAt") if isinstance(raw.get("createdAt"), str) else None,
+        )
+    else:
+        if not args.source or not args.reason:
+            raise SessionMemoryError("--source and --reason are required")
+        record = make_record(
+            source=args.source,
+            reason=args.reason,
+            thread_id=args.thread_id,
+            summary=args.summary,
+            notes=args.notes,
+            created_at=args.created_at,
+        )
+    path = write_record(Path(args.workspace_root).expanduser().resolve(), record)
+    return {"path": str(path), "record": record}
+
+
+def command_render_boot(args: argparse.Namespace) -> dict[str, Any]:
+    root = Path(args.workspace_root).expanduser().resolve()
+    entries = build_recent_session_entries(root / "memory" / "sessions")
+    return {
+        "entries": [
+            {
+                "label": entry["label"],
+                "path": str(entry["path"]),
+                "kind": entry["kind"],
+                "content": entry["content"],
+            }
+            for entry in entries
+        ]
+    }
+
+
+def command_migrate_md(args: argparse.Namespace) -> dict[str, Any]:
+    root = Path(args.workspace_root).expanduser().resolve()
+    sessions_dir = root / "memory" / "sessions"
+    migrated: list[dict[str, str]] = []
+    for path in sorted(sessions_dir.glob("*/*/*-*.md")):
+        record = record_from_legacy_md(path)
+        target = path.with_suffix(".json")
+        suffix = 2
+        while target.exists():
+            target = path.with_name(f"{path.stem}-{suffix}.json")
+            suffix += 1
+        migrated.append({"source": str(path), "target": str(target)})
+        if args.apply:
+            from session_memory_lib import atomic_write_record  # local to keep command surface small
+
+            atomic_write_record(target, record)
+            if args.delete_source:
+                path.unlink()
+    return {"apply": bool(args.apply), "deleteSource": bool(args.delete_source), "migrated": migrated}
+
+
+def plain_output(subcommand: str, data: dict[str, Any]) -> str:
+    if subcommand == "schema":
+        return json.dumps(data, indent=2, ensure_ascii=False)
+    if subcommand == "render-boot":
+        parts = []
+        for entry in data.get("entries", []):
+            parts.append(f"## {entry['label']}\n{entry['content']}")
+        return "\n\n".join(parts)
+    if "path" in data:
+        return str(data["path"])
+    return json.dumps(data, indent=2, ensure_ascii=False)
+
+
+def main() -> int:
+    started = time.time()
+    parser = build_parser()
+    args = parser.parse_args()
+    command = f"{COMMAND} {args.subcommand}"
+    try:
+        if args.subcommand == "schema":
+            data = command_schema()
+        elif args.subcommand == "validate":
+            record = read_record(Path(args.path).expanduser().resolve())
+            data = {"valid": True, "record": record}
+        elif args.subcommand == "read":
+            data = {"record": read_record(Path(args.path).expanduser().resolve())}
+        elif args.subcommand == "write":
+            data = command_write(args)
+        elif args.subcommand == "render-boot":
+            data = command_render_boot(args)
+        elif args.subcommand == "migrate-md":
+            data = command_migrate_md(args)
+        else:  # pragma: no cover
+            raise SessionMemoryError(f"unsupported subcommand: {args.subcommand}")
+    except SessionMemoryError as exc:
+        result = envelope(
+            command,
+            "error",
+            None,
+            {
+                "code": "E_VALIDATION",
+                "message": str(exc),
+                "retryable": False,
+                "hint": "Fix the input record or command arguments and retry.",
+            },
+            started,
+        )
+        print_json(result)
+        return EXIT_USAGE
+    except Exception as exc:  # pragma: no cover
+        result = envelope(
+            command,
+            "error",
+            None,
+            {
+                "code": "E_RUNTIME",
+                "message": str(exc),
+                "retryable": False,
+                "hint": "Inspect stderr or rerun with simpler input.",
+            },
+            started,
+        )
+        print_json(result)
+        return EXIT_GENERIC
+
+    result = envelope(command, "ok", data, None, started)
+    if args.plain:
+        print(plain_output(args.subcommand, data))
+    else:
+        print_json(result)
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

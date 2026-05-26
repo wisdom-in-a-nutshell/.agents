@@ -13,6 +13,7 @@ are cheap and specific enough to be useful:
 - key organs keep their expected second-level shape
 - active projects have `tasks.md`
 - `state/shelf.json` has basic JSON shape
+- session memory uses JSON records, not legacy Markdown
 - generated CV PDFs are not tracked
 
 When this script fails, future Dobby should treat the message as an instruction
@@ -248,6 +249,22 @@ def check_shelf_json() -> None:
         add_error(path, "Shelf state key `items` should be a list.")
 
 
+def check_session_memory_files() -> None:
+    sessions = ROOT / "memory" / "sessions"
+    if not sessions.exists():
+        return
+    for path in sorted(p for p in sessions.rglob("*") if p.is_file()):
+        if path.name in {".gitkeep", ".DS_Store"}:
+            continue
+        if path.suffix != ".json":
+            add_error(
+                path,
+                "Session continuity should use JSON records under "
+                "memory/sessions/YYYY/MM/DD-HHMMSS.json, not loose Markdown "
+                "or other ad-hoc files.",
+            )
+
+
 def tracked_files() -> list[str]:
     try:
         result = subprocess.run(
@@ -277,6 +294,7 @@ def main() -> int:
     check_second_level_shape()
     check_projects()
     check_shelf_json()
+    check_session_memory_files()
     check_tracked_generated_artifacts()
 
     if warnings:

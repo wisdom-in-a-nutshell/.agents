@@ -16,7 +16,7 @@ a caller decides a thread should preserve useful memory before archive.
 Use this skill for:
 
 - `SessionStart`, `UserPromptSubmit`, and `FinalizeCodexThread` behavior.
-- Boot context assembly: shared `dobby-workspace` body map, `now.md`, recent sessions, Shelf snapshot, calendar snapshot, area manifest.
+- Boot context assembly: shared `dobby-workspace` body map, `now.md`, recent session-memory summaries, Shelf snapshot, calendar snapshot, area manifest.
 - Codex App Server same-thread finalization before archive.
 - Hook payload normalization, temporary hook records where active, worker logs, and lifecycle debugging.
 - Questions like “why did Dobby not load context?”, “why did session memory not write?”, or “change what loads at boot.”
@@ -56,16 +56,16 @@ $HOME/.agents/skills-source/owned/dobby-lifecycle/scripts/hooks/finalize-codex-t
 
 Load on demand:
 
-- `references/lifecycle-hooks.md` — boot, session notes, explicit thread finalization, operational limits.
+- `references/lifecycle-hooks.md` — boot, session memory, explicit thread finalization, operational limits.
 
 ## Design principle
 
 Name by domain, implement through hooks:
 
 ```text
-dobby-workspace  = shared workspace body meaning and shape lint
-dobby-lifecycle  = runtime context flow and hook machinery
+dobby-workspace  = shared workspace body meaning, memory routing, and shape lint
+dobby-lifecycle  = runtime context flow, boot loading, and finalization plumbing
 ```
 
-Lifecycle is allowed to preserve and transport context. It should not become a
-second memory router.
+Lifecycle is allowed to preserve and transport context. It may read the
+workspace body map, but it should not become a second memory router.

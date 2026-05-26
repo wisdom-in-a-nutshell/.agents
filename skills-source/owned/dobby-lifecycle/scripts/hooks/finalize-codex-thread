@@ -51,27 +51,69 @@ def thread_id(payload: dict[str, Any]) -> str | None:
     return first_text(payload, "thread_id", "source_thread_id", "threadId", "sourceThreadId")
 
 
+def finalization_source_and_reason(payload: dict[str, Any]) -> tuple[str, str]:
+    explicit_source = first_text(payload, "source")
+    raw_reason = first_text(payload, "reason") or "manual"
+
+    if explicit_source:
+        return explicit_source, raw_reason
+
+    for prefix, source in [
+        ("codexclaw-", "codexclaw"),
+        ("codex-cloud-", "codexclaw"),
+        ("desktop-", "codex-desktop"),
+        ("codex-desktop-", "codex-desktop"),
+    ]:
+        if raw_reason.startswith(prefix):
+            return source, raw_reason.removeprefix(prefix) or "manual"
+
+    if raw_reason == "manual":
+        return "manual", raw_reason
+    return "codex-desktop", raw_reason
+
+
 def build_instruction(payload: dict[str, Any]) -> str:
     root = repo_root(payload)
     source_thread = thread_id(payload) or "unknown"
-    reason = first_text(payload, "reason") or "manual"
+    source, reason = finalization_source_and_reason(payload)
+    session_memory_cli = (
+        Path.home()
+        / ".agents/skills-source/owned/dobby-lifecycle/scripts/session-memory"
+    )
     return f"""You are running the final turn in this Codex thread before it is archived.
 
-Finalize this thread into Dobby memory. Use the shared `dobby-workspace` body map for memory routing and write directly to the workspace memory files.
+Finalize this thread into Dobby memory. Use the shared `dobby-workspace` body map for memory routing and the `session-memory` client for session continuity JSON.
 
 Context:
 - Workspace root: `{root}`
 - Source thread id: `{source_thread}`
+- Session memory source: `{source}`
 - Finalization reason: `{reason}`
 
 Task:
 1. Read `$HOME/.agents/skills-source/owned/dobby-workspace/references/body-map.md` for session continuity and memory routing.
 2. Capture only what would make a future Dobby session worse if lost. Do not summarize everything.
-3. If useful, write one concise session-continuity note under `memory/sessions/YYYY/MM/DD-HHMMSS.md`.
+3. If useful, write one concise session-memory JSON record with `$HOME/.agents/skills-source/owned/dobby-lifecycle/scripts/session-memory`.
    - If the thread contains nothing worth preserving, do not invent a note.
 4. Promote durable facts only when the body map clearly says they belong in `memory/now.md`, an area file/log, `soul.md`, or Shelf.
 5. Do not ask the user. Do not archive, delete, compact, or otherwise manage this thread; the external finalizer will archive it after this turn succeeds.
-6. Keep any written memory human, compact, and operationally useful.
+6. Keep any written memory compact, operationally useful, and optimized for a future agent to load.
+
+Session-memory write shape:
+
+```bash
+cat <<'JSON' | {session_memory_cli} write --workspace-root "{root}" --stdin-json --no-input
+{{
+  "source": "{source}",
+  "reason": "{reason}",
+  "threadId": "{source_thread}",
+  "summary": [
+    "One short carry-forward fact, decision, or next-context item."
+  ],
+  "notes": "Optional deeper context. Omit this field if the summary is enough."
+}}
+JSON
+```
 
 When finished, reply briefly with what memory path(s) you changed, or say that no memory changes were needed.
 """

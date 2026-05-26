@@ -10,12 +10,13 @@ This skill owns the shared Dobby workspace body contract.
 Use it for:
 
 - understanding the common Dobby workspace organs and routing model
+- deciding where Dobby memory belongs
 - updating workspace shape rules shared across `adi`, `angie`, or future Dobby homes
 - running or editing the workspace shape linter
 
 Do not use this skill for:
 
-- lifecycle hook runtime behavior → use `dobby-lifecycle`
+- lifecycle hook runtime behavior, boot loading, and finalization plumbing → use `dobby-lifecycle`
 - Shelf operations → use `dobby-shelf`
 - journal/check-in writes → use `journal-checkin`
 - health data → use `health`
