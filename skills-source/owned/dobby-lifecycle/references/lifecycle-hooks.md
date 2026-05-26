@@ -149,16 +149,22 @@ In Dobby workspaces the repo wrapper delegates to:
 $HOME/.agents/skills-source/owned/dobby-lifecycle/scripts/hooks/finalize-codex-thread
 ```
 
-That hook runs the Dobby memory-preservation behavior:
+That hook runs the Dobby memory-preservation behavior with only `thread_id` and
+`reason`:
 
 ```bash
-$HOME/.agents/skills-source/owned/dobby-lifecycle/scripts/remember-session
+$HOME/.agents/skills-source/owned/dobby-lifecycle/scripts/remember-session \
+  --thread-id <codex-thread-id> \
+  --reason manual \
+  --no-input
 ```
 
 `remember-session` starts one final same-thread Codex turn and asks the agent to
-carry forward only useful memory. The final turn may call `session-memory` to
-write `memory/sessions/YYYY/MM/DD-HHMMSS.json`. The repo hook does not archive;
-the global finalizer owns archive after the hook succeeds.
+carry forward only useful memory. It performs its own `thread/read(thread_id)`,
+derives the repo root from the thread cwd, and starts the final turn with that
+cwd. The final turn may call `session-memory` to write
+`memory/sessions/YYYY/MM/DD-HHMMSS.json`. The repo hook does not archive; the
+global finalizer owns archive after the hook succeeds.
 
 Do not put Dobby memory synthesis directly in the shared `~/.agents` dispatcher.
 The dispatcher routes lifecycle events; this skill owns Dobby-specific behavior.

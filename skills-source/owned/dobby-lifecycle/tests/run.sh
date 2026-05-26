@@ -115,19 +115,52 @@ if ! grep -q -- "--thread-id" <<<"$remember_argv" || ! grep -q "thread-test" <<<
   echo "remember-session should receive source thread id" >&2
   exit 1
 fi
-if ! grep -q -- "--source" <<<"$remember_argv" || ! grep -q "codexclaw" <<<"$remember_argv"; then
-  echo "remember-session should receive normalized source" >&2
+if ! grep -q -- "--reason" <<<"$remember_argv" || ! grep -q "codexclaw-daily-rollover" <<<"$remember_argv"; then
+  echo "remember-session should receive raw finalization reason" >&2
   exit 1
 fi
-if grep -Eq -- "--codex-bin|--timeout-seconds|--remember-timeout-seconds" <<<"$remember_argv"; then
-  echo "finalize-codex-thread hook should rely on remember-session defaults instead of forwarding runtime tuning" >&2
+if grep -Eq -- "--workspace-root|--source|--codex-bin|--timeout-seconds|--remember-timeout-seconds" <<<"$remember_argv"; then
+  echo "finalize-codex-thread hook should only forward thread id and reason to remember-session" >&2
   exit 1
 fi
-if ! "$SKILL_DIR/scripts/remember-session" \
+
+fake_codex="$tmp_dir/fake-codex"
+cat >"$fake_codex" <<'PY'
+#!/usr/bin/env python3
+import json
+import os
+import sys
+
+for line in sys.stdin:
+    try:
+        msg = json.loads(line)
+    except json.JSONDecodeError:
+        continue
+    request_id = msg.get("id")
+    if request_id is None:
+        continue
+    method = msg.get("method")
+    if method == "initialize":
+        response = {"id": request_id, "result": {}}
+    elif method == "thread/read":
+        response = {
+            "id": request_id,
+            "result": {
+                "thread": {
+                    "id": msg.get("params", {}).get("threadId"),
+                    "cwd": os.environ["FAKE_THREAD_CWD"],
+                }
+            },
+        }
+    else:
+        response = {"id": request_id, "result": {}}
+    print(json.dumps(response), flush=True)
+PY
+chmod +x "$fake_codex"
+if ! FAKE_THREAD_CWD="$repo" "$SKILL_DIR/scripts/remember-session" \
   --thread-id thread-test \
-  --workspace-root "$repo" \
-  --source codexclaw \
-  --reason daily-rollover \
+  --reason codexclaw-daily-rollover \
+  --codex-bin "$fake_codex" \
   --print-instruction \
   --plain \
   --no-input | grep -q "Remember this session"; then

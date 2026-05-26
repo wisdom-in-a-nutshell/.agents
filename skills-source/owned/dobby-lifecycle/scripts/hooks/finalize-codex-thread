@@ -55,23 +55,6 @@ def thread_id(payload: dict[str, Any]) -> str | None:
     return first_text(payload, "thread_id")
 
 
-def finalization_source_and_reason(payload: dict[str, Any]) -> tuple[str, str]:
-    raw_reason = first_text(payload, "reason") or "manual"
-
-    for prefix, source in [
-        ("codexclaw-", "codexclaw"),
-        ("codex-cloud-", "codexclaw"),
-        ("desktop-", "codex-desktop"),
-        ("codex-desktop-", "codex-desktop"),
-    ]:
-        if raw_reason.startswith(prefix):
-            return source, raw_reason.removeprefix(prefix) or "manual"
-
-    if raw_reason == "manual":
-        return "manual", raw_reason
-    return "codex-desktop", raw_reason
-
-
 def remember_session_bin() -> Path:
     return Path(
         os.environ.get(
@@ -88,17 +71,13 @@ def run_remember_session(payload: dict[str, Any]) -> int:
         return 2
 
     root = Path.cwd().resolve()
-    source, reason = finalization_source_and_reason(payload)
+    reason = first_text(payload, "reason") or "manual"
 
     runner = remember_session_bin()
     cmd = [
         str(runner),
         "--thread-id",
         source_thread,
-        "--workspace-root",
-        str(root),
-        "--source",
-        source,
         "--reason",
         reason,
         "--json",
