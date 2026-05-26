@@ -109,7 +109,7 @@ Use the client instead of hand-writing records:
 ```bash
 $HOME/.agents/skills-source/owned/dobby-lifecycle/scripts/session-memory write \
   --workspace-root /path/to/dobby-workspace \
-  --source codex-desktop \
+  --source finalize-codex-thread \
   --reason manual \
   --thread-id <codex-thread-id> \
   --summary "One short carry-forward memory item." \
@@ -161,12 +161,13 @@ In Dobby workspaces the repo wrapper delegates to:
 $HOME/.agents/skills-source/owned/dobby-lifecycle/scripts/hooks/finalize-codex-thread
 ```
 
-That hook runs the Dobby memory-preservation behavior with only `thread_id` and
-`reason`:
+That hook runs the Dobby memory-preservation behavior with explicit source,
+thread id, and reason:
 
 ```bash
 $HOME/.agents/skills-source/owned/dobby-lifecycle/scripts/remember-session \
   --thread-id <codex-thread-id> \
+  --source finalize-codex-thread \
   --reason manual \
   --no-input
 ```
@@ -174,7 +175,8 @@ $HOME/.agents/skills-source/owned/dobby-lifecycle/scripts/remember-session \
 `remember-session` starts one final same-thread Codex turn and asks the agent to
 carry forward only useful memory. It performs its own `thread/read(thread_id)`,
 derives the repo root from the thread cwd, and starts the final turn with that
-cwd. The final turn may call `session-memory` to write
+cwd. It does not infer source from reason prefixes. The final turn may call
+`session-memory` to write
 `memory/sessions/YYYY/MM/DD-HHMMSS.json`. The repo hook does not archive; the
 global finalizer owns archive after the hook succeeds.
 

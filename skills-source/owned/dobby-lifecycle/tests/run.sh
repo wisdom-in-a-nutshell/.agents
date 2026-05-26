@@ -119,12 +119,18 @@ if ! grep -q -- "--reason" <<<"$remember_argv" || ! grep -q "codexclaw-daily-rol
   echo "remember-session should receive raw finalization reason" >&2
   exit 1
 fi
-if grep -Eq -- "--workspace-root|--source|--codex-bin|--timeout-seconds|--remember-timeout-seconds" <<<"$remember_argv"; then
-  echo "finalize-codex-thread hook should only forward thread id and reason to remember-session" >&2
+if ! grep -q -- "--source" <<<"$remember_argv" || ! grep -q "finalize-codex-thread" <<<"$remember_argv"; then
+  echo "remember-session should receive explicit source" >&2
+  exit 1
+fi
+if grep -Eq -- "--workspace-root|--timeout-seconds|--remember-timeout-seconds" <<<"$remember_argv"; then
+  echo "finalize-codex-thread hook should only forward thread id, source, and reason to remember-session" >&2
   exit 1
 fi
 
-fake_codex="$tmp_dir/fake-codex"
+fake_bin_dir="$tmp_dir/bin"
+mkdir -p "$fake_bin_dir"
+fake_codex="$fake_bin_dir/codex"
 cat >"$fake_codex" <<'PY'
 #!/usr/bin/env python3
 import json
@@ -175,20 +181,19 @@ for line in sys.stdin:
     print(json.dumps(response), flush=True)
 PY
 chmod +x "$fake_codex"
-if ! FAKE_THREAD_CWD="$repo" "$SKILL_DIR/scripts/remember-session" \
+if ! PATH="$fake_bin_dir:$PATH" FAKE_THREAD_CWD="$repo" "$SKILL_DIR/scripts/remember-session" \
   --thread-id thread-test \
   --reason codexclaw-daily-rollover \
-  --codex-bin "$fake_codex" \
   --print-instruction \
   --plain \
   --no-input | grep -q "Remember this session"; then
   echo "remember-session --print-instruction should render the Dobby memory prompt" >&2
   exit 1
 fi
-remember_output="$(FAKE_THREAD_CWD="$repo" "$SKILL_DIR/scripts/remember-session" \
+remember_output="$(PATH="$fake_bin_dir:$PATH" FAKE_THREAD_CWD="$repo" "$SKILL_DIR/scripts/remember-session" \
   --thread-id thread-test \
+  --source finalize-codex-thread \
   --reason codexclaw-daily-rollover \
-  --codex-bin "$fake_codex" \
   --json \
   --no-input)"
 python3 - "$remember_output" "$repo" <<'PY'
@@ -202,7 +207,7 @@ data = payload["data"]
 assert data["threadId"] == "thread-test"
 assert str(pathlib.Path(data["threadCwd"]).resolve()) == repo
 assert str(pathlib.Path(data["workspaceRoot"]).resolve()) == repo
-assert data["source"] == "codexclaw"
-assert data["reason"] == "daily-rollover"
+assert data["source"] == "finalize-codex-thread"
+assert data["reason"] == "codexclaw-daily-rollover"
 assert data["turnStatus"] == "completed"
 PY

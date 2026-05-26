@@ -106,8 +106,7 @@ def finish(
 
 
 class AppServerClient:
-    def __init__(self, codex_bin: str, timeout_seconds: float) -> None:
-        self.codex_bin = codex_bin
+    def __init__(self, timeout_seconds: float) -> None:
         self.timeout_seconds = timeout_seconds
         self.proc: subprocess.Popen[str] | None = None
         self.messages: queue.Queue[dict[str, Any]] = queue.Queue()
@@ -123,7 +122,7 @@ class AppServerClient:
 
     def start(self) -> None:
         self.proc = subprocess.Popen(
-            [self.codex_bin, "app-server"],
+            ["codex", "app-server"],
             stdin=subprocess.PIPE,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
@@ -340,12 +339,11 @@ def finalize_thread(
     thread_id: str,
     reason: str,
     dry_run: bool,
-    codex_bin: str,
     timeout_seconds: float,
     finalization_timeout_seconds: float,
     client_factory: Any = AppServerClient,
 ) -> FinalizeResult:
-    with client_factory(codex_bin, timeout_seconds) as client:
+    with client_factory(timeout_seconds) as client:
         thread = thread_read(client, thread_id)
     cwd = thread.get("cwd")
     if not isinstance(cwd, str) or not cwd.strip():
@@ -410,7 +408,7 @@ def finalize_thread(
                 file=sys.stderr,
             )
 
-    with client_factory(codex_bin, timeout_seconds) as client:
+    with client_factory(timeout_seconds) as client:
         try:
             archive_thread(client, thread_id)
         except Exception as exc:
@@ -450,7 +448,6 @@ def parse_args() -> argparse.Namespace:
     mode.add_argument("--dry-run", action="store_true", help="Resolve repo policy without running finalization or archive (default).")
     parser.add_argument("--thread-id", required=True, help="Codex/App Server thread id to finalize.")
     parser.add_argument("--reason", default="manual", help="Reason label passed to repo finalizers.")
-    parser.add_argument("--codex-bin", default="codex")
     parser.add_argument("--timeout-seconds", type=float, default=DEFAULT_TIMEOUT_SECONDS)
     parser.add_argument("--finalization-timeout-seconds", type=float, default=DEFAULT_FINALIZATION_TIMEOUT_SECONDS)
     parser.add_argument("--no-input", action="store_true", help="Accepted for non-interactive callers; this command never prompts.")
@@ -474,7 +471,6 @@ def main() -> int:
             thread_id=args.thread_id,
             reason=args.reason,
             dry_run=dry_run,
-            codex_bin=args.codex_bin,
             timeout_seconds=args.timeout_seconds,
             finalization_timeout_seconds=args.finalization_timeout_seconds,
         )

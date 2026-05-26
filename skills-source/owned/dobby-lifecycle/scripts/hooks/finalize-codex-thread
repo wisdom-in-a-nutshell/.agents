@@ -78,6 +78,8 @@ def run_remember_session(payload: dict[str, Any]) -> int:
         str(runner),
         "--thread-id",
         source_thread,
+        "--source",
+        "finalize-codex-thread",
         "--reason",
         reason,
         "--json",

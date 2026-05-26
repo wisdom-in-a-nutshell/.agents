@@ -181,8 +181,7 @@ def finish(
 
 
 class AppServerClient:
-    def __init__(self, codex_bin: str, timeout_seconds: float) -> None:
-        self.codex_bin = codex_bin
+    def __init__(self, timeout_seconds: float) -> None:
         self.timeout_seconds = timeout_seconds
         self.proc: subprocess.Popen[str] | None = None
         self.stdout_queue: queue.Queue[str] = queue.Queue()
@@ -198,7 +197,7 @@ class AppServerClient:
 
     def start(self) -> None:
         self.proc = subprocess.Popen(
-            [self.codex_bin, "app-server"],
+            ["codex", "app-server"],
             stdin=subprocess.PIPE,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
@@ -388,7 +387,6 @@ def run_thread_finalizer(
     *,
     command: Path,
     candidate: Candidate,
-    codex_bin: str,
     timeout_seconds: float,
     finalization_timeout_seconds: float,
 ) -> dict[str, Any]:
@@ -402,8 +400,6 @@ def run_thread_finalizer(
             candidate.thread_id,
             "--reason",
             "stale-cleanup",
-            "--codex-bin",
-            codex_bin,
             "--timeout-seconds",
             str(timeout_seconds),
             "--finalization-timeout-seconds",
@@ -474,7 +470,6 @@ def parse_args() -> argparse.Namespace:
 
     parser.add_argument("--registry", type=Path, default=DEFAULT_REGISTRY)
     parser.add_argument("--repo", action="append", default=[], help="Limit to an exact repo/cwd path. Repeatable.")
-    parser.add_argument("--codex-bin", default="codex")
     parser.add_argument("--finalizer-command", type=Path, default=DEFAULT_FINALIZER_COMMAND)
     parser.add_argument("--page-limit", type=int, default=DEFAULT_PAGE_LIMIT)
     parser.add_argument("--timeout-seconds", type=float, default=DEFAULT_TIMEOUT_SECONDS)
@@ -532,7 +527,7 @@ def main() -> int:
 
         lock_file = acquire_lock(args.lock.expanduser())
         try:
-            with AppServerClient(args.codex_bin, args.timeout_seconds) as client:
+            with AppServerClient(args.timeout_seconds) as client:
                 candidates = list_candidates(
                     client,
                     repos=repos,
@@ -557,7 +552,6 @@ def main() -> int:
                     finalizer_result = run_thread_finalizer(
                         command=args.finalizer_command.expanduser(),
                         candidate=candidate,
-                        codex_bin=args.codex_bin,
                         timeout_seconds=args.timeout_seconds,
                         finalization_timeout_seconds=args.finalization_timeout_seconds,
                     )

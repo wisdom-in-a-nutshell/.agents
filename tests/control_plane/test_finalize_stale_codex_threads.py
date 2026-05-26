@@ -75,7 +75,7 @@ class FakeAppServerFactory:
         self.responses_by_client = responses_by_client
         self.clients: list[FakeAppServerClient] = []
 
-    def __call__(self, _codex_bin: str, _timeout_seconds: float) -> FakeAppServerClient:
+    def __call__(self, _timeout_seconds: float) -> FakeAppServerClient:
         if not self.responses_by_client:
             raise AssertionError("unexpected app-server client")
         client = FakeAppServerClient(self.responses_by_client.pop(0))
@@ -171,7 +171,6 @@ print(json.dumps({
         result = module.run_thread_finalizer(
             command=finalizer,
             candidate=candidate,
-            codex_bin="fake-codex",
             timeout_seconds=1,
             finalization_timeout_seconds=1,
         )
@@ -217,7 +216,6 @@ print("remember-session ok")
             thread_id="thread-123",
             reason="test",
             dry_run=False,
-            codex_bin="fake-codex",
             timeout_seconds=5,
             finalization_timeout_seconds=5,
             client_factory=client_factory,
@@ -268,7 +266,6 @@ print("remember-session ok")
             thread_id="thread-123",
             reason="test",
             dry_run=True,
-            codex_bin="fake-codex",
             timeout_seconds=5,
             finalization_timeout_seconds=5,
             client_factory=client_factory,
