@@ -5,6 +5,7 @@ SKILL_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 python3 -m py_compile \
   "$SKILL_DIR/scripts/session_memory_lib.py" \
   "$SKILL_DIR/scripts/session-memory" \
+  "$SKILL_DIR/scripts/remember-session" \
   "$SKILL_DIR/scripts/hooks/session-start" \
   "$SKILL_DIR/scripts/hooks/user-prompt-submit" \
   "$SKILL_DIR/scripts/hooks/finalize-codex-thread"
@@ -82,6 +83,15 @@ if [[ -f "$repo/memory/sessions/2026/05/25-010203.md" ]]; then
 fi
 
 payload="$tmp_dir/finalize-payload.json"
+remember_log="$tmp_dir/remember-argv.json"
+fake_remember="$tmp_dir/remember-session"
+cat >"$fake_remember" <<PY
+#!/usr/bin/env python3
+import json, os, pathlib, sys
+pathlib.Path(os.environ["REMEMBER_LOG"]).write_text(json.dumps(sys.argv[1:]))
+print(json.dumps({"schema_version": "1.0", "command": "remember-session", "status": "ok", "data": {"threadId": "thread-test"}, "error": None, "meta": {}}))
+PY
+chmod +x "$fake_remember"
 cat >"$payload" <<JSON
 {
   "schema_version": "1.0",
@@ -89,20 +99,37 @@ cat >"$payload" <<JSON
   "cwd": "$repo",
   "repo_root": "$repo",
   "thread_id": "thread-test",
-  "reason": "test"
+  "reason": "codexclaw-daily-rollover",
+  "codex_bin": "fake-codex"
 }
 JSON
 
-hook_output="$($SKILL_DIR/scripts/hooks/finalize-codex-thread <"$payload")"
+hook_output="$(REMEMBER_LOG="$remember_log" DOBBY_REMEMBER_SESSION_BIN="$fake_remember" $SKILL_DIR/scripts/hooks/finalize-codex-thread <"$payload")"
 if [[ -z "$hook_output" ]]; then
-  echo "finalize-codex-thread hook should emit a finalization instruction" >&2
+  echo "finalize-codex-thread hook should emit remember-session output" >&2
   exit 1
 fi
-if ! grep -q "final turn" <<<"$hook_output"; then
-  echo "finalization instruction should describe same-thread finalization" >&2
+if ! grep -q '"command": "remember-session"' <<<"$hook_output"; then
+  echo "finalize-codex-thread hook should run remember-session" >&2
   exit 1
 fi
-if ! grep -q "thread-test" <<<"$hook_output"; then
-  echo "finalization instruction should include source thread id" >&2
+remember_argv="$(cat "$remember_log")"
+if ! grep -q -- "--thread-id" <<<"$remember_argv" || ! grep -q "thread-test" <<<"$remember_argv"; then
+  echo "remember-session should receive source thread id" >&2
+  exit 1
+fi
+if ! grep -q -- "--source" <<<"$remember_argv" || ! grep -q "codexclaw" <<<"$remember_argv"; then
+  echo "remember-session should receive normalized source" >&2
+  exit 1
+fi
+if ! "$SKILL_DIR/scripts/remember-session" \
+  --thread-id thread-test \
+  --workspace-root "$repo" \
+  --source codexclaw \
+  --reason daily-rollover \
+  --print-instruction \
+  --plain \
+  --no-input | grep -q "Remember this session"; then
+  echo "remember-session --print-instruction should render the Dobby memory prompt" >&2
   exit 1
 fi

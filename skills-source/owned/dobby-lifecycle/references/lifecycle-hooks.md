@@ -10,9 +10,8 @@ focused on workspace meaning instead of becoming a hook runbook.
 - `UserPromptSubmit`: add lightweight per-turn context when useful.
 - Normal conversation/work happens in the live Codex thread.
 - `finalize-codex-thread`: explicit end-of-thread command. It derives the repo
-  from Codex App Server `thread/read`, asks the repo for a finalization
-  instruction, runs one final turn in that same source thread, and archives only
-  after that turn succeeds.
+  from Codex App Server `thread/read`, runs the repo's self-contained
+  finalization hook when present, and archives only after that hook succeeds.
 - Next `SessionStart`: recent `memory/sessions/...` JSON summaries return
   continuity to the next thread.
 
@@ -23,13 +22,14 @@ Short version:
 - **FinalizeCodexThread is explicit same-thread finalization.** The global
   `finalize-codex-thread` command is the public primitive. It runs repo policy
   from `scripts/hooks/finalize_codex_thread.py` when present.
-- **Dobby finalization writes memory directly.** The repo hook emits the prompt
-  for the final turn. That turn uses the `session-memory` client for session
-  continuity and decides whether anything should also be written under
-  `memory/now.md`, an area file, `soul.md`, or Shelf by reading the shared
-  `dobby-workspace` body map.
-- **Archive is conditional.** If the repo hook, final turn, or archive request
-  fails, the source thread is left unarchived so stale cleanup can retry later.
+- **Dobby finalization is self-contained.** The repo hook runs
+  `remember-session`, which starts one final same-thread Codex turn. That turn
+  uses the `session-memory` client for session continuity and decides whether
+  anything should also be written under `memory/now.md`, an area file, `soul.md`,
+  or Shelf by reading the shared `dobby-workspace` body map.
+- **Archive is conditional.** If the repo hook, remember-session turn, or
+  archive request fails, the source thread is left unarchived so stale cleanup
+  can retry later.
 - **`memory/sessions` is the bridge.** End-of-thread JSON summaries become part
   of the next boot context.
 - **`memory/now.md`, area files, and `soul.md` are promotion targets only.** They
@@ -119,12 +119,15 @@ command uses `thread/read` as the source of truth for the current working
 directory and repo root.
 
 When a repo provides `scripts/hooks/finalize_codex_thread.py`, the finalizer runs
-that script first. The script should print the instruction for the final turn to
-stdout. The global finalizer then:
+that script first. The script is self-contained repo policy: it should do any
+repo-specific before-archive work itself and exit non-zero on failure. The global
+finalizer then:
 
-1. starts a new `turn/start` inside the original source thread;
-2. waits for `turn/completed`;
-3. archives the source thread through `thread/archive` only after success.
+1. archives the source thread through `thread/archive` only after repo hook
+   success;
+2. skips repo-specific work and archives directly when no repo hook exists;
+3. leaves the source thread unarchived when the repo hook or archive request
+   fails.
 
 In Dobby workspaces the repo wrapper delegates to:
 
@@ -132,10 +135,16 @@ In Dobby workspaces the repo wrapper delegates to:
 $HOME/.agents/skills-source/owned/dobby-lifecycle/scripts/hooks/finalize-codex-thread
 ```
 
-That hook emits a prompt asking the same live Dobby agent to preserve only
-useful memory, using the shared body map as the routing authority and the
-`session-memory` client for session continuity JSON. The hook does not start
-Codex, fork a thread, write memory itself, or archive anything.
+That hook runs the Dobby memory-preservation behavior:
+
+```bash
+$HOME/.agents/skills-source/owned/dobby-lifecycle/scripts/remember-session
+```
+
+`remember-session` starts one final same-thread Codex turn and asks the agent to
+carry forward only useful memory. The final turn may call `session-memory` to
+write `memory/sessions/YYYY/MM/DD-HHMMSS.json`. The repo hook does not archive;
+the global finalizer owns archive after the hook succeeds.
 
 Do not put Dobby memory synthesis directly in the shared `~/.agents` dispatcher.
 The dispatcher routes lifecycle events; this skill owns Dobby-specific behavior.
@@ -158,7 +167,7 @@ Explicit finalization wrapper:
   not appear in `.codex/hooks.json`.
 - It is called by the global `$HOME/.agents/codex/scripts/finalize-codex-thread.py`
   command when that command derives the repo from `thread/read` and asks the
-  repo for a same-thread finalization instruction before archive.
+  repo to finalize itself before archive.
 
 Intentional non-goals for Dobby workspaces:
 

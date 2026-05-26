@@ -17,7 +17,7 @@ Use this skill for:
 
 - `SessionStart`, `UserPromptSubmit`, and `FinalizeCodexThread` behavior.
 - Boot context assembly: shared `dobby-workspace` body map, `now.md`, recent session-memory summaries, Shelf snapshot, calendar snapshot, area manifest.
-- Codex App Server same-thread finalization before archive.
+- Codex App Server same-thread remember-session flow before archive.
 - Hook payload normalization, temporary hook records where active, worker logs, and lifecycle debugging.
 - Questions like “why did Dobby not load context?”, “why did session memory not write?”, or “change what loads at boot.”
 
@@ -50,6 +50,8 @@ The hook scripts live here:
 $HOME/.agents/skills-source/owned/dobby-lifecycle/scripts/hooks/session-start
 $HOME/.agents/skills-source/owned/dobby-lifecycle/scripts/hooks/user-prompt-submit
 $HOME/.agents/skills-source/owned/dobby-lifecycle/scripts/hooks/finalize-codex-thread
+$HOME/.agents/skills-source/owned/dobby-lifecycle/scripts/remember-session
+$HOME/.agents/skills-source/owned/dobby-lifecycle/scripts/session-memory
 ```
 
 ## Reference files

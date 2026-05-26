@@ -194,7 +194,7 @@ class FinalizeCodexThreadTests(TempDirTestCase):
             f"""#!/usr/bin/env python3
 import pathlib, sys
 pathlib.Path({str(finalizer_payload)!r}).write_text(sys.stdin.read())
-print("finalize this thread")
+print("remember-session ok")
 """,
         )
         client_factory = FakeAppServerFactory(
@@ -209,7 +209,7 @@ print("finalize this thread")
                         }
                     },
                 ],
-                [{"turnId": "turn-123"}, {}],
+                [{}],
             ]
         )
 
@@ -226,17 +226,18 @@ print("finalize this thread")
         self.assertTrue(result.archived)
         self.assertEqual(result.cwd, str(repo))
         self.assertEqual(result.repo_root, str(repo.resolve()))
-        self.assertEqual(result.finalizer_status, "instruction_loaded")
-        self.assertEqual(result.finalization_turn_id, "turn-123")
-        self.assertEqual(result.finalization_turn_status, "completed")
+        self.assertEqual(result.finalizer_status, "completed")
+        self.assertIsNone(result.finalization_turn_id)
+        self.assertIsNone(result.finalization_turn_status)
         self.assertEqual([call[0] for call in client_factory.clients[0].calls], ["thread/read"])
         self.assertEqual(
             [call[0] for call in client_factory.clients[1].calls],
-            ["turn/start", "wait_for_turn_completed", "thread/archive"],
+            ["thread/archive"],
         )
         payload = json.loads(finalizer_payload.read_text())
         self.assertEqual(payload["thread_id"], "thread-123")
         self.assertEqual(payload["reason"], "test")
+        self.assertEqual(payload["finalization_mode"], "repo_self_contained")
 
     def test_thread_finalizer_dry_run_does_not_archive(self) -> None:
         module = load_thread_finalizer_module()

@@ -1,16 +1,17 @@
 #!/usr/bin/env python3
-"""Dobby same-thread Codex finalization instruction hook.
+"""Dobby Codex thread finalization hook.
 
 The global `finalize-codex-thread` command calls this repo-local hook before it
-archives a source Codex thread. This hook does not start Codex, fork threads, or
-write memory by itself. It prints the instruction for the final turn that will
-run inside the source thread.
+archives a source Codex thread. This hook is self-contained repo policy: for
+Dobby workspaces it runs the `remember-session` behavior runner. The global
+finalizer archives only after this hook exits successfully.
 """
 
 from __future__ import annotations
 
 import json
 import os
+import subprocess
 import sys
 from pathlib import Path
 from typing import Any
@@ -18,6 +19,17 @@ from typing import Any
 
 HOOK_EVENT = "FinalizeCodexThread"
 SCHEMA_VERSION = "1.0"
+DEFAULT_TIMEOUT_SECONDS = 60.0
+DEFAULT_REMEMBER_TIMEOUT_SECONDS = 900.0
+MAX_OUTPUT_CHARS = 12_000
+
+
+def truncate_text(value: str, limit: int = MAX_OUTPUT_CHARS) -> str:
+    text = value.strip()
+    if len(text) <= limit:
+        return text
+    suffix = "\n...[truncated]"
+    return text[: max(0, limit - len(suffix))] + suffix
 
 
 def read_payload() -> dict[str, Any]:
@@ -37,6 +49,21 @@ def first_text(payload: dict[str, Any], *keys: str) -> str | None:
         if isinstance(value, str) and value.strip():
             return value.strip()
     return None
+
+
+def first_number(payload: dict[str, Any], *keys: str, default: float) -> float:
+    for key in keys:
+        value = payload.get(key)
+        if isinstance(value, (int, float)) and value > 0:
+            return float(value)
+        if isinstance(value, str):
+            try:
+                parsed = float(value)
+            except ValueError:
+                continue
+            if parsed > 0:
+                return parsed
+    return default
 
 
 def repo_root(payload: dict[str, Any]) -> Path:
@@ -72,51 +99,88 @@ def finalization_source_and_reason(payload: dict[str, Any]) -> tuple[str, str]:
     return "codex-desktop", raw_reason
 
 
-def build_instruction(payload: dict[str, Any]) -> str:
+def remember_session_bin() -> Path:
+    return Path(
+        os.environ.get(
+            "DOBBY_REMEMBER_SESSION_BIN",
+            str(Path.home() / ".agents/skills-source/owned/dobby-lifecycle/scripts/remember-session"),
+        )
+    ).expanduser()
+
+
+def run_remember_session(payload: dict[str, Any]) -> int:
+    source_thread = thread_id(payload)
+    if not source_thread:
+        print("finalize-codex-thread hook: missing thread_id", file=sys.stderr)
+        return 2
+
     root = repo_root(payload)
-    source_thread = thread_id(payload) or "unknown"
     source, reason = finalization_source_and_reason(payload)
-    session_memory_cli = (
-        Path.home()
-        / ".agents/skills-source/owned/dobby-lifecycle/scripts/session-memory"
+    codex_bin = first_text(payload, "codex_bin", "codexBin") or os.environ.get("CODEX_BIN") or "codex"
+    timeout_seconds = first_number(payload, "timeout_seconds", "timeoutSeconds", default=DEFAULT_TIMEOUT_SECONDS)
+    remember_timeout_seconds = first_number(
+        payload,
+        "remember_timeout_seconds",
+        "rememberTimeoutSeconds",
+        "finalization_timeout_seconds",
+        "finalizationTimeoutSeconds",
+        default=DEFAULT_REMEMBER_TIMEOUT_SECONDS,
     )
-    return f"""You are running the final turn in this Codex thread before it is archived.
 
-Finalize this thread into Dobby memory. Use the shared `dobby-workspace` body map for memory routing and the `session-memory` client for session continuity JSON.
+    runner = remember_session_bin()
+    cmd = [
+        str(runner),
+        "--thread-id",
+        source_thread,
+        "--workspace-root",
+        str(root),
+        "--source",
+        source,
+        "--reason",
+        reason,
+        "--codex-bin",
+        codex_bin,
+        "--timeout-seconds",
+        str(timeout_seconds),
+        "--remember-timeout-seconds",
+        str(remember_timeout_seconds),
+        "--json",
+        "--no-input",
+    ]
+    env = os.environ.copy()
+    env.update(
+        {
+            "AGENT_REPO_ROOT": str(root),
+            "DOBBY_REMEMBER_SESSION_ACTIVE": "1",
+        }
+    )
+    try:
+        result = subprocess.run(
+            cmd,
+            cwd=root,
+            env=env,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            timeout=timeout_seconds + remember_timeout_seconds + 30,
+        )
+    except subprocess.TimeoutExpired as exc:
+        print(f"remember-session timed out after {exc.timeout}s", file=sys.stderr)
+        return 5
+    except OSError as exc:
+        print(f"remember-session failed to start: {exc}", file=sys.stderr)
+        return 5
 
-Context:
-- Workspace root: `{root}`
-- Source thread id: `{source_thread}`
-- Session memory source: `{source}`
-- Finalization reason: `{reason}`
+    if result.returncode != 0:
+        output = "\n".join(part for part in [result.stderr, result.stdout] if part.strip())
+        print(truncate_text(output or f"remember-session exited {result.returncode}"), file=sys.stderr)
+        return result.returncode
 
-Task:
-1. Read `$HOME/.agents/skills-source/owned/dobby-workspace/references/body-map.md` for session continuity and memory routing.
-2. Capture only what would make a future Dobby session worse if lost. Do not summarize everything.
-3. If useful, write one concise session-memory JSON record with `$HOME/.agents/skills-source/owned/dobby-lifecycle/scripts/session-memory`.
-   - If the thread contains nothing worth preserving, do not invent a note.
-4. Promote durable facts only when the body map clearly says they belong in `memory/now.md`, an area file/log, `soul.md`, or Shelf.
-5. Do not ask the user. Do not archive, delete, compact, or otherwise manage this thread; the external finalizer will archive it after this turn succeeds.
-6. Keep any written memory compact, operationally useful, and optimized for a future agent to load.
-
-Session-memory write shape:
-
-```bash
-cat <<'JSON' | {session_memory_cli} write --workspace-root "{root}" --stdin-json --no-input
-{{
-  "source": "{source}",
-  "reason": "{reason}",
-  "threadId": "{source_thread}",
-  "summary": [
-    "One short carry-forward fact, decision, or next-context item."
-  ],
-  "notes": "Optional deeper context. Omit this field if the summary is enough."
-}}
-JSON
-```
-
-When finished, reply briefly with what memory path(s) you changed, or say that no memory changes were needed.
-"""
+    if result.stderr.strip():
+        print(truncate_text(result.stderr), file=sys.stderr)
+    if result.stdout.strip():
+        print(truncate_text(result.stdout))
+    return 0
 
 
 def main() -> int:
@@ -126,13 +190,7 @@ def main() -> int:
         return 0
     if payload.get("schema_version") not in {None, SCHEMA_VERSION}:
         return 0
-
-    if not thread_id(payload):
-        print("finalize-codex-thread hook: missing thread_id", file=sys.stderr)
-        return 2
-
-    print(build_instruction(payload))
-    return 0
+    return run_remember_session(payload)
 
 
 if __name__ == "__main__":
