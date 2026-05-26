@@ -178,53 +178,18 @@ Ignore generated PDFs and LaTeX build artifacts via `<career-root>/cv/latex/.git
 ## Submitting applications via browser
 
 When the user asks you to actually submit a compiled CV to a web form, use the
-`agent-browser` CLI. It drives Chrome via CDP directly and handles file uploads
-cleanly.
-
-### Canonical submission flow
-
-```bash
-# 1. Open the application page in agent-browser
-agent-browser open "<application-url>"
-agent-browser wait --load networkidle
-
-# 2. Get the accessibility tree with element refs
-agent-browser snapshot -i
-
-# 3. Fill text fields and click radios/buttons using the @eN refs
-agent-browser fill @e13 "<candidate name>"
-agent-browser fill @e14 "<candidate email>"
-agent-browser click @e33  # radio button
-agent-browser click @e5   # combobox option after fill
-
-# 4. Upload resume + cover letter PDFs
-agent-browser upload @e15 "$REPO_ROOT/$CAREER_ROOT/cv/latex/tailored/<slug>/resume.pdf"
-agent-browser upload @eN "$REPO_ROOT/$CAREER_ROOT/cv/latex/tailored/<slug>/cover-letter.pdf"
-
-# 5. Screenshot for verification before the final click
-agent-browser screenshot /tmp/<slug>-before-submit.png
-
-# 6. Submit
-agent-browser click @eN  # submit button
-agent-browser wait --load networkidle
-agent-browser screenshot /tmp/<slug>-after-submit.png
-```
+bundled browser tooling available in the active Codex session. Prefer the Codex
+in-app Browser for ordinary public forms and Chrome when the task needs the
+user's normal profile, cookies, extensions, or logged-in state.
 
 ### Workflow notes
 
-- Combobox selection is a two-step dance: `fill` then `click` the matching option ref. The option ref appears in a fresh `snapshot -i` after the fill.
-- `agent-browser` uses its own Chrome profile. Any login state from the daily browser does not carry over. Most Ashby/Greenhouse/Lever application forms do not require login, so this is usually fine.
-- Before every `click @eN` on a submit button, take a screenshot and show it to the user. Submission is irreversible.
-- After submission, capture a confirmation screenshot (`agent-browser screenshot`) as evidence and note the result in the relevant tracker file (for example `<career-root>/job-tracker/<batch>/STATUS.md`).
+- Combobox selection is usually a two-step dance: set or type the value, then click the matching option after the menu appears.
+- Before every final submit action, take a screenshot and show it to the user. Submission is irreversible.
+- After submission, capture a confirmation screenshot as evidence and note the result in the relevant tracker file (for example `<career-root>/job-tracker/<batch>/STATUS.md`).
 - If the form has many essay questions, draft all answers before opening the form and fill them in a single pass. Reviewing drafts in source is easier than scrolling a populated form.
-- **Refs renumber aggressively.** Any interaction that changes the DOM (combobox selection, radio click, upload) can shift every ref below it by one. If you drafted fills using refs from an early snapshot and then interacted with the form, your essays will land in the wrong fields. Always re-snapshot right before a batch of fills, and verify filled content with `agent-browser eval` after.
+- Browser element identifiers can change after DOM updates such as combobox selection, radio clicks, and file uploads. Re-read the page state before each batch of interactions and verify filled content before submission.
 - **Ashby has invisible reCAPTCHA and will flag automated submissions as spam.** The form will appear to submit successfully, then replace itself with "Your application submission was flagged as possible spam. If you believe this was a mistake, please submit your application again." The reCAPTCHA token is generated from user gesture signals (mouse movement, genuine clicks, focus patterns) that programmatic fills do not produce. Retry does not help. Presence of `textarea[name=g-recaptcha-response]` on the form is the tell.
-  - **Workaround**: fill everything with agent-browser, verify the filled state in a screenshot, then hand the already-filled form to the human and ask them to click Submit. Same handoff pattern as the Chrome file_upload workaround.
-  - Do NOT close the agent-browser window after filling. The human needs the populated tab still open to click Submit.
+  - **Workaround**: fill everything, verify the filled state in a screenshot, then hand the already-filled form to the human and ask them to click Submit.
+  - Do not close the browser window after filling. The human needs the populated tab still open to click Submit.
   - Greenhouse and Lever do not generally trip this. Ashby is the problem surface.
-
-### When to prefer the daily browser
-
-Use the daily browser when the task needs an already-logged-in session, cookies,
-or extensions configured in the user's normal profile. For stateless public
-application forms, agent-browser is simpler and more reliable.

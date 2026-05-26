@@ -12,14 +12,6 @@
   },
   "managed_skills": [
     {
-      "skill": "agent-browser",
-      "origin": "external",
-      "scope": "global",
-      "repos": [],
-      "source_path": "skills-source/external/agent-browser",
-      "upstream_ref": "vercel-labs/agent-browser:skills/agent-browser@main"
-    },
-    {
       "skill": "agent-native-repo-playbook",
       "origin": "owned",
       "scope": "global",
