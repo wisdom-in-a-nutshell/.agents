@@ -96,15 +96,12 @@ cat >"$payload" <<JSON
 {
   "schema_version": "1.0",
   "hook_event_name": "FinalizeCodexThread",
-  "cwd": "$repo",
-  "repo_root": "$repo",
   "thread_id": "thread-test",
-  "reason": "codexclaw-daily-rollover",
-  "codex_bin": "fake-codex"
+  "reason": "codexclaw-daily-rollover"
 }
 JSON
 
-hook_output="$(REMEMBER_LOG="$remember_log" DOBBY_REMEMBER_SESSION_BIN="$fake_remember" $SKILL_DIR/scripts/hooks/finalize-codex-thread <"$payload")"
+hook_output="$(cd "$repo" && REMEMBER_LOG="$remember_log" DOBBY_REMEMBER_SESSION_BIN="$fake_remember" "$SKILL_DIR/scripts/hooks/finalize-codex-thread" <"$payload")"
 if [[ -z "$hook_output" ]]; then
   echo "finalize-codex-thread hook should emit remember-session output" >&2
   exit 1
@@ -120,6 +117,10 @@ if ! grep -q -- "--thread-id" <<<"$remember_argv" || ! grep -q "thread-test" <<<
 fi
 if ! grep -q -- "--source" <<<"$remember_argv" || ! grep -q "codexclaw" <<<"$remember_argv"; then
   echo "remember-session should receive normalized source" >&2
+  exit 1
+fi
+if grep -Eq -- "--codex-bin|--timeout-seconds|--remember-timeout-seconds" <<<"$remember_argv"; then
+  echo "finalize-codex-thread hook should rely on remember-session defaults instead of forwarding runtime tuning" >&2
   exit 1
 fi
 if ! "$SKILL_DIR/scripts/remember-session" \

@@ -121,7 +121,21 @@ directory and repo root.
 When a repo provides `scripts/hooks/finalize_codex_thread.py`, the finalizer runs
 that script first. The script is self-contained repo policy: it should do any
 repo-specific before-archive work itself and exit non-zero on failure. The global
-finalizer then:
+finalizer deliberately sends a minimal hook payload only:
+
+```json
+{
+  "schema_version": "1.0",
+  "hook_event_name": "FinalizeCodexThread",
+  "thread_id": "019e...",
+  "reason": "manual"
+}
+```
+
+The repo hook runs with `cwd` set to the repo root. It should perform its own
+lookups from `thread_id` instead of relying on duplicated cwd, repo, timeout,
+Codex binary, archive-mode, or thread-metadata fields from the dispatcher. The
+global finalizer then:
 
 1. archives the source thread through `thread/archive` only after repo hook
    success;

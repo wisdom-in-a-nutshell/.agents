@@ -295,30 +295,12 @@ def repo_root_for_cwd(cwd: str) -> str:
     return str(Path(result.stdout.strip()).expanduser().resolve())
 
 
-def minimal_thread_payload(thread: dict[str, Any]) -> dict[str, Any]:
-    keys = [
-        "id",
-        "cwd",
-        "name",
-        "preview",
-        "path",
-        "sessionId",
-        "source",
-        "status",
-        "threadSource",
-        "updatedAt",
-        "createdAt",
-    ]
-    return {key: thread.get(key) for key in keys if key in thread}
-
-
 def run_repo_finalizer(
     *,
     finalizer_path: Path,
     repo_root: str,
     thread: dict[str, Any],
     reason: str,
-    codex_bin: str,
     timeout_seconds: float,
     finalization_timeout_seconds: float,
 ) -> tuple[bool, str | None, str | None]:
@@ -326,27 +308,10 @@ def run_repo_finalizer(
     payload = {
         "schema_version": SCHEMA_VERSION,
         "hook_event_name": HOOK_EVENT,
-        "command": COMMAND,
         "thread_id": thread_id,
-        "source_thread_id": thread_id,
         "reason": reason,
-        "cwd": thread.get("cwd"),
-        "repo_root": repo_root,
-        "thread": minimal_thread_payload(thread),
-        "archive_requested": True,
-        "finalization_mode": "repo_self_contained",
-        "codex_bin": codex_bin,
-        "timeout_seconds": timeout_seconds,
-        "finalization_timeout_seconds": finalization_timeout_seconds,
     }
     env = os.environ.copy()
-    env.update(
-        {
-            "AGENT_HOOK_EVENT": HOOK_EVENT,
-            "AGENT_REPO_ROOT": repo_root,
-            "AGENT_HOOK_SCHEMA_VERSION": SCHEMA_VERSION,
-        }
-    )
     try:
         result = subprocess.run(
             [sys.executable, str(finalizer_path)],
@@ -422,7 +387,6 @@ def finalize_thread(
             repo_root=repo_root,
             thread=thread,
             reason=reason,
-            codex_bin=codex_bin,
             timeout_seconds=timeout_seconds,
             finalization_timeout_seconds=finalization_timeout_seconds,
         )

@@ -235,9 +235,15 @@ print("remember-session ok")
             ["thread/archive"],
         )
         payload = json.loads(finalizer_payload.read_text())
-        self.assertEqual(payload["thread_id"], "thread-123")
-        self.assertEqual(payload["reason"], "test")
-        self.assertEqual(payload["finalization_mode"], "repo_self_contained")
+        self.assertEqual(
+            payload,
+            {
+                "schema_version": "1.0",
+                "hook_event_name": "FinalizeCodexThread",
+                "thread_id": "thread-123",
+                "reason": "test",
+            },
+        )
 
     def test_thread_finalizer_dry_run_does_not_archive(self) -> None:
         module = load_thread_finalizer_module()
