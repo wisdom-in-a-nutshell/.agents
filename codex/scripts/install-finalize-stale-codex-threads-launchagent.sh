@@ -4,8 +4,8 @@ set -euo pipefail
 APPLY=0
 LABEL="com.${USER}.codex-thread-finalizer"
 LEGACY_LABEL="com.${USER}.codex-session-archiver"
-INTERVAL_SECONDS=21600
-OLDER_THAN_HOURS=48
+INTERVAL_SECONDS=3600
+OLDER_THAN_HOURS=24
 MAX_REPORT=25
 RUN_AT_LOAD=1
 SCRIPT_PATH="${HOME}/.agents/codex/scripts/finalize-stale-codex-threads.py"
@@ -26,8 +26,8 @@ Options:
   --apply                    Write and load the LaunchAgent
   --dry-run                  Print the plist only (default)
   --label <label>            LaunchAgent label (default: com.<user>.codex-thread-finalizer)
-  --interval-seconds <n>     StartInterval seconds (default: 21600, six hours)
-  --older-than-hours <n>     Forwarded stale-thread threshold (default: 48)
+  --interval-seconds <n>     StartInterval seconds (default: 3600, one hour)
+  --older-than-hours <n>     Forwarded stale-thread threshold (default: 24)
   --max-report <n>           Candidate detail lines kept in launchd logs (default: 25)
   --script <path>            Stale-thread finalizer script path
   --run-at-load              Run once immediately when loaded (default)

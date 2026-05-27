@@ -59,7 +59,7 @@ Use [Codex Control Plane Ownership](/Users/dobby/.agents/docs/references/codex-c
   - this applies the Codex control-plane outputs only, including the stale-thread finalization LaunchAgent; shared shell links still come from `~/GitHub/scripts/setup/codex/`
 - Check stale Codex threads without finalizing:
   - [`finalize-stale-codex-threads.py`](/Users/dobby/.agents/codex/scripts/finalize-stale-codex-threads.py)
-  - `~/.agents/codex/scripts/finalize-stale-codex-threads.py --dry-run --older-than-days 2`
+  - `~/.agents/codex/scripts/finalize-stale-codex-threads.py --dry-run --older-than-hours 24`
   - eligibility is based on Codex `thread.updatedAt`, not creation time
 - Check stale Codex Desktop sidebar projects without changing state:
   - [`prune-sidebar-projects.py`](/Users/dobby/.agents/codex/scripts/prune-sidebar-projects.py)
@@ -68,7 +68,7 @@ Use [Codex Control Plane Ownership](/Users/dobby/.agents/docs/references/codex-c
 - Install/update the stale-thread finalization LaunchAgent:
   - [`install-finalize-stale-codex-threads-launchagent.sh`](/Users/dobby/.agents/codex/scripts/install-finalize-stale-codex-threads-launchagent.sh)
   - `~/.agents/codex/scripts/install-finalize-stale-codex-threads-launchagent.sh --apply`
-  - default schedule is every 6 hours, finalizing managed-repo threads whose last update is older than 48 hours
+  - default schedule is every hour, finalizing managed-repo threads whose last update is older than 24 hours
 - Install/update the nightly sidebar project prune LaunchAgent:
   - [`install-sidebar-project-prune-launchagent.sh`](/Users/dobby/.agents/codex/scripts/install-sidebar-project-prune-launchagent.sh)
   - `~/.agents/codex/scripts/install-sidebar-project-prune-launchagent.sh --apply`
@@ -127,7 +127,7 @@ Use [Codex Control Plane Ownership](/Users/dobby/.agents/docs/references/codex-c
 - `~/.codex/config.toml` contains `[hooks.state]` trust hashes for managed hooks rendered by this control plane, so global and repo-local lifecycle hooks do not need repeated `/hooks` review on every machine bootstrap.
 - `~/.codex/config.toml` explicitly preserves enabled native Codex plugins such as `computer-use@openai-bundled`, points `openai-bundled` at the marketplace inside `Codex.app`, and disables bundled Codex skills classified as `disabled` in [`bundled-skills-policy.json`](/Users/dobby/.agents/codex/config/bundled-skills-policy.json)
 - `~/.codex/hooks.json` is rendered from `hooks/registry.json` for global Codex hooks. The managed `Stop` hook renders there; repo-specific lifecycle hooks such as `SessionStart` and `UserPromptSubmit` render into repo `.codex/hooks.json`.
-- `com.<user>.codex-thread-finalizer` is loaded as a LaunchAgent and runs [`finalize-stale-codex-threads.py`](/Users/dobby/.agents/codex/scripts/finalize-stale-codex-threads.py) every 6 hours against managed repo paths from [`repo-bootstrap.json`](/Users/dobby/.agents/codex/config/repo-bootstrap.json).
+- `com.<user>.codex-thread-finalizer` is loaded as a LaunchAgent and runs [`finalize-stale-codex-threads.py`](/Users/dobby/.agents/codex/scripts/finalize-stale-codex-threads.py) every hour against managed repo paths from [`repo-bootstrap.json`](/Users/dobby/.agents/codex/config/repo-bootstrap.json).
 - `~/.codex/config.toml` contains no Git conflict markers
 - `~/.codex/vendor_imports/skills` is a valid Git checkout:
   - `git -C ~/.codex/vendor_imports/skills rev-parse --show-toplevel`
@@ -193,7 +193,7 @@ Use [Codex Control Plane Ownership](/Users/dobby/.agents/docs/references/codex-c
 - [`finalize-stale-codex-threads.py`](/Users/dobby/.agents/codex/scripts/finalize-stale-codex-threads.py)
   - starts a short-lived Codex app-server JSONL client, uses `thread/list` for eligibility, then invokes [`finalize-codex-thread.py`](/Users/dobby/.agents/codex/scripts/finalize-codex-thread.py) for each stale thread
   - reads managed repo paths from [`repo-bootstrap.json`](/Users/dobby/.agents/codex/config/repo-bootstrap.json) unless `--repo` filters are supplied
-  - finalizes only non-archived threads whose `updatedAt` is older than the configured threshold; default is 48 hours
+  - finalizes only non-archived threads whose `updatedAt` is older than the configured threshold; default is 24 hours
   - does not try to detect what the Desktop app currently has loaded; the safety boundary is the last-activity cutoff
   - defaults to dry-run; use `--apply` for actual finalization
   - uses a machine-local lock under `~/.local/state/codex-control-plane/` so overlapping launchd runs do not race
@@ -212,13 +212,13 @@ Use [Codex Control Plane Ownership](/Users/dobby/.agents/docs/references/codex-c
   - defaults to dry-run and emits JSON by default; use `--plain` for compact operator inspection
 - [`install-finalize-stale-codex-threads-launchagent.sh`](/Users/dobby/.agents/codex/scripts/install-finalize-stale-codex-threads-launchagent.sh)
   - renders `~/Library/LaunchAgents/com.<user>.codex-thread-finalizer.plist`
-  - schedules [`finalize-stale-codex-threads.py`](/Users/dobby/.agents/codex/scripts/finalize-stale-codex-threads.py) every 6 hours by default
+  - schedules [`finalize-stale-codex-threads.py`](/Users/dobby/.agents/codex/scripts/finalize-stale-codex-threads.py) every hour by default
   - removes the legacy `com.<user>.codex-session-archiver` LaunchAgent if present during apply
   - writes logs under `~/.local/state/codex-control-plane/log/`
   - supports dry-run output before writing or loading launchd state
 - [`install-sidebar-project-prune-launchagent.sh`](/Users/dobby/.agents/codex/scripts/install-sidebar-project-prune-launchagent.sh)
   - renders `~/Library/LaunchAgents/com.<user>.codex-sidebar-project-pruner.plist`
-  - schedules [`prune-sidebar-projects.py`](/Users/dobby/.agents/codex/scripts/prune-sidebar-projects.py) at 01:00 daily by default, using the same 2-day stale threshold as stale-thread finalization
+  - schedules [`prune-sidebar-projects.py`](/Users/dobby/.agents/codex/scripts/prune-sidebar-projects.py) at 01:00 daily by default, using its separate 2-day sidebar stale threshold
   - forwards `--quit-codex-app --reopen-codex-app` so the disk state is changed while Codex Desktop is not holding stale sidebar state in memory
   - writes logs under `~/.local/state/codex-control-plane/log/`
   - supports dry-run output before writing or loading launchd state
