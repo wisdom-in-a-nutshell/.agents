@@ -23,10 +23,11 @@ Short version:
   `finalize-codex-thread` command is the public primitive. It runs repo policy
   from `scripts/hooks/finalize_codex_thread.py` when present.
 - **Dobby finalization is self-contained.** The repo hook runs
-  `remember-session`, which starts one final same-thread Codex turn. That turn
-  uses the `session-memory` client for session continuity and decides whether
-  anything should also be written under `memory/now.md`, an area file, `soul.md`,
-  or Shelf by reading the shared `dobby-workspace` body map.
+  `remember-session`, which starts one final same-thread Codex turn using the
+  versioned prompt at `prompts/remember-session.md`. That turn uses the
+  `session-memory` client for session continuity and decides whether anything
+  should also be written under `memory/now.md`, an area file, `soul.md`, Shelf,
+  or a project tracker by reading the shared `dobby-workspace` body map.
 - **Archive is conditional.** If the repo hook, remember-session turn, or
   archive request fails, the source thread is left unarchived so stale cleanup
   can retry later.
@@ -179,12 +180,15 @@ $HOME/.agents/skills-source/owned/dobby-lifecycle/scripts/remember-session \
 ```
 
 `remember-session` starts one final same-thread Codex turn and asks the agent to
-carry forward only useful memory. It performs its own `thread/read(thread_id)`,
-derives the repo root from the thread cwd, and starts the final turn with that
-cwd. It does not infer source from reason prefixes. The final turn may call
-`session-memory` to write
-`memory/sessions/YYYY/MM/DD-HHMMSS.json`. The repo hook does not archive; the
-global finalizer owns archive after the hook succeeds.
+carry forward only useful memory. The agent-facing instruction lives in
+[`prompts/remember-session.md`](/Users/dobby/.agents/skills-source/owned/dobby-lifecycle/prompts/remember-session.md),
+not inline in the Python runner. The runner performs its own
+`thread/read(thread_id)`, derives the repo root from the thread cwd, renders the
+prompt with strict placeholders, and starts the final turn with that cwd. It
+does not infer source from reason prefixes. The final turn may call
+`session-memory` to write `memory/sessions/YYYY/MM/DD-HHMMSS.json`; it may also
+make clearly routed durable updates when the body map says so. The repo hook
+does not archive; the global finalizer owns archive after the hook succeeds.
 
 Do not put Dobby memory synthesis directly in the shared `~/.agents` dispatcher.
 The dispatcher routes lifecycle events; this skill owns Dobby-specific behavior.

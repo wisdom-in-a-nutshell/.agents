@@ -192,13 +192,26 @@ for line in sys.stdin:
     print(json.dumps(response), flush=True)
 PY
 chmod +x "$fake_codex"
-if ! PATH="$fake_bin_dir:$PATH" FAKE_THREAD_CWD="$repo" "$SKILL_DIR/scripts/remember-session" \
+instruction_output="$(PATH="$fake_bin_dir:$PATH" FAKE_THREAD_CWD="$repo" "$SKILL_DIR/scripts/remember-session" \
   --thread-id thread-test \
   --reason codexclaw-daily-rollover \
   --print-instruction \
   --plain \
-  --no-input | grep -q "Remember this session"; then
+  --no-input)"
+if ! grep -q "Remember this session" <<<"$instruction_output"; then
   echo "remember-session --print-instruction should render the Dobby memory prompt" >&2
+  exit 1
+fi
+if grep -q "{{" <<<"$instruction_output"; then
+  echo "remember-session --print-instruction should not leave template placeholders" >&2
+  exit 1
+fi
+if ! grep -q "Adi should not have to remember" <<<"$instruction_output"; then
+  echo "remember-session prompt should include the forgot-to-remember audit" >&2
+  exit 1
+fi
+if ! grep -q "Current schema" <<<"$instruction_output"; then
+  echo "remember-session prompt should document the session-memory schema" >&2
   exit 1
 fi
 remember_output="$(PATH="$fake_bin_dir:$PATH" FAKE_THREAD_CWD="$repo" "$SKILL_DIR/scripts/remember-session" \

@@ -52,6 +52,7 @@ $HOME/.agents/skills-source/owned/dobby-lifecycle/scripts/hooks/user-prompt-subm
 $HOME/.agents/skills-source/owned/dobby-lifecycle/scripts/hooks/finalize-codex-thread
 $HOME/.agents/skills-source/owned/dobby-lifecycle/scripts/remember-session
 $HOME/.agents/skills-source/owned/dobby-lifecycle/scripts/session-memory
+$HOME/.agents/skills-source/owned/dobby-lifecycle/prompts/remember-session.md
 ```
 
 ## Reference files

@@ -336,6 +336,34 @@ def resolve_workspace_root(client: AppServerClient, thread_id: str) -> tuple[str
     return cwd, repo_root_for_cwd(cwd)
 
 
+def prompt_template_path() -> Path:
+    return Path(__file__).resolve().parents[1] / "prompts" / "remember-session.md"
+
+
+def shell_quote(value: Path | str) -> str:
+    return "'" + str(value).replace("'", "'\"'\"'") + "'"
+
+
+def render_prompt_template(template: str, values: dict[str, str]) -> str:
+    placeholders = set(re.findall(r"{{\s*([A-Za-z0-9_]+)\s*}}", template))
+    expected = set(values)
+    unknown = sorted(placeholders - expected)
+    missing = sorted(expected - placeholders)
+    if unknown:
+        raise RememberSessionError(f"remember-session prompt has unknown placeholder(s): {', '.join(unknown)}")
+    if missing:
+        raise RememberSessionError(f"remember-session prompt is missing placeholder(s): {', '.join(missing)}")
+
+    def replace(match: re.Match[str]) -> str:
+        key = match.group(1)
+        return values[key]
+
+    rendered = re.sub(r"{{\s*([A-Za-z0-9_]+)\s*}}", replace, template)
+    if "{{" in rendered or "}}" in rendered:
+        raise RememberSessionError("remember-session prompt rendered with leftover placeholder braces")
+    return rendered
+
+
 def build_instruction(
     *,
     workspace_root: Path,
@@ -344,43 +372,23 @@ def build_instruction(
     reason: str,
 ) -> str:
     session_memory_cli = Path.home() / ".agents/skills-source/owned/dobby-lifecycle/scripts/session-memory"
-    return f"""You are running the final memory-preservation turn in this Codex thread before it is archived.
-
-Remember this session for future Dobby. Use the shared `dobby-workspace` body map for memory routing and the `session-memory` client for session continuity JSON.
-
-Context:
-- Workspace root: `{workspace_root}`
-- Source thread id: `{thread_id}`
-- Session memory source: `{source}`
-- Finalization reason: `{reason}`
-
-Task:
-1. Read `$HOME/.agents/skills-source/owned/dobby-workspace/references/body-map.md` for session continuity and memory routing.
-2. Capture only what would make a future Dobby session worse if lost. Do not summarize everything.
-3. If useful, write one concise session-memory JSON record with `$HOME/.agents/skills-source/owned/dobby-lifecycle/scripts/session-memory`.
-   - If the thread contains nothing worth preserving, do not invent a record.
-4. Promote durable facts only when the body map clearly says they belong in `memory/now.md`, an area file/log, `soul.md`, or Shelf.
-5. Do not ask the user. Do not archive, delete, compact, or otherwise manage this thread; the external finalizer will archive it after this turn succeeds.
-6. Keep any written memory compact, operationally useful, and optimized for a future agent to load.
-
-Session-memory write shape:
-
-```bash
-cat <<'JSON' | {session_memory_cli} write --stdin-json --no-input
-{{
-  "source": "{source}",
-  "reason": "{reason}",
-  "threadId": "{thread_id}",
-  "summary": [
-    "One short carry-forward fact, decision, or next-context item."
-  ],
-  "notes": "Optional deeper context. Omit this field if the summary is enough."
-}}
-JSON
-```
-
-When finished, reply briefly with what memory path(s) you changed, or say that no memory changes were needed.
-"""
+    body_map_path = Path.home() / ".agents/skills-source/owned/dobby-workspace/references/body-map.md"
+    template_path = prompt_template_path()
+    try:
+        template = template_path.read_text(encoding="utf-8")
+    except OSError as exc:
+        raise RememberSessionError(f"failed to read remember-session prompt template: {template_path}: {exc}") from exc
+    values = {
+        "workspace_root_json": json.dumps(str(workspace_root), ensure_ascii=False),
+        "thread_id_json": json.dumps(thread_id, ensure_ascii=False),
+        "source_json": json.dumps(source, ensure_ascii=False),
+        "reason_json": json.dumps(reason, ensure_ascii=False),
+        "body_map_path": str(body_map_path),
+        "body_map_path_json": json.dumps(str(body_map_path), ensure_ascii=False),
+        "session_memory_cli_json": json.dumps(str(session_memory_cli), ensure_ascii=False),
+        "session_memory_cli_shell": shell_quote(session_memory_cli),
+    }
+    return render_prompt_template(template, values)
 
 
 def remember_session(
