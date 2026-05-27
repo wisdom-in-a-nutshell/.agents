@@ -21,12 +21,16 @@ Fallbacks are reported on `stderr` and in JSON `data.warnings`.
 ```bash
 $HOME/.agents/skills-source/owned/dobby-mail/scripts/dobby-mail doctor --no-input
 $HOME/.agents/skills-source/owned/dobby-mail/scripts/dobby-mail doctor --check-mail-app --no-input
+$HOME/.agents/skills-source/owned/dobby-mail/scripts/dobby-mail setup --no-input
 $HOME/.agents/skills-source/owned/dobby-mail/scripts/dobby-mail accounts --no-input
 $HOME/.agents/skills-source/owned/dobby-mail/scripts/dobby-mail mailboxes --limit 50 --no-input
 $HOME/.agents/skills-source/owned/dobby-mail/scripts/dobby-mail recent --limit 20 --no-input
 $HOME/.agents/skills-source/owned/dobby-mail/scripts/dobby-mail search --query "invoice" --limit 20 --no-input
 $HOME/.agents/skills-source/owned/dobby-mail/scripts/dobby-mail get --id fast:123 --max-body-chars 12000 --no-input
 $HOME/.agents/skills-source/owned/dobby-mail/scripts/dobby-mail selected --limit 10 --no-input
+$HOME/.agents/skills-source/owned/dobby-mail/scripts/dobby-mail open --id mail:123 --no-input
+$HOME/.agents/skills-source/owned/dobby-mail/scripts/dobby-mail export --id fast:123 --out-dir /tmp/mail-export --raw --no-input
+$HOME/.agents/skills-source/owned/dobby-mail/scripts/dobby-mail attachments --id fast:123 --out-dir /tmp/mail-attachments --no-input
 $HOME/.agents/skills-source/owned/dobby-mail/scripts/dobby-mail draft --to person@example.com --subject "Subject" --body-file /tmp/body.txt --no-input
 $HOME/.agents/skills-source/owned/dobby-mail/scripts/dobby-mail draft-reply --id fast:123 --body-file /tmp/body.txt --no-input
 ```
@@ -49,6 +53,8 @@ $HOME/.agents/skills-source/owned/dobby-mail/scripts/dobby-mail draft-reply --id
   approves that exact action in the current turn.
 - `send` exists only for explicit approved sends and requires `--confirm-send`.
   Prefer creating a draft and asking Adi to inspect/send manually.
+- `mark-read` and `flag` require `--confirm-mark` / `--confirm-flag`.
+- `export` and `attachments` write files only to caller-provided output dirs.
 - `draft-reply` v1 creates an addressed unsent draft from message metadata; it
   does not yet use Mail.app's native threaded reply command. Inspect the draft.
 

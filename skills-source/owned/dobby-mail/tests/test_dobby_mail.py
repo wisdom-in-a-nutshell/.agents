@@ -75,10 +75,21 @@ def make_fixture(tmp: Path) -> tuple[Path, Path]:
         Subject: Fiber appointment update
         Message-ID: <fiber@example>
         Date: Wed, 27 May 2026 10:00:00 +0000
+        MIME-Version: 1.0
+        Content-Type: multipart/mixed; boundary="BOUNDARY"
+
+        --BOUNDARY
         Content-Type: text/plain; charset=utf-8
 
         The technician appointment is confirmed.
         Please be home.
+
+        --BOUNDARY
+        Content-Type: text/plain; name="note.txt"
+        Content-Disposition: attachment; filename="note.txt"
+
+        Attachment body.
+        --BOUNDARY--
         """).replace("\n", "\r\n").encode()
     (msg_dir / "101.emlx").write_bytes(str(len(raw)).encode() + b"\n" + raw + b"\n<?xml version='1.0'?><plist></plist>")
     return mail_root, db
@@ -99,7 +110,7 @@ class DobbyMailTests(unittest.TestCase):
             proc, got = run_cli(["get", "--id", msg["id"], "--mail-root", str(mail_root), "--index-path", str(db), "--backend", "fast"])
             self.assertEqual(got["status"], "ok")
             self.assertIn("technician appointment", got["data"]["message"]["body_text"])
-            self.assertEqual(got["data"]["message"]["attachments"], [])
+            self.assertEqual(got["data"]["message"]["attachments"][0]["filename"], "note.txt")
 
     def test_mailboxes_fast(self):
         with tempfile.TemporaryDirectory() as d:
@@ -133,6 +144,31 @@ class DobbyMailTests(unittest.TestCase):
         self.assertNotEqual(proc.returncode, 0)
         self.assertEqual(err_payload["status"], "error")
         self.assertEqual(err_payload["error"]["code"], "E_SEND_CONFIRMATION_REQUIRED")
+
+    def test_export_and_attachments(self):
+        with tempfile.TemporaryDirectory() as d:
+            tmp = Path(d)
+            mail_root, db = make_fixture(tmp)
+            out = tmp / "out"
+            _, payload = run_cli(["export", "--id", "fast:101", "--out-dir", str(out), "--raw", "--mail-root", str(mail_root), "--index-path", str(db), "--backend", "fast"])
+            self.assertEqual(payload["status"], "ok")
+            kinds = {item["kind"] for item in payload["data"]["written"]}
+            self.assertTrue({"metadata_json", "body_text", "raw_eml"}.issubset(kinds))
+            self.assertTrue((out / "message-101.txt").exists())
+            _, att = run_cli(["attachments", "--id", "fast:101", "--out-dir", str(out / "att"), "--mail-root", str(mail_root), "--index-path", str(db), "--backend", "fast"])
+            self.assertEqual(att["status"], "ok")
+            self.assertEqual(att["data"]["attachments"][0]["filename"], "note.txt")
+            self.assertTrue(Path(att["data"]["attachments"][0]["path"]).exists())
+
+    def test_mutation_commands_require_confirmation_and_dry_run(self):
+        proc, payload = run_cli(["mark-read", "--id", "mail:1"], check=False)
+        self.assertNotEqual(proc.returncode, 0)
+        self.assertEqual(payload["error"]["code"], "E_MARK_CONFIRMATION_REQUIRED")
+        _, ok = run_cli(["mark-read", "--id", "mail:1", "--unread", "--confirm-mark", "--dry-run"])
+        self.assertEqual(ok["data"]["changed"]["read_status"], False)
+        proc, flag_err = run_cli(["flag", "--id", "mail:1"], check=False)
+        self.assertNotEqual(proc.returncode, 0)
+        self.assertEqual(flag_err["error"]["code"], "E_FLAG_CONFIRMATION_REQUIRED")
 
 
 if __name__ == "__main__":

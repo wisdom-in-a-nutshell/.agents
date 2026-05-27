@@ -937,6 +937,61 @@ if (to.length === 0) {
     return run_osascript(script, input_json=payload, timeout_sec=timeout_sec)
 
 
+def jxa_open_message(mail_id: str, timeout_sec: int, scope: str = "inbox") -> dict[str, Any]:
+    script = JXA_LIBRARY + r'''
+var input = readInput();
+var target = String(input.id || '').replace(/^mail:/, '');
+var Mail = Application('Mail');
+function findInMessages(msgs) {
+  for (var i = msgs.length - 1; i >= 0; i--) {
+    var m = msgs[i];
+    var id = safe(function(){ return String(m.id()); }, '');
+    var mid = safe(function(){ return String(m.messageId()); }, '');
+    if (id === target || mid === target) return m;
+  }
+  return null;
+}
+var found = null;
+if (input.scope === 'selected') found = findInMessages(safe(function(){ return Mail.selection(); }, []));
+if (!found) found = findInMessages(safe(function(){ return Mail.inbox().messages(); }, []));
+if (!found) {
+  JSON.stringify({status:'error', code:'E_MESSAGE_NOT_FOUND', message:'Message not found in Mail.app open scope', hint:'Use selected scope or open from Mail manually.'});
+} else {
+  Mail.open(found);
+  JSON.stringify({opened: msgSummary(found)});
+}
+'''
+    return run_osascript(script, input_json={"id": mail_id, "scope": scope}, timeout_sec=timeout_sec)
+
+
+def jxa_set_message_state(mail_id: str, timeout_sec: int, *, scope: str, read: bool | None = None, flagged: bool | None = None) -> dict[str, Any]:
+    script = JXA_LIBRARY + r'''
+var input = readInput();
+var target = String(input.id || '').replace(/^mail:/, '');
+var Mail = Application('Mail');
+function findInMessages(msgs) {
+  for (var i = msgs.length - 1; i >= 0; i--) {
+    var m = msgs[i];
+    var id = safe(function(){ return String(m.id()); }, '');
+    var mid = safe(function(){ return String(m.messageId()); }, '');
+    if (id === target || mid === target) return m;
+  }
+  return null;
+}
+var found = null;
+if (input.scope === 'selected') found = findInMessages(safe(function(){ return Mail.selection(); }, []));
+if (!found) found = findInMessages(safe(function(){ return Mail.inbox().messages(); }, []));
+if (!found) {
+  JSON.stringify({status:'error', code:'E_MESSAGE_NOT_FOUND', message:'Message not found in Mail.app mutation scope', hint:'Use selected scope or a mail:<id> from recent/search.'});
+} else {
+  if (input.read !== null) found.readStatus = Boolean(input.read);
+  if (input.flagged !== null) found.flaggedStatus = Boolean(input.flagged);
+  JSON.stringify({message: msgSummary(found), changed: {read_status: input.read, flagged_status: input.flagged}});
+}
+'''
+    return run_osascript(script, input_json={"id": mail_id, "scope": scope, "read": read, "flagged": flagged}, timeout_sec=timeout_sec)
+
+
 def read_body_arg(args: argparse.Namespace) -> str:
     body = getattr(args, "body", None)
     body_file = getattr(args, "body_file", None)
@@ -1241,6 +1296,110 @@ def command_selected(args: argparse.Namespace, warnings: WarningSink) -> dict[st
     return {"backend": "mail-app", "scope": "selected", "messages": result.get("messages", []), "warnings": warnings.items}
 
 
+def command_setup(args: argparse.Namespace, warnings: WarningSink) -> dict[str, Any]:
+    opened = open_full_disk_access_settings() if args.open_settings else False
+    checks = command_doctor(args, warnings)
+    return {
+        "summary": checks.get("summary"),
+        "selected_backend": checks.get("selected_backend"),
+        "opened_settings": opened,
+        "process_chain": process_chain(),
+        "required_access": [
+            {
+                "permission": "Full Disk Access",
+                "targets": recommended_access_targets(),
+                "why": "Needed for fast read-only Apple Mail Envelope Index + .emlx access.",
+                "status": "ok" if checks.get("selected_backend") == "fast" else "needed",
+            },
+            {
+                "permission": "Automation: control Mail.app",
+                "targets": recommended_access_targets(),
+                "why": "Needed for Mail.app fallback reads and draft/send/write actions.",
+                "status": "ok" if any(c["name"] == "mail_app_automation" and c["status"] == "ok" for c in checks.get("checks", [])) else "check_with_doctor",
+            },
+        ],
+        "checks": checks.get("checks", []),
+        "warnings": warnings.items,
+    }
+
+
+def command_open(args: argparse.Namespace, warnings: WarningSink) -> dict[str, Any]:
+    kind, value = normalize_message_id(args.id)
+    result = jxa_open_message(value if kind != "mail" else value, args.timeout_sec, scope=args.scope)
+    return {"backend": "mail-app", "opened": result.get("opened"), "warnings": warnings.items}
+
+
+def command_mark_read(args: argparse.Namespace, warnings: WarningSink) -> dict[str, Any]:
+    if not args.confirm_mark:
+        raise CliError("E_MARK_CONFIRMATION_REQUIRED", "Marking email read/unread requires --confirm-mark", "Only pass --confirm-mark after the user explicitly approves this mailbox state change.", EXIT_USAGE)
+    kind, value = normalize_message_id(args.id)
+    if args.dry_run:
+        return {
+            "backend": "mail-app",
+            "dry_run": True,
+            "changed": {"id": args.id, "read_status": args.read},
+            "warnings": warnings.items,
+        }
+    result = jxa_set_message_state(value if kind != "mail" else value, args.timeout_sec, scope=args.scope, read=args.read)
+    return {"backend": "mail-app", "dry_run": False, "message": result.get("message"), "changed": result.get("changed"), "warnings": warnings.items}
+
+
+def command_flag(args: argparse.Namespace, warnings: WarningSink) -> dict[str, Any]:
+    if not args.confirm_flag:
+        raise CliError("E_FLAG_CONFIRMATION_REQUIRED", "Flagging/unflagging email requires --confirm-flag", "Only pass --confirm-flag after the user explicitly approves this mailbox state change.", EXIT_USAGE)
+    kind, value = normalize_message_id(args.id)
+    flagged = not args.clear
+    if args.dry_run:
+        return {
+            "backend": "mail-app",
+            "dry_run": True,
+            "changed": {"id": args.id, "flagged_status": flagged},
+            "warnings": warnings.items,
+        }
+    result = jxa_set_message_state(value if kind != "mail" else value, args.timeout_sec, scope=args.scope, flagged=flagged)
+    return {"backend": "mail-app", "dry_run": False, "message": result.get("message"), "changed": result.get("changed"), "warnings": warnings.items}
+
+
+def command_export(args: argparse.Namespace, warnings: WarningSink) -> dict[str, Any]:
+    kind, value = normalize_message_id(args.id)
+    if kind not in {"fast", "rowid"}:
+        raise CliError("E_EXPORT_FAST_ONLY", "export currently requires a fast:<rowid> id", "Use search/recent with the fast backend first.", EXIT_USAGE)
+    out_dir = Path(args.out_dir).expanduser().resolve()
+    item, emlx = make_store(args).get_emlx_for_rowid(value)
+    parsed = parse_emlx(emlx)
+    out_dir.mkdir(parents=True, exist_ok=True)
+    written: list[dict[str, Any]] = []
+
+    meta_path = out_dir / f"message-{value}.json"
+    meta = {**item, **{k: parsed.get(k) for k in ["headers", "attachments", "raw_size_bytes", "emlx_path"]}}
+    meta_path.write_text(json.dumps(meta, ensure_ascii=False, indent=2), encoding="utf-8")
+    written.append({"kind": "metadata_json", "path": str(meta_path)})
+
+    if parsed.get("body_text"):
+        body_path = out_dir / f"message-{value}.txt"
+        body_path.write_text(parsed["body_text"], encoding="utf-8")
+        written.append({"kind": "body_text", "path": str(body_path)})
+    if parsed.get("body_html"):
+        html_path = out_dir / f"message-{value}.html"
+        html_path.write_text(parsed["body_html"], encoding="utf-8")
+        written.append({"kind": "body_html", "path": str(html_path)})
+    if args.raw:
+        raw_path = out_dir / f"message-{value}.eml"
+        raw_path.write_bytes(read_raw_eml_from_emlx(emlx))
+        written.append({"kind": "raw_eml", "path": str(raw_path)})
+    return {"backend": "fast", "message": item, "out_dir": str(out_dir), "written": written, "warnings": warnings.items}
+
+
+def command_attachments(args: argparse.Namespace, warnings: WarningSink) -> dict[str, Any]:
+    kind, value = normalize_message_id(args.id)
+    if kind not in {"fast", "rowid"}:
+        raise CliError("E_ATTACHMENTS_FAST_ONLY", "attachments currently requires a fast:<rowid> id", "Use search/recent with the fast backend first.", EXIT_USAGE)
+    out_dir = Path(args.out_dir).expanduser().resolve()
+    item, emlx = make_store(args).get_emlx_for_rowid(value)
+    saved = extract_emlx_attachments(emlx, out_dir)
+    return {"backend": "fast", "message": item, "out_dir": str(out_dir), "attachments": saved, "warnings": warnings.items}
+
+
 def add_common(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--json", action="store_true", help="Emit JSON output (default).")
     parser.add_argument("--plain", action="store_true", help="Emit stable plain text for operator inspection.")
@@ -1280,6 +1439,14 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     p.add_argument("--index-path")
     p.add_argument("--check-mail-app", action="store_true", help="Test live Mail.app automation; may launch Mail.app.")
     p.set_defaults(func=command_doctor)
+
+    p = sub.add_parser("setup", help="Show/access-check one-time macOS permissions for Dobby Mail.")
+    add_common(p)
+    p.add_argument("--mail-root")
+    p.add_argument("--index-path")
+    p.add_argument("--check-mail-app", action="store_true", default=True, help="Test live Mail.app automation; may launch Mail.app.")
+    p.add_argument("--open-settings", action="store_true", help="Open Full Disk Access settings.")
+    p.set_defaults(func=command_setup)
 
     p = sub.add_parser("accounts", help="List Apple Mail accounts via Mail.app automation.")
     add_common(p)
@@ -1321,6 +1488,44 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     p.add_argument("--query")
     p.add_argument("--limit", type=int, default=DEFAULT_LIMIT)
     p.set_defaults(func=command_selected)
+
+    p = sub.add_parser("open", help="Open a message in Mail.app by id.")
+    add_common(p)
+    p.add_argument("--id", required=True, help="Message id, usually mail:<id> or fast:<rowid>.")
+    p.add_argument("--scope", choices=["inbox", "selected"], default="inbox")
+    p.set_defaults(func=command_open)
+
+    p = sub.add_parser("mark-read", help="Mark a message read or unread. Requires --confirm-mark.")
+    add_common(p)
+    p.add_argument("--id", required=True)
+    p.add_argument("--read", dest="read", action="store_true", default=True)
+    p.add_argument("--unread", dest="read", action="store_false")
+    p.add_argument("--scope", choices=["inbox", "selected"], default="inbox")
+    p.add_argument("--confirm-mark", action="store_true")
+    p.add_argument("--dry-run", action="store_true")
+    p.set_defaults(func=command_mark_read)
+
+    p = sub.add_parser("flag", help="Flag or unflag a message. Requires --confirm-flag.")
+    add_common(p)
+    p.add_argument("--id", required=True)
+    p.add_argument("--clear", action="store_true", help="Clear the flag instead of setting it.")
+    p.add_argument("--scope", choices=["inbox", "selected"], default="inbox")
+    p.add_argument("--confirm-flag", action="store_true")
+    p.add_argument("--dry-run", action="store_true")
+    p.set_defaults(func=command_flag)
+
+    p = sub.add_parser("export", help="Export one fast-backend message body/metadata to files.")
+    add_common(p); add_backend(p)
+    p.add_argument("--id", required=True, help="fast:<rowid> id.")
+    p.add_argument("--out-dir", required=True)
+    p.add_argument("--raw", action="store_true", help="Also export raw .eml content.")
+    p.set_defaults(func=command_export)
+
+    p = sub.add_parser("attachments", help="Extract attachments from one fast-backend message.")
+    add_common(p); add_backend(p)
+    p.add_argument("--id", required=True, help="fast:<rowid> id.")
+    p.add_argument("--out-dir", required=True)
+    p.set_defaults(func=command_attachments)
 
     p = sub.add_parser("draft", help="Create an unsent Apple Mail draft.")
     add_common(p); add_draft_args(p)
