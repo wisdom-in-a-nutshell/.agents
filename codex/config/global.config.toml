@@ -1,5 +1,9 @@
 # Canonical portable baseline for ~/.codex/config.toml
 # Keep this focused on stable settings only.
+# Temporary 2026-05-27: default provider is the normal Codex/OpenAI path while
+# Azure account/subscription state is being changed. To restore Azure as the
+# default, copy the provider setup from azure.config.toml back into this file,
+# set model_provider = "azure", then run sync-config and validation.
 
 cli_auth_credentials_store = "file"
 mcp_oauth_credentials_store = "file"
