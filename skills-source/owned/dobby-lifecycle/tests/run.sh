@@ -137,6 +137,8 @@ import json
 import os
 import sys
 
+resumed = set()
+
 for line in sys.stdin:
     try:
         msg = json.loads(line)
@@ -149,17 +151,26 @@ for line in sys.stdin:
     if method == "initialize":
         response = {"id": request_id, "result": {}}
     elif method == "thread/read":
+        thread_id = msg.get("params", {}).get("threadId")
         response = {
             "id": request_id,
             "result": {
                 "thread": {
-                    "id": msg.get("params", {}).get("threadId"),
+                    "id": thread_id,
                     "cwd": os.environ["FAKE_THREAD_CWD"],
                 }
             },
         }
+    elif method == "thread/resume":
+        thread_id = msg.get("params", {}).get("threadId")
+        resumed.add(thread_id)
+        response = {"id": request_id, "result": {"thread": {"id": thread_id}}}
     elif method == "turn/start":
         thread_id = msg.get("params", {}).get("threadId")
+        if thread_id not in resumed:
+            response = {"id": request_id, "error": {"message": f"thread not resumed: {thread_id}"}}
+            print(json.dumps(response), flush=True)
+            continue
         response = {"id": request_id, "result": {"turn": {"id": "turn-test"}}}
         print(json.dumps(response), flush=True)
         print(

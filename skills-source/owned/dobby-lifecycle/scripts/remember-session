@@ -321,6 +321,13 @@ def thread_read(client: AppServerClient, thread_id: str) -> dict[str, Any]:
     return thread
 
 
+def thread_resume(client: AppServerClient, thread_id: str) -> None:
+    client.request(
+        "thread/resume",
+        {"threadId": thread_id, "experimentalRawEvents": False},
+    )
+
+
 def resolve_workspace_root(client: AppServerClient, thread_id: str) -> tuple[str, Path]:
     thread = thread_read(client, thread_id)
     cwd = thread.get("cwd")
@@ -388,6 +395,7 @@ def remember_session(
     reason = clean_label(reason, "manual")
     with AppServerClient(timeout_seconds) as client:
         thread_cwd, workspace_root = resolve_workspace_root(client, thread_id)
+        thread_resume(client, thread_id)
         instruction = build_instruction(
             workspace_root=workspace_root,
             thread_id=thread_id,
