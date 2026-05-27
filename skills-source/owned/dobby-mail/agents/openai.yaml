@@ -1,0 +1,5 @@
+interface:
+  display_name: "Dobby Mail"
+  short_description: "Local Apple Mail reads and safe drafts"
+  brand_color: "#2563EB"
+  default_prompt: "Use $dobby-mail to search my recent Apple Mail and create an unsent draft if needed."

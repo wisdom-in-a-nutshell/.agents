@@ -1,0 +1,1392 @@
+#!/usr/bin/env python3
+from __future__ import annotations
+
+import argparse
+import contextlib
+import datetime as dt
+import email
+from email import policy
+from email.utils import parseaddr
+import json
+import os
+from pathlib import Path
+import platform
+import re
+import shutil
+import sqlite3
+import subprocess
+import sys
+import tempfile
+import textwrap
+import time
+import uuid
+from typing import Any, Iterable
+
+SCHEMA_VERSION = "1.0"
+TOOL = "dobby-mail"
+VERSION = "0.2.0"
+
+EXIT_OK = 0
+EXIT_FAILURE = 1
+EXIT_USAGE = 2
+EXIT_AUTH = 3
+EXIT_DEP = 4
+EXIT_TIMEOUT = 5
+
+DEFAULT_LIMIT = 20
+MAX_LIMIT = 200
+
+
+def utc_now() -> str:
+    return time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+
+
+def iso_from_mail_timestamp(value: Any) -> str | None:
+    if value is None:
+        return None
+    try:
+        n = float(value)
+    except (TypeError, ValueError):
+        raw = str(value).strip()
+        if not raw:
+            return None
+        # If SQLite already stores a readable date, pass it through.
+        return raw
+
+    if n <= 0:
+        return None
+    # Apple absolute dates are seconds since 2001-01-01. Unix timestamps for
+    # current mail are comfortably > 1_000_000_000; Apple absolute dates are not.
+    if n < 1_000_000_000:
+        n += 978_307_200
+    try:
+        return dt.datetime.fromtimestamp(n, tz=dt.timezone.utc).isoformat().replace("+00:00", "Z")
+    except (OverflowError, OSError, ValueError):
+        return None
+
+
+def parse_date_arg(raw: str | None) -> tuple[int, int] | None:
+    if not raw:
+        return None
+    value = raw.strip()
+    if not value:
+        return None
+    try:
+        if re.fullmatch(r"\d{4}-\d{2}-\d{2}", value):
+            parsed = dt.datetime.fromisoformat(value).replace(tzinfo=dt.timezone.utc)
+        else:
+            parsed = dt.datetime.fromisoformat(value.replace("Z", "+00:00"))
+            if parsed.tzinfo is None:
+                parsed = parsed.replace(tzinfo=dt.timezone.utc)
+        unix = int(parsed.timestamp())
+        apple = unix - 978_307_200
+        return unix, apple
+    except ValueError as exc:
+        raise CliError(
+            "E_INVALID_DATE",
+            f"Invalid date: {raw}",
+            "Use YYYY-MM-DD or ISO-8601, e.g. 2026-05-27 or 2026-05-27T12:00:00Z.",
+            EXIT_USAGE,
+        ) from exc
+
+
+def clamp_limit(value: int | None) -> int:
+    if value is None:
+        return DEFAULT_LIMIT
+    if value < 1:
+        raise CliError("E_INVALID_LIMIT", "--limit must be >= 1", "Pass --limit between 1 and 200.", EXIT_USAGE)
+    return min(value, MAX_LIMIT)
+
+
+def sanitize_filename(raw: str | None, fallback: str) -> str:
+    name = (raw or fallback).strip() or fallback
+    name = re.sub(r"[\\/:\0]+", "_", name)
+    name = re.sub(r"\s+", " ", name).strip()
+    if name in {".", ".."}:
+        name = fallback
+    return name[:180]
+
+
+def process_chain(limit: int = 8) -> list[dict[str, Any]]:
+    chain: list[dict[str, Any]] = []
+    pid = os.getpid()
+    for _ in range(limit):
+        try:
+            proc = subprocess.run(
+                ["ps", "-p", str(pid), "-o", "pid=", "-o", "ppid=", "-o", "comm="],
+                text=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.DEVNULL,
+                check=False,
+            )
+        except OSError:
+            break
+        line = proc.stdout.strip()
+        if not line:
+            break
+        parts = line.split(None, 2)
+        if len(parts) < 3:
+            break
+        cur_pid, ppid, comm = parts
+        chain.append({"pid": int(cur_pid), "ppid": int(ppid), "command": comm})
+        next_pid = int(ppid)
+        if next_pid <= 1 or next_pid == pid:
+            break
+        pid = next_pid
+    return chain
+
+
+def recommended_access_targets() -> list[dict[str, Any]]:
+    chain = process_chain()
+    commands = " ".join(item["command"] for item in chain).lower()
+    targets = []
+    # TCC Full Disk Access is usually granted to the responsible app, not to python itself.
+    if "codex" in commands:
+        targets.append({"app": "Codex", "reason": "main Dobby host running this client"})
+    if "ghostty" in commands:
+        targets.append({"app": "Ghostty", "reason": "terminal host when running Dobby commands directly"})
+    if "terminal" in commands:
+        targets.append({"app": "Terminal", "reason": "terminal host when running Dobby commands directly"})
+    if "iterm" in commands:
+        targets.append({"app": "iTerm", "reason": "terminal host when running Dobby commands directly"})
+    if not targets:
+        targets.append({"app": "the app that launched this command", "reason": "macOS grants Full Disk Access to the responsible parent app"})
+    # Keep unique while preserving order.
+    seen: set[str] = set()
+    out = []
+    for target in targets:
+        if target["app"] in seen:
+            continue
+        seen.add(target["app"])
+        out.append(target)
+    return out
+
+
+def open_full_disk_access_settings() -> bool:
+    urls = [
+        "x-apple.systempreferences:com.apple.preference.security?Privacy_AllFiles",
+        "x-apple.systempreferences:com.apple.preference.security?Privacy",
+    ]
+    for url in urls:
+        try:
+            proc = subprocess.run(["open", url], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=False)
+            if proc.returncode == 0:
+                return True
+        except OSError:
+            pass
+    return False
+
+
+class CliError(Exception):
+    def __init__(self, code: str, message: str, hint: str, exit_code: int = EXIT_FAILURE, retryable: bool = False):
+        super().__init__(message)
+        self.code = code
+        self.message = message
+        self.hint = hint
+        self.exit_code = exit_code
+        self.retryable = retryable
+
+
+class WarningSink:
+    def __init__(self, quiet: bool = False):
+        self.items: list[dict[str, Any]] = []
+        self.quiet = quiet
+
+    def warn(self, code: str, message: str, hint: str | None = None, *, backend: str | None = None) -> None:
+        item = {"code": code, "message": message, "hint": hint, "backend": backend}
+        self.items.append(item)
+        if not self.quiet:
+            suffix = f" Hint: {hint}" if hint else ""
+            print(f"[dobby-mail warning] {code}: {message}{suffix}", file=sys.stderr)
+
+
+def make_envelope(command: str, status: str, data: dict[str, Any], error: dict[str, Any] | None, request_id: str, started: float) -> dict[str, Any]:
+    return {
+        "schema_version": SCHEMA_VERSION,
+        "command": command,
+        "status": status,
+        "data": data,
+        "error": error,
+        "meta": {
+            "request_id": request_id,
+            "duration_ms": int((time.time() - started) * 1000),
+            "timestamp_utc": utc_now(),
+            "tool_version": VERSION,
+        },
+    }
+
+
+def emit(payload: dict[str, Any], plain: bool = False) -> None:
+    if plain:
+        if payload["status"] == "ok":
+            data = payload["data"]
+            print(f"ok {payload['command']} backend={data.get('backend', data.get('selected_backend', '-'))}")
+            if "messages" in data:
+                for msg in data["messages"]:
+                    date = msg.get("date_received") or msg.get("date_sent") or ""
+                    print(f"{msg.get('id')}\t{date}\t{msg.get('sender','')}\t{msg.get('subject','')}")
+            elif "checks" in data:
+                for check in data["checks"]:
+                    print(f"{check['status']}\t{check['name']}\t{check.get('message','')}")
+            else:
+                print(json.dumps(data, ensure_ascii=False))
+        else:
+            err = payload["error"] or {}
+            print(f"error {err.get('code')}: {err.get('message')}", file=sys.stderr)
+            if err.get("hint"):
+                print(err["hint"], file=sys.stderr)
+        return
+    print(json.dumps(payload, ensure_ascii=False, indent=2))
+
+
+def resolve_mail_root(raw: str | None) -> Path:
+    if raw:
+        return Path(raw).expanduser().resolve()
+    if os.environ.get("DOBBY_MAIL_ROOT"):
+        return Path(os.environ["DOBBY_MAIL_ROOT"]).expanduser().resolve()
+    return (Path.home() / "Library" / "Mail").resolve()
+
+
+def version_key(path: Path) -> tuple[int, str]:
+    m = re.fullmatch(r"V(\d+)", path.name)
+    return (int(m.group(1)) if m else -1, path.name)
+
+
+def find_mail_version_root(mail_root: Path) -> Path:
+    try:
+        versions = [p for p in mail_root.iterdir() if p.is_dir() and re.fullmatch(r"V\d+", p.name)]
+    except FileNotFoundError as exc:
+        raise CliError(
+            "E_MAIL_ROOT_NOT_FOUND",
+            f"Apple Mail root not found: {mail_root}",
+            "Open Apple Mail once, pass --mail-root, or allow Mail.app fallback for live reads.",
+            EXIT_DEP,
+        ) from exc
+    except PermissionError as exc:
+        raise CliError(
+            "E_MAIL_ROOT_PERMISSION",
+            f"Cannot read Apple Mail root: {mail_root}",
+            "Grant Full Disk Access to the terminal/Codex host, or use the Mail.app fallback backend.",
+            EXIT_AUTH,
+        ) from exc
+    if not versions:
+        raise CliError(
+            "E_MAIL_ROOT_NOT_FOUND",
+            f"No Apple Mail V* folder found under {mail_root}",
+            "Open Apple Mail once, or pass --mail-root to a fixture/alternate Mail root.",
+            EXIT_DEP,
+        )
+    return sorted(versions, key=version_key)[-1]
+
+
+def resolve_index_path(mail_root: Path, raw: str | None) -> Path:
+    if raw:
+        return Path(raw).expanduser().resolve()
+    if os.environ.get("DOBBY_MAIL_INDEX"):
+        return Path(os.environ["DOBBY_MAIL_INDEX"]).expanduser().resolve()
+    version_root = find_mail_version_root(mail_root)
+    return version_root / "MailData" / "Envelope Index"
+
+
+def sqlite_uri(path: Path) -> str:
+    return f"file:{path}?mode=ro"
+
+
+def clean_text(value: Any, limit: int | None = None) -> str | None:
+    if value is None:
+        return None
+    text = str(value).replace("\x00", "").strip()
+    if limit is not None and len(text) > limit:
+        return text[: limit - 1] + "…"
+    return text
+
+
+def email_body_from_message(msg: email.message.EmailMessage) -> tuple[str | None, str | None, list[dict[str, Any]]]:
+    attachments: list[dict[str, Any]] = []
+    plain_parts: list[str] = []
+    html_parts: list[str] = []
+
+    if msg.is_multipart():
+        for part in msg.walk():
+            if part.is_multipart():
+                continue
+            disposition = (part.get_content_disposition() or "").lower()
+            ctype = part.get_content_type()
+            filename = part.get_filename()
+            if disposition == "attachment" or filename:
+                payload = part.get_payload(decode=True) or b""
+                attachments.append({
+                    "filename": filename,
+                    "content_type": ctype,
+                    "size_bytes": len(payload),
+                })
+                continue
+            with contextlib.suppress(Exception):
+                content = part.get_content()
+                if ctype == "text/plain":
+                    plain_parts.append(str(content))
+                elif ctype == "text/html":
+                    html_parts.append(str(content))
+    else:
+        with contextlib.suppress(Exception):
+            content = msg.get_content()
+            if msg.get_content_type() == "text/html":
+                html_parts.append(str(content))
+            else:
+                plain_parts.append(str(content))
+
+    plain = "\n".join(p.strip() for p in plain_parts if p and p.strip()) or None
+    html = "\n".join(p.strip() for p in html_parts if p and p.strip()) or None
+    return plain, html, attachments
+
+
+def parse_emlx(path: Path, max_body_chars: int | None = None) -> dict[str, Any]:
+    raw_all = path.read_bytes()
+    first_line, sep, rest = raw_all.partition(b"\n")
+    raw_msg: bytes
+    try:
+        length = int(first_line.strip())
+        raw_msg = rest[:length]
+    except ValueError:
+        raw_msg = raw_all
+
+    msg = email.message_from_bytes(raw_msg, policy=policy.default)
+    plain, html, attachments = email_body_from_message(msg)  # type: ignore[arg-type]
+    if max_body_chars is not None:
+        if plain and len(plain) > max_body_chars:
+            plain = plain[: max_body_chars - 1] + "…"
+        if html and len(html) > max_body_chars:
+            html = html[: max_body_chars - 1] + "…"
+
+    headers = {k: str(v) for k, v in msg.items()}
+    return {
+        "headers": headers,
+        "body_text": plain,
+        "body_html": html,
+        "attachments": attachments,
+        "raw_size_bytes": len(raw_msg),
+        "emlx_path": str(path),
+    }
+
+
+def extract_emlx_attachments(path: Path, out_dir: Path) -> list[dict[str, Any]]:
+    raw_all = path.read_bytes()
+    first_line, _sep, rest = raw_all.partition(b"\n")
+    try:
+        length = int(first_line.strip())
+        raw_msg = rest[:length]
+    except ValueError:
+        raw_msg = raw_all
+    msg = email.message_from_bytes(raw_msg, policy=policy.default)
+    out_dir.mkdir(parents=True, exist_ok=True)
+    saved: list[dict[str, Any]] = []
+    counter = 0
+    for part in msg.walk() if msg.is_multipart() else [msg]:
+        if part.is_multipart():
+            continue
+        filename = part.get_filename()
+        disposition = (part.get_content_disposition() or "").lower()
+        if disposition != "attachment" and not filename:
+            continue
+        payload = part.get_payload(decode=True) or b""
+        counter += 1
+        safe_name = sanitize_filename(filename, f"attachment-{counter}")
+        target = out_dir / safe_name
+        if target.exists():
+            stem, suffix = target.stem, target.suffix
+            i = 2
+            while (out_dir / f"{stem}-{i}{suffix}").exists():
+                i += 1
+            target = out_dir / f"{stem}-{i}{suffix}"
+        target.write_bytes(payload)
+        saved.append({
+            "filename": filename,
+            "content_type": part.get_content_type(),
+            "size_bytes": len(payload),
+            "path": str(target),
+        })
+    return saved
+
+
+def read_raw_eml_from_emlx(path: Path) -> bytes:
+    raw_all = path.read_bytes()
+    first_line, _sep, rest = raw_all.partition(b"\n")
+    try:
+        length = int(first_line.strip())
+        return rest[:length]
+    except ValueError:
+        return raw_all
+
+
+class FastMailStore:
+    def __init__(self, mail_root: Path, index_path: Path):
+        self.mail_root = mail_root
+        self.index_path = index_path
+        self.conn: sqlite3.Connection | None = None
+        self._columns: dict[str, set[str]] = {}
+        self._tables: set[str] | None = None
+
+    def connect(self) -> sqlite3.Connection:
+        if self.conn is not None:
+            return self.conn
+        if not self.index_path.exists():
+            raise CliError(
+                "E_FAST_INDEX_NOT_FOUND",
+                f"Apple Mail Envelope Index not found: {self.index_path}",
+                "Open Apple Mail once, grant Full Disk Access, or allow fallback to Mail.app.",
+                EXIT_DEP,
+            )
+        try:
+            conn = sqlite3.connect(sqlite_uri(self.index_path), uri=True, timeout=5)
+            conn.row_factory = sqlite3.Row
+            self.conn = conn
+            return conn
+        except sqlite3.OperationalError as exc:
+            message = str(exc)
+            code = "E_FAST_INDEX_PERMISSION" if "authorization" in message.lower() or "unable to open" in message.lower() else "E_FAST_INDEX_OPEN"
+            raise CliError(
+                code,
+                f"Cannot open Apple Mail Envelope Index: {message}",
+                "Grant Full Disk Access to the terminal/Codex host, or allow fallback to Mail.app.",
+                EXIT_AUTH if code.endswith("PERMISSION") else EXIT_DEP,
+            ) from exc
+
+    def tables(self) -> set[str]:
+        if self._tables is None:
+            rows = self.connect().execute("SELECT name FROM sqlite_master WHERE type='table'").fetchall()
+            self._tables = {str(row[0]) for row in rows}
+        return self._tables
+
+    def columns(self, table: str) -> set[str]:
+        if table not in self._columns:
+            rows = self.connect().execute(f"PRAGMA table_info({quote_ident(table)})").fetchall()
+            self._columns[table] = {str(row[1]) for row in rows}
+        return self._columns[table]
+
+    def has(self, table: str, col: str) -> bool:
+        return table in self.tables() and col in self.columns(table)
+
+    def expr(self, table_alias: str, table: str, candidates: list[str], default: str = "NULL") -> str:
+        for col in candidates:
+            if self.has(table, col):
+                return f"{table_alias}.{quote_ident(col)}"
+        return default
+
+    def build_query(self, *, query: str | None, limit: int, date_from: str | None, date_to: str | None, mailbox: str | None, rowid: str | None = None) -> tuple[str, list[Any]]:
+        if "messages" not in self.tables():
+            raise CliError("E_FAST_SCHEMA_UNSUPPORTED", "Envelope Index has no messages table", "Use Mail.app fallback or update dobby-mail schema support.", EXIT_DEP)
+
+        joins: list[str] = []
+        subject_expr = self.expr("m", "messages", ["subject", "subject_text", "normalized_subject"])
+        if "subjects" in self.tables() and self.has("messages", "subject"):
+            subj_cols = [c for c in ["subject", "normalized_subject"] if self.has("subjects", c)]
+            if subj_cols:
+                joins.append("LEFT JOIN subjects s ON m.subject = s.ROWID")
+                subject_expr = "COALESCE(" + ", ".join([f"s.{quote_ident(c)}" for c in subj_cols] + ["CAST(m.subject AS TEXT)"]) + ")"
+
+        sender_expr = self.expr("m", "messages", ["sender", "sender_address", "from_address"])
+        if "addresses" in self.tables() and self.has("messages", "sender"):
+            addr_cols = [c for c in ["address", "comment", "display_name"] if self.has("addresses", c)]
+            if addr_cols:
+                joins.append("LEFT JOIN addresses sender ON m.sender = sender.ROWID")
+                sender_expr = "COALESCE(" + ", ".join([f"sender.{quote_ident(c)}" for c in addr_cols] + ["CAST(m.sender AS TEXT)"]) + ")"
+
+        mailbox_expr = self.expr("m", "messages", ["mailbox", "mailbox_name"])
+        mailbox_url_expr = "NULL"
+        if "mailboxes" in self.tables() and self.has("messages", "mailbox"):
+            mb_cols = [c for c in ["display_name", "name", "mailbox_name", "url"] if self.has("mailboxes", c)]
+            if mb_cols:
+                joins.append("LEFT JOIN mailboxes mb ON m.mailbox = mb.ROWID")
+                mailbox_expr = "COALESCE(" + ", ".join([f"mb.{quote_ident(c)}" for c in mb_cols] + ["CAST(m.mailbox AS TEXT)"]) + ")"
+                if self.has("mailboxes", "url"):
+                    mailbox_url_expr = "mb.url"
+
+        date_received_expr = self.expr("m", "messages", ["date_received", "date_last_viewed", "date_sent", "date"])
+        date_sent_expr = self.expr("m", "messages", ["date_sent", "date_received", "date"])
+        message_id_expr = self.expr("m", "messages", ["message_id", "internet_message_id", "rfc_message_id", "external_id", "remote_id"])
+        document_id_expr = self.expr("m", "messages", ["document_id", "message_id"])
+        read_expr = self.expr("m", "messages", ["read", "read_status", "is_read"], "NULL")
+        flags_expr = self.expr("m", "messages", ["flags"], "NULL")
+        size_expr = self.expr("m", "messages", ["size", "message_size"], "NULL")
+
+        where: list[str] = []
+        params: list[Any] = []
+        if rowid is not None:
+            where.append("CAST(m.ROWID AS TEXT) = ?")
+            params.append(str(rowid))
+        if query:
+            q = f"%{query.lower()}%"
+            where.append(f"(LOWER(CAST({subject_expr} AS TEXT)) LIKE ? OR LOWER(CAST({sender_expr} AS TEXT)) LIKE ?)")
+            params.extend([q, q])
+        if mailbox:
+            where.append(f"LOWER(CAST({mailbox_expr} AS TEXT)) LIKE ?")
+            params.append(f"%{mailbox.lower()}%")
+        from_pair = parse_date_arg(date_from)
+        to_pair = parse_date_arg(date_to)
+        if from_pair:
+            where.append(f"(({date_received_expr} >= ?) OR ({date_received_expr} >= ? AND {date_received_expr} < 1000000000))")
+            params.extend([from_pair[0], from_pair[1]])
+        if to_pair:
+            # Include the full day when a date-only value is passed.
+            unix_to, apple_to = to_pair
+            if date_to and re.fullmatch(r"\d{4}-\d{2}-\d{2}", date_to.strip()):
+                unix_to += 86399
+                apple_to += 86399
+            where.append(f"(({date_received_expr} <= ?) OR ({date_received_expr} <= ? AND {date_received_expr} < 1000000000))")
+            params.extend([unix_to, apple_to])
+
+        where_sql = " WHERE " + " AND ".join(where) if where else ""
+        sql = f"""
+            SELECT
+              m.ROWID AS rowid,
+              CAST({message_id_expr} AS TEXT) AS source_message_id,
+              CAST({document_id_expr} AS TEXT) AS document_id,
+              CAST({subject_expr} AS TEXT) AS subject,
+              CAST({sender_expr} AS TEXT) AS sender,
+              {date_received_expr} AS date_received_raw,
+              {date_sent_expr} AS date_sent_raw,
+              CAST({mailbox_expr} AS TEXT) AS mailbox,
+              CAST({mailbox_url_expr} AS TEXT) AS mailbox_url,
+              {read_expr} AS read_raw,
+              {flags_expr} AS flags_raw,
+              {size_expr} AS size_bytes
+            FROM messages m
+            {' '.join(joins)}
+            {where_sql}
+            ORDER BY {date_received_expr} DESC
+            LIMIT ?
+        """
+        params.append(limit)
+        return sql, params
+
+    def search(self, *, query: str | None, limit: int, date_from: str | None, date_to: str | None, mailbox: str | None = None) -> list[dict[str, Any]]:
+        sql, params = self.build_query(query=query, limit=limit, date_from=date_from, date_to=date_to, mailbox=mailbox)
+        rows = self.connect().execute(sql, params).fetchall()
+        return [self.normalize_row(row) for row in rows]
+
+    def get(self, rowid: str) -> dict[str, Any]:
+        sql, params = self.build_query(query=None, limit=1, date_from=None, date_to=None, mailbox=None, rowid=rowid)
+        row = self.connect().execute(sql, params).fetchone()
+        if row is None:
+            raise CliError("E_MESSAGE_NOT_FOUND", f"No Apple Mail message found for id {rowid}", "Use search/recent to find a current message id.", EXIT_FAILURE)
+        item = self.normalize_row(row)
+        emlx = self.find_emlx(item)
+        if emlx:
+            item.update(parse_emlx(emlx))
+        else:
+            item["body_text"] = None
+            item["body_html"] = None
+            item["attachments"] = []
+            item["emlx_path"] = None
+            item["body_unavailable_reason"] = "E_EMLX_NOT_FOUND"
+        return item
+
+    def get_emlx_for_rowid(self, rowid: str) -> tuple[dict[str, Any], Path]:
+        sql, params = self.build_query(query=None, limit=1, date_from=None, date_to=None, mailbox=None, rowid=rowid)
+        row = self.connect().execute(sql, params).fetchone()
+        if row is None:
+            raise CliError("E_MESSAGE_NOT_FOUND", f"No Apple Mail message found for id {rowid}", "Use search/recent to find a current fast:<rowid> id.", EXIT_FAILURE)
+        item = self.normalize_row(row)
+        emlx = self.find_emlx(item)
+        if not emlx:
+            raise CliError("E_EMLX_NOT_FOUND", f"Could not locate .emlx file for fast:{rowid}", "Use `get` without export/attachment extraction, or try Mail.app fallback.", EXIT_DEP)
+        return item, emlx
+
+    def mailboxes(self, limit: int = 500) -> list[dict[str, Any]]:
+        if "mailboxes" not in self.tables():
+            raise CliError("E_FAST_SCHEMA_UNSUPPORTED", "Envelope Index has no mailboxes table", "Use Mail.app fallback or update dobby-mail schema support.", EXIT_DEP)
+        cols = self.columns("mailboxes")
+        select = ["ROWID AS rowid"]
+        for col in ["display_name", "name", "mailbox_name", "url", "total_count", "unread_count"]:
+            if col in cols:
+                select.append(f"{quote_ident(col)} AS {quote_ident(col)}")
+        rows = self.connect().execute(f"SELECT {', '.join(select)} FROM mailboxes ORDER BY ROWID LIMIT ?", (limit,)).fetchall()
+        out = []
+        for row in rows:
+            d = dict(row)
+            out.append({
+                "id": f"fast-mailbox:{d.get('rowid')}",
+                "rowid": d.get("rowid"),
+                "name": clean_text(d.get("display_name") or d.get("name") or d.get("mailbox_name") or d.get("url")),
+                "url": clean_text(d.get("url")),
+                "total_count": d.get("total_count"),
+                "unread_count": d.get("unread_count"),
+            })
+        return out
+
+    def normalize_row(self, row: sqlite3.Row) -> dict[str, Any]:
+        d = dict(row)
+        rowid = str(d.get("rowid"))
+        message_id = clean_text(d.get("source_message_id"))
+        document_id = clean_text(d.get("document_id"))
+        flags = d.get("flags_raw")
+        read_raw = d.get("read_raw")
+        read_status = None
+        if read_raw is not None:
+            with contextlib.suppress(Exception):
+                read_status = bool(int(read_raw))
+        return {
+            "id": f"fast:{rowid}",
+            "backend": "fast",
+            "rowid": rowid,
+            "apple_mail_id": rowid,
+            "source_message_id": message_id,
+            "document_id": document_id,
+            "subject": clean_text(d.get("subject"), 500),
+            "sender": clean_text(d.get("sender"), 500),
+            "date_received": iso_from_mail_timestamp(d.get("date_received_raw")),
+            "date_sent": iso_from_mail_timestamp(d.get("date_sent_raw")),
+            "mailbox": clean_text(d.get("mailbox"), 500),
+            "mailbox_url": clean_text(d.get("mailbox_url"), 1000),
+            "read_status": read_status,
+            "flags_raw": flags,
+            "size_bytes": d.get("size_bytes"),
+            "threading_supported": False,
+        }
+
+    def find_emlx(self, item: dict[str, Any]) -> Path | None:
+        candidates: list[str] = []
+        for key in ["rowid", "document_id", "source_message_id", "apple_mail_id"]:
+            value = item.get(key)
+            if value is None:
+                continue
+            text = str(value).strip().strip("<>")
+            if re.fullmatch(r"\d+", text) and text not in candidates:
+                candidates.append(text)
+        if not candidates:
+            return None
+        try:
+            version_root = find_mail_version_root(self.mail_root)
+        except CliError:
+            version_root = self.index_path.parents[1] if len(self.index_path.parents) > 1 else self.mail_root
+        for cand in candidates:
+            pattern = f"{cand}.emlx"
+            # Common case: Mail stores message files in nested Messages directories.
+            with contextlib.suppress(PermissionError, OSError):
+                for p in version_root.rglob(pattern):
+                    if p.is_file():
+                        return p
+        return None
+
+
+def quote_ident(name: str) -> str:
+    return '"' + name.replace('"', '""') + '"'
+
+
+def run_osascript(script: str, *, input_json: dict[str, Any] | None = None, timeout_sec: int = 30) -> dict[str, Any]:
+    osascript = os.environ.get("DOBBY_MAIL_OSASCRIPT") or shutil.which("osascript")
+    if not osascript:
+        raise CliError("E_OSASCRIPT_NOT_FOUND", "osascript not found", "Run on macOS with /usr/bin/osascript available.", EXIT_DEP)
+    env = os.environ.copy()
+    tmp_path: str | None = None
+    if input_json is not None:
+        fd, tmp_path = tempfile.mkstemp(prefix="dobby-mail-input-", suffix=".json")
+        with os.fdopen(fd, "w", encoding="utf-8") as f:
+            json.dump(input_json, f)
+        env["DOBBY_MAIL_INPUT_JSON"] = tmp_path
+    try:
+        proc = subprocess.run(
+            [osascript, "-l", "JavaScript", "-e", script],
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            timeout=timeout_sec,
+            check=False,
+            env=env,
+        )
+    except subprocess.TimeoutExpired as exc:
+        raise CliError("E_MAIL_APP_TIMEOUT", "Mail.app automation timed out", "Retry, open Mail.app manually, or use the fast read backend.", EXIT_TIMEOUT, retryable=True) from exc
+    finally:
+        if tmp_path:
+            with contextlib.suppress(OSError):
+                os.unlink(tmp_path)
+    if proc.returncode != 0:
+        err = (proc.stderr or proc.stdout or "").strip()
+        code = "E_MAIL_APP_PERMISSION" if "not authorized" in err.lower() or "not permitted" in err.lower() else "E_MAIL_APP_AUTOMATION"
+        raise CliError(code, f"Mail.app automation failed: {err}", "Grant Automation permission for the terminal/Codex host to control Mail.app, or use fast read-only backend.", EXIT_AUTH if code.endswith("PERMISSION") else EXIT_DEP)
+    raw = proc.stdout.strip()
+    try:
+        parsed = json.loads(raw) if raw else {}
+    except json.JSONDecodeError as exc:
+        raise CliError("E_MAIL_APP_BAD_OUTPUT", f"Mail.app automation returned non-JSON output: {raw[:200]}", "Inspect the JXA script or run with --backend fast for reads.", EXIT_DEP) from exc
+    if isinstance(parsed, dict) and parsed.get("status") == "error":
+        raise CliError(parsed.get("code", "E_MAIL_APP_ERROR"), parsed.get("message", "Mail.app returned an error"), parsed.get("hint", "Inspect Mail.app state."), EXIT_FAILURE, retryable=bool(parsed.get("retryable")))
+    if not isinstance(parsed, dict):
+        raise CliError("E_MAIL_APP_BAD_OUTPUT", "Mail.app automation did not return a JSON object", "Inspect the JXA script.", EXIT_DEP)
+    return parsed
+
+
+JXA_LIBRARY = r'''
+function readInput() {
+  ObjC.import('Foundation');
+  var path = $.NSProcessInfo.processInfo.environment.objectForKey('DOBBY_MAIL_INPUT_JSON');
+  if (!path) return {};
+  var ns = $.NSString.stringWithContentsOfFileEncodingError(path, $.NSUTF8StringEncoding, null);
+  return JSON.parse(ObjC.unwrap(ns));
+}
+function isoDate(value) {
+  if (!value) return null;
+  try {
+    var d = new Date(value);
+    if (isNaN(d.getTime())) return String(value);
+    return d.toISOString();
+  } catch (e) { return String(value); }
+}
+function safe(fn, fallback) {
+  try { return fn(); } catch (e) { return fallback; }
+}
+function msgSummary(m) {
+  return {
+    id: 'mail:' + safe(function(){ return String(m.id()); }, ''),
+    backend: 'mail-app',
+    apple_mail_id: safe(function(){ return String(m.id()); }, null),
+    source_message_id: safe(function(){ return String(m.messageId()); }, null),
+    subject: safe(function(){ return String(m.subject()); }, null),
+    sender: safe(function(){ return String(m.sender()); }, null),
+    date_received: isoDate(safe(function(){ return m.dateReceived(); }, null)),
+    date_sent: isoDate(safe(function(){ return m.dateSent(); }, null)),
+    mailbox: safe(function(){ return String(m.mailbox().name()); }, null),
+    read_status: safe(function(){ return Boolean(m.readStatus()); }, null),
+    threading_supported: true
+  };
+}
+function normalizeAddresses(raw) {
+  if (!raw) return [];
+  if (Array.isArray(raw)) return raw.filter(Boolean).map(String);
+  return String(raw).split(',').map(function(s){ return s.trim(); }).filter(Boolean);
+}
+'''
+
+
+def jxa_accounts(timeout_sec: int) -> dict[str, Any]:
+    script = JXA_LIBRARY + r'''
+var Mail = Application('Mail');
+var accounts = Mail.accounts().map(function(a) {
+  return {
+    id: safe(function(){ return String(a.id()); }, null),
+    name: safe(function(){ return String(a.name()); }, null),
+    enabled: safe(function(){ return Boolean(a.enabled()); }, null),
+    account_type: safe(function(){ return String(a.accountType()); }, null),
+    email_addresses: safe(function(){ return a.emailAddresses().map(String); }, [])
+  };
+});
+JSON.stringify({accounts: accounts});
+'''
+    return run_osascript(script, timeout_sec=timeout_sec)
+
+
+def jxa_mailboxes(timeout_sec: int, limit: int) -> dict[str, Any]:
+    script = JXA_LIBRARY + r'''
+var input = readInput();
+var limit = input.limit || 200;
+var Mail = Application('Mail');
+var out = [];
+function addMailbox(mb, accountName, prefix, depth) {
+  if (out.length >= limit || depth > 8) return;
+  var name = safe(function(){ return String(mb.name()); }, '');
+  var path = prefix ? prefix + '/' + name : name;
+  out.push({
+    id: 'mailbox:' + out.length,
+    backend: 'mail-app',
+    name: name,
+    path: path,
+    account: accountName,
+    unread_count: safe(function(){ return Number(mb.unreadCount()); }, null)
+  });
+  var children = safe(function(){ return mb.mailboxes(); }, []);
+  for (var i = 0; i < children.length && out.length < limit; i++) addMailbox(children[i], accountName, path, depth + 1);
+}
+var accounts = Mail.accounts();
+for (var a = 0; a < accounts.length && out.length < limit; a++) {
+  var accountName = safe(function(){ return String(accounts[a].name()); }, null);
+  var boxes = safe(function(){ return accounts[a].mailboxes(); }, []);
+  for (var b = 0; b < boxes.length && out.length < limit; b++) addMailbox(boxes[b], accountName, '', 0);
+}
+JSON.stringify({mailboxes: out});
+'''
+    return run_osascript(script, input_json={"limit": limit}, timeout_sec=timeout_sec)
+
+
+def jxa_search(query: str | None, limit: int, timeout_sec: int, scope: str = "inbox") -> dict[str, Any]:
+    script = JXA_LIBRARY + r'''
+var input = readInput();
+var limit = input.limit || 20;
+var q = (input.query || '').toLowerCase();
+var Mail = Application('Mail');
+var boxes = [];
+if (input.scope === 'selected') {
+  var selected = safe(function(){ return Mail.selection(); }, []);
+  var selectedOut = selected.map(msgSummary).filter(function(m) {
+    if (!q) return true;
+    return ((m.subject || '') + ' ' + (m.sender || '')).toLowerCase().indexOf(q) >= 0;
+  }).slice(0, limit);
+  JSON.stringify({messages: selectedOut, scope: 'selected'});
+} else {
+  boxes.push(Mail.inbox());
+  var out = [];
+  for (var bi = 0; bi < boxes.length && out.length < limit; bi++) {
+    var msgs = safe(function(){ return boxes[bi].messages(); }, []);
+    for (var i = msgs.length - 1; i >= 0 && out.length < limit; i--) {
+      var s = msgSummary(msgs[i]);
+      if (q && (((s.subject || '') + ' ' + (s.sender || '')).toLowerCase().indexOf(q) < 0)) continue;
+      out.push(s);
+    }
+  }
+  JSON.stringify({messages: out, scope: 'inbox'});
+}
+'''
+    return run_osascript(script, input_json={"query": query, "limit": limit, "scope": scope}, timeout_sec=timeout_sec)
+
+
+def jxa_get(mail_id: str, timeout_sec: int, scope: str = "inbox", max_body_chars: int | None = None) -> dict[str, Any]:
+    script = JXA_LIBRARY + r'''
+var input = readInput();
+var target = String(input.id || '').replace(/^mail:/, '');
+var Mail = Application('Mail');
+function attachBody(s) {
+  var body = safe(function(){ return String(s._message.content()); }, null);
+  if (body && input.max_body_chars && body.length > input.max_body_chars) body = body.slice(0, input.max_body_chars - 1) + '…';
+  s.body_text = body;
+  s.body_html = null;
+  s.attachments = [];
+  return s;
+}
+function findInMessages(msgs) {
+  for (var i = msgs.length - 1; i >= 0; i--) {
+    var m = msgs[i];
+    var id = safe(function(){ return String(m.id()); }, '');
+    var mid = safe(function(){ return String(m.messageId()); }, '');
+    if (id === target || mid === target) {
+      var s = msgSummary(m);
+      s._message = m;
+      return s;
+    }
+  }
+  return null;
+}
+var found = null;
+if (input.scope === 'selected') found = findInMessages(safe(function(){ return Mail.selection(); }, []));
+if (!found) found = findInMessages(safe(function(){ return Mail.inbox().messages(); }, []));
+if (!found) {
+  JSON.stringify({status:'error', code:'E_MESSAGE_NOT_FOUND', message:'Message not found in Mail.app fallback scope', hint:'Use search/recent first, or use fast backend with Full Disk Access.'});
+} else {
+  var mObj = found._message;
+  delete found._message;
+  found.body_text = safe(function(){ return String(mObj.content()); }, null);
+  if (found.body_text && input.max_body_chars && found.body_text.length > input.max_body_chars) found.body_text = found.body_text.slice(0, input.max_body_chars - 1) + '…';
+  found.body_html = null;
+  found.attachments = [];
+  JSON.stringify({message: found});
+}
+'''
+    return run_osascript(script, input_json={"id": mail_id, "scope": scope, "max_body_chars": max_body_chars}, timeout_sec=timeout_sec)
+
+
+def jxa_create_draft(payload: dict[str, Any], timeout_sec: int) -> dict[str, Any]:
+    script = JXA_LIBRARY + r'''
+var input = readInput();
+var Mail = Application('Mail');
+var to = normalizeAddresses(input.to);
+var cc = normalizeAddresses(input.cc);
+var bcc = normalizeAddresses(input.bcc);
+if (to.length === 0) {
+  JSON.stringify({status:'error', code:'E_RECIPIENT_REQUIRED', message:'At least one --to recipient is required', hint:'Pass --to recipient@example.com'});
+} else {
+  var msg = Mail.OutgoingMessage({subject: input.subject || '', content: input.body || '', visible: input.visible !== false});
+  Mail.outgoingMessages.push(msg);
+  to.forEach(function(addr) { msg.toRecipients.push(Mail.ToRecipient({address: addr})); });
+  cc.forEach(function(addr) { msg.ccRecipients.push(Mail.CcRecipient({address: addr})); });
+  bcc.forEach(function(addr) { msg.bccRecipients.push(Mail.BccRecipient({address: addr})); });
+  if (input.sender) msg.sender = input.sender;
+  msg.save();
+  JSON.stringify({draft: {
+    id: 'draft:' + safe(function(){ return String(msg.id()); }, ''),
+    backend: 'mail-app',
+    apple_mail_id: safe(function(){ return String(msg.id()); }, null),
+    subject: input.subject || '',
+    to: to,
+    cc: cc,
+    bcc_count: bcc.length,
+    visible: input.visible !== false,
+    state: 'created_unsent_draft'
+  }});
+}
+'''
+    return run_osascript(script, input_json=payload, timeout_sec=timeout_sec)
+
+
+def jxa_send_direct(payload: dict[str, Any], timeout_sec: int) -> dict[str, Any]:
+    script = JXA_LIBRARY + r'''
+var input = readInput();
+var Mail = Application('Mail');
+var to = normalizeAddresses(input.to);
+if (to.length === 0) {
+  JSON.stringify({status:'error', code:'E_RECIPIENT_REQUIRED', message:'At least one --to recipient is required', hint:'Pass --to recipient@example.com'});
+} else {
+  var msg = Mail.OutgoingMessage({subject: input.subject || '', content: input.body || '', visible: false});
+  Mail.outgoingMessages.push(msg);
+  to.forEach(function(addr) { msg.toRecipients.push(Mail.ToRecipient({address: addr})); });
+  normalizeAddresses(input.cc).forEach(function(addr) { msg.ccRecipients.push(Mail.CcRecipient({address: addr})); });
+  normalizeAddresses(input.bcc).forEach(function(addr) { msg.bccRecipients.push(Mail.BccRecipient({address: addr})); });
+  if (input.sender) msg.sender = input.sender;
+  var id = safe(function(){ return String(msg.id()); }, null);
+  Mail.send(msg);
+  JSON.stringify({sent: {id: id ? 'sent-attempt:' + id : null, backend:'mail-app', subject: input.subject || '', to: to, state:'send_requested'}});
+}
+'''
+    return run_osascript(script, input_json=payload, timeout_sec=timeout_sec)
+
+
+def read_body_arg(args: argparse.Namespace) -> str:
+    body = getattr(args, "body", None)
+    body_file = getattr(args, "body_file", None)
+    if body is not None and body_file is not None:
+        raise CliError("E_BODY_AMBIGUOUS", "Pass either --body or --body-file, not both", "Use --body-file - to read from stdin.", EXIT_USAGE)
+    if body_file:
+        if body_file == "-":
+            return sys.stdin.read()
+        path = Path(body_file).expanduser()
+        try:
+            return path.read_text(encoding="utf-8")
+        except OSError as exc:
+            raise CliError("E_BODY_FILE_READ", f"Cannot read body file: {path}", "Check the path and permissions.", EXIT_USAGE) from exc
+    if body is not None:
+        return body
+    raise CliError("E_BODY_REQUIRED", "Message body required", "Pass --body, --body-file PATH, or --body-file -.", EXIT_USAGE)
+
+
+def parse_recipients(values: list[str] | None) -> list[str]:
+    out: list[str] = []
+    for value in values or []:
+        for part in value.split(","):
+            addr = part.strip()
+            if addr:
+                out.append(addr)
+    return out
+
+
+def make_store(args: argparse.Namespace) -> FastMailStore:
+    root = resolve_mail_root(getattr(args, "mail_root", None))
+    index = resolve_index_path(root, getattr(args, "index_path", None))
+    return FastMailStore(root, index)
+
+
+def run_with_fallback(args: argparse.Namespace, warnings: WarningSink, op_name: str, fast_fn, app_fn):
+    requested = getattr(args, "backend", "auto")
+    allow_fallback = requested == "auto" and not getattr(args, "no_fallback", False)
+    if requested in {"auto", "fast"}:
+        try:
+            result = fast_fn()
+            return "fast", False, result
+        except CliError as exc:
+            if requested == "fast" or not allow_fallback:
+                raise
+            warnings.warn(
+                exc.code,
+                f"Fast Apple Mail read path failed for {op_name}; falling back to Mail.app automation explicitly.",
+                exc.hint,
+                backend="fast",
+            )
+    if requested in {"auto", "mail-app"}:
+        result = app_fn()
+        return "mail-app", requested == "auto", result
+    raise CliError("E_BACKEND_UNSUPPORTED", f"Unsupported backend: {requested}", "Use --backend auto, fast, or mail-app.", EXIT_USAGE)
+
+
+def command_doctor(args: argparse.Namespace, warnings: WarningSink) -> dict[str, Any]:
+    checks: list[dict[str, Any]] = []
+
+    def add(name: str, status: str, message: str, hint: str | None = None, details: dict[str, Any] | None = None):
+        checks.append({"name": name, "status": status, "message": message, "hint": hint, "details": details or {}})
+
+    add("platform", "ok" if platform.system() == "Darwin" else "warn", platform.platform(), "Apple Mail backend requires macOS." if platform.system() != "Darwin" else None)
+    mail_app = Path("/System/Applications/Mail.app")
+    add("mail_app", "ok" if mail_app.exists() else "error", str(mail_app), "Install/restore Apple Mail.app." if not mail_app.exists() else None)
+    osascript = os.environ.get("DOBBY_MAIL_OSASCRIPT") or shutil.which("osascript")
+    add("osascript", "ok" if osascript else "error", osascript or "not found", "Install macOS osascript." if not osascript else None)
+
+    mail_root = resolve_mail_root(args.mail_root)
+    try:
+        version_root = find_mail_version_root(mail_root)
+        add("mail_root", "ok", str(version_root), details={"mail_root": str(mail_root)})
+    except CliError as exc:
+        add("mail_root", "error" if exc.exit_code != EXIT_AUTH else "warn", exc.message, exc.hint, {"mail_root": str(mail_root), "code": exc.code})
+        version_root = None
+
+    index_path: Path | None = None
+    try:
+        index_path = resolve_index_path(mail_root, args.index_path)
+        add("envelope_index_path", "ok" if index_path.exists() else "warn", str(index_path), "Grant Full Disk Access or allow Mail.app fallback." if not index_path.exists() else None)
+    except CliError as exc:
+        add("envelope_index_path", "warn", exc.message, exc.hint, {"code": exc.code})
+
+    if index_path:
+        try:
+            store = FastMailStore(mail_root, index_path)
+            tables = sorted(store.tables())
+            add("fast_backend", "ok", "Envelope Index opened read-only", details={"tables_sample": tables[:20]})
+        except CliError as exc:
+            add("fast_backend", "warn", exc.message, exc.hint, {"code": exc.code})
+
+    if args.check_mail_app:
+        try:
+            result = jxa_accounts(args.timeout_sec)
+            add("mail_app_automation", "ok", f"Read {len(result.get('accounts', []))} accounts via Mail.app")
+        except CliError as exc:
+            add("mail_app_automation", "warn" if exc.exit_code in {EXIT_AUTH, EXIT_DEP, EXIT_TIMEOUT} else "error", exc.message, exc.hint, {"code": exc.code})
+    else:
+        add("mail_app_automation", "skipped", "Pass --check-mail-app to test live Mail.app automation; this may launch Mail.app.")
+
+    statuses = {c["status"] for c in checks}
+    selected = "fast" if any(c["name"] == "fast_backend" and c["status"] == "ok" for c in checks) else "mail-app"
+    summary = "needs_attention" if "error" in statuses else ("degraded" if "warn" in statuses else "ok")
+    return {
+        "selected_backend": selected,
+        "checks": checks,
+        "summary": summary,
+        "warnings": warnings.items,
+    }
+
+
+def command_accounts(args: argparse.Namespace, warnings: WarningSink) -> dict[str, Any]:
+    result = jxa_accounts(args.timeout_sec)
+    return {"backend": "mail-app", "accounts": result.get("accounts", []), "warnings": warnings.items}
+
+
+def command_mailboxes(args: argparse.Namespace, warnings: WarningSink) -> dict[str, Any]:
+    limit = clamp_limit(args.limit)
+    backend, fallback, result = run_with_fallback(
+        args,
+        warnings,
+        "mailboxes",
+        lambda: {"mailboxes": make_store(args).mailboxes(limit=limit)},
+        lambda: jxa_mailboxes(args.timeout_sec, limit),
+    )
+    return {"backend": backend, "requested_backend": args.backend, "fallback_used": fallback, "mailboxes": result.get("mailboxes", []), "warnings": warnings.items}
+
+
+def command_search(args: argparse.Namespace, warnings: WarningSink) -> dict[str, Any]:
+    limit = clamp_limit(args.limit)
+    backend, fallback, result = run_with_fallback(
+        args,
+        warnings,
+        "search",
+        lambda: {"messages": make_store(args).search(query=args.query, limit=limit, date_from=args.date_from, date_to=args.date_to, mailbox=args.mailbox)},
+        lambda: jxa_search(args.query, limit, args.timeout_sec, scope=args.scope),
+    )
+    return {
+        "backend": backend,
+        "requested_backend": args.backend,
+        "fallback_used": fallback,
+        "query": args.query,
+        "messages": result.get("messages", []),
+        "warnings": warnings.items,
+    }
+
+
+def command_recent(args: argparse.Namespace, warnings: WarningSink) -> dict[str, Any]:
+    args.query = None
+    return command_search(args, warnings)
+
+
+def normalize_message_id(raw: str) -> tuple[str, str]:
+    if ":" in raw:
+        kind, value = raw.split(":", 1)
+        return kind, value
+    return "fast", raw
+
+
+def command_get(args: argparse.Namespace, warnings: WarningSink) -> dict[str, Any]:
+    kind, value = normalize_message_id(args.id)
+    max_body_chars = args.max_body_chars
+
+    def fast_get() -> dict[str, Any]:
+        if kind not in {"fast", "rowid"}:
+            raise CliError("E_FAST_ID_UNSUPPORTED", f"Fast backend cannot get id kind {kind}", "Use a fast:<rowid> id from search/recent, or --backend mail-app for mail:<id>.", EXIT_USAGE)
+        return {"message": make_store(args).get(value)}
+
+    def app_get() -> dict[str, Any]:
+        return jxa_get(value if kind != "mail" else value, args.timeout_sec, scope=args.scope, max_body_chars=max_body_chars)
+
+    backend, fallback, result = run_with_fallback(args, warnings, "get", fast_get, app_get)
+    msg = result.get("message")
+    if msg and max_body_chars is not None:
+        for field in ["body_text", "body_html"]:
+            if isinstance(msg.get(field), str) and len(msg[field]) > max_body_chars:
+                msg[field] = msg[field][: max_body_chars - 1] + "…"
+    return {"backend": backend, "requested_backend": args.backend, "fallback_used": fallback, "message": msg, "warnings": warnings.items}
+
+
+def draft_payload_from_args(args: argparse.Namespace) -> dict[str, Any]:
+    body = read_body_arg(args)
+    to = parse_recipients(args.to)
+    cc = parse_recipients(args.cc)
+    bcc = parse_recipients(args.bcc)
+    if not to:
+        raise CliError("E_RECIPIENT_REQUIRED", "At least one --to recipient is required", "Pass --to recipient@example.com.", EXIT_USAGE)
+    return {
+        "to": to,
+        "cc": cc,
+        "bcc": bcc,
+        "subject": args.subject or "",
+        "body": body,
+        "sender": args.sender,
+        "visible": not args.hidden,
+    }
+
+
+def command_draft(args: argparse.Namespace, warnings: WarningSink) -> dict[str, Any]:
+    payload = draft_payload_from_args(args)
+    if args.dry_run:
+        return {
+            "backend": "mail-app",
+            "dry_run": True,
+            "draft": {
+                "state": "would_create_unsent_draft",
+                "to": payload["to"],
+                "cc": payload["cc"],
+                "bcc_count": len(payload["bcc"]),
+                "subject": payload["subject"],
+                "visible": payload["visible"],
+                "body_preview": clean_text(payload["body"], 500),
+            },
+            "warnings": warnings.items,
+        }
+    result = jxa_create_draft(payload, args.timeout_sec)
+    return {"backend": "mail-app", "dry_run": False, "draft": result.get("draft"), "warnings": warnings.items}
+
+
+def command_draft_reply(args: argparse.Namespace, warnings: WarningSink) -> dict[str, Any]:
+    # Safe v1 behavior: create an unsent draft addressed to the original sender.
+    # This does not mutate/send and does not rely on fragile native reply scripting.
+    body = read_body_arg(args)
+    get_args = argparse.Namespace(**vars(args))
+    get_args.backend = args.read_backend
+    get_args.no_fallback = args.no_fallback
+    get_args.max_body_chars = 0
+    data = command_get(get_args, warnings)
+    msg = data.get("message") or {}
+    sender_name, sender_addr = parseaddr(msg.get("sender") or "")
+    recipient = args.to or ([sender_addr] if sender_addr else [])
+    subject = args.subject or (msg.get("subject") or "")
+    if subject and not subject.lower().startswith("re:"):
+        subject = "Re: " + subject
+    payload = {
+        "to": parse_recipients(recipient),
+        "cc": parse_recipients(args.cc),
+        "bcc": parse_recipients(args.bcc),
+        "subject": subject,
+        "body": body,
+        "sender": args.sender,
+        "visible": not args.hidden,
+    }
+    if not payload["to"]:
+        raise CliError("E_REPLY_RECIPIENT_UNAVAILABLE", "Could not infer reply recipient", "Pass --to explicitly.", EXIT_USAGE)
+    if args.dry_run:
+        draft = {
+            "state": "would_create_unsent_reply_draft",
+            "to": payload["to"],
+            "cc": payload["cc"],
+            "bcc_count": len(payload["bcc"]),
+            "subject": payload["subject"],
+            "visible": payload["visible"],
+            "body_preview": clean_text(payload["body"], 500),
+            "reply_to": {"id": args.id, "sender": msg.get("sender"), "source_message_id": msg.get("source_message_id")},
+            "threading_supported": False,
+        }
+    else:
+        result = jxa_create_draft(payload, args.timeout_sec)
+        draft = result.get("draft") or {}
+        draft["reply_to"] = {"id": args.id, "sender": msg.get("sender"), "source_message_id": msg.get("source_message_id")}
+        draft["threading_supported"] = False
+    warnings.warn(
+        "W_REPLY_DRAFT_NOT_NATIVE_THREADED",
+        "draft-reply creates an unsent addressed draft; it does not yet use Mail.app's native reply command/thread headers.",
+        "Inspect the draft in Apple Mail before sending. Native reply can be added later if needed.",
+        backend="mail-app",
+    )
+    return {"backend": "mail-app", "read_backend": data.get("backend"), "dry_run": bool(args.dry_run), "draft": draft, "warnings": warnings.items}
+
+
+def command_send(args: argparse.Namespace, warnings: WarningSink) -> dict[str, Any]:
+    payload = draft_payload_from_args(args)
+    if not args.confirm_send:
+        raise CliError(
+            "E_SEND_CONFIRMATION_REQUIRED",
+            "Sending email requires --confirm-send",
+            "Prefer `dobby-mail draft` first. Only pass --confirm-send after the user explicitly approves recipients and body.",
+            EXIT_USAGE,
+        )
+    if args.dry_run:
+        return {
+            "backend": "mail-app",
+            "dry_run": True,
+            "sent": {
+                "state": "would_send",
+                "to": payload["to"],
+                "cc": payload["cc"],
+                "bcc_count": len(payload["bcc"]),
+                "subject": payload["subject"],
+                "body_preview": clean_text(payload["body"], 500),
+            },
+            "warnings": warnings.items,
+        }
+    result = jxa_send_direct(payload, args.timeout_sec)
+    return {"backend": "mail-app", "dry_run": False, "sent": result.get("sent"), "warnings": warnings.items}
+
+
+def command_selected(args: argparse.Namespace, warnings: WarningSink) -> dict[str, Any]:
+    limit = clamp_limit(args.limit)
+    result = jxa_search(args.query, limit, args.timeout_sec, scope="selected")
+    return {"backend": "mail-app", "scope": "selected", "messages": result.get("messages", []), "warnings": warnings.items}
+
+
+def add_common(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument("--json", action="store_true", help="Emit JSON output (default).")
+    parser.add_argument("--plain", action="store_true", help="Emit stable plain text for operator inspection.")
+    parser.add_argument("--no-input", action="store_true", help="Accepted for non-interactive agent safety; prompts are never used.")
+    parser.add_argument("--quiet", action="store_true", help="Suppress fallback warnings on stderr; warnings remain in JSON.")
+    parser.add_argument("--timeout-sec", type=int, default=30, help="Timeout for Mail.app automation calls.")
+
+
+def add_backend(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument("--backend", choices=["auto", "fast", "mail-app"], default="auto", help="Read backend. auto tries fast local index then explicitly falls back to Mail.app.")
+    parser.add_argument("--no-fallback", action="store_true", help="Do not fall back from fast path to Mail.app automation.")
+    parser.add_argument("--mail-root", help="Apple Mail root. Defaults to ~/Library/Mail or DOBBY_MAIL_ROOT.")
+    parser.add_argument("--index-path", help="Apple Mail Envelope Index path. Defaults to latest V*/MailData/Envelope Index or DOBBY_MAIL_INDEX.")
+
+
+def add_draft_args(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument("--to", action="append", help="Recipient address. Repeat or comma-separate.")
+    parser.add_argument("--cc", action="append", help="CC address. Repeat or comma-separate.")
+    parser.add_argument("--bcc", action="append", help="BCC address. Repeat or comma-separate.")
+    parser.add_argument("--subject", required=False, help="Message subject.")
+    parser.add_argument("--body", help="Message body text.")
+    parser.add_argument("--body-file", help="Path to body text, or - for stdin.")
+    parser.add_argument("--sender", help="Sender account/address as understood by Apple Mail.")
+    parser.add_argument("--hidden", action="store_true", help="Create draft without showing compose window. Default shows window.")
+    parser.add_argument("--dry-run", action="store_true", help="Return intended action without creating/sending anything.")
+
+
+def parse_args(argv: list[str]) -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description="Local Apple Mail client for Dobby. JSON-first, local-first, permission-safe.")
+    add_common(parser)
+    parser.add_argument("--version", action="store_true", help="Print version envelope.")
+    sub = parser.add_subparsers(dest="cmd")
+
+    p = sub.add_parser("doctor", help="Check Apple Mail/local backend availability.")
+    add_common(p)
+    p.add_argument("--mail-root")
+    p.add_argument("--index-path")
+    p.add_argument("--check-mail-app", action="store_true", help="Test live Mail.app automation; may launch Mail.app.")
+    p.set_defaults(func=command_doctor)
+
+    p = sub.add_parser("accounts", help="List Apple Mail accounts via Mail.app automation.")
+    add_common(p)
+    p.set_defaults(func=command_accounts)
+
+    p = sub.add_parser("mailboxes", help="List Apple Mail mailboxes.")
+    add_common(p); add_backend(p)
+    p.add_argument("--limit", type=int, default=200)
+    p.set_defaults(func=command_mailboxes)
+
+    p = sub.add_parser("search", help="Search message metadata.")
+    add_common(p); add_backend(p)
+    p.add_argument("--query", required=True, help="Case-insensitive search over subject/sender metadata.")
+    p.add_argument("--limit", type=int, default=DEFAULT_LIMIT)
+    p.add_argument("--from", dest="date_from", help="Lower bound date (fast backend).")
+    p.add_argument("--to", dest="date_to", help="Upper bound date (fast backend).")
+    p.add_argument("--mailbox", help="Mailbox name/url filter (fast backend).")
+    p.add_argument("--scope", choices=["inbox", "selected"], default="inbox", help="Mail.app fallback search scope.")
+    p.set_defaults(func=command_search)
+
+    p = sub.add_parser("recent", help="List recent messages.")
+    add_common(p); add_backend(p)
+    p.add_argument("--limit", type=int, default=DEFAULT_LIMIT)
+    p.add_argument("--from", dest="date_from")
+    p.add_argument("--to", dest="date_to")
+    p.add_argument("--mailbox")
+    p.add_argument("--scope", choices=["inbox", "selected"], default="inbox")
+    p.set_defaults(func=command_recent)
+
+    p = sub.add_parser("get", help="Get one message by id from search/recent.")
+    add_common(p); add_backend(p)
+    p.add_argument("--id", required=True, help="Message id, e.g. fast:123 or mail:456.")
+    p.add_argument("--max-body-chars", type=int, default=None)
+    p.add_argument("--scope", choices=["inbox", "selected"], default="inbox", help="Mail.app fallback get scope.")
+    p.set_defaults(func=command_get)
+
+    p = sub.add_parser("selected", help="List messages currently selected in Mail.app.")
+    add_common(p)
+    p.add_argument("--query")
+    p.add_argument("--limit", type=int, default=DEFAULT_LIMIT)
+    p.set_defaults(func=command_selected)
+
+    p = sub.add_parser("draft", help="Create an unsent Apple Mail draft.")
+    add_common(p); add_draft_args(p)
+    p.set_defaults(func=command_draft)
+
+    p = sub.add_parser("draft-reply", help="Create an unsent reply draft from a message id.")
+    add_common(p); add_backend(p); add_draft_args(p)
+    p.add_argument("--id", required=True, help="Original message id, e.g. fast:123.")
+    p.add_argument("--read-backend", choices=["auto", "fast", "mail-app"], default="auto", help="Backend used to read original message metadata.")
+    p.set_defaults(func=command_draft_reply)
+
+    p = sub.add_parser("send", help="Send a new email through Apple Mail. Requires --confirm-send.")
+    add_common(p); add_draft_args(p)
+    p.add_argument("--confirm-send", action="store_true", help="Required explicit confirmation for externally visible send.")
+    p.set_defaults(func=command_send)
+
+    args = parser.parse_args(argv)
+    if args.version:
+        args.cmd = "version"
+        return args
+    if not args.cmd:
+        parser.error("a subcommand is required")
+    return args
+
+
+def main(argv: list[str] | None = None) -> int:
+    argv = sys.argv[1:] if argv is None else argv
+    request_id = f"mail-{uuid.uuid4()}"
+    started = time.time()
+    command_name = TOOL
+    try:
+        args = parse_args(argv)
+        warnings = WarningSink(quiet=bool(getattr(args, "quiet", False)))
+        if getattr(args, "version", False) and getattr(args, "cmd", None) == "version":
+            data = {"version": VERSION, "warnings": []}
+            payload = make_envelope(f"{TOOL} version", "ok", data, None, request_id, started)
+            emit(payload, plain=bool(getattr(args, "plain", False)))
+            return EXIT_OK
+        command_name = f"{TOOL} {args.cmd}"
+        data = args.func(args, warnings)
+        payload = make_envelope(command_name, "ok", data, None, request_id, started)
+        emit(payload, plain=bool(getattr(args, "plain", False)))
+        return EXIT_OK
+    except CliError as exc:
+        payload = make_envelope(
+            command_name,
+            "error",
+            {},
+            {"code": exc.code, "message": exc.message, "retryable": exc.retryable, "hint": exc.hint},
+            request_id,
+            started,
+        )
+        emit(payload, plain="--plain" in argv)
+        return exc.exit_code
+    except KeyboardInterrupt:
+        payload = make_envelope(command_name, "error", {}, {"code": "E_INTERRUPTED", "message": "Interrupted", "retryable": True, "hint": "Re-run the command."}, request_id, started)
+        emit(payload, plain="--plain" in argv)
+        return EXIT_TIMEOUT
+    except Exception as exc:  # compact default, no stack trace unless debug env set
+        if os.environ.get("DEBUG"):
+            import traceback
+            traceback.print_exc(file=sys.stderr)
+        payload = make_envelope(command_name, "error", {}, {"code": "E_UNEXPECTED", "message": str(exc), "retryable": False, "hint": "Re-run with DEBUG=1 for stack trace, then fix/classify this error."}, request_id, started)
+        emit(payload, plain="--plain" in argv)
+        return EXIT_FAILURE
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
