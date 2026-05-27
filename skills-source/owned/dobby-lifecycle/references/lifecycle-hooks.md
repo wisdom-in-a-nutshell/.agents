@@ -155,6 +155,12 @@ global finalizer then:
 3. leaves the source thread unarchived when the repo hook or archive request
    fails.
 
+If the repo hook has already succeeded and App Server reports
+`no rollout found for thread id` during archive, the finalizer treats that as a
+nonfatal `archive_unavailable` result. The useful memory-preservation work has
+already completed, and retrying the same stale thread would only create
+duplicate finalization turns.
+
 In Dobby workspaces the repo wrapper delegates to:
 
 ```bash

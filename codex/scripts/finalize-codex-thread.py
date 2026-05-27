@@ -277,6 +277,10 @@ def archive_thread(client: AppServerClient, thread_id: str) -> None:
     client.request("thread/archive", {"threadId": thread_id})
 
 
+def is_nonfatal_archive_error(exc: Exception) -> bool:
+    return "no rollout found for thread id" in str(exc)
+
+
 def repo_root_for_cwd(cwd: str) -> str:
     try:
         result = subprocess.run(
@@ -412,6 +416,19 @@ def finalize_thread(
         try:
             archive_thread(client, thread_id)
         except Exception as exc:
+            if is_nonfatal_archive_error(exc):
+                return FinalizeResult(
+                    thread_id=thread_id,
+                    cwd=cwd,
+                    repo_root=repo_root,
+                    finalizer_path=finalizer_path_str,
+                    finalizer_status=finalizer_status,
+                    finalization_turn_id=None,
+                    finalization_turn_status=None,
+                    archived=False,
+                    skipped_reason="archive_unavailable",
+                    error=None,
+                )
             return FinalizeResult(
                 thread_id=thread_id,
                 cwd=cwd,
@@ -475,6 +492,8 @@ def main() -> int:
             finalization_timeout_seconds=args.finalization_timeout_seconds,
         )
         status = "ok" if result.error is None and (dry_run or result.archived) else "error"
+        if result.error is None and result.skipped_reason == "archive_unavailable":
+            status = "ok"
         exit_code = 0
         if status != "ok":
             exit_code = 5 if "timed out" in (result.error or "") else 4

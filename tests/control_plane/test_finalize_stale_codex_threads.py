@@ -48,7 +48,10 @@ class FakeAppServerClient:
         self.calls.append((method, params or {}))
         if not self.responses:
             raise AssertionError(f"unexpected request: {method}")
-        return self.responses.pop(0)
+        response = self.responses.pop(0)
+        if isinstance(response, Exception):
+            raise response
+        return response
 
     def wait_for_turn_completed(
         self,
@@ -275,3 +278,43 @@ print("remember-session ok")
         self.assertEqual(result.skipped_reason, "dry_run")
         self.assertEqual([call[0] for call in client_factory.clients[0].calls], ["thread/read"])
         self.assertEqual(len(client_factory.clients), 1)
+
+    def test_thread_finalizer_treats_missing_archive_rollout_as_nonfatal_after_hook(self) -> None:
+        module = load_thread_finalizer_module()
+        repo = self.temp_path / "repo"
+        repo.mkdir()
+        write_executable(
+            repo / "scripts/hooks/finalize_codex_thread.py",
+            """#!/usr/bin/env python3
+print("remember-session ok")
+""",
+        )
+        client_factory = FakeAppServerFactory(
+            [
+                [
+                    {
+                        "thread": {
+                            "id": "thread-123",
+                            "cwd": str(repo),
+                            "name": "Needs finalizing",
+                            "updatedAt": 100,
+                        }
+                    },
+                ],
+                [module.AppServerError("thread/archive failed: no rollout found for thread id thread-123")],
+            ]
+        )
+
+        result = module.finalize_thread(
+            thread_id="thread-123",
+            reason="test",
+            dry_run=False,
+            timeout_seconds=5,
+            finalization_timeout_seconds=5,
+            client_factory=client_factory,
+        )
+
+        self.assertFalse(result.archived)
+        self.assertIsNone(result.error)
+        self.assertEqual(result.skipped_reason, "archive_unavailable")
+        self.assertEqual(result.finalizer_status, "completed")
