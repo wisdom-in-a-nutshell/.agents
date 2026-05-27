@@ -532,6 +532,9 @@ render_global_config() {
   if ! rg -n '^[[:space:]]*service_tier[[:space:]]*=' "$template_file" >/dev/null 2>&1; then
     remove_top_level_key "$target_file" "service_tier"
   fi
+  if ! rg -n '^[[:space:]]*model_provider[[:space:]]*=' "$template_file" >/dev/null 2>&1; then
+    remove_top_level_key "$target_file" "model_provider"
+  fi
   if ! rg -n '^[[:space:]]*fast_mode[[:space:]]*=' "$template_file" >/dev/null 2>&1; then
     remove_section_key "$target_file" "features" "fast_mode"
   fi
