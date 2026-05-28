@@ -23,7 +23,9 @@ Run it from a Dobby workspace root when possible. Workspace identity is explicit
   `draft-reply`). Use `--all-accounts` only when the user explicitly asks to
   read across every Apple Mail account.
 - `DOBBY_MAIL_DEFAULT_FROM` is required for draft/send identity when `--sender`
-  is not passed. Do not fall back from one variable to the other.
+  is not passed. Do not fall back from one variable to the other. For real
+  draft/send actions, the sender must be configured on the default Apple Mail
+  account; fail fast rather than creating mail from the wrong account.
 
 ## Common commands
 
@@ -58,10 +60,11 @@ $HOME/.agents/skills-source/owned/dobby-mail/scripts/dobby-mail draft-reply --id
 
 - Prefer drafts. `draft` and `draft-reply` create **unsent background** Apple
   Mail drafts; they do not open Mail.app compose windows. When Mail exposes a
-  message id for the draft, the JSON includes a best-effort `message://` link
-  for user-click inspection. Apple Mail may still briefly appear if macOS has
-  to launch or wake Mail.app; the client explicitly avoids activation and forces
-  the draft invisible, but Apple Mail does not provide a hard zero-UI draft API.
+  message id for the draft, the JSON includes `draft.mail_url` and
+  `draft.links.mail`; the client also tries to resolve the link from the local
+  fast index after saving. Apple Mail may still briefly appear if macOS has to
+  launch or wake Mail.app; the client explicitly avoids activation and forces the
+  draft invisible, but Apple Mail does not provide a hard zero-UI draft API.
 - Do not send, delete, archive, move, or mark messages unless Adi explicitly
   approves that exact action in the current turn.
 - `send` exists only for explicit approved sends and requires `--confirm-send`.

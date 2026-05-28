@@ -317,6 +317,41 @@ def account_matches(account: dict[str, Any], raw: str) -> bool:
     return any(str(candidate).strip().lower() == needle for candidate in candidates if candidate)
 
 
+def validate_sender_for_default_account(args: argparse.Namespace, sender: str) -> dict[str, Any]:
+    default_account = config_value(DEFAULT_ACCOUNT_ENV)
+    if not default_account:
+        raise CliError(
+            "E_DEFAULT_ACCOUNT_REQUIRED",
+            f"{DEFAULT_ACCOUNT_ENV} is required for draft/send identity validation",
+            f"Set {DEFAULT_ACCOUNT_ENV} in the workspace .env/static defaults.",
+            EXIT_USAGE,
+        )
+    result = jxa_accounts(getattr(args, "timeout_sec", 30))
+    accounts = result.get("accounts", [])
+    matched = None
+    for account in accounts:
+        if account_matches(account, default_account):
+            matched = account
+            break
+    if not matched:
+        raise CliError(
+            "E_DEFAULT_ACCOUNT_NOT_FOUND",
+            f"Configured mail account not found in Apple Mail: {default_account}",
+            f"Set {DEFAULT_ACCOUNT_ENV} to one of the Apple Mail account email addresses/names/ids.",
+            EXIT_USAGE,
+        )
+    emails = [str(email).strip().lower() for email in matched.get("email_addresses") or []]
+    if sender.strip().lower() not in emails:
+        available = ", ".join(matched.get("email_addresses") or [])
+        raise CliError(
+            "E_SENDER_NOT_CONFIGURED_FOR_ACCOUNT",
+            f"Configured sender is not available on the default Apple Mail account: {sender}",
+            f"Add {sender} as a sending address/alias for {DEFAULT_ACCOUNT_ENV} in Apple Mail, or set {DEFAULT_FROM_ENV} to one of: {available}.",
+            EXIT_USAGE,
+        )
+    return matched
+
+
 def public_account_scope(scope: dict[str, Any]) -> dict[str, Any]:
     matched = scope.get("matched_account")
     if matched:
@@ -1142,6 +1177,7 @@ if (to.length === 0) {
   safe(function(){ msg.visible = false; }, null);
   var draftId = safe(function(){ return String(msg.id()); }, '');
   var messageId = safe(function(){ return String(msg.messageId()); }, null);
+  var actualSender = safe(function(){ return String(msg.sender()); }, input.sender || null);
   JSON.stringify({draft: {
     id: 'draft:' + draftId,
     backend: 'mail-app',
@@ -1151,7 +1187,8 @@ if (to.length === 0) {
     to: to,
     cc: cc,
     bcc_count: bcc.length,
-    sender: input.sender || null,
+    requested_sender: input.sender || null,
+    sender: actualSender,
     visible: input.visible !== false,
     mail_was_running: mailWasRunning,
     state: 'created_unsent_draft'
@@ -1245,6 +1282,83 @@ def mail_message_url(message_id: str | None) -> str | None:
     from urllib.parse import quote
 
     return "message://" + quote(message_id.strip(), safe="")
+
+
+def header_value(headers: dict[str, Any], name: str) -> str | None:
+    wanted = name.lower()
+    for key, value in headers.items():
+        if str(key).lower() == wanted:
+            return str(value)
+    return None
+
+
+def apply_draft_link(draft: dict[str, Any], message_id: str | None, *, source: str, resolved_message: dict[str, Any] | None = None) -> None:
+    draft["mail_url"] = mail_message_url(message_id)
+    draft["links"] = {"mail": draft["mail_url"]} if draft["mail_url"] else {}
+    draft["link_resolution"] = {
+        "status": "resolved" if draft["mail_url"] else "unavailable",
+        "source": source,
+    }
+    if resolved_message:
+        draft["link_resolution"]["message"] = {
+            "id": resolved_message.get("id"),
+            "mailbox": resolved_message.get("mailbox"),
+            "mailbox_url": resolved_message.get("mailbox_url"),
+        }
+
+
+def resolve_draft_link_from_index(args: argparse.Namespace, payload: dict[str, Any], draft: dict[str, Any], warnings: WarningSink) -> None:
+    if draft.get("mail_url"):
+        return
+    subject = payload.get("subject") or ""
+    recipients = [addr.lower() for addr in payload.get("to", []) if addr]
+    sender = (payload.get("sender") or "").lower()
+    try:
+        store = make_store(args)
+    except CliError as exc:
+        draft["link_resolution"] = {"status": "unavailable", "source": "fast-index", "reason": exc.code}
+        return
+
+    last_error: str | None = None
+    for attempt in range(8):
+        try:
+            candidates = store.search(query=subject or None, limit=50, date_from=None, date_to=None, mailbox="Draft", account_tokens=None)
+        except CliError as exc:
+            last_error = exc.code
+            break
+        for item in candidates:
+            if (item.get("subject") or "") != subject:
+                continue
+            mailbox_text = f"{item.get('mailbox') or ''} {item.get('mailbox_url') or ''}".lower()
+            if "draft" not in mailbox_text:
+                continue
+            try:
+                full = store.get(str(item.get("rowid")), account_tokens=None)
+            except CliError:
+                continue
+            headers = full.get("headers") or {}
+            to_header = (header_value(headers, "To") or "").lower()
+            from_header = (header_value(headers, "From") or "").lower()
+            if recipients and not all(addr in to_header for addr in recipients):
+                continue
+            if sender and sender not in from_header:
+                # Apple Mail may rewrite aliases/signatures; don't reject a
+                # unique exact-subject+recipient match solely on From mismatch.
+                pass
+            message_id = header_value(headers, "Message-ID") or header_value(headers, "Message-Id")
+            if message_id:
+                draft["source_message_id"] = message_id
+                apply_draft_link(draft, message_id, source="fast-index", resolved_message=full)
+                return
+        if attempt < 7:
+            time.sleep(0.5)
+    draft["mail_url"] = None
+    draft["links"] = {}
+    draft["link_resolution"] = {
+        "status": "unavailable",
+        "source": "fast-index",
+        "reason": last_error or "draft_message_id_not_indexed_yet",
+    }
 
 
 def make_store(args: argparse.Namespace) -> FastMailStore:
@@ -1439,10 +1553,18 @@ def command_draft(args: argparse.Namespace, warnings: WarningSink) -> dict[str, 
             },
             "warnings": warnings.items,
         }
+    validate_sender_for_default_account(args, payload["sender"])
     result = jxa_create_draft(payload, args.timeout_sec)
     draft = result.get("draft") or {}
-    draft["mail_url"] = mail_message_url(draft.get("source_message_id"))
-    draft["links"] = {"mail": draft["mail_url"]} if draft["mail_url"] else {}
+    if draft.get("sender") and payload["sender"].lower() not in str(draft.get("sender")).lower():
+        raise CliError(
+            "E_SENDER_MISMATCH",
+            f"Apple Mail created the draft with a different sender: {draft.get('sender')}",
+            f"Check Apple Mail account aliases. Expected sender: {payload['sender']}.",
+            EXIT_FAILURE,
+        )
+    apply_draft_link(draft, draft.get("source_message_id"), source="mail-app")
+    resolve_draft_link_from_index(args, payload, draft, warnings)
     return {"backend": "mail-app", "dry_run": False, "draft": draft, "warnings": warnings.items}
 
 
@@ -1486,10 +1608,18 @@ def command_draft_reply(args: argparse.Namespace, warnings: WarningSink) -> dict
             "threading_supported": False,
         }
     else:
+        validate_sender_for_default_account(args, payload["sender"])
         result = jxa_create_draft(payload, args.timeout_sec)
         draft = result.get("draft") or {}
-        draft["mail_url"] = mail_message_url(draft.get("source_message_id"))
-        draft["links"] = {"mail": draft["mail_url"]} if draft["mail_url"] else {}
+        if draft.get("sender") and payload["sender"].lower() not in str(draft.get("sender")).lower():
+            raise CliError(
+                "E_SENDER_MISMATCH",
+                f"Apple Mail created the draft with a different sender: {draft.get('sender')}",
+                f"Check Apple Mail account aliases. Expected sender: {payload['sender']}.",
+                EXIT_FAILURE,
+            )
+        apply_draft_link(draft, draft.get("source_message_id"), source="mail-app")
+        resolve_draft_link_from_index(args, payload, draft, warnings)
         draft["reply_to"] = {"id": args.id, "sender": msg.get("sender"), "source_message_id": msg.get("source_message_id")}
         draft["threading_supported"] = False
     warnings.warn(
@@ -1510,6 +1640,7 @@ def command_send(args: argparse.Namespace, warnings: WarningSink) -> dict[str, A
             "Prefer `dobby-mail draft` first. Only pass --confirm-send after the user explicitly approves recipients and body.",
             EXIT_USAGE,
         )
+    validate_sender_for_default_account(args, payload["sender"])
     if args.dry_run:
         return {
             "backend": "mail-app",
