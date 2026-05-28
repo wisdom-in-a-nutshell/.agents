@@ -252,6 +252,46 @@ class DobbyMailTests(unittest.TestCase):
         self.assertNotEqual(proc.returncode, 0)
         self.assertEqual(flag_err["error"]["code"], "E_FLAG_CONFIRMATION_REQUIRED")
 
+    def test_gmail_mutation_commands_are_confirmed_and_dry_run_without_auth(self):
+        env = {"DOBBY_MAIL_DEFAULT_ACCOUNT": "writer@example.com"}
+        proc, payload = run_cli(["gmail-trash", "--gmail-id", "abc123"], env=env, check=False)
+        self.assertNotEqual(proc.returncode, 0)
+        self.assertEqual(payload["error"]["code"], "E_GMAIL_MUTATION_CONFIRMATION_REQUIRED")
+
+        _, archive = run_cli(["gmail-archive", "--gmail-id", "abc123", "--confirm-mutate", "--dry-run"], env=env)
+        self.assertEqual(archive["data"]["backend"], "gmail-api")
+        self.assertEqual(archive["data"]["gmail_account"], "writer@example.com")
+        self.assertEqual(archive["data"]["target"]["gmail_id"], "abc123")
+        self.assertEqual(archive["data"]["changed"]["remove_label_ids"], ["INBOX"])
+        self.assertEqual(archive["data"]["changed"]["state"], "would_archive")
+
+        _, spam = run_cli(["gmail-spam", "--id", "gmail-message:def456", "--confirm-mutate", "--dry-run"], env=env)
+        self.assertEqual(spam["data"]["target"]["gmail_id"], "def456")
+        self.assertEqual(spam["data"]["changed"]["add_label_ids"], ["SPAM"])
+        self.assertEqual(spam["data"]["changed"]["remove_label_ids"], ["INBOX"])
+
+        _, unread = run_cli(["gmail-mark-read", "--gmail-id", "abc123", "--unread", "--confirm-mutate", "--dry-run"], env=env)
+        self.assertEqual(unread["data"]["changed"]["add_label_ids"], ["UNREAD"])
+
+    def test_gmail_filters_are_safe_and_explicit(self):
+        env = {"DOBBY_MAIL_DEFAULT_ACCOUNT": "writer@example.com"}
+        proc, missing = run_cli(["gmail-filter", "--from", "noise@example.com", "--action", "trash", "--dry-run"], env=env, check=False)
+        self.assertNotEqual(proc.returncode, 0)
+        self.assertEqual(missing["error"]["code"], "E_GMAIL_MUTATION_CONFIRMATION_REQUIRED")
+
+        _, payload = run_cli(
+            ["gmail-filter", "--from", "noise@example.com", "--action", "trash", "--confirm-mutate", "--dry-run"],
+            env=env,
+        )
+        self.assertEqual(payload["data"]["filter"]["criteria"]["from"], "noise@example.com")
+        self.assertEqual(payload["data"]["filter"]["action"]["addLabelIds"], ["TRASH"])
+        self.assertEqual(payload["data"]["filter"]["action"]["removeLabelIds"], ["INBOX"])
+        self.assertFalse(payload["data"]["applies_to_existing_messages"])
+
+        _, block = run_cli(["gmail-block-sender", "--from", "noise@example.com", "--confirm-mutate", "--dry-run"], env=env)
+        self.assertEqual(block["data"]["action"], "created_sender_trash_filter")
+        self.assertEqual(block["data"]["filter"]["action"]["addLabelIds"], ["TRASH"])
+
 
 if __name__ == "__main__":
     unittest.main()

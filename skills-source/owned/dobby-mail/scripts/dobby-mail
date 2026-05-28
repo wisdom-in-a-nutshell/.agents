@@ -32,7 +32,7 @@ from typing import Any, Iterable
 
 SCHEMA_VERSION = "1.0"
 TOOL = "dobby-mail"
-VERSION = "0.3.0"
+VERSION = "0.4.0"
 
 EXIT_OK = 0
 EXIT_FAILURE = 1
@@ -1756,6 +1756,261 @@ def gmail_api_request(account: str, method: str, path: str, body: dict[str, Any]
     return parsed
 
 
+def resolve_gmail_account(args: argparse.Namespace) -> str:
+    raw = getattr(args, "gmail_account", None) or config_value(DEFAULT_ACCOUNT_ENV)
+    account = clean_email_address(raw)
+    if not account:
+        raise CliError(
+            "E_DEFAULT_ACCOUNT_REQUIRED",
+            f"{DEFAULT_ACCOUNT_ENV} or --account is required for Gmail API operations",
+            f"Set {DEFAULT_ACCOUNT_ENV} in the workspace .env/static defaults, or pass --account you@example.com.",
+            EXIT_USAGE,
+        )
+    return account
+
+
+def strip_gmail_message_prefix(raw: str) -> str:
+    value = str(raw or "").strip()
+    for prefix in ["gmail-message:", "gmail:", "message:"]:
+        if value.startswith(prefix):
+            value = value[len(prefix):].strip()
+            break
+    return value
+
+
+def normalize_rfc_message_id(raw: str) -> str:
+    value = str(raw or "").strip()
+    if not value:
+        raise CliError(
+            "E_GMAIL_TARGET_REQUIRED",
+            "RFC Message-ID cannot be empty",
+            "Pass --rfc-message-id '<message-id@example.com>' from a Dobby Mail read result.",
+            EXIT_USAGE,
+        )
+    if not (value.startswith("<") and value.endswith(">")):
+        value = f"<{value.strip('<>')}>"
+    return value
+
+
+def gmail_list_messages(account: str, query: str, timeout_sec: int, *, max_results: int = 10, include_spam_trash: bool = True) -> list[dict[str, Any]]:
+    params = urllib.parse.urlencode(
+        {
+            "q": query,
+            "maxResults": str(max_results),
+            "includeSpamTrash": "true" if include_spam_trash else "false",
+        }
+    )
+    result = gmail_api_request(account, "GET", f"messages?{params}", None, timeout_sec)
+    messages = result.get("messages") or []
+    if not isinstance(messages, list):
+        raise CliError("E_GMAIL_API_BAD_JSON", "Gmail API messages.list returned malformed messages", "Retry or inspect Gmail API status.", EXIT_FAILURE)
+    return [m for m in messages if isinstance(m, dict)]
+
+
+def resolve_gmail_message_target(args: argparse.Namespace, account: str) -> dict[str, Any]:
+    provided = []
+    if getattr(args, "gmail_id", None):
+        provided.append("gmail_id")
+    if getattr(args, "rfc_message_id", None):
+        provided.append("rfc_message_id")
+    if getattr(args, "id", None):
+        provided.append("id")
+    if len(provided) != 1:
+        raise CliError(
+            "E_GMAIL_TARGET_REQUIRED",
+            "Pass exactly one Gmail message target",
+            "Use --gmail-id for a Gmail API id, or --rfc-message-id from Dobby Mail's source_message_id.",
+            EXIT_USAGE,
+        )
+
+    if provided[0] == "gmail_id":
+        gmail_id = strip_gmail_message_prefix(args.gmail_id)
+        if not gmail_id:
+            raise CliError("E_GMAIL_TARGET_REQUIRED", "--gmail-id cannot be empty", "Pass a Gmail API message id.", EXIT_USAGE)
+        return {"gmail_id": gmail_id, "input_kind": "gmail_id", "input": args.gmail_id, "resolved_via": "direct"}
+
+    if provided[0] == "id":
+        kind, value = normalize_message_id(args.id)
+        if kind in {"gmail", "gmail-message", "message"}:
+            gmail_id = strip_gmail_message_prefix(args.id)
+            if not gmail_id:
+                raise CliError("E_GMAIL_TARGET_REQUIRED", "--id cannot be empty", "Pass gmail-message:<id> or use --gmail-id.", EXIT_USAGE)
+            return {"gmail_id": gmail_id, "input_kind": "id", "input": args.id, "resolved_via": "direct"}
+        if kind in {"fast", "rowid", "mail", "draft"}:
+            raise CliError(
+                "E_GMAIL_TARGET_UNSUPPORTED",
+                f"Gmail mutations cannot target {kind}: ids directly",
+                "Read the message first with `dobby-mail get --id ...` and pass its source_message_id as --rfc-message-id.",
+                EXIT_USAGE,
+            )
+        # Bare ids are treated as Gmail ids for agent convenience.
+        gmail_id = strip_gmail_message_prefix(value)
+        if not gmail_id:
+            raise CliError("E_GMAIL_TARGET_REQUIRED", "--id cannot be empty", "Pass gmail-message:<id> or use --gmail-id.", EXIT_USAGE)
+        return {"gmail_id": gmail_id, "input_kind": "id", "input": args.id, "resolved_via": "direct"}
+
+    rfc_message_id = normalize_rfc_message_id(args.rfc_message_id)
+    query = f"rfc822msgid:{rfc_message_id}"
+    matches = gmail_list_messages(account, query, args.timeout_sec, max_results=2, include_spam_trash=True)
+    if not matches:
+        raise CliError(
+            "E_GMAIL_TARGET_NOT_FOUND",
+            f"No Gmail message found for RFC Message-ID {rfc_message_id}",
+            "The message may not be in this Gmail account yet. Check --account and Apple Mail sync.",
+            EXIT_FAILURE,
+        )
+    if len(matches) > 1:
+        raise CliError(
+            "E_GMAIL_TARGET_AMBIGUOUS",
+            f"Multiple Gmail messages matched RFC Message-ID {rfc_message_id}",
+            "Use --gmail-id for the exact Gmail message id.",
+            EXIT_FAILURE,
+        )
+    match = matches[0]
+    gmail_id = str(match.get("id") or "").strip()
+    if not gmail_id:
+        raise CliError("E_GMAIL_TARGET_NOT_FOUND", "Gmail search returned a message without an id", "Retry or use --gmail-id.", EXIT_FAILURE)
+    return {
+        "gmail_id": gmail_id,
+        "thread_id": match.get("threadId"),
+        "input_kind": "rfc_message_id",
+        "input": rfc_message_id,
+        "resolved_via": "gmail_search",
+        "query": query,
+    }
+
+
+def require_gmail_mutation_confirmation(args: argparse.Namespace, verb: str) -> None:
+    if getattr(args, "confirm_mutate", False):
+        return
+    raise CliError(
+        "E_GMAIL_MUTATION_CONFIRMATION_REQUIRED",
+        f"{verb} requires --confirm-mutate",
+        "Only pass --confirm-mutate after the user explicitly approves this Gmail state change.",
+        EXIT_USAGE,
+    )
+
+
+def quoted_gmail_id(gmail_id: str) -> str:
+    return urllib.parse.quote(gmail_id, safe="")
+
+
+def compact_gmail_message(result: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "id": f"gmail-message:{result.get('id')}" if result.get("id") else None,
+        "gmail_message_id": result.get("id"),
+        "gmail_thread_id": result.get("threadId"),
+        "label_ids": result.get("labelIds") or [],
+    }
+
+
+def gmail_modify_message(account: str, gmail_id: str, *, add_label_ids: list[str], remove_label_ids: list[str], timeout_sec: int) -> dict[str, Any]:
+    if not add_label_ids and not remove_label_ids:
+        raise CliError(
+            "E_GMAIL_EMPTY_LABEL_MUTATION",
+            "Gmail label mutation has no labels to add or remove",
+            "Pass at least one action/label.",
+            EXIT_USAGE,
+        )
+    body = {"addLabelIds": add_label_ids, "removeLabelIds": remove_label_ids}
+    return gmail_api_request(account, "POST", f"messages/{quoted_gmail_id(gmail_id)}/modify", body, timeout_sec)
+
+
+def gmail_trash_message(account: str, gmail_id: str, *, timeout_sec: int) -> dict[str, Any]:
+    return gmail_api_request(account, "POST", f"messages/{quoted_gmail_id(gmail_id)}/trash", None, timeout_sec)
+
+
+def merge_label_actions(actions: Iterable[str], add_label_ids: Iterable[str] = (), remove_label_ids: Iterable[str] = ()) -> tuple[list[str], list[str]]:
+    add: list[str] = [str(item).strip() for item in add_label_ids if str(item).strip()]
+    remove: list[str] = [str(item).strip() for item in remove_label_ids if str(item).strip()]
+    for action in actions:
+        if action == "archive":
+            remove.append("INBOX")
+        elif action == "trash":
+            add.append("TRASH")
+            remove.append("INBOX")
+        elif action == "spam":
+            add.append("SPAM")
+            remove.append("INBOX")
+        elif action == "mark-read":
+            remove.append("UNREAD")
+        elif action == "mark-unread":
+            add.append("UNREAD")
+        elif action == "star":
+            add.append("STARRED")
+        elif action == "unstar":
+            remove.append("STARRED")
+        elif action == "important":
+            add.append("IMPORTANT")
+        elif action == "not-important":
+            remove.append("IMPORTANT")
+        else:
+            raise CliError(
+                "E_GMAIL_ACTION_UNSUPPORTED",
+                f"Unsupported Gmail action: {action}",
+                "Use archive, trash, spam, mark-read, mark-unread, star, unstar, important, or not-important.",
+                EXIT_USAGE,
+            )
+    # Keep deterministic order while removing duplicates and contradictions.
+    def unique(seq: list[str]) -> list[str]:
+        out: list[str] = []
+        seen: set[str] = set()
+        for item in seq:
+            if item in seen:
+                continue
+            seen.add(item)
+            out.append(item)
+        return out
+    add = unique(add)
+    remove = [item for item in unique(remove) if item not in set(add)]
+    return add, remove
+
+
+def gmail_filter_payload_from_args(args: argparse.Namespace, *, default_action: str | None = None) -> dict[str, Any]:
+    criteria: dict[str, Any] = {}
+    from_value = getattr(args, "from_address", None)
+    if from_value:
+        criteria["from"] = str(from_value).strip()
+    if getattr(args, "to", None):
+        criteria["to"] = str(args.to).strip()
+    if getattr(args, "subject", None):
+        criteria["subject"] = str(args.subject).strip()
+    if getattr(args, "query", None):
+        criteria["query"] = str(args.query).strip()
+    if getattr(args, "negated_query", None):
+        criteria["negatedQuery"] = str(args.negated_query).strip()
+    if getattr(args, "has_attachment", False):
+        criteria["hasAttachment"] = True
+    if getattr(args, "exclude_chats", False):
+        criteria["excludeChats"] = True
+    criteria = {k: v for k, v in criteria.items() if v not in {"", None}}
+    if not criteria:
+        raise CliError(
+            "E_GMAIL_FILTER_CRITERIA_REQUIRED",
+            "Gmail filter requires at least one criterion",
+            "Pass --from, --to, --subject, --query, --negated-query, or --has-attachment.",
+            EXIT_USAGE,
+        )
+
+    actions = list(getattr(args, "action", None) or [])
+    if default_action and not actions:
+        actions.append(default_action)
+    add, remove = merge_label_actions(actions, getattr(args, "add_label", None) or [], getattr(args, "remove_label", None) or [])
+    if not add and not remove:
+        raise CliError(
+            "E_GMAIL_FILTER_ACTION_REQUIRED",
+            "Gmail filter requires at least one action",
+            "Pass --action archive/trash/spam/mark-read, or --add-label/--remove-label.",
+            EXIT_USAGE,
+        )
+    action_payload: dict[str, Any] = {}
+    if add:
+        action_payload["addLabelIds"] = add
+    if remove:
+        action_payload["removeLabelIds"] = remove
+    return {"criteria": criteria, "action": action_payload}
+
+
 def build_gmail_raw_message(payload: dict[str, Any]) -> tuple[str, str]:
     msg = EmailMessage()
     sender = payload.get("sender") or ""
@@ -2321,6 +2576,112 @@ def command_send(args: argparse.Namespace, warnings: WarningSink) -> dict[str, A
     return {"backend": "mail-app", "requested_backend": write["requested_backend"], "dry_run": False, "sent": result.get("sent"), "warnings": warnings.items}
 
 
+def command_gmail_label_mutation(args: argparse.Namespace, warnings: WarningSink, *, action_name: str, add_label_ids: list[str], remove_label_ids: list[str]) -> dict[str, Any]:
+    require_gmail_mutation_confirmation(args, action_name)
+    account = resolve_gmail_account(args)
+    target = resolve_gmail_message_target(args, account)
+    mutation = {
+        "state": f"would_{action_name}" if args.dry_run else action_name,
+        "add_label_ids": add_label_ids,
+        "remove_label_ids": remove_label_ids,
+    }
+    if args.dry_run:
+        return {
+            "backend": "gmail-api",
+            "gmail_account": account,
+            "dry_run": True,
+            "action": action_name,
+            "target": target,
+            "changed": mutation,
+            "warnings": warnings.items,
+        }
+    result = gmail_modify_message(account, target["gmail_id"], add_label_ids=add_label_ids, remove_label_ids=remove_label_ids, timeout_sec=args.timeout_sec)
+    return {
+        "backend": "gmail-api",
+        "gmail_account": account,
+        "dry_run": False,
+        "action": action_name,
+        "target": target,
+        "message": compact_gmail_message(result),
+        "changed": {**mutation, "state": action_name},
+        "warnings": warnings.items,
+    }
+
+
+def command_gmail_archive(args: argparse.Namespace, warnings: WarningSink) -> dict[str, Any]:
+    return command_gmail_label_mutation(args, warnings, action_name="archive", add_label_ids=[], remove_label_ids=["INBOX"])
+
+
+def command_gmail_spam(args: argparse.Namespace, warnings: WarningSink) -> dict[str, Any]:
+    return command_gmail_label_mutation(args, warnings, action_name="mark_spam", add_label_ids=["SPAM"], remove_label_ids=["INBOX"])
+
+
+def command_gmail_mark_read(args: argparse.Namespace, warnings: WarningSink) -> dict[str, Any]:
+    if args.unread:
+        return command_gmail_label_mutation(args, warnings, action_name="mark_unread", add_label_ids=["UNREAD"], remove_label_ids=[])
+    return command_gmail_label_mutation(args, warnings, action_name="mark_read", add_label_ids=[], remove_label_ids=["UNREAD"])
+
+
+def command_gmail_trash(args: argparse.Namespace, warnings: WarningSink) -> dict[str, Any]:
+    require_gmail_mutation_confirmation(args, "trash")
+    account = resolve_gmail_account(args)
+    target = resolve_gmail_message_target(args, account)
+    if args.dry_run:
+        return {
+            "backend": "gmail-api",
+            "gmail_account": account,
+            "dry_run": True,
+            "action": "trashed",
+            "target": target,
+            "changed": {"state": "would_trash", "reversible": True},
+            "warnings": warnings.items,
+        }
+    result = gmail_trash_message(account, target["gmail_id"], timeout_sec=args.timeout_sec)
+    return {
+        "backend": "gmail-api",
+        "gmail_account": account,
+        "dry_run": False,
+        "action": "trashed",
+        "target": target,
+        "message": compact_gmail_message(result),
+        "changed": {"state": "trashed", "reversible": True},
+        "warnings": warnings.items,
+    }
+
+
+def command_gmail_filter(args: argparse.Namespace, warnings: WarningSink, *, default_action: str | None = None, command_action: str = "created_filter") -> dict[str, Any]:
+    require_gmail_mutation_confirmation(args, "create Gmail filter")
+    account = resolve_gmail_account(args)
+    payload = gmail_filter_payload_from_args(args, default_action=default_action)
+    data = {
+        "backend": "gmail-api",
+        "gmail_account": account,
+        "dry_run": bool(args.dry_run),
+        "action": command_action,
+        "filter": payload,
+        "applies_to_existing_messages": False,
+        "warnings": warnings.items,
+    }
+    if args.dry_run:
+        data["created"] = {"state": f"would_{command_action}"}
+        return data
+    result = gmail_api_request(account, "POST", "settings/filters", payload, args.timeout_sec)
+    data["created"] = {
+        "state": command_action,
+        "id": result.get("id"),
+        "criteria": result.get("criteria") or payload.get("criteria"),
+        "action": result.get("action") or payload.get("action"),
+    }
+    return data
+
+
+def command_gmail_block_sender(args: argparse.Namespace, warnings: WarningSink) -> dict[str, Any]:
+    # Gmail's public API exposes durable filters rather than a separate
+    # "blocked sender" primitive. This command intentionally means:
+    # create a future-message filter that sends matching mail to Trash.
+    return command_gmail_filter(args, warnings, default_action="trash", command_action="created_sender_trash_filter")
+
+
 def command_selected(args: argparse.Namespace, warnings: WarningSink) -> dict[str, Any]:
     limit = clamp_limit(args.limit)
     result = jxa_search(args.query, limit, args.timeout_sec, scope="selected")
@@ -2432,7 +2793,7 @@ def add_common(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--plain", action="store_true", help="Emit stable plain text for operator inspection.")
     parser.add_argument("--no-input", action="store_true", help="Accepted for non-interactive agent safety; prompts are never used.")
     parser.add_argument("--quiet", action="store_true", help="Suppress fallback warnings on stderr; warnings remain in JSON.")
-    parser.add_argument("--timeout-sec", type=int, default=30, help="Timeout for Mail.app automation calls.")
+    parser.add_argument("--timeout-sec", type=int, default=30, help="Timeout for Mail.app/Gmail API calls.")
 
 
 def add_backend(parser: argparse.ArgumentParser) -> None:
@@ -2457,6 +2818,41 @@ def add_draft_args(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--sender", help=f"Sender address. If omitted, {DEFAULT_FROM_ENV} is required.")
     parser.add_argument("--write-backend", choices=["auto", "gmail-api", "mail-app"], default="auto", help="Write backend. auto uses Gmail API when DOBBY_MAIL_DEFAULT_ACCOUNT is configured; otherwise Mail.app.")
     parser.add_argument("--dry-run", action="store_true", help="Return intended action without creating/sending anything.")
+
+
+def add_gmail_account_arg(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument("--account", dest="gmail_account", help=f"Gmail/Google Workspace account. Defaults to {DEFAULT_ACCOUNT_ENV}.")
+
+
+def add_gmail_target_args(parser: argparse.ArgumentParser) -> None:
+    add_gmail_account_arg(parser)
+    target = parser.add_argument_group("target")
+    target.add_argument("--gmail-id", help="Gmail API message id. May also be gmail-message:<id>.")
+    target.add_argument("--rfc-message-id", help="RFC Message-ID / source_message_id from a Dobby Mail read result.")
+    target.add_argument("--id", help="Alias for Gmail API id forms only. fast:/mail: ids are rejected; use --rfc-message-id.")
+    parser.add_argument("--confirm-mutate", action="store_true", help="Required explicit confirmation for Gmail state changes.")
+    parser.add_argument("--dry-run", action="store_true", help="Return intended mutation without changing Gmail state.")
+
+
+def add_gmail_filter_args(parser: argparse.ArgumentParser, *, from_required: bool = False) -> None:
+    add_gmail_account_arg(parser)
+    parser.add_argument("--from", dest="from_address", required=from_required, help="Sender display name or email address to match.")
+    parser.add_argument("--to", help="Recipient display name or email address to match.")
+    parser.add_argument("--subject", help="Subject phrase to match.")
+    parser.add_argument("--query", help="Gmail search query criterion.")
+    parser.add_argument("--negated-query", help="Gmail search query criterion that must not match.")
+    parser.add_argument("--has-attachment", action="store_true", help="Match messages with attachments.")
+    parser.add_argument("--exclude-chats", action="store_true", help="Exclude chats from matching.")
+    parser.add_argument(
+        "--action",
+        action="append",
+        choices=["archive", "trash", "spam", "mark-read", "mark-unread", "star", "unstar", "important", "not-important"],
+        help="Filter action. Repeat for multiple deterministic label actions.",
+    )
+    parser.add_argument("--add-label", action="append", help="Raw Gmail label id to add, e.g. Label_123 or a supported system label.")
+    parser.add_argument("--remove-label", action="append", help="Raw Gmail label id to remove, e.g. INBOX or UNREAD.")
+    parser.add_argument("--confirm-mutate", action="store_true", help="Required explicit confirmation for Gmail filter changes.")
+    parser.add_argument("--dry-run", action="store_true", help="Return intended filter without changing Gmail settings.")
 
 
 def parse_args(argv: list[str]) -> argparse.Namespace:
@@ -2575,6 +2971,31 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     add_common(p); add_draft_args(p)
     p.add_argument("--confirm-send", action="store_true", help="Required explicit confirmation for externally visible send.")
     p.set_defaults(func=command_send)
+
+    p = sub.add_parser("gmail-archive", help="Archive one Gmail message by removing INBOX. Requires --confirm-mutate.")
+    add_common(p); add_gmail_target_args(p)
+    p.set_defaults(func=command_gmail_archive)
+
+    p = sub.add_parser("gmail-trash", help="Move one Gmail message to Trash. Requires --confirm-mutate.")
+    add_common(p); add_gmail_target_args(p)
+    p.set_defaults(func=command_gmail_trash)
+
+    p = sub.add_parser("gmail-spam", help="Move one Gmail message to Spam. Requires --confirm-mutate.")
+    add_common(p); add_gmail_target_args(p)
+    p.set_defaults(func=command_gmail_spam)
+
+    p = sub.add_parser("gmail-mark-read", help="Mark one Gmail message read/unread. Requires --confirm-mutate.")
+    add_common(p); add_gmail_target_args(p)
+    p.add_argument("--unread", action="store_true", help="Mark unread instead of read.")
+    p.set_defaults(func=command_gmail_mark_read)
+
+    p = sub.add_parser("gmail-filter", help="Create a Gmail server-side filter. Requires --confirm-mutate.")
+    add_common(p); add_gmail_filter_args(p)
+    p.set_defaults(func=command_gmail_filter)
+
+    p = sub.add_parser("gmail-block-sender", help="Create a future-message sender filter to Trash. Requires --confirm-mutate.")
+    add_common(p); add_gmail_filter_args(p, from_required=True)
+    p.set_defaults(func=command_gmail_block_sender)
 
     args = parser.parse_args(argv)
     if args.version:

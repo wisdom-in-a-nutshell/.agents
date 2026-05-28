@@ -49,6 +49,12 @@ $HOME/.agents/skills-source/owned/dobby-mail/scripts/dobby-mail export --id fast
 $HOME/.agents/skills-source/owned/dobby-mail/scripts/dobby-mail attachments --id fast:123 --out-dir /tmp/mail-attachments --no-input
 $HOME/.agents/skills-source/owned/dobby-mail/scripts/dobby-mail draft --to person@example.com --subject "Subject" --body-file /tmp/body.txt --write-backend gmail-api --no-input
 $HOME/.agents/skills-source/owned/dobby-mail/scripts/dobby-mail draft-reply --id fast:123 --body-file /tmp/body.txt --no-input
+$HOME/.agents/skills-source/owned/dobby-mail/scripts/dobby-mail gmail-archive --rfc-message-id '<message-id@example.com>' --confirm-mutate --dry-run --no-input
+$HOME/.agents/skills-source/owned/dobby-mail/scripts/dobby-mail gmail-trash --gmail-id gmail-message:abc123 --confirm-mutate --dry-run --no-input
+$HOME/.agents/skills-source/owned/dobby-mail/scripts/dobby-mail gmail-spam --rfc-message-id '<message-id@example.com>' --confirm-mutate --dry-run --no-input
+$HOME/.agents/skills-source/owned/dobby-mail/scripts/dobby-mail gmail-mark-read --rfc-message-id '<message-id@example.com>' --confirm-mutate --dry-run --no-input
+$HOME/.agents/skills-source/owned/dobby-mail/scripts/dobby-mail gmail-filter --from noise@example.com --action trash --confirm-mutate --dry-run --no-input
+$HOME/.agents/skills-source/owned/dobby-mail/scripts/dobby-mail gmail-block-sender --from noise@example.com --confirm-mutate --dry-run --no-input
 ```
 
 ## Backend rules
@@ -79,6 +85,11 @@ wake Mail.app or fight Apple Mail draft UI/sync behavior.
 - OAuth client JSON and refresh tokens are canonical in Azure Key Vault and
   materialized locally with
   `~/GitHub/scripts/sync/keyvault-sync-gmail-secrets.sh --apply`.
+  Key Vault secret names are:
+  `gmail--dobby-oauth-client-json`,
+  `gmail--refresh-token-adithyan-wisdominanutshell-academy`,
+  `gmail--refresh-token-adithyan-i4internet-gmail-com`, and
+  `gmail--refresh-token-dablancog-gmail-com`.
   Local files default to `~/.secrets/gmail/client_secret.json` and
   `~/.secrets/gmail/tokens.json` (overridable by `DOBBY_GMAIL_OAUTH_CLIENT_FILE`
   and `DOBBY_GMAIL_TOKENS_FILE`). macOS Keychain may exist as an interactive
@@ -87,6 +98,33 @@ wake Mail.app or fight Apple Mail draft UI/sync behavior.
 - Gmail API returns a draft id but not a stable universal draft deep link. JSON
   includes `links.gmail_drafts` for opening Gmail Drafts and `links.mail`
   (`message://...`) for local Apple Mail after sync.
+
+## Gmail API mailbox mutations
+
+Use Gmail API mutations for Gmail-native cleanup because they are deterministic,
+headless, and avoid Apple Mail UI/sync weirdness.
+
+Implemented safe first-pass commands:
+
+- `gmail-archive`: remove `INBOX`.
+- `gmail-trash`: move to Trash using Gmail's trash endpoint. This is reversible;
+  permanent delete is intentionally **not** exposed.
+- `gmail-spam`: add `SPAM` and remove `INBOX`.
+- `gmail-mark-read`: remove `UNREAD`; pass `--unread` to add `UNREAD`.
+- `gmail-filter`: create a server-side Gmail filter with deterministic label
+  actions (`archive`, `trash`, `spam`, `mark-read`, `mark-unread`, `star`,
+  `unstar`, `important`, `not-important`).
+- `gmail-block-sender`: convenience wrapper for a future-message sender filter
+  to Trash. Gmail API exposes this as a filter, not as a separate "block"
+  primitive.
+
+Target messages by `--gmail-id` when you already have a Gmail API id, or by
+`--rfc-message-id` using `source_message_id` from `search/recent/get`. Do not
+target `fast:<rowid>` or `mail:<id>` directly for Gmail mutations; first read
+the message and use its RFC Message-ID.
+
+Filters apply to future matching messages only. They do not automatically clean
+already-received messages; use per-message mutations for existing mail.
 
 ## Safety rules
 
@@ -102,6 +140,8 @@ wake Mail.app or fight Apple Mail draft UI/sync behavior.
 - `send` exists only for explicit approved sends and requires `--confirm-send`.
   Prefer creating a draft and asking Adi to inspect/send manually.
 - `mark-read` and `flag` require `--confirm-mark` / `--confirm-flag`.
+- Gmail mutation/filter commands require `--confirm-mutate`; use `--dry-run`
+  first for anything non-trivial.
 - `export` and `attachments` write files only to caller-provided output dirs.
 - `draft-reply` v1 creates an addressed unsent draft from message metadata; it
   does not yet use Mail.app's native threaded reply command. Inspect the draft.
