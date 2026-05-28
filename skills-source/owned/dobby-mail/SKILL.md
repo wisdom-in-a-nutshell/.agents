@@ -73,11 +73,16 @@ wake Mail.app or fight Apple Mail draft UI/sync behavior.
 - `auto` uses Gmail API when `DOBBY_MAIL_DEFAULT_ACCOUNT` is configured; if no
   default account exists, it explicitly warns and uses Mail.app.
 - `--write-backend gmail-api` requires a one-time `gmail-auth` per account.
-- OAuth client JSON is machine-local, defaulting to
-  `~/.secrets/gmail/client_secret.json` (or `DOBBY_GMAIL_OAUTH_CLIENT_FILE` as
-  a local path override). Refresh tokens are stored in macOS Keychain under
-  service `dobby-mail-gmail-refresh-token` with the account email as the
-  Keychain account.
+  Current auth intentionally requests broad Gmail scopes for future mail
+  operations: full mailbox access (`https://mail.google.com/`) plus basic Gmail
+  settings access for filters/blocking (`gmail.settings.basic`).
+- OAuth client JSON and refresh tokens are canonical in Azure Key Vault and
+  materialized locally with
+  `~/GitHub/scripts/sync/keyvault-sync-gmail-secrets.sh --apply`.
+  Local files default to `~/.secrets/gmail/client_secret.json` and
+  `~/.secrets/gmail/tokens.json` (overridable by `DOBBY_GMAIL_OAUTH_CLIENT_FILE`
+  and `DOBBY_GMAIL_TOKENS_FILE`). macOS Keychain may exist as an interactive
+  auth cache, but it is not the canonical bootstrap source.
 - Do not pass OAuth secrets or refresh tokens through flags or env vars.
 - Gmail API returns a draft id but not a stable universal draft deep link. JSON
   includes `links.gmail_drafts` for opening Gmail Drafts and `links.mail`
@@ -110,8 +115,9 @@ wake Mail.app or fight Apple Mail draft UI/sync behavior.
 - Primary output stays on stdout. Warnings/diagnostics go to stderr.
 - No secret values are accepted via flags or environment variables.
   `DOBBY_MAIL_DEFAULT_ACCOUNT`, `DOBBY_MAIL_DEFAULT_FROM`, and
-  `DOBBY_GMAIL_OAUTH_CLIENT_FILE` are non-secret identity/path configuration,
-  not refresh-token storage. Gmail refresh tokens live in Keychain.
+  `DOBBY_GMAIL_OAUTH_CLIENT_FILE` / `DOBBY_GMAIL_TOKENS_FILE` are non-secret
+  identity/path configuration, not refresh-token storage. Gmail refresh tokens
+  come from `~/.secrets/gmail/tokens.json` generated from Key Vault.
 
 ## Testing
 

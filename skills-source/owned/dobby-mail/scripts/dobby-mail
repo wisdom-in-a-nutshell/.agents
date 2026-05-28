@@ -46,9 +46,11 @@ MAX_LIMIT = 200
 DEFAULT_ACCOUNT_ENV = "DOBBY_MAIL_DEFAULT_ACCOUNT"
 DEFAULT_FROM_ENV = "DOBBY_MAIL_DEFAULT_FROM"
 GMAIL_CLIENT_FILE_ENV = "DOBBY_GMAIL_OAUTH_CLIENT_FILE"
+GMAIL_TOKENS_FILE_ENV = "DOBBY_GMAIL_TOKENS_FILE"
 GMAIL_KEYCHAIN_SERVICE = "dobby-mail-gmail-refresh-token"
 GMAIL_SCOPES = [
-    "https://www.googleapis.com/auth/gmail.compose",
+    "https://mail.google.com/",
+    "https://www.googleapis.com/auth/gmail.settings.basic",
 ]
 
 
@@ -1446,6 +1448,98 @@ def load_gmail_client_config() -> dict[str, str]:
     }
 
 
+def gmail_tokens_file_candidates() -> list[Path]:
+    raw = os.environ.get(GMAIL_TOKENS_FILE_ENV, "").strip()
+    if raw:
+        return [Path(raw).expanduser().resolve()]
+    return [Path.home() / ".secrets" / "gmail" / "tokens.json"]
+
+
+def resolve_gmail_tokens_file(required: bool = False) -> Path | None:
+    candidates = gmail_tokens_file_candidates()
+    for path in candidates:
+        if path.exists():
+            return path
+    if required:
+        raise CliError(
+            "E_GMAIL_TOKENS_FILE_MISSING",
+            "Gmail token file not found",
+            f"Run `~/GitHub/scripts/sync/keyvault-sync-gmail-secrets.sh --apply` or set {GMAIL_TOKENS_FILE_ENV} to a local tokens.json path.",
+            EXIT_AUTH,
+        )
+    return None
+
+
+def gmail_file_get_refresh_token(account: str) -> str | None:
+    path = resolve_gmail_tokens_file(required=False)
+    if not path:
+        return None
+    try:
+        raw = json.loads(path.read_text(encoding="utf-8"))
+    except OSError as exc:
+        raise CliError(
+            "E_GMAIL_TOKENS_FILE_READ",
+            f"Cannot read Gmail token file: {path}",
+            "Check local secret file permissions or rerun keyvault-sync-gmail-secrets.",
+            EXIT_AUTH,
+        ) from exc
+    except json.JSONDecodeError as exc:
+        raise CliError(
+            "E_GMAIL_TOKENS_FILE_JSON",
+            f"Gmail token file is not valid JSON: {path}",
+            "Rerun keyvault-sync-gmail-secrets to regenerate it from Key Vault.",
+            EXIT_AUTH,
+        ) from exc
+    tokens = raw.get("tokens") if isinstance(raw, dict) else None
+    if not isinstance(tokens, dict):
+        return None
+    value = tokens.get(account)
+    token: str | None = None
+    if isinstance(value, str):
+        token = value
+    elif isinstance(value, dict):
+        token = value.get("refresh_token")
+    token = str(token or "").strip()
+    return token or None
+
+
+def gmail_update_tokens_file(account: str, refresh_token: str) -> Path:
+    path = resolve_gmail_tokens_file(required=False) or (Path.home() / ".secrets" / "gmail" / "tokens.json")
+    data: dict[str, Any] = {"schemaVersion": 1, "tokens": {}}
+    if path.exists():
+        try:
+            parsed = json.loads(path.read_text(encoding="utf-8"))
+            if isinstance(parsed, dict):
+                data.update(parsed)
+        except (OSError, json.JSONDecodeError):
+            # Keep the successful interactive OAuth result instead of failing
+            # because a local cache file is corrupt. The Key Vault materializer
+            # can restore canonical metadata later.
+            data = {"schemaVersion": 1, "tokens": {}}
+    tokens = data.get("tokens")
+    if not isinstance(tokens, dict):
+        tokens = {}
+    tokens[account] = {"refresh_token": refresh_token, "source": "interactive-gmail-auth"}
+    data["tokens"] = tokens
+    data["updatedAt"] = utc_now()
+    path.parent.mkdir(parents=True, exist_ok=True)
+    os.chmod(path.parent, 0o700)
+    path.write_text(json.dumps(data, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    os.chmod(path, 0o600)
+    return path
+
+
+def gmail_refresh_token_with_source(account: str) -> tuple[str | None, str | None]:
+    token = gmail_file_get_refresh_token(account)
+    if token:
+        path = resolve_gmail_tokens_file(required=False)
+        return token, f"tokens_file:{path}" if path else "tokens_file"
+    token = gmail_keychain_get_refresh_token(account)
+    if token:
+        return token, "keychain_cache"
+    return None, None
+
+
 def gmail_keychain_get_refresh_token(account: str) -> str | None:
     security = shutil.which("security")
     if not security:
@@ -1463,6 +1557,11 @@ def gmail_keychain_get_refresh_token(account: str) -> str | None:
 
 def gmail_keychain_has_refresh_token(account: str) -> bool:
     return gmail_keychain_get_refresh_token(account) is not None
+
+
+def gmail_has_refresh_token(account: str) -> tuple[bool, str | None]:
+    _token, source = gmail_refresh_token_with_source(account)
+    return bool(_token), source
 
 
 def gmail_keychain_set_refresh_token(account: str, refresh_token: str) -> None:
@@ -1572,12 +1671,12 @@ def gmail_form_post(url: str, fields: dict[str, str], timeout_sec: int) -> dict[
 
 def gmail_access_token(account: str, timeout_sec: int) -> str:
     cfg = load_gmail_client_config()
-    refresh_token = gmail_keychain_get_refresh_token(account)
+    refresh_token, token_source = gmail_refresh_token_with_source(account)
     if not refresh_token:
         raise CliError(
             "E_GMAIL_AUTH_NOT_CONFIGURED",
             f"No Gmail refresh token is stored for {account}",
-            f"Run `dobby-mail gmail-auth --account {account}` once, approve Gmail access in the browser, then retry.",
+            f"Run `~/GitHub/scripts/sync/keyvault-sync-gmail-secrets.sh --apply`, or run `dobby-mail gmail-auth --account {account}` once and update Key Vault.",
             EXIT_AUTH,
         )
     fields = {
@@ -1801,7 +1900,7 @@ def command_gmail_auth(args: argparse.Namespace, warnings: WarningSink) -> dict[
                 "response_type": "code",
                 "scope": " ".join(GMAIL_SCOPES),
                 "access_type": "offline",
-                "prompt": "consent",
+                "prompt": "select_account consent",
                 "state": state,
                 "login_hint": account,
             }
@@ -1840,14 +1939,15 @@ def command_gmail_auth(args: argparse.Namespace, warnings: WarningSink) -> dict[
             "Re-run gmail-auth. If you previously approved this app, revoke it in Google Account access first or keep prompt=consent.",
             EXIT_AUTH,
         )
-    gmail_keychain_set_refresh_token(account, refresh)
+    tokens_path = gmail_update_tokens_file(account, refresh)
     return {
         "backend": "gmail-api",
         "account": account,
-        "stored_refresh_token": "keychain",
-        "keychain_service": GMAIL_KEYCHAIN_SERVICE,
+        "stored_refresh_token": "tokens_file",
+        "tokens_file": str(tokens_path),
         "scopes": GMAIL_SCOPES,
         "client_file": cfg["path"],
+        "canonical_source": "Azure Key Vault via ~/GitHub/scripts/sync/keyvault-sync-gmail-secrets.sh",
         "warnings": warnings.items,
     }
 
@@ -1932,13 +2032,18 @@ def command_doctor(args: argparse.Namespace, warnings: WarningSink) -> dict[str,
         add("gmail_oauth_client", "warn", exc.message, exc.hint, {"code": exc.code})
         cfg = None
     if gmail_account:
-        has_token = gmail_keychain_has_refresh_token(gmail_account)
+        has_token, token_source = gmail_has_refresh_token(gmail_account)
         add(
             "gmail_refresh_token",
             "ok" if has_token else "warn",
-            f"Keychain token {'found' if has_token else 'not found'} for {gmail_account}",
-            f"Run `dobby-mail gmail-auth --account {gmail_account}` once." if not has_token else None,
-            {"account": gmail_account, "keychain_service": GMAIL_KEYCHAIN_SERVICE},
+            f"Refresh token {'found' if has_token else 'not found'} for {gmail_account}",
+            f"Run `~/GitHub/scripts/sync/keyvault-sync-gmail-secrets.sh --apply`, or run `dobby-mail gmail-auth --account {gmail_account}` once." if not has_token else None,
+            {
+                "account": gmail_account,
+                "source": token_source,
+                "tokens_file": str(resolve_gmail_tokens_file(required=False)) if resolve_gmail_tokens_file(required=False) else None,
+                "keychain_service": GMAIL_KEYCHAIN_SERVICE,
+            },
         )
         if getattr(args, "check_gmail_api", False) and cfg and has_token:
             try:
