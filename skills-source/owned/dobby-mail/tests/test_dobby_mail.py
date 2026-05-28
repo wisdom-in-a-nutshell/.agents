@@ -170,6 +170,30 @@ class DobbyMailTests(unittest.TestCase):
         self.assertEqual(err_payload["status"], "error")
         self.assertEqual(err_payload["error"]["code"], "E_SEND_CONFIRMATION_REQUIRED")
 
+    def test_gmail_write_backend_is_explicit_and_does_not_need_auth_for_dry_run(self):
+        env = {
+            "DOBBY_MAIL_DEFAULT_ACCOUNT": "writer@example.com",
+            "DOBBY_MAIL_DEFAULT_FROM": "default@example.com",
+        }
+        _, payload = run_cli(["draft", "--to", "a@example.com", "--subject", "Hi", "--body", "Hello", "--write-backend", "gmail-api", "--dry-run"], env=env)
+        self.assertEqual(payload["data"]["backend"], "gmail-api")
+        self.assertEqual(payload["data"]["gmail_account"], "writer@example.com")
+        self.assertEqual(payload["data"]["draft"]["sender"], "default@example.com")
+
+        with tempfile.TemporaryDirectory() as d:
+            proc, err = run_cli(
+                ["draft", "--to", "a@example.com", "--subject", "Hi", "--body", "Hello", "--write-backend", "gmail-api"],
+                env={**env, "DOBBY_GMAIL_OAUTH_CLIENT_FILE": str(Path(d) / "missing-client.json")},
+                check=False,
+            )
+            self.assertEqual(proc.returncode, 3)
+            self.assertEqual(err["error"]["code"], "E_GMAIL_CLIENT_SECRET_MISSING")
+
+    def test_gmail_auth_is_not_allowed_with_no_input(self):
+        proc, payload = run_cli(["gmail-auth", "--account", "writer@example.com", "--no-input"], check=False)
+        self.assertEqual(proc.returncode, 2)
+        self.assertEqual(payload["error"]["code"], "E_GMAIL_AUTH_INTERACTIVE")
+
     def test_no_open_or_show_draft_interface(self):
         proc = subprocess.run([str(CLI), "open", "--help"], text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=False)
         self.assertNotEqual(proc.returncode, 0)

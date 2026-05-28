@@ -1375,6 +1375,477 @@ def resolve_draft_link_from_index(args: argparse.Namespace, payload: dict[str, A
     }
 
 
+def clean_email_address(raw: str | None) -> str | None:
+    if not raw:
+        return None
+    _name, addr = parseaddr(raw)
+    return (addr or raw).strip() or None
+
+
+def gmail_client_file_candidates() -> list[Path]:
+    raw = os.environ.get(GMAIL_CLIENT_FILE_ENV, "").strip()
+    if raw:
+        return [Path(raw).expanduser().resolve()]
+    root = Path.home() / ".secrets" / "gmail"
+    return [
+        root / "client_secret.json",
+        root / "oauth_client.json",
+        root / "credentials.json",
+    ]
+
+
+def resolve_gmail_client_file() -> Path:
+    candidates = gmail_client_file_candidates()
+    for path in candidates:
+        if path.exists():
+            return path
+    raise CliError(
+        "E_GMAIL_CLIENT_SECRET_MISSING",
+        "Gmail OAuth client file not found",
+        f"Create an installed-app OAuth client JSON at {candidates[0]} or set {GMAIL_CLIENT_FILE_ENV} to a local client JSON path.",
+        EXIT_AUTH,
+    )
+
+
+def load_gmail_client_config() -> dict[str, str]:
+    path = resolve_gmail_client_file()
+    try:
+        raw = json.loads(path.read_text(encoding="utf-8"))
+    except OSError as exc:
+        raise CliError(
+            "E_GMAIL_CLIENT_SECRET_READ",
+            f"Cannot read Gmail OAuth client file: {path}",
+            "Check local secret file permissions.",
+            EXIT_AUTH,
+        ) from exc
+    except json.JSONDecodeError as exc:
+        raise CliError(
+            "E_GMAIL_CLIENT_SECRET_JSON",
+            f"Gmail OAuth client file is not valid JSON: {path}",
+            "Download a valid OAuth client JSON from Google Cloud Console.",
+            EXIT_AUTH,
+        ) from exc
+
+    cfg = raw.get("installed") or raw.get("web") or raw
+    client_id = str(cfg.get("client_id") or "").strip()
+    token_uri = str(cfg.get("token_uri") or "https://oauth2.googleapis.com/token").strip()
+    auth_uri = str(cfg.get("auth_uri") or "https://accounts.google.com/o/oauth2/v2/auth").strip()
+    client_secret = str(cfg.get("client_secret") or "").strip()
+    if not client_id:
+        raise CliError(
+            "E_GMAIL_CLIENT_SECRET_INVALID",
+            f"Gmail OAuth client file has no client_id: {path}",
+            "Download an installed-app OAuth client JSON from Google Cloud Console.",
+            EXIT_AUTH,
+        )
+    return {
+        "path": str(path),
+        "client_id": client_id,
+        "client_secret": client_secret,
+        "token_uri": token_uri,
+        "auth_uri": auth_uri,
+    }
+
+
+def gmail_keychain_get_refresh_token(account: str) -> str | None:
+    security = shutil.which("security")
+    if not security:
+        return None
+    proc = subprocess.run(
+        [security, "find-generic-password", "-s", GMAIL_KEYCHAIN_SERVICE, "-a", account, "-w"],
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.DEVNULL,
+        check=False,
+    )
+    token = proc.stdout.strip()
+    return token if proc.returncode == 0 and token else None
+
+
+def gmail_keychain_has_refresh_token(account: str) -> bool:
+    return gmail_keychain_get_refresh_token(account) is not None
+
+
+def gmail_keychain_set_refresh_token(account: str, refresh_token: str) -> None:
+    security = shutil.which("security")
+    if not security:
+        raise CliError(
+            "E_KEYCHAIN_UNAVAILABLE",
+            "macOS security command not found",
+            "Run gmail-auth on macOS so the refresh token can be stored in Keychain.",
+            EXIT_AUTH,
+        )
+    proc = subprocess.run(
+        [security, "add-generic-password", "-U", "-s", GMAIL_KEYCHAIN_SERVICE, "-a", account, "-w", refresh_token],
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        check=False,
+    )
+    if proc.returncode != 0:
+        err = (proc.stderr or proc.stdout or "").strip()
+        raise CliError(
+            "E_KEYCHAIN_WRITE_FAILED",
+            f"Could not store Gmail refresh token in Keychain for {account}",
+            f"Check Keychain access. security output: {err[:200]}",
+            EXIT_AUTH,
+        )
+
+
+def resolve_gmail_write_account(args: argparse.Namespace) -> str:
+    raw = getattr(args, "gmail_account", None) or config_value(DEFAULT_ACCOUNT_ENV)
+    account = clean_email_address(raw)
+    if not account:
+        raise CliError(
+            "E_DEFAULT_ACCOUNT_REQUIRED",
+            f"{DEFAULT_ACCOUNT_ENV} is required for Gmail API writes",
+            f"Set {DEFAULT_ACCOUNT_ENV} in the workspace .env/static defaults, or pass --write-backend mail-app explicitly.",
+            EXIT_USAGE,
+        )
+    return account
+
+
+def resolve_write_backend(args: argparse.Namespace, warnings: WarningSink, payload: dict[str, Any]) -> dict[str, Any]:
+    requested = getattr(args, "write_backend", "auto")
+    if requested not in {"auto", "gmail-api", "mail-app"}:
+        raise CliError("E_WRITE_BACKEND_UNSUPPORTED", f"Unsupported write backend: {requested}", "Use --write-backend auto, gmail-api, or mail-app.", EXIT_USAGE)
+    if requested == "mail-app":
+        return {"backend": "mail-app", "requested_backend": requested, "gmail_account": None}
+
+    if requested == "gmail-api":
+        return {"backend": "gmail-api", "requested_backend": requested, "gmail_account": resolve_gmail_write_account(args)}
+
+    # Auto is intentionally conservative for Adi's workspace: if a default
+    # account exists, writes go through the account's Gmail API token instead
+    # of waking Mail.app. If no default account is configured (e.g. old tests or
+    # one-off local runs), keep the legacy Mail.app path but make it explicit.
+    raw_account = config_value(DEFAULT_ACCOUNT_ENV)
+    if raw_account and raw_account.strip():
+        return {"backend": "gmail-api", "requested_backend": requested, "gmail_account": resolve_gmail_write_account(args)}
+    warnings.warn(
+        "W_WRITE_BACKEND_MAIL_APP_AUTO",
+        "No default account configured; auto write backend is Mail.app.",
+        f"Set {DEFAULT_ACCOUNT_ENV} to use Gmail API writes by default, or pass --write-backend gmail-api.",
+        backend="mail-app",
+    )
+    return {"backend": "mail-app", "requested_backend": requested, "gmail_account": None}
+
+
+def gmail_form_post(url: str, fields: dict[str, str], timeout_sec: int) -> dict[str, Any]:
+    data = urllib.parse.urlencode(fields).encode("utf-8")
+    req = urllib.request.Request(
+        url,
+        data=data,
+        headers={"Content-Type": "application/x-www-form-urlencoded", "Accept": "application/json"},
+        method="POST",
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=timeout_sec) as resp:
+            body = resp.read().decode("utf-8")
+    except urllib.error.HTTPError as exc:
+        body = exc.read().decode("utf-8", errors="replace")
+        message = body
+        with contextlib.suppress(Exception):
+            parsed = json.loads(body)
+            message = parsed.get("error_description") or parsed.get("error") or body
+        raise CliError(
+            "E_GMAIL_OAUTH_HTTP",
+            f"Gmail OAuth token exchange failed ({exc.code}): {message}",
+            "Check the OAuth client JSON and re-run gmail-auth.",
+            EXIT_AUTH,
+        ) from exc
+    except urllib.error.URLError as exc:
+        raise CliError(
+            "E_GMAIL_OAUTH_NETWORK",
+            f"Could not reach Google OAuth endpoint: {exc.reason}",
+            "Check network connectivity and retry.",
+            EXIT_TIMEOUT,
+            retryable=True,
+        ) from exc
+    try:
+        parsed = json.loads(body)
+    except json.JSONDecodeError as exc:
+        raise CliError("E_GMAIL_OAUTH_BAD_JSON", "Google OAuth returned non-JSON output", "Retry or inspect the OAuth client setup.", EXIT_AUTH) from exc
+    if not isinstance(parsed, dict):
+        raise CliError("E_GMAIL_OAUTH_BAD_JSON", "Google OAuth returned a non-object response", "Retry or inspect the OAuth client setup.", EXIT_AUTH)
+    return parsed
+
+
+def gmail_access_token(account: str, timeout_sec: int) -> str:
+    cfg = load_gmail_client_config()
+    refresh_token = gmail_keychain_get_refresh_token(account)
+    if not refresh_token:
+        raise CliError(
+            "E_GMAIL_AUTH_NOT_CONFIGURED",
+            f"No Gmail refresh token is stored for {account}",
+            f"Run `dobby-mail gmail-auth --account {account}` once, approve Gmail access in the browser, then retry.",
+            EXIT_AUTH,
+        )
+    fields = {
+        "client_id": cfg["client_id"],
+        "refresh_token": refresh_token,
+        "grant_type": "refresh_token",
+    }
+    if cfg.get("client_secret"):
+        fields["client_secret"] = cfg["client_secret"]
+    token = gmail_form_post(cfg["token_uri"], fields, timeout_sec)
+    access = str(token.get("access_token") or "").strip()
+    if not access:
+        raise CliError(
+            "E_GMAIL_ACCESS_TOKEN_MISSING",
+            f"Google did not return an access token for {account}",
+            "Re-run gmail-auth for this account.",
+            EXIT_AUTH,
+        )
+    return access
+
+
+def gmail_api_request(account: str, method: str, path: str, body: dict[str, Any] | None, timeout_sec: int) -> dict[str, Any]:
+    access_token = gmail_access_token(account, timeout_sec)
+    url = "https://gmail.googleapis.com/gmail/v1/users/me/" + path.lstrip("/")
+    data = json.dumps(body or {}, ensure_ascii=False).encode("utf-8") if body is not None else None
+    req = urllib.request.Request(
+        url,
+        data=data,
+        headers={
+            "Authorization": f"Bearer {access_token}",
+            "Content-Type": "application/json",
+            "Accept": "application/json",
+        },
+        method=method,
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=timeout_sec) as resp:
+            raw = resp.read().decode("utf-8")
+    except urllib.error.HTTPError as exc:
+        raw = exc.read().decode("utf-8", errors="replace")
+        message = raw
+        status = None
+        with contextlib.suppress(Exception):
+            parsed = json.loads(raw)
+            err = parsed.get("error") or {}
+            if isinstance(err, dict):
+                message = err.get("message") or raw
+                status = err.get("status")
+        code = "E_GMAIL_API_AUTH" if exc.code in {401, 403} else "E_GMAIL_API_ERROR"
+        hint = (
+            "Re-run gmail-auth and make sure Gmail API is enabled for the OAuth client."
+            if code == "E_GMAIL_API_AUTH"
+            else "Check recipients, sender alias/send-as settings, and Gmail API status."
+        )
+        raise CliError(
+            code,
+            f"Gmail API request failed ({exc.code}{', ' + status if status else ''}): {message}",
+            hint,
+            EXIT_AUTH if code == "E_GMAIL_API_AUTH" else EXIT_FAILURE,
+        ) from exc
+    except urllib.error.URLError as exc:
+        raise CliError(
+            "E_GMAIL_API_NETWORK",
+            f"Could not reach Gmail API: {exc.reason}",
+            "Check network connectivity and retry.",
+            EXIT_TIMEOUT,
+            retryable=True,
+        ) from exc
+    if not raw:
+        return {}
+    try:
+        parsed = json.loads(raw)
+    except json.JSONDecodeError as exc:
+        raise CliError("E_GMAIL_API_BAD_JSON", "Gmail API returned non-JSON output", "Retry or inspect Gmail API status.", EXIT_FAILURE) from exc
+    if not isinstance(parsed, dict):
+        raise CliError("E_GMAIL_API_BAD_JSON", "Gmail API returned a non-object response", "Retry or inspect Gmail API status.", EXIT_FAILURE)
+    return parsed
+
+
+def build_gmail_raw_message(payload: dict[str, Any]) -> tuple[str, str]:
+    msg = EmailMessage()
+    sender = payload.get("sender") or ""
+    msg["From"] = sender
+    msg["To"] = ", ".join(payload.get("to") or [])
+    if payload.get("cc"):
+        msg["Cc"] = ", ".join(payload["cc"])
+    if payload.get("bcc"):
+        msg["Bcc"] = ", ".join(payload["bcc"])
+    msg["Subject"] = payload.get("subject") or ""
+    msg["Date"] = formatdate(localtime=False)
+    if payload.get("in_reply_to"):
+        msg["In-Reply-To"] = str(payload["in_reply_to"])
+    if payload.get("references"):
+        refs = payload["references"]
+        msg["References"] = " ".join(str(item) for item in refs) if isinstance(refs, list) else str(refs)
+    domain = clean_email_address(sender)
+    domain = domain.split("@", 1)[1] if domain and "@" in domain else None
+    message_id = make_msgid(domain=domain)
+    msg["Message-ID"] = message_id
+    msg.set_content(payload.get("body") or "")
+    raw = base64.urlsafe_b64encode(msg.as_bytes(policy=policy.SMTP)).decode("ascii")
+    return raw, message_id
+
+
+def gmail_drafts_url(account: str) -> str:
+    return "https://mail.google.com/mail/u/" + urllib.parse.quote(account, safe="") + "/#drafts"
+
+
+def gmail_create_draft(account: str, payload: dict[str, Any], timeout_sec: int) -> dict[str, Any]:
+    raw, message_id = build_gmail_raw_message(payload)
+    result = gmail_api_request(account, "POST", "drafts", {"message": {"raw": raw}}, timeout_sec)
+    message = result.get("message") if isinstance(result.get("message"), dict) else {}
+    draft_id = result.get("id")
+    draft = {
+        "id": f"gmail-draft:{draft_id}" if draft_id else None,
+        "backend": "gmail-api",
+        "gmail_account": account,
+        "gmail_draft_id": draft_id,
+        "gmail_message_id": message.get("id"),
+        "gmail_thread_id": message.get("threadId"),
+        "source_message_id": message_id,
+        "subject": payload.get("subject") or "",
+        "to": payload.get("to") or [],
+        "cc": payload.get("cc") or [],
+        "bcc_count": len(payload.get("bcc") or []),
+        "requested_sender": payload.get("sender"),
+        "sender": payload.get("sender"),
+        "visible": False,
+        "state": "created_unsent_draft",
+        "mail_url": mail_message_url(message_id),
+        "links": {
+            "gmail_drafts": gmail_drafts_url(account),
+            "mail": mail_message_url(message_id),
+        },
+        "link_resolution": {
+            "status": "drafts_mailbox",
+            "source": "gmail-api",
+            "reason": "Gmail API returns a draft id but no universal draft deep link; open Gmail drafts or use message:// after local Mail sync.",
+        },
+    }
+    return {"draft": draft}
+
+
+def gmail_send_direct(account: str, payload: dict[str, Any], timeout_sec: int) -> dict[str, Any]:
+    raw, message_id = build_gmail_raw_message(payload)
+    result = gmail_api_request(account, "POST", "messages/send", {"raw": raw}, timeout_sec)
+    sent = {
+        "id": f"gmail-message:{result.get('id')}" if result.get("id") else None,
+        "backend": "gmail-api",
+        "gmail_account": account,
+        "gmail_message_id": result.get("id"),
+        "gmail_thread_id": result.get("threadId"),
+        "source_message_id": message_id,
+        "subject": payload.get("subject") or "",
+        "to": payload.get("to") or [],
+        "sender": payload.get("sender"),
+        "state": "sent",
+    }
+    return {"sent": sent}
+
+
+class _GmailOAuthCallbackHandler(http.server.BaseHTTPRequestHandler):
+    server_version = "DobbyMailOAuth/1.0"
+
+    def log_message(self, fmt: str, *args: Any) -> None:  # silence stdlib access log
+        return
+
+    def do_GET(self) -> None:  # noqa: N802 - stdlib naming
+        parsed = urllib.parse.urlparse(self.path)
+        params = urllib.parse.parse_qs(parsed.query)
+        self.server.oauth_code = (params.get("code") or [None])[0]  # type: ignore[attr-defined]
+        self.server.oauth_error = (params.get("error") or [None])[0]  # type: ignore[attr-defined]
+        if self.server.oauth_code:  # type: ignore[attr-defined]
+            body = b"OAuth complete. You can close this tab and return to Dobby."
+            self.send_response(200)
+        else:
+            body = b"OAuth failed or was denied. Return to Dobby for details."
+            self.send_response(400)
+        self.send_header("Content-Type", "text/plain; charset=utf-8")
+        self.send_header("Content-Length", str(len(body)))
+        self.end_headers()
+        self.wfile.write(body)
+
+
+def command_gmail_auth(args: argparse.Namespace, warnings: WarningSink) -> dict[str, Any]:
+    if getattr(args, "no_input", False):
+        raise CliError(
+            "E_GMAIL_AUTH_INTERACTIVE",
+            "gmail-auth requires a browser consent click and cannot run with --no-input",
+            f"Run `dobby-mail gmail-auth --account {args.account or config_value(DEFAULT_ACCOUNT_ENV) or '<email>'}` interactively once.",
+            EXIT_USAGE,
+        )
+    account = clean_email_address(args.account or config_value(DEFAULT_ACCOUNT_ENV))
+    if not account:
+        raise CliError(
+            "E_DEFAULT_ACCOUNT_REQUIRED",
+            f"{DEFAULT_ACCOUNT_ENV} or --account is required for gmail-auth",
+            f"Run `dobby-mail gmail-auth --account you@example.com`.",
+            EXIT_USAGE,
+        )
+    cfg = load_gmail_client_config()
+    state = "dobby-mail-" + uuid.uuid4().hex
+    timeout = int(getattr(args, "timeout_sec", 300) or 300)
+    with socketserver.TCPServer(("127.0.0.1", 0), _GmailOAuthCallbackHandler) as server:
+        server.timeout = timeout
+        server.oauth_code = None  # type: ignore[attr-defined]
+        server.oauth_error = None  # type: ignore[attr-defined]
+        host, port = server.server_address
+        redirect_uri = f"http://{host}:{port}/callback"
+        query = urllib.parse.urlencode(
+            {
+                "client_id": cfg["client_id"],
+                "redirect_uri": redirect_uri,
+                "response_type": "code",
+                "scope": " ".join(GMAIL_SCOPES),
+                "access_type": "offline",
+                "prompt": "consent",
+                "state": state,
+                "login_hint": account,
+            }
+        )
+        auth_url = cfg["auth_uri"] + "?" + query
+        print(f"[dobby-mail] Open this Gmail OAuth URL if the browser does not open automatically:\n{auth_url}", file=sys.stderr)
+        if not getattr(args, "no_browser", False):
+            with contextlib.suppress(Exception):
+                webbrowser.open(auth_url)
+        server.handle_request()
+        if server.oauth_error:  # type: ignore[attr-defined]
+            raise CliError("E_GMAIL_AUTH_DENIED", f"Gmail OAuth was denied: {server.oauth_error}", "Re-run gmail-auth and approve Gmail access.", EXIT_AUTH)
+        code = server.oauth_code  # type: ignore[attr-defined]
+    if not code:
+        raise CliError(
+            "E_GMAIL_AUTH_TIMEOUT",
+            "Timed out waiting for Gmail OAuth callback",
+            "Re-run gmail-auth and complete the browser consent flow.",
+            EXIT_TIMEOUT,
+            retryable=True,
+        )
+    fields = {
+        "client_id": cfg["client_id"],
+        "code": str(code),
+        "grant_type": "authorization_code",
+        "redirect_uri": redirect_uri,
+    }
+    if cfg.get("client_secret"):
+        fields["client_secret"] = cfg["client_secret"]
+    token = gmail_form_post(cfg["token_uri"], fields, timeout)
+    refresh = str(token.get("refresh_token") or "").strip()
+    if not refresh:
+        raise CliError(
+            "E_GMAIL_REFRESH_TOKEN_MISSING",
+            "Google did not return a refresh token",
+            "Re-run gmail-auth. If you previously approved this app, revoke it in Google Account access first or keep prompt=consent.",
+            EXIT_AUTH,
+        )
+    gmail_keychain_set_refresh_token(account, refresh)
+    return {
+        "backend": "gmail-api",
+        "account": account,
+        "stored_refresh_token": "keychain",
+        "keychain_service": GMAIL_KEYCHAIN_SERVICE,
+        "scopes": GMAIL_SCOPES,
+        "client_file": cfg["path"],
+        "warnings": warnings.items,
+    }
+
+
 def make_store(args: argparse.Namespace) -> FastMailStore:
     root = resolve_mail_root(getattr(args, "mail_root", None))
     index = resolve_index_path(root, getattr(args, "index_path", None))
@@ -1446,6 +1917,36 @@ def command_doctor(args: argparse.Namespace, warnings: WarningSink) -> dict[str,
             add("mail_app_automation", "warn" if exc.exit_code in {EXIT_AUTH, EXIT_DEP, EXIT_TIMEOUT} else "error", exc.message, exc.hint, {"code": exc.code})
     else:
         add("mail_app_automation", "skipped", "Pass --check-mail-app to test live Mail.app automation; this may launch Mail.app.")
+
+    gmail_account = clean_email_address(config_value(DEFAULT_ACCOUNT_ENV))
+    try:
+        cfg = load_gmail_client_config()
+        add("gmail_oauth_client", "ok", cfg["path"], details={"scopes": GMAIL_SCOPES})
+    except CliError as exc:
+        add("gmail_oauth_client", "warn", exc.message, exc.hint, {"code": exc.code})
+        cfg = None
+    if gmail_account:
+        has_token = gmail_keychain_has_refresh_token(gmail_account)
+        add(
+            "gmail_refresh_token",
+            "ok" if has_token else "warn",
+            f"Keychain token {'found' if has_token else 'not found'} for {gmail_account}",
+            f"Run `dobby-mail gmail-auth --account {gmail_account}` once." if not has_token else None,
+            {"account": gmail_account, "keychain_service": GMAIL_KEYCHAIN_SERVICE},
+        )
+        if getattr(args, "check_gmail_api", False) and cfg and has_token:
+            try:
+                gmail_access_token(gmail_account, args.timeout_sec)
+                add("gmail_api_write_backend", "ok", f"Access token refresh succeeded for {gmail_account}")
+            except CliError as exc:
+                add("gmail_api_write_backend", "warn" if exc.exit_code in {EXIT_AUTH, EXIT_TIMEOUT} else "error", exc.message, exc.hint, {"code": exc.code})
+        elif getattr(args, "check_gmail_api", False):
+            reason = "oauth_client_missing" if not cfg else "refresh_token_missing"
+            add("gmail_api_write_backend", "skipped", f"Cannot test Gmail API write backend: {reason}", "Fix the Gmail OAuth client/token checks above, then re-run doctor --check-gmail-api.")
+        elif not getattr(args, "check_gmail_api", False):
+            add("gmail_api_write_backend", "skipped", "Pass --check-gmail-api to test token refresh; no mail is read or written.")
+    else:
+        add("gmail_refresh_token", "skipped", f"No {DEFAULT_ACCOUNT_ENV} configured for Gmail write account.")
 
     statuses = {c["status"] for c in checks}
     selected = "fast" if any(c["name"] == "fast_backend" and c["status"] == "ok" for c in checks) else "mail-app"
@@ -1551,9 +2052,12 @@ def draft_payload_from_args(args: argparse.Namespace) -> dict[str, Any]:
 
 def command_draft(args: argparse.Namespace, warnings: WarningSink) -> dict[str, Any]:
     payload = draft_payload_from_args(args)
+    write = resolve_write_backend(args, warnings, payload)
     if args.dry_run:
         return {
-            "backend": "mail-app",
+            "backend": write["backend"],
+            "requested_backend": write["requested_backend"],
+            "gmail_account": write.get("gmail_account"),
             "dry_run": True,
             "draft": {
                 "state": "would_create_unsent_draft",
@@ -1567,6 +2071,9 @@ def command_draft(args: argparse.Namespace, warnings: WarningSink) -> dict[str, 
             },
             "warnings": warnings.items,
         }
+    if write["backend"] == "gmail-api":
+        result = gmail_create_draft(write["gmail_account"], payload, args.timeout_sec)
+        return {"backend": "gmail-api", "requested_backend": write["requested_backend"], "gmail_account": write["gmail_account"], "dry_run": False, "draft": result.get("draft"), "warnings": warnings.items}
     validate_sender_for_default_account(args, payload["sender"])
     result = jxa_create_draft(payload, args.timeout_sec)
     draft = result.get("draft") or {}
@@ -1579,7 +2086,7 @@ def command_draft(args: argparse.Namespace, warnings: WarningSink) -> dict[str, 
         )
     apply_draft_link(draft, draft.get("source_message_id"), source="mail-app")
     resolve_draft_link_from_index(args, payload, draft, warnings)
-    return {"backend": "mail-app", "dry_run": False, "draft": draft, "warnings": warnings.items}
+    return {"backend": "mail-app", "requested_backend": write["requested_backend"], "dry_run": False, "draft": draft, "warnings": warnings.items}
 
 
 def command_draft_reply(args: argparse.Namespace, warnings: WarningSink) -> dict[str, Any]:
@@ -1605,9 +2112,12 @@ def command_draft_reply(args: argparse.Namespace, warnings: WarningSink) -> dict
         "body": body,
         "sender": resolve_sender(args.sender),
         "visible": False,
+        "in_reply_to": msg.get("source_message_id"),
+        "references": [msg.get("source_message_id")] if msg.get("source_message_id") else [],
     }
     if not payload["to"]:
         raise CliError("E_REPLY_RECIPIENT_UNAVAILABLE", "Could not infer reply recipient", "Pass --to explicitly.", EXIT_USAGE)
+    write = resolve_write_backend(args, warnings, payload)
     if args.dry_run:
         draft = {
             "state": "would_create_unsent_reply_draft",
@@ -1619,9 +2129,21 @@ def command_draft_reply(args: argparse.Namespace, warnings: WarningSink) -> dict
             "body_preview": clean_text(payload["body"], 500),
             "sender": payload["sender"],
             "reply_to": {"id": args.id, "sender": msg.get("sender"), "source_message_id": msg.get("source_message_id")},
-            "threading_supported": False,
+            "threading_supported": bool(payload.get("in_reply_to")) if write["backend"] == "gmail-api" else False,
         }
     else:
+        if write["backend"] == "gmail-api":
+            result = gmail_create_draft(write["gmail_account"], payload, args.timeout_sec)
+            draft = result.get("draft") or {}
+            draft["reply_to"] = {"id": args.id, "sender": msg.get("sender"), "source_message_id": msg.get("source_message_id")}
+            draft["threading_supported"] = bool(msg.get("source_message_id"))
+            warnings.warn(
+                "W_REPLY_DRAFT_THREADING_NOT_VERIFIED",
+                "Gmail draft-reply adds reply headers when the source Message-ID is available, but it does not yet resolve Gmail threadId.",
+                "Inspect the draft before sending if exact thread placement matters.",
+                backend="gmail-api",
+            )
+            return {"backend": "gmail-api", "requested_backend": write["requested_backend"], "gmail_account": write["gmail_account"], "read_backend": data.get("backend"), "dry_run": False, "draft": draft, "warnings": warnings.items}
         validate_sender_for_default_account(args, payload["sender"])
         result = jxa_create_draft(payload, args.timeout_sec)
         draft = result.get("draft") or {}
@@ -1636,13 +2158,21 @@ def command_draft_reply(args: argparse.Namespace, warnings: WarningSink) -> dict
         resolve_draft_link_from_index(args, payload, draft, warnings)
         draft["reply_to"] = {"id": args.id, "sender": msg.get("sender"), "source_message_id": msg.get("source_message_id")}
         draft["threading_supported"] = False
-    warnings.warn(
-        "W_REPLY_DRAFT_NOT_NATIVE_THREADED",
-        "draft-reply creates an unsent addressed draft; it does not yet use Mail.app's native reply command/thread headers.",
-        "Inspect the draft in Apple Mail before sending. Native reply can be added later if needed.",
-        backend="mail-app",
-    )
-    return {"backend": "mail-app", "read_backend": data.get("backend"), "dry_run": bool(args.dry_run), "draft": draft, "warnings": warnings.items}
+    if write["backend"] == "gmail-api":
+        warnings.warn(
+            "W_REPLY_DRAFT_THREADING_NOT_VERIFIED",
+            "Gmail draft-reply adds reply headers when the source Message-ID is available, but it does not yet resolve Gmail threadId.",
+            "Inspect the draft before sending if exact thread placement matters.",
+            backend="gmail-api",
+        )
+    else:
+        warnings.warn(
+            "W_REPLY_DRAFT_NOT_NATIVE_THREADED",
+            "draft-reply creates an unsent addressed draft; it does not yet use Mail.app's native reply command/thread headers.",
+            "Inspect the draft in Apple Mail before sending. Native reply can be added later if needed.",
+            backend="mail-app",
+        )
+    return {"backend": write["backend"], "requested_backend": write["requested_backend"], "gmail_account": write.get("gmail_account"), "read_backend": data.get("backend"), "dry_run": bool(args.dry_run), "draft": draft, "warnings": warnings.items}
 
 
 def command_send(args: argparse.Namespace, warnings: WarningSink) -> dict[str, Any]:
@@ -1654,10 +2184,12 @@ def command_send(args: argparse.Namespace, warnings: WarningSink) -> dict[str, A
             "Prefer `dobby-mail draft` first. Only pass --confirm-send after the user explicitly approves recipients and body.",
             EXIT_USAGE,
         )
-    validate_sender_for_default_account(args, payload["sender"])
+    write = resolve_write_backend(args, warnings, payload)
     if args.dry_run:
         return {
-            "backend": "mail-app",
+            "backend": write["backend"],
+            "requested_backend": write["requested_backend"],
+            "gmail_account": write.get("gmail_account"),
             "dry_run": True,
             "sent": {
                 "state": "would_send",
@@ -1670,8 +2202,12 @@ def command_send(args: argparse.Namespace, warnings: WarningSink) -> dict[str, A
             },
             "warnings": warnings.items,
         }
+    if write["backend"] == "gmail-api":
+        result = gmail_send_direct(write["gmail_account"], payload, args.timeout_sec)
+        return {"backend": "gmail-api", "requested_backend": write["requested_backend"], "gmail_account": write["gmail_account"], "dry_run": False, "sent": result.get("sent"), "warnings": warnings.items}
+    validate_sender_for_default_account(args, payload["sender"])
     result = jxa_send_direct(payload, args.timeout_sec)
-    return {"backend": "mail-app", "dry_run": False, "sent": result.get("sent"), "warnings": warnings.items}
+    return {"backend": "mail-app", "requested_backend": write["requested_backend"], "dry_run": False, "sent": result.get("sent"), "warnings": warnings.items}
 
 
 def command_selected(args: argparse.Namespace, warnings: WarningSink) -> dict[str, Any]:
@@ -1807,12 +2343,13 @@ def add_draft_args(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--subject", required=False, help="Message subject.")
     parser.add_argument("--body", help="Message body text.")
     parser.add_argument("--body-file", help="Path to body text, or - for stdin.")
-    parser.add_argument("--sender", help=f"Sender account/address as understood by Apple Mail. If omitted, {DEFAULT_FROM_ENV} is required.")
+    parser.add_argument("--sender", help=f"Sender address. If omitted, {DEFAULT_FROM_ENV} is required.")
+    parser.add_argument("--write-backend", choices=["auto", "gmail-api", "mail-app"], default="auto", help="Write backend. auto uses Gmail API when DOBBY_MAIL_DEFAULT_ACCOUNT is configured; otherwise Mail.app.")
     parser.add_argument("--dry-run", action="store_true", help="Return intended action without creating/sending anything.")
 
 
 def parse_args(argv: list[str]) -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Local Apple Mail client for Dobby. JSON-first, local-first, permission-safe.")
+    parser = argparse.ArgumentParser(description="Local Apple Mail/Gmail write client for Dobby. JSON-first, local-first for reads, permission-safe.")
     add_common(parser)
     parser.add_argument("--version", action="store_true", help="Print version envelope.")
     sub = parser.add_subparsers(dest="cmd")
@@ -1822,6 +2359,7 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     p.add_argument("--mail-root")
     p.add_argument("--index-path")
     p.add_argument("--check-mail-app", action="store_true", help="Test live Mail.app automation; may launch Mail.app.")
+    p.add_argument("--check-gmail-api", action="store_true", help="Test Gmail API access-token refresh for write backend; no mail is read/written.")
     p.set_defaults(func=command_doctor)
 
     p = sub.add_parser("setup", help="Show/access-check one-time macOS permissions for Dobby Mail.")
@@ -1829,8 +2367,15 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     p.add_argument("--mail-root")
     p.add_argument("--index-path")
     p.add_argument("--check-mail-app", action="store_true", default=True, help="Test live Mail.app automation; may launch Mail.app.")
+    p.add_argument("--check-gmail-api", action="store_true", help="Test Gmail API access-token refresh for write backend; no mail is read/written.")
     p.add_argument("--open-settings", action="store_true", help="Open Full Disk Access settings.")
     p.set_defaults(func=command_setup)
+
+    p = sub.add_parser("gmail-auth", help="One-time interactive Gmail OAuth setup for Gmail API write backend.")
+    add_common(p)
+    p.add_argument("--account", help=f"Gmail/Google Workspace account to authorize. Defaults to {DEFAULT_ACCOUNT_ENV}.")
+    p.add_argument("--no-browser", action="store_true", help="Print OAuth URL but do not open a browser.")
+    p.set_defaults(func=command_gmail_auth)
 
     p = sub.add_parser("accounts", help="List Apple Mail accounts via Mail.app automation.")
     add_common(p)
@@ -1905,7 +2450,7 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     p.add_argument("--out-dir", required=True)
     p.set_defaults(func=command_attachments)
 
-    p = sub.add_parser("draft", help="Create an unsent Apple Mail draft.")
+    p = sub.add_parser("draft", help="Create an unsent email draft.")
     add_common(p); add_draft_args(p)
     p.set_defaults(func=command_draft)
 
@@ -1915,7 +2460,7 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     p.add_argument("--read-backend", choices=["auto", "fast", "mail-app"], default="auto", help="Backend used to read original message metadata.")
     p.set_defaults(func=command_draft_reply)
 
-    p = sub.add_parser("send", help="Send a new email through Apple Mail. Requires --confirm-send.")
+    p = sub.add_parser("send", help="Send a new email through the write backend. Requires --confirm-send.")
     add_common(p); add_draft_args(p)
     p.add_argument("--confirm-send", action="store_true", help="Required explicit confirmation for externally visible send.")
     p.set_defaults(func=command_send)

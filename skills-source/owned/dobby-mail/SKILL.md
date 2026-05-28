@@ -1,6 +1,6 @@
 ---
 name: dobby-mail
-description: "Operate Dobby's local Apple Mail client for email reads and safe writes. Use for checking recent mail, searching Apple Mail, reading a message, listing mailboxes/accounts, creating unsent email drafts, creating reply drafts, and debugging Mail.app/local Mail access."
+description: "Operate Dobby's local mail client: Apple Mail fast/local reads and safe Gmail API writes. Use for checking recent mail, searching Apple Mail, reading a message, listing mailboxes/accounts, creating unsent email drafts, creating reply drafts, sending only with confirmation, and debugging Mail.app/Gmail write access."
 ---
 
 # Dobby Mail
@@ -11,9 +11,10 @@ Email operations go through the skill-bundled CLI:
 $HOME/.agents/skills-source/owned/dobby-mail/scripts/dobby-mail
 ```
 
-The CLI is Apple Mail–centered, local-first, JSON-first, and permission-safe.
-It uses a fast read-only Apple Mail `Envelope Index` + `.emlx` path when
-available and explicitly falls back to Mail.app automation when allowed.
+The CLI is Apple Mail–centered for reads, Gmail API–centered for Gmail writes,
+JSON-first, and permission-safe. It uses a fast read-only Apple Mail
+`Envelope Index` + `.emlx` path when available and explicitly falls back to
+Mail.app automation when allowed.
 Fallbacks are reported on `stderr` and in JSON `data.warnings`.
 
 Run it from a Dobby workspace root when possible. Workspace identity is explicit:
@@ -24,15 +25,20 @@ Run it from a Dobby workspace root when possible. Workspace identity is explicit
   read across every Apple Mail account.
 - `DOBBY_MAIL_DEFAULT_FROM` is required for draft/send identity when `--sender`
   is not passed. Do not fall back from one variable to the other. For real
-  draft/send actions, the sender must be configured on the default Apple Mail
-  account; fail fast rather than creating mail from the wrong account.
+  Mail.app draft/send actions, the sender must be configured on the default
+  Apple Mail account; fail fast rather than creating mail from the wrong
+  account. For Gmail API writes, the default account is the authorized Gmail /
+  Google Workspace account and `DOBBY_MAIL_DEFAULT_FROM` is the `From:` address
+  or configured Gmail send-as alias.
 
 ## Common commands
 
 ```bash
 $HOME/.agents/skills-source/owned/dobby-mail/scripts/dobby-mail doctor --no-input
 $HOME/.agents/skills-source/owned/dobby-mail/scripts/dobby-mail doctor --check-mail-app --no-input
+$HOME/.agents/skills-source/owned/dobby-mail/scripts/dobby-mail doctor --check-gmail-api --no-input
 $HOME/.agents/skills-source/owned/dobby-mail/scripts/dobby-mail setup --no-input
+$HOME/.agents/skills-source/owned/dobby-mail/scripts/dobby-mail gmail-auth --account adithyan@wisdominanutshell.academy
 $HOME/.agents/skills-source/owned/dobby-mail/scripts/dobby-mail accounts --no-input
 $HOME/.agents/skills-source/owned/dobby-mail/scripts/dobby-mail mailboxes --limit 50 --no-input
 $HOME/.agents/skills-source/owned/dobby-mail/scripts/dobby-mail recent --limit 20 --no-input
@@ -41,7 +47,7 @@ $HOME/.agents/skills-source/owned/dobby-mail/scripts/dobby-mail get --id fast:12
 $HOME/.agents/skills-source/owned/dobby-mail/scripts/dobby-mail selected --limit 10 --no-input
 $HOME/.agents/skills-source/owned/dobby-mail/scripts/dobby-mail export --id fast:123 --out-dir /tmp/mail-export --raw --no-input
 $HOME/.agents/skills-source/owned/dobby-mail/scripts/dobby-mail attachments --id fast:123 --out-dir /tmp/mail-attachments --no-input
-$HOME/.agents/skills-source/owned/dobby-mail/scripts/dobby-mail draft --to person@example.com --subject "Subject" --body-file /tmp/body.txt --no-input
+$HOME/.agents/skills-source/owned/dobby-mail/scripts/dobby-mail draft --to person@example.com --subject "Subject" --body-file /tmp/body.txt --write-backend gmail-api --no-input
 $HOME/.agents/skills-source/owned/dobby-mail/scripts/dobby-mail draft-reply --id fast:123 --body-file /tmp/body.txt --no-input
 ```
 
@@ -56,15 +62,36 @@ $HOME/.agents/skills-source/owned/dobby-mail/scripts/dobby-mail draft-reply --id
 - Fast backend may require Full Disk Access for the terminal/Codex host.
 - Mail.app backend may require macOS Automation permission to control Mail.app.
 
+## Gmail API write backend
+
+Use Gmail API for Gmail / Google Workspace writes so headless Dobby does not
+wake Mail.app or fight Apple Mail draft UI/sync behavior.
+
+- Read/search remains Apple Mail-only. Do not add a Gmail read fallback unless
+  Adi explicitly asks for it.
+- `draft`, `draft-reply`, and `send` accept `--write-backend auto|gmail-api|mail-app`.
+- `auto` uses Gmail API when `DOBBY_MAIL_DEFAULT_ACCOUNT` is configured; if no
+  default account exists, it explicitly warns and uses Mail.app.
+- `--write-backend gmail-api` requires a one-time `gmail-auth` per account.
+- OAuth client JSON is machine-local, defaulting to
+  `~/.secrets/gmail/client_secret.json` (or `DOBBY_GMAIL_OAUTH_CLIENT_FILE` as
+  a local path override). Refresh tokens are stored in macOS Keychain under
+  service `dobby-mail-gmail-refresh-token` with the account email as the
+  Keychain account.
+- Do not pass OAuth secrets or refresh tokens through flags or env vars.
+- Gmail API returns a draft id but not a stable universal draft deep link. JSON
+  includes `links.gmail_drafts` for opening Gmail Drafts and `links.mail`
+  (`message://...`) for local Apple Mail after sync.
+
 ## Safety rules
 
-- Prefer drafts. `draft` and `draft-reply` create **unsent background** Apple
-  Mail drafts; they do not open Mail.app compose windows. When Mail exposes a
-  message id for the draft, the JSON includes `draft.mail_url` and
-  `draft.links.mail`; the client also tries to resolve the link from the local
-  fast index after saving. Apple Mail may still briefly appear if macOS has to
-  launch or wake Mail.app; the client explicitly avoids activation and forces the
-  draft invisible, but Apple Mail does not provide a hard zero-UI draft API.
+- Prefer drafts. Gmail API drafts are true background writes. Mail.app drafts
+  are **unsent background** Apple Mail drafts; they do not open compose windows.
+  When Mail exposes a message id for the draft, JSON includes `draft.mail_url`
+  and `draft.links.mail`; the client also tries to resolve the link from the
+  local fast index after saving. Apple Mail may still briefly appear if macOS
+  has to launch or wake Mail.app; use Gmail API writes for Gmail accounts when
+  zero-UI/headless behavior matters.
 - Do not send, delete, archive, move, or mark messages unless Adi explicitly
   approves that exact action in the current turn.
 - `send` exists only for explicit approved sends and requires `--confirm-send`.
@@ -81,9 +108,10 @@ $HOME/.agents/skills-source/owned/dobby-mail/scripts/dobby-mail draft-reply --id
 - Supports `--plain` only for operator inspection.
 - Supports `--no-input`; normal commands never prompt.
 - Primary output stays on stdout. Warnings/diagnostics go to stderr.
-- No secrets are accepted via flags or environment variables.
-  `DOBBY_MAIL_DEFAULT_ACCOUNT` and `DOBBY_MAIL_DEFAULT_FROM` are non-secret
-  identity defaults, not auth secrets.
+- No secret values are accepted via flags or environment variables.
+  `DOBBY_MAIL_DEFAULT_ACCOUNT`, `DOBBY_MAIL_DEFAULT_FROM`, and
+  `DOBBY_GMAIL_OAUTH_CLIENT_FILE` are non-secret identity/path configuration,
+  not refresh-token storage. Gmail refresh tokens live in Keychain.
 
 ## Testing
 
