@@ -1136,14 +1136,18 @@ if (to.length === 0) {
   bcc.forEach(function(addr) { msg.bccRecipients.push(Mail.BccRecipient({address: addr})); });
   if (input.sender) msg.sender = input.sender;
   msg.save();
+  var draftId = safe(function(){ return String(msg.id()); }, '');
+  var messageId = safe(function(){ return String(msg.messageId()); }, null);
   JSON.stringify({draft: {
-    id: 'draft:' + safe(function(){ return String(msg.id()); }, ''),
+    id: 'draft:' + draftId,
     backend: 'mail-app',
-    apple_mail_id: safe(function(){ return String(msg.id()); }, null),
+    apple_mail_id: draftId,
+    source_message_id: messageId,
     subject: input.subject || '',
     to: to,
     cc: cc,
     bcc_count: bcc.length,
+    sender: input.sender || null,
     visible: input.visible !== false,
     state: 'created_unsent_draft'
   }});
@@ -1172,33 +1176,6 @@ if (to.length === 0) {
 }
 '''
     return run_osascript(script, input_json=payload, timeout_sec=timeout_sec)
-
-
-def jxa_open_message(mail_id: str, timeout_sec: int, scope: str = "inbox") -> dict[str, Any]:
-    script = JXA_LIBRARY + r'''
-var input = readInput();
-var target = String(input.id || '').replace(/^mail:/, '');
-var Mail = Application('Mail');
-function findInMessages(msgs) {
-  for (var i = msgs.length - 1; i >= 0; i--) {
-    var m = msgs[i];
-    var id = safe(function(){ return String(m.id()); }, '');
-    var mid = safe(function(){ return String(m.messageId()); }, '');
-    if (id === target || mid === target) return m;
-  }
-  return null;
-}
-var found = null;
-if (input.scope === 'selected') found = findInMessages(safe(function(){ return Mail.selection(); }, []));
-if (!found) found = findInMessages(safe(function(){ return Mail.inbox().messages(); }, []));
-if (!found) {
-  JSON.stringify({status:'error', code:'E_MESSAGE_NOT_FOUND', message:'Message not found in Mail.app open scope', hint:'Use selected scope or open from Mail manually.'});
-} else {
-  Mail.open(found);
-  JSON.stringify({opened: msgSummary(found)});
-}
-'''
-    return run_osascript(script, input_json={"id": mail_id, "scope": scope}, timeout_sec=timeout_sec)
 
 
 def jxa_set_message_state(mail_id: str, timeout_sec: int, *, scope: str, read: bool | None = None, flagged: bool | None = None) -> dict[str, Any]:
@@ -1255,6 +1232,14 @@ def parse_recipients(values: list[str] | None) -> list[str]:
             if addr:
                 out.append(addr)
     return out
+
+
+def mail_message_url(message_id: str | None) -> str | None:
+    if not message_id:
+        return None
+    from urllib.parse import quote
+
+    return "message://" + quote(message_id.strip(), safe="")
 
 
 def make_store(args: argparse.Namespace) -> FastMailStore:
@@ -1427,7 +1412,7 @@ def draft_payload_from_args(args: argparse.Namespace) -> dict[str, Any]:
         "subject": args.subject or "",
         "body": body,
         "sender": resolve_sender(args.sender),
-        "visible": not args.hidden,
+        "visible": False,
     }
 
 
@@ -1450,7 +1435,10 @@ def command_draft(args: argparse.Namespace, warnings: WarningSink) -> dict[str, 
             "warnings": warnings.items,
         }
     result = jxa_create_draft(payload, args.timeout_sec)
-    return {"backend": "mail-app", "dry_run": False, "draft": result.get("draft"), "warnings": warnings.items}
+    draft = result.get("draft") or {}
+    draft["mail_url"] = mail_message_url(draft.get("source_message_id"))
+    draft["links"] = {"mail": draft["mail_url"]} if draft["mail_url"] else {}
+    return {"backend": "mail-app", "dry_run": False, "draft": draft, "warnings": warnings.items}
 
 
 def command_draft_reply(args: argparse.Namespace, warnings: WarningSink) -> dict[str, Any]:
@@ -1475,7 +1463,7 @@ def command_draft_reply(args: argparse.Namespace, warnings: WarningSink) -> dict
         "subject": subject,
         "body": body,
         "sender": resolve_sender(args.sender),
-        "visible": not args.hidden,
+        "visible": False,
     }
     if not payload["to"]:
         raise CliError("E_REPLY_RECIPIENT_UNAVAILABLE", "Could not infer reply recipient", "Pass --to explicitly.", EXIT_USAGE)
@@ -1495,6 +1483,8 @@ def command_draft_reply(args: argparse.Namespace, warnings: WarningSink) -> dict
     else:
         result = jxa_create_draft(payload, args.timeout_sec)
         draft = result.get("draft") or {}
+        draft["mail_url"] = mail_message_url(draft.get("source_message_id"))
+        draft["links"] = {"mail": draft["mail_url"]} if draft["mail_url"] else {}
         draft["reply_to"] = {"id": args.id, "sender": msg.get("sender"), "source_message_id": msg.get("source_message_id")}
         draft["threading_supported"] = False
     warnings.warn(
@@ -1565,12 +1555,6 @@ def command_setup(args: argparse.Namespace, warnings: WarningSink) -> dict[str, 
         "checks": checks.get("checks", []),
         "warnings": warnings.items,
     }
-
-
-def command_open(args: argparse.Namespace, warnings: WarningSink) -> dict[str, Any]:
-    kind, value = normalize_message_id(args.id)
-    result = jxa_open_message(value if kind != "mail" else value, args.timeout_sec, scope=args.scope)
-    return {"backend": "mail-app", "opened": result.get("opened"), "warnings": warnings.items}
 
 
 def command_mark_read(args: argparse.Namespace, warnings: WarningSink) -> dict[str, Any]:
@@ -1674,7 +1658,6 @@ def add_draft_args(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--body", help="Message body text.")
     parser.add_argument("--body-file", help="Path to body text, or - for stdin.")
     parser.add_argument("--sender", help=f"Sender account/address as understood by Apple Mail. If omitted, {DEFAULT_FROM_ENV} is required.")
-    parser.add_argument("--hidden", action="store_true", help="Create draft without showing compose window. Default shows window.")
     parser.add_argument("--dry-run", action="store_true", help="Return intended action without creating/sending anything.")
 
 
@@ -1739,12 +1722,6 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     p.add_argument("--query")
     p.add_argument("--limit", type=int, default=DEFAULT_LIMIT)
     p.set_defaults(func=command_selected)
-
-    p = sub.add_parser("open", help="Open a message in Mail.app by id.")
-    add_common(p)
-    p.add_argument("--id", required=True, help="Message id, usually mail:<id> or fast:<rowid>.")
-    p.add_argument("--scope", choices=["inbox", "selected"], default="inbox")
-    p.set_defaults(func=command_open)
 
     p = sub.add_parser("mark-read", help="Mark a message read or unread. Requires --confirm-mark.")
     add_common(p)

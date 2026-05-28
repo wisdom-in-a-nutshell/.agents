@@ -164,10 +164,20 @@ class DobbyMailTests(unittest.TestCase):
     def test_draft_dry_run_and_send_requires_confirmation(self):
         _, payload = run_cli(["draft", "--to", "a@example.com", "--subject", "Hi", "--body", "Hello", "--dry-run"], env={"DOBBY_MAIL_DEFAULT_FROM": "default@example.com"})
         self.assertEqual(payload["data"]["draft"]["state"], "would_create_unsent_draft")
+        self.assertFalse(payload["data"]["draft"]["visible"])
         proc, err_payload = run_cli(["send", "--to", "a@example.com", "--subject", "Hi", "--body", "Hello", "--dry-run"], env={"DOBBY_MAIL_DEFAULT_FROM": "default@example.com"}, check=False)
         self.assertNotEqual(proc.returncode, 0)
         self.assertEqual(err_payload["status"], "error")
         self.assertEqual(err_payload["error"]["code"], "E_SEND_CONFIRMATION_REQUIRED")
+
+    def test_no_open_or_show_draft_interface(self):
+        proc = subprocess.run([str(CLI), "open", "--help"], text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=False)
+        self.assertNotEqual(proc.returncode, 0)
+
+        draft_help = subprocess.run([str(CLI), "draft", "--help"], text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=False)
+        self.assertEqual(draft_help.returncode, 0)
+        self.assertNotIn("--show", draft_help.stdout)
+        self.assertNotIn("--hidden", draft_help.stdout)
 
 
     def test_default_sender_from_env_and_workspace_dotenv(self):
