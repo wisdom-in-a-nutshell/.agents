@@ -16,10 +16,14 @@ It uses a fast read-only Apple Mail `Envelope Index` + `.emlx` path when
 available and explicitly falls back to Mail.app automation when allowed.
 Fallbacks are reported on `stderr` and in JSON `data.warnings`.
 
-Run it from a Dobby workspace root when possible. For draft/send identity, the
-only workspace-level mail default is `DOBBY_MAIL_DEFAULT_FROM`; put it in that
-workspace's `.env` or export it in the environment. Reads are not account-
-restricted by default; Apple Mail is the local source of truth.
+Run it from a Dobby workspace root when possible. Workspace identity is explicit:
+
+- `DOBBY_MAIL_DEFAULT_ACCOUNT` is required for ambiguous reads
+  (`recent`, `search`, `get`, `mailboxes`, `export`, `attachments`,
+  `draft-reply`). Use `--all-accounts` only when the user explicitly asks to
+  read across every Apple Mail account.
+- `DOBBY_MAIL_DEFAULT_FROM` is required for draft/send identity when `--sender`
+  is not passed. Do not fall back from one variable to the other.
 
 ## Common commands
 
@@ -70,7 +74,9 @@ $HOME/.agents/skills-source/owned/dobby-mail/scripts/dobby-mail draft-reply --id
 - Supports `--plain` only for operator inspection.
 - Supports `--no-input`; normal commands never prompt.
 - Primary output stays on stdout. Warnings/diagnostics go to stderr.
-- No secrets are accepted via flags or environment variables. `DOBBY_MAIL_DEFAULT_FROM` is a non-secret sender identity default, not an auth secret.
+- No secrets are accepted via flags or environment variables.
+  `DOBBY_MAIL_DEFAULT_ACCOUNT` and `DOBBY_MAIL_DEFAULT_FROM` are non-secret
+  identity defaults, not auth secrets.
 
 ## Testing
 

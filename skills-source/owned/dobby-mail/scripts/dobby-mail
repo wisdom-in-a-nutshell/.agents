@@ -35,6 +35,7 @@ EXIT_TIMEOUT = 5
 
 DEFAULT_LIMIT = 20
 MAX_LIMIT = 200
+DEFAULT_ACCOUNT_ENV = "DOBBY_MAIL_DEFAULT_ACCOUNT"
 DEFAULT_FROM_ENV = "DOBBY_MAIL_DEFAULT_FROM"
 
 
@@ -285,7 +286,88 @@ def config_value(name: str) -> str | None:
 def resolve_sender(raw: str | None) -> str | None:
     if raw and raw.strip():
         return raw.strip()
-    return config_value(DEFAULT_FROM_ENV)
+    value = config_value(DEFAULT_FROM_ENV)
+    if value:
+        return value
+    raise CliError(
+        "E_DEFAULT_FROM_REQUIRED",
+        f"{DEFAULT_FROM_ENV} is required for draft/send identity",
+        f"Set {DEFAULT_FROM_ENV} in the workspace .env/static defaults, or pass --sender explicitly.",
+        EXIT_USAGE,
+    )
+
+
+def resolve_read_account(args: argparse.Namespace) -> str | None:
+    if getattr(args, "all_accounts", False):
+        return None
+    raw = getattr(args, "account", None) or config_value(DEFAULT_ACCOUNT_ENV)
+    if raw and raw.strip():
+        return raw.strip()
+    raise CliError(
+        "E_DEFAULT_ACCOUNT_REQUIRED",
+        f"{DEFAULT_ACCOUNT_ENV} is required for ambiguous mail reads",
+        f"Set {DEFAULT_ACCOUNT_ENV} in the workspace .env/static defaults, pass --account, or pass --all-accounts explicitly.",
+        EXIT_USAGE,
+    )
+
+
+def account_matches(account: dict[str, Any], raw: str) -> bool:
+    needle = raw.strip().lower()
+    candidates = [account.get("id"), account.get("name"), *(account.get("email_addresses") or [])]
+    return any(str(candidate).strip().lower() == needle for candidate in candidates if candidate)
+
+
+def public_account_scope(scope: dict[str, Any]) -> dict[str, Any]:
+    matched = scope.get("matched_account")
+    if matched:
+        matched = {
+            "id": matched.get("id"),
+            "name": matched.get("name"),
+            "email_addresses": matched.get("email_addresses") or [],
+        }
+    return {
+        "mode": scope["mode"],
+        "configured": scope.get("configured"),
+        "matched_account": matched,
+    }
+
+
+def resolve_account_scope(args: argparse.Namespace, warnings: WarningSink) -> dict[str, Any]:
+    raw = resolve_read_account(args)
+    if raw is None:
+        return {"mode": "all", "configured": None, "tokens": [], "matched_account": None}
+
+    requested_backend = getattr(args, "backend", "auto")
+    # UUID/local path tokens can be applied directly to the fast mailbox URLs.
+    raw_tokens = [raw]
+    should_lookup = "@" in raw or requested_backend in {"auto", "mail-app"}
+    if not should_lookup:
+        return {"mode": "account", "configured": raw, "tokens": raw_tokens, "matched_account": None}
+
+    try:
+        accounts = jxa_accounts(getattr(args, "timeout_sec", 30)).get("accounts", [])
+    except CliError as exc:
+        if requested_backend == "fast" and "@" not in raw:
+            warnings.warn(
+                exc.code,
+                f"Could not resolve {DEFAULT_ACCOUNT_ENV} via Mail.app; using raw account token for fast filtering.",
+                exc.hint,
+                backend="mail-app",
+            )
+            return {"mode": "account", "configured": raw, "tokens": raw_tokens, "matched_account": None}
+        raise
+
+    for account in accounts:
+        if account_matches(account, raw):
+            tokens = [str(account.get("id"))] if account.get("id") else raw_tokens
+            return {"mode": "account", "configured": raw, "tokens": tokens, "matched_account": account}
+
+    raise CliError(
+        "E_DEFAULT_ACCOUNT_NOT_FOUND",
+        f"Configured mail account not found in Apple Mail: {raw}",
+        f"Set {DEFAULT_ACCOUNT_ENV} to one of the Apple Mail account email addresses/names/ids, or pass --all-accounts explicitly.",
+        EXIT_USAGE,
+    )
 
 
 def resolve_mail_root(raw: str | None) -> Path:
@@ -487,6 +569,7 @@ class FastMailStore:
             )
         try:
             conn = sqlite3.connect(sqlite_uri(self.index_path), uri=True, timeout=5)
+            conn.text_factory = lambda b: b.decode("utf-8", "replace")
             conn.row_factory = sqlite3.Row
             self.conn = conn
             return conn
@@ -521,7 +604,17 @@ class FastMailStore:
                 return f"{table_alias}.{quote_ident(col)}"
         return default
 
-    def build_query(self, *, query: str | None, limit: int, date_from: str | None, date_to: str | None, mailbox: str | None, rowid: str | None = None) -> tuple[str, list[Any]]:
+    def build_query(
+        self,
+        *,
+        query: str | None,
+        limit: int,
+        date_from: str | None,
+        date_to: str | None,
+        mailbox: str | None,
+        rowid: str | None = None,
+        account_tokens: list[str] | None = None,
+    ) -> tuple[str, list[Any]]:
         if "messages" not in self.tables():
             raise CliError("E_FAST_SCHEMA_UNSUPPORTED", "Envelope Index has no messages table", "Use Mail.app fallback or update dobby-mail schema support.", EXIT_DEP)
 
@@ -570,6 +663,15 @@ class FastMailStore:
         if mailbox:
             where.append(f"LOWER(CAST({mailbox_expr} AS TEXT)) LIKE ?")
             params.append(f"%{mailbox.lower()}%")
+        account_clauses: list[str] = []
+        for token in account_tokens or []:
+            cleaned = str(token).strip().lower()
+            if not cleaned:
+                continue
+            account_clauses.append(f"(LOWER(CAST({mailbox_expr} AS TEXT)) LIKE ? OR LOWER(CAST({mailbox_url_expr} AS TEXT)) LIKE ?)")
+            params.extend([f"%{cleaned}%", f"%{cleaned}%"])
+        if account_clauses:
+            where.append("(" + " OR ".join(account_clauses) + ")")
         from_pair = parse_date_arg(date_from)
         to_pair = parse_date_arg(date_to)
         if from_pair:
@@ -608,13 +710,22 @@ class FastMailStore:
         params.append(limit)
         return sql, params
 
-    def search(self, *, query: str | None, limit: int, date_from: str | None, date_to: str | None, mailbox: str | None = None) -> list[dict[str, Any]]:
-        sql, params = self.build_query(query=query, limit=limit, date_from=date_from, date_to=date_to, mailbox=mailbox)
+    def search(
+        self,
+        *,
+        query: str | None,
+        limit: int,
+        date_from: str | None,
+        date_to: str | None,
+        mailbox: str | None = None,
+        account_tokens: list[str] | None = None,
+    ) -> list[dict[str, Any]]:
+        sql, params = self.build_query(query=query, limit=limit, date_from=date_from, date_to=date_to, mailbox=mailbox, account_tokens=account_tokens)
         rows = self.connect().execute(sql, params).fetchall()
         return [self.normalize_row(row) for row in rows]
 
-    def get(self, rowid: str) -> dict[str, Any]:
-        sql, params = self.build_query(query=None, limit=1, date_from=None, date_to=None, mailbox=None, rowid=rowid)
+    def get(self, rowid: str, account_tokens: list[str] | None = None) -> dict[str, Any]:
+        sql, params = self.build_query(query=None, limit=1, date_from=None, date_to=None, mailbox=None, rowid=rowid, account_tokens=account_tokens)
         row = self.connect().execute(sql, params).fetchone()
         if row is None:
             raise CliError("E_MESSAGE_NOT_FOUND", f"No Apple Mail message found for id {rowid}", "Use search/recent to find a current message id.", EXIT_FAILURE)
@@ -630,8 +741,8 @@ class FastMailStore:
             item["body_unavailable_reason"] = "E_EMLX_NOT_FOUND"
         return item
 
-    def get_emlx_for_rowid(self, rowid: str) -> tuple[dict[str, Any], Path]:
-        sql, params = self.build_query(query=None, limit=1, date_from=None, date_to=None, mailbox=None, rowid=rowid)
+    def get_emlx_for_rowid(self, rowid: str, account_tokens: list[str] | None = None) -> tuple[dict[str, Any], Path]:
+        sql, params = self.build_query(query=None, limit=1, date_from=None, date_to=None, mailbox=None, rowid=rowid, account_tokens=account_tokens)
         row = self.connect().execute(sql, params).fetchone()
         if row is None:
             raise CliError("E_MESSAGE_NOT_FOUND", f"No Apple Mail message found for id {rowid}", "Use search/recent to find a current fast:<rowid> id.", EXIT_FAILURE)
@@ -641,7 +752,7 @@ class FastMailStore:
             raise CliError("E_EMLX_NOT_FOUND", f"Could not locate .emlx file for fast:{rowid}", "Use `get` without export/attachment extraction, or try Mail.app fallback.", EXIT_DEP)
         return item, emlx
 
-    def mailboxes(self, limit: int = 500) -> list[dict[str, Any]]:
+    def mailboxes(self, limit: int = 500, account_tokens: list[str] | None = None) -> list[dict[str, Any]]:
         if "mailboxes" not in self.tables():
             raise CliError("E_FAST_SCHEMA_UNSUPPORTED", "Envelope Index has no mailboxes table", "Use Mail.app fallback or update dobby-mail schema support.", EXIT_DEP)
         cols = self.columns("mailboxes")
@@ -651,8 +762,12 @@ class FastMailStore:
                 select.append(f"{quote_ident(col)} AS {quote_ident(col)}")
         rows = self.connect().execute(f"SELECT {', '.join(select)} FROM mailboxes ORDER BY ROWID LIMIT ?", (limit,)).fetchall()
         out = []
+        tokens = [str(token).strip().lower() for token in account_tokens or [] if str(token).strip()]
         for row in rows:
             d = dict(row)
+            haystack = " ".join(str(d.get(col) or "") for col in ["display_name", "name", "mailbox_name", "url"]).lower()
+            if tokens and not any(token in haystack for token in tokens):
+                continue
             out.append({
                 "id": f"fast-mailbox:{d.get('rowid')}",
                 "rowid": d.get("rowid"),
@@ -795,9 +910,42 @@ function msgSummary(m) {
     date_received: isoDate(safe(function(){ return m.dateReceived(); }, null)),
     date_sent: isoDate(safe(function(){ return m.dateSent(); }, null)),
     mailbox: safe(function(){ return String(m.mailbox().name()); }, null),
+    account: safe(function(){ return String(m.mailbox().account().name()); }, null),
     read_status: safe(function(){ return Boolean(m.readStatus()); }, null),
     threading_supported: true
   };
+}
+function accountMatches(a, raw) {
+  if (!raw) return true;
+  var needle = String(raw).trim().toLowerCase();
+  if (!needle) return true;
+  var candidates = [
+    safe(function(){ return String(a.id()); }, ''),
+    safe(function(){ return String(a.name()); }, '')
+  ];
+  var emails = safe(function(){ return a.emailAddresses().map(String); }, []);
+  candidates = candidates.concat(emails);
+  for (var i = 0; i < candidates.length; i++) {
+    if (String(candidates[i] || '').trim().toLowerCase() === needle) return true;
+  }
+  return false;
+}
+function findAccount(Mail, raw) {
+  if (!raw) return null;
+  var accounts = Mail.accounts();
+  for (var i = 0; i < accounts.length; i++) {
+    if (accountMatches(accounts[i], raw)) return accounts[i];
+  }
+  return null;
+}
+function inboxesForAccount(account) {
+  var boxes = safe(function(){ return account.mailboxes(); }, []);
+  var out = [];
+  for (var i = 0; i < boxes.length; i++) {
+    var name = safe(function(){ return String(boxes[i].name()); }, '').toLowerCase();
+    if (name === 'inbox') out.push(boxes[i]);
+  }
+  return out.length ? out : boxes;
 }
 function normalizeAddresses(raw) {
   if (!raw) return [];
@@ -824,10 +972,11 @@ JSON.stringify({accounts: accounts});
     return run_osascript(script, timeout_sec=timeout_sec)
 
 
-def jxa_mailboxes(timeout_sec: int, limit: int) -> dict[str, Any]:
+def jxa_mailboxes(timeout_sec: int, limit: int, account: str | None = None) -> dict[str, Any]:
     script = JXA_LIBRARY + r'''
 var input = readInput();
 var limit = input.limit || 200;
+var accountRaw = input.account || null;
 var Mail = Application('Mail');
 var out = [];
 function addMailbox(mb, accountName, prefix, depth) {
@@ -846,21 +995,27 @@ function addMailbox(mb, accountName, prefix, depth) {
   for (var i = 0; i < children.length && out.length < limit; i++) addMailbox(children[i], accountName, path, depth + 1);
 }
 var accounts = Mail.accounts();
+if (accountRaw && !findAccount(Mail, accountRaw)) {
+  JSON.stringify({status:'error', code:'E_DEFAULT_ACCOUNT_NOT_FOUND', message:'Configured mail account not found in Apple Mail: ' + accountRaw, hint:'Set DOBBY_MAIL_DEFAULT_ACCOUNT to an Apple Mail account email/name/id, or pass --all-accounts.'});
+} else {
 for (var a = 0; a < accounts.length && out.length < limit; a++) {
+  if (accountRaw && !accountMatches(accounts[a], accountRaw)) continue;
   var accountName = safe(function(){ return String(accounts[a].name()); }, null);
   var boxes = safe(function(){ return accounts[a].mailboxes(); }, []);
   for (var b = 0; b < boxes.length && out.length < limit; b++) addMailbox(boxes[b], accountName, '', 0);
 }
 JSON.stringify({mailboxes: out});
+}
 '''
-    return run_osascript(script, input_json={"limit": limit}, timeout_sec=timeout_sec)
+    return run_osascript(script, input_json={"limit": limit, "account": account}, timeout_sec=timeout_sec)
 
 
-def jxa_search(query: str | None, limit: int, timeout_sec: int, scope: str = "inbox") -> dict[str, Any]:
+def jxa_search(query: str | None, limit: int, timeout_sec: int, scope: str = "inbox", account: str | None = None) -> dict[str, Any]:
     script = JXA_LIBRARY + r'''
 var input = readInput();
 var limit = input.limit || 20;
 var q = (input.query || '').toLowerCase();
+var accountRaw = input.account || null;
 var Mail = Application('Mail');
 var boxes = [];
 if (input.scope === 'selected') {
@@ -871,26 +1026,46 @@ if (input.scope === 'selected') {
   }).slice(0, limit);
   JSON.stringify({messages: selectedOut, scope: 'selected'});
 } else {
-  boxes.push(Mail.inbox());
-  var out = [];
-  for (var bi = 0; bi < boxes.length && out.length < limit; bi++) {
-    var msgs = safe(function(){ return boxes[bi].messages(); }, []);
-    for (var i = msgs.length - 1; i >= 0 && out.length < limit; i--) {
-      var s = msgSummary(msgs[i]);
-      if (q && (((s.subject || '') + ' ' + (s.sender || '')).toLowerCase().indexOf(q) < 0)) continue;
-      out.push(s);
+  if (accountRaw) {
+    var account = findAccount(Mail, accountRaw);
+    if (!account) {
+      JSON.stringify({status:'error', code:'E_DEFAULT_ACCOUNT_NOT_FOUND', message:'Configured mail account not found in Apple Mail: ' + accountRaw, hint:'Set DOBBY_MAIL_DEFAULT_ACCOUNT to an Apple Mail account email/name/id, or pass --all-accounts.'});
+    } else {
+      boxes = inboxesForAccount(account);
+      var out = [];
+      for (var bi = 0; bi < boxes.length && out.length < limit; bi++) {
+        var msgs = safe(function(){ return boxes[bi].messages(); }, []);
+        for (var i = msgs.length - 1; i >= 0 && out.length < limit; i--) {
+          var s = msgSummary(msgs[i]);
+          if (q && (((s.subject || '') + ' ' + (s.sender || '')).toLowerCase().indexOf(q) < 0)) continue;
+          out.push(s);
+        }
+      }
+      JSON.stringify({messages: out, scope: 'inbox', account: accountRaw});
     }
+  } else {
+    boxes.push(Mail.inbox());
+    var out = [];
+    for (var bi = 0; bi < boxes.length && out.length < limit; bi++) {
+      var msgs = safe(function(){ return boxes[bi].messages(); }, []);
+      for (var i = msgs.length - 1; i >= 0 && out.length < limit; i--) {
+        var s = msgSummary(msgs[i]);
+        if (q && (((s.subject || '') + ' ' + (s.sender || '')).toLowerCase().indexOf(q) < 0)) continue;
+        out.push(s);
+      }
+    }
+    JSON.stringify({messages: out, scope: 'inbox'});
   }
-  JSON.stringify({messages: out, scope: 'inbox'});
 }
 '''
-    return run_osascript(script, input_json={"query": query, "limit": limit, "scope": scope}, timeout_sec=timeout_sec)
+    return run_osascript(script, input_json={"query": query, "limit": limit, "scope": scope, "account": account}, timeout_sec=timeout_sec)
 
 
-def jxa_get(mail_id: str, timeout_sec: int, scope: str = "inbox", max_body_chars: int | None = None) -> dict[str, Any]:
+def jxa_get(mail_id: str, timeout_sec: int, scope: str = "inbox", max_body_chars: int | None = None, account: str | None = None) -> dict[str, Any]:
     script = JXA_LIBRARY + r'''
 var input = readInput();
 var target = String(input.id || '').replace(/^mail:/, '');
+var accountRaw = input.account || null;
 var Mail = Application('Mail');
 function attachBody(s) {
   var body = safe(function(){ return String(s._message.content()); }, null);
@@ -915,7 +1090,20 @@ function findInMessages(msgs) {
 }
 var found = null;
 if (input.scope === 'selected') found = findInMessages(safe(function(){ return Mail.selection(); }, []));
-if (!found) found = findInMessages(safe(function(){ return Mail.inbox().messages(); }, []));
+if (!found) {
+  var boxes = [];
+  if (accountRaw) {
+    var account = findAccount(Mail, accountRaw);
+    if (!account) {
+      JSON.stringify({status:'error', code:'E_DEFAULT_ACCOUNT_NOT_FOUND', message:'Configured mail account not found in Apple Mail: ' + accountRaw, hint:'Set DOBBY_MAIL_DEFAULT_ACCOUNT to an Apple Mail account email/name/id, or pass --all-accounts.'});
+    } else {
+      boxes = inboxesForAccount(account);
+    }
+  } else {
+    boxes = [Mail.inbox()];
+  }
+  for (var bi = 0; bi < boxes.length && !found; bi++) found = findInMessages(safe(function(){ return boxes[bi].messages(); }, []));
+}
 if (!found) {
   JSON.stringify({status:'error', code:'E_MESSAGE_NOT_FOUND', message:'Message not found in Mail.app fallback scope', hint:'Use search/recent first, or use fast backend with Full Disk Access.'});
 } else {
@@ -928,7 +1116,7 @@ if (!found) {
   JSON.stringify({message: found});
 }
 '''
-    return run_osascript(script, input_json={"id": mail_id, "scope": scope, "max_body_chars": max_body_chars}, timeout_sec=timeout_sec)
+    return run_osascript(script, input_json={"id": mail_id, "scope": scope, "max_body_chars": max_body_chars, "account": account}, timeout_sec=timeout_sec)
 
 
 def jxa_create_draft(payload: dict[str, Any], timeout_sec: int) -> dict[str, Any]:
@@ -1159,29 +1347,32 @@ def command_accounts(args: argparse.Namespace, warnings: WarningSink) -> dict[st
 
 def command_mailboxes(args: argparse.Namespace, warnings: WarningSink) -> dict[str, Any]:
     limit = clamp_limit(args.limit)
+    account_scope = resolve_account_scope(args, warnings)
     backend, fallback, result = run_with_fallback(
         args,
         warnings,
         "mailboxes",
-        lambda: {"mailboxes": make_store(args).mailboxes(limit=limit)},
-        lambda: jxa_mailboxes(args.timeout_sec, limit),
+        lambda: {"mailboxes": make_store(args).mailboxes(limit=limit, account_tokens=account_scope["tokens"])},
+        lambda: jxa_mailboxes(args.timeout_sec, limit, account=account_scope.get("configured")),
     )
-    return {"backend": backend, "requested_backend": args.backend, "fallback_used": fallback, "mailboxes": result.get("mailboxes", []), "warnings": warnings.items}
+    return {"backend": backend, "requested_backend": args.backend, "fallback_used": fallback, "account_scope": public_account_scope(account_scope), "mailboxes": result.get("mailboxes", []), "warnings": warnings.items}
 
 
 def command_search(args: argparse.Namespace, warnings: WarningSink) -> dict[str, Any]:
     limit = clamp_limit(args.limit)
+    account_scope = resolve_account_scope(args, warnings)
     backend, fallback, result = run_with_fallback(
         args,
         warnings,
         "search",
-        lambda: {"messages": make_store(args).search(query=args.query, limit=limit, date_from=args.date_from, date_to=args.date_to, mailbox=args.mailbox)},
-        lambda: jxa_search(args.query, limit, args.timeout_sec, scope=args.scope),
+        lambda: {"messages": make_store(args).search(query=args.query, limit=limit, date_from=args.date_from, date_to=args.date_to, mailbox=args.mailbox, account_tokens=account_scope["tokens"])},
+        lambda: jxa_search(args.query, limit, args.timeout_sec, scope=args.scope, account=account_scope.get("configured")),
     )
     return {
         "backend": backend,
         "requested_backend": args.backend,
         "fallback_used": fallback,
+        "account_scope": public_account_scope(account_scope),
         "query": args.query,
         "messages": result.get("messages", []),
         "warnings": warnings.items,
@@ -1203,14 +1394,15 @@ def normalize_message_id(raw: str) -> tuple[str, str]:
 def command_get(args: argparse.Namespace, warnings: WarningSink) -> dict[str, Any]:
     kind, value = normalize_message_id(args.id)
     max_body_chars = args.max_body_chars
+    account_scope = resolve_account_scope(args, warnings)
 
     def fast_get() -> dict[str, Any]:
         if kind not in {"fast", "rowid"}:
             raise CliError("E_FAST_ID_UNSUPPORTED", f"Fast backend cannot get id kind {kind}", "Use a fast:<rowid> id from search/recent, or --backend mail-app for mail:<id>.", EXIT_USAGE)
-        return {"message": make_store(args).get(value)}
+        return {"message": make_store(args).get(value, account_tokens=account_scope["tokens"])}
 
     def app_get() -> dict[str, Any]:
-        return jxa_get(value if kind != "mail" else value, args.timeout_sec, scope=args.scope, max_body_chars=max_body_chars)
+        return jxa_get(value if kind != "mail" else value, args.timeout_sec, scope=args.scope, max_body_chars=max_body_chars, account=account_scope.get("configured"))
 
     backend, fallback, result = run_with_fallback(args, warnings, "get", fast_get, app_get)
     msg = result.get("message")
@@ -1218,7 +1410,7 @@ def command_get(args: argparse.Namespace, warnings: WarningSink) -> dict[str, An
         for field in ["body_text", "body_html"]:
             if isinstance(msg.get(field), str) and len(msg[field]) > max_body_chars:
                 msg[field] = msg[field][: max_body_chars - 1] + "…"
-    return {"backend": backend, "requested_backend": args.backend, "fallback_used": fallback, "message": msg, "warnings": warnings.items}
+    return {"backend": backend, "requested_backend": args.backend, "fallback_used": fallback, "account_scope": public_account_scope(account_scope), "message": msg, "warnings": warnings.items}
 
 
 def draft_payload_from_args(args: argparse.Namespace) -> dict[str, Any]:
@@ -1416,8 +1608,9 @@ def command_export(args: argparse.Namespace, warnings: WarningSink) -> dict[str,
     kind, value = normalize_message_id(args.id)
     if kind not in {"fast", "rowid"}:
         raise CliError("E_EXPORT_FAST_ONLY", "export currently requires a fast:<rowid> id", "Use search/recent with the fast backend first.", EXIT_USAGE)
+    account_scope = resolve_account_scope(args, warnings)
     out_dir = Path(args.out_dir).expanduser().resolve()
-    item, emlx = make_store(args).get_emlx_for_rowid(value)
+    item, emlx = make_store(args).get_emlx_for_rowid(value, account_tokens=account_scope["tokens"])
     parsed = parse_emlx(emlx)
     out_dir.mkdir(parents=True, exist_ok=True)
     written: list[dict[str, Any]] = []
@@ -1439,17 +1632,18 @@ def command_export(args: argparse.Namespace, warnings: WarningSink) -> dict[str,
         raw_path = out_dir / f"message-{value}.eml"
         raw_path.write_bytes(read_raw_eml_from_emlx(emlx))
         written.append({"kind": "raw_eml", "path": str(raw_path)})
-    return {"backend": "fast", "message": item, "out_dir": str(out_dir), "written": written, "warnings": warnings.items}
+    return {"backend": "fast", "account_scope": public_account_scope(account_scope), "message": item, "out_dir": str(out_dir), "written": written, "warnings": warnings.items}
 
 
 def command_attachments(args: argparse.Namespace, warnings: WarningSink) -> dict[str, Any]:
     kind, value = normalize_message_id(args.id)
     if kind not in {"fast", "rowid"}:
         raise CliError("E_ATTACHMENTS_FAST_ONLY", "attachments currently requires a fast:<rowid> id", "Use search/recent with the fast backend first.", EXIT_USAGE)
+    account_scope = resolve_account_scope(args, warnings)
     out_dir = Path(args.out_dir).expanduser().resolve()
-    item, emlx = make_store(args).get_emlx_for_rowid(value)
+    item, emlx = make_store(args).get_emlx_for_rowid(value, account_tokens=account_scope["tokens"])
     saved = extract_emlx_attachments(emlx, out_dir)
-    return {"backend": "fast", "message": item, "out_dir": str(out_dir), "attachments": saved, "warnings": warnings.items}
+    return {"backend": "fast", "account_scope": public_account_scope(account_scope), "message": item, "out_dir": str(out_dir), "attachments": saved, "warnings": warnings.items}
 
 
 def add_common(parser: argparse.ArgumentParser) -> None:
@@ -1467,6 +1661,11 @@ def add_backend(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--index-path", help="Apple Mail Envelope Index path. Defaults to latest V*/MailData/Envelope Index or DOBBY_MAIL_INDEX.")
 
 
+def add_account_scope(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument("--account", help=f"Read account email/name/id. Defaults to {DEFAULT_ACCOUNT_ENV}.")
+    parser.add_argument("--all-accounts", action="store_true", help=f"Explicitly read all Apple Mail accounts instead of {DEFAULT_ACCOUNT_ENV}.")
+
+
 def add_draft_args(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--to", action="append", help="Recipient address. Repeat or comma-separate.")
     parser.add_argument("--cc", action="append", help="CC address. Repeat or comma-separate.")
@@ -1474,7 +1673,7 @@ def add_draft_args(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--subject", required=False, help="Message subject.")
     parser.add_argument("--body", help="Message body text.")
     parser.add_argument("--body-file", help="Path to body text, or - for stdin.")
-    parser.add_argument("--sender", help=f"Sender account/address as understood by Apple Mail. Defaults to {DEFAULT_FROM_ENV} when set.")
+    parser.add_argument("--sender", help=f"Sender account/address as understood by Apple Mail. If omitted, {DEFAULT_FROM_ENV} is required.")
     parser.add_argument("--hidden", action="store_true", help="Create draft without showing compose window. Default shows window.")
     parser.add_argument("--dry-run", action="store_true", help="Return intended action without creating/sending anything.")
 
@@ -1505,12 +1704,12 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     p.set_defaults(func=command_accounts)
 
     p = sub.add_parser("mailboxes", help="List Apple Mail mailboxes.")
-    add_common(p); add_backend(p)
+    add_common(p); add_backend(p); add_account_scope(p)
     p.add_argument("--limit", type=int, default=200)
     p.set_defaults(func=command_mailboxes)
 
     p = sub.add_parser("search", help="Search message metadata.")
-    add_common(p); add_backend(p)
+    add_common(p); add_backend(p); add_account_scope(p)
     p.add_argument("--query", required=True, help="Case-insensitive search over subject/sender metadata.")
     p.add_argument("--limit", type=int, default=DEFAULT_LIMIT)
     p.add_argument("--from", dest="date_from", help="Lower bound date (fast backend).")
@@ -1520,7 +1719,7 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     p.set_defaults(func=command_search)
 
     p = sub.add_parser("recent", help="List recent messages.")
-    add_common(p); add_backend(p)
+    add_common(p); add_backend(p); add_account_scope(p)
     p.add_argument("--limit", type=int, default=DEFAULT_LIMIT)
     p.add_argument("--from", dest="date_from")
     p.add_argument("--to", dest="date_to")
@@ -1529,7 +1728,7 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     p.set_defaults(func=command_recent)
 
     p = sub.add_parser("get", help="Get one message by id from search/recent.")
-    add_common(p); add_backend(p)
+    add_common(p); add_backend(p); add_account_scope(p)
     p.add_argument("--id", required=True, help="Message id, e.g. fast:123 or mail:456.")
     p.add_argument("--max-body-chars", type=int, default=None)
     p.add_argument("--scope", choices=["inbox", "selected"], default="inbox", help="Mail.app fallback get scope.")
@@ -1567,14 +1766,14 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     p.set_defaults(func=command_flag)
 
     p = sub.add_parser("export", help="Export one fast-backend message body/metadata to files.")
-    add_common(p); add_backend(p)
+    add_common(p); add_backend(p); add_account_scope(p)
     p.add_argument("--id", required=True, help="fast:<rowid> id.")
     p.add_argument("--out-dir", required=True)
     p.add_argument("--raw", action="store_true", help="Also export raw .eml content.")
     p.set_defaults(func=command_export)
 
     p = sub.add_parser("attachments", help="Extract attachments from one fast-backend message.")
-    add_common(p); add_backend(p)
+    add_common(p); add_backend(p); add_account_scope(p)
     p.add_argument("--id", required=True, help="fast:<rowid> id.")
     p.add_argument("--out-dir", required=True)
     p.set_defaults(func=command_attachments)
@@ -1584,7 +1783,7 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     p.set_defaults(func=command_draft)
 
     p = sub.add_parser("draft-reply", help="Create an unsent reply draft from a message id.")
-    add_common(p); add_backend(p); add_draft_args(p)
+    add_common(p); add_backend(p); add_account_scope(p); add_draft_args(p)
     p.add_argument("--id", required=True, help="Original message id, e.g. fast:123.")
     p.add_argument("--read-backend", choices=["auto", "fast", "mail-app"], default="auto", help="Backend used to read original message metadata.")
     p.set_defaults(func=command_draft_reply)
