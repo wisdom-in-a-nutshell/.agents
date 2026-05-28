@@ -2,29 +2,37 @@
 from __future__ import annotations
 
 import argparse
+import base64
 import contextlib
 import datetime as dt
 import email
+from email.message import EmailMessage
 from email import policy
-from email.utils import parseaddr
+from email.utils import formatdate, make_msgid, parseaddr
+import http.server
 import json
 import os
 from pathlib import Path
 import platform
 import re
 import shutil
+import socketserver
 import sqlite3
 import subprocess
 import sys
 import tempfile
 import textwrap
 import time
+import urllib.error
+import urllib.parse
+import urllib.request
 import uuid
+import webbrowser
 from typing import Any, Iterable
 
 SCHEMA_VERSION = "1.0"
 TOOL = "dobby-mail"
-VERSION = "0.2.0"
+VERSION = "0.3.0"
 
 EXIT_OK = 0
 EXIT_FAILURE = 1
@@ -37,6 +45,12 @@ DEFAULT_LIMIT = 20
 MAX_LIMIT = 200
 DEFAULT_ACCOUNT_ENV = "DOBBY_MAIL_DEFAULT_ACCOUNT"
 DEFAULT_FROM_ENV = "DOBBY_MAIL_DEFAULT_FROM"
+GMAIL_CLIENT_FILE_ENV = "DOBBY_GMAIL_OAUTH_CLIENT_FILE"
+GMAIL_KEYCHAIN_SERVICE = "dobby-mail-gmail-refresh-token"
+GMAIL_SCOPES = [
+    "https://www.googleapis.com/auth/gmail.compose",
+    "https://www.googleapis.com/auth/gmail.modify",
+]
 
 
 def utc_now() -> str:
