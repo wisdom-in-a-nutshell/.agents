@@ -2663,7 +2663,8 @@ def command_gmail_filter(args: argparse.Namespace, warnings: WarningSink, *, def
         "warnings": warnings.items,
     }
     if args.dry_run:
-        data["created"] = {"state": f"would_{command_action}"}
+        would_state = command_action.replace("created_", "create_", 1)
+        data["created"] = {"state": f"would_{would_state}"}
         return data
     result = gmail_api_request(account, "POST", "settings/filters", payload, args.timeout_sec)
     data["created"] = {
