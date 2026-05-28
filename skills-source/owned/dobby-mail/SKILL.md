@@ -59,7 +59,9 @@ $HOME/.agents/skills-source/owned/dobby-mail/scripts/dobby-mail draft-reply --id
 - Prefer drafts. `draft` and `draft-reply` create **unsent background** Apple
   Mail drafts; they do not open Mail.app compose windows. When Mail exposes a
   message id for the draft, the JSON includes a best-effort `message://` link
-  for user-click inspection.
+  for user-click inspection. Apple Mail may still briefly appear if macOS has
+  to launch or wake Mail.app; the client explicitly avoids activation and forces
+  the draft invisible, but Apple Mail does not provide a hard zero-UI draft API.
 - Do not send, delete, archive, move, or mark messages unless Adi explicitly
   approves that exact action in the current turn.
 - `send` exists only for explicit approved sends and requires `--confirm-send`.

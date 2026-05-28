@@ -1123,6 +1123,8 @@ def jxa_create_draft(payload: dict[str, Any], timeout_sec: int) -> dict[str, Any
     script = JXA_LIBRARY + r'''
 var input = readInput();
 var Mail = Application('Mail');
+var mailWasRunning = safe(function(){ return Boolean(Mail.running()); }, null);
+safe(function(){ Mail.launch(); }, null);
 var to = normalizeAddresses(input.to);
 var cc = normalizeAddresses(input.cc);
 var bcc = normalizeAddresses(input.bcc);
@@ -1135,7 +1137,9 @@ if (to.length === 0) {
   cc.forEach(function(addr) { msg.ccRecipients.push(Mail.CcRecipient({address: addr})); });
   bcc.forEach(function(addr) { msg.bccRecipients.push(Mail.BccRecipient({address: addr})); });
   if (input.sender) msg.sender = input.sender;
+  safe(function(){ msg.visible = false; }, null);
   msg.save();
+  safe(function(){ msg.visible = false; }, null);
   var draftId = safe(function(){ return String(msg.id()); }, '');
   var messageId = safe(function(){ return String(msg.messageId()); }, null);
   JSON.stringify({draft: {
@@ -1149,6 +1153,7 @@ if (to.length === 0) {
     bcc_count: bcc.length,
     sender: input.sender || null,
     visible: input.visible !== false,
+    mail_was_running: mailWasRunning,
     state: 'created_unsent_draft'
   }});
 }
