@@ -15,7 +15,7 @@ ROOT = Path(__file__).resolve().parents[1]
 CLI = ROOT / "scripts" / "dobby-mail"
 
 
-def run_cli(args, *, env=None, input_text=None, check=True):
+def run_cli(args, *, env=None, input_text=None, check=True, cwd=None):
     merged = os.environ.copy()
     if env:
         merged.update(env)
@@ -26,6 +26,7 @@ def run_cli(args, *, env=None, input_text=None, check=True):
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
         env=merged,
+        cwd=cwd,
         check=False,
     )
     if check and proc.returncode != 0:
@@ -144,6 +145,19 @@ class DobbyMailTests(unittest.TestCase):
         self.assertNotEqual(proc.returncode, 0)
         self.assertEqual(err_payload["status"], "error")
         self.assertEqual(err_payload["error"]["code"], "E_SEND_CONFIRMATION_REQUIRED")
+
+
+    def test_default_sender_from_env_and_workspace_dotenv(self):
+        _, payload = run_cli(["draft", "--to", "a@example.com", "--subject", "Hi", "--body", "Hello", "--dry-run"], env={"DOBBY_MAIL_DEFAULT_FROM": "default@example.com"})
+        self.assertEqual(payload["data"]["draft"]["sender"], "default@example.com")
+
+        _, explicit = run_cli(["draft", "--to", "a@example.com", "--subject", "Hi", "--body", "Hello", "--sender", "explicit@example.com", "--dry-run"], env={"DOBBY_MAIL_DEFAULT_FROM": "default@example.com"})
+        self.assertEqual(explicit["data"]["draft"]["sender"], "explicit@example.com")
+
+        with tempfile.TemporaryDirectory() as d:
+            Path(d, ".env").write_text("DOBBY_MAIL_DEFAULT_FROM=workspace@example.com\n")
+            _, dotenv_payload = run_cli(["draft", "--to", "a@example.com", "--subject", "Hi", "--body", "Hello", "--dry-run"], env={"DOBBY_MAIL_DEFAULT_FROM": ""}, cwd=d)
+            self.assertEqual(dotenv_payload["data"]["draft"]["sender"], "workspace@example.com")
 
     def test_export_and_attachments(self):
         with tempfile.TemporaryDirectory() as d:

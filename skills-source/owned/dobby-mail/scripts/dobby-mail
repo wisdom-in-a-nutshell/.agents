@@ -35,6 +35,7 @@ EXIT_TIMEOUT = 5
 
 DEFAULT_LIMIT = 20
 MAX_LIMIT = 200
+DEFAULT_FROM_ENV = "DOBBY_MAIL_DEFAULT_FROM"
 
 
 def utc_now() -> str:
@@ -237,6 +238,54 @@ def emit(payload: dict[str, Any], plain: bool = False) -> None:
                 print(err["hint"], file=sys.stderr)
         return
     print(json.dumps(payload, ensure_ascii=False, indent=2))
+
+
+def _decode_dotenv_value(raw: str) -> str:
+    value = raw.strip()
+    if len(value) >= 2 and value[0] == value[-1] and value[0] in {'"', "'"}:
+        value = value[1:-1]
+    return value.strip()
+
+
+def candidate_dotenv_files(start: Path | None = None) -> list[Path]:
+    workspace = os.environ.get("DOBBY_WORKSPACE", "").strip()
+    if workspace:
+        candidate = Path(workspace).expanduser().resolve() / ".env"
+        return [candidate] if candidate.exists() else []
+
+    cur = (start or Path.cwd()).resolve()
+    return [candidate / ".env" for candidate in [cur, *cur.parents] if (candidate / ".env").exists()]
+
+
+def dotenv_value(name: str) -> str | None:
+    prefix = name + "="
+    for env_file in candidate_dotenv_files():
+        try:
+            lines = env_file.read_text(encoding="utf-8").splitlines()
+        except OSError:
+            continue
+        for line in lines:
+            stripped = line.strip()
+            if not stripped or stripped.startswith("#") or "=" not in stripped:
+                continue
+            if stripped.startswith("export "):
+                stripped = stripped[len("export "):].lstrip()
+            if stripped.startswith(prefix):
+                return _decode_dotenv_value(stripped[len(prefix):]) or None
+    return None
+
+
+def config_value(name: str) -> str | None:
+    raw = os.environ.get(name)
+    if raw and raw.strip():
+        return raw.strip()
+    return dotenv_value(name)
+
+
+def resolve_sender(raw: str | None) -> str | None:
+    if raw and raw.strip():
+        return raw.strip()
+    return config_value(DEFAULT_FROM_ENV)
 
 
 def resolve_mail_root(raw: str | None) -> Path:
@@ -1185,7 +1234,7 @@ def draft_payload_from_args(args: argparse.Namespace) -> dict[str, Any]:
         "bcc": bcc,
         "subject": args.subject or "",
         "body": body,
-        "sender": args.sender,
+        "sender": resolve_sender(args.sender),
         "visible": not args.hidden,
     }
 
@@ -1202,6 +1251,7 @@ def command_draft(args: argparse.Namespace, warnings: WarningSink) -> dict[str, 
                 "cc": payload["cc"],
                 "bcc_count": len(payload["bcc"]),
                 "subject": payload["subject"],
+                "sender": payload["sender"],
                 "visible": payload["visible"],
                 "body_preview": clean_text(payload["body"], 500),
             },
@@ -1232,7 +1282,7 @@ def command_draft_reply(args: argparse.Namespace, warnings: WarningSink) -> dict
         "bcc": parse_recipients(args.bcc),
         "subject": subject,
         "body": body,
-        "sender": args.sender,
+        "sender": resolve_sender(args.sender),
         "visible": not args.hidden,
     }
     if not payload["to"]:
@@ -1246,6 +1296,7 @@ def command_draft_reply(args: argparse.Namespace, warnings: WarningSink) -> dict
             "subject": payload["subject"],
             "visible": payload["visible"],
             "body_preview": clean_text(payload["body"], 500),
+            "sender": payload["sender"],
             "reply_to": {"id": args.id, "sender": msg.get("sender"), "source_message_id": msg.get("source_message_id")},
             "threading_supported": False,
         }
@@ -1282,6 +1333,7 @@ def command_send(args: argparse.Namespace, warnings: WarningSink) -> dict[str, A
                 "cc": payload["cc"],
                 "bcc_count": len(payload["bcc"]),
                 "subject": payload["subject"],
+                "sender": payload["sender"],
                 "body_preview": clean_text(payload["body"], 500),
             },
             "warnings": warnings.items,
@@ -1422,7 +1474,7 @@ def add_draft_args(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--subject", required=False, help="Message subject.")
     parser.add_argument("--body", help="Message body text.")
     parser.add_argument("--body-file", help="Path to body text, or - for stdin.")
-    parser.add_argument("--sender", help="Sender account/address as understood by Apple Mail.")
+    parser.add_argument("--sender", help=f"Sender account/address as understood by Apple Mail. Defaults to {DEFAULT_FROM_ENV} when set.")
     parser.add_argument("--hidden", action="store_true", help="Create draft without showing compose window. Default shows window.")
     parser.add_argument("--dry-run", action="store_true", help="Return intended action without creating/sending anything.")
 
