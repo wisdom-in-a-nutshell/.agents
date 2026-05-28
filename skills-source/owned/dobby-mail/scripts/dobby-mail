@@ -49,7 +49,6 @@ GMAIL_CLIENT_FILE_ENV = "DOBBY_GMAIL_OAUTH_CLIENT_FILE"
 GMAIL_KEYCHAIN_SERVICE = "dobby-mail-gmail-refresh-token"
 GMAIL_SCOPES = [
     "https://www.googleapis.com/auth/gmail.compose",
-    "https://www.googleapis.com/auth/gmail.modify",
 ]
 
 
@@ -1749,7 +1748,13 @@ class _GmailOAuthCallbackHandler(http.server.BaseHTTPRequestHandler):
     def do_GET(self) -> None:  # noqa: N802 - stdlib naming
         parsed = urllib.parse.urlparse(self.path)
         params = urllib.parse.parse_qs(parsed.query)
-        self.server.oauth_code = (params.get("code") or [None])[0]  # type: ignore[attr-defined]
+        expected_state = getattr(self.server, "oauth_state", None)  # type: ignore[attr-defined]
+        actual_state = (params.get("state") or [None])[0]
+        if expected_state and actual_state != expected_state:
+            self.server.oauth_error = "state_mismatch"  # type: ignore[attr-defined]
+            self.server.oauth_code = None  # type: ignore[attr-defined]
+        else:
+            self.server.oauth_code = (params.get("code") or [None])[0]  # type: ignore[attr-defined]
         self.server.oauth_error = (params.get("error") or [None])[0]  # type: ignore[attr-defined]
         if self.server.oauth_code:  # type: ignore[attr-defined]
             body = b"OAuth complete. You can close this tab and return to Dobby."
@@ -1786,8 +1791,9 @@ def command_gmail_auth(args: argparse.Namespace, warnings: WarningSink) -> dict[
         server.timeout = timeout
         server.oauth_code = None  # type: ignore[attr-defined]
         server.oauth_error = None  # type: ignore[attr-defined]
+        server.oauth_state = state  # type: ignore[attr-defined]
         host, port = server.server_address
-        redirect_uri = f"http://{host}:{port}/callback"
+        redirect_uri = f"http://localhost:{port}/"
         query = urllib.parse.urlencode(
             {
                 "client_id": cfg["client_id"],
