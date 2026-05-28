@@ -83,6 +83,10 @@ Use [Codex Control Plane Ownership](/Users/dobby/.agents/docs/references/codex-c
   - [`sync-config.sh`](/Users/dobby/.agents/codex/scripts/sync-config.sh)
   - `~/.agents/codex/scripts/sync-config.sh --apply`
   - this syncs the managed global config, global `hooks.json`, and removes stale managed agent-role files from older control-plane versions
+- Check local Azure OpenAI auth readiness for Azure-backed Codex:
+  - [`check-codex-azure-auth.sh`](/Users/dobby/.agents/codex/scripts/check-codex-azure-auth.sh)
+  - `~/.agents/codex/scripts/check-codex-azure-auth.sh`
+  - this verifies Azure CLI is installed, `az login` has been completed, and the machine can mint a short-lived token for `https://cognitiveservices.azure.com/.default`
 - Validate canonical and rendered Codex control-plane state:
   - [`check-codex-control-plane.sh`](/Users/dobby/.agents/codex/scripts/check-codex-control-plane.sh)
   - `~/.agents/codex/scripts/check-codex-control-plane.sh`
