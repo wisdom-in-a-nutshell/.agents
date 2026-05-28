@@ -1,16 +1,10 @@
 # Canonical portable baseline for ~/.codex/config.toml
 # Keep this focused on stable settings only.
-# Temporary 2026-05-27: this is rolled back to the long-running normal
-# Codex/OpenAI default while Azure account/subscription state is being changed.
-# Azure was verified as working for Codex in session
-# 019e6a46-1825-73d0-8575-a1a7ed6b3fe5, and the intended next step is to make
-# Azure OpenAI the main/default provider again. To restore it, copy the provider
-# setup from azure.config.toml back into this file, set model_provider = "azure",
-# then run sync-config and validation.
 
 cli_auth_credentials_store = "file"
 mcp_oauth_credentials_store = "file"
 model = "gpt-5.5"
+model_provider = "azure"
 model_reasoning_effort = "high"
 plan_mode_reasoning_effort = "high"
 approval_policy = "never"
@@ -34,3 +28,14 @@ home = true
 [tui]
 theme = "catppuccin-macchiato"
 status_line = ["model-with-reasoning", "context-remaining", "current-dir", "codex-version", "context-window-size", "session-id", "fast-mode"]
+
+[model_providers.azure]
+name = "Azure OpenAI"
+base_url = "https://aip-openai.openai.azure.com/openai/v1"
+wire_api = "responses"
+
+[model_providers.azure.auth]
+command = "az"
+args = ["account", "get-access-token", "--scope", "https://cognitiveservices.azure.com/.default", "--query", "accessToken", "-o", "tsv"]
+timeout_ms = 10000
+refresh_interval_ms = 300000

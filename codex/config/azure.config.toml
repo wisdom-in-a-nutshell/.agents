@@ -13,15 +13,6 @@ wire_api = "responses"
 
 [model_providers.azure.auth]
 command = "az"
-args = [
-  "account",
-  "get-access-token",
-  "--scope",
-  "https://ai.azure.com/.default",
-  "--query",
-  "accessToken",
-  "-o",
-  "tsv",
-]
+args = ["account", "get-access-token", "--scope", "https://cognitiveservices.azure.com/.default", "--query", "accessToken", "-o", "tsv"]
 timeout_ms = 10000
 refresh_interval_ms = 300000
