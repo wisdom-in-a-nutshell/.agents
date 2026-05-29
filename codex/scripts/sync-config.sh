@@ -36,7 +36,8 @@ Options:
   --global-config <path>     Override global codex config target
   --global-hooks <path>      Override global codex hooks target
   --canonical-dir <path>     Directory containing canonical templates:
-                             global.config.toml and bundled-skills-policy.json
+                             global.config.toml, *.config.toml profile files,
+                             and bundled-skills-policy.json
   --mcp-registry <path>      Shared MCP registry
                              (default: mcp/config/presets.json)
   --plugin-registry <path>   Native Codex plugin registry
@@ -1126,6 +1127,35 @@ sync_global() {
   cleanup_agent_role_dir "Global Agent Roles" "$GLOBAL_AGENTS_DIR"
 }
 
+sync_profile_configs() {
+  local target_dir
+  local profile_template
+  local target_file
+  local profile_name
+
+  target_dir="$(dirname "$GLOBAL_CONFIG")"
+  ensure_parent_dir "${target_dir}/config.toml"
+
+  shopt -s nullglob
+  for profile_template in "$CANONICAL_DIR"/*.config.toml; do
+    profile_name="$(basename "$profile_template")"
+    [[ "$profile_name" == "global.config.toml" ]] && continue
+
+    require_readable_file "$profile_template"
+    ensure_no_conflict_markers "$profile_template"
+    target_file="${target_dir}/${profile_name}"
+
+    log ""
+    log "=== Codex Profile (${target_file}) ==="
+    show_diff "$target_file" "$profile_template"
+
+    if (( APPLY == 1 )); then
+      install_rendered_file "$profile_template" "$target_file"
+    fi
+  done
+  shopt -u nullglob
+}
+
 ensure_enabled_openai_bundled_plugins() {
   PYTHONPATH="$ROOT_DIR" python3 - "$PLUGIN_REGISTRY" "$HOME" <<'PY'
 from __future__ import annotations
@@ -1268,6 +1298,7 @@ fi
 
 if (( SYNC_GLOBAL == 1 )); then
   sync_global
+  sync_profile_configs
 fi
 if (( APPLY == 1 )); then
   ensure_enabled_openai_bundled_plugins

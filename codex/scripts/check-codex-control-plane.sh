@@ -696,6 +696,25 @@ if global_config.exists():
                 "Re-run codex/scripts/sync-config.sh --apply"
             )
 
+global_config_dir = global_config.parent
+for profile_template in sorted(canonical_dir.glob("*.config.toml")):
+    if profile_template.name == "global.config.toml":
+        continue
+    profile_runtime = global_config_dir / profile_template.name
+    if not profile_runtime.is_file():
+        fail(
+            f"Codex profile is missing: {profile_runtime}. "
+            "Re-run codex/scripts/sync-config.sh --apply"
+        )
+    try:
+        if profile_runtime.read_text(encoding="utf-8") != profile_template.read_text(encoding="utf-8"):
+            fail(
+                f"Codex profile is out of sync: {profile_runtime}. "
+                "Re-run codex/scripts/sync-config.sh --apply"
+            )
+    except Exception as exc:
+        fail(f"failed reading Codex profile {profile_runtime}: {exc}")
+
 validated_repo_count = 0
 for item in resolved_repos:
     repo_path = Path(item["path"]).resolve()
