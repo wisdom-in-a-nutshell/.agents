@@ -46,3 +46,35 @@ Date: 2026-05-29
   - `https://aipodcast.ing` returned HTTP 200 with `x-azure-ref`.
   - `https://app.aipodcast.ing` returned HTTP 307 with `x-azure-ref`.
   - `https://thoughtforms-life.aipodcast.ing` returned HTTP 200 with `x-azure-ref`.
+- 2026-05-29: Follow-up audit confirmed `adithyan-io` and `www-adithyan-io` disappeared from Front Door custom-domain list.
+- 2026-05-29: Remaining Front Door routes/custom domains after cleanup:
+  - `thoughtforms-route` -> `thoughtforms-life.aipodcast.ing` -> `thoughtforms-life.azurewebsites.net`
+  - `aipodcasting-landing-route` -> `aipodcast.ing` -> `aipodcasting-public-website.azurewebsites.net`
+  - `aipodcasting-app-route` -> `app.aipodcast.ing` -> `aipodcasting-app.azurewebsites.net`
+  - `podcast-futureoflife-route` -> `podcast.futureoflife.org` -> `future-of-life-institute-podcast-aipodcast-ing.azurewebsites.net`
+  - `default-route` -> Front Door default endpoint -> `thoughtforms-life.azurewebsites.net`
+- 2026-05-29: Migration caveat found: direct requests to the Front Door origins with the public hostname returned 404, while the default Azure origin hostnames respond differently. Do not flip DNS directly to the current App Service origins without a host binding/TLS plan.
+
+## Deep Audit Summary
+- App Service plan `ASP-aipodcastinggroup-aef6` is `P1mv3`, capacity 1, hosting 10 always-on Linux container apps.
+- 14-day App Service plan averages: about 15.8% CPU and 38.4% memory.
+- 14-day Front Door metrics: about 227k requests and 96 GB response size.
+- Highest 14-day app request counts:
+  - `future-of-life-institute-podcast-aipodcast-ing`: about 437k requests, about 1.7k 5xx.
+  - `blog-personal-adi`: about 410k requests, 0 5xx.
+  - `thoughtforms-life`: about 393k requests, about 1.6k 5xx.
+  - `aipodcasting-app`: about 373k requests, about 18 5xx.
+  - `aipodcasting-public-website`: about 243k requests, about 12.8k 5xx.
+- Redis `aip-redis` is a likely later cleanup candidate: about 2.4 average connected clients, 0% memory, and 0.19 ops/sec over 14 days.
+- PostgreSQL and MySQL are active and should not be treated as quick cleanup candidates.
+- `ghost-backup-vault-lrs` listed no protected backup items during audit; `ghost-backup-vault` protects two Azure File Share items from `ghoststorage01`.
+- ACR `aipodcasting` is Standard with about 21 GB stored.
+
+## Recommended Next No-Change Step
+Draft a migration runbook for `thoughtforms-life.aipodcast.ing` before applying any changes. The runbook should specify:
+- Current Front Door route, origin group, and origin host header.
+- Required App Service hostname binding and TLS/certificate path.
+- Cloudflare DNS record target and whether it should be proxied.
+- Expected response headers/status after migration.
+- Smoke checks for homepage, redirects, Ghost admin/API if applicable, and asset loading.
+- Rollback DNS target and validation commands.

@@ -28,6 +28,8 @@ The current deployment has a meaningful daily floor cost from Azure App Service 
 - One Linux App Service plan, `ASP-aipodcastinggroup-aef6` (`P1mv3`), hosts 10 container apps with `alwaysOn=true`.
 - Azure Front Door profile `ghost-front-door` routes several public hostnames to single App Service origins.
 - DNS audit showed `adithyan.io`, `www.adithyan.io`, and `mindreader.adithyan.io` are Cloudflare-proxied directly to App Service, while `aipodcast.ing`, `app.aipodcast.ing`, `thoughtforms-life.aipodcast.ing`, and `podcast.futureoflife.org` are still served through Azure Front Door.
+- Deep audit on 2026-05-29 showed the stale `adithyan.io` and `www.adithyan.io` Front Door custom-domain deletes completed; remaining Front Door custom domains are `thoughtforms-life.aipodcast.ing`, `podcast.futureoflife.org`, `aipodcast.ing`, and `app.aipodcast.ing`.
+- Front Door origins use `*.azurewebsites.net` as the origin host header. Direct requests to those Azure origins with the public hostname returned 404 during audit, so active Front Door hostnames need an App Service custom-domain/TLS or host-header plan before DNS is flipped to Cloudflare.
 - User approved immediate cleanup for:
   - stale Front Door custom domains related to `adithyan.io` and `www.adithyan.io`;
   - stale/404 `blog.aipodcast.ing` and `cursorcast.aipodcast.ing` routing.
@@ -61,22 +63,26 @@ The current deployment has a meaningful daily floor cost from Azure App Service 
 - Cloudflare should be the preferred public edge where feasible.
 - Azure Front Door is a migration target because current configured routes use single App Service origins, not complex multi-origin load balancing.
 - `adithyan.io`, `www.adithyan.io`, `blog.aipodcast.ing`, and `cursorcast.aipodcast.ing` cleanup is approved for the initial batch.
+- First live Front Door migration candidate should be `thoughtforms-life.aipodcast.ing`, but only after a written runbook covers App Service hostname binding, TLS/cert handling, Cloudflare proxy mode, host header behavior, smoke checks, and rollback.
+- Avoid migrating `app.aipodcast.ing` first because it is product-critical and has higher blast radius.
+- Avoid changing `podcast.futureoflife.org` until domain ownership and DNS access are confirmed.
 
 ## Open Questions / Blockers
 - Need broader Cloudflare API/OAuth access before auditing Pages, Workers, R2, account tunnels, rulesets, and zone settings through API.
 - Confirm owner/desired future for `podcast.futureoflife.org`, which is outside the Cloudflare zones available to this token.
-- Azure Front Door custom domains `adithyan-io` and `www-adithyan-io` accepted deletion and remain in Azure `Deleting` state as of the latest check on 2026-05-29.
 
 ## Current Batch
 | Status | Work Item | Role | Resource |
 | --- | --- | --- | --- |
 | done | Remove approved stale Front Door routes and 404 DNS/routing records | parent | `resources/baseline-routing.md` |
-| in_progress | Recheck Azure async custom-domain deletion completion | parent | `resources/baseline-routing.md` |
+| done | Recheck Azure async custom-domain deletion completion | parent | `resources/baseline-routing.md` |
 | done | Validate affected hostnames and checkpoint Milestone 1 progress | parent | `resources/baseline-routing.md` |
+| todo | Draft `thoughtforms-life.aipodcast.ing` Front Door migration runbook without applying changes | parent | `resources/baseline-routing.md` |
 
 ## Backlog / Remaining Work
 - [ ] Create and maintain `resources/baseline-routing.md` with current Azure/Cloudflare route map and cleanup evidence.
 - [ ] Build a full hostname ownership table for all Azure App Service, Front Door, Cloudflare, Vercel, and tunnel-backed hostnames.
+- [ ] Draft a no-change migration runbook for `thoughtforms-life.aipodcast.ing` as the first likely Front Door replacement candidate.
 - [ ] Decide whether to delete empty `ghost-backup-vault-lrs` after portal/CLI confirmation.
 - [ ] Audit Redis callers and decide whether `aip-redis` can be removed, replaced, or left temporarily.
 - [ ] Review ACR retention/storage and decide whether to downgrade from Standard or prune old images.
@@ -99,3 +105,6 @@ The current deployment has a meaningful daily floor cost from Azure App Service 
 - 2026-05-29: [DONE] Removed Azure Front Door routes `blog-personal-route` and `blog-personal-static-route`; remaining Front Door routes are `thoughtforms-route`, `default-route`, `podcast-futureoflife-route`, `aipodcasting-landing-route`, and `aipodcasting-app-route`.
 - 2026-05-29: [IN-PROGRESS] Requested deletion of Front Door custom domains `adithyan-io` and `www-adithyan-io`; Azure reports both in `Deleting` state after local CLI waiters were stopped.
 - 2026-05-29: [DONE] Smoke checks passed for unaffected live hostnames: `adithyan.io` and `www.adithyan.io` return HTTP 200 through Cloudflare; `aipodcast.ing` returns HTTP 200 through Front Door; `app.aipodcast.ing` returns HTTP 307; `thoughtforms-life.aipodcast.ing` returns HTTP 200.
+- 2026-05-29: [DONE] Read-only deep audit confirmed `adithyan-io` and `www-adithyan-io` custom domains disappeared from Front Door. Remaining Front Door domains are `thoughtforms-life.aipodcast.ing`, `podcast.futureoflife.org`, `aipodcast.ing`, and `app.aipodcast.ing`.
+- 2026-05-29: [DONE] Read-only deep audit found 14-day usage signals: App Service plan averaged about 15.8% CPU and 38.4% memory; Front Door served about 227k requests and 96 GB response; Redis averaged about 2.4 clients, 0% memory, and 0.19 ops/sec; databases are active and should not be treated as quick cleanup.
+- 2026-05-29: [DONE] Next recommended work is documentation-only first: draft the `thoughtforms-life.aipodcast.ing` Front Door migration runbook, then review before any DNS or Azure mutation.
