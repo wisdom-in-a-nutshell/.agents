@@ -28,6 +28,9 @@ MAX_LOG_BYTES = 5 * 1024 * 1024
 MAX_REASON_CHARS = 12000
 MAX_COMMAND_OUTPUT_CHARS = 3500
 AZURE_PROVIDER_RE = re.compile(r"^azure(?:$|[-_])", re.IGNORECASE)
+AGENT_COMMIT_COMMAND_RE = re.compile(
+    r"(?m)^(Command:\s+git commit -m Agent: )\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}Z$"
+)
 FEEDBACK_COOLDOWN_SEC = 20 * 60
 
 NON_ACTIONABLE_PUSH_PATTERNS = {
@@ -213,11 +216,15 @@ def feedback_turn_state_path() -> Path:
     return Path.home() / ".local/state/agents-control-plane/stop-feedback-turns.json"
 
 
+def normalize_feedback_reason(reason: str) -> str:
+    return AGENT_COMMIT_COMMAND_RE.sub(r"\1<TIMESTAMP>", reason)
+
+
 def feedback_reason_key(thread_id: str, reason: str) -> str:
     digest = hashlib.sha256()
     digest.update(thread_id.encode("utf-8", errors="replace"))
     digest.update(b"\0")
-    digest.update(reason.encode("utf-8", errors="replace"))
+    digest.update(normalize_feedback_reason(reason).encode("utf-8", errors="replace"))
     return digest.hexdigest()
 
 
@@ -252,16 +259,16 @@ def mark_feedback_turn_queued(thread_id: str, reason: str, *, now: float | None 
     path.write_text(json.dumps(compacted, sort_keys=True) + "\n", encoding="utf-8")
 
 
-def queue_feedback_turn(payload: dict[str, Any], reason: str, cwd: str) -> bool:
+def queue_feedback_turn(payload: dict[str, Any], reason: str, cwd: str) -> str | None:
     thread_id = payload.get("session_id")
     if not isinstance(thread_id, str) or not thread_id.strip():
-        return False
+        return None
     if recently_queued_feedback_turn(thread_id, reason):
-        return False
+        return "recent"
 
     script = Path(__file__).with_name("stop_feedback_turn.py")
     if not script.is_file():
-        return False
+        return None
 
     state_dir = Path.home() / ".local/state/agents-control-plane/stop-feedback-turns"
     state_dir.mkdir(parents=True, exist_ok=True)
@@ -294,13 +301,13 @@ def queue_feedback_turn(payload: dict[str, Any], reason: str, cwd: str) -> bool:
             start_new_session=True,
         )
         mark_feedback_turn_queued(thread_id, reason)
-        return True
+        return "queued"
     except Exception:
         try:
             reason_file.unlink()
         except OSError:
             pass
-        return False
+        return None
 
 
 def read_payload(debug: bool) -> dict[str, Any] | None:
@@ -602,8 +609,13 @@ def maybe_continue(
         # FIXME: Remove this Azure-specific fallback once upstream Codex fixes
         # Stop-hook continuation replay for local UUID message IDs:
         # https://github.com/openai/codex/issues/20783
-        if cwd and queue_feedback_turn(payload, reason, cwd):
+        queue_result = queue_feedback_turn(payload, reason, cwd) if cwd else None
+        if queue_result == "queued":
             return warning("Stop hook finalization failed; queued a follow-up turn with commit/check feedback.")
+        if queue_result == "recent":
+            return warning(
+                "Stop hook finalization failed; a matching follow-up turn was already queued recently."
+            )
         return warning(
             "Stop hook finalization needs attention, but this Azure-backed Codex thread could not queue "
             "a follow-up feedback turn.\n\n"
