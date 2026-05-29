@@ -5,6 +5,7 @@ SKILL_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 python3 -m py_compile \
   "$SKILL_DIR/scripts/session_memory_lib.py" \
   "$SKILL_DIR/scripts/session-memory" \
+  "$SKILL_DIR/scripts/validate" \
   "$SKILL_DIR/scripts/remember-session" \
   "$SKILL_DIR/scripts/hooks/session-start" \
   "$SKILL_DIR/scripts/hooks/user-prompt-submit" \
@@ -49,6 +50,7 @@ if [[ ! -f "$session_path" || "${session_path##*.}" != "json" ]]; then
   exit 1
 fi
 "$session_cli" validate "$session_path" --no-input >/dev/null
+"$SKILL_DIR/scripts/validate" --workspace-root "$repo" "$session_path" --no-input >/dev/null
 
 stdin_write_output="$(cat <<'JSON' | "$session_cli" write --workspace-root "$repo" --stdin-json --no-input
 {

@@ -2,15 +2,16 @@
 # Fast checks for the shared Dobby workspace shape linter.
 set -euo pipefail
 SKILL_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-python3 -m py_compile "$SKILL_DIR/scripts/lint-workspace"
+python3 -m py_compile "$SKILL_DIR/scripts/lint-workspace" "$SKILL_DIR/scripts/validate"
 
 workspace="$(mktemp -d)"
 trap 'rm -rf "$workspace"' EXIT
 
 mkdir -p \
+  "$workspace/.agents/skills" \
   "$workspace/memory/areas" \
-  "$workspace/memory/sessions" \
-  "$workspace/journal/daily" \
+  "$workspace/memory/sessions/2026/05" \
+  "$workspace/journal/daily/2026-05-29" \
   "$workspace/journal/monthly" \
   "$workspace/journal/templates" \
   "$workspace/state" \
@@ -27,11 +28,47 @@ touch \
   "$workspace/scripts/check-full.sh" \
   "$workspace/scripts/lint-workspace.py"
 
+ln -s "$SKILL_DIR" "$workspace/.agents/skills/dobby-workspace"
+ln -s "$SKILL_DIR/../dobby-lifecycle" "$workspace/.agents/skills/dobby-lifecycle"
+ln -s "$SKILL_DIR/../journal-checkin" "$workspace/.agents/skills/journal-checkin"
+ln -s "$SKILL_DIR/../dobby-shelf" "$workspace/.agents/skills/dobby-shelf"
+
 cat >"$workspace/state/shelf.json" <<JSON
-{"revision": 1, "items": []}
+{"schemaVersion": 1, "revision": 1, "updatedAt": "2026-05-29T08:00:00.000Z", "items": []}
+JSON
+
+cat >"$workspace/journal/daily/2026-05-29/morning.json" <<JSON
+{
+  "agent": "test",
+  "date": "2026-05-29",
+  "kind": "morning",
+  "tz": "Europe/Berlin",
+  "captured_at": "2026-05-29T08:00:00+02:00",
+  "source": "test",
+  "sleep": {"score_10": 7},
+  "energy": {"score_10": 6},
+  "mood": {"score_10": 7},
+  "grateful": ["one", "two", "three"],
+  "one_thing_that_matters": "Protect deep work."
+}
+JSON
+
+cat >"$workspace/memory/sessions/2026/05/29-080000.json" <<JSON
+{
+  "schemaVersion": 1,
+  "createdAt": "2026-05-29T08:00:00+02:00",
+  "source": "test",
+  "reason": "test",
+  "threadId": null,
+  "summary": ["Carry this forward."]
+}
 JSON
 
 "$SKILL_DIR/scripts/lint-workspace" --workspace-root "$workspace"
+
+git -C "$workspace" init -q
+git -C "$workspace" add .
+"$SKILL_DIR/scripts/validate" --workspace-root "$workspace" --scope staged --no-input
 
 touch "$workspace/STRUCTURE.md"
 if "$SKILL_DIR/scripts/lint-workspace" --workspace-root "$workspace" >/tmp/dobby-workspace-lint-test.out 2>&1; then

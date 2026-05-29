@@ -143,3 +143,4 @@ python3 .agents/skills/journal-checkin/scripts/read_journal_entries.py --last 3 
 - [general.md](./references/general.md)
 - [write_journal_entry.py](./scripts/write_journal_entry.py)
 - [read_journal_entries.py](./scripts/read_journal_entries.py)
+- [validate](./scripts/validate) — validates structured `morning.json` and `night.json` entries for workspace checks

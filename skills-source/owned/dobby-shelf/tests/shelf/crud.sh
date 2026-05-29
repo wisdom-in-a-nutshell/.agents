@@ -16,6 +16,16 @@ cat > "$TMP_WS/state/shelf.json" <<'JSON'
 }
 JSON
 export DOBBY_WORKSPACE="$TMP_WS"
+UPCOMING_DATE="$(python3 - <<'PY'
+from datetime import date, timedelta
+print((date.today() + timedelta(days=30)).isoformat())
+PY
+)"
+DEFER_DATE="$(python3 - <<'PY'
+from datetime import date, timedelta
+print((date.today() + timedelta(days=31)).isoformat())
+PY
+)"
 
 section "list empty shelf"
 run_dobby shelf list
@@ -25,7 +35,7 @@ assert_jq_eq "command=shelf.list" '.command' "shelf.list" "$CAPTURED_STDOUT"
 assert_jq_eq "open count 0" '.data.counts.open' "0" "$CAPTURED_STDOUT"
 
 section "add item"
-run_dobby shelf add --title "Test Shelf Client" --kind do --show-at 2026-05-10 --note "from test" --id test-shelf-client
+run_dobby shelf add --title "Test Shelf Client" --kind do --show-at "$UPCOMING_DATE" --note "from test" --id test-shelf-client
 assert_exit "add exit 0" 0 "$CAPTURED_EXIT"
 assert_envelope_ok "shelf.add" "$CAPTURED_STDOUT"
 assert_jq_eq "id set" '.data.item.id' "test-shelf-client" "$CAPTURED_STDOUT"
@@ -48,10 +58,10 @@ assert_contains "plain includes id" "test-shelf-client" "$CAPTURED_STDOUT"
 assert_not_contains "plain no json" '"schema_version"' "$CAPTURED_STDOUT"
 
 section "defer item"
-run_dobby shelf defer test-shelf-client --show-at 2026-05-12
+run_dobby shelf defer test-shelf-client --show-at "$DEFER_DATE"
 assert_exit "defer exit 0" 0 "$CAPTURED_EXIT"
 assert_envelope_ok "shelf.defer" "$CAPTURED_STDOUT"
-assert_jq_eq "showAt updated" '.data.item.showAt' "2026-05-12" "$CAPTURED_STDOUT"
+assert_jq_eq "showAt updated" '.data.item.showAt' "$DEFER_DATE" "$CAPTURED_STDOUT"
 assert_jq_eq "deferCount incremented" '.data.item.deferCount' "1" "$CAPTURED_STDOUT"
 
 section "done item"

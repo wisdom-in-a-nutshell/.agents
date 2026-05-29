@@ -65,6 +65,12 @@ $HOME/.agents/skills-source/owned/dobby-shelf/scripts/dobby-shelf focus <id-or-p
 
 The CLI emits JSON envelopes by default; use `--plain` only for operator inspection.
 
+For workspace checks, use the skill-owned validator:
+
+```bash
+$HOME/.agents/skills-source/owned/dobby-shelf/scripts/validate --workspace-root /path/to/workspace state/shelf.json
+```
+
 ## Operating rules
 
 - Read `state/shelf.json` before writing.

@@ -1,0 +1,107 @@
+#!/usr/bin/env python3
+"""Validate Dobby lifecycle-owned files.
+
+Public skill validator facade used by workspace checks. It currently validates
+session-memory JSON records by delegating to the session-memory client, which is
+the schema source of truth.
+"""
+
+from __future__ import annotations
+
+import argparse
+import re
+import subprocess
+import sys
+from pathlib import Path
+
+SCRIPT_DIR = Path(__file__).resolve().parent
+SESSION_MEMORY = SCRIPT_DIR / "session-memory"
+SESSION_RE = re.compile(r"^memory/sessions/\d{4}/\d{2}/[^/]+\.json$")
+
+
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description="Validate Dobby lifecycle-owned workspace files.")
+    parser.add_argument("paths", nargs="*", help="Repo-relative lifecycle paths to validate.")
+    parser.add_argument("--workspace-root", default=".", help="Dobby workspace root.")
+    parser.add_argument("--scope", choices=("paths", "staged", "full"), default="paths")
+    parser.add_argument("--paths-from-stdin", action="store_true", help="Read repo-relative paths from stdin.")
+    parser.add_argument("--no-input", action="store_true", help="Accepted for non-interactive callers.")
+    return parser.parse_args()
+
+
+def fail(message: str) -> None:
+    print(f"[validate-lifecycle] {message}", file=sys.stderr)
+    raise SystemExit(1)
+
+
+def rel_path(root: Path, path: Path) -> str:
+    try:
+        return str(path.resolve().relative_to(root))
+    except ValueError:
+        return str(path)
+
+
+def git_paths(root: Path, scope: str) -> list[str]:
+    if scope == "staged":
+        cmd = ["git", "diff", "--cached", "--name-only", "--diff-filter=ACMR"]
+    elif scope == "full":
+        cmd = ["git", "ls-files"]
+    else:
+        return []
+    result = subprocess.run(cmd, cwd=root, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, timeout=30)
+    if result.returncode != 0:
+        return []
+    return [line.strip() for line in result.stdout.splitlines() if line.strip()]
+
+
+def full_session_paths(root: Path) -> list[str]:
+    sessions = root / "memory" / "sessions"
+    if not sessions.exists():
+        return []
+    return [str(path.relative_to(root)) for path in sorted(sessions.glob("*/*/*.json"))]
+
+
+def candidate_paths(root: Path, args: argparse.Namespace) -> list[Path]:
+    raw = list(args.paths)
+    if args.paths_from_stdin:
+        raw.extend(line.strip() for line in sys.stdin if line.strip())
+    if not raw and args.scope == "staged":
+        raw = git_paths(root, args.scope)
+    elif not raw and args.scope == "full":
+        raw = full_session_paths(root)
+    return [Path(item) if Path(item).is_absolute() else root / item for item in raw]
+
+
+def validate_session_record(root: Path, path: Path) -> None:
+    label = rel_path(root, path)
+    if not SESSION_RE.match(label):
+        return
+    if not path.exists():
+        fail(f"{label}: file is missing")
+    result = subprocess.run(
+        [str(SESSION_MEMORY), "validate", str(path), "--no-input"],
+        cwd=root,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+        timeout=30,
+    )
+    if result.returncode != 0:
+        output = "\n".join(part for part in (result.stderr.strip(), result.stdout.strip()) if part)
+        fail(f"{label}: invalid session-memory record\n{output}")
+
+
+def main() -> int:
+    args = parse_args()
+    root = Path(args.workspace_root).expanduser().resolve()
+    if not SESSION_MEMORY.is_file():
+        fail(f"missing session-memory client: {SESSION_MEMORY}")
+    paths = [path for path in candidate_paths(root, args) if SESSION_RE.match(rel_path(root, path))]
+    for path in paths:
+        validate_session_record(root, path)
+    print(f"[validate-lifecycle] passed ({len(paths)} files)")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

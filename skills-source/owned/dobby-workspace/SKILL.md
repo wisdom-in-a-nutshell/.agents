@@ -46,3 +46,26 @@ When it fails, treat the message as an instruction from the workspace:
 3. If Adi agrees, update the shared body map and linter together.
 
 Keep exact enforced shape in the linter, not in long prompt prose.
+
+## Validation orchestration
+
+Use the shared workspace validator from repo `scripts/check-fast.sh`:
+
+```bash
+.agents/skills/dobby-workspace/scripts/validate --workspace-root "$PWD" --scope staged --no-input
+```
+
+Validation architecture:
+
+- `dobby-workspace/scripts/validate` orchestrates fast checks and routes files.
+- Domain schemas stay with the owning skill.
+- Each domain skill exposes a public `scripts/validate` facade.
+- The global Stop hook stays generic; it should not know Dobby schemas.
+
+Current domain owners:
+
+| Files | Owner |
+|---|---|
+| `memory/sessions/**/*.json` | `dobby-lifecycle/scripts/validate` |
+| `journal/daily/*/morning.json`, `journal/daily/*/night.json` | `journal-checkin/scripts/validate` |
+| `state/shelf.json` | `dobby-shelf/scripts/validate` |

@@ -52,8 +52,13 @@ $HOME/.agents/skills-source/owned/dobby-lifecycle/scripts/hooks/user-prompt-subm
 $HOME/.agents/skills-source/owned/dobby-lifecycle/scripts/hooks/finalize-codex-thread
 $HOME/.agents/skills-source/owned/dobby-lifecycle/scripts/remember-session
 $HOME/.agents/skills-source/owned/dobby-lifecycle/scripts/session-memory
+$HOME/.agents/skills-source/owned/dobby-lifecycle/scripts/validate
 $HOME/.agents/skills-source/owned/dobby-lifecycle/prompts/remember-session.md
 ```
+
+`scripts/validate` is the public validator facade for lifecycle-owned workspace
+files. It delegates session-memory records to `session-memory validate`, which
+remains the schema source of truth.
 
 ## Reference files
 

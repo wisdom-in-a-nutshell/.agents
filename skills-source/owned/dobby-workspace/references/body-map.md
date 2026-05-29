@@ -54,6 +54,23 @@ soul.md
 One fact should have one canonical home. If another place needs awareness, point
 to the canonical home instead of duplicating.
 
+## Validation contract
+
+Whatever can be mechanically enforced should be enforced by validators, not by
+long prompt prose.
+
+```text
+repo scripts/check-fast.sh
+  -> dobby-workspace/scripts/validate
+       -> dobby-workspace/scripts/lint-workspace
+       -> dobby-lifecycle/scripts/validate
+       -> journal-checkin/scripts/validate
+       -> dobby-shelf/scripts/validate
+```
+
+`dobby-workspace` owns orchestration and body shape. Domain schemas stay with
+the skills that write the data.
+
 ## Memory contract
 
 - `memory/now.md` is the short active weekly layer.

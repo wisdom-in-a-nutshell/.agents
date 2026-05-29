@@ -1,0 +1,138 @@
+#!/usr/bin/env python3
+"""Validate structured Dobby journal entries.
+
+Public skill validator facade used by workspace checks. The journal-checkin
+skill owns morning/night JSON entry contracts; freeform general journal files
+remain Markdown and are not validated here.
+"""
+
+from __future__ import annotations
+
+import argparse
+import json
+import re
+import subprocess
+import sys
+from pathlib import Path
+from typing import Any
+
+SCRIPT_DIR = Path(__file__).resolve().parent
+if str(SCRIPT_DIR) not in sys.path:
+    sys.path.insert(0, str(SCRIPT_DIR))
+
+from write_journal_entry import STATE_FIELDS, missing_fields, validate_entry as validate_payload_fields  # noqa: E402
+
+JOURNAL_RE = re.compile(r"^journal/daily/(\d{4}-\d{2}-\d{2})/(morning|night)\.json$")
+
+
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description="Validate structured Dobby journal JSON entries.")
+    parser.add_argument("paths", nargs="*", help="Repo-relative journal paths to validate.")
+    parser.add_argument("--workspace-root", default=".", help="Dobby workspace root.")
+    parser.add_argument("--scope", choices=("paths", "staged", "full"), default="paths")
+    parser.add_argument("--paths-from-stdin", action="store_true", help="Read repo-relative paths from stdin.")
+    parser.add_argument("--no-input", action="store_true", help="Accepted for non-interactive callers.")
+    return parser.parse_args()
+
+
+def fail(message: str) -> None:
+    print(f"[validate-journal] {message}", file=sys.stderr)
+    raise SystemExit(1)
+
+
+def is_record(value: Any) -> bool:
+    return isinstance(value, dict)
+
+
+def rel_path(root: Path, path: Path) -> str:
+    try:
+        return str(path.resolve().relative_to(root))
+    except ValueError:
+        return str(path)
+
+
+def validate_journal_file(root: Path, path: Path) -> None:
+    label = rel_path(root, path)
+    match = JOURNAL_RE.match(label)
+    if not match:
+        return
+    path_date, path_kind = match.groups()
+    if not path.exists():
+        fail(f"{label}: file is missing")
+
+    try:
+        entry = json.loads(path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as exc:
+        fail(f"{label}: invalid JSON: {exc}")
+    if not is_record(entry):
+        fail(f"{label}: entry must be an object")
+
+    for field in ("agent", "date", "kind", "tz", "captured_at", "source"):
+        if not isinstance(entry.get(field), str) or not entry[field].strip():
+            fail(f"{label}: {field} must be a non-empty string")
+
+    if entry["date"] != path_date:
+        fail(f"{label}: date must match path date {path_date}")
+    if entry["kind"] != path_kind:
+        fail(f"{label}: kind must match file name {path_kind}")
+
+    validation_errors = validate_payload_fields(path_kind, entry)
+    if validation_errors:
+        fail(f"{label}: {'; '.join(validation_errors)}")
+
+    missing = missing_fields(path_kind, entry)
+    if missing:
+        fail(f"{label}: missing required field(s): {', '.join(missing)}")
+
+    for field in STATE_FIELDS:
+        state = entry.get(field)
+        if isinstance(state, dict) and "notes" in state and state["notes"] is not None and not state["notes"].strip():
+            fail(f"{label}: {field}.notes must be a non-empty string when present")
+
+
+def git_paths(root: Path, scope: str) -> list[str]:
+    if scope == "staged":
+        cmd = ["git", "diff", "--cached", "--name-only", "--diff-filter=ACMR"]
+    elif scope == "full":
+        cmd = ["git", "ls-files"]
+    else:
+        return []
+    result = subprocess.run(cmd, cwd=root, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, timeout=30)
+    if result.returncode != 0:
+        return []
+    return [line.strip() for line in result.stdout.splitlines() if line.strip()]
+
+
+def full_journal_paths(root: Path) -> list[str]:
+    daily = root / "journal" / "daily"
+    if not daily.exists():
+        return []
+    out = []
+    for path in sorted(daily.glob("*/morning.json")) + sorted(daily.glob("*/night.json")):
+        out.append(str(path.relative_to(root)))
+    return out
+
+
+def candidate_paths(root: Path, args: argparse.Namespace) -> list[Path]:
+    raw = list(args.paths)
+    if args.paths_from_stdin:
+        raw.extend(line.strip() for line in sys.stdin if line.strip())
+    if not raw and args.scope == "staged":
+        raw = git_paths(root, args.scope)
+    elif not raw and args.scope == "full":
+        raw = full_journal_paths(root)
+    return [Path(item) if Path(item).is_absolute() else root / item for item in raw]
+
+
+def main() -> int:
+    args = parse_args()
+    root = Path(args.workspace_root).expanduser().resolve()
+    paths = [path for path in candidate_paths(root, args) if JOURNAL_RE.match(rel_path(root, path))]
+    for path in paths:
+        validate_journal_file(root, path)
+    print(f"[validate-journal] passed ({len(paths)} files)")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
