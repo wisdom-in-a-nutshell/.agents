@@ -15,8 +15,6 @@ from typing import Any
 
 SKIP_UPSTREAM_REFS = {"", "-", "local-import"}
 PRESERVE_RELATIVE_PATHS = ("agents/openai.yaml",)
-SKILL_ENTRYPOINT = "SKILL.md"
-SKILL_SOURCE_TEMPLATE = "SKILL.src.md"
 
 
 @dataclass(frozen=True)
@@ -244,25 +242,6 @@ def restore_preserved_paths(skill: str, dst: Path, backup_root: Path, preserved:
         copy_path(restore_src, restore_dst)
 
 
-def skill_entrypoint_plan(src: Path) -> str | None:
-    if (src / SKILL_ENTRYPOINT).is_file():
-        return None
-    if (src / SKILL_SOURCE_TEMPLATE).is_file():
-        return f"{SKILL_SOURCE_TEMPLATE}->{SKILL_ENTRYPOINT}"
-    raise ValueError(f"upstream skill source missing {SKILL_ENTRYPOINT}: {src}")
-
-
-def materialize_skill_entrypoint(dst: Path) -> bool:
-    entrypoint = dst / SKILL_ENTRYPOINT
-    if entrypoint.is_file():
-        return False
-    source_template = dst / SKILL_SOURCE_TEMPLATE
-    if not source_template.is_file():
-        raise ValueError(f"refreshed skill source missing {SKILL_ENTRYPOINT}: {dst}")
-    shutil.copy2(source_template, entrypoint)
-    return True
-
-
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="Refresh external skills from upstream_ref entries in skills/registry.json"
@@ -364,13 +343,6 @@ def main() -> int:
                     )
                     continue
 
-                try:
-                    entrypoint_plan = skill_entrypoint_plan(src)
-                except Exception as exc:  # noqa: BLE001
-                    errors += 1
-                    print(f"ERROR: {exc}", file=sys.stderr)
-                    continue
-
                 if not args.force_dirty and git_path_dirty(root_dir, rel_dst):
                     skipped_dirty += 1
                     print(
@@ -383,17 +355,12 @@ def main() -> int:
                     preserved = backup_preserved_paths(skill.skill, dst, preserve_root)
                     replace_tree(src, dst)
                     restore_preserved_paths(skill.skill, dst, preserve_root, preserved)
-                    materialize_skill_entrypoint(dst)
                 preserve_suffix = (
                     f" (preserved: {','.join(preserved)})" if preserved else ""
                 )
-                entrypoint_suffix = (
-                    f" (materialize: {entrypoint_plan})" if entrypoint_plan else ""
-                )
                 print(
                     f"[{mode}] {'SYNC' if args.apply else 'WOULD SYNC'} "
-                    f"{skill.skill}: {skill.upstream_ref} -> {rel_dst}"
-                    f"{preserve_suffix}{entrypoint_suffix}"
+                    f"{skill.skill}: {skill.upstream_ref} -> {rel_dst}{preserve_suffix}"
                 )
                 updated += 1
 
