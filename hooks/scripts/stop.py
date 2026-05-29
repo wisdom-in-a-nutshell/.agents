@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import os
 import re
@@ -9,6 +10,7 @@ import shutil
 import sqlite3
 import subprocess
 import sys
+import tempfile
 import time
 from datetime import datetime, timezone
 from pathlib import Path
@@ -26,6 +28,7 @@ MAX_LOG_BYTES = 5 * 1024 * 1024
 MAX_REASON_CHARS = 12000
 MAX_COMMAND_OUTPUT_CHARS = 3500
 AZURE_PROVIDER_RE = re.compile(r"^azure(?:$|[-_])", re.IGNORECASE)
+FEEDBACK_COOLDOWN_SEC = 20 * 60
 
 NON_ACTIONABLE_PUSH_PATTERNS = {
     "permission denied": "permission denied",
@@ -156,14 +159,18 @@ def provider_from_thread_db(session_id: object) -> str | None:
     if not state_db.is_file():
         return None
 
+    conn: sqlite3.Connection | None = None
     try:
-        with sqlite3.connect(f"file:{state_db}?mode=ro", uri=True, timeout=1.0) as conn:
-            row = conn.execute(
-                "SELECT model_provider FROM threads WHERE id = ?",
-                (session_id,),
-            ).fetchone()
+        conn = sqlite3.connect(f"file:{state_db}?mode=ro", uri=True, timeout=1.0)
+        row = conn.execute(
+            "SELECT model_provider FROM threads WHERE id = ?",
+            (session_id,),
+        ).fetchone()
     except Exception:
         return None
+    finally:
+        if conn is not None:
+            conn.close()
 
     if not row:
         return None
@@ -200,6 +207,100 @@ def current_model_provider(payload: dict[str, Any]) -> str | None:
 
 def avoid_stop_continuation(payload: dict[str, Any]) -> bool:
     return is_azure_provider(current_model_provider(payload))
+
+
+def feedback_turn_state_path() -> Path:
+    return Path.home() / ".local/state/agents-control-plane/stop-feedback-turns.json"
+
+
+def feedback_reason_key(thread_id: str, reason: str) -> str:
+    digest = hashlib.sha256()
+    digest.update(thread_id.encode("utf-8", errors="replace"))
+    digest.update(b"\0")
+    digest.update(reason.encode("utf-8", errors="replace"))
+    return digest.hexdigest()
+
+
+def recently_queued_feedback_turn(thread_id: str, reason: str, *, now: float | None = None) -> bool:
+    now = time.time() if now is None else now
+    path = feedback_turn_state_path()
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except Exception:
+        return False
+    if not isinstance(data, dict):
+        return False
+    value = data.get(feedback_reason_key(thread_id, reason))
+    if not isinstance(value, (int, float)):
+        return False
+    return now - float(value) < FEEDBACK_COOLDOWN_SEC
+
+
+def mark_feedback_turn_queued(thread_id: str, reason: str, *, now: float | None = None) -> None:
+    now = time.time() if now is None else now
+    path = feedback_turn_state_path()
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except Exception:
+        data = {}
+    if not isinstance(data, dict):
+        data = {}
+    cutoff = now - FEEDBACK_COOLDOWN_SEC
+    compacted = {str(key): value for key, value in data.items() if isinstance(value, (int, float)) and value >= cutoff}
+    compacted[feedback_reason_key(thread_id, reason)] = now
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(compacted, sort_keys=True) + "\n", encoding="utf-8")
+
+
+def queue_feedback_turn(payload: dict[str, Any], reason: str, cwd: str) -> bool:
+    thread_id = payload.get("session_id")
+    if not isinstance(thread_id, str) or not thread_id.strip():
+        return False
+    if recently_queued_feedback_turn(thread_id, reason):
+        return False
+
+    script = Path(__file__).with_name("stop_feedback_turn.py")
+    if not script.is_file():
+        return False
+
+    state_dir = Path.home() / ".local/state/agents-control-plane/stop-feedback-turns"
+    state_dir.mkdir(parents=True, exist_ok=True)
+    handle = tempfile.NamedTemporaryFile(
+        "w",
+        encoding="utf-8",
+        prefix="reason-",
+        suffix=".txt",
+        dir=state_dir,
+        delete=False,
+    )
+    reason_file = Path(handle.name)
+    try:
+        with handle:
+            handle.write(reason)
+        subprocess.Popen(
+            [
+                sys.executable,
+                str(script),
+                "--thread-id",
+                thread_id,
+                "--cwd",
+                cwd,
+                "--reason-file",
+                str(reason_file),
+            ],
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            start_new_session=True,
+        )
+        mark_feedback_turn_queued(thread_id, reason)
+        return True
+    except Exception:
+        try:
+            reason_file.unlink()
+        except OSError:
+            pass
+        return False
 
 
 def read_payload(debug: bool) -> dict[str, Any] | None:
@@ -489,6 +590,8 @@ def push_needs_rebase(result: subprocess.CompletedProcess[str]) -> bool:
 def maybe_continue(
     payload: dict[str, Any],
     reason: str,
+    *,
+    cwd: str | None = None,
 ) -> dict[str, Any]:
     if payload.get("stop_hook_active") is True:
         return warning(
@@ -496,9 +599,14 @@ def maybe_continue(
             + reason
         )
     if avoid_stop_continuation(payload):
+        # FIXME: Remove this Azure-specific fallback once upstream Codex fixes
+        # Stop-hook continuation replay for local UUID message IDs:
+        # https://github.com/openai/codex/issues/20783
+        if cwd and queue_feedback_turn(payload, reason, cwd):
+            return warning("Stop hook finalization failed; queued a follow-up turn with commit/check feedback.")
         return warning(
-            "Stop hook finalization needs attention, but this Azure-backed Codex thread cannot safely use "
-            "automatic Stop-hook continuation because Azure rejects replayed local Codex item IDs.\n\n"
+            "Stop hook finalization needs attention, but this Azure-backed Codex thread could not queue "
+            "a follow-up feedback turn.\n\n"
             + reason
         )
     return continuation(reason)
@@ -539,13 +647,17 @@ def process_repo(cwd: str, payload: dict[str, Any], *, runtime: str) -> dict[str
         log(runtime, f"block in-progress-git-op repo={root}")
         return finish(
             "block_in_progress_git_op",
-            maybe_continue(payload, state_failure_reason(root, "a merge, rebase, cherry-pick, or revert is in progress")),
+            maybe_continue(
+                payload,
+                state_failure_reason(root, "a merge, rebase, cherry-pick, or revert is in progress"),
+                cwd=root,
+            ),
         )
     if not lock_clear:
         log(runtime, f"block active-index-lock repo={root}")
         return finish(
             "block_active_index_lock",
-            maybe_continue(payload, state_failure_reason(root, "git index.lock appears active")),
+            maybe_continue(payload, state_failure_reason(root, "git index.lock appears active"), cwd=root),
         )
 
     started_at = time.monotonic()
@@ -566,7 +678,11 @@ def process_repo(cwd: str, payload: dict[str, Any], *, runtime: str) -> dict[str
             log(runtime, f"block git-add repo={root} exit={add.returncode}")
             return finish(
                 "block_git_add",
-                maybe_continue(payload, command_failure_reason(root, "git add", ["git", "add", "-A"], add)),
+                maybe_continue(
+                    payload,
+                    command_failure_reason(root, "git add", ["git", "add", "-A"], add),
+                    cwd=root,
+                ),
             )
     record_timing(timings, "add", started_at)
 
@@ -604,6 +720,7 @@ def process_repo(cwd: str, payload: dict[str, Any], *, runtime: str) -> dict[str
             maybe_continue(
                 payload,
                 command_failure_reason(root, "git commit / pre-commit checks", ["git", "commit", "-m", message], commit),
+                cwd=root,
             ),
         )
 
@@ -636,7 +753,11 @@ def process_repo(cwd: str, payload: dict[str, Any], *, runtime: str) -> dict[str
             log(runtime, f"block git-pull-rebase repo={root} exit={pull.returncode}")
             return finish(
                 "block_git_pull_rebase",
-                maybe_continue(payload, command_failure_reason(root, "git pull --rebase", pull_cmd, pull)),
+                maybe_continue(
+                    payload,
+                    command_failure_reason(root, "git pull --rebase", pull_cmd, pull),
+                    cwd=root,
+                ),
             )
         started_at = time.monotonic()
         push = run(push_cmd, root, timeout=GIT_PUSH_TIMEOUT_SEC)
@@ -655,7 +776,7 @@ def process_repo(cwd: str, payload: dict[str, Any], *, runtime: str) -> dict[str
         log(runtime, f"block git-push repo={root} exit={push.returncode}")
         return finish(
             "block_git_push",
-            maybe_continue(payload, command_failure_reason(root, "git push", push_cmd, push)),
+            maybe_continue(payload, command_failure_reason(root, "git push", push_cmd, push), cwd=root),
         )
 
     log(runtime, f"ok committed-and-pushed repo={root} branch={current_branch_name(root)} remote={remote}")
@@ -677,6 +798,7 @@ def main() -> int:
         output = maybe_continue(
             payload,
             state_failure_reason(cwd, f"command timed out after {timeout}s: {cmd}"),
+            cwd=cwd,
         )
     except Exception as exc:
         log(args.runtime, f"unexpected-error cwd={cwd} error={exc}")

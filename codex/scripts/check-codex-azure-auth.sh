@@ -2,7 +2,7 @@
 set -euo pipefail
 
 CONFIG_FILE="${HOME}/.codex/config.toml"
-EXPECTED_SCOPE="https://cognitiveservices.azure.com/.default"
+SECRET_ENV_FILE="${HOME}/.secrets/azure-openai/env"
 
 usage() {
   cat <<USAGE
@@ -12,9 +12,10 @@ Check whether this machine can authenticate Codex to Azure OpenAI.
 
 Options:
   --config <path>      Codex config to inspect (default: ~/.codex/config.toml)
+  --env-file <path>    Machine-local env file (default: ~/.secrets/azure-openai/env)
   -h, --help           Show this help
 
-This is a local readiness check. It never prints the access token.
+This is a local readiness check. It never prints the API key.
 USAGE
 }
 
@@ -22,6 +23,10 @@ while [[ $# -gt 0 ]]; do
   case "$1" in
     --config)
       CONFIG_FILE="${2:-}"
+      shift 2
+      ;;
+    --env-file)
+      SECRET_ENV_FILE="${2:-}"
       shift 2
       ;;
     -h|--help)
@@ -36,11 +41,15 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-python3 - "$CONFIG_FILE" "$EXPECTED_SCOPE" <<'PY'
+if [[ -z "${AZURE_OPENAI_API_KEY:-}" && -r "$SECRET_ENV_FILE" ]]; then
+  # shellcheck disable=SC1090
+  source "$SECRET_ENV_FILE"
+fi
+
+python3 - "$CONFIG_FILE" <<'PY'
 from __future__ import annotations
 
-import shutil
-import subprocess
+import os
 import sys
 from pathlib import Path
 
@@ -51,7 +60,6 @@ except ModuleNotFoundError:  # pragma: no cover
 
 
 config_path = Path(sys.argv[1]).expanduser()
-expected_scope = sys.argv[2]
 
 
 def fail(message: str) -> None:
@@ -73,55 +81,25 @@ except Exception as exc:
 
 provider_name = config.get("model_provider")
 model = config.get("model", "<unset>")
-if provider_name != "azure":
-    warn_skip(f"Codex model_provider is {provider_name!r}, not 'azure'")
+if provider_name != "azure-key":
+    fail(f"Codex model_provider is {provider_name!r}, expected 'azure-key'")
 
 providers = config.get("model_providers")
 if not isinstance(providers, dict):
     fail("missing [model_providers] table")
-azure = providers.get("azure")
-if not isinstance(azure, dict):
-    fail("missing [model_providers.azure] table")
+azure_key = providers.get("azure-key")
+if not isinstance(azure_key, dict):
+    fail("missing [model_providers.azure-key] table")
 
-auth = azure.get("auth")
-if not isinstance(auth, dict):
-    fail("missing [model_providers.azure.auth] table")
+if "auth" in azure_key:
+    fail("[model_providers.azure-key] must not use command-backed auth")
 
-command = auth.get("command")
-args = auth.get("args")
-timeout_ms = auth.get("timeout_ms", 10000)
-if command != "az":
-    fail(f"Azure provider auth command is {command!r}, expected 'az'")
-if not isinstance(args, list) or not all(isinstance(item, str) for item in args):
-    fail("Azure provider auth args must be a string array")
-if expected_scope not in args:
-    fail(f"Azure provider auth args do not include scope {expected_scope}")
-if shutil.which(command) is None:
-    fail("Azure CLI is not installed or not on PATH. Install azure-cli, then run az login.")
+env_key = azure_key.get("env_key")
+if env_key != "AZURE_OPENAI_API_KEY":
+    fail(f"Azure API-key provider env_key is {env_key!r}, expected 'AZURE_OPENAI_API_KEY'")
 
-account = subprocess.run(
-    [command, "account", "show", "--query", "{name:name,id:id,tenantId:tenantId,user:user.name}", "-o", "json"],
-    text=True,
-    stdout=subprocess.PIPE,
-    stderr=subprocess.PIPE,
-)
-if account.returncode != 0:
-    detail = account.stderr.strip() or account.stdout.strip()
-    fail(f"Azure CLI is not authenticated. Run az login on this machine. Detail: {detail}")
+if not os.environ.get("AZURE_OPENAI_API_KEY"):
+    fail("AZURE_OPENAI_API_KEY is not available. Run machine-secret sync and restart Codex Desktop.")
 
-timeout_seconds = max(1, int(timeout_ms) / 1000)
-token = subprocess.run(
-    [command, *args],
-    text=True,
-    stdout=subprocess.PIPE,
-    stderr=subprocess.PIPE,
-    timeout=timeout_seconds,
-)
-if token.returncode != 0:
-    detail = token.stderr.strip() or token.stdout.strip()
-    fail(f"Azure OpenAI token mint failed. Detail: {detail}")
-if not token.stdout.strip():
-    fail("Azure OpenAI token mint returned an empty token")
-
-print(f"OK: Codex Azure auth ready for model={model} provider=azure scope={expected_scope}")
+print(f"OK: Codex Azure API-key auth ready for model={model} provider=azure-key env_key=AZURE_OPENAI_API_KEY")
 PY

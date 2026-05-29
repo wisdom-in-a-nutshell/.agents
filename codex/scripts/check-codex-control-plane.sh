@@ -715,6 +715,14 @@ for profile_template in sorted(canonical_dir.glob("*.config.toml")):
     except Exception as exc:
         fail(f"failed reading Codex profile {profile_runtime}: {exc}")
 
+for stale_profile_name in ("azure.config.toml", "azure-key.config.toml"):
+    stale_profile = global_config_dir / stale_profile_name
+    if stale_profile.exists() or stale_profile.is_symlink():
+        fail(
+            f"stale Codex profile still exists: {stale_profile}. "
+            "Re-run codex/scripts/sync-config.sh --apply."
+        )
+
 validated_repo_count = 0
 for item in resolved_repos:
     repo_path = Path(item["path"]).resolve()

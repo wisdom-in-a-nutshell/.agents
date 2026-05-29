@@ -29,19 +29,8 @@ home = true
 theme = "catppuccin-macchiato"
 status_line = ["model-with-reasoning", "context-remaining", "current-dir", "codex-version", "context-window-size", "session-id", "fast-mode"]
 
-[model_providers.azure]
-name = "Azure OpenAI"
-base_url = "https://aip-openai.openai.azure.com/openai/v1"
-wire_api = "responses"
-
-[model_providers.azure.auth]
-command = "az"
-args = ["account", "get-access-token", "--scope", "https://cognitiveservices.azure.com/.default", "--query", "accessToken", "-o", "tsv"]
-timeout_ms = 10000
-refresh_interval_ms = 300000
-
 [model_providers.azure-key]
-name = "Azure OpenAI (API Key)"
+name = "Azure"
 base_url = "https://aip-openai.openai.azure.com/openai/v1"
 env_key = "AZURE_OPENAI_API_KEY"
 wire_api = "responses"

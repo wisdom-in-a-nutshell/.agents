@@ -82,11 +82,11 @@ Use [Codex Control Plane Ownership](/Users/dobby/.agents/docs/references/codex-c
 - Apply only the managed Codex config:
   - [`sync-config.sh`](/Users/dobby/.agents/codex/scripts/sync-config.sh)
   - `~/.agents/codex/scripts/sync-config.sh --apply`
-  - this syncs the managed global config, global `hooks.json`, and removes stale managed agent-role files from older control-plane versions
+  - this syncs the managed global config, global `hooks.json`, removes stale managed Azure profile files, and removes stale managed agent-role files from older control-plane versions
 - Check local Azure OpenAI auth readiness for Azure-backed Codex:
   - [`check-codex-azure-auth.sh`](/Users/dobby/.agents/codex/scripts/check-codex-azure-auth.sh)
   - `~/.agents/codex/scripts/check-codex-azure-auth.sh`
-  - this verifies Azure CLI is installed, `az login` has been completed, and the machine can mint a short-lived token for `https://cognitiveservices.azure.com/.default`
+  - this verifies `~/.codex/config.toml` uses the `azure-key` provider and that `AZURE_OPENAI_API_KEY` is available from the generated machine-local secret file
 - Validate canonical and rendered Codex control-plane state:
   - [`check-codex-control-plane.sh`](/Users/dobby/.agents/codex/scripts/check-codex-control-plane.sh)
   - `~/.agents/codex/scripts/check-codex-control-plane.sh`
@@ -123,7 +123,7 @@ Use [Codex Control Plane Ownership](/Users/dobby/.agents/docs/references/codex-c
   - commits so each repo's own `scripts/check-fast.sh` checks decide whether the change is acceptable
   - relies on managed repo local `core.hooksPath` pointing at `~/.agents/hooks/git`
   - normally returns hook continuation JSON with commit/check failures so the current agent can fix them
-  - downgrades retryable failures to `systemMessage` warnings for Azure-backed Codex threads because Azure Responses currently rejects some replayed local Codex item IDs used by automatic Stop-hook continuation
+  - queues an App Server follow-up turn for Azure-backed Codex threads because Azure Responses currently rejects some replayed local Codex item IDs used by built-in Stop-hook continuation; remove this workaround after upstream Codex fixes `openai/codex#20783`
   - tracked branches use an optimistic `commit -> push` path and only run `git pull --rebase` when push reports that the remote is ahead
   - brand-new branches without upstream tracking use an initial `git push -u <remote> HEAD`, so the hook can publish the branch before future tracked-branch pulls
   - logs phase timing to `~/.local/state/agents-control-plane/log/hooks-stop.log`
@@ -131,8 +131,8 @@ Use [Codex Control Plane Ownership](/Users/dobby/.agents/docs/references/codex-c
 - `~/.codex/config.toml` enables Codex hooks through `[features].hooks = true`
 - `~/.codex/config.toml` contains `[hooks.state]` trust hashes for managed hooks rendered by this control plane, so global and repo-local lifecycle hooks do not need repeated `/hooks` review on every machine bootstrap.
 - `~/.codex/config.toml` explicitly preserves enabled native Codex plugins such as `computer-use@openai-bundled`, points `openai-bundled` at the marketplace inside `Codex.app`, and disables bundled Codex skills classified as `disabled` in [`bundled-skills-policy.json`](/Users/dobby/.agents/codex/config/bundled-skills-policy.json)
-- `~/.codex/config.toml` uses the managed Azure OpenAI API-key provider for the global Codex default: `model = "gpt-5.5"`, `model_provider = "azure-key"`, and `[model_providers.azure-key]` from [`global.config.toml`](/Users/dobby/.agents/codex/config/global.config.toml). It reads `AZURE_OPENAI_API_KEY`; the key is generated into `~/.secrets/azure-openai/env` from the shared machine-secret mapping in `~/GitHub/scripts/sync/machine-secrets/azure-openai.env.map`. Shell startup sources that generated file, and GUI-launched Codex Desktop needs `launchctl setenv AZURE_OPENAI_API_KEY "$AZURE_OPENAI_API_KEY"` after materialization plus an app restart to inherit it.
-- `~/.codex/azure.config.toml` remains the managed Microsoft Entra fallback profile. It uses the `azure` provider auth command to mint short-lived tokens for the documented `https://cognitiveservices.azure.com/.default` scope; do not store those access tokens in Key Vault, `~/.secrets`, or git.
+- `~/.codex/config.toml` uses the single managed Azure OpenAI API-key provider for the global Codex default: `model = "gpt-5.5"`, `model_provider = "azure-key"`, and `[model_providers.azure-key]` from [`global.config.toml`](/Users/dobby/.agents/codex/config/global.config.toml). The provider display name is `Azure`. It reads `AZURE_OPENAI_API_KEY`; the key is generated into `~/.secrets/azure-openai/env` from the shared machine-secret mapping in `~/GitHub/scripts/sync/machine-secrets/azure-openai.env.map`. Shell startup sources that generated file, and GUI-launched Codex Desktop needs `launchctl setenv AZURE_OPENAI_API_KEY "$AZURE_OPENAI_API_KEY"` after materialization plus an app restart to inherit it.
+- Do not keep Microsoft Entra token fallback profiles or providers for Codex Azure OpenAI. In particular, `~/.codex/azure.config.toml`, `~/.codex/azure-key.config.toml`, `[model_providers.azure]`, and `az account get-access-token` auth-command wiring are stale and should be removed by `sync-config.sh --apply`.
 - Do not set global Codex service-tier defaults such as `[desktop] default-service-tier = "priority"` for the Azure-backed default profile. Azure accepts request-level `service_tier = "priority"` for normal Responses calls, but Codex remote compact currently rejects that parameter with `Unknown parameter: 'service_tier'` when the setting leaks into compact requests. Keep managed `service_tier` values unset unless Codex has a verified compact-safe service-tier path.
 - `~/.codex/hooks.json` is rendered from `hooks/registry.json` for global Codex hooks. The managed `Stop` hook renders there; repo-specific lifecycle hooks such as `SessionStart` and `UserPromptSubmit` render into repo `.codex/hooks.json`.
 - `com.<user>.codex-thread-finalizer` is loaded as a LaunchAgent and runs [`finalize-stale-codex-threads.py`](/Users/dobby/.agents/codex/scripts/finalize-stale-codex-threads.py) every hour against managed repo paths from [`repo-bootstrap.json`](/Users/dobby/.agents/codex/config/repo-bootstrap.json).

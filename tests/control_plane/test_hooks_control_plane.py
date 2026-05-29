@@ -654,17 +654,59 @@ class HooksControlPlaneTests(TempDirTestCase):
         self.assertIn("repo check failed", output["reason"])
         self.assertIn("Please fix the issue", output["reason"])
 
-    def test_stop_hook_warns_instead_of_continuing_for_azure_thread(self) -> None:
+    def test_stop_hook_queues_follow_up_turn_for_azure_thread(self) -> None:
         module = self.load_stop_module()
         home = self.temp_path / "home"
         codex_home = home / ".codex"
         codex_home.mkdir(parents=True)
-        with sqlite3.connect(codex_home / "state_5.sqlite") as conn:
+        conn = sqlite3.connect(codex_home / "state_5.sqlite")
+        try:
             conn.execute("CREATE TABLE threads (id TEXT PRIMARY KEY, model_provider TEXT)")
             conn.execute(
                 "INSERT INTO threads (id, model_provider) VALUES (?, ?)",
                 ("thread-1", "azure-key"),
             )
+            conn.commit()
+        finally:
+            conn.close()
+
+        captured_command: list[str] = []
+
+        def fake_popen(cmd, **_kwargs):  # noqa: ANN001
+            captured_command.extend(str(part) for part in cmd)
+            return SimpleNamespace(pid=12345)
+
+        with patch.dict(os.environ, {"HOME": str(home)}):
+            with patch.object(module.subprocess, "Popen", side_effect=fake_popen):
+                output = module.maybe_continue(
+                    {"session_id": "thread-1"},
+                    "repo check failed",
+                    cwd=str(self.temp_path / "repo"),
+                )
+
+        self.assertNotIn("decision", output)
+        self.assertIn("systemMessage", output)
+        self.assertIn("finalization failed", output["systemMessage"])
+        self.assertIn("queued a follow-up turn", output["systemMessage"])
+        self.assertIn("stop_feedback_turn.py", [os.path.basename(part) for part in captured_command])
+        self.assertIn("--thread-id", captured_command)
+        self.assertIn("thread-1", captured_command)
+
+    def test_stop_hook_warns_when_azure_follow_up_turn_cannot_be_queued(self) -> None:
+        module = self.load_stop_module()
+        home = self.temp_path / "home"
+        codex_home = home / ".codex"
+        codex_home.mkdir(parents=True)
+        conn = sqlite3.connect(codex_home / "state_5.sqlite")
+        try:
+            conn.execute("CREATE TABLE threads (id TEXT PRIMARY KEY, model_provider TEXT)")
+            conn.execute(
+                "INSERT INTO threads (id, model_provider) VALUES (?, ?)",
+                ("thread-1", "azure-key"),
+            )
+            conn.commit()
+        finally:
+            conn.close()
 
         with patch.dict(os.environ, {"HOME": str(home)}):
             output = module.maybe_continue(
@@ -674,5 +716,76 @@ class HooksControlPlaneTests(TempDirTestCase):
 
         self.assertNotIn("decision", output)
         self.assertIn("systemMessage", output)
-        self.assertIn("Azure-backed Codex thread", output["systemMessage"])
+        self.assertIn("could not queue", output["systemMessage"])
         self.assertIn("repo check failed", output["systemMessage"])
+
+    def test_stop_feedback_turn_starts_app_server_turn(self) -> None:
+        fake_bin = self.temp_path / "bin"
+        fake_bin.mkdir()
+        calls_path = self.temp_path / "calls.jsonl"
+        reason_file = self.temp_path / "reason.txt"
+        reason_file.write_text("repo check failed\n", encoding="utf-8")
+        write_executable(
+            fake_bin / "codex",
+            "\n".join(
+                [
+                    "#!/usr/bin/env python3",
+                    "import json",
+                    "import os",
+                    "import sys",
+                    "calls_path = os.environ['FAKE_CODEX_CALLS']",
+                    "def emit(value):",
+                    "    print(json.dumps(value), flush=True)",
+                    "for line in sys.stdin:",
+                    "    message = json.loads(line)",
+                    "    with open(calls_path, 'a', encoding='utf-8') as handle:",
+                    "        handle.write(json.dumps(message, sort_keys=True) + '\\n')",
+                    "    method = message.get('method')",
+                    "    request_id = message.get('id')",
+                    "    if request_id is None:",
+                    "        continue",
+                    "    if method == 'turn/start':",
+                    "        params = message.get('params') or {}",
+                    "        text = params['input'][0]['text']",
+                    "        if not text.startswith('Hook feedback\\n\\nrepo check failed'):",
+                    "            emit({'id': request_id, 'error': {'message': 'bad prompt'}})",
+                    "            continue",
+                    "        emit({'id': request_id, 'result': {'turn': {'id': 'turn-1'}}})",
+                    "        emit({'method': 'turn/completed', 'params': {'threadId': params['threadId'], 'turnId': 'turn-1', 'status': 'completed'}})",
+                    "        continue",
+                    "    emit({'id': request_id, 'result': {}})",
+                    "",
+                ]
+            ),
+        )
+
+        result = run_command(
+            [
+                sys.executable,
+                str(REPO_ROOT / "hooks/scripts/stop_feedback_turn.py"),
+                "--thread-id",
+                "thread-1",
+                "--cwd",
+                str(self.temp_path),
+                "--reason-file",
+                str(reason_file),
+                "--initial-delay-seconds",
+                "0",
+                "--timeout-seconds",
+                "2",
+                "--turn-timeout-seconds",
+                "2",
+            ],
+            env={
+                "PATH": f"{fake_bin}:{os.environ.get('PATH', '')}",
+                "FAKE_CODEX_CALLS": str(calls_path),
+            },
+        )
+
+        self.assertEqual(result.returncode, 0)
+        calls = [json.loads(line) for line in calls_path.read_text(encoding="utf-8").splitlines()]
+        methods = [call.get("method") for call in calls]
+        self.assertIn("initialize", methods)
+        self.assertIn("thread/resume", methods)
+        self.assertIn("turn/start", methods)
+        self.assertFalse(reason_file.exists())
