@@ -538,6 +538,9 @@ render_global_config() {
   if ! rg -n '^[[:space:]]*fast_mode[[:space:]]*=' "$template_file" >/dev/null 2>&1; then
     remove_section_key "$target_file" "features" "fast_mode"
   fi
+  if ! rg -n '^[[:space:]]*default-service-tier[[:space:]]*=' "$template_file" >/dev/null 2>&1; then
+    remove_section_key "$target_file" "desktop" "default-service-tier"
+  fi
   # Codex 0.129 renamed the hooks feature flag; prune the older managed key
   # when applying the new canonical template.
   remove_section_key "$target_file" "features" "codex_hooks"
