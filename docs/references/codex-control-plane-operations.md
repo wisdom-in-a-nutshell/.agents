@@ -140,6 +140,30 @@ Use [Codex Control Plane Ownership](/Users/dobby/.agents/docs/references/codex-c
 - `~/.codex/vendor_imports/skills` is a valid Git checkout:
   - `git -C ~/.codex/vendor_imports/skills rev-parse --show-toplevel`
 
+## Stop Hook Azure Feedback Workaround
+
+The managed `Stop` hook normally uses Codex's built-in blocking continuation path: when commit, check, rebase, or push finalization fails, the hook returns `{"decision":"block","reason":"..."}` so Codex injects the failure into the current thread and asks the agent to fix it.
+
+Azure-backed Codex threads use a temporary App Server follow-up turn instead. After the move to the `azure-key` model provider, built-in Stop-hook continuation could fail before the agent saw the hook feedback because Azure Responses rejected replayed local Codex item IDs with `Invalid 'input[N].id' ... Expected an ID that begins with 'msg'`. The local workaround is tracked against [openai/codex#20783](https://github.com/openai/codex/issues/20783) and should be removed once upstream Codex can safely replay Stop-hook continuation context for local UUID message IDs.
+
+Current behavior:
+
+- Non-Azure threads keep using built-in Stop-hook continuation.
+- Azure-backed threads are detected from the hook payload `model_provider` / `modelProvider`, then from `~/.codex/state_5.sqlite` by `session_id`, then from the top-level `model_provider` in `~/.codex/config.toml`.
+- Clean repos, non-Git directories, and successful commit/push finalization return no hook output and do not start any feedback turn.
+- Retryable finalization failures call [`stop_feedback_turn.py`](/Users/dobby/.agents/hooks/scripts/stop_feedback_turn.py) in a detached process instead of returning `decision: "block"`.
+- The hook payload `session_id` is passed directly as the App Server `threadId`; the helper does not infer the current thread from logs, window state, or the repo path.
+- The helper resumes the thread, starts a new turn, and injects the original failure details. The failure details already include the actionable instruction, repo, branch, command, exit code, stderr/stdout, and `git status --porcelain`.
+- Duplicate protection records a normalized hash of `(thread_id, failure_reason)` for 20 minutes under `~/.local/state/agents-control-plane/stop-feedback-turns.json`; generated `Agent: <timestamp>` commit messages are normalized so the same failure does not create repeated follow-up turns just because the timestamp changed.
+- Helper execution logs to `~/.local/state/agents-control-plane/log/hooks-stop-feedback-turn.log`.
+
+Verification expectations:
+
+- A clean mocked Azure repo should produce no stdout and no App Server calls.
+- A mocked Azure repo with a failing commit/check should return a `systemMessage` saying a follow-up turn was queued.
+- The fake App Server should observe `initialize`, `thread/resume`, and `turn/start`.
+- The `turn/start` payload should use the original hook `session_id` as `threadId`, the failing repo as `cwd`, and a prompt containing the original failure details.
+
 ## Main Scripts And Jobs
 
 - [`sync-config.sh`](/Users/dobby/.agents/codex/scripts/sync-config.sh)
