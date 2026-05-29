@@ -4,7 +4,9 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 import shutil
+import sqlite3
 import subprocess
 import sys
 import time
@@ -23,6 +25,7 @@ GIT_PUSH_TIMEOUT_SEC = 300
 MAX_LOG_BYTES = 5 * 1024 * 1024
 MAX_REASON_CHARS = 12000
 MAX_COMMAND_OUTPUT_CHARS = 3500
+AZURE_PROVIDER_RE = re.compile(r"^azure(?:$|[-_])", re.IGNORECASE)
 
 NON_ACTIONABLE_PUSH_PATTERNS = {
     "permission denied": "permission denied",
@@ -139,6 +142,64 @@ def warning(message: str) -> dict[str, Any]:
     return {
         "systemMessage": truncate_text(message, MAX_REASON_CHARS),
     }
+
+
+def is_azure_provider(provider: object) -> bool:
+    return isinstance(provider, str) and bool(AZURE_PROVIDER_RE.match(provider.strip()))
+
+
+def provider_from_thread_db(session_id: object) -> str | None:
+    if not isinstance(session_id, str) or not session_id.strip():
+        return None
+
+    state_db = Path.home() / ".codex" / "state_5.sqlite"
+    if not state_db.is_file():
+        return None
+
+    try:
+        with sqlite3.connect(f"file:{state_db}?mode=ro", uri=True, timeout=1.0) as conn:
+            row = conn.execute(
+                "SELECT model_provider FROM threads WHERE id = ?",
+                (session_id,),
+            ).fetchone()
+    except Exception:
+        return None
+
+    if not row:
+        return None
+    provider = row[0]
+    return provider if isinstance(provider, str) and provider.strip() else None
+
+
+def provider_from_global_config() -> str | None:
+    config_path = Path.home() / ".codex" / "config.toml"
+    if not config_path.is_file():
+        return None
+
+    top_level_provider = re.compile(r'^\s*model_provider\s*=\s*"([^"]+)"\s*(?:#.*)?$')
+    try:
+        for line in config_path.read_text(encoding="utf-8").splitlines():
+            stripped = line.strip()
+            if stripped.startswith("["):
+                break
+            match = top_level_provider.match(line)
+            if match:
+                return match.group(1)
+    except Exception:
+        return None
+    return None
+
+
+def current_model_provider(payload: dict[str, Any]) -> str | None:
+    for key in ("model_provider", "modelProvider"):
+        provider = payload.get(key)
+        if isinstance(provider, str) and provider.strip():
+            return provider
+    return provider_from_thread_db(payload.get("session_id")) or provider_from_global_config()
+
+
+def avoid_stop_continuation(payload: dict[str, Any]) -> bool:
+    return is_azure_provider(current_model_provider(payload))
 
 
 def read_payload(debug: bool) -> dict[str, Any] | None:
@@ -432,6 +493,12 @@ def maybe_continue(
     if payload.get("stop_hook_active") is True:
         return warning(
             "Stop hook finalization is still failing after a continuation turn.\n\n"
+            + reason
+        )
+    if avoid_stop_continuation(payload):
+        return warning(
+            "Stop hook finalization needs attention, but this Azure-backed Codex thread cannot safely use "
+            "automatic Stop-hook continuation because Azure rejects replayed local Codex item IDs.\n\n"
             + reason
         )
     return continuation(reason)

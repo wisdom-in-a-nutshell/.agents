@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import importlib.util
 import os
+import sqlite3
 import subprocess
 import sys
 from types import SimpleNamespace
@@ -538,8 +539,9 @@ class HooksControlPlaneTests(TempDirTestCase):
         run_command(["git", "-C", str(repo), "checkout", "-b", "feature/test"])
         (repo / "note.txt").write_text("hello\n", encoding="utf-8")
 
-        with patch.object(module, "log"):
-            output = module.process_repo(str(repo), {"hook_event_name": "Stop"}, runtime="codex")
+        with patch.dict(os.environ, {"HOME": str(self.temp_path / "non-azure-home")}):
+            with patch.object(module, "log"):
+                output = module.process_repo(str(repo), {"hook_event_name": "Stop"}, runtime="codex")
 
         self.assertIsNone(output)
         upstream = run_command(
@@ -641,8 +643,9 @@ class HooksControlPlaneTests(TempDirTestCase):
         )
         (repo / "note.txt").write_text("hello\n", encoding="utf-8")
 
-        with patch.object(module, "log"):
-            output = module.process_repo(str(repo), {"hook_event_name": "Stop"}, runtime="codex")
+        with patch.dict(os.environ, {"HOME": str(self.temp_path / "non-azure-home")}):
+            with patch.object(module, "log"):
+                output = module.process_repo(str(repo), {"hook_event_name": "Stop"}, runtime="codex")
 
         self.assertIsNotNone(output)
         assert output is not None
@@ -650,3 +653,26 @@ class HooksControlPlaneTests(TempDirTestCase):
         self.assertIn("git commit / pre-commit checks", output["reason"])
         self.assertIn("repo check failed", output["reason"])
         self.assertIn("Please fix the issue", output["reason"])
+
+    def test_stop_hook_warns_instead_of_continuing_for_azure_thread(self) -> None:
+        module = self.load_stop_module()
+        home = self.temp_path / "home"
+        codex_home = home / ".codex"
+        codex_home.mkdir(parents=True)
+        with sqlite3.connect(codex_home / "state_5.sqlite") as conn:
+            conn.execute("CREATE TABLE threads (id TEXT PRIMARY KEY, model_provider TEXT)")
+            conn.execute(
+                "INSERT INTO threads (id, model_provider) VALUES (?, ?)",
+                ("thread-1", "azure-key"),
+            )
+
+        with patch.dict(os.environ, {"HOME": str(home)}):
+            output = module.maybe_continue(
+                {"session_id": "thread-1"},
+                "repo check failed",
+            )
+
+        self.assertNotIn("decision", output)
+        self.assertIn("systemMessage", output)
+        self.assertIn("Azure-backed Codex thread", output["systemMessage"])
+        self.assertIn("repo check failed", output["systemMessage"])

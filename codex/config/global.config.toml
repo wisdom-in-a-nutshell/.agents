@@ -4,7 +4,7 @@
 cli_auth_credentials_store = "file"
 mcp_oauth_credentials_store = "file"
 model = "gpt-5.5"
-model_provider = "azure"
+model_provider = "azure-key"
 model_reasoning_effort = "high"
 plan_mode_reasoning_effort = "high"
 approval_policy = "never"
@@ -39,3 +39,9 @@ command = "az"
 args = ["account", "get-access-token", "--scope", "https://cognitiveservices.azure.com/.default", "--query", "accessToken", "-o", "tsv"]
 timeout_ms = 10000
 refresh_interval_ms = 300000
+
+[model_providers.azure-key]
+name = "Azure OpenAI (API Key)"
+base_url = "https://aip-openai.openai.azure.com/openai/v1"
+env_key = "AZURE_OPENAI_API_KEY"
+wire_api = "responses"
