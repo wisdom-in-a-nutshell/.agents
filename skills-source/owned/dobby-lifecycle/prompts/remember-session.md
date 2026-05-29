@@ -73,29 +73,9 @@ JSON
 
 If unsure about the current record contract, run `{{session_memory_cli_shell}} schema --no-input` before writing.
 
-If durable non-session files changed during this finalization turn, add `changedFiles`:
+If durable non-session files changed during this finalization turn, include `changedFiles` entries with only `path` and a one-sentence `note`. Omit `changedFiles` when no durable non-session files changed.
 
-```json
-"changedFiles": [
-  {
-    "path": "memory/areas/builder/log.md",
-    "note": "Appended the dated event because it is a concrete career fact useful for future context."
-  }
-]
-```
-
-Omit `changedFiles` when no durable non-session files changed.
-
-Current schema:
-
-- `schemaVersion`: added by the client, currently `1`
-- `createdAt`: added by the client when omitted
-- `source`: where the memory came from
-- `reason`: why finalization ran
-- `threadId`: source Codex thread id
-- `summary`: 1–5 short bullets; this is the boot surface future Dobby sees
-- `notes`: optional deeper context; use sparingly
-- `changedFiles`: optional list of durable non-session files changed during this finalization turn; each item has `path` and a one-sentence plain-English `note`
+The session-memory client is the schema source of truth and validates the record.
 
 Quality bar for `summary[]`:
 

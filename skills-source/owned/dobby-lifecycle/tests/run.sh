@@ -258,8 +258,8 @@ if ! grep -q "Adi should not have to remember" <<<"$instruction_output"; then
   echo "remember-session prompt should include the forgot-to-remember audit" >&2
   exit 1
 fi
-if ! grep -q "Current schema" <<<"$instruction_output"; then
-  echo "remember-session prompt should document the session-memory schema" >&2
+if ! grep -q "schema source of truth" <<<"$instruction_output"; then
+  echo "remember-session prompt should point agents to the session-memory client schema" >&2
   exit 1
 fi
 if ! grep -q "changedFiles" <<<"$instruction_output"; then
