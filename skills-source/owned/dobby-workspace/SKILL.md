@@ -66,6 +66,6 @@ Current domain owners:
 
 | Files | Owner |
 |---|---|
-| `memory/sessions/**/*.json` | `dobby-lifecycle/scripts/validate` |
+| `memory/sessions/YYYY/MM/DD-HHMMSS.json` and `DD-HHMMSS-N.json` | `dobby-lifecycle/scripts/validate` |
 | `journal/daily/*/morning.json`, `journal/daily/*/night.json` | `journal-checkin/scripts/validate` |
 | `state/shelf.json` | `dobby-shelf/scripts/validate` |

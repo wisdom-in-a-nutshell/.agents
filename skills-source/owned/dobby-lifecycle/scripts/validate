@@ -16,7 +16,8 @@ from pathlib import Path
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 SESSION_MEMORY = SCRIPT_DIR / "session-memory"
-SESSION_RE = re.compile(r"^memory/sessions/\d{4}/\d{2}/[^/]+\.json$")
+SESSION_DIR_RE = re.compile(r"^memory/sessions/")
+SESSION_RE = re.compile(r"^memory/sessions/\d{4}/\d{2}/\d{2}-\d{6}(?:-\d+)?\.json$")
 
 
 def parse_args() -> argparse.Namespace:
@@ -58,7 +59,7 @@ def full_session_paths(root: Path) -> list[str]:
     sessions = root / "memory" / "sessions"
     if not sessions.exists():
         return []
-    return [str(path.relative_to(root)) for path in sorted(sessions.glob("*/*/*.json"))]
+    return [str(path.relative_to(root)) for path in sorted(sessions.rglob("*.json"))]
 
 
 def candidate_paths(root: Path, args: argparse.Namespace) -> list[Path]:
@@ -74,6 +75,8 @@ def candidate_paths(root: Path, args: argparse.Namespace) -> list[Path]:
 
 def validate_session_record(root: Path, path: Path) -> None:
     label = rel_path(root, path)
+    if SESSION_DIR_RE.match(label) and label.endswith(".json") and not SESSION_RE.match(label):
+        fail("session-memory JSON paths must be memory/sessions/YYYY/MM/DD-HHMMSS.json or DD-HHMMSS-N.json")
     if not SESSION_RE.match(label):
         return
     if not path.exists():
@@ -96,7 +99,7 @@ def main() -> int:
     root = Path(args.workspace_root).expanduser().resolve()
     if not SESSION_MEMORY.is_file():
         fail(f"missing session-memory client: {SESSION_MEMORY}")
-    paths = [path for path in candidate_paths(root, args) if SESSION_RE.match(rel_path(root, path))]
+    paths = [path for path in candidate_paths(root, args) if SESSION_DIR_RE.match(rel_path(root, path))]
     for path in paths:
         validate_session_record(root, path)
     print(f"[validate-lifecycle] passed ({len(paths)} files)")

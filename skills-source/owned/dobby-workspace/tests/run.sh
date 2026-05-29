@@ -17,6 +17,7 @@ mkdir -p \
   "$workspace/state" \
   "$workspace/dobby" \
   "$workspace/projects" \
+  "$workspace/tmp" \
   "$workspace/scripts/hooks" \
   "$workspace/scripts/local"
 
@@ -69,6 +70,29 @@ JSON
 git -C "$workspace" init -q
 git -C "$workspace" add .
 "$SKILL_DIR/scripts/validate" --workspace-root "$workspace" --scope staged --no-input
+
+morning="$workspace/journal/daily/2026-05-29/morning.json"
+cp "$morning" "$workspace/tmp/morning-valid.json"
+python3 - "$morning" <<'PY'
+import json
+import sys
+from pathlib import Path
+path = Path(sys.argv[1])
+data = json.loads(path.read_text())
+data.pop("captured_at", None)
+path.write_text(json.dumps(data, indent=2) + "\n")
+PY
+git -C "$workspace" add journal/daily/2026-05-29/morning.json
+cp "$workspace/tmp/morning-valid.json" "$morning"
+if "$SKILL_DIR/scripts/validate" --workspace-root "$workspace" --scope staged --no-input >/tmp/dobby-workspace-staged-mismatch.out 2>&1; then
+  echo "expected validator to reject staged paths that also have unstaged worktree changes" >&2
+  exit 1
+fi
+if ! grep -q 'unstaged changes' /tmp/dobby-workspace-staged-mismatch.out; then
+  echo "expected staged/worktree mismatch failure to mention unstaged changes" >&2
+  cat /tmp/dobby-workspace-staged-mismatch.out >&2
+  exit 1
+fi
 
 touch "$workspace/STRUCTURE.md"
 if "$SKILL_DIR/scripts/lint-workspace" --workspace-root "$workspace" >/tmp/dobby-workspace-lint-test.out 2>&1; then

@@ -8,7 +8,6 @@ owning skills exposed through their public `scripts/validate` facades.
 from __future__ import annotations
 
 import argparse
-import fnmatch
 import subprocess
 import sys
 from pathlib import Path
@@ -16,10 +15,10 @@ from pathlib import Path
 SCRIPT_DIR = Path(__file__).resolve().parent
 LINT_WORKSPACE = SCRIPT_DIR / "lint-workspace"
 
-ROUTES: tuple[tuple[str, str, tuple[str, ...]], ...] = (
-    ("dobby-lifecycle", "lifecycle", ("memory/sessions/*/*/*.json",)),
-    ("journal-checkin", "journal", ("journal/daily/*/morning.json", "journal/daily/*/night.json")),
-    ("dobby-shelf", "shelf", ("state/shelf.json",)),
+ROUTES: tuple[tuple[str, str, tuple[tuple[str, ...], ...]], ...] = (
+    ("dobby-lifecycle", "lifecycle", (("memory", "sessions", "*", "*", "*.json"),)),
+    ("journal-checkin", "journal", (("journal", "daily", "*", "morning.json"), ("journal", "daily", "*", "night.json"))),
+    ("dobby-shelf", "shelf", (("state", "shelf.json"),)),
 )
 
 
@@ -36,7 +35,15 @@ def fail(message: str) -> None:
     raise SystemExit(1)
 
 
-def run(cmd: list[str], root: Path, *, label: str, timeout: int = 120, quiet_stdout: bool = False) -> None:
+def run(
+    cmd: list[str],
+    root: Path,
+    *,
+    label: str,
+    timeout: int = 120,
+    quiet_stdout: bool = False,
+    input_text: str | None = None,
+) -> None:
     try:
         result = subprocess.run(
             cmd,
@@ -45,6 +52,7 @@ def run(cmd: list[str], root: Path, *, label: str, timeout: int = 120, quiet_std
             stderr=subprocess.PIPE,
             text=True,
             timeout=timeout,
+            input=input_text,
         )
     except subprocess.TimeoutExpired as exc:
         fail(f"{label} timed out after {exc.timeout}s: {' '.join(cmd)}")
@@ -68,6 +76,31 @@ def git_files(root: Path, scope: str) -> list[str]:
     if result.returncode != 0:
         fail(f"could not collect {scope} files\n{result.stderr.strip()}")
     return [line.strip() for line in result.stdout.splitlines() if line.strip()]
+
+
+def unstaged_files(root: Path) -> set[str]:
+    result = subprocess.run(
+        ["git", "diff", "--name-only"],
+        cwd=root,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+        timeout=60,
+    )
+    if result.returncode != 0:
+        fail(f"could not collect unstaged files\n{result.stderr.strip()}")
+    return {line.strip() for line in result.stdout.splitlines() if line.strip()}
+
+
+def check_staged_paths_are_clean_in_worktree(root: Path, staged_paths: list[str]) -> None:
+    overlap = sorted(set(staged_paths) & unstaged_files(root))
+    if not overlap:
+        return
+    fail(
+        "staged validation reads the worktree, but these staged files also have unstaged changes.\n"
+        "Stage the latest version or discard the unstaged edits, then retry.\n"
+        + "\n".join(overlap[:50])
+    )
 
 
 def existing_file_paths(root: Path, rel_paths: list[str]) -> list[tuple[str, Path]]:
@@ -109,8 +142,15 @@ def check_generic_syntax(root: Path, files: list[tuple[str, Path]]) -> None:
             )
 
 
-def route_matches(rel: str, patterns: tuple[str, ...]) -> bool:
-    return any(fnmatch.fnmatchcase(rel, pattern) for pattern in patterns)
+def segment_match(rel: str, pattern: tuple[str, ...]) -> bool:
+    import fnmatch
+
+    parts = tuple(part for part in rel.split("/") if part)
+    return len(parts) == len(pattern) and all(fnmatch.fnmatchcase(part, pat) for part, pat in zip(parts, pattern))
+
+
+def route_matches(rel: str, patterns: tuple[tuple[str, ...], ...]) -> bool:
+    return any(segment_match(rel, pattern) for pattern in patterns)
 
 
 def skill_validator(root: Path, skill: str) -> Path:
@@ -126,11 +166,13 @@ def run_domain_validators(root: Path, rel_paths: list[str]) -> None:
         if not matched:
             continue
         validator = skill_validator(root, skill)
+        input_text = "".join(f"{rel}\n" for rel in matched)
         run(
-            [str(validator), "--workspace-root", str(root), "--scope", "paths", *matched, "--no-input"],
+            [str(validator), "--workspace-root", str(root), "--scope", "paths", "--paths-from-stdin", "--no-input"],
             root,
             label=f"{label} validation",
             timeout=120,
+            input_text=input_text,
         )
 
 
@@ -145,6 +187,8 @@ def main() -> int:
     run([str(LINT_WORKSPACE), "--workspace-root", str(root)], root, label="workspace shape lint", timeout=120)
 
     rel_paths = git_files(root, args.scope)
+    if args.scope == "staged":
+        check_staged_paths_are_clean_in_worktree(root, rel_paths)
     files = existing_file_paths(root, rel_paths)
     check_conflict_markers(root, files)
     if args.scope == "staged":

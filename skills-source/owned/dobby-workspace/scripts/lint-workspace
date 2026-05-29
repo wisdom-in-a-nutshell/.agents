@@ -31,6 +31,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -253,6 +254,7 @@ def check_session_memory_files() -> None:
     sessions = ROOT / "memory" / "sessions"
     if not sessions.exists():
         return
+    session_record_re = re.compile(r"^memory/sessions/\d{4}/\d{2}/\d{2}-\d{6}(?:-\d+)?\.json$")
     for path in sorted(p for p in sessions.rglob("*") if p.is_file()):
         if path.name in {".gitkeep", ".DS_Store"}:
             continue
@@ -262,6 +264,15 @@ def check_session_memory_files() -> None:
                 "Session continuity should use JSON records under "
                 "memory/sessions/YYYY/MM/DD-HHMMSS.json, not loose Markdown "
                 "or other ad-hoc files.",
+            )
+            continue
+        rel = str(path.relative_to(ROOT))
+        if not session_record_re.match(rel):
+            add_error(
+                path,
+                "Session continuity JSON records must be named "
+                "memory/sessions/YYYY/MM/DD-HHMMSS.json or DD-HHMMSS-N.json "
+                "so boot loading can discover them.",
             )
 
 

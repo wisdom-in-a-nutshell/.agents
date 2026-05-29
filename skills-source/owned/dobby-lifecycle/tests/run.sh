@@ -52,6 +52,15 @@ fi
 "$session_cli" validate "$session_path" --no-input >/dev/null
 "$SKILL_DIR/scripts/validate" --workspace-root "$repo" "$session_path" --no-input >/dev/null
 
+bad_session_name="$repo/memory/sessions/2026/05/bad.json"
+mkdir -p "$(dirname "$bad_session_name")"
+cp "$session_path" "$bad_session_name"
+if "$SKILL_DIR/scripts/validate" --workspace-root "$repo" "$bad_session_name" --no-input >/dev/null 2>&1; then
+  echo "lifecycle validate should reject session-memory JSON filenames that boot cannot discover" >&2
+  exit 1
+fi
+rm -f "$bad_session_name"
+
 stdin_write_output="$(cat <<'JSON' | "$session_cli" write --workspace-root "$repo" --stdin-json --no-input
 {
   "source": "codex-desktop",
