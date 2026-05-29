@@ -25,3 +25,24 @@ Date: 2026-05-29
 
 ## Change Log
 - 2026-05-29: Created baseline resource note before approved cleanup.
+- 2026-05-29: Deleted Cloudflare DNS records:
+  - `blog.aipodcast.ing` CNAME -> `ghost-endpoint-cpg9bkeyfrdedfbq.z02.azurefd.net`
+  - `cursorcast.aipodcast.ing` CNAME -> `cursorcast-aipodcast-ing-dcghe8d9f0e4caf9.z02.azurefd.net`
+  - `_dnsauth.blog.aipodcast.ing` TXT
+  - `_dnsauth.cursorcast.aipodcast.ing` TXT
+- 2026-05-29: Deleted Azure Front Door routes:
+  - `blog-personal-route`
+  - `blog-personal-static-route`
+- 2026-05-29: Requested deletion of Azure Front Door custom domains:
+  - `adithyan-io` / `adithyan.io` — Azure state: `Deleting`
+  - `www-adithyan-io` / `www.adithyan.io` — Azure state: `Deleting`
+- 2026-05-29: Validation results:
+  - `dig @gerald.ns.cloudflare.com blog.aipodcast.ing` returned no records.
+  - `dig @gerald.ns.cloudflare.com cursorcast.aipodcast.ing` returned no records.
+  - `curl -ksSI https://blog.aipodcast.ing` failed to resolve, expected after DNS deletion.
+  - `curl -ksSI https://cursorcast.aipodcast.ing` failed to resolve, expected after DNS deletion.
+  - `https://adithyan.io` returned HTTP 200 with `server: cloudflare`.
+  - `https://www.adithyan.io` returned HTTP 200 with `server: cloudflare`.
+  - `https://aipodcast.ing` returned HTTP 200 with `x-azure-ref`.
+  - `https://app.aipodcast.ing` returned HTTP 307 with `x-azure-ref`.
+  - `https://thoughtforms-life.aipodcast.ing` returned HTTP 200 with `x-azure-ref`.

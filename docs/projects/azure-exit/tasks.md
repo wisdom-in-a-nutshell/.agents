@@ -65,12 +65,14 @@ The current deployment has a meaningful daily floor cost from Azure App Service 
 ## Open Questions / Blockers
 - Need broader Cloudflare API/OAuth access before auditing Pages, Workers, R2, account tunnels, rulesets, and zone settings through API.
 - Confirm owner/desired future for `podcast.futureoflife.org`, which is outside the Cloudflare zones available to this token.
+- Azure Front Door custom domains `adithyan-io` and `www-adithyan-io` accepted deletion and remain in Azure `Deleting` state as of the latest check on 2026-05-29.
 
 ## Current Batch
 | Status | Work Item | Role | Resource |
 | --- | --- | --- | --- |
-| in_progress | Remove approved stale Front Door custom domains and 404 DNS/routing records | parent | `resources/baseline-routing.md` |
-| todo | Validate affected hostnames and checkpoint Milestone 1 progress | parent | `resources/baseline-routing.md` |
+| done | Remove approved stale Front Door routes and 404 DNS/routing records | parent | `resources/baseline-routing.md` |
+| in_progress | Recheck Azure async custom-domain deletion completion | parent | `resources/baseline-routing.md` |
+| done | Validate affected hostnames and checkpoint Milestone 1 progress | parent | `resources/baseline-routing.md` |
 
 ## Backlog / Remaining Work
 - [ ] Create and maintain `resources/baseline-routing.md` with current Azure/Cloudflare route map and cleanup evidence.
@@ -93,3 +95,7 @@ The current deployment has a meaningful daily floor cost from Azure App Service 
 
 ## Progress Log
 - 2026-05-29: [IN-PROGRESS] Created Azure exit project tracker and started approved Milestone 1 cleanup batch.
+- 2026-05-29: [DONE] Removed Cloudflare DNS records for `blog.aipodcast.ing`, `cursorcast.aipodcast.ing`, `_dnsauth.blog.aipodcast.ing`, and `_dnsauth.cursorcast.aipodcast.ing`; authoritative DNS now returns no records for the two hostnames.
+- 2026-05-29: [DONE] Removed Azure Front Door routes `blog-personal-route` and `blog-personal-static-route`; remaining Front Door routes are `thoughtforms-route`, `default-route`, `podcast-futureoflife-route`, `aipodcasting-landing-route`, and `aipodcasting-app-route`.
+- 2026-05-29: [IN-PROGRESS] Requested deletion of Front Door custom domains `adithyan-io` and `www-adithyan-io`; Azure reports both in `Deleting` state after local CLI waiters were stopped.
+- 2026-05-29: [DONE] Smoke checks passed for unaffected live hostnames: `adithyan.io` and `www.adithyan.io` return HTTP 200 through Cloudflare; `aipodcast.ing` returns HTTP 200 through Front Door; `app.aipodcast.ing` returns HTTP 307; `thoughtforms-life.aipodcast.ing` returns HTTP 200.
