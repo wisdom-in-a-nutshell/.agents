@@ -66,18 +66,25 @@ cat <<'JSON' | {{session_memory_cli_shell}} write --stdin-json --no-input
   "summary": [
     "One short carry-forward fact, decision, or next-context item."
   ],
-  "notes": "Optional deeper context. Omit this field if the summary is enough.",
-  "changedFiles": [
-    {
-      "path": "memory/areas/builder/log.md",
-      "note": "Appended the dated event because it is a concrete career fact useful for future context."
-    }
-  ]
+  "notes": "Optional deeper context. Omit this field if the summary is enough."
 }
 JSON
 ```
 
-Omit `changedFiles` when no durable non-session files changed during this finalization turn.
+If unsure about the current record contract, run `{{session_memory_cli_shell}} schema --no-input` before writing.
+
+If durable non-session files changed during this finalization turn, add `changedFiles`:
+
+```json
+"changedFiles": [
+  {
+    "path": "memory/areas/builder/log.md",
+    "note": "Appended the dated event because it is a concrete career fact useful for future context."
+  }
+]
+```
+
+Omit `changedFiles` when no durable non-session files changed.
 
 Current schema:
 
