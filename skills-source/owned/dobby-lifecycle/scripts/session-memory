@@ -115,7 +115,7 @@ def command_schema() -> dict[str, Any]:
     return {
         "schemaVersion": SCHEMA_VERSION,
         "required": ["schemaVersion", "createdAt", "source", "reason", "threadId", "summary"],
-        "optional": ["notes"],
+        "optional": ["notes", "changedFiles"],
         "record": {
             "schemaVersion": 1,
             "createdAt": "ISO-8601 timestamp with timezone",
@@ -124,6 +124,12 @@ def command_schema() -> dict[str, Any]:
             "threadId": "string or null",
             "summary": ["non-empty string array loaded at boot"],
             "notes": "optional string for deeper context",
+            "changedFiles": [
+                {
+                    "path": "repo-relative path changed during finalization",
+                    "note": "one plain-English sentence explaining what changed and why",
+                }
+            ],
         },
     }
 
@@ -139,6 +145,7 @@ def command_write(args: argparse.Namespace) -> dict[str, Any]:
             thread_id=raw.get("threadId") if isinstance(raw.get("threadId"), str) else None,
             summary=raw.get("summary"),
             notes=raw.get("notes") if isinstance(raw.get("notes"), str) else None,
+            changed_files=raw.get("changedFiles") if "changedFiles" in raw else None,
             created_at=raw.get("createdAt") if isinstance(raw.get("createdAt"), str) else None,
         )
     else:

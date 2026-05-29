@@ -66,10 +66,18 @@ cat <<'JSON' | {{session_memory_cli_shell}} write --stdin-json --no-input
   "summary": [
     "One short carry-forward fact, decision, or next-context item."
   ],
-  "notes": "Optional deeper context. Omit this field if the summary is enough."
+  "notes": "Optional deeper context. Omit this field if the summary is enough.",
+  "changedFiles": [
+    {
+      "path": "memory/areas/builder/log.md",
+      "note": "Appended the dated event because it is a concrete career fact useful for future context."
+    }
+  ]
 }
 JSON
 ```
+
+Omit `changedFiles` when no durable non-session files changed during this finalization turn.
 
 Current schema:
 
@@ -80,6 +88,7 @@ Current schema:
 - `threadId`: source Codex thread id
 - `summary`: 1–5 short bullets; this is the boot surface future Dobby sees
 - `notes`: optional deeper context; use sparingly
+- `changedFiles`: optional list of durable non-session files changed during this finalization turn; each item has `path` and a one-sentence plain-English `note`
 
 Quality bar for `summary[]`:
 
@@ -87,6 +96,14 @@ Quality bar for `summary[]`:
 - Use short bullets that are useful when loaded cold at boot.
 - Do not write “We discussed X” unless the actual carry-forward point is clear.
 - If this thread already has a session record for the same `threadId`, write only a real delta or no new record.
+
+Quality bar for `changedFiles[]`:
+
+- Include only files changed by this finalization turn, not files merely read.
+- Do not include the session-memory record itself; its path is reported separately.
+- Do not include full diffs or reconstruct unrelated git history.
+- Use one plain-English sentence: what changed and why it mattered.
+- If only the session-memory record changed, omit `changedFiles`.
 
 ## Boundaries
 

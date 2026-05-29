@@ -3,7 +3,8 @@
 
 This module owns the agent-native session memory v1 contract used by Dobby
 workspaces. Session memory is intentionally small: provenance plus a bootable
-summary and optional deeper notes.
+summary, optional deeper notes, and an optional plain-English changed-file
+audit for durable writes made during finalization.
 """
 
 from __future__ import annotations
@@ -113,6 +114,26 @@ def clean_summary(values: Any) -> list[str]:
     return out
 
 
+def clean_changed_files(values: Any) -> list[dict[str, str]]:
+    if not isinstance(values, list):
+        raise SessionMemoryError("changedFiles must be an array when present")
+    out: list[dict[str, str]] = []
+    for idx, value in enumerate(values, start=1):
+        if not isinstance(value, dict):
+            raise SessionMemoryError(f"changedFiles[{idx}] must be an object")
+        extra_keys = sorted(set(value) - {"path", "note"})
+        if extra_keys:
+            raise SessionMemoryError(f"changedFiles[{idx}] unsupported key(s): {', '.join(extra_keys)}")
+        path = value.get("path")
+        note = value.get("note")
+        if not isinstance(path, str) or not path.strip():
+            raise SessionMemoryError(f"changedFiles[{idx}].path is required")
+        if not isinstance(note, str) or not note.strip():
+            raise SessionMemoryError(f"changedFiles[{idx}].note is required")
+        out.append({"path": path.strip(), "note": note.strip()})
+    return out
+
+
 def make_record(
     *,
     source: str,
@@ -120,6 +141,7 @@ def make_record(
     thread_id: str | None,
     summary: list[str],
     notes: str | None = None,
+    changed_files: Any | None = None,
     created_at: str | None = None,
 ) -> dict[str, Any]:
     source = source.strip()
@@ -139,6 +161,10 @@ def make_record(
     parse_created_at(str(record["createdAt"]))
     if notes is not None and notes.strip():
         record["notes"] = notes.strip()
+    if changed_files is not None:
+        cleaned_changed_files = clean_changed_files(changed_files)
+        if cleaned_changed_files:
+            record["changedFiles"] = cleaned_changed_files
     return record
 
 
@@ -153,6 +179,7 @@ def validate_record(data: Any) -> dict[str, Any]:
         "threadId",
         "summary",
         "notes",
+        "changedFiles",
     }
     extra_keys = sorted(set(data) - allowed_keys)
     if extra_keys:
@@ -177,10 +204,18 @@ def validate_record(data: Any) -> dict[str, Any]:
     notes = data.get("notes")
     if notes is not None and not isinstance(notes, str):
         raise SessionMemoryError("notes must be a string when present")
+    changed_files = data.get("changedFiles")
+    cleaned_changed_files = None
+    if changed_files is not None:
+        cleaned_changed_files = clean_changed_files(changed_files)
     out = dict(data)
     out["summary"] = summary
     if thread_id is None:
         out["threadId"] = None
+    if cleaned_changed_files:
+        out["changedFiles"] = cleaned_changed_files
+    else:
+        out.pop("changedFiles", None)
     return out
 
 

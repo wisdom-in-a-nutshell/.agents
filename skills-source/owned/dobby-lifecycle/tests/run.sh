@@ -27,6 +27,10 @@ if ! grep -q '"schemaVersion"' <<<"$schema_output"; then
   echo "session-memory schema should describe the record contract" >&2
   exit 1
 fi
+if ! grep -q '"changedFiles"' <<<"$schema_output"; then
+  echo "session-memory schema should describe the changed-files audit field" >&2
+  exit 1
+fi
 
 write_output="$("$session_cli" write \
   --workspace-root "$repo" \
@@ -46,6 +50,41 @@ if [[ ! -f "$session_path" || "${session_path##*.}" != "json" ]]; then
 fi
 "$session_cli" validate "$session_path" --no-input >/dev/null
 
+stdin_write_output="$(cat <<'JSON' | "$session_cli" write --workspace-root "$repo" --stdin-json --no-input
+{
+  "source": "codex-desktop",
+  "reason": "test",
+  "threadId": "thread-test",
+  "summary": ["Carry this file audit forward."],
+  "changedFiles": [
+    {
+      "path": "memory/areas/builder/log.md",
+      "note": "Appended a dated event because future context needs the concrete fact."
+    }
+  ]
+}
+JSON
+)"
+stdin_session_path="$(python3 - "$stdin_write_output" <<'PY'
+import json, sys
+print(json.loads(sys.argv[1])["data"]["path"])
+PY
+)"
+python3 - "$session_cli" "$stdin_session_path" <<'PY'
+import json
+import subprocess
+import sys
+
+payload = subprocess.check_output([sys.argv[1], "read", sys.argv[2], "--no-input"], text=True)
+record = json.loads(payload)["data"]["record"]
+assert record["changedFiles"] == [
+    {
+        "path": "memory/areas/builder/log.md",
+        "note": "Appended a dated event because future context needs the concrete fact.",
+    }
+]
+PY
+
 boot_output="$("$session_cli" render-boot --workspace-root "$repo" --plain --no-input)"
 if ! grep -q "Carry this forward" <<<"$boot_output"; then
   echo "session-memory render-boot should include written summary" >&2
@@ -63,6 +102,15 @@ cat >"$bad_record" <<'JSON'
 JSON
 if "$session_cli" validate "$bad_record" --no-input >/dev/null; then
   echo "session-memory validate should reject unsupported schema keys" >&2
+  exit 1
+fi
+
+bad_changed_files_record="$tmp_dir/bad-changed-files-record.json"
+cat >"$bad_changed_files_record" <<'JSON'
+{"schemaVersion":1,"createdAt":"2026-05-25T01:02:03+02:00","source":"codex-desktop","reason":"test","threadId":"thread-test","summary":["ok"],"changedFiles":[{"path":"memory/now.md"}]}
+JSON
+if "$session_cli" validate "$bad_changed_files_record" --no-input >/dev/null; then
+  echo "session-memory validate should reject malformed changedFiles entries" >&2
   exit 1
 fi
 
@@ -212,6 +260,10 @@ if ! grep -q "Adi should not have to remember" <<<"$instruction_output"; then
 fi
 if ! grep -q "Current schema" <<<"$instruction_output"; then
   echo "remember-session prompt should document the session-memory schema" >&2
+  exit 1
+fi
+if ! grep -q "changedFiles" <<<"$instruction_output"; then
+  echo "remember-session prompt should document the changed-files audit field" >&2
   exit 1
 fi
 remember_output="$(PATH="$fake_bin_dir:$PATH" FAKE_THREAD_CWD="$repo" "$SKILL_DIR/scripts/remember-session" \
