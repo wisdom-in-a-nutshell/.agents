@@ -47,6 +47,7 @@ flowchart LR
 ## 4) External Refresh (Optional)
 
 - Use only for external skills that have `upstream_ref`.
+- If an upstream repo has both raw skill source and generated provider bundles, point `upstream_ref` at the install-ready bundle for this runtime. For Codex/agents installs, prefer upstream paths like `.agents/skills/<skill>` when present, not raw template folders like `skill/` that may contain `SKILL.src.md`.
 - Run `./scripts/refresh-external-skills.sh --apply`.
 - Then run sync + check again.
 
