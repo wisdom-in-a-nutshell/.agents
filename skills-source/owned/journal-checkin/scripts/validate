@@ -136,11 +136,14 @@ def validate_general_file(root: Path, path: Path, path_date: str) -> None:
         entry_label = f"{label}:entries[{idx}]"
         if not is_record(entry):
             fail(f"{entry_label}: entry must be an object")
-        for field in ("id", "title", "summary", "body", "source", "captured_at"):
+        for field in ("id", "title", "summary", "body", "body_format", "source", "captured_at"):
             require_non_empty_str(entry.get(field), entry_label, field)
         if entry["id"] in seen_ids:
             fail(f"{entry_label}: duplicate id {entry['id']}")
         seen_ids.add(entry["id"])
+        validation_errors = validate_payload_fields("general", entry)
+        if validation_errors:
+            fail(f"{entry_label}: {'; '.join(validation_errors)}")
         require_iso_timestamp(entry.get("captured_at"), entry_label, "captured_at")
         tags = entry.get("tags")
         if tags is None:

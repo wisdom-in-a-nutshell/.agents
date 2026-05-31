@@ -6,6 +6,7 @@ import argparse
 import hashlib
 import json
 import os
+import re
 import sys
 from datetime import datetime
 from pathlib import Path
@@ -14,6 +15,9 @@ from zoneinfo import ZoneInfo
 
 
 VALID_KINDS = {"morning", "night", "general"}
+GENERAL_TITLE_MAX_WORDS = 7
+GENERAL_SUMMARY_MAX_SENTENCES = 3
+GENERAL_SUMMARY_MAX_WORDS = 45
 REQUIRED_FIELDS = {
     "morning": ["sleep", "energy", "mood", "grateful", "one_thing_that_matters"],
     "night": [
@@ -23,9 +27,10 @@ REQUIRED_FIELDS = {
         "could_have_been_improved",
         "actions_to_improve_tomorrow",
     ],
-    "general": ["summary"],
+    "general": ["title", "summary", "body", "body_format"],
 }
 STATE_FIELDS = {"sleep", "energy", "mood"}
+WORD_RE = re.compile(r"[\w’'/-]+")
 
 
 def parse_args() -> argparse.Namespace:
@@ -100,6 +105,29 @@ def validate_score(name: str, value: Any) -> str | None:
     return None
 
 
+def word_count(value: str) -> int:
+    return len(WORD_RE.findall(value))
+
+
+def sentence_count(value: str) -> int:
+    return len([part for part in re.split(r"(?<=[.!?])\s+", value.strip()) if part.strip()]) or 1
+
+
+def compact_words(value: str, limit: int) -> str:
+    words = WORD_RE.findall(value)
+    if len(words) <= limit:
+        return value.strip()
+    return " ".join(words[:limit]).rstrip(" ,;:") + "…"
+
+
+def compact_summary(value: str) -> str:
+    text = re.sub(r"\s+", " ", value.strip())
+    sentences = [part.strip() for part in re.split(r"(?<=[.!?])\s+", text) if part.strip()]
+    if sentences:
+        text = " ".join(sentences[:GENERAL_SUMMARY_MAX_SENTENCES])
+    return compact_words(text, GENERAL_SUMMARY_MAX_WORDS)
+
+
 def missing_fields(kind: str, entry: dict[str, Any]) -> list[str]:
     missing: list[str] = []
     for field in REQUIRED_FIELDS[kind]:
@@ -122,6 +150,21 @@ def missing_fields(kind: str, entry: dict[str, Any]) -> list[str]:
 
 def validate_entry(kind: str, entry: dict[str, Any]) -> list[str]:
     errors: list[str] = []
+    if kind == "general":
+        title = entry.get("title")
+        if isinstance(title, str):
+            title_words = word_count(title)
+            if title_words < 1 or title_words > GENERAL_TITLE_MAX_WORDS:
+                errors.append(f"title must be 1-{GENERAL_TITLE_MAX_WORDS} words")
+        summary = entry.get("summary")
+        if isinstance(summary, str):
+            if word_count(summary) > GENERAL_SUMMARY_MAX_WORDS:
+                errors.append(f"summary must be at most {GENERAL_SUMMARY_MAX_WORDS} words")
+            if sentence_count(summary) > GENERAL_SUMMARY_MAX_SENTENCES:
+                errors.append(f"summary must be at most {GENERAL_SUMMARY_MAX_SENTENCES} sentences")
+        if entry.get("body_format") != "markdown":
+            errors.append("body_format must be markdown")
+
     for field in STATE_FIELDS:
         if field not in entry:
             continue
@@ -175,8 +218,11 @@ def build_general_entry(payload: dict[str, Any], args: argparse.Namespace, times
         "captured_at": payload.get("captured_at") or timestamp.isoformat(),
     }
     entry["id"] = general_entry_id(entry, timestamp, args.entry_id)
-    entry["title"] = str(entry.get("title") or entry.get("summary") or "Journal capture").strip()
-    entry["summary"] = str(entry.get("summary") or entry["title"]).strip()
+    entry["title"] = compact_words(
+        str(entry.get("title") or entry.get("summary") or "Journal capture").strip(),
+        GENERAL_TITLE_MAX_WORDS,
+    )
+    entry["summary"] = compact_summary(str(entry.get("summary") or entry["title"]).strip())
     entry["body"] = str(
         entry.get("body")
         or entry.get("what_feels_present")
@@ -184,6 +230,7 @@ def build_general_entry(payload: dict[str, Any], args: argparse.Namespace, times
         or entry.get("raw_input")
         or entry["summary"]
     ).strip()
+    entry["body_format"] = "markdown"
     entry["tags"] = normalize_tags(entry.get("tags"))
     return entry
 

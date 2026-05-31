@@ -20,7 +20,7 @@ Each day directory can contain:
 |---|---|---|
 | `morning.json` | JSON object | Structured morning check-in: sleep, energy, mood (each with `score_10` and optional `notes`), `grateful` (array), `one_thing_that_matters`, `show_up_as`, `raw_input` |
 | `night.json` | JSON object | Structured night check-in: mood, energy (each with `score_10` and optional `notes`), `went_well`, `could_have_been_improved`, `actions_to_improve_tomorrow`, `raw_input` |
-| `general.json` | JSON object | Flexible captures for the day as `entries[]`; each entry has `id`, `title`, `summary`, `body`, `tags`, `source`, `raw_input`, and `captured_at` |
+| `general.json` | JSON object | Flexible captures for the day as `entries[]`; each entry has `id`, short `title`, compact `summary`, Markdown `body`, `body_format`, `tags`, `source`, `raw_input`, and `captured_at` |
 
 All JSON entries also carry metadata: `agent`, `date`, `kind`, `tz`, `captured_at`, `source`.
 
