@@ -87,33 +87,36 @@ The JSON contract is intentionally minimal and code-backed by:
 $HOME/.agents/skills-source/owned/dobby-lifecycle/scripts/session-memory schema
 ```
 
-V1 records contain:
+V2 records are continuity index cards:
 
 ```json
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "createdAt": "2026-05-26T09:31:00+02:00",
-  "source": "codexclaw",
-  "reason": "daily-rollover",
   "threadId": "019e...",
-  "summary": ["Short carry-forward memory future Dobby should load."],
-  "notes": "Optional deeper context."
+  "trigger": "codexclaw-idle-expiry",
+  "title": "Short dashboard label",
+  "summary": "Markdown continuity index: what matters from the thread, not a transcript recap.",
+  "workspaceChanges": "Plain-English Markdown note about durable workspace changes made during consolidation, excluding this session-memory file."
 }
 ```
 
-`summary[]` is the boot surface. Keep it short and useful for the next agent.
-`notes` is optional deeper context. Durable decisions still get promoted to
-`now.md`, area canon, or `soul.md` as appropriate.
+`title` is for dashboard scanning. `summary` is the curated continuity index
+loaded at boot. `threadId` points back to the original transcript when deeper
+retrieval is needed. `workspaceChanges` is for visibility into durable writes
+made during finalization; if none happened, say so plainly. Durable decisions
+still get promoted to `now.md`, area canon, or `soul.md` as appropriate.
 
 Use the client instead of hand-writing records:
 
 ```bash
 $HOME/.agents/skills-source/owned/dobby-lifecycle/scripts/session-memory write \
   --workspace-root /path/to/dobby-workspace \
-  --source finalize-codex-thread \
-  --reason manual \
+  --trigger manual \
   --thread-id <codex-thread-id> \
-  --summary "One short carry-forward memory item." \
+  --title "Short dashboard label" \
+  --summary "Curated continuity index." \
+  --workspace-changes "No durable workspace changes besides this session-memory record." \
   --no-input
 ```
 
@@ -168,14 +171,13 @@ In Dobby workspaces the repo wrapper delegates to:
 $HOME/.agents/skills-source/owned/dobby-lifecycle/scripts/hooks/finalize-codex-thread
 ```
 
-That hook runs the Dobby memory-preservation behavior with explicit source,
-thread id, and reason:
+That hook runs the Dobby memory-preservation behavior with the
+source thread id and finalization trigger:
 
 ```bash
 $HOME/.agents/skills-source/owned/dobby-lifecycle/scripts/remember-session \
   --thread-id <codex-thread-id> \
-  --source finalize-codex-thread \
-  --reason manual \
+  --trigger manual \
   --no-input
 ```
 
@@ -185,7 +187,7 @@ carry forward only useful memory. The agent-facing instruction lives in
 not inline in the Python runner. The runner performs its own
 `thread/read(thread_id)`, derives the repo root from the thread cwd, renders the
 prompt with strict placeholders, and starts the final turn with that cwd. It
-does not infer source from reason prefixes. The final turn may call
+does not infer trigger semantics from label prefixes. The final turn may call
 `session-memory` to write `memory/sessions/YYYY/MM/DD-HHMMSS.json`; it may also
 make clearly routed durable updates when the body map says so. The repo hook
 does not archive; the global finalizer owns archive after the hook succeeds.

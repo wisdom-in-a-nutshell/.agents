@@ -8,7 +8,7 @@ import json
 import sys
 import time
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -34,7 +34,7 @@ EXIT_USAGE = 2
 
 
 def utc_now() -> str:
-    return datetime.now(timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z")
+    return datetime.now(UTC).isoformat(timespec="seconds").replace("+00:00", "Z")
 
 
 def envelope(command: str, status: str, data: dict[str, Any] | None, error: dict[str, Any] | None, started: float) -> dict[str, Any]:
@@ -76,7 +76,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Read, write, and validate Dobby session memory records.")
     sub = parser.add_subparsers(dest="subcommand", required=True)
 
-    schema = sub.add_parser("schema", help="Print the session-memory v1 schema summary.")
+    schema = sub.add_parser("schema", help="Print the session-memory v2 schema summary.")
     add_common(schema)
 
     validate = sub.add_parser("validate", help="Validate one session-memory JSON file.")
@@ -89,12 +89,12 @@ def build_parser() -> argparse.ArgumentParser:
 
     write = sub.add_parser("write", help="Write one session-memory JSON file.")
     write.add_argument("--workspace-root", default=".")
-    write.add_argument("--source")
-    write.add_argument("--reason")
+    write.add_argument("--trigger")
     write.add_argument("--thread-id")
     write.add_argument("--created-at")
-    write.add_argument("--summary", action="append", default=[])
-    write.add_argument("--notes", default="")
+    write.add_argument("--title")
+    write.add_argument("--summary")
+    write.add_argument("--workspace-changes")
     write.add_argument("--stdin-json", action="store_true", help="Read record fields from stdin JSON.")
     add_common(write)
 
@@ -114,22 +114,24 @@ def build_parser() -> argparse.ArgumentParser:
 def command_schema() -> dict[str, Any]:
     return {
         "schemaVersion": SCHEMA_VERSION,
-        "required": ["schemaVersion", "createdAt", "source", "reason", "threadId", "summary"],
-        "optional": ["notes", "changedFiles"],
+        "required": [
+            "schemaVersion",
+            "createdAt",
+            "threadId",
+            "trigger",
+            "title",
+            "summary",
+            "workspaceChanges",
+        ],
+        "optional": [],
         "record": {
-            "schemaVersion": 1,
+            "schemaVersion": 2,
             "createdAt": "ISO-8601 timestamp with timezone",
-            "source": "string",
-            "reason": "string",
-            "threadId": "string or null",
-            "summary": ["non-empty string array loaded at boot"],
-            "notes": "optional string for deeper context",
-            "changedFiles": [
-                {
-                    "path": "repo-relative path changed during finalization",
-                    "note": "one plain-English sentence explaining what changed and why",
-                }
-            ],
+            "threadId": "Codex thread id string, or null when unavailable",
+            "trigger": "why consolidation happened, e.g. codexclaw-idle-expiry, codexclaw-chat-end, stale-cleanup, manual",
+            "title": f"short dashboard/index label, at most {120} characters",
+            "summary": "Markdown continuity index: what matters from the thread, not a transcript recap",
+            "workspaceChanges": "Markdown/plain-English visibility note about durable workspace changes made during consolidation, excluding this session-memory file",
         },
     }
 
@@ -140,23 +142,20 @@ def command_write(args: argparse.Namespace) -> dict[str, Any]:
         if not isinstance(raw, dict):
             raise SessionMemoryError("stdin JSON must be an object")
         record = make_record(
-            source=str(raw.get("source") or ""),
-            reason=str(raw.get("reason") or ""),
-            thread_id=raw.get("threadId") if isinstance(raw.get("threadId"), str) else None,
-            summary=raw.get("summary"),
-            notes=raw.get("notes") if isinstance(raw.get("notes"), str) else None,
-            changed_files=raw.get("changedFiles") if "changedFiles" in raw else None,
+            trigger=str(raw.get("trigger") or ""),
+            thread_id=raw.get("threadId") if raw.get("threadId") is None or isinstance(raw.get("threadId"), str) else "",
+            title=str(raw.get("title") or ""),
+            summary=str(raw.get("summary") or ""),
+            workspace_changes=str(raw.get("workspaceChanges") or ""),
             created_at=raw.get("createdAt") if isinstance(raw.get("createdAt"), str) else None,
         )
     else:
-        if not args.source or not args.reason:
-            raise SessionMemoryError("--source and --reason are required")
         record = make_record(
-            source=args.source,
-            reason=args.reason,
+            trigger=args.trigger or "",
             thread_id=args.thread_id,
-            summary=args.summary,
-            notes=args.notes,
+            title=args.title or "",
+            summary=args.summary or "",
+            workspace_changes=args.workspace_changes or "",
             created_at=args.created_at,
         )
     path = write_record(Path(args.workspace_root).expanduser().resolve(), record)
@@ -190,7 +189,7 @@ def command_migrate_md(args: argparse.Namespace) -> dict[str, Any]:
         while target.exists():
             target = path.with_name(f"{path.stem}-{suffix}.json")
             suffix += 1
-        migrated.append({"source": str(path), "target": str(target)})
+        migrated.append({"from": str(path), "to": str(target)})
         if args.apply:
             from session_memory_lib import atomic_write_record  # local to keep command surface small
 

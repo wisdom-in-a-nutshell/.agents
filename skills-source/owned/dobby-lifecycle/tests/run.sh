@@ -28,17 +28,18 @@ if ! grep -q '"schemaVersion"' <<<"$schema_output"; then
   echo "session-memory schema should describe the record contract" >&2
   exit 1
 fi
-if ! grep -q '"changedFiles"' <<<"$schema_output"; then
-  echo "session-memory schema should describe the changed-files audit field" >&2
+if ! grep -q '"workspaceChanges"' <<<"$schema_output"; then
+  echo "session-memory schema should describe the workspace-changes visibility field" >&2
   exit 1
 fi
 
 write_output="$("$session_cli" write \
   --workspace-root "$repo" \
-  --source codex-desktop \
-  --reason test \
+  --trigger test \
   --thread-id thread-test \
+  --title "Test memory" \
   --summary "Carry this forward." \
+  --workspace-changes "No durable workspace changes besides this session-memory record." \
   --no-input)"
 session_path="$(python3 - "$write_output" <<'PY'
 import json, sys
@@ -63,16 +64,11 @@ rm -f "$bad_session_name"
 
 stdin_write_output="$(cat <<'JSON' | "$session_cli" write --workspace-root "$repo" --stdin-json --no-input
 {
-  "source": "codex-desktop",
-  "reason": "test",
+  "trigger": "test",
   "threadId": "thread-test",
-  "summary": ["Carry this file audit forward."],
-  "changedFiles": [
-    {
-      "path": "memory/areas/builder/log.md",
-      "note": "Appended a dated event because future context needs the concrete fact."
-    }
-  ]
+  "title": "File audit",
+  "summary": "Carry this file audit forward.",
+  "workspaceChanges": "Updated `memory/areas/builder/log.md` because future context needs the concrete fact."
 }
 JSON
 )"
@@ -88,12 +84,7 @@ import sys
 
 payload = subprocess.check_output([sys.argv[1], "read", sys.argv[2], "--no-input"], text=True)
 record = json.loads(payload)["data"]["record"]
-assert record["changedFiles"] == [
-    {
-        "path": "memory/areas/builder/log.md",
-        "note": "Appended a dated event because future context needs the concrete fact.",
-    }
-]
+assert record["workspaceChanges"] == "Updated `memory/areas/builder/log.md` because future context needs the concrete fact."
 PY
 
 boot_output="$("$session_cli" render-boot --workspace-root "$repo" --plain --no-input)"
@@ -102,26 +93,26 @@ if ! grep -q "Carry this forward" <<<"$boot_output"; then
   exit 1
 fi
 
-if "$session_cli" write --workspace-root "$repo" --source codex-desktop --reason test --no-input >/dev/null; then
+if "$session_cli" write --workspace-root "$repo" --trigger test --title "Missing summary" --workspace-changes "No durable workspace changes besides this session-memory record." --no-input >/dev/null; then
   echo "session-memory write should reject empty summary" >&2
   exit 1
 fi
 
 bad_record="$tmp_dir/bad-session-record.json"
 cat >"$bad_record" <<'JSON'
-{"schemaVersion":1,"createdAt":"2026-05-25T01:02:03+02:00","source":"codex-desktop","reason":"test","threadId":"thread-test","summary":["ok"],"surfaceKey":"legacy"}
+{"schemaVersion":2,"createdAt":"2026-05-25T01:02:03+02:00","threadId":"thread-test","trigger":"test","title":"Ok","summary":"ok","workspaceChanges":"none","surfaceKey":"legacy"}
 JSON
 if "$session_cli" validate "$bad_record" --no-input >/dev/null; then
   echo "session-memory validate should reject unsupported schema keys" >&2
   exit 1
 fi
 
-bad_changed_files_record="$tmp_dir/bad-changed-files-record.json"
-cat >"$bad_changed_files_record" <<'JSON'
-{"schemaVersion":1,"createdAt":"2026-05-25T01:02:03+02:00","source":"codex-desktop","reason":"test","threadId":"thread-test","summary":["ok"],"changedFiles":[{"path":"memory/now.md"}]}
+bad_workspace_changes_record="$tmp_dir/bad-workspace-changes-record.json"
+cat >"$bad_workspace_changes_record" <<'JSON'
+{"schemaVersion":2,"createdAt":"2026-05-25T01:02:03+02:00","threadId":"thread-test","trigger":"test","title":"Ok","summary":"ok","workspaceChanges":""}
 JSON
-if "$session_cli" validate "$bad_changed_files_record" --no-input >/dev/null; then
-  echo "session-memory validate should reject malformed changedFiles entries" >&2
+if "$session_cli" validate "$bad_workspace_changes_record" --no-input >/dev/null; then
+  echo "session-memory validate should reject empty workspaceChanges" >&2
   exit 1
 fi
 
@@ -174,16 +165,16 @@ if ! grep -q -- "--thread-id" <<<"$remember_argv" || ! grep -q "thread-test" <<<
   echo "remember-session should receive source thread id" >&2
   exit 1
 fi
-if ! grep -q -- "--reason" <<<"$remember_argv" || ! grep -q "codexclaw-daily-rollover" <<<"$remember_argv"; then
-  echo "remember-session should receive raw finalization reason" >&2
+if ! grep -q -- "--trigger" <<<"$remember_argv" || ! grep -q "codexclaw-daily-rollover" <<<"$remember_argv"; then
+  echo "remember-session should receive raw finalization trigger" >&2
   exit 1
 fi
-if ! grep -q -- "--source" <<<"$remember_argv" || ! grep -q "finalize-codex-thread" <<<"$remember_argv"; then
-  echo "remember-session should receive explicit source" >&2
+if grep -q -- "--source" <<<"$remember_argv" || grep -q -- "--reason" <<<"$remember_argv"; then
+  echo "remember-session should not receive legacy source/reason args" >&2
   exit 1
 fi
 if grep -Eq -- "--workspace-root|--timeout-seconds|--remember-timeout-seconds" <<<"$remember_argv"; then
-  echo "finalize-codex-thread hook should only forward thread id, source, and reason to remember-session" >&2
+  echo "finalize-codex-thread hook should only forward thread id and trigger to remember-session" >&2
   exit 1
 fi
 
@@ -253,7 +244,7 @@ PY
 chmod +x "$fake_codex"
 instruction_output="$(PATH="$fake_bin_dir:$PATH" FAKE_THREAD_CWD="$repo" "$SKILL_DIR/scripts/remember-session" \
   --thread-id thread-test \
-  --reason codexclaw-daily-rollover \
+  --trigger codexclaw-daily-rollover \
   --print-instruction \
   --plain \
   --no-input)"
@@ -273,14 +264,13 @@ if ! grep -q "schema source of truth" <<<"$instruction_output"; then
   echo "remember-session prompt should point agents to the session-memory client schema" >&2
   exit 1
 fi
-if ! grep -q "changedFiles" <<<"$instruction_output"; then
-  echo "remember-session prompt should document the changed-files audit field" >&2
+if ! grep -q "workspaceChanges" <<<"$instruction_output"; then
+  echo "remember-session prompt should document the workspace-changes visibility field" >&2
   exit 1
 fi
 remember_output="$(PATH="$fake_bin_dir:$PATH" FAKE_THREAD_CWD="$repo" "$SKILL_DIR/scripts/remember-session" \
   --thread-id thread-test \
-  --source finalize-codex-thread \
-  --reason codexclaw-daily-rollover \
+  --trigger codexclaw-daily-rollover \
   --json \
   --no-input)"
 python3 - "$remember_output" "$repo" <<'PY'
@@ -294,7 +284,6 @@ data = payload["data"]
 assert data["threadId"] == "thread-test"
 assert str(pathlib.Path(data["threadCwd"]).resolve()) == repo
 assert str(pathlib.Path(data["workspaceRoot"]).resolve()) == repo
-assert data["source"] == "finalize-codex-thread"
-assert data["reason"] == "codexclaw-daily-rollover"
+assert data["trigger"] == "codexclaw-daily-rollover"
 assert data["turnStatus"] == "completed"
 PY

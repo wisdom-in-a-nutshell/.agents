@@ -71,17 +71,15 @@ def run_remember_session(payload: dict[str, Any]) -> int:
         return 2
 
     root = Path.cwd().resolve()
-    reason = first_text(payload, "reason") or "manual"
+    trigger = first_text(payload, "reason") or "manual"
 
     runner = remember_session_bin()
     cmd = [
         str(runner),
         "--thread-id",
         source_thread,
-        "--source",
-        "finalize-codex-thread",
-        "--reason",
-        reason,
+        "--trigger",
+        trigger,
         "--json",
         "--no-input",
     ]

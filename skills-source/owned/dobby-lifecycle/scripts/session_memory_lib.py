@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """Dobby session-memory JSON helpers.
 
-This module owns the agent-native session memory v1 contract used by Dobby
-workspaces. Session memory is intentionally small: provenance plus a bootable
-summary, optional deeper notes, and an optional plain-English changed-file
-audit for durable writes made during finalization.
+This module owns the agent-native session-memory v2 contract used by Dobby
+workspaces. Session memory is intentionally small: a dashboard-readable title,
+a curated continuity index, a pointer back to the source thread, the trigger
+that caused consolidation, and a plain-English workspace-change visibility note.
 """
 
 from __future__ import annotations
@@ -12,18 +12,19 @@ from __future__ import annotations
 import json
 import re
 from dataclasses import dataclass
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any
 from zoneinfo import ZoneInfo
 
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
 LOCAL_TIMEZONE = "Europe/Berlin"
 RECENT_SESSION_DAYS = 7
 RECENT_SESSION_MIN_COUNT = 3
 RECENT_SESSION_MAX_COUNT = 10
 RECENT_SESSION_RECORD_MAX_CHARS = 2500
 RECENT_SESSIONS_BLOCK_MAX_CHARS = 12000
+TITLE_MAX_CHARS = 120
 
 
 class SessionMemoryError(ValueError):
@@ -105,66 +106,44 @@ def next_session_path(workspace_root: Path, created_at: str) -> Path:
     raise SessionMemoryError(f"could not find free session-memory path for {path}")
 
 
-def clean_summary(values: Any) -> list[str]:
-    if not isinstance(values, list):
-        raise SessionMemoryError("summary must be a non-empty array of strings")
-    out = [str(value).strip() for value in values if str(value).strip()]
-    if not out:
-        raise SessionMemoryError("summary must contain at least one non-empty item")
-    return out
+def clean_text(value: Any, field: str, *, max_chars: int | None = None) -> str:
+    if not isinstance(value, str):
+        raise SessionMemoryError(f"{field} must be a string")
+    text = value.strip()
+    if not text:
+        raise SessionMemoryError(f"{field} is required")
+    if max_chars is not None and len(text) > max_chars:
+        raise SessionMemoryError(f"{field} must be at most {max_chars} characters")
+    return text
 
 
-def clean_changed_files(values: Any) -> list[dict[str, str]]:
-    if not isinstance(values, list):
-        raise SessionMemoryError("changedFiles must be an array when present")
-    out: list[dict[str, str]] = []
-    for idx, value in enumerate(values, start=1):
-        if not isinstance(value, dict):
-            raise SessionMemoryError(f"changedFiles[{idx}] must be an object")
-        extra_keys = sorted(set(value) - {"path", "note"})
-        if extra_keys:
-            raise SessionMemoryError(f"changedFiles[{idx}] unsupported key(s): {', '.join(extra_keys)}")
-        path = value.get("path")
-        note = value.get("note")
-        if not isinstance(path, str) or not path.strip():
-            raise SessionMemoryError(f"changedFiles[{idx}].path is required")
-        if not isinstance(note, str) or not note.strip():
-            raise SessionMemoryError(f"changedFiles[{idx}].note is required")
-        out.append({"path": path.strip(), "note": note.strip()})
-    return out
+def clean_thread_id(value: Any) -> str | None:
+    if value is None:
+        return None
+    if not isinstance(value, str) or not value.strip():
+        raise SessionMemoryError("threadId must be a string or null")
+    return value.strip()
 
 
 def make_record(
     *,
-    source: str,
-    reason: str,
+    trigger: str,
+    title: str,
+    summary: str,
+    workspace_changes: str,
     thread_id: str | None,
-    summary: list[str],
-    notes: str | None = None,
-    changed_files: Any | None = None,
     created_at: str | None = None,
 ) -> dict[str, Any]:
-    source = source.strip()
-    reason = reason.strip()
-    if not source:
-        raise SessionMemoryError("source is required")
-    if not reason:
-        raise SessionMemoryError("reason is required")
     record: dict[str, Any] = {
         "schemaVersion": SCHEMA_VERSION,
         "createdAt": created_at or iso_now_local(),
-        "source": source,
-        "reason": reason,
-        "threadId": thread_id.strip() if isinstance(thread_id, str) and thread_id.strip() else None,
-        "summary": clean_summary(summary),
+        "threadId": clean_thread_id(thread_id),
+        "trigger": clean_text(trigger, "trigger"),
+        "title": clean_text(title, "title", max_chars=TITLE_MAX_CHARS),
+        "summary": clean_text(summary, "summary"),
+        "workspaceChanges": clean_text(workspace_changes, "workspaceChanges"),
     }
     parse_created_at(str(record["createdAt"]))
-    if notes is not None and notes.strip():
-        record["notes"] = notes.strip()
-    if changed_files is not None:
-        cleaned_changed_files = clean_changed_files(changed_files)
-        if cleaned_changed_files:
-            record["changedFiles"] = cleaned_changed_files
     return record
 
 
@@ -174,17 +153,16 @@ def validate_record(data: Any) -> dict[str, Any]:
     allowed_keys = {
         "schemaVersion",
         "createdAt",
-        "source",
-        "reason",
         "threadId",
+        "trigger",
+        "title",
         "summary",
-        "notes",
-        "changedFiles",
+        "workspaceChanges",
     }
     extra_keys = sorted(set(data) - allowed_keys)
     if extra_keys:
         raise SessionMemoryError(f"unsupported key(s): {', '.join(extra_keys)}")
-    for key in ["schemaVersion", "createdAt", "source", "reason", "threadId", "summary"]:
+    for key in ["schemaVersion", "createdAt", "threadId", "trigger", "title", "summary", "workspaceChanges"]:
         if key not in data:
             raise SessionMemoryError(f"{key} is required")
     if data.get("schemaVersion") != SCHEMA_VERSION:
@@ -193,29 +171,12 @@ def validate_record(data: Any) -> dict[str, Any]:
     if not isinstance(created_at, str) or not created_at.strip():
         raise SessionMemoryError("createdAt is required")
     parse_created_at(created_at)
-    for key in ("source", "reason"):
-        value = data.get(key)
-        if not isinstance(value, str) or not value.strip():
-            raise SessionMemoryError(f"{key} is required")
-    thread_id = data.get("threadId")
-    if thread_id is not None and (not isinstance(thread_id, str) or not thread_id.strip()):
-        raise SessionMemoryError("threadId must be a string or null")
-    summary = clean_summary(data.get("summary"))
-    notes = data.get("notes")
-    if notes is not None and not isinstance(notes, str):
-        raise SessionMemoryError("notes must be a string when present")
-    changed_files = data.get("changedFiles")
-    cleaned_changed_files = None
-    if changed_files is not None:
-        cleaned_changed_files = clean_changed_files(changed_files)
     out = dict(data)
-    out["summary"] = summary
-    if thread_id is None:
-        out["threadId"] = None
-    if cleaned_changed_files:
-        out["changedFiles"] = cleaned_changed_files
-    else:
-        out.pop("changedFiles", None)
+    out["threadId"] = clean_thread_id(data.get("threadId"))
+    out["trigger"] = clean_text(data.get("trigger"), "trigger")
+    out["title"] = clean_text(data.get("title"), "title", max_chars=TITLE_MAX_CHARS)
+    out["summary"] = clean_text(data.get("summary"), "summary")
+    out["workspaceChanges"] = clean_text(data.get("workspaceChanges"), "workspaceChanges")
     return out
 
 
@@ -253,23 +214,65 @@ def truncate_text(content: str, limit: int, label: str = "content") -> str:
 
 
 def render_json_summary(record: dict[str, Any]) -> str:
-    lines = [f"source={record['source']} reason={record['reason']} threadId={record.get('threadId') or 'null'}"]
-    lines.extend(f"- {item}" for item in record["summary"])
-    return "\n".join(lines)
+    lines = [
+        f"# {record['title']}",
+        f"trigger={record['trigger']} threadId={record.get('threadId') or 'null'}",
+        "",
+        str(record["summary"]).strip(),
+        "",
+        "Workspace changes:",
+        str(record["workspaceChanges"]).strip(),
+    ]
+    return "\n".join(lines).strip()
 
 
-def legacy_md_summary(content: str) -> list[str]:
-    lines: list[str] = []
+def first_meaningful_line(content: str) -> str:
     for raw_line in content.splitlines():
         line = raw_line.strip()
         if not line:
             continue
         if line.startswith("#"):
             continue
-        lines.append(line.lstrip("- ").strip())
-        if len(lines) >= 5:
-            break
-    return lines or ["Legacy session note migrated from Markdown; see notes for full context."]
+        cleaned = re.sub(r"^[-*]\s+", "", line).strip()
+        if cleaned:
+            return cleaned
+    return "Legacy session memory"
+
+
+def title_from_text(content: str) -> str:
+    title = re.sub(r"[`*_#]", "", first_meaningful_line(content))
+    title = re.sub(r"\s+", " ", title).strip()
+    if len(title) <= TITLE_MAX_CHARS:
+        return title
+    return title[: TITLE_MAX_CHARS - 1].rstrip() + "…"
+
+
+def strip_legacy_markdown_noise(content: str) -> str:
+    skip_prefixes = (
+        "source thread ",
+        "source: ",
+        "preserve only ",
+        "useful delta only",
+        "useful continuity preserved elsewhere",
+    )
+    kept: list[str] = []
+    previous_blank = False
+    for raw_line in content.replace("\r\n", "\n").split("\n"):
+        line = raw_line.rstrip()
+        stripped = line.strip()
+        lower = stripped.lower()
+        if stripped.startswith("# Session continuity"):
+            continue
+        if any(lower.startswith(prefix) for prefix in skip_prefixes):
+            continue
+        if not stripped:
+            if kept and not previous_blank:
+                kept.append("")
+            previous_blank = True
+            continue
+        kept.append(line)
+        previous_blank = False
+    return "\n".join(kept).strip() or first_meaningful_line(content)
 
 
 def extract_legacy_thread_id(content: str) -> str | None:
@@ -277,6 +280,8 @@ def extract_legacy_thread_id(content: str) -> str | None:
         r"Source thread [`'](?P<id>[^`']+)[`']",
         r"source thread id:\s*[`']?(?P<id>[A-Za-z0-9._:-]+)",
         r"thread(?:Id| id)?[`: ]+[`'](?P<id>[^`']+)[`']",
+        r"Source:\s*`[^`]+`\s*/\s*`(?P<id>[^`']+)`",
+        r"Source:\s*`[^`]+`\s*\((?P<id>[A-Za-z0-9._:-]+)\)",
     ]
     for pattern in patterns:
         match = re.search(pattern, content, flags=re.IGNORECASE)
@@ -290,12 +295,13 @@ def extract_legacy_thread_id(content: str) -> str | None:
 def record_from_legacy_md(path: Path) -> dict[str, Any]:
     content = path.read_text(encoding="utf-8")
     stamp = parse_session_path_datetime(path) or now_local()
+    summary = strip_legacy_markdown_noise(content)
     return make_record(
-        source="legacy-md",
-        reason="migration",
+        trigger="migration",
         thread_id=extract_legacy_thread_id(content),
-        summary=legacy_md_summary(content),
-        notes=content,
+        title=title_from_text(summary),
+        summary=summary,
+        workspace_changes="No separate workspace-change note existed in the legacy record.",
         created_at=stamp.isoformat(timespec="seconds"),
     )
 
@@ -359,5 +365,5 @@ def build_recent_session_entries(sessions_dir: Path) -> list[dict[str, Any]]:
                 "kind": entry.kind,
             }
         )
-        total_chars += len(f"## {entry.label}\n{content}\n")
+        total_chars += len(block)
     return out

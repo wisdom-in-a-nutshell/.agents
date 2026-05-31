@@ -76,8 +76,10 @@ the skills that write the data.
 - `memory/now.md` is the short active weekly layer.
 - Area canon files hold durable domain understanding.
 - Area logs are append-only dated facts: `- YYYY-MM-DD — <event>`.
-- Session memory records are continuity records, not canon by default. Their
-  `summary[]` field is the boot surface; `notes` is optional deeper context.
+- Session memory records are continuity index cards, not canon by default.
+  V2 records use `title`, Markdown `summary`, `threadId`, `trigger`, and
+  Markdown/plain-English `workspaceChanges`; the `summary` field is the boot
+  surface and `threadId` points back to the source transcript when needed.
 - Personal open loops never live in memory; they live in Shelf.
 - Raw reflections live in journal first and only become memory after synthesis.
 - Daily journal storage is JSON-only: structured check-ins use `morning.json`

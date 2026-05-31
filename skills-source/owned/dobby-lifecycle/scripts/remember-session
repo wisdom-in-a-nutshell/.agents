@@ -368,8 +368,7 @@ def build_instruction(
     *,
     workspace_root: Path,
     thread_id: str,
-    source: str,
-    reason: str,
+    trigger: str,
 ) -> str:
     session_memory_cli = Path.home() / ".agents/skills-source/owned/dobby-lifecycle/scripts/session-memory"
     body_map_path = Path.home() / ".agents/skills-source/owned/dobby-workspace/references/body-map.md"
@@ -381,8 +380,7 @@ def build_instruction(
     values = {
         "workspace_root_json": json.dumps(str(workspace_root), ensure_ascii=False),
         "thread_id_json": json.dumps(thread_id, ensure_ascii=False),
-        "source_json": json.dumps(source, ensure_ascii=False),
-        "reason_json": json.dumps(reason, ensure_ascii=False),
+        "trigger_json": json.dumps(trigger, ensure_ascii=False),
         "body_map_path": str(body_map_path),
         "body_map_path_json": json.dumps(str(body_map_path), ensure_ascii=False),
         "session_memory_cli_json": json.dumps(str(session_memory_cli), ensure_ascii=False),
@@ -394,21 +392,18 @@ def build_instruction(
 def remember_session(
     *,
     thread_id: str,
-    source: str,
-    reason: str,
+    trigger: str,
     timeout_seconds: float,
     remember_timeout_seconds: float,
 ) -> dict[str, Any]:
-    source = clean_label(source, "remember-session")
-    reason = clean_label(reason, "manual")
+    trigger = clean_label(trigger, "manual")
     with AppServerClient(timeout_seconds) as client:
         thread_cwd, workspace_root = resolve_workspace_root(client, thread_id)
         thread_resume(client, thread_id)
         instruction = build_instruction(
             workspace_root=workspace_root,
             thread_id=thread_id,
-            source=source,
-            reason=reason,
+            trigger=trigger,
         )
         response = client.request(
             "turn/start",
@@ -435,8 +430,7 @@ def remember_session(
         "threadId": thread_id,
         "threadCwd": thread_cwd,
         "workspaceRoot": str(workspace_root),
-        "source": source,
-        "reason": reason,
+        "trigger": trigger,
         "turnId": turn_id,
         "turnStatus": status,
         "reply": truncate_text(re.sub(r"\s+", " ", final_text), 1000) if final_text else "",
@@ -465,8 +459,7 @@ def print_json(value: dict[str, Any]) -> None:
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Remember useful Dobby session memory from an ending Codex thread.")
     parser.add_argument("--thread-id", required=True)
-    parser.add_argument("--source", default="remember-session")
-    parser.add_argument("--reason", default="manual")
+    parser.add_argument("--trigger", default="manual")
     parser.add_argument("--timeout-seconds", type=float, default=DEFAULT_TIMEOUT_SECONDS)
     parser.add_argument("--remember-timeout-seconds", type=float, default=DEFAULT_REMEMBER_TIMEOUT_SECONDS)
     parser.add_argument("--finalization-timeout-seconds", type=float, help="Alias for --remember-timeout-seconds.")
@@ -486,23 +479,20 @@ def main() -> int:
         if args.timeout_seconds <= 0 or remember_timeout <= 0:
             raise RememberSessionError("timeouts must be positive")
         if args.print_instruction:
-            source = clean_label(args.source, "remember-session")
-            reason = clean_label(args.reason, "manual")
+            trigger = clean_label(args.trigger, "manual")
             with AppServerClient(args.timeout_seconds) as client:
                 _, workspace_root = resolve_workspace_root(client, args.thread_id)
             data = {
                 "instruction": build_instruction(
                     workspace_root=workspace_root,
                     thread_id=args.thread_id,
-                    source=source,
-                    reason=reason,
+                    trigger=trigger,
                 )
             }
         else:
             data = remember_session(
                 thread_id=args.thread_id,
-                source=args.source,
-                reason=args.reason,
+                trigger=args.trigger,
                 timeout_seconds=args.timeout_seconds,
                 remember_timeout_seconds=remember_timeout,
             )
