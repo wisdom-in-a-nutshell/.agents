@@ -10,6 +10,7 @@ from tests.control_plane.support import (
     init_git_repo,
     make_skill_source,
     run_command,
+    write_text,
     write_json,
 )
 
@@ -27,6 +28,17 @@ class AntigravitySpikeSyncTests(TempDirTestCase):
                 "paths": {"github_root": str(self.temp_path / "GitHub")},
             },
         )
+
+    def _isolated_targets(self, root: Path) -> list[str]:
+        source = write_text(root / "codex/config/global.agents.md", "# Global\n")
+        return [
+            "--global-context-source",
+            str(source),
+            "--global-context-target",
+            str(self.temp_path / "gemini/GEMINI.md"),
+            "--hooks-file",
+            str(self.temp_path / "gemini/config/hooks.json"),
+        ]
 
     def test_apply_renders_global_skills_and_yolo_setting(self) -> None:
         root = self.temp_path / "agents"
@@ -60,6 +72,7 @@ class AntigravitySpikeSyncTests(TempDirTestCase):
                 "--apply",
                 "--app-data-dir",
                 str(app_data),
+                *self._isolated_targets(root),
                 str(registry),
             ]
         )
@@ -101,6 +114,7 @@ class AntigravitySpikeSyncTests(TempDirTestCase):
                 str(app_data),
                 "--github-root",
                 str(github_root),
+                *self._isolated_targets(root),
                 str(registry),
             ]
         )
@@ -144,6 +158,8 @@ class AntigravitySpikeSyncTests(TempDirTestCase):
                 str(REPO_ROOT / "scripts/sync-antigravity-spike.py"),
                 "--apply",
                 "--skip-yolo",
+                "--skip-global-context",
+                "--skip-hooks",
                 "--app-data-dir",
                 str(app_data),
                 str(registry),
@@ -153,3 +169,47 @@ class AntigravitySpikeSyncTests(TempDirTestCase):
         self.assertTrue((skills_dir / "kept").is_symlink())
         self.assertFalse((skills_dir / "obsolete").exists())
         self.assertTrue((skills_dir / "external").is_symlink())
+
+    def test_apply_renders_global_context_and_stop_hook(self) -> None:
+        root = self.temp_path / "agents"
+        registry = self._write_registry(root, [])
+        app_data = self.temp_path / "antigravity-cli"
+        source = write_text(root / "codex/config/global.agents.md", "# Global Agent Context\n")
+        global_context_target = self.temp_path / "gemini/GEMINI.md"
+        hooks_file = self.temp_path / "gemini/config/hooks.json"
+
+        run_command(
+            [
+                str(REPO_ROOT / "scripts/sync-antigravity-spike.py"),
+                "--apply",
+                "--skip-yolo",
+                "--skip-workspace-trust",
+                "--app-data-dir",
+                str(app_data),
+                "--global-context-source",
+                str(source),
+                "--global-context-target",
+                str(global_context_target),
+                "--hooks-file",
+                str(hooks_file),
+                str(registry),
+            ]
+        )
+
+        self.assertTrue(global_context_target.is_symlink())
+        self.assertEqual(source.resolve(), (global_context_target.parent / os.readlink(global_context_target)).resolve())
+        hooks = json.loads(hooks_file.read_text(encoding="utf-8"))
+        self.assertEqual(
+            "python3 ~/.agents/hooks/scripts/antigravity_stop.py",
+            hooks["hooks"]["Stop"][0]["hooks"][0]["command"],
+        )
+
+    def test_antigravity_stop_adapter_reuses_shared_stop_for_clean_repo(self) -> None:
+        repo = init_git_repo(self.temp_path / "repo")
+        result = run_command(
+            [str(REPO_ROOT / "hooks/scripts/antigravity_stop.py")],
+            cwd=repo,
+            env={"HOME": str(self.temp_path / "home")},
+        )
+
+        self.assertEqual("", result.stdout)

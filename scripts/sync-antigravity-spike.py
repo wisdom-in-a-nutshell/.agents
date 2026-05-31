@@ -15,6 +15,10 @@ from typing import Any
 # cross-runtime bootstrap model is clear.
 DEFAULT_APP_DATA_DIR = Path.home() / ".gemini" / "antigravity-cli"
 DEFAULT_GITHUB_ROOT = Path.home() / "GitHub"
+DEFAULT_GLOBAL_CONTEXT_SOURCE = Path.home() / ".agents" / "codex" / "config" / "global.agents.md"
+DEFAULT_GLOBAL_CONTEXT_TARGET = Path.home() / ".gemini" / "GEMINI.md"
+DEFAULT_HOOKS_FILE = Path.home() / ".gemini" / "config" / "hooks.json"
+ANTIGRAVITY_STOP_COMMAND = "python3 ~/.agents/hooks/scripts/antigravity_stop.py"
 DEFAULT_SETTINGS = {"toolPermission": "always-proceed"}
 ALLOWED_SCOPES = {"global", "repo", "dormant"}
 PRUNED_REPO_DIR_NAMES = {
@@ -156,6 +160,18 @@ def read_settings(settings_file: Path) -> dict[str, Any]:
     return data
 
 
+def read_json_object(path: Path) -> dict[str, Any]:
+    if not path.exists():
+        return {}
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as exc:
+        raise ValueError(f"invalid JSON in {path}: {exc}") from exc
+    if not isinstance(data, dict):
+        raise ValueError(f"JSON file must contain an object: {path}")
+    return data
+
+
 def git_root_for(path: Path) -> Path | None:
     if not path.exists():
         return None
@@ -260,14 +276,94 @@ def render_settings(
     )
 
 
+def render_global_context(source: Path, target: Path, apply: bool) -> None:
+    if not source.is_file():
+        raise ValueError(f"global context source missing: {source}")
+    if target.is_symlink() and resolved_target(target) == source.resolve():
+        print(f"UNCHANGED {target}")
+        return
+
+    print(f"SYNC {target} -> {rel_link(target, source)}")
+    if not apply:
+        return
+
+    target.parent.mkdir(parents=True, exist_ok=True)
+    if target.is_symlink() or target.is_file():
+        target.unlink()
+    elif target.is_dir():
+        shutil.rmtree(target)
+    elif target.exists():
+        target.unlink()
+    target.symlink_to(rel_link(target, source))
+
+
+def is_antigravity_stop_entry(entry: Any) -> bool:
+    if not isinstance(entry, dict):
+        return False
+    hooks = entry.get("hooks")
+    if not isinstance(hooks, list):
+        return False
+    for hook in hooks:
+        if isinstance(hook, dict) and hook.get("command") == ANTIGRAVITY_STOP_COMMAND:
+            return True
+    return False
+
+
+def render_hooks(hooks_file: Path, apply: bool) -> None:
+    data = read_json_object(hooks_file)
+    desired = dict(data)
+    hooks = desired.get("hooks")
+    if not isinstance(hooks, dict):
+        hooks = {}
+    else:
+        hooks = dict(hooks)
+
+    stop_entries = hooks.get("Stop")
+    if not isinstance(stop_entries, list):
+        stop_entries = []
+    stop_entries = [entry for entry in stop_entries if not is_antigravity_stop_entry(entry)]
+    stop_entries.append(
+        {
+            "hooks": [
+                {
+                    "command": ANTIGRAVITY_STOP_COMMAND,
+                    "timeout": 900,
+                    "type": "command",
+                }
+            ]
+        }
+    )
+    hooks["Stop"] = stop_entries
+    desired["hooks"] = hooks
+
+    if desired == data:
+        print(f"UNCHANGED {hooks_file}")
+        return
+
+    print(f"SYNC {hooks_file} (Stop)")
+    if not apply:
+        return
+
+    hooks_file.parent.mkdir(parents=True, exist_ok=True)
+    hooks_file.write_text(
+        json.dumps(desired, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
+
+
 def run_sync(
     registry_file: Path,
     app_data_dir: Path,
     github_root: Path,
     extra_trusted_workspaces: list[Path],
+    global_context_source: Path,
+    global_context_target: Path,
+    hooks_file: Path,
     apply: bool,
     skip_yolo: bool,
     skip_workspace_trust: bool,
+    skip_global_context: bool,
+    skip_hooks: bool,
 ) -> None:
     items, root_dir = load_registry(registry_file)
     skills_dir = app_data_dir / "skills"
@@ -291,6 +387,10 @@ def run_sync(
         skip_yolo,
         skip_workspace_trust,
     )
+    if not skip_global_context:
+        render_global_context(global_context_source, global_context_target, apply)
+    if not skip_hooks:
+        render_hooks(hooks_file, apply)
 
 
 def parse_args() -> argparse.Namespace:
@@ -321,6 +421,21 @@ def parse_args() -> argparse.Namespace:
         help="Additional workspace path to trust (repeatable).",
     )
     parser.add_argument(
+        "--global-context-source",
+        default=str(DEFAULT_GLOBAL_CONTEXT_SOURCE),
+        help="Source markdown file for Antigravity global GEMINI.md.",
+    )
+    parser.add_argument(
+        "--global-context-target",
+        default=str(DEFAULT_GLOBAL_CONTEXT_TARGET),
+        help="Antigravity global GEMINI.md target.",
+    )
+    parser.add_argument(
+        "--hooks-file",
+        default=str(DEFAULT_HOOKS_FILE),
+        help="Antigravity global hooks.json target.",
+    )
+    parser.add_argument(
         "--skip-yolo",
         action="store_true",
         help="Do not render the always-proceed tool permission setting.",
@@ -329,6 +444,16 @@ def parse_args() -> argparse.Namespace:
         "--skip-workspace-trust",
         action="store_true",
         help="Do not render Antigravity trustedWorkspaces.",
+    )
+    parser.add_argument(
+        "--skip-global-context",
+        action="store_true",
+        help="Do not render Antigravity global GEMINI.md.",
+    )
+    parser.add_argument(
+        "--skip-hooks",
+        action="store_true",
+        help="Do not render Antigravity global hooks.json.",
     )
     parser.add_argument(
         "registry_file",
@@ -344,6 +469,9 @@ def main() -> int:
     registry_file = Path(args.registry_file).expanduser().resolve()
     app_data_dir = Path(args.app_data_dir).expanduser().resolve()
     github_root = Path(args.github_root).expanduser().resolve()
+    global_context_source = Path(args.global_context_source).expanduser().resolve()
+    global_context_target = Path(args.global_context_target).expanduser().resolve()
+    hooks_file = Path(args.hooks_file).expanduser().resolve()
     extra_trusted_workspaces = [
         Path(raw).expanduser().resolve()
         for raw in args.trusted_workspace
@@ -356,9 +484,14 @@ def main() -> int:
             app_data_dir,
             github_root,
             extra_trusted_workspaces,
+            global_context_source,
+            global_context_target,
+            hooks_file,
             args.apply,
             args.skip_yolo,
             args.skip_workspace_trust,
+            args.skip_global_context,
+            args.skip_hooks,
         )
     except ValueError as exc:
         print(f"Antigravity spike sync failed: {exc}", file=sys.stderr)
