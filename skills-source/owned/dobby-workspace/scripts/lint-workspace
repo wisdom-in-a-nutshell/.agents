@@ -12,6 +12,8 @@ are cheap and specific enough to be useful:
 - only known top-level organs exist
 - key organs keep their expected second-level shape
 - active projects have `tasks.md`
+- root Dobby constitution/profile/now/growth files use the schema-backed shape
+- memory areas use `area.json` / `canon.json` / `log.jsonl`, not canonical Markdown
 - `state/shelf.json` has basic JSON shape
 - session memory uses JSON records, not legacy Markdown
 - daily journal uses only canonical JSON files, not legacy Markdown
@@ -35,6 +37,7 @@ import json
 import re
 import subprocess
 import sys
+from datetime import datetime
 from pathlib import Path
 
 
@@ -59,7 +62,6 @@ ARGS = parse_args()
 ROOT = resolve_root(ARGS.workspace_root)
 
 REQUIRED_TOP_LEVEL = {
-    "soul.md": "file",
     "memory": "dir",
     "journal": "dir",
     "state": "dir",
@@ -87,7 +89,7 @@ LOCAL_TOP_LEVEL_IGNORES = {
 
 SECOND_LEVEL = {
     "memory": {
-        "files": {"now.md"},
+        "files": {"now.json", "profile.json"},
         "dirs": {"areas", "sessions"},
     },
     "journal": {
@@ -99,7 +101,7 @@ SECOND_LEVEL = {
         "dirs": set(),
     },
     "dobby": {
-        "files": {"growth.md"},
+        "files": {"constitution.json", "growth.jsonl"},
         "dirs": set(),
     },
     "scripts": {
@@ -121,6 +123,25 @@ SECOND_LEVEL = {
 }
 
 IGNORED_CHILD_NAMES = {".DS_Store", "__pycache__"}
+SENSITIVITY_VALUES = {"public", "personal", "sensitive", "restricted"}
+SECTION_KEY_RE = re.compile(r"^[a-z0-9]+(?:_[a-z0-9]+)*$")
+ISOISH_RE = re.compile(r"^\d{4}-\d{2}-\d{2}T")
+
+CONSTITUTION_GROUPS = {
+    "identity",
+    "operating",
+    "boundaries",
+    "memory_policy",
+    "self_evolution",
+}
+
+PROFILE_GROUPS = {
+    "identity",
+    "preferences",
+    "values",
+    "patterns",
+    "life_context",
+}
 
 
 class Finding:
@@ -251,6 +272,281 @@ def check_shelf_json() -> None:
         add_error(path, "Shelf state key `items` should be a list.")
 
 
+
+
+def load_json_object(path: Path, label: str) -> dict | None:
+    if not path.exists():
+        add_error(path, f"Missing {label}.")
+        return None
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as exc:
+        add_error(path, f"{label} is not valid JSON: {exc}.")
+        return None
+    if not isinstance(data, dict):
+        add_error(path, f"{label} should be a JSON object.")
+        return None
+    return data
+
+
+def require_keys(path: Path, data: dict, keys: set[str], label: str) -> None:
+    missing = sorted(key for key in keys if key not in data)
+    if missing:
+        add_error(path, f"{label} is missing required key(s): {', '.join(missing)}.")
+
+
+def require_string(path: Path, data: dict, key: str, label: str, *, allow_empty: bool = False) -> None:
+    value = data.get(key)
+    if not isinstance(value, str):
+        add_error(path, f"{label} key `{key}` should be a string.")
+    elif not allow_empty and not value.strip():
+        add_error(path, f"{label} key `{key}` should not be empty.")
+
+
+def check_iso_timestamp(path: Path, value: object, label: str) -> None:
+    if not isinstance(value, str) or not ISOISH_RE.match(value):
+        add_error(path, f"{label} should be an ISO-8601 timestamp string.")
+        return
+    candidate = value[:-1] + "+00:00" if value.endswith("Z") else value
+    try:
+        datetime.fromisoformat(candidate)
+    except ValueError:
+        add_error(path, f"{label} is not parseable as ISO-8601: {value!r}.")
+
+
+def check_sensitivity(path: Path, value: object, label: str) -> None:
+    if value not in SENSITIVITY_VALUES:
+        add_error(
+            path,
+            f"{label} should be one of {', '.join(sorted(SENSITIVITY_VALUES))}.",
+        )
+
+
+def check_section_object(path: Path, section_key: str, section: object, label: str, *, require_sensitivity: bool = False) -> None:
+    if not SECTION_KEY_RE.match(section_key):
+        add_error(path, f"{label} section key {section_key!r} should be snake_case.")
+    if not isinstance(section, dict):
+        add_error(path, f"{label} section {section_key!r} should be an object.")
+        return
+    require_keys(path, section, {"title", "body"}, f"{label} section {section_key!r}")
+    require_string(path, section, "title", f"{label} section {section_key!r}")
+    require_string(path, section, "body", f"{label} section {section_key!r}", allow_empty=True)
+    level = section.get("level")
+    if level is not None and (not isinstance(level, int) or not 1 <= level <= 6):
+        add_error(path, f"{label} section {section_key!r} key `level` should be an integer from 1 to 6.")
+    if require_sensitivity or "sensitivity" in section:
+        check_sensitivity(path, section.get("sensitivity"), f"{label} section {section_key!r} sensitivity")
+    if "tags" in section and (
+        not isinstance(section.get("tags"), list)
+        or not all(isinstance(item, str) for item in section.get("tags", []))
+    ):
+        add_error(path, f"{label} section {section_key!r} key `tags` should be a list of strings.")
+
+
+def check_grouped_json(path: Path, label: str, expected_kind: str, expected_groups: set[str] | None = None) -> None:
+    data = load_json_object(path, label)
+    if data is None:
+        return
+    require_keys(path, data, {"schemaVersion", "kind", "updatedAt", "groups"}, label)
+    if data.get("schemaVersion") != 1:
+        add_error(path, f"{label} should use schemaVersion 1.")
+    if data.get("kind") != expected_kind:
+        add_error(path, f"{label} kind should be {expected_kind!r}.")
+    check_iso_timestamp(path, data.get("updatedAt"), f"{label} updatedAt")
+    groups = data.get("groups")
+    if not isinstance(groups, dict) or not groups:
+        add_error(path, f"{label} key `groups` should be a non-empty object.")
+        return
+    if expected_groups is not None:
+        actual = set(groups.keys())
+        if actual != expected_groups:
+            add_error(
+                path,
+                f"{label} groups should be exactly: {', '.join(sorted(expected_groups))}. "
+                f"Found: {', '.join(sorted(actual)) or '(none)'}.",
+            )
+    for group_key, group in groups.items():
+        if not SECTION_KEY_RE.match(group_key):
+            add_error(path, f"{label} group key {group_key!r} should be snake_case.")
+        if not isinstance(group, dict):
+            add_error(path, f"{label} group {group_key!r} should be an object.")
+            continue
+        require_keys(path, group, {"title", "sections"}, f"{label} group {group_key!r}")
+        require_string(path, group, "title", f"{label} group {group_key!r}")
+        sections = group.get("sections")
+        if not isinstance(sections, dict):
+            add_error(path, f"{label} group {group_key!r} key `sections` should be an object.")
+            continue
+        for section_key, section in sections.items():
+            check_section_object(
+                path,
+                section_key,
+                section,
+                f"{label} group {group_key!r}",
+                require_sensitivity=expected_kind == "person-profile",
+            )
+
+
+def check_source_ref(path: Path, source: object, label: str) -> None:
+    if not isinstance(source, dict):
+        add_error(path, f"{label} key `source` should be an object.")
+        return
+    require_keys(path, source, {"type", "ref"}, f"{label} source")
+    require_string(path, source, "type", f"{label} source")
+    require_string(path, source, "ref", f"{label} source")
+
+
+def check_jsonl(path: Path, label: str, *, row_kind: str = "generic") -> None:
+    if not path.exists():
+        add_error(path, f"Missing {label}.")
+        return
+    try:
+        lines = path.read_text(encoding="utf-8").splitlines()
+    except OSError as exc:
+        add_error(path, f"Could not read {label}: {exc}.")
+        return
+    for idx, line in enumerate(lines, start=1):
+        if not line.strip():
+            continue
+        try:
+            data = json.loads(line)
+        except json.JSONDecodeError as exc:
+            add_error(path, f"{label} line {idx} is not valid JSON: {exc}.")
+            continue
+        if not isinstance(data, dict):
+            add_error(path, f"{label} line {idx} should be a JSON object.")
+            continue
+        row_label = f"{label} line {idx}"
+        if row_kind == "growth":
+            require_keys(path, data, {"schemaVersion", "kind", "id", "createdAt", "title", "body", "status", "source"}, row_label)
+            if data.get("schemaVersion") != 1:
+                add_error(path, f"{row_label} should use schemaVersion 1.")
+            require_string(path, data, "kind", row_label)
+            require_string(path, data, "id", row_label)
+            require_string(path, data, "title", row_label)
+            require_string(path, data, "body", row_label, allow_empty=True)
+            check_iso_timestamp(path, data.get("createdAt"), f"{row_label} createdAt")
+            if data.get("status") not in {"open", "done", "dropped"}:
+                add_error(path, f"{row_label} status should be open, done, or dropped.")
+            check_source_ref(path, data.get("source"), row_label)
+        elif row_kind == "area-log":
+            require_keys(path, data, {"schemaVersion", "kind", "id", "createdAt", "title", "body", "source", "sensitivity"}, row_label)
+            if data.get("schemaVersion") != 1:
+                add_error(path, f"{row_label} should use schemaVersion 1.")
+            require_string(path, data, "kind", row_label)
+            require_string(path, data, "id", row_label)
+            require_string(path, data, "title", row_label)
+            require_string(path, data, "body", row_label, allow_empty=True)
+            check_iso_timestamp(path, data.get("createdAt"), f"{row_label} createdAt")
+            check_source_ref(path, data.get("source"), row_label)
+            check_sensitivity(path, data.get("sensitivity"), f"{row_label} sensitivity")
+
+
+def check_core_schema_files() -> None:
+    for legacy in (ROOT / "soul.md", ROOT / "memory" / "now.md", ROOT / "dobby" / "growth.md"):
+        if legacy.exists():
+            add_error(legacy, "Legacy canonical Markdown file should not exist after schema migration.")
+
+    check_grouped_json(
+        ROOT / "dobby" / "constitution.json",
+        "Dobby constitution",
+        "dobby-constitution",
+        CONSTITUTION_GROUPS,
+    )
+    profile = load_json_object(ROOT / "memory" / "profile.json", "person profile")
+    if profile is not None:
+        person = profile.get("person")
+        if not isinstance(person, dict):
+            add_error(ROOT / "memory" / "profile.json", "person profile key `person` should be an object.")
+        else:
+            require_keys(ROOT / "memory" / "profile.json", person, {"id", "displayName"}, "person profile person")
+            require_string(ROOT / "memory" / "profile.json", person, "id", "person profile person")
+            require_string(ROOT / "memory" / "profile.json", person, "displayName", "person profile person")
+    check_grouped_json(
+        ROOT / "memory" / "profile.json",
+        "person profile",
+        "person-profile",
+        PROFILE_GROUPS,
+    )
+    now = load_json_object(ROOT / "memory" / "now.json", "current orientation")
+    if now is not None:
+        require_keys(ROOT / "memory" / "now.json", now, {"schemaVersion", "kind", "updatedAt", "title", "body", "sections"}, "current orientation")
+        if now.get("schemaVersion") != 1 or now.get("kind") != "current-orientation":
+            add_error(ROOT / "memory" / "now.json", "current orientation should use schemaVersion 1 and kind 'current-orientation'.")
+        check_iso_timestamp(ROOT / "memory" / "now.json", now.get("updatedAt"), "current orientation updatedAt")
+        require_string(ROOT / "memory" / "now.json", now, "title", "current orientation")
+        require_string(ROOT / "memory" / "now.json", now, "body", "current orientation", allow_empty=True)
+        if not isinstance(now.get("sections"), dict):
+            add_error(ROOT / "memory" / "now.json", "current orientation key `sections` should be an object.")
+        else:
+            for section_key, section in now["sections"].items():
+                check_section_object(ROOT / "memory" / "now.json", section_key, section, "current orientation")
+    check_jsonl(ROOT / "dobby" / "growth.jsonl", "Dobby growth log", row_kind="growth")
+
+
+def check_memory_area_schemas() -> None:
+    areas = ROOT / "memory" / "areas"
+    if not areas.exists():
+        return
+    for area_dir in sorted(p for p in areas.iterdir() if p.is_dir()):
+        area_id = area_dir.name
+        area_json = load_json_object(area_dir / "area.json", f"area metadata for {area_id}")
+        if area_json is not None:
+            require_keys(area_dir / "area.json", area_json, {"schemaVersion", "kind", "id", "title", "updatedAt", "canonicalFiles", "sensitivity", "dashboard", "assets", "dataDirs"}, f"area metadata for {area_id}")
+            if area_json.get("schemaVersion") != 1 or area_json.get("kind") != "memory-area":
+                add_error(area_dir / "area.json", f"area metadata for {area_id} should use schemaVersion 1 and kind 'memory-area'.")
+            if area_json.get("id") != area_id:
+                add_error(area_dir / "area.json", f"area metadata id should match folder name {area_id!r}.")
+            check_iso_timestamp(area_dir / "area.json", area_json.get("updatedAt"), f"area metadata for {area_id} updatedAt")
+            require_string(area_dir / "area.json", area_json, "title", f"area metadata for {area_id}")
+            check_sensitivity(area_dir / "area.json", area_json.get("sensitivity"), f"area metadata for {area_id} sensitivity")
+            canonical_files = area_json.get("canonicalFiles")
+            if canonical_files != {"canon": "canon.json", "log": "log.jsonl"}:
+                add_error(area_dir / "area.json", f"area metadata for {area_id} canonicalFiles should be {{'canon': 'canon.json', 'log': 'log.jsonl'}}.")
+            dashboard = area_json.get("dashboard")
+            if not isinstance(dashboard, dict):
+                add_error(area_dir / "area.json", f"area metadata for {area_id} key `dashboard` should be an object.")
+            elif not isinstance(dashboard.get("visible"), bool) or not isinstance(dashboard.get("defaultView"), str):
+                add_error(area_dir / "area.json", f"area metadata for {area_id} dashboard should include boolean visible and string defaultView.")
+            for list_key in ("assets", "dataDirs"):
+                if not isinstance(area_json.get(list_key), list):
+                    add_error(area_dir / "area.json", f"area metadata for {area_id} key `{list_key}` should be a list.")
+            if isinstance(area_json.get("assets"), list):
+                for idx, asset in enumerate(area_json["assets"], start=1):
+                    if not isinstance(asset, dict):
+                        add_error(area_dir / "area.json", f"area metadata for {area_id} asset {idx} should be an object.")
+                        continue
+                    require_keys(area_dir / "area.json", asset, {"path", "kind", "title"}, f"area metadata for {area_id} asset {idx}")
+                    require_string(area_dir / "area.json", asset, "path", f"area metadata for {area_id} asset {idx}")
+                    require_string(area_dir / "area.json", asset, "kind", f"area metadata for {area_id} asset {idx}")
+                    require_string(area_dir / "area.json", asset, "title", f"area metadata for {area_id} asset {idx}")
+            if isinstance(area_json.get("dataDirs"), list) and not all(isinstance(item, str) for item in area_json["dataDirs"]):
+                add_error(area_dir / "area.json", f"area metadata for {area_id} dataDirs should contain only strings.")
+        canon = load_json_object(area_dir / "canon.json", f"area canon for {area_id}")
+        if canon is not None:
+            require_keys(area_dir / "canon.json", canon, {"schemaVersion", "kind", "areaId", "updatedAt", "sections"}, f"area canon for {area_id}")
+            if canon.get("schemaVersion") != 1 or canon.get("kind") != "memory-area-canon":
+                add_error(area_dir / "canon.json", f"area canon for {area_id} should use schemaVersion 1 and kind 'memory-area-canon'.")
+            if canon.get("areaId") != area_id:
+                add_error(area_dir / "canon.json", f"area canon areaId should match folder name {area_id!r}.")
+            check_iso_timestamp(area_dir / "canon.json", canon.get("updatedAt"), f"area canon for {area_id} updatedAt")
+            if not isinstance(canon.get("sections"), dict):
+                add_error(area_dir / "canon.json", f"area canon for {area_id} key `sections` should be an object.")
+            else:
+                for section_key, section in canon["sections"].items():
+                    check_section_object(area_dir / "canon.json", section_key, section, f"area canon for {area_id}", require_sensitivity=True)
+                    if isinstance(section, dict):
+                        source_path = section.get("sourcePath")
+                        if source_path is not None and not isinstance(source_path, str):
+                            add_error(area_dir / "canon.json", f"area canon for {area_id} section {section_key!r} sourcePath should be string or null.")
+        check_jsonl(area_dir / "log.jsonl", f"area log for {area_id}", row_kind="area-log")
+        for path in sorted(p for p in area_dir.rglob("*") if p.is_file()):
+            if path.name in {".DS_Store", ".gitignore"}:
+                continue
+            if path.suffix.lower() in {".md", ".txt"}:
+                add_error(path, "Canonical memory-area data should be JSON/JSONL. Preserve prose as Markdown strings inside canon.json or log.jsonl, not as loose Markdown/TXT files.")
+
+
 def check_session_memory_files() -> None:
     sessions = ROOT / "memory" / "sessions"
     if not sessions.exists():
@@ -312,6 +608,27 @@ def check_journal_daily_files() -> None:
             )
 
 
+
+
+def check_journal_non_daily_files() -> None:
+    for base_name, expected_kind in (("monthly", "journal-monthly"), ("templates", "journal-template")):
+        base = ROOT / "journal" / base_name
+        if not base.exists():
+            continue
+        for path in sorted(p for p in base.rglob("*") if p.is_file()):
+            if path.name in {".gitkeep", ".DS_Store"}:
+                continue
+            if path.suffix != ".json":
+                add_error(path, f"journal/{base_name}/ canonical files should be JSON, not legacy Markdown or loose text.")
+                continue
+            data = load_json_object(path, f"journal {base_name} document")
+            if data is None:
+                continue
+            require_keys(path, data, {"schemaVersion", "kind", "updatedAt", "title", "body"}, f"journal {base_name} document")
+            if data.get("schemaVersion") != 1 or data.get("kind") != expected_kind:
+                add_error(path, f"journal/{base_name}/ JSON should use schemaVersion 1 and kind {expected_kind!r}.")
+
+
 def tracked_files() -> list[str]:
     try:
         result = subprocess.run(
@@ -341,8 +658,11 @@ def main() -> int:
     check_second_level_shape()
     check_projects()
     check_shelf_json()
+    check_core_schema_files()
+    check_memory_area_schemas()
     check_session_memory_files()
     check_journal_daily_files()
+    check_journal_non_daily_files()
     check_tracked_generated_artifacts()
 
     if warnings:

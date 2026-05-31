@@ -7,17 +7,15 @@ Emits situational boot context to stdout; the shared dispatcher at
 
 Section order:
 
-    soul (conditional) | workspace body map | now | recent sessions | shelf | calendar | areas
+    workspace body map | profile | now | recent sessions | shelf | calendar | areas
 
-Memory reads (`now.md`, area manifest, `soul.md`) and the shared workspace body
+Memory reads (`memory/profile.json`, `memory/now.json`, area manifest) and the shared workspace body
 map happen inline via file I/O — trivial work, no reason to round-trip through a
 CLI. Shelf also lives as workspace-local JSON. Calendar
 snapshots go through the `dobby-calendar` skill CLI because EventKit is a
 non-trivial integration and is worth the CLI contract.
 
-The user's durable identity lives in `soul.md`. It is normally loaded as
-the Codex system prompt through `model_instructions_file` in `.codex/config.toml`,
-so this hook does not emit `soul.md`.
+Dobby behavior lives in `dobby/constitution.json`, which Codex can load directly as `model_instructions_file`. Person-specific durable context lives in `memory/profile.json`, so this hook emits it as boot context.
 
 Workspace-agnostic: resolves the active workspace via `AGENT_REPO_ROOT`,
 `DOBBY_REPO_ROOT`, or `git rev-parse --show-toplevel`, in that order.
@@ -136,14 +134,28 @@ def read_memory_file(path: Path) -> str:
         return ""
 
 
+def read_json_object(path: Path) -> dict | None:
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return None
+    return data if isinstance(data, dict) else None
+
+
 def build_area_manifest(areas_dir: Path) -> list[dict]:
-    """Walk memory/areas/ → [{area, files: [filename, ...]}, ...]."""
+    """Walk memory/areas/ → area metadata from area.json."""
     if not areas_dir.exists():
         return []
     out: list[dict] = []
     for area_dir in sorted(d for d in areas_dir.iterdir() if d.is_dir()):
-        files = [md.name for md in sorted(area_dir.glob("*.md"))]
-        out.append({"area": area_dir.name, "files": files})
+        data = read_json_object(area_dir / "area.json") or {}
+        out.append({
+            "area": area_dir.name,
+            "title": data.get("title") or area_dir.name,
+            "sensitivity": data.get("sensitivity"),
+            "dataDirs": data.get("dataDirs") if isinstance(data.get("dataDirs"), list) else [],
+            "assets": data.get("assets") if isinstance(data.get("assets"), list) else [],
+        })
     return out
 
 
@@ -318,8 +330,81 @@ def print_areas(areas: list[dict]) -> None:
     max_name = max((len(area.get("area", "")) for area in areas), default=0)
     for area in areas:
         name = area.get("area", "")
-        files_str = ", ".join(area.get("files", []))
-        print(f"- {name.ljust(max_name)}  {files_str}")
+        title = area.get("title") or name
+        bits: list[str] = []
+        if area.get("sensitivity"):
+            bits.append(f"sensitivity={area.get('sensitivity')}")
+        data_dirs = area.get("dataDirs") or []
+        if data_dirs:
+            bits.append("data=" + ",".join(str(x) for x in data_dirs[:5]))
+        assets = area.get("assets") or []
+        if assets:
+            bits.append(f"assets={len(assets)}")
+        suffix = f" ({'; '.join(bits)})" if bits else ""
+        print(f"- {name.ljust(max_name)}  {title}{suffix}")
+
+
+
+
+def render_grouped_json(data: dict) -> str:
+    groups = data.get("groups")
+    if not isinstance(groups, dict):
+        return json.dumps(data, ensure_ascii=False, indent=2)
+    out: list[str] = []
+    person = data.get("person")
+    if isinstance(person, dict):
+        display = person.get("displayName") or person.get("id")
+        if display:
+            out.append(f"person: {display}")
+            out.append("")
+    for group in groups.values():
+        if not isinstance(group, dict):
+            continue
+        title = str(group.get("title") or "Group")
+        out.append(f"## {title}")
+        sections = group.get("sections")
+        if isinstance(sections, dict):
+            for sec in sections.values():
+                if not isinstance(sec, dict):
+                    continue
+                sec_title = str(sec.get("title") or "Section")
+                body = str(sec.get("body") or "").strip()
+                out.append(f"### {sec_title}")
+                if body:
+                    out.append(body)
+                out.append("")
+        out.append("")
+    return "\n".join(out).strip()
+
+
+def render_now_json(data: dict) -> str:
+    body = str(data.get("body") or "").strip()
+    if body:
+        return body
+    sections = data.get("sections")
+    if not isinstance(sections, dict):
+        return ""
+    out: list[str] = []
+    for sec in sections.values():
+        if not isinstance(sec, dict):
+            continue
+        title = str(sec.get("title") or "Section")
+        sec_body = str(sec.get("body") or "").strip()
+        out.append(f"## {title}")
+        if sec_body:
+            out.append(sec_body)
+        out.append("")
+    return "\n".join(out).strip()
+
+
+def print_profile(profile: dict | None) -> None:
+    if not profile:
+        return
+    rendered = render_grouped_json(profile)
+    if not rendered:
+        return
+    section("profile")
+    print(truncate_text(rendered, 12000, "profile"))
 
 
 def print_recent_sessions(entries: list[dict]) -> None:
@@ -332,15 +417,6 @@ def print_recent_sessions(entries: list[dict]) -> None:
             print("")
         print(f"## {entry['label']}")
         print(str(entry["content"]).strip())
-
-
-def print_soul() -> None:
-    return
-    content = read_memory_file(REPO_ROOT / "soul.md").strip()
-    if not content:
-        return
-    section("soul")
-    print(content)
 
 
 def print_workspace_body_map() -> None:
@@ -384,7 +460,8 @@ def main() -> int:
         )
 
         memory_dir = REPO_ROOT / "memory"
-        now_content = read_memory_file(memory_dir / "now.md")
+        profile = read_json_object(memory_dir / "profile.json")
+        now_data = read_json_object(memory_dir / "now.json")
         recent_sessions = build_recent_session_entries(memory_dir / "sessions")
         areas = build_area_manifest(memory_dir / "areas")
         shelf = read_shelf()
@@ -396,21 +473,22 @@ def main() -> int:
     body_map_mtime = path_mtime_iso(
         DOBBY_WORKSPACE_SKILL_DIR / "references" / "body-map.md"
     ) or "?"
-    now_mtime = file_mtime_iso("memory/now.md") or "?"
-    areas_count = sum(len(a["files"]) for a in areas)
+    profile_mtime = file_mtime_iso("memory/profile.json") or "?"
+    now_mtime = file_mtime_iso("memory/now.json") or "?"
+    areas_count = len(areas)
 
     print("# session")
     print(f"started:  {session_started}")
     print(f"body-map.md:  modified {body_map_mtime}")
-    print(f"now.md:       modified {now_mtime}")
-    print(f"areas:        {areas_count} files")
+    print(f"profile.json: modified {profile_mtime}")
+    print(f"now.json:     modified {now_mtime}")
+    print(f"areas:        {areas_count} areas")
 
     # --- Sections ------------------------------------------------------------
-    # soul.md is loaded by Codex through model_instructions_file.
-    print_soul()
     print_workspace_body_map()
+    print_profile(profile)
 
-    now = strip_leading_h1(now_content.strip())
+    now = render_now_json(now_data or {})
     if now:
         section("now")
         print(now)

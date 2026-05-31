@@ -68,7 +68,7 @@ stdin_write_output="$(cat <<'JSON' | "$session_cli" write --workspace-root "$rep
   "threadId": "thread-test",
   "title": "File audit",
   "summary": "Carry this file audit forward.",
-  "workspaceChanges": "Updated `memory/areas/builder/log.md` because future context needs the concrete fact."
+  "workspaceChanges": "Updated `memory/areas/builder/log.jsonl` because future context needs the concrete fact."
 }
 JSON
 )"
@@ -84,7 +84,7 @@ import sys
 
 payload = subprocess.check_output([sys.argv[1], "read", sys.argv[2], "--no-input"], text=True)
 record = json.loads(payload)["data"]["record"]
-assert record["workspaceChanges"] == "Updated `memory/areas/builder/log.md` because future context needs the concrete fact."
+assert record["workspaceChanges"] == "Updated `memory/areas/builder/log.jsonl` because future context needs the concrete fact."
 PY
 
 boot_output="$("$session_cli" render-boot --workspace-root "$repo" --plain --no-input)"

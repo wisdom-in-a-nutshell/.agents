@@ -50,7 +50,7 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
-WORKSPACE_MARKERS = ("soul.md", "memory", "journal")
+WORKSPACE_MARKERS = ("dobby/constitution.json", "memory", "journal")
 
 
 def is_workspace(path: Path) -> bool:
@@ -65,7 +65,7 @@ def detect_workspace_root() -> Path:
             return path
         raise SystemExit(
             f"DOBBY_WORKSPACE does not look like a Dobby workspace: {path}. "
-            "Expected soul.md, memory/, and journal/."
+            "Expected dobby/constitution.json, memory/, and journal/."
         )
 
     cwd = Path.cwd().resolve()

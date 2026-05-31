@@ -1,32 +1,38 @@
 # Dobby Workspace Body Map
 
-A Dobby workspace is not a normal software repository. It is a personal-agent
-home: durable context, current orientation, lived history, open loops, Dobby's
-own sharpening notes, lifecycle hooks, and active improvement trackers.
+A Dobby workspace is a personal-agent home: durable context, current orientation,
+lived history, open loops, Dobby's own sharpening notes, lifecycle hooks, and
+active improvement trackers.
 
 ## Core idea
 
-Dobby wakes through a nervous system:
+Dobby wakes through a schema-backed nervous system:
 
 ```text
-soul.md
+dobby/constitution.json
 + shared body map
-+ memory/now.md
++ memory/profile.json
++ memory/now.json
 + recent session-memory summaries
 + Shelf
 + calendar
 + memory/areas manifest
 ```
 
+`dobby/constitution.json` is the prompt/instruction contract and may be loaded
+directly by Codex as `model_instructions_file`. Person-specific context lives in
+`memory/profile.json` and is loaded by lifecycle boot context.
+
 ## Organs
 
 | Organ | Purpose |
 |---|---|
-| `soul.md` | Constitution: Dobby identity, durable user truth, values, boundaries. |
+| `dobby/constitution.json` | Dobby identity, mission, operating principles, boundaries, and memory/write-back policy. |
+| `memory/profile.json` | Durable person-specific profile/context for the workspace. |
 | `memory/` | Dobby's understanding: current orientation, area canon/logs, session memory. |
 | `journal/` | Dated lived history: reflections, check-ins, raw captures, monthly synthesis. |
 | `state/` | Live machine-readable state, usually Shelf. |
-| `dobby/` | Dobby's own sharpening notes and blindspot record. |
+| `dobby/` | Dobby's operating contract and sharpening notes. |
 | `projects/` | Active Dobby/app/system improvement trackers. |
 | `scripts/` | Repo-local checks, lifecycle wrappers, and local helpers. |
 | `.agents/skills/` | Repo-local links to operational skills. |
@@ -37,17 +43,19 @@ soul.md
 
 | Content | Canonical home |
 |---|---|
-| Dobby constitution / durable user truth | `soul.md` |
+| Dobby behavior / constitution / boundaries | `dobby/constitution.json` |
+| Durable person profile / preferences / values / patterns | `memory/profile.json` |
 | Shared workspace body meaning | `dobby-workspace` skill |
-| This week's active orientation | `memory/now.md` |
-| Area-specific durable understanding | `memory/areas/<area>/<area>.md` |
-| Area-specific dated fact/event | `memory/areas/<area>/log.md` |
+| This week's active orientation | `memory/now.json` |
+| Area-specific durable understanding | `memory/areas/<area>/canon.json` |
+| Area-specific dated fact/event | `memory/areas/<area>/log.jsonl` |
+| Area metadata, assets, data dirs | `memory/areas/<area>/area.json` |
 | Session memory record | `memory/sessions/YYYY/MM/DD-HHMMSS.json` |
 | Reflection / check-in / raw capture | `journal/daily/YYYY-MM-DD/{morning,night,general}.json` |
-| Monthly synthesis | `journal/monthly/...` |
+| Monthly synthesis / templates | `journal/monthly/**/*.json`, `journal/templates/**/*.json` |
 | Personal actionable open loop | `state/shelf.json` via `dobby-shelf` |
 | Dobby/agent work tracker | `projects/<project>/tasks.md` |
-| Dobby's own behavioral sharpening | `dobby/growth.md` |
+| Dobby's own behavioral sharpening | `dobby/growth.jsonl` |
 | Exact command/schema/operational recipe | Relevant skill under `~/.agents/skills-source/owned/` |
 | Temporary scratch / hook logs | `tmp/` |
 
@@ -69,13 +77,19 @@ repo scripts/check-fast.sh
 ```
 
 `dobby-workspace` owns orchestration and body shape. Domain schemas stay with
-the skills that write the data.
+the skills that write the data where possible. Cross-cutting workspace schemas
+such as `dobby/constitution.json`, `memory/profile.json`, `memory/now.json`,
+area metadata/canon/logs, and `dobby/growth.jsonl` are enforced by the shared
+workspace linter.
 
 ## Memory contract
 
-- `memory/now.md` is the short active weekly layer.
-- Area canon files hold durable domain understanding.
-- Area logs are append-only dated facts: `- YYYY-MM-DD — <event>`.
+- `dobby/constitution.json` is one path-addressable JSON file for Dobby behavior.
+- `memory/profile.json` is one path-addressable JSON file for person context.
+- `memory/now.json` is the short active weekly/current-orientation layer.
+- Area canon files hold durable domain understanding: `memory/areas/<area>/canon.json`.
+- Area logs are append-only JSONL dated facts/events: `memory/areas/<area>/log.jsonl`.
+- Area metadata and non-text assets are indexed through `memory/areas/<area>/area.json`.
 - Session memory records are continuity index cards, not canon by default.
   V2 records use `title`, Markdown `summary`, `threadId`, `trigger`, and
   Markdown/plain-English `workspaceChanges`; the `summary` field is the boot
@@ -89,6 +103,7 @@ the skills that write the data.
 
 When a workspace shape change is intentional:
 
-1. Ask the relevant human whether the workspace body should change.
+1. Confirm the desired body change with the relevant human or an existing
+   explicit project tracker decision.
 2. Update this shared body map and `scripts/lint-workspace` together.
 3. Keep lifecycle behavior in `dobby-lifecycle`, not here.

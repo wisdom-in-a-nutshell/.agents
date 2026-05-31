@@ -7,7 +7,7 @@ follow-ups, purchases, reminders, and small commitments.
 
 Not Shelf:
 
-- durable identity, values, preferences, or patterns → memory / `soul.md`
+- durable identity, values, preferences, or patterns → memory / `memory/profile.json` or `dobby/constitution.json`
 - dated reflection or raw capture → journal
 - calendar event with a start/end time → calendar
 - work assigned to Dobby/agents → Symphony

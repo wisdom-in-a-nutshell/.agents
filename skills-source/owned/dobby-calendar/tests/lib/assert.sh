@@ -20,13 +20,13 @@ resolve_workspace() {
         printf '%s\n' "$DOBBY_WORKSPACE"
         return
     fi
-    if [[ -f "$PWD/soul.md" && -d "$PWD/memory" && -d "$PWD/journal" ]]; then
+    if [[ -f "$PWD/dobby/constitution.json" && -d "$PWD/memory" && -d "$PWD/journal" ]]; then
         printf '%s\n' "$PWD"
         return
     fi
     local git_root
     git_root=$(git -C "$PWD" rev-parse --show-toplevel 2>/dev/null || true)
-    if [[ -n "$git_root" && -f "$git_root/soul.md" && -d "$git_root/memory" && -d "$git_root/journal" ]]; then
+    if [[ -n "$git_root" && -f "$git_root/dobby/constitution.json" && -d "$git_root/memory" && -d "$git_root/journal" ]]; then
         printf '%s\n' "$git_root"
         return
     fi

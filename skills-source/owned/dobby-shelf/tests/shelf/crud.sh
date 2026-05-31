@@ -6,7 +6,8 @@ FAIL_COUNT=0
 TMP_WS=$(mktemp -d)
 trap 'rm -rf "$TMP_WS"' EXIT
 mkdir -p "$TMP_WS/state" "$TMP_WS/memory" "$TMP_WS/journal"
-printf '# Test soul\n' > "$TMP_WS/soul.md"
+mkdir -p "$TMP_WS/dobby"
+printf '{"schemaVersion":1,"kind":"dobby-constitution","updatedAt":"2026-05-31T00:00:00+02:00","groups":{}}\n' > "$TMP_WS/dobby/constitution.json"
 cat > "$TMP_WS/state/shelf.json" <<'JSON'
 {
   "schemaVersion": 1,

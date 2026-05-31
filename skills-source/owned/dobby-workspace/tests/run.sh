@@ -22,12 +22,37 @@ mkdir -p \
   "$workspace/scripts/local"
 
 touch \
-  "$workspace/soul.md" \
-  "$workspace/memory/now.md" \
-  "$workspace/dobby/growth.md" \
   "$workspace/scripts/check-fast.sh" \
   "$workspace/scripts/check-full.sh" \
   "$workspace/scripts/lint-workspace.py"
+
+
+cat >"$workspace/dobby/constitution.json" <<JSON
+{"schemaVersion": 1, "kind": "dobby-constitution", "updatedAt": "2026-05-29T08:00:00+02:00", "groups": {"identity": {"title": "Identity", "sections": {"identity": {"title": "Identity", "level": 2, "body": "Test"}}}, "operating": {"title": "Operating", "sections": {}}, "boundaries": {"title": "Boundaries", "sections": {}}, "memory_policy": {"title": "Memory policy", "sections": {}}, "self_evolution": {"title": "Self evolution", "sections": {}}}, "migratedFrom": "test"}
+JSON
+
+cat >"$workspace/dobby/growth.jsonl" <<JSONL
+{"schemaVersion":1,"kind":"test","id":"growth-test","createdAt":"2026-05-29T08:00:00+02:00","title":"Test","body":"Test","status":"open","source":{"type":"test","ref":"tests/run.sh"}}
+JSONL
+
+cat >"$workspace/memory/profile.json" <<JSON
+{"schemaVersion": 1, "kind": "person-profile", "updatedAt": "2026-05-29T08:00:00+02:00", "person": {"id": "test", "displayName": "Test"}, "groups": {"identity": {"title": "Identity", "sections": {"identity": {"title": "Identity", "level": 2, "body": "Test", "sensitivity": "personal"}}}, "preferences": {"title": "Preferences", "sections": {}}, "values": {"title": "Values", "sections": {}}, "patterns": {"title": "Patterns", "sections": {}}, "life_context": {"title": "Life context", "sections": {}}}, "migratedFrom": "test"}
+JSON
+
+cat >"$workspace/memory/now.json" <<JSON
+{"schemaVersion": 1, "kind": "current-orientation", "updatedAt": "2026-05-29T08:00:00+02:00", "title": "Current orientation", "body": "Test", "sections": {"this_week": {"title": "This week", "level": 2, "body": "Test"}}, "migratedFrom": "test"}
+JSON
+
+mkdir -p "$workspace/memory/areas/test"
+cat >"$workspace/memory/areas/test/area.json" <<JSON
+{"schemaVersion": 1, "kind": "memory-area", "id": "test", "title": "Test", "description": "Test area.", "sensitivity": "personal", "updatedAt": "2026-05-29T08:00:00+02:00", "canonicalFiles": {"canon": "canon.json", "log": "log.jsonl"}, "dashboard": {"visible": true, "defaultView": "canon"}, "assets": [], "dataDirs": []}
+JSON
+cat >"$workspace/memory/areas/test/canon.json" <<JSON
+{"schemaVersion": 1, "kind": "memory-area-canon", "areaId": "test", "updatedAt": "2026-05-29T08:00:00+02:00", "sections": {"test": {"title": "Test", "body": "Test", "sensitivity": "personal"}}}
+JSON
+cat >"$workspace/memory/areas/test/log.jsonl" <<JSONL
+{"schemaVersion":1,"kind":"test","id":"test-log","createdAt":"2026-05-29T08:00:00+02:00","title":"Test","body":"Test","source":{"type":"test","ref":"tests/run.sh"},"sensitivity":"personal"}
+JSONL
 
 ln -s "$SKILL_DIR" "$workspace/.agents/skills/dobby-workspace"
 ln -s "$SKILL_DIR/../dobby-lifecycle" "$workspace/.agents/skills/dobby-lifecycle"
@@ -56,12 +81,13 @@ JSON
 
 cat >"$workspace/memory/sessions/2026/05/29-080000.json" <<JSON
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "createdAt": "2026-05-29T08:00:00+02:00",
-  "source": "test",
-  "reason": "test",
-  "threadId": null,
-  "summary": ["Carry this forward."]
+  "threadId": "test-thread",
+  "trigger": "test",
+  "title": "Test session",
+  "summary": "Carry this forward.",
+  "workspaceChanges": "No durable workspace changes were recorded besides this session-memory record."
 }
 JSON
 

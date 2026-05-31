@@ -26,14 +26,14 @@ Short version:
   `remember-session`, which starts one final same-thread Codex turn using the
   versioned prompt at `prompts/remember-session.md`. That turn uses the
   `session-memory` client for session continuity and decides whether anything
-  should also be written under `memory/now.md`, an area file, `soul.md`, Shelf,
+  should also be written under `memory/now.json`, an area canon/log, `dobby/constitution.json` or `memory/profile.json`, Shelf,
   or a project tracker by reading the shared `dobby-workspace` body map.
 - **Archive is conditional.** If the repo hook, remember-session turn, or
   archive request fails, the source thread is left unarchived so stale cleanup
   can retry later.
 - **`memory/sessions` is the bridge.** End-of-thread JSON summaries become part
   of the next boot context.
-- **`memory/now.md`, area files, and `soul.md` are promotion targets only.** They
+- **`memory/now.json`, area canon/log, `dobby/constitution.json`, and `memory/profile.json` are promotion targets only.** They
   should be updated when something durable changes, not for every session.
 
 ## Finalization boundary rule
@@ -52,15 +52,15 @@ to the command that uses it.
 
 Boot context is delivered by the repo's `SessionStart` hook
 (`scripts/hooks/session_start.py`), which delegates to the skill-bundled hook.
-The hook reads the shared `dobby-workspace` body map, `now.md`,
+The hook reads the shared `dobby-workspace` body map, `now.json`,
 `state/shelf.json`, walks `memory/areas/`, reads recent session-memory JSON, and
 calls the `dobby-calendar` skill CLI for upcoming events.
 
 What boot context should include:
 
-1. `soul.md` / identity context through the runtime system-prompt mechanism.
+1. `dobby/constitution.json` or `memory/profile.json` / identity context through the runtime system-prompt mechanism.
 2. Shared `dobby-workspace/references/body-map.md` as the common Dobby body map.
-3. `memory/now.md`.
+3. `memory/now.json`.
 4. Recent session-memory summaries: last 3 plus records from the last 7 days,
    capped at 10.
 5. Shelf snapshot.
@@ -79,7 +79,7 @@ Operational limits:
 ## Session memory
 
 Session continuity lives in `memory/sessions/YYYY/MM/DD-HHMMSS.json`, not in
-`memory/now.md`.
+`memory/now.json`.
 
 The JSON contract is intentionally minimal and code-backed by:
 
@@ -105,7 +105,7 @@ V2 records are continuity index cards:
 loaded at boot. `threadId` points back to the original transcript when deeper
 retrieval is needed. `workspaceChanges` is for visibility into durable writes
 made during finalization; if none happened, say so plainly. Durable decisions
-still get promoted to `now.md`, area canon, or `soul.md` as appropriate.
+still get promoted to `now.json`, area canon, or `dobby/constitution.json` or `memory/profile.json` as appropriate.
 
 Use the client instead of hand-writing records:
 
