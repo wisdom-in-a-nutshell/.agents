@@ -32,6 +32,7 @@ class SharedBootstrapWrapperTests(TempDirTestCase):
         script_path.chmod(0o755)
         write_executable(root / "scripts/sync-skills-registry.sh", STUB_SCRIPT)
         write_executable(root / "scripts/sync-plugins-registry.sh", STUB_SCRIPT)
+        write_executable(root / "scripts/sync-antigravity-spike.sh", STUB_SCRIPT)
         write_executable(root / "scripts/sync-managed-git-hooks.sh", STUB_SCRIPT)
         write_executable(root / "codex/scripts/bootstrap-machine-codex.sh", STUB_SCRIPT)
         return root, log_path
@@ -60,6 +61,7 @@ class SharedBootstrapWrapperTests(TempDirTestCase):
             [
                 f"sync-skills-registry.sh|--apply --repo {repo_a} --repo {repo_b}",
                 "sync-plugins-registry.sh|--apply",
+                "sync-antigravity-spike.sh|--apply",
                 f"sync-managed-git-hooks.sh|--apply --repo {repo_a} --repo {repo_b}",
                 f"bootstrap-machine-codex.sh|--apply --github-root {github_root} --repo {repo_a} --repo {repo_b}",
             ],
