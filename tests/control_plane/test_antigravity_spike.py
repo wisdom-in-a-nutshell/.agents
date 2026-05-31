@@ -7,6 +7,7 @@ from pathlib import Path
 from tests.control_plane.support import (
     REPO_ROOT,
     TempDirTestCase,
+    init_git_repo,
     make_skill_source,
     run_command,
     write_json,
@@ -74,6 +75,46 @@ class AntigravitySpikeSyncTests(TempDirTestCase):
         settings = json.loads((app_data / "settings.json").read_text(encoding="utf-8"))
         self.assertEqual("test-model", settings["model"])
         self.assertEqual("always-proceed", settings["toolPermission"])
+
+    def test_apply_merges_trusted_workspaces(self) -> None:
+        root = init_git_repo(self.temp_path / "agents")
+        registry = self._write_registry(root, [])
+        github_root = self.temp_path / "GitHub"
+        repo_a = init_git_repo(github_root / "repo-a")
+        repo_b = init_git_repo(github_root / "nested/repo-b")
+        app_data = self.temp_path / "antigravity-cli"
+        existing = self.temp_path / "existing"
+        existing.mkdir()
+        write_json(
+            app_data / "settings.json",
+            {
+                "trustedWorkspaces": [str(existing)],
+            },
+        )
+
+        run_command(
+            [
+                str(REPO_ROOT / "scripts/sync-antigravity-spike.py"),
+                "--apply",
+                "--skip-yolo",
+                "--app-data-dir",
+                str(app_data),
+                "--github-root",
+                str(github_root),
+                str(registry),
+            ]
+        )
+
+        settings = json.loads((app_data / "settings.json").read_text(encoding="utf-8"))
+        self.assertEqual(
+            [
+                str(existing.resolve()),
+                str(repo_b.resolve()),
+                str(repo_a.resolve()),
+                str(root.resolve()),
+            ],
+            settings["trustedWorkspaces"],
+        )
 
     def test_prunes_only_managed_obsolete_antigravity_links(self) -> None:
         root = self.temp_path / "agents"

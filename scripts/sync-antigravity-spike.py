@@ -5,6 +5,7 @@ import argparse
 import json
 import os
 import shutil
+import subprocess
 import sys
 from pathlib import Path
 from typing import Any
@@ -13,8 +14,26 @@ from typing import Any
 # Temporary Antigravity experiment: this may be ripped out once the durable
 # cross-runtime bootstrap model is clear.
 DEFAULT_APP_DATA_DIR = Path.home() / ".gemini" / "antigravity-cli"
+DEFAULT_GITHUB_ROOT = Path.home() / "GitHub"
 DEFAULT_SETTINGS = {"toolPermission": "always-proceed"}
 ALLOWED_SCOPES = {"global", "repo", "dormant"}
+PRUNED_REPO_DIR_NAMES = {
+    ".cache",
+    ".direnv",
+    ".mypy_cache",
+    ".pytest_cache",
+    ".ruff_cache",
+    ".tmp",
+    ".tox",
+    ".venv",
+    "__pycache__",
+    "DerivedData",
+    "node_modules",
+    "temp",
+    "tmp",
+    "vendor",
+    "venv",
+}
 
 
 def rel_link(dst: Path, src: Path) -> str:
@@ -137,15 +156,99 @@ def read_settings(settings_file: Path) -> dict[str, Any]:
     return data
 
 
-def render_settings(settings_file: Path, apply: bool) -> None:
+def git_root_for(path: Path) -> Path | None:
+    if not path.exists():
+        return None
+    result = subprocess.run(
+        ["git", "-C", str(path), "rev-parse", "--show-toplevel"],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    if result.returncode != 0:
+        return None
+    raw = result.stdout.strip()
+    if not raw:
+        return None
+    return Path(raw).resolve()
+
+
+def discover_git_repo_roots(root: Path) -> list[Path]:
+    if not root.is_dir():
+        return []
+
+    seen: set[Path] = set()
+    repos: list[Path] = []
+    for dirpath, dirnames, filenames in os.walk(root, topdown=True):
+        dirnames[:] = [
+            name
+            for name in dirnames
+            if name not in PRUNED_REPO_DIR_NAMES
+        ]
+        has_git = ".git" in dirnames or ".git" in filenames
+        if ".git" in dirnames:
+            dirnames.remove(".git")
+        if not has_git:
+            continue
+
+        repo_root = git_root_for(Path(dirpath))
+        if repo_root is None or repo_root in seen:
+            continue
+        seen.add(repo_root)
+        repos.append(repo_root)
+    return sorted(repos, key=lambda path: str(path))
+
+
+def trusted_workspaces(root_dir: Path, github_root: Path, extra: list[Path]) -> list[str]:
+    desired: set[Path] = set()
+    control_plane_repo = git_root_for(root_dir)
+    if control_plane_repo is not None:
+        desired.add(control_plane_repo)
+    desired.update(discover_git_repo_roots(github_root))
+    desired.update(path.resolve() for path in extra if path.exists())
+    return [str(path) for path in sorted(desired, key=lambda item: str(item))]
+
+
+def merge_string_list(existing: Any, desired: list[str]) -> list[str]:
+    merged: list[str] = []
+    seen: set[str] = set()
+    if isinstance(existing, list):
+        for item in existing:
+            if not isinstance(item, str) or not item.strip():
+                continue
+            value = str(Path(item).expanduser().resolve())
+            if value not in seen:
+                seen.add(value)
+                merged.append(value)
+    for item in desired:
+        value = str(Path(item).expanduser().resolve())
+        if value not in seen:
+            seen.add(value)
+            merged.append(value)
+    return merged
+
+
+def render_settings(
+    settings_file: Path,
+    trusted: list[str],
+    apply: bool,
+    skip_yolo: bool,
+    skip_workspace_trust: bool,
+) -> None:
     data = read_settings(settings_file)
     desired = dict(data)
-    desired.update(DEFAULT_SETTINGS)
+    if not skip_yolo:
+        desired.update(DEFAULT_SETTINGS)
+    if not skip_workspace_trust:
+        desired["trustedWorkspaces"] = merge_string_list(
+            data.get("trustedWorkspaces"),
+            trusted,
+        )
     if desired == data:
         print(f"UNCHANGED {settings_file}")
         return
 
-    changed = ", ".join(sorted(DEFAULT_SETTINGS))
+    changed = ", ".join(sorted(key for key in desired if desired.get(key) != data.get(key)))
     print(f"SYNC {settings_file} ({changed})")
     if not apply:
         return
@@ -160,8 +263,11 @@ def render_settings(settings_file: Path, apply: bool) -> None:
 def run_sync(
     registry_file: Path,
     app_data_dir: Path,
+    github_root: Path,
+    extra_trusted_workspaces: list[Path],
     apply: bool,
     skip_yolo: bool,
+    skip_workspace_trust: bool,
 ) -> None:
     items, root_dir = load_registry(registry_file)
     skills_dir = app_data_dir / "skills"
@@ -178,8 +284,13 @@ def run_sync(
     ]
     prune_obsolete_links(skills_dir, desired_links, managed_source_roots, apply)
 
-    if not skip_yolo:
-        render_settings(app_data_dir / "settings.json", apply)
+    render_settings(
+        app_data_dir / "settings.json",
+        trusted_workspaces(root_dir, github_root, extra_trusted_workspaces),
+        apply,
+        skip_yolo,
+        skip_workspace_trust,
+    )
 
 
 def parse_args() -> argparse.Namespace:
@@ -199,9 +310,25 @@ def parse_args() -> argparse.Namespace:
         help="Antigravity CLI app data directory.",
     )
     parser.add_argument(
+        "--github-root",
+        default=str(DEFAULT_GITHUB_ROOT),
+        help="GitHub root to scan for trusted Git workspaces.",
+    )
+    parser.add_argument(
+        "--trusted-workspace",
+        action="append",
+        default=[],
+        help="Additional workspace path to trust (repeatable).",
+    )
+    parser.add_argument(
         "--skip-yolo",
         action="store_true",
         help="Do not render the always-proceed tool permission setting.",
+    )
+    parser.add_argument(
+        "--skip-workspace-trust",
+        action="store_true",
+        help="Do not render Antigravity trustedWorkspaces.",
     )
     parser.add_argument(
         "registry_file",
@@ -216,9 +343,23 @@ def main() -> int:
     args = parse_args()
     registry_file = Path(args.registry_file).expanduser().resolve()
     app_data_dir = Path(args.app_data_dir).expanduser().resolve()
+    github_root = Path(args.github_root).expanduser().resolve()
+    extra_trusted_workspaces = [
+        Path(raw).expanduser().resolve()
+        for raw in args.trusted_workspace
+        if raw.strip()
+    ]
 
     try:
-        run_sync(registry_file, app_data_dir, args.apply, args.skip_yolo)
+        run_sync(
+            registry_file,
+            app_data_dir,
+            github_root,
+            extra_trusted_workspaces,
+            args.apply,
+            args.skip_yolo,
+            args.skip_workspace_trust,
+        )
     except ValueError as exc:
         print(f"Antigravity spike sync failed: {exc}", file=sys.stderr)
         return 1

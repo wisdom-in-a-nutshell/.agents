@@ -61,7 +61,7 @@ class SharedBootstrapWrapperTests(TempDirTestCase):
             [
                 f"sync-skills-registry.sh|--apply --repo {repo_a} --repo {repo_b}",
                 "sync-plugins-registry.sh|--apply",
-                "sync-antigravity-spike.sh|--apply",
+                f"sync-antigravity-spike.sh|--apply --github-root {github_root}",
                 f"sync-managed-git-hooks.sh|--apply --repo {repo_a} --repo {repo_b}",
                 f"bootstrap-machine-codex.sh|--apply --github-root {github_root} --repo {repo_a} --repo {repo_b}",
             ],

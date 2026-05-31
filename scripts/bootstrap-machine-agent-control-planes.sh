@@ -114,6 +114,7 @@ log "+ ${sync_plugins_cmd[*]}"
 sync_antigravity_spike_cmd=(
   "$SYNC_ANTIGRAVITY_SPIKE_SCRIPT"
   "${SYNC_ARGS[@]}"
+  --github-root "$GITHUB_ROOT"
 )
 log "+ ${sync_antigravity_spike_cmd[*]}"
 "${sync_antigravity_spike_cmd[@]}"
