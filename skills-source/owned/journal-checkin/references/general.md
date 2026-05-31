@@ -34,28 +34,40 @@ Schema:
   "kind": "general",
   "tz": "Europe/Berlin",
   "captured_at": "ISO-8601 timestamp",
-  "source": "chat:text",
-  "mood": {
-    "score_10": 6,
-    "notes": "Mood is unsettled."
-  },
-  "energy": {
-    "score_10": 5,
-    "notes": "Energy is flat."
-  },
-  "summary": "...",
-  "what_feels_present": "...",
-  "what_matters_now": "...",
-  "next_step": "...",
-  "tags": ["..."],
-  "raw_input": "optional"
+  "updated_at": "ISO-8601 timestamp",
+  "source": "journal-checkin",
+  "schema_version": 1,
+  "entries": [
+    {
+      "id": "stable-entry-id",
+      "title": "...",
+      "summary": "...",
+      "body": "...",
+      "tags": ["..."],
+      "source": "chat:text",
+      "raw_input": "optional",
+      "captured_at": "ISO-8601 timestamp",
+      "mood": {
+        "score_10": 6,
+        "notes": "Mood is unsettled."
+      },
+      "energy": {
+        "score_10": 5,
+        "notes": "Energy is flat."
+      },
+      "what_feels_present": "...",
+      "what_matters_now": "...",
+      "next_step": "..."
+    }
+  ]
 }
 ```
 
 File naming:
 
-- `general.md`
-- Append multiple captures from the same day into that file as separate timestamped sections.
+- `general.json`
+- Append multiple captures from the same day into `entries[]`.
+- Do not create Markdown files under `journal/daily/`.
 
 Follow-up rule:
 

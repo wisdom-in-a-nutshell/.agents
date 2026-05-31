@@ -20,7 +20,7 @@ Each day directory can contain:
 |---|---|---|
 | `morning.json` | JSON object | Structured morning check-in: sleep, energy, mood (each with `score_10` and optional `notes`), `grateful` (array), `one_thing_that_matters`, `show_up_as`, `raw_input` |
 | `night.json` | JSON object | Structured night check-in: mood, energy (each with `score_10` and optional `notes`), `went_well`, `could_have_been_improved`, `actions_to_improve_tomorrow`, `raw_input` |
-| `general.md` | Markdown | Timestamped freeform journal sections, each with summary, tags, and optional mood/energy/raw-input |
+| `general.json` | JSON object | Flexible captures for the day as `entries[]`; each entry has `id`, `title`, `summary`, `body`, `tags`, `source`, `raw_input`, and `captured_at` |
 
 All JSON entries also carry metadata: `agent`, `date`, `kind`, `tz`, `captured_at`, `source`.
 
@@ -72,8 +72,9 @@ Read only the mode file you need:
 - Use one stable file per day for:
   - `morning.json`
   - `night.json`
-  - `general.md`
-- Append multiple flexible journal captures for the same day into `general.md` instead of creating fragmented timestamped JSON files.
+  - `general.json`
+- Append multiple flexible journal captures for the same day into `general.json.entries[]` instead of creating fragmented timestamped files.
+- Do not create Markdown files under `journal/daily/`; daily journal storage is JSON-only.
 - Keep `raw_input` when the source text was dictated, messy, or useful for later reinterpretation.
 - Preserve continuity by glancing at nearby entries when the user asks follow-up questions or wants synthesis.
 
@@ -143,4 +144,4 @@ python3 .agents/skills/journal-checkin/scripts/read_journal_entries.py --last 3 
 - [general.md](./references/general.md)
 - [write_journal_entry.py](./scripts/write_journal_entry.py)
 - [read_journal_entries.py](./scripts/read_journal_entries.py)
-- [validate](./scripts/validate) — validates structured `morning.json` and `night.json` entries for workspace checks
+- [validate](./scripts/validate) — validates daily `morning.json`, `night.json`, and `general.json` entries for workspace checks

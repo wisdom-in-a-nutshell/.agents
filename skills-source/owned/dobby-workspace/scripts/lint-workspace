@@ -14,6 +14,7 @@ are cheap and specific enough to be useful:
 - active projects have `tasks.md`
 - `state/shelf.json` has basic JSON shape
 - session memory uses JSON records, not legacy Markdown
+- daily journal uses only canonical JSON files, not legacy Markdown
 - generated CV PDFs are not tracked
 
 When this script fails, future Dobby should treat the message as an instruction
@@ -276,6 +277,41 @@ def check_session_memory_files() -> None:
             )
 
 
+def check_journal_daily_files() -> None:
+    daily = ROOT / "journal" / "daily"
+    if not daily.exists():
+        return
+    date_dir_re = re.compile(r"^\d{4}-\d{2}-\d{2}$")
+    allowed_json = {"morning.json", "night.json", "general.json"}
+    for path in sorted(p for p in daily.rglob("*") if p.is_file()):
+        if path.name in {".gitkeep", ".DS_Store"}:
+            continue
+        rel = path.relative_to(ROOT)
+        try:
+            relative_parts = path.relative_to(daily).parts
+            date_dir = relative_parts[0]
+        except IndexError:
+            add_error(path, "journal/daily/ should contain dated folders, not loose files.")
+            continue
+        if len(relative_parts) != 2:
+            add_error(path, "journal/daily/ files must be exactly journal/daily/YYYY-MM-DD/<file>.")
+        if not date_dir_re.match(date_dir):
+            add_error(path, "journal/daily/ files must live under YYYY-MM-DD date folders.")
+        if path.suffix != ".json":
+            add_error(
+                path,
+                "Daily journal storage is JSON-only. Convert legacy Markdown/raw captures "
+                "into journal/daily/YYYY-MM-DD/general.json entries.",
+            )
+            continue
+        if path.name not in allowed_json:
+            add_error(
+                path,
+                "Daily journal JSON files must be one of morning.json, night.json, "
+                "or general.json. Put flexible captures in general.json entries[].",
+            )
+
+
 def tracked_files() -> list[str]:
     try:
         result = subprocess.run(
@@ -306,6 +342,7 @@ def main() -> int:
     check_projects()
     check_shelf_json()
     check_session_memory_files()
+    check_journal_daily_files()
     check_tracked_generated_artifacts()
 
     if warnings:

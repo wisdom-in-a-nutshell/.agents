@@ -17,7 +17,7 @@ LINT_WORKSPACE = SCRIPT_DIR / "lint-workspace"
 
 ROUTES: tuple[tuple[str, str, tuple[tuple[str, ...], ...]], ...] = (
     ("dobby-lifecycle", "lifecycle", (("memory", "sessions", "*", "*", "*.json"),)),
-    ("journal-checkin", "journal", (("journal", "daily", "*", "morning.json"), ("journal", "daily", "*", "night.json"))),
+    ("journal-checkin", "journal", (("journal", "daily", "*", "*.json"),)),
     ("dobby-shelf", "shelf", (("state", "shelf.json"),)),
 )
 

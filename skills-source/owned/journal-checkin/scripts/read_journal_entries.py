@@ -126,16 +126,30 @@ def load_json_entry(path: Path, entry_date: str, kind: str) -> dict[str, Any] | 
     return data
 
 
-def load_general_entry(path: Path, entry_date: str) -> dict[str, Any] | None:
+def load_general_entries(path: Path, entry_date: str) -> list[dict[str, Any]]:
     if not path.is_file():
-        return None
+        return []
     try:
-        text = path.read_text().strip()
-    except OSError:
-        return None
-    if not text:
-        return None
-    return {"date": entry_date, "kind": "general", "content": text}
+        data = json.loads(path.read_text())
+    except (json.JSONDecodeError, OSError):
+        return []
+    if not isinstance(data, dict):
+        return []
+    entries = data.get("entries")
+    if not isinstance(entries, list):
+        return []
+
+    out: list[dict[str, Any]] = []
+    for item in entries:
+        if not isinstance(item, dict):
+            continue
+        entry = dict(item)
+        entry.setdefault("date", data.get("date") or entry_date)
+        entry["kind"] = "general"
+        entry.setdefault("agent", data.get("agent"))
+        entry.setdefault("tz", data.get("tz"))
+        out.append(entry)
+    return out
 
 
 def collect_entries(
@@ -162,9 +176,7 @@ def collect_entries(
                     entries.append(entry)
 
             if kind_filter in ("all", "general"):
-                entry = load_general_entry(day_dir / "general.md", day_str)
-                if entry:
-                    entries.append(entry)
+                entries.extend(load_general_entries(day_dir / "general.json", day_str))
 
         current += timedelta(days=1)
     return entries
@@ -218,10 +230,29 @@ def render_night_md(entry: dict[str, Any]) -> list[str]:
 
 
 def render_general_md(entry: dict[str, Any]) -> list[str]:
-    content = entry.get("content", "")
-    lines = ["## General", ""]
-    for line in content.splitlines():
-        lines.append(line)
+    title = entry.get("title") or entry.get("summary") or "General"
+    lines = [f"## General — {title}", ""]
+    summary = entry.get("summary")
+    if summary:
+        lines.append(f"- Summary: {summary}")
+    tags = entry.get("tags")
+    if isinstance(tags, list) and tags:
+        lines.append(f"- Tags: {', '.join(str(tag) for tag in tags)}")
+    source = entry.get("source")
+    if source:
+        lines.append(f"- Source: {source}")
+    captured_at = entry.get("captured_at")
+    if captured_at:
+        lines.append(f"- Captured: {captured_at}")
+    body = entry.get("body")
+    if body:
+        lines.append("")
+        lines.append(str(body).strip())
+    raw_input = entry.get("raw_input")
+    if raw_input and raw_input != body:
+        lines.append("")
+        lines.append("### Raw Input")
+        lines.append(str(raw_input).strip())
     lines.append("")
     return lines
 

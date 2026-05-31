@@ -43,7 +43,7 @@ soul.md
 | Area-specific durable understanding | `memory/areas/<area>/<area>.md` |
 | Area-specific dated fact/event | `memory/areas/<area>/log.md` |
 | Session memory record | `memory/sessions/YYYY/MM/DD-HHMMSS.json` |
-| Reflection / check-in / raw capture | `journal/daily/...` |
+| Reflection / check-in / raw capture | `journal/daily/YYYY-MM-DD/{morning,night,general}.json` |
 | Monthly synthesis | `journal/monthly/...` |
 | Personal actionable open loop | `state/shelf.json` via `dobby-shelf` |
 | Dobby/agent work tracker | `projects/<project>/tasks.md` |
@@ -80,6 +80,8 @@ the skills that write the data.
   `summary[]` field is the boot surface; `notes` is optional deeper context.
 - Personal open loops never live in memory; they live in Shelf.
 - Raw reflections live in journal first and only become memory after synthesis.
+- Daily journal storage is JSON-only: structured check-ins use `morning.json`
+  and `night.json`; flexible captures append to `general.json.entries[]`.
 
 ## Change protocol
 

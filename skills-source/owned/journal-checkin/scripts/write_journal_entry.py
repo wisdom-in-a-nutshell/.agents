@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import os
 import sys
@@ -87,7 +88,7 @@ def build_output_path(workspace_root: Path, kind: str, date: str, timestamp: dat
     day_dir = workspace_root / "journal" / "daily" / date
     day_dir.mkdir(parents=True, exist_ok=True)
     if kind == "general":
-        return day_dir / "general.md"
+        return day_dir / "general.json"
     return day_dir / f"{kind}.json"
 
 
@@ -137,78 +138,100 @@ def validate_entry(kind: str, entry: dict[str, Any]) -> list[str]:
     return errors
 
 
-def render_general_markdown(entry: dict[str, Any], timestamp: datetime) -> str:
-    def add_section(lines: list[str], title: str, value: Any) -> None:
-        if value is None:
-            return
-        if isinstance(value, list):
-            items = [str(item).strip() for item in value if str(item).strip()]
-            if not items:
-                return
-            lines.append(f"## {title}")
-            lines.extend([f"- {item}" for item in items])
-            lines.append("")
-            return
-        text = str(value).strip()
-        if not text:
-            return
-        lines.append(f"## {title}")
-        lines.append(text)
-        lines.append("")
-
-    lines = [f"# General Journal — {entry['date']}", ""]
-    lines.append(f"## {timestamp.strftime('%H:%M')}")
-    lines.append("")
-    lines.append(f"- source: {entry.get('source', '')}")
-    if entry.get("tags"):
-        lines.append(f"- tags: {', '.join(str(tag) for tag in entry['tags'])}")
-    lines.append("")
-
-    add_section(lines, "Summary", entry.get("summary"))
-    add_section(lines, "What Feels Present", entry.get("what_feels_present"))
-    add_section(lines, "What Matters Now", entry.get("what_matters_now"))
-    add_section(lines, "Next Step", entry.get("next_step"))
-
-    mood = entry.get("mood")
-    if isinstance(mood, dict):
-        bits = []
-        if mood.get("score_10") is not None:
-            bits.append(f"score: {mood['score_10']}/10")
-        if mood.get("notes"):
-            bits.append(f"notes: {mood['notes']}")
-        if bits:
-            lines.append("## Mood")
-            lines.extend([f"- {bit}" for bit in bits])
-            lines.append("")
-
-    energy = entry.get("energy")
-    if isinstance(energy, dict):
-        bits = []
-        if energy.get("score_10") is not None:
-            bits.append(f"score: {energy['score_10']}/10")
-        if energy.get("notes"):
-            bits.append(f"notes: {energy['notes']}")
-        if bits:
-            lines.append("## Energy")
-            lines.extend([f"- {bit}" for bit in bits])
-            lines.append("")
-
-    raw_input = entry.get("raw_input")
-    if raw_input:
-        lines.append("## Raw Input")
-        lines.append(raw_input.strip())
-        lines.append("")
-
-    return "\n".join(lines).rstrip() + "\n"
-
-
-def append_general_markdown(path: Path, entry: dict[str, Any], timestamp: datetime) -> None:
-    block = render_general_markdown(entry, timestamp)
-    if path.exists() and path.read_text().strip():
-        existing = path.read_text().rstrip() + "\n\n---\n\n"
+def normalize_tags(value: Any) -> list[str]:
+    if value is None:
+        return []
+    if isinstance(value, str):
+        raw = [part.strip() for part in value.split(",")]
+    elif isinstance(value, list):
+        raw = [str(part).strip() for part in value]
     else:
-        existing = ""
-    path.write_text(existing + block)
+        raw = [str(value).strip()]
+    tags: list[str] = []
+    seen: set[str] = set()
+    for item in raw:
+        if not item or item in seen:
+            continue
+        seen.add(item)
+        tags.append(item)
+    return tags
+
+
+def general_entry_id(entry: dict[str, Any], timestamp: datetime, explicit_id: str | None) -> str:
+    if explicit_id:
+        return explicit_id
+    existing = entry.get("id")
+    if isinstance(existing, str) and existing.strip():
+        return existing.strip()
+    seed = json.dumps(entry, sort_keys=True, ensure_ascii=False) + timestamp.isoformat()
+    digest = hashlib.sha1(seed.encode("utf-8")).hexdigest()[:8]
+    return f"{timestamp.strftime('%H%M%S')}-{digest}"
+
+
+def build_general_entry(payload: dict[str, Any], args: argparse.Namespace, timestamp: datetime) -> dict[str, Any]:
+    entry: dict[str, Any] = {
+        **payload,
+        "source": args.source,
+        "captured_at": payload.get("captured_at") or timestamp.isoformat(),
+    }
+    entry["id"] = general_entry_id(entry, timestamp, args.entry_id)
+    entry["title"] = str(entry.get("title") or entry.get("summary") or "Journal capture").strip()
+    entry["summary"] = str(entry.get("summary") or entry["title"]).strip()
+    entry["body"] = str(
+        entry.get("body")
+        or entry.get("what_feels_present")
+        or entry.get("what_matters_now")
+        or entry.get("raw_input")
+        or entry["summary"]
+    ).strip()
+    entry["tags"] = normalize_tags(entry.get("tags"))
+    return entry
+
+
+def load_general_container(path: Path, date: str, args: argparse.Namespace, timestamp: datetime, workspace_root: Path) -> dict[str, Any]:
+    if path.exists():
+        existing = json.loads(path.read_text())
+        if not isinstance(existing, dict):
+            raise SystemExit(f"Existing general journal is not an object: {path}")
+        existing.setdefault("entries", [])
+        return existing
+    return {
+        "agent": args.agent or workspace_root.name,
+        "date": date,
+        "kind": "general",
+        "tz": args.tz,
+        "captured_at": timestamp.isoformat(),
+        "updated_at": timestamp.isoformat(),
+        "source": "journal-checkin",
+        "schema_version": 1,
+        "entries": [],
+    }
+
+
+def append_general_json(path: Path, entry: dict[str, Any], args: argparse.Namespace, timestamp: datetime, workspace_root: Path) -> None:
+    container = load_general_container(path, args.date, args, timestamp, workspace_root)
+    if container.get("kind") != "general":
+        raise SystemExit(f"Existing general journal has wrong kind: {path}")
+    entries = container.get("entries")
+    if not isinstance(entries, list):
+        raise SystemExit(f"Existing general journal entries is not a list: {path}")
+
+    entries.append(entry)
+    entries.sort(key=lambda item: (str(item.get("captured_at", "")), str(item.get("id", ""))))
+    container.update(
+        {
+            "agent": container.get("agent") or args.agent or workspace_root.name,
+            "date": args.date,
+            "kind": "general",
+            "tz": container.get("tz") or args.tz,
+            "updated_at": timestamp.isoformat(),
+            "source": container.get("source") or "journal-checkin",
+            "schema_version": container.get("schema_version") or 1,
+            "entries": entries,
+        }
+    )
+    container["captured_at"] = container.get("captured_at") or entry["captured_at"]
+    path.write_text(json.dumps(container, indent=2, ensure_ascii=False) + "\n")
 
 
 def main() -> int:
@@ -228,21 +251,17 @@ def main() -> int:
     output_path = build_output_path(workspace_root, args.kind, args.date, timestamp, args.entry_id)
 
     if args.kind == "general":
-        entry: dict[str, Any] = {
-            **payload,
-            "agent": args.agent or workspace_root.name,
-            "date": args.date,
-            "kind": args.kind,
-            "tz": args.tz,
-            "captured_at": timestamp.isoformat(),
-            "source": args.source,
-        }
+        entry = build_general_entry(payload, args, timestamp)
         if not args.allow_partial:
             missing = missing_fields(args.kind, entry)
             if missing:
                 print(json.dumps({"ok": False, "missing": missing}, indent=2))
                 return 3
-        append_general_markdown(output_path, entry, timestamp)
+        validation_errors = validate_entry(args.kind, entry)
+        if validation_errors:
+            print(json.dumps({"ok": False, "errors": validation_errors}, indent=2))
+            return 2
+        append_general_json(output_path, entry, args, timestamp, workspace_root)
         print(json.dumps({"ok": True, "path": str(output_path)}, indent=2))
         return 0
 
