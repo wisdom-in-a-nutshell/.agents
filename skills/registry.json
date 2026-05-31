@@ -395,7 +395,8 @@
         "aipodcasting-public-website",
         "blog-personal",
         "whos-in-your-head",
-        "~/.agents"
+        "~/.agents",
+        "adi"
       ],
       "source_path": "skills-source/external/impeccable",
       "upstream_ref": "pbakaus/impeccable:.agents/skills/impeccable@main"
