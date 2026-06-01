@@ -25,7 +25,7 @@ The dashboard server reads those files on each request and exposes one normalize
 Then open:
 
 ```text
-http://127.0.0.1:8765/dashboard/
+http://127.0.0.1:8765/
 ```
 
 Use another port if needed:
@@ -52,8 +52,8 @@ should show `tailnet only`.
 Default URLs on this machine:
 
 ```text
-http://127.0.0.1:8765/dashboard/
-https://dobbys-mac-mini.tail7857da.ts.net:8765/dashboard/
+http://127.0.0.1:8765/
+https://dobbys-mac-mini.tail7857da.ts.net:8765/
 ```
 
 The URL uses the Mac Mini name because the dashboard runs on the Mac Mini. A
@@ -81,11 +81,11 @@ LaunchAgent and keep Tailscale Serve pointed at the same port:
 ./scripts/serve-control-plane-dashboard.sh status
 ```
 
-The LaunchAgent keeps `http://127.0.0.1:8765/dashboard/` running at login and
+The LaunchAgent keeps `http://127.0.0.1:8765/` running at login and
 restarts it if the process exits. Tailscale Serve owns the private tailnet URL:
 
 ```text
-https://dobbys-mac-mini.tail7857da.ts.net:8765/dashboard/
+https://dobbys-mac-mini.tail7857da.ts.net:8765/
 ```
 
 Inspect the service:
@@ -112,6 +112,33 @@ For additional local apps, prefer another fixed port rather than path routing:
 8766  next local dashboard
 8767  local docs viewer
 ```
+
+## Cloudflare Access URL
+
+The Mac Mini also exposes this dashboard through Cloudflare Tunnel and
+Cloudflare Access:
+
+```text
+https://agents.adithyan.io/
+```
+
+Cloudflare Access protects the entire hostname. The current policy allows only:
+
+```text
+adithyan@wisdominanutshell.academy
+```
+
+The local tunnel target is:
+
+```text
+agents.adithyan.io -> http://127.0.0.1:8765
+```
+
+The legacy `/dashboard/` path redirects to `/`. The `/api/control-plane`
+endpoint remains available behind Access because the browser UI needs it.
+`/source/...` is disabled by default for remote safety; set
+`AGENTS_DASHBOARD_ENABLE_SOURCE=1` only when deliberately enabling source-file
+browsing.
 
 ## Inspect The Data Contract
 

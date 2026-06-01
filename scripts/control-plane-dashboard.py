@@ -4,6 +4,7 @@ from __future__ import annotations
 import argparse
 import json
 import mimetypes
+import os
 import sys
 import time
 import uuid
@@ -591,10 +592,16 @@ class DashboardHandler(BaseHTTPRequestHandler):
             self.send_json(build_control_plane_data(self.server.root))
             return
         if path.startswith("/source/"):
+            if os.environ.get("AGENTS_DASHBOARD_ENABLE_SOURCE") != "1":
+                self.send_error(HTTPStatus.FORBIDDEN, "Source browsing disabled")
+                return
             self.send_source(path.removeprefix("/source/"))
             return
-        if path in {"", "/", "/dashboard"}:
-            self.redirect("/dashboard/")
+        if path in {"", "/"}:
+            self.send_static("index.html")
+            return
+        if path in {"/dashboard", "/dashboard/"}:
+            self.redirect("/")
             return
         if path.startswith("/dashboard/"):
             relative = path.removeprefix("/dashboard/")
