@@ -128,7 +128,7 @@ def command_schema() -> dict[str, Any]:
             "schemaVersion": 2,
             "createdAt": "ISO-8601 timestamp with timezone",
             "threadId": "Codex thread id string, or null when unavailable",
-            "trigger": "why consolidation happened, e.g. codexclaw-idle-expiry, codexclaw-chat-end, stale-cleanup, manual",
+            "trigger": "why consolidation happened, e.g. codexclaw-idle-expiry, codexclaw-chat-end, stale-cleanup, manual, migration",
             "title": f"short dashboard/index label, at most {120} characters",
             "summary": "Markdown continuity index: what matters from the thread, not a transcript recap",
             "workspaceChanges": "Markdown/plain-English visibility note about durable workspace changes made during consolidation, excluding this session-memory file",

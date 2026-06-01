@@ -107,6 +107,14 @@ retrieval is needed. `workspaceChanges` is for visibility into durable writes
 made during finalization; if none happened, say so plainly. Durable decisions
 still get promoted to `now.json`, area canon, or `dobby/constitution.json` or `memory/profile.json` as appropriate.
 
+Current trigger vocabulary:
+
+- `codexclaw-idle-expiry` — CodexClaw finalized an idle mapped thread.
+- `codexclaw-chat-end` — CodexClaw finalized a thread after explicit chat end.
+- `stale-cleanup` — global `~/.agents` stale Codex thread finalizer archived an old thread.
+- `manual` — direct/manual finalization or repair from a Dobby workspace.
+- `migration` — legacy imported session records only; do not use for new writes.
+
 Use the client instead of hand-writing records:
 
 ```bash
