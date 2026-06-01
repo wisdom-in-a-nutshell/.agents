@@ -54,6 +54,17 @@ def resolved_target(link_path: Path) -> Path:
     return (link_path.parent / cur).resolve()
 
 
+def absolute_path(path: Path) -> Path:
+    if path.is_absolute():
+        return path
+    return Path.cwd() / path
+
+
+def output_path(path: Path) -> Path:
+    path = absolute_path(path)
+    return path.parent.resolve() / path.name
+
+
 def is_relative_to(path: Path, parent: Path) -> bool:
     try:
         path.relative_to(parent)
@@ -535,14 +546,14 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> int:
     args = parse_args()
-    registry_file = Path(args.registry_file).expanduser().resolve()
-    app_data_dir = Path(args.app_data_dir).expanduser().resolve()
-    github_root = Path(args.github_root).expanduser().resolve()
-    global_context_source = Path(args.global_context_source).expanduser().resolve()
-    global_context_target = Path(args.global_context_target).expanduser().resolve()
-    hooks_file = Path(args.hooks_file).expanduser().resolve()
-    launcher_target = Path(args.launcher_target).expanduser().resolve()
-    real_cli_path = Path(args.real_cli_path).expanduser().resolve()
+    registry_file = absolute_path(Path(args.registry_file).expanduser()).resolve()
+    app_data_dir = absolute_path(Path(args.app_data_dir).expanduser()).resolve()
+    github_root = absolute_path(Path(args.github_root).expanduser()).resolve()
+    global_context_source = absolute_path(Path(args.global_context_source).expanduser()).resolve()
+    global_context_target = output_path(Path(args.global_context_target).expanduser())
+    hooks_file = output_path(Path(args.hooks_file).expanduser())
+    launcher_target = output_path(Path(args.launcher_target).expanduser())
+    real_cli_path = absolute_path(Path(args.real_cli_path).expanduser())
     extra_trusted_workspaces = [
         Path(raw).expanduser().resolve()
         for raw in args.trusted_workspace

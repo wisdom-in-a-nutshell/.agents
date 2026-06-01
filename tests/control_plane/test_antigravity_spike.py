@@ -215,6 +215,40 @@ class AntigravitySpikeSyncTests(TempDirTestCase):
             hooks["hooks"]["Stop"][0]["hooks"][0]["command"],
         )
 
+    def test_existing_global_context_symlink_target_is_not_resolved_for_write(self) -> None:
+        root = self.temp_path / "agents"
+        registry = self._write_registry(root, [])
+        app_data = self.temp_path / "antigravity-cli"
+        source = write_text(root / "codex/config/global.agents.md", "# Global Agent Context\n")
+        global_context_target = self.temp_path / "gemini/GEMINI.md"
+        global_context_target.parent.mkdir(parents=True)
+        global_context_target.symlink_to(os.path.relpath(source, global_context_target.parent))
+
+        run_command(
+            [
+                str(REPO_ROOT / "scripts/sync-antigravity-spike.py"),
+                "--apply",
+                "--skip-yolo",
+                "--skip-workspace-trust",
+                "--skip-hooks",
+                "--skip-launcher",
+                "--app-data-dir",
+                str(app_data),
+                "--global-context-source",
+                str(source),
+                "--global-context-target",
+                str(global_context_target),
+                str(registry),
+            ]
+        )
+
+        self.assertEqual("# Global Agent Context\n", source.read_text(encoding="utf-8"))
+        self.assertTrue(global_context_target.is_symlink())
+        self.assertEqual(
+            source.resolve(),
+            (global_context_target.parent / os.readlink(global_context_target)).resolve(),
+        )
+
     def test_antigravity_stop_adapter_reuses_shared_stop_for_clean_repo(self) -> None:
         repo = init_git_repo(self.temp_path / "repo")
         result = run_command(
