@@ -47,10 +47,13 @@ For repo authors adding `scripts/hooks/*.py`, start with
   - enables YOLO through Claude Code's native bypass mode, not through
     broad `PreToolUse` or `PermissionRequest` auto-allow hooks
   - renders a `~/bin/claude` wrapper that starts sessions with `--dangerously-skip-permissions`
-  - the wrapper sources `~/.secrets/anthropic/env` when present; the current
-    Claude Platform on AWS setup uses `CLAUDE_CODE_USE_ANTHROPIC_AWS=1`,
-    `ANTHROPIC_AWS_BASE_URL`, `ANTHROPIC_AWS_API_KEY`, and
-    `ANTHROPIC_AWS_WORKSPACE_ID`
+- `scripts/switch-claude-provider.sh`
+  - switches the machine-local Claude Code credential profile used by the
+    wrapper
+  - default profile is direct Claude subscription OAuth:
+    `~/.secrets/anthropic/env -> ~/.secrets/anthropic/env.subscription`
+  - preserved AWS profile is kept at `~/.secrets/anthropic/env.aws` and can be
+    reactivated with `scripts/switch-claude-provider.sh aws --apply`
 - `scripts/test-control-plane.sh`
   - hermetic regression test entrypoint
 
@@ -96,6 +99,9 @@ cd ~/.agents
 ./scripts/sync-managed-git-hooks.sh --apply
 ./scripts/sync-managed-git-hooks.sh --check
 ./scripts/sync-claude-spike.sh --apply
+./scripts/switch-claude-provider.sh status
+./scripts/switch-claude-provider.sh subscription --apply
+./scripts/switch-claude-provider.sh aws --apply
 ```
 
 Scoped validation/bootstrap:
