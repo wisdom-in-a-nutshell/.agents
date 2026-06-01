@@ -124,6 +124,7 @@ SECOND_LEVEL = {
 
 IGNORED_CHILD_NAMES = {".DS_Store", "__pycache__"}
 SENSITIVITY_VALUES = {"public", "personal", "sensitive", "restricted"}
+GROWTH_KIND_VALUES = {"behavioral-correction", "blindspot", "operational-instinct", "promotion"}
 SECTION_KEY_RE = re.compile(r"^[a-z0-9]+(?:_[a-z0-9]+)*$")
 ISOISH_RE = re.compile(r"^\d{4}-\d{2}-\d{2}T")
 
@@ -422,9 +423,14 @@ def check_jsonl(path: Path, label: str, *, row_kind: str = "generic") -> None:
             if data.get("schemaVersion") != 1:
                 add_error(path, f"{row_label} should use schemaVersion 1.")
             require_string(path, data, "kind", row_label)
+            if data.get("kind") not in GROWTH_KIND_VALUES:
+                add_error(
+                    path,
+                    f"{row_label} kind should be one of: {', '.join(sorted(GROWTH_KIND_VALUES))}.",
+                )
             require_string(path, data, "id", row_label)
             require_string(path, data, "title", row_label)
-            require_string(path, data, "body", row_label, allow_empty=True)
+            require_string(path, data, "body", row_label)
             check_iso_timestamp(path, data.get("createdAt"), f"{row_label} createdAt")
             if data.get("status") not in {"open", "done", "dropped"}:
                 add_error(path, f"{row_label} status should be open, done, or dropped.")
@@ -536,9 +542,8 @@ def check_memory_area_schemas() -> None:
                 for section_key, section in canon["sections"].items():
                     check_section_object(area_dir / "canon.json", section_key, section, f"area canon for {area_id}", require_sensitivity=True)
                     if isinstance(section, dict):
-                        source_path = section.get("sourcePath")
-                        if source_path is not None and not isinstance(source_path, str):
-                            add_error(area_dir / "canon.json", f"area canon for {area_id} section {section_key!r} sourcePath should be string or null.")
+                        if "sourcePath" in section:
+                            add_error(area_dir / "canon.json", f"area canon for {area_id} section {section_key!r} should not keep stale sourcePath provenance.")
         check_jsonl(area_dir / "log.jsonl", f"area log for {area_id}", row_kind="area-log")
         for path in sorted(p for p in area_dir.rglob("*") if p.is_file()):
             if path.name in {".DS_Store", ".gitignore"}:

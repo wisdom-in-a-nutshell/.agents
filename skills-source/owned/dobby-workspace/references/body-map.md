@@ -55,7 +55,7 @@ directly by Codex as `model_instructions_file`. Person-specific context lives in
 | Monthly synthesis / templates | `journal/monthly/**/*.json`, `journal/templates/**/*.json` |
 | Personal actionable open loop | `state/shelf.json` via `dobby-shelf` |
 | Dobby/agent work tracker | `projects/<project>/tasks.md` |
-| Dobby's own behavioral sharpening | `dobby/growth.jsonl` |
+| Dobby's own high-bar behavioral corrections, blindspots, operational instincts, and promotions | `dobby/growth.jsonl` |
 | Exact command/schema/operational recipe | Relevant skill under `~/.agents/skills-source/owned/` |
 | Temporary scratch / hook logs | `tmp/` |
 

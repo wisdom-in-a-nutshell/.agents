@@ -32,7 +32,7 @@ cat >"$workspace/dobby/constitution.json" <<JSON
 JSON
 
 cat >"$workspace/dobby/growth.jsonl" <<JSONL
-{"schemaVersion":1,"kind":"test","id":"growth-test","createdAt":"2026-05-29T08:00:00+02:00","title":"Test","body":"Test","status":"open","source":{"type":"test","ref":"tests/run.sh"}}
+{"schemaVersion":1,"kind":"behavioral-correction","id":"growth-test","createdAt":"2026-05-29T08:00:00+02:00","title":"Test","body":"Test","status":"open","source":{"type":"test","ref":"tests/run.sh"}}
 JSONL
 
 cat >"$workspace/memory/profile.json" <<JSON
