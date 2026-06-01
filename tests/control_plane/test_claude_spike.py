@@ -15,7 +15,7 @@ from tests.control_plane.support import (
 )
 
 
-class CopilotSpikeSyncTests(TempDirTestCase):
+class ClaudeSpikeSyncTests(TempDirTestCase):
     def _write_registry(self, root: Path, skills: list[dict[str, object]]) -> Path:
         for item in skills:
             make_skill_source(root / str(item["source_path"]), str(item["skill"]))
@@ -35,16 +35,14 @@ class CopilotSpikeSyncTests(TempDirTestCase):
             "--global-context-source",
             str(source),
             "--global-context-target",
-            str(self.temp_path / "copilot/copilot-instructions.md"),
-            "--hooks-file",
-            str(self.temp_path / "copilot/hooks/agents-control-plane.json"),
+            str(self.temp_path / "claude/CLAUDE.md"),
             "--launcher-target",
-            str(self.temp_path / "bin/copilot"),
+            str(self.temp_path / "bin/claude"),
             "--real-cli-path",
-            str(self.temp_path / "homebrew/bin/copilot"),
+            str(self.temp_path / "homebrew/bin/claude"),
         ]
 
-    def test_apply_renders_global_skills_instructions_hooks_and_yolo_launcher(self) -> None:
+    def test_apply_renders_global_skills_instructions_settings_hooks_and_yolo_launcher(self) -> None:
         root = self.temp_path / "agents"
         registry = self._write_registry(
             root,
@@ -67,61 +65,55 @@ class CopilotSpikeSyncTests(TempDirTestCase):
                 },
             ],
         )
-        copilot_home = self.temp_path / "copilot"
-        write_json(copilot_home / "settings.json", {"model": "test-model"})
+        claude_home = self.temp_path / "claude"
+        write_json(claude_home / "settings.json", {"model": "test-model"})
 
         run_command(
             [
-                str(REPO_ROOT / "scripts/sync-copilot-spike.py"),
+                str(REPO_ROOT / "scripts/sync-claude-spike.py"),
                 "--apply",
-                "--copilot-home",
-                str(copilot_home),
+                "--claude-home",
+                str(claude_home),
                 *self._isolated_targets(root),
                 str(registry),
             ]
         )
 
-        skill_link = copilot_home / "skills/global-one"
+        skill_link = claude_home / "skills/global-one"
         self.assertTrue(skill_link.is_symlink())
         self.assertEqual(
             (root / "skills-source/owned/global-one").resolve(),
             (skill_link.parent / os.readlink(skill_link)).resolve(),
         )
-        self.assertFalse((copilot_home / "skills/repo-only").exists())
+        self.assertFalse((claude_home / "skills/repo-only").exists())
 
-        settings = json.loads((copilot_home / "settings.json").read_text(encoding="utf-8"))
-        self.assertEqual("test-model", settings["model"])
-        self.assertEqual(False, settings["askUser"])
-        self.assertEqual("never", settings["banner"])
-        self.assertEqual(False, settings["beep"])
-
-        instructions = self.temp_path / "copilot/copilot-instructions.md"
+        instructions = self.temp_path / "claude/CLAUDE.md"
         self.assertTrue(instructions.is_symlink())
         self.assertEqual(
             (root / "codex/config/global.agents.md").resolve(),
             (instructions.parent / os.readlink(instructions)).resolve(),
         )
 
-        hooks = json.loads(
-            (self.temp_path / "copilot/hooks/agents-control-plane.json").read_text(encoding="utf-8")
-        )
-        self.assertEqual(1, hooks["version"])
-        self.assertIn("agentStop", hooks["hooks"])
-        self.assertIn("permissionRequest", hooks["hooks"])
-        self.assertIn("preToolUse", hooks["hooks"])
+        settings = json.loads((claude_home / "settings.json").read_text(encoding="utf-8"))
+        self.assertEqual("test-model", settings["model"])
+        self.assertEqual("bypassPermissions", settings["permissions"]["defaultMode"])
+        self.assertEqual(True, settings["permissions"]["skipDangerousModePermissionPrompt"])
+        self.assertIn("Bash", settings["permissions"]["allow"])
+        self.assertIn("Stop", settings["hooks"])
+        self.assertIn("PreToolUse", settings["hooks"])
+        self.assertIn("PermissionRequest", settings["hooks"])
         self.assertEqual(
-            "python3 ~/.agents/hooks/scripts/copilot_stop.py",
-            hooks["hooks"]["agentStop"][0]["bash"],
+            "python3 ~/.agents/hooks/scripts/claude_stop.py",
+            settings["hooks"]["Stop"][0]["hooks"][0]["command"],
         )
-        self.assertIn('"behavior":"allow"', hooks["hooks"]["permissionRequest"][0]["bash"])
-        self.assertIn('"permissionDecision":"allow"', hooks["hooks"]["preToolUse"][0]["bash"])
 
-        launcher = self.temp_path / "bin/copilot"
+        launcher = self.temp_path / "bin/claude"
         self.assertTrue(launcher.is_file())
         self.assertTrue(os.access(launcher, os.X_OK))
         launcher_text = launcher.read_text(encoding="utf-8")
-        self.assertIn("--yolo --no-ask-user", launcher_text)
-        self.assertIn(str(self.temp_path / "homebrew/bin/copilot"), launcher_text)
+        self.assertIn("--dangerously-skip-permissions", launcher_text)
+        self.assertIn("$HOME/.secrets/anthropic/env", launcher_text)
+        self.assertIn(str(self.temp_path / "homebrew/bin/claude"), launcher_text)
 
     def test_apply_merges_trusted_workspaces(self) -> None:
         root = init_git_repo(self.temp_path / "agents")
@@ -129,22 +121,17 @@ class CopilotSpikeSyncTests(TempDirTestCase):
         github_root = self.temp_path / "GitHub"
         repo_a = init_git_repo(github_root / "repo-a")
         repo_b = init_git_repo(github_root / "nested/repo-b")
-        copilot_home = self.temp_path / "copilot"
+        claude_home = self.temp_path / "claude"
         existing = self.temp_path / "existing"
         existing.mkdir()
-        write_text(
-            copilot_home / "config.json",
-            "// User settings belong in settings.json.\n// This file is managed automatically.\n"
-            + json.dumps({"trustedFolders": [str(existing)]}, indent=2)
-            + "\n",
-        )
+        write_json(claude_home / "settings.json", {"permissions": {"additionalDirectories": [str(existing)]}})
 
         run_command(
             [
-                str(REPO_ROOT / "scripts/sync-copilot-spike.py"),
+                str(REPO_ROOT / "scripts/sync-claude-spike.py"),
                 "--apply",
-                "--copilot-home",
-                str(copilot_home),
+                "--claude-home",
+                str(claude_home),
                 "--github-root",
                 str(github_root),
                 *self._isolated_targets(root),
@@ -152,37 +139,36 @@ class CopilotSpikeSyncTests(TempDirTestCase):
             ]
         )
 
-        raw_config = (copilot_home / "config.json").read_text(encoding="utf-8")
-        config = json.loads("\n".join(line for line in raw_config.splitlines() if not line.startswith("//")))
+        settings = json.loads((claude_home / "settings.json").read_text(encoding="utf-8"))
         self.assertEqual(
             [
-                str(existing.resolve()),
+                str(existing),
                 str(repo_b.resolve()),
                 str(repo_a.resolve()),
                 str(root.resolve()),
             ],
-            config["trustedFolders"],
+            settings["permissions"]["additionalDirectories"],
         )
 
     def test_existing_global_context_symlink_target_is_not_resolved_for_write(self) -> None:
         root = self.temp_path / "agents"
         registry = self._write_registry(root, [])
-        copilot_home = self.temp_path / "copilot"
+        claude_home = self.temp_path / "claude"
         source = write_text(root / "codex/config/global.agents.md", "# Global Agent Context\n")
-        target = self.temp_path / "copilot/copilot-instructions.md"
+        target = self.temp_path / "claude/CLAUDE.md"
         target.parent.mkdir(parents=True)
         target.symlink_to(os.path.relpath(source, target.parent))
 
         run_command(
             [
-                str(REPO_ROOT / "scripts/sync-copilot-spike.py"),
+                str(REPO_ROOT / "scripts/sync-claude-spike.py"),
                 "--apply",
                 "--skip-yolo",
-                "--skip-hooks",
+                "--skip-settings",
                 "--skip-launcher",
                 "--skip-skills",
-                "--copilot-home",
-                str(copilot_home),
+                "--claude-home",
+                str(claude_home),
                 "--global-context-source",
                 str(source),
                 "--global-context-target",
@@ -194,3 +180,4 @@ class CopilotSpikeSyncTests(TempDirTestCase):
         self.assertEqual("# Global Agent Context\n", source.read_text(encoding="utf-8"))
         self.assertTrue(target.is_symlink())
         self.assertEqual(source.resolve(), (target.parent / os.readlink(target)).resolve())
+

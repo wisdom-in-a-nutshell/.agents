@@ -17,7 +17,7 @@ from pathlib import Path
 from typing import Any
 
 
-VALID_RUNTIMES = {"antigravity", "codex", "copilot"}
+VALID_RUNTIMES = {"antigravity", "claude", "codex"}
 
 GIT_STATUS_TIMEOUT_SEC = 60
 GIT_ADD_TIMEOUT_SEC = 120

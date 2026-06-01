@@ -21,7 +21,7 @@ For repo authors adding `scripts/hooks/*.py`, start with
   - machine-facing full bootstrap batch
   - syncs managed skill links from `skills/registry.json`
   - syncs managed repo local Git `core.hooksPath` to the shared Git hooks directory
-  - applies temporary Antigravity and Copilot CLI spike surfaces
+  - applies temporary Antigravity and Claude Code spike surfaces
   - applies the Codex runtime via `codex/scripts/bootstrap-machine-codex.sh`
 - `scripts/auto-apply-agent-control-planes.sh`
   - machine-facing post-sync reconcile entrypoint
@@ -39,12 +39,12 @@ For repo authors adding `scripts/hooks/*.py`, start with
 - `scripts/sync-managed-git-hooks.sh`
   - sets repo-local `core.hooksPath` to `~/.agents/hooks/git`
   - supports `--check`
-- `scripts/sync-copilot-spike.sh`
-  - temporary Copilot CLI bootstrap surface
-  - renders `~/.copilot/copilot-instructions.md` from the global agent guidance source
-  - renders managed global skill links under `~/.copilot/skills`
-  - renders user hooks under `~/.copilot/hooks/agents-control-plane.json`
-  - renders a `~/bin/copilot` wrapper that starts sessions with `--yolo --no-ask-user`
+- `scripts/sync-claude-spike.sh`
+  - temporary Claude Code bootstrap surface
+  - renders `~/.claude/CLAUDE.md` from the global agent guidance source
+  - renders managed global skill links under `~/.claude/skills`
+  - renders user settings and hooks under `~/.claude/settings.json`
+  - renders a `~/bin/claude` wrapper that starts sessions with `--dangerously-skip-permissions`
 - `scripts/test-control-plane.sh`
   - hermetic regression test entrypoint
 
@@ -89,7 +89,7 @@ cd ~/.agents
 ./scripts/test-control-plane.sh
 ./scripts/sync-managed-git-hooks.sh --apply
 ./scripts/sync-managed-git-hooks.sh --check
-./scripts/sync-copilot-spike.sh --apply
+./scripts/sync-claude-spike.sh --apply
 ```
 
 Scoped validation/bootstrap:

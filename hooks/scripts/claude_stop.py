@@ -37,31 +37,17 @@ def first_string(*values: Any) -> str | None:
     return None
 
 
-def nested_string(payload: dict[str, Any], *path: str) -> str | None:
-    current: Any = payload
-    for key in path:
-        if not isinstance(current, dict):
-            return None
-        current = current.get(key)
-    return current if isinstance(current, str) and current.strip() else None
-
-
 def cwd_from_payload(payload: dict[str, Any]) -> str:
+    cwd = payload.get("cwd")
+    transcript = payload.get("transcript_path") or payload.get("transcriptPath")
+    transcript_dir = str(Path(transcript).parent) if isinstance(transcript, str) and transcript.strip() else None
     return first_string(
-        payload.get("cwd"),
+        cwd,
         payload.get("workingDirectory"),
-        payload.get("working_directory"),
-        payload.get("workspaceDir"),
         payload.get("workspace_dir"),
-        payload.get("workspacePath"),
-        payload.get("workspace_path"),
-        payload.get("projectPath"),
-        payload.get("project_path"),
-        nested_string(payload, "workspace", "path"),
-        nested_string(payload, "workspace", "root"),
-        nested_string(payload, "project", "path"),
-        nested_string(payload, "repository", "path"),
+        payload.get("workspaceDir"),
         os.environ.get("AGENT_REPO_ROOT"),
+        transcript_dir,
         os.getcwd(),
     ) or os.getcwd()
 
@@ -70,7 +56,7 @@ def normalize_payload(payload: dict[str, Any], cwd: str) -> dict[str, Any]:
     normalized = {
         "hook_event_name": "Stop",
         "cwd": cwd,
-        "runtime": "copilot",
+        "runtime": "claude",
         "raw_payload": payload,
     }
     for source_key, target_key in (
@@ -78,8 +64,7 @@ def normalize_payload(payload: dict[str, Any], cwd: str) -> dict[str, Any]:
         ("sessionId", "session_id"),
         ("conversation_id", "session_id"),
         ("conversationId", "session_id"),
-        ("thread_id", "session_id"),
-        ("threadId", "session_id"),
+        ("transcript_path", "session_id"),
         ("model_provider", "model_provider"),
         ("modelProvider", "model_provider"),
     ):
@@ -96,9 +81,9 @@ def main() -> int:
     stop = load_stop_module()
 
     try:
-        output = stop.process_repo(cwd, normalized, runtime="copilot")
+        output = stop.process_repo(cwd, normalized, runtime="claude")
     except Exception as exc:
-        output = stop.warning(f"Copilot Stop adapter failed: {exc}")
+        output = stop.warning(f"Claude Stop adapter failed: {exc}")
 
     if output:
         sys.stdout.write(json.dumps(output, sort_keys=True))
