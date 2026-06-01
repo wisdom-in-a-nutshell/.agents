@@ -43,6 +43,8 @@ For repo authors adding `scripts/hooks/*.py`, start with
   - temporary Claude Code bootstrap surface
   - renders `~/.claude/CLAUDE.md` from the global agent guidance source
   - renders managed global skill links under `~/.claude/skills`
+  - renders managed repo-scoped skill links under each target repo's
+    `.claude/skills`
   - renders user settings and the managed `Stop` hook under `~/.claude/settings.json`
   - enables YOLO through Claude Code's native bypass mode, not through
     broad `PreToolUse` or `PermissionRequest` auto-allow hooks

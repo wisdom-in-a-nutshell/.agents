@@ -85,6 +85,18 @@ def is_relative_to(path: Path, parent: Path) -> bool:
         return False
 
 
+def expand_home_path(raw: str, home: Path) -> Path:
+    if raw.startswith("~/"):
+        return home / raw[2:]
+    return Path(raw)
+
+
+def resolve_repo_root(repo: str, github_root: Path, home: Path) -> Path:
+    if repo.startswith("~/") or repo.startswith("/"):
+        return expand_home_path(repo, home).resolve()
+    return (github_root / repo).resolve()
+
+
 def ensure_str(value: Any, field: str, label: str, idx: int) -> str:
     if not isinstance(value, str) or not value.strip():
         raise ValueError(f"{label}[{idx}] invalid {field}: {value!r}")
@@ -119,19 +131,31 @@ def load_registry(registry_file: Path) -> tuple[list[dict[str, Any]], Path]:
             source_path = ensure_str(item.get("source_path"), "source_path", label, idx)
             if scope not in ALLOWED_SCOPES:
                 raise ValueError(f"{label}[{idx}] invalid scope: {scope}")
-            if scope != "global":
+            if scope == "dormant":
                 continue
+            repos_raw = item.get("repos", [])
+            if not isinstance(repos_raw, list):
+                raise ValueError(f"{label}[{idx}] repos must be an array")
+            repos = [str(repo).strip() for repo in repos_raw if str(repo).strip()]
+            if scope == "repo" and not repos:
+                raise ValueError(f"{label}[{idx}] repo scope needs repos")
+            if scope == "global":
+                repos = []
             src = Path(source_path)
             if not src.is_absolute():
                 src = (root_dir / src).resolve()
             if not (src / "SKILL.md").is_file():
                 raise ValueError(f"source missing SKILL.md for {skill}: {src}")
-            items.append({"skill": skill, "source_abs": src})
+            items.append({"skill": skill, "scope": scope, "repos": repos, "source_abs": src})
 
     seen: set[str] = set()
-    duplicates = sorted(item["skill"] for item in items if item["skill"] in seen or seen.add(item["skill"]))
+    duplicates = sorted(
+        f"{item['skill']}/{item['scope']}"
+        for item in items
+        if f"{item['skill']}/{item['scope']}" in seen or seen.add(f"{item['skill']}/{item['scope']}")
+    )
     if duplicates:
-        raise ValueError(f"duplicate global skill entries: {', '.join(duplicates)}")
+        raise ValueError(f"duplicate skill+scope entries: {', '.join(duplicates)}")
     return items, root_dir
 
 
@@ -180,6 +204,12 @@ def git_root_for(path: Path) -> Path | None:
     return Path(raw).resolve() if result.returncode == 0 and raw else None
 
 
+def repo_git_root(repo_root: Path) -> Path | None:
+    if not repo_root.exists() or not repo_root.is_dir():
+        return None
+    return git_root_for(repo_root)
+
+
 def discover_git_repo_roots(root: Path) -> list[Path]:
     if not root.is_dir():
         return []
@@ -197,6 +227,68 @@ def discover_git_repo_roots(root: Path) -> list[Path]:
             seen.add(repo_root)
             repos.append(repo_root)
     return sorted(repos, key=lambda path: str(path))
+
+
+def repo_skill_dirs_for_prune(root_dir: Path, github_root: Path, repo_filters: set[Path]) -> set[Path]:
+    dirs: set[Path] = set()
+    if not repo_filters or root_dir.resolve() in repo_filters:
+        dirs.add(root_dir / ".claude" / "skills")
+    if github_root.is_dir():
+        for repo_root in github_root.iterdir():
+            actual_repo = repo_git_root(repo_root)
+            if actual_repo is None:
+                continue
+            if repo_filters and actual_repo not in repo_filters:
+                continue
+            dirs.add(actual_repo / ".claude" / "skills")
+    return dirs
+
+
+def render_skills(
+    items: list[dict[str, Any]],
+    root_dir: Path,
+    claude_home: Path,
+    github_root: Path,
+    repo_filters: set[Path],
+    apply: bool,
+) -> None:
+    home = Path.home()
+    managed_source_roots = [
+        (root_dir / "skills-source").resolve(),
+        (root_dir / "plugins-source").resolve(),
+    ]
+    desired_global_links: dict[Path, Path] = {}
+    desired_repo_links: dict[Path, Path] = {}
+
+    for item in items:
+        skill = item["skill"]
+        src = item["source_abs"]
+        if item["scope"] == "global":
+            dst = claude_home / "skills" / skill
+            desired_global_links[dst] = src
+            sync_link(dst, src, apply)
+            continue
+
+        for repo in item["repos"]:
+            repo_root = resolve_repo_root(repo, github_root, home)
+            if repo_filters and repo_root not in repo_filters:
+                continue
+            actual_repo = repo_git_root(repo_root)
+            if actual_repo is None:
+                if repo_root.exists():
+                    print(f"WARNING: skipping existing non-git path: {repo_root}", file=sys.stderr)
+                continue
+            if repo_filters and actual_repo not in repo_filters:
+                continue
+            dst = actual_repo / ".claude" / "skills" / skill
+            desired_repo_links[dst] = src
+            sync_link(dst, src, apply)
+
+    prune_obsolete_links(claude_home / "skills", desired_global_links, managed_source_roots, apply)
+    repo_skill_dirs = repo_skill_dirs_for_prune(root_dir, github_root, repo_filters)
+    repo_skill_dirs.update(path.parent for path in desired_repo_links)
+    for skills_dir in sorted(repo_skill_dirs):
+        prune_obsolete_links(skills_dir, desired_repo_links, managed_source_roots, apply)
 
 
 def trusted_workspaces(root_dir: Path, github_root: Path, extra: list[Path]) -> list[str]:
@@ -414,18 +506,18 @@ def run_sync(args: argparse.Namespace) -> None:
     extra_trusted_workspaces = [Path(raw).expanduser().resolve() for raw in args.trusted_workspace if raw.strip()]
 
     items, root_dir = load_registry(registry_file)
+    repo_filters = {
+        resolve_repo_root(raw.strip(), github_root, Path.home())
+        for raw in args.repo
+        if raw.strip()
+    }
     if not args.skip_skills:
-        skills_dir = claude_home / "skills"
-        desired_links: dict[Path, Path] = {}
-        for item in items:
-            dst = skills_dir / item["skill"]
-            src = item["source_abs"]
-            desired_links[dst] = src
-            sync_link(dst, src, args.apply)
-        prune_obsolete_links(
-            skills_dir,
-            desired_links,
-            [(root_dir / "skills-source").resolve(), (root_dir / "plugins-source").resolve()],
+        render_skills(
+            items,
+            root_dir,
+            claude_home,
+            github_root,
+            repo_filters,
             args.apply,
         )
 
@@ -446,6 +538,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--claude-home", default=str(DEFAULT_CLAUDE_HOME), help="Claude Code user directory.")
     parser.add_argument("--github-root", default=str(DEFAULT_GITHUB_ROOT), help="GitHub root to scan for trusted Git workspaces.")
     parser.add_argument("--trusted-workspace", action="append", default=[], help="Additional workspace path to trust.")
+    parser.add_argument("--repo", action="append", default=[], help="Limit repo-local Claude skill sync to an exact repo path or repo name.")
     parser.add_argument("--global-context-source", default=str(DEFAULT_GLOBAL_CONTEXT_SOURCE), help="Source markdown file for global CLAUDE.md.")
     parser.add_argument("--global-context-target", default=str(DEFAULT_GLOBAL_CONTEXT_TARGET), help="Claude global CLAUDE.md target.")
     parser.add_argument("--launcher-target", default=str(DEFAULT_LAUNCHER_TARGET), help="Claude YOLO launcher target.")
