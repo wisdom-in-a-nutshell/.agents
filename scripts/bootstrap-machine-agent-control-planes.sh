@@ -10,6 +10,7 @@ ROOT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
 SYNC_SKILLS_SCRIPT="${SCRIPT_DIR}/sync-skills-registry.sh"
 SYNC_PLUGINS_SCRIPT="${SCRIPT_DIR}/sync-plugins-registry.sh"
 SYNC_ANTIGRAVITY_SPIKE_SCRIPT="${SCRIPT_DIR}/sync-antigravity-spike.sh"
+SYNC_COPILOT_SPIKE_SCRIPT="${SCRIPT_DIR}/sync-copilot-spike.sh"
 SYNC_GIT_HOOKS_SCRIPT="${SCRIPT_DIR}/sync-managed-git-hooks.sh"
 CODEX_BOOTSTRAP_SCRIPT="${ROOT_DIR}/codex/scripts/bootstrap-machine-codex.sh"
 
@@ -87,6 +88,7 @@ fi
 [[ -x "$SYNC_SKILLS_SCRIPT" ]] || die "Missing executable: $SYNC_SKILLS_SCRIPT"
 [[ -x "$SYNC_PLUGINS_SCRIPT" ]] || die "Missing executable: $SYNC_PLUGINS_SCRIPT"
 [[ -x "$SYNC_ANTIGRAVITY_SPIKE_SCRIPT" ]] || die "Missing executable: $SYNC_ANTIGRAVITY_SPIKE_SCRIPT"
+[[ -x "$SYNC_COPILOT_SPIKE_SCRIPT" ]] || die "Missing executable: $SYNC_COPILOT_SPIKE_SCRIPT"
 [[ -x "$SYNC_GIT_HOOKS_SCRIPT" ]] || die "Missing executable: $SYNC_GIT_HOOKS_SCRIPT"
 [[ -x "$CODEX_BOOTSTRAP_SCRIPT" ]] || die "Missing executable: $CODEX_BOOTSTRAP_SCRIPT"
 REPO_ARGS=()
@@ -118,6 +120,16 @@ sync_antigravity_spike_cmd=(
 )
 log "+ ${sync_antigravity_spike_cmd[*]}"
 "${sync_antigravity_spike_cmd[@]}"
+
+# Temporary Copilot CLI experiment: this may be ripped out once the durable
+# cross-runtime bootstrap model is clear.
+sync_copilot_spike_cmd=(
+  "$SYNC_COPILOT_SPIKE_SCRIPT"
+  "${SYNC_ARGS[@]}"
+  --github-root "$GITHUB_ROOT"
+)
+log "+ ${sync_copilot_spike_cmd[*]}"
+"${sync_copilot_spike_cmd[@]}"
 
 sync_git_hooks_cmd=(
   "$SYNC_GIT_HOOKS_SCRIPT"
