@@ -38,6 +38,10 @@ class AntigravitySpikeSyncTests(TempDirTestCase):
             str(self.temp_path / "gemini/GEMINI.md"),
             "--hooks-file",
             str(self.temp_path / "gemini/config/hooks.json"),
+            "--launcher-target",
+            str(self.temp_path / "bin/agy"),
+            "--real-cli-path",
+            str(self.temp_path / "local/bin/agy"),
         ]
 
     def test_apply_renders_global_skills_and_yolo_setting(self) -> None:
@@ -88,6 +92,13 @@ class AntigravitySpikeSyncTests(TempDirTestCase):
         settings = json.loads((app_data / "settings.json").read_text(encoding="utf-8"))
         self.assertEqual("test-model", settings["model"])
         self.assertEqual("always-proceed", settings["toolPermission"])
+
+        launcher = self.temp_path / "bin/agy"
+        self.assertTrue(launcher.is_file())
+        self.assertTrue(os.access(launcher, os.X_OK))
+        launcher_text = launcher.read_text(encoding="utf-8")
+        self.assertIn("--dangerously-skip-permissions", launcher_text)
+        self.assertIn(str(self.temp_path / "local/bin/agy"), launcher_text)
 
     def test_apply_merges_trusted_workspaces(self) -> None:
         root = init_git_repo(self.temp_path / "agents")

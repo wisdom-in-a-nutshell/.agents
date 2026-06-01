@@ -4,6 +4,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import shlex
 import shutil
 import subprocess
 import sys
@@ -18,6 +19,8 @@ DEFAULT_GITHUB_ROOT = Path.home() / "GitHub"
 DEFAULT_GLOBAL_CONTEXT_SOURCE = Path.home() / ".agents" / "codex" / "config" / "global.agents.md"
 DEFAULT_GLOBAL_CONTEXT_TARGET = Path.home() / ".gemini" / "GEMINI.md"
 DEFAULT_HOOKS_FILE = Path.home() / ".gemini" / "config" / "hooks.json"
+DEFAULT_LAUNCHER_TARGET = Path.home() / "bin" / "agy"
+DEFAULT_REAL_CLI_PATH = Path.home() / ".local" / "bin" / "agy"
 ANTIGRAVITY_STOP_COMMAND = "python3 ~/.agents/hooks/scripts/antigravity_stop.py"
 DEFAULT_SETTINGS = {"toolPermission": "always-proceed"}
 ALLOWED_SCOPES = {"global", "repo", "dormant"}
@@ -351,6 +354,52 @@ def render_hooks(hooks_file: Path, apply: bool) -> None:
     )
 
 
+def launcher_text(real_cli_path: Path) -> str:
+    real_cli = shlex.quote(str(real_cli_path))
+    return f"""#!/usr/bin/env bash
+set -euo pipefail
+
+default_real_cli={real_cli}
+real_cli="${{AGY_REAL_BIN:-$default_real_cli}}"
+if [[ ! -x "$real_cli" ]]; then
+  printf 'agy launcher cannot find executable real CLI: %s\\n' "$real_cli" >&2
+  exit 127
+fi
+
+for arg in "$@"; do
+  if [[ "$arg" == "--dangerously-skip-permissions" ]]; then
+    exec "$real_cli" "$@"
+  fi
+done
+
+exec "$real_cli" --dangerously-skip-permissions "$@"
+"""
+
+
+def render_launcher(launcher_target: Path, real_cli_path: Path, apply: bool) -> None:
+    desired = launcher_text(real_cli_path)
+    if launcher_target.is_file():
+        try:
+            current = launcher_target.read_text(encoding="utf-8")
+        except UnicodeDecodeError:
+            current = None
+        if current == desired and os.access(launcher_target, os.X_OK):
+            print(f"UNCHANGED {launcher_target}")
+            return
+
+    print(f"SYNC {launcher_target} (Antigravity YOLO launcher)")
+    if not apply:
+        return
+
+    launcher_target.parent.mkdir(parents=True, exist_ok=True)
+    if launcher_target.is_dir():
+        shutil.rmtree(launcher_target)
+    elif launcher_target.exists() or launcher_target.is_symlink():
+        launcher_target.unlink()
+    launcher_target.write_text(desired, encoding="utf-8")
+    launcher_target.chmod(0o755)
+
+
 def run_sync(
     registry_file: Path,
     app_data_dir: Path,
@@ -359,11 +408,14 @@ def run_sync(
     global_context_source: Path,
     global_context_target: Path,
     hooks_file: Path,
+    launcher_target: Path,
+    real_cli_path: Path,
     apply: bool,
     skip_yolo: bool,
     skip_workspace_trust: bool,
     skip_global_context: bool,
     skip_hooks: bool,
+    skip_launcher: bool,
 ) -> None:
     items, root_dir = load_registry(registry_file)
     skills_dir = app_data_dir / "skills"
@@ -391,6 +443,8 @@ def run_sync(
         render_global_context(global_context_source, global_context_target, apply)
     if not skip_hooks:
         render_hooks(hooks_file, apply)
+    if not skip_launcher:
+        render_launcher(launcher_target, real_cli_path, apply)
 
 
 def parse_args() -> argparse.Namespace:
@@ -436,6 +490,16 @@ def parse_args() -> argparse.Namespace:
         help="Antigravity global hooks.json target.",
     )
     parser.add_argument(
+        "--launcher-target",
+        default=str(DEFAULT_LAUNCHER_TARGET),
+        help="Antigravity YOLO launcher target.",
+    )
+    parser.add_argument(
+        "--real-cli-path",
+        default=str(DEFAULT_REAL_CLI_PATH),
+        help="Real Antigravity CLI binary path wrapped by the YOLO launcher.",
+    )
+    parser.add_argument(
         "--skip-yolo",
         action="store_true",
         help="Do not render the always-proceed tool permission setting.",
@@ -456,6 +520,11 @@ def parse_args() -> argparse.Namespace:
         help="Do not render Antigravity global hooks.json.",
     )
     parser.add_argument(
+        "--skip-launcher",
+        action="store_true",
+        help="Do not render the Antigravity YOLO launcher.",
+    )
+    parser.add_argument(
         "registry_file",
         nargs="?",
         default=str(Path.home() / ".agents" / "skills" / "registry.json"),
@@ -472,6 +541,8 @@ def main() -> int:
     global_context_source = Path(args.global_context_source).expanduser().resolve()
     global_context_target = Path(args.global_context_target).expanduser().resolve()
     hooks_file = Path(args.hooks_file).expanduser().resolve()
+    launcher_target = Path(args.launcher_target).expanduser().resolve()
+    real_cli_path = Path(args.real_cli_path).expanduser().resolve()
     extra_trusted_workspaces = [
         Path(raw).expanduser().resolve()
         for raw in args.trusted_workspace
@@ -487,11 +558,14 @@ def main() -> int:
             global_context_source,
             global_context_target,
             hooks_file,
+            launcher_target,
+            real_cli_path,
             args.apply,
             args.skip_yolo,
             args.skip_workspace_trust,
             args.skip_global_context,
             args.skip_hooks,
+            args.skip_launcher,
         )
     except ValueError as exc:
         print(f"Antigravity spike sync failed: {exc}", file=sys.stderr)
