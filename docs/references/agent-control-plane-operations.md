@@ -45,6 +45,7 @@ For repo authors adding `scripts/hooks/*.py`, start with
   - renders managed global skill links under `~/.claude/skills`
   - renders user settings and hooks under `~/.claude/settings.json`
   - renders a `~/bin/claude` wrapper that starts sessions with `--dangerously-skip-permissions`
+  - the wrapper sources `~/.secrets/anthropic/env` when present for `ANTHROPIC_API_KEY`
 - `scripts/test-control-plane.sh`
   - hermetic regression test entrypoint
 
