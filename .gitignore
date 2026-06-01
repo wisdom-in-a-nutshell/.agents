@@ -31,6 +31,9 @@ log/
 # Local rendered runtime backups
 .codex/*.bak.*
 
+# Local Antigravity CLI runtime state
+.antigravitycli/
+
 # Obsidian runtime UI state (local/session-specific)
 .obsidian/graph.json
 .obsidian/workspace*.json
