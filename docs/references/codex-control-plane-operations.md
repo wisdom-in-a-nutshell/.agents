@@ -83,10 +83,17 @@ Use [Codex Control Plane Ownership](/Users/dobby/.agents/docs/references/codex-c
   - [`sync-config.sh`](/Users/dobby/.agents/codex/scripts/sync-config.sh)
   - `~/.agents/codex/scripts/sync-config.sh --apply`
   - this syncs the managed global config, global `hooks.json`, removes stale managed Azure profile files, and removes stale managed agent-role files from older control-plane versions
-- Check local Azure OpenAI auth readiness for Azure-backed Codex:
+- Switch the managed global Codex subscription/provider default:
+  - [`switch-codex-subscription.sh`](/Users/dobby/.agents/codex/scripts/switch-codex-subscription.sh)
+  - `~/.agents/codex/scripts/switch-codex-subscription.sh status`
+  - `~/.agents/codex/scripts/switch-codex-subscription.sh chatgpt --apply`
+  - `~/.agents/codex/scripts/switch-codex-subscription.sh azure --apply`
+  - this rewrites [`global.config.toml`](/Users/dobby/.agents/codex/config/global.config.toml), syncs `~/.codex/config.toml`, and validates the rendered control plane
+  - for a one-off run without changing the global default, use `codex --profile chatgpt` or `codex --profile azure-openai`
+- Check local Azure OpenAI auth readiness only when intentionally testing an Azure-backed Codex profile:
   - [`check-codex-azure-auth.sh`](/Users/dobby/.agents/codex/scripts/check-codex-azure-auth.sh)
   - `~/.agents/codex/scripts/check-codex-azure-auth.sh`
-  - this verifies `~/.codex/config.toml` uses the `azure-key` provider and that `AZURE_OPENAI_API_KEY` is available from the generated machine-local secret file
+  - this legacy helper verifies `~/.codex/config.toml` uses the `azure-key` provider and that `AZURE_OPENAI_API_KEY` is available from the generated machine-local secret file
 - Validate canonical and rendered Codex control-plane state:
   - [`check-codex-control-plane.sh`](/Users/dobby/.agents/codex/scripts/check-codex-control-plane.sh)
   - `~/.agents/codex/scripts/check-codex-control-plane.sh`
@@ -131,9 +138,10 @@ Use [Codex Control Plane Ownership](/Users/dobby/.agents/docs/references/codex-c
 - `~/.codex/config.toml` enables Codex hooks through `[features].hooks = true`
 - `~/.codex/config.toml` contains `[hooks.state]` trust hashes for managed hooks rendered by this control plane, so global and repo-local lifecycle hooks do not need repeated `/hooks` review on every machine bootstrap.
 - `~/.codex/config.toml` explicitly preserves enabled native Codex plugins such as `computer-use@openai-bundled`, points `openai-bundled` at the marketplace inside `Codex.app`, and disables bundled Codex skills classified as `disabled` in [`bundled-skills-policy.json`](/Users/dobby/.agents/codex/config/bundled-skills-policy.json)
-- `~/.codex/config.toml` uses the single managed Azure OpenAI API-key provider for the global Codex default: `model = "gpt-5.5"`, `model_provider = "azure-key"`, and `[model_providers.azure-key]` from [`global.config.toml`](/Users/dobby/.agents/codex/config/global.config.toml). The provider display name is `Azure`. It reads `AZURE_OPENAI_API_KEY`; the key is generated into `~/.secrets/azure-openai/env` from the shared machine-secret mapping in `~/GitHub/scripts/sync/machine-secrets/azure-openai.env.map`. Shell startup sources that generated file, and GUI-launched Codex Desktop needs `launchctl setenv AZURE_OPENAI_API_KEY "$AZURE_OPENAI_API_KEY"` after materialization plus an app restart to inherit it.
-- Do not keep Microsoft Entra token fallback profiles or providers for Codex Azure OpenAI. In particular, `~/.codex/azure.config.toml`, `~/.codex/azure-key.config.toml`, `[model_providers.azure]`, and `az account get-access-token` auth-command wiring are stale and should be removed by `sync-config.sh --apply`.
-- Do not set global Codex service-tier defaults such as `[desktop] default-service-tier = "priority"` for the Azure-backed default profile. Azure accepts request-level `service_tier = "priority"` for normal Responses calls, but Codex remote compact currently rejects that parameter with `Unknown parameter: 'service_tier'` when the setting leaks into compact requests. Keep managed `service_tier` values unset unless Codex has a verified compact-safe service-tier path.
+- `~/.codex/auth.json` uses `auth_mode = "chatgpt"`. In the normal global default, `~/.codex/config.toml` leaves `model_provider` unset, so Codex uses the default OpenAI ChatGPT account provider. [`global.config.toml`](/Users/dobby/.agents/codex/config/global.config.toml) still pins `model = "gpt-5.5"` and reasoning defaults.
+- `~/.codex/chatgpt.config.toml` and `~/.codex/azure-openai.config.toml` are managed optional profiles copied from [`codex/config/`](/Users/dobby/.agents/codex/config). Use them for one-off provider selection with `codex --profile chatgpt` or `codex --profile azure-openai`.
+- Do not keep stale Azure OpenAI profile files or providers from older control-plane versions. In particular, `~/.codex/azure.config.toml`, `~/.codex/azure-key.config.toml`, `[model_providers.azure]`, and `az account get-access-token` auth-command wiring should be removed by `sync-config.sh --apply`.
+- Do not set global Codex service-tier defaults such as `[desktop] default-service-tier = "priority"` unless Codex has a verified compact-safe service-tier path.
 - `~/.codex/hooks.json` is rendered from `hooks/registry.json` for global Codex hooks. The managed `Stop` hook renders there; repo-specific lifecycle hooks such as `SessionStart` and `UserPromptSubmit` render into repo `.codex/hooks.json`.
 - `com.<user>.codex-thread-finalizer` is loaded as a LaunchAgent and runs [`finalize-stale-codex-threads.py`](/Users/dobby/.agents/codex/scripts/finalize-stale-codex-threads.py) every hour against managed repo paths from [`repo-bootstrap.json`](/Users/dobby/.agents/codex/config/repo-bootstrap.json).
 - `~/.codex/config.toml` contains no Git conflict markers
@@ -144,12 +152,12 @@ Use [Codex Control Plane Ownership](/Users/dobby/.agents/docs/references/codex-c
 
 The managed `Stop` hook normally uses Codex's built-in blocking continuation path: when commit, check, rebase, or push finalization fails, the hook returns `{"decision":"block","reason":"..."}` so Codex injects the failure into the current thread and asks the agent to fix it.
 
-Azure-backed Codex threads use a temporary App Server follow-up turn instead. After the move to the `azure-key` model provider, built-in Stop-hook continuation could fail before the agent saw the hook feedback because Azure Responses rejected replayed local Codex item IDs with `Invalid 'input[N].id' ... Expected an ID that begins with 'msg'`. The local workaround is tracked against [openai/codex#20783](https://github.com/openai/codex/issues/20783) and should be removed once upstream Codex can safely replay Stop-hook continuation context for local UUID message IDs.
+Azure-backed Codex threads use a temporary App Server follow-up turn instead. This is legacy support for explicit Azure-backed runs; the global default is the OpenAI ChatGPT account provider. Built-in Stop-hook continuation could fail before the agent saw the hook feedback because Azure Responses rejected replayed local Codex item IDs with `Invalid 'input[N].id' ... Expected an ID that begins with 'msg'`. The local workaround is tracked against [openai/codex#20783](https://github.com/openai/codex/issues/20783) and should be removed once upstream Codex can safely replay Stop-hook continuation context for local UUID message IDs.
 
 Current behavior:
 
 - Non-Azure threads keep using built-in Stop-hook continuation.
-- Azure-backed threads are detected from the hook payload `model_provider` / `modelProvider`, then from `~/.codex/state_5.sqlite` by `session_id`, then from the top-level `model_provider` in `~/.codex/config.toml`.
+- Azure-backed threads are detected from the hook payload `model_provider` / `modelProvider`, then from `~/.codex/state_5.sqlite` by `session_id`, then from the top-level `model_provider` in `~/.codex/config.toml` if one is explicitly configured.
 - Clean repos, non-Git directories, and successful commit/push finalization return no hook output and do not start any feedback turn.
 - Retryable finalization failures call [`stop_feedback_turn.py`](/Users/dobby/.agents/hooks/scripts/stop_feedback_turn.py) in a detached process instead of returning `decision: "block"`.
 - The hook payload `session_id` is passed directly as the App Server `threadId`; the helper does not infer the current thread from logs, window state, or the repo path.
@@ -169,6 +177,7 @@ Verification expectations:
 - [`sync-config.sh`](/Users/dobby/.agents/codex/scripts/sync-config.sh)
   - applies the canonical Codex config template into the live global config
   - copies canonical Codex profile files from `codex/config/*.config.toml` into `~/.codex/*.config.toml`, excluding `global.config.toml`
+  - keeps `chatgpt.config.toml` and `azure-openai.config.toml` available as explicit one-off profiles
   - keeps Apps/connectors globally disabled through the managed `features.apps = false` baseline
   - renders global-scope native Codex plugin enable/disable state from [`plugins/registry.json`](/Users/dobby/.agents/plugins/registry.json)
   - points the `openai-bundled` marketplace at `Codex.app` directly and seeds `~/.codex/plugins/cache` only for bundled plugins enabled by the registry
@@ -181,6 +190,11 @@ Verification expectations:
   - prunes stale managed agent declarations and runtime role files left by older control-plane versions
   - fails fast if the target config contains unresolved Git conflict markers
   - skips no-op rewrites
+- [`switch-codex-subscription.sh`](/Users/dobby/.agents/codex/scripts/switch-codex-subscription.sh)
+  - switches the persistent global default between `chatgpt` and `azure`
+  - removes or adds the top-level `model_provider = "azure-key"` and the `[model_providers.azure-key]` block in [`global.config.toml`](/Users/dobby/.agents/codex/config/global.config.toml)
+  - runs [`sync-config.sh`](/Users/dobby/.agents/codex/scripts/sync-config.sh) and [`check-codex-control-plane.sh`](/Users/dobby/.agents/codex/scripts/check-codex-control-plane.sh) by default when `--apply` is used
+  - supports `status` to compare the canonical and rendered runtime provider mode
 - [`sync-hook-trust-state.py`](/Users/dobby/.agents/codex/scripts/sync-hook-trust-state.py)
   - computes Codex's normalized hook trust hash for managed global and repo-local hooks
   - writes those hashes under `[hooks.state]` in `~/.codex/config.toml`

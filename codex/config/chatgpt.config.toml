@@ -1,0 +1,4 @@
+# Optional profile for ChatGPT-account Codex runs.
+# Use with: codex --profile chatgpt
+
+model_provider = "openai"
