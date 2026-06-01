@@ -249,6 +249,32 @@ def managed_hook_command(entry: Any, command: str) -> bool:
     return any(isinstance(hook, dict) and hook.get("command") == command for hook in hooks)
 
 
+def remove_hook_commands(hooks: dict[str, Any], event_name: str, commands: list[str]) -> None:
+    current = hooks.get(event_name)
+    if not isinstance(current, list):
+        return
+    filtered: list[Any] = []
+    for entry in current:
+        if not isinstance(entry, dict):
+            filtered.append(entry)
+            continue
+        entry_hooks = entry.get("hooks")
+        if not isinstance(entry_hooks, list):
+            filtered.append(entry)
+            continue
+        next_hooks = [
+            hook
+            for hook in entry_hooks
+            if not (isinstance(hook, dict) and hook.get("command") in commands)
+        ]
+        if next_hooks:
+            filtered.append({**entry, "hooks": next_hooks})
+    if filtered:
+        hooks[event_name] = filtered
+    else:
+        hooks.pop(event_name, None)
+
+
 def render_global_context(source: Path, target: Path, apply: bool) -> None:
     if not source.is_file():
         raise ValueError(f"global context source missing: {source}")
@@ -285,25 +311,29 @@ def render_settings(settings_file: Path, trusted: list[str], apply: bool, skip_y
 
     hooks = desired.get("hooks")
     hooks = dict(hooks) if isinstance(hooks, dict) else {}
-    pre_tool_command = (
+    legacy_pre_tool_command = (
         "printf '%s\\n' "
         "'{\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"permissionDecision\":\"allow\","
         "\"permissionDecisionReason\":\"YOLO mode\"}}'"
     )
-    permission_command = (
+    legacy_permission_command = (
         "printf '%s\\n' "
         "'{\"hookSpecificOutput\":{\"hookEventName\":\"PermissionRequest\",\"decision\":{\"behavior\":\"allow\"}}}'"
     )
+    remove_hook_commands(hooks, "PreToolUse", [legacy_pre_tool_command])
+    remove_hook_commands(hooks, "PermissionRequest", [legacy_permission_command])
     entries = {
-        "PreToolUse": {"matcher": "*", "hooks": [{"type": "command", "command": pre_tool_command, "timeout": 30}]},
-        "PermissionRequest": {"matcher": "*", "hooks": [{"type": "command", "command": permission_command, "timeout": 30}]},
         "Stop": {"hooks": [{"type": "command", "command": CLAUDE_STOP_COMMAND, "timeout": 900}]},
     }
     for event_name, entry in entries.items():
         current = hooks.get(event_name)
         current_entries = current if isinstance(current, list) else []
         command = entry["hooks"][0]["command"]
-        hooks[event_name] = [item for item in current_entries if not managed_hook_command(item, command)] + [entry]
+        hooks[event_name] = current_entries
+        remove_hook_commands(hooks, event_name, [command])
+        current = hooks.get(event_name)
+        current_entries = current if isinstance(current, list) else []
+        hooks[event_name] = current_entries + [entry]
     desired["hooks"] = hooks
 
     if desired == data:

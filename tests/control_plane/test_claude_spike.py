@@ -42,7 +42,7 @@ class ClaudeSpikeSyncTests(TempDirTestCase):
             str(self.temp_path / "homebrew/bin/claude"),
         ]
 
-    def test_apply_renders_global_skills_instructions_settings_hooks_and_yolo_launcher(self) -> None:
+    def test_apply_renders_global_skills_instructions_settings_stop_hook_and_yolo_launcher(self) -> None:
         root = self.temp_path / "agents"
         registry = self._write_registry(
             root,
@@ -100,8 +100,8 @@ class ClaudeSpikeSyncTests(TempDirTestCase):
         self.assertEqual(True, settings["permissions"]["skipDangerousModePermissionPrompt"])
         self.assertIn("Bash", settings["permissions"]["allow"])
         self.assertIn("Stop", settings["hooks"])
-        self.assertIn("PreToolUse", settings["hooks"])
-        self.assertIn("PermissionRequest", settings["hooks"])
+        self.assertNotIn("PreToolUse", settings["hooks"])
+        self.assertNotIn("PermissionRequest", settings["hooks"])
         self.assertEqual(
             "python3 ~/.agents/hooks/scripts/claude_stop.py",
             settings["hooks"]["Stop"][0]["hooks"][0]["command"],
@@ -114,6 +114,61 @@ class ClaudeSpikeSyncTests(TempDirTestCase):
         self.assertIn("--dangerously-skip-permissions", launcher_text)
         self.assertIn("$HOME/.secrets/anthropic/env", launcher_text)
         self.assertIn(str(self.temp_path / "homebrew/bin/claude"), launcher_text)
+
+    def test_apply_prunes_managed_auto_allow_hooks_but_preserves_custom_hooks(self) -> None:
+        root = self.temp_path / "agents"
+        registry = self._write_registry(root, [])
+        claude_home = self.temp_path / "claude"
+        legacy_pre_tool_command = (
+            "printf '%s\\n' "
+            "'{\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"permissionDecision\":\"allow\","
+            "\"permissionDecisionReason\":\"YOLO mode\"}}'"
+        )
+        legacy_permission_command = (
+            "printf '%s\\n' "
+            "'{\"hookSpecificOutput\":{\"hookEventName\":\"PermissionRequest\",\"decision\":{\"behavior\":\"allow\"}}}'"
+        )
+        write_json(
+            claude_home / "settings.json",
+            {
+                "hooks": {
+                    "PreToolUse": [
+                        {
+                            "matcher": "*",
+                            "hooks": [
+                                {"type": "command", "command": legacy_pre_tool_command},
+                                {"type": "command", "command": "custom-pre-tool"},
+                            ],
+                        }
+                    ],
+                    "PermissionRequest": [
+                        {"hooks": [{"type": "command", "command": legacy_permission_command}]}
+                    ],
+                }
+            },
+        )
+
+        run_command(
+            [
+                str(REPO_ROOT / "scripts/sync-claude-spike.py"),
+                "--apply",
+                "--claude-home",
+                str(claude_home),
+                *self._isolated_targets(root),
+                str(registry),
+            ]
+        )
+
+        settings = json.loads((claude_home / "settings.json").read_text(encoding="utf-8"))
+        self.assertEqual(
+            [{"matcher": "*", "hooks": [{"type": "command", "command": "custom-pre-tool"}]}],
+            settings["hooks"]["PreToolUse"],
+        )
+        self.assertNotIn("PermissionRequest", settings["hooks"])
+        self.assertEqual(
+            "python3 ~/.agents/hooks/scripts/claude_stop.py",
+            settings["hooks"]["Stop"][0]["hooks"][0]["command"],
+        )
 
     def test_apply_merges_trusted_workspaces(self) -> None:
         root = init_git_repo(self.temp_path / "agents")
@@ -180,4 +235,3 @@ class ClaudeSpikeSyncTests(TempDirTestCase):
         self.assertEqual("# Global Agent Context\n", source.read_text(encoding="utf-8"))
         self.assertTrue(target.is_symlink())
         self.assertEqual(source.resolve(), (target.parent / os.readlink(target)).resolve())
-

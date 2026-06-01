@@ -43,7 +43,9 @@ For repo authors adding `scripts/hooks/*.py`, start with
   - temporary Claude Code bootstrap surface
   - renders `~/.claude/CLAUDE.md` from the global agent guidance source
   - renders managed global skill links under `~/.claude/skills`
-  - renders user settings and hooks under `~/.claude/settings.json`
+  - renders user settings and the managed `Stop` hook under `~/.claude/settings.json`
+  - enables YOLO through Claude Code's native bypass mode, not through
+    broad `PreToolUse` or `PermissionRequest` auto-allow hooks
   - renders a `~/bin/claude` wrapper that starts sessions with `--dangerously-skip-permissions`
   - the wrapper sources `~/.secrets/anthropic/env` when present; the current
     Claude Platform on AWS setup uses `CLAUDE_CODE_USE_ANTHROPIC_AWS=1`,
