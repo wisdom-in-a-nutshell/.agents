@@ -73,6 +73,7 @@ REQUIRED_TOP_LEVEL = {
 ALLOWED_TOP_LEVEL = {
     *REQUIRED_TOP_LEVEL.keys(),
     ".agents",
+    ".antigravitycli",
     ".codex",
     ".github",
     ".gitignore",

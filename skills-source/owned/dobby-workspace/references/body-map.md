@@ -37,6 +37,7 @@ directly by Codex as `model_instructions_file`. Person-specific context lives in
 | `scripts/` | Repo-local checks, lifecycle wrappers, and local helpers. |
 | `.agents/skills/` | Repo-local links to operational skills. |
 | `.codex/` | Runtime/tooling configuration. |
+| `.antigravitycli/` | Local Antigravity CLI experiment/runtime state; not Dobby memory. |
 | `tmp/` | Disposable scratch and hook logs. |
 
 ## Routing table
@@ -57,6 +58,7 @@ directly by Codex as `model_instructions_file`. Person-specific context lives in
 | Dobby/agent work tracker | `projects/<project>/tasks.md` |
 | Dobby's own high-bar behavioral corrections, blindspots, operational instincts, and promotions | `dobby/growth.jsonl` |
 | Exact command/schema/operational recipe | Relevant skill under `~/.agents/skills-source/owned/` |
+| Antigravity CLI runtime/experiment state | `.antigravitycli/` |
 | Temporary scratch / hook logs | `tmp/` |
 
 One fact should have one canonical home. If another place needs awareness, point
