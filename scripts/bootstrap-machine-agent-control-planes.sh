@@ -127,6 +127,7 @@ sync_claude_spike_cmd=(
   "$SYNC_CLAUDE_SPIKE_SCRIPT"
   "${SYNC_ARGS[@]}"
   --github-root "$GITHUB_ROOT"
+  "${REPO_ARGS[@]}"
 )
 log "+ ${sync_claude_spike_cmd[*]}"
 "${sync_claude_spike_cmd[@]}"

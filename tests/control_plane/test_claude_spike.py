@@ -170,6 +170,58 @@ class ClaudeSpikeSyncTests(TempDirTestCase):
             settings["hooks"]["Stop"][0]["hooks"][0]["command"],
         )
 
+    def test_apply_renders_repo_scoped_skills_into_repo_claude_skills(self) -> None:
+        root = self.temp_path / "agents"
+        registry = self._write_registry(
+            root,
+            [
+                {
+                    "skill": "repo-only",
+                    "origin": "owned",
+                    "scope": "repo",
+                    "repos": ["repo-a"],
+                    "source_path": "skills-source/owned/repo-only",
+                    "upstream_ref": "-",
+                },
+                {
+                    "skill": "repo-b-only",
+                    "origin": "owned",
+                    "scope": "repo",
+                    "repos": ["repo-b"],
+                    "source_path": "skills-source/owned/repo-b-only",
+                    "upstream_ref": "-",
+                },
+            ],
+        )
+        github_root = self.temp_path / "GitHub"
+        repo_a = init_git_repo(github_root / "repo-a")
+        repo_b = init_git_repo(github_root / "repo-b")
+        claude_home = self.temp_path / "claude"
+
+        run_command(
+            [
+                str(REPO_ROOT / "scripts/sync-claude-spike.py"),
+                "--apply",
+                "--claude-home",
+                str(claude_home),
+                "--github-root",
+                str(github_root),
+                "--repo",
+                "repo-a",
+                *self._isolated_targets(root),
+                str(registry),
+            ]
+        )
+
+        repo_skill_link = repo_a / ".claude/skills/repo-only"
+        self.assertTrue(repo_skill_link.is_symlink())
+        self.assertEqual(
+            (root / "skills-source/owned/repo-only").resolve(),
+            (repo_skill_link.parent / os.readlink(repo_skill_link)).resolve(),
+        )
+        self.assertFalse((claude_home / "skills/repo-only").exists())
+        self.assertFalse((repo_b / ".claude/skills/repo-b-only").exists())
+
     def test_apply_merges_trusted_workspaces(self) -> None:
         root = init_git_repo(self.temp_path / "agents")
         registry = self._write_registry(root, [])
