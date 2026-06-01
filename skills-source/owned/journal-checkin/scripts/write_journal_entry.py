@@ -39,7 +39,7 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument("--kind", required=True, choices=sorted(VALID_KINDS))
     parser.add_argument("--date", required=True, help="Entry date in YYYY-MM-DD format.")
-    parser.add_argument("--source", required=True, help="Short source label, for example chat:text.")
+    parser.add_argument("--source", help="Deprecated; ignored. Journal entries no longer store source.")
     parser.add_argument("--payload-file", help="Path to a JSON payload file.")
     parser.add_argument("--payload-json", help="Inline JSON payload.")
     parser.add_argument("--workspace-root", help="Workspace root to write under.")
@@ -214,9 +214,9 @@ def general_entry_id(entry: dict[str, Any], timestamp: datetime, explicit_id: st
 def build_general_entry(payload: dict[str, Any], args: argparse.Namespace, timestamp: datetime) -> dict[str, Any]:
     entry: dict[str, Any] = {
         **payload,
-        "source": args.source,
         "captured_at": payload.get("captured_at") or timestamp.isoformat(),
     }
+    entry.pop("source", None)
     entry["id"] = general_entry_id(entry, timestamp, args.entry_id)
     entry["title"] = compact_words(
         str(entry.get("title") or entry.get("summary") or "Journal capture").strip(),
@@ -249,7 +249,6 @@ def load_general_container(path: Path, date: str, args: argparse.Namespace, time
         "tz": args.tz,
         "captured_at": timestamp.isoformat(),
         "updated_at": timestamp.isoformat(),
-        "source": "journal-checkin",
         "schema_version": 1,
         "entries": [],
     }
@@ -272,11 +271,11 @@ def append_general_json(path: Path, entry: dict[str, Any], args: argparse.Namesp
             "kind": "general",
             "tz": container.get("tz") or args.tz,
             "updated_at": timestamp.isoformat(),
-            "source": container.get("source") or "journal-checkin",
             "schema_version": container.get("schema_version") or 1,
             "entries": entries,
         }
     )
+    container.pop("source", None)
     container["captured_at"] = container.get("captured_at") or entry["captured_at"]
     path.write_text(json.dumps(container, indent=2, ensure_ascii=False) + "\n")
 
@@ -304,6 +303,8 @@ def main() -> int:
             if missing:
                 print(json.dumps({"ok": False, "missing": missing}, indent=2))
                 return 3
+        entry.pop("source", None)
+
         validation_errors = validate_entry(args.kind, entry)
         if validation_errors:
             print(json.dumps({"ok": False, "errors": validation_errors}, indent=2))
@@ -321,8 +322,8 @@ def main() -> int:
         "kind": args.kind,
         "tz": args.tz,
         "captured_at": existing.get("captured_at", timestamp.isoformat()),
-        "source": args.source,
     }
+    entry.pop("source", None)
 
     validation_errors = validate_entry(args.kind, entry)
     if validation_errors:

@@ -44,7 +44,6 @@ Schema:
   "kind": "morning",
   "tz": "Europe/Berlin",
   "captured_at": "ISO-8601 timestamp",
-  "source": "chat:text",
   "sleep": {
     "score_10": 7,
     "notes": "Slept mostly well, but waking up felt heavy."

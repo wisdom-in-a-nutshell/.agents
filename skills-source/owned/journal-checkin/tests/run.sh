@@ -15,7 +15,6 @@ cat >"$workspace/journal/daily/2026-05-29/morning.json" <<'JSON'
   "kind": "morning",
   "tz": "Europe/Berlin",
   "captured_at": "2026-05-29T08:00:00+02:00",
-  "source": "test",
   "sleep": {"score_10": 7},
   "energy": {"score_10": 6},
   "mood": {"score_10": 7},

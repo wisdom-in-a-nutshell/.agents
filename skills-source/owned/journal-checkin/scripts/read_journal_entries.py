@@ -238,9 +238,6 @@ def render_general_md(entry: dict[str, Any]) -> list[str]:
     tags = entry.get("tags")
     if isinstance(tags, list) and tags:
         lines.append(f"- Tags: {', '.join(str(tag) for tag in tags)}")
-    source = entry.get("source")
-    if source:
-        lines.append(f"- Source: {source}")
     captured_at = entry.get("captured_at")
     if captured_at:
         lines.append(f"- Captured: {captured_at}")

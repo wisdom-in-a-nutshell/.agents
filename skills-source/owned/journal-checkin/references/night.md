@@ -32,7 +32,6 @@ Schema:
   "kind": "night",
   "tz": "Europe/Berlin",
   "captured_at": "ISO-8601 timestamp",
-  "source": "chat:text",
   "mood": {
     "score_10": 7,
     "notes": "Mood improved compared to the morning."

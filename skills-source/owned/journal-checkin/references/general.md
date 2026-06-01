@@ -38,7 +38,6 @@ Schema:
   "tz": "Europe/Berlin",
   "captured_at": "ISO-8601 timestamp",
   "updated_at": "ISO-8601 timestamp",
-  "source": "journal-checkin",
   "schema_version": 1,
   "entries": [
     {
@@ -48,7 +47,6 @@ Schema:
       "body": "## Markdown body\n\nFull preserved note.",
       "body_format": "markdown",
       "tags": ["..."],
-      "source": "chat:text",
       "raw_input": "optional",
       "captured_at": "ISO-8601 timestamp",
       "mood": {
