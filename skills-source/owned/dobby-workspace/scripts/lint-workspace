@@ -126,6 +126,7 @@ SECOND_LEVEL = {
 IGNORED_CHILD_NAMES = {".DS_Store", "__pycache__"}
 SENSITIVITY_VALUES = {"public", "personal", "sensitive", "restricted"}
 GROWTH_KIND_VALUES = {"behavioral-correction", "blindspot", "operational-instinct", "promotion"}
+GROWTH_SOURCE_TYPE_VALUES = {"conversation", "review", "dream"}
 SECTION_KEY_RE = re.compile(r"^[a-z0-9]+(?:_[a-z0-9]+)*$")
 ISOISH_RE = re.compile(r"^\d{4}-\d{2}-\d{2}T")
 
@@ -436,6 +437,12 @@ def check_jsonl(path: Path, label: str, *, row_kind: str = "generic") -> None:
             if data.get("status") not in {"open", "done", "dropped"}:
                 add_error(path, f"{row_label} status should be open, done, or dropped.")
             check_source_ref(path, data.get("source"), row_label)
+            source = data.get("source")
+            if isinstance(source, dict) and source.get("type") not in GROWTH_SOURCE_TYPE_VALUES:
+                add_error(
+                    path,
+                    f"{row_label} source.type should be one of: {', '.join(sorted(GROWTH_SOURCE_TYPE_VALUES))}.",
+                )
         elif row_kind == "area-log":
             require_keys(path, data, {"schemaVersion", "kind", "id", "createdAt", "title", "body", "source", "sensitivity"}, row_label)
             if data.get("schemaVersion") != 1:

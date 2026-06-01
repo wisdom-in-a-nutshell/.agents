@@ -70,6 +70,9 @@ def validate_common_metadata(entry: dict[str, Any], label: str, path_date: str, 
     for field in ("agent", "date", "kind", "tz", "captured_at", "source"):
         require_non_empty_str(entry.get(field), label, field)
 
+    if entry.get("source") in {"migration", "migrated:markdown"}:
+        fail(f"{label}: source should not keep stale migration provenance")
+
     if entry["date"] != path_date:
         fail(f"{label}: date must match path date {path_date}")
     if entry["kind"] != path_kind:
@@ -138,6 +141,8 @@ def validate_general_file(root: Path, path: Path, path_date: str) -> None:
             fail(f"{entry_label}: entry must be an object")
         for field in ("id", "title", "summary", "body", "body_format", "source", "captured_at"):
             require_non_empty_str(entry.get(field), entry_label, field)
+        if entry.get("source") in {"migration", "migrated:markdown"}:
+            fail(f"{entry_label}: source should not keep stale migration provenance")
         if entry["id"] in seen_ids:
             fail(f"{entry_label}: duplicate id {entry['id']}")
         seen_ids.add(entry["id"])
@@ -154,8 +159,8 @@ def validate_general_file(root: Path, path: Path, path_date: str) -> None:
         if raw_input is not None and not isinstance(raw_input, str):
             fail(f"{entry_label}: raw_input must be a string or null")
         migrated_from = entry.get("migrated_from")
-        if migrated_from is not None and (not isinstance(migrated_from, str) or not migrated_from.strip()):
-            fail(f"{entry_label}: migrated_from must be a non-empty string when present")
+        if migrated_from is not None:
+            fail(f"{entry_label}: migrated_from should not be kept in canonical journal JSON")
 
 
 def validate_journal_file(root: Path, path: Path) -> None:

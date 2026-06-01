@@ -64,6 +64,12 @@ directly by Codex as `model_instructions_file`. Person-specific context lives in
 One fact should have one canonical home. If another place needs awareness, point
 to the canonical home instead of duplicating.
 
+`dobby/growth.jsonl` source types stay intentionally small:
+
+- `conversation`: Adi directly corrected or taught Dobby.
+- `review`: an agent inferred the lesson during cleanup, audit, or consolidation.
+- `dream`: future background reflection, only when that loop exists.
+
 ## Validation contract
 
 Whatever can be mechanically enforced should be enforced by validators, not by
