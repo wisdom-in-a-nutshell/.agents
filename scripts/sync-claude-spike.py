@@ -225,6 +225,21 @@ def merge_string_list(existing: Any, desired: list[str]) -> list[str]:
     return merged
 
 
+def merge_literal_string_list(existing: Any, desired: list[str]) -> list[str]:
+    merged: list[str] = []
+    seen: set[str] = set()
+    if isinstance(existing, list):
+        for item in existing:
+            if isinstance(item, str) and item.strip() and item not in seen:
+                seen.add(item)
+                merged.append(item)
+    for item in desired:
+        if item not in seen:
+            seen.add(item)
+            merged.append(item)
+    return merged
+
+
 def managed_hook_command(entry: Any, command: str) -> bool:
     if not isinstance(entry, dict):
         return False
@@ -260,7 +275,7 @@ def render_settings(settings_file: Path, trusted: list[str], apply: bool, skip_y
 
     permissions = desired.get("permissions")
     permissions = dict(permissions) if isinstance(permissions, dict) else {}
-    allow = merge_string_list(permissions.get("allow"), DEFAULT_ALLOW_RULES)
+    allow = merge_literal_string_list(permissions.get("allow"), DEFAULT_ALLOW_RULES)
     permissions["allow"] = allow
     permissions["additionalDirectories"] = merge_string_list(permissions.get("additionalDirectories"), trusted)
     if not skip_yolo:
