@@ -11,6 +11,13 @@
     "cloudflare-docs": {
       "transport": "http",
       "url": "https://docs.mcp.cloudflare.com/mcp"
+    },
+    "stitch": {
+      "transport": "http",
+      "url": "https://stitch.googleapis.com/mcp",
+      "env_http_headers": {
+        "X-Goog-Api-Key": "STITCH_API_KEY"
+      }
     }
   },
   "global_presets": [],

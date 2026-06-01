@@ -62,7 +62,10 @@
       "codex_trust": false
     },
     {
-      "path": "~/GitHub/dobby-dashboard"
+      "path": "~/GitHub/dobby-dashboard",
+      "mcp_presets": [
+        "stitch"
+      ]
     },
     {
       "path": "~/GitHub/documents",
