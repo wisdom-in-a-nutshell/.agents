@@ -6,6 +6,7 @@
 # OS / tooling
 *.swp
 *.swo
+.antigravitycli/
 
 # Never commit environment or auth artifacts
 .env*
