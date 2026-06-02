@@ -59,6 +59,9 @@ $HOME/.agents/skills-source/owned/dobby-shelf/scripts/dobby-shelf list --view op
 $HOME/.agents/skills-source/owned/dobby-shelf/scripts/dobby-shelf add --title "Buy oats" --kind buy --show-at 2026-05-10
 $HOME/.agents/skills-source/owned/dobby-shelf/scripts/dobby-shelf done <id-or-prefix>
 $HOME/.agents/skills-source/owned/dobby-shelf/scripts/dobby-shelf defer <id-or-prefix> --show-at 2026-05-12
+$HOME/.agents/skills-source/owned/dobby-shelf/scripts/dobby-shelf note <id-or-prefix> --set "Replacement note"
+$HOME/.agents/skills-source/owned/dobby-shelf/scripts/dobby-shelf note <id-or-prefix> --append "Additional note"
+$HOME/.agents/skills-source/owned/dobby-shelf/scripts/dobby-shelf note <id-or-prefix> --clear
 $HOME/.agents/skills-source/owned/dobby-shelf/scripts/dobby-shelf drop <id-or-prefix> --reason "no longer relevant"
 $HOME/.agents/skills-source/owned/dobby-shelf/scripts/dobby-shelf focus <id-or-prefix> --on
 ```

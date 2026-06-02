@@ -42,6 +42,16 @@ assert_envelope_ok "shelf.add" "$CAPTURED_STDOUT"
 assert_jq_eq "id set" '.data.item.id' "test-shelf-client" "$CAPTURED_STDOUT"
 assert_jq_eq "revision incremented" '.data.revision' "1" "$CAPTURED_STDOUT"
 
+section "edit note"
+run_dobby shelf note test-shelf-client --append "second note"
+assert_exit "note append exit 0" 0 "$CAPTURED_EXIT"
+assert_envelope_ok "shelf.note" "$CAPTURED_STDOUT"
+assert_jq_eq "note appended" '.data.item.note' $'from test\n\nsecond note' "$CAPTURED_STDOUT"
+run_dobby shelf note test-shelf-client --set "replacement note"
+assert_exit "note set exit 0" 0 "$CAPTURED_EXIT"
+assert_envelope_ok "shelf.note set" "$CAPTURED_STDOUT"
+assert_jq_eq "note replaced" '.data.item.note' "replacement note" "$CAPTURED_STDOUT"
+
 section "list upcoming"
 run_dobby shelf list --view upcoming
 assert_exit "upcoming exit 0" 0 "$CAPTURED_EXIT"
@@ -79,7 +89,7 @@ assert_envelope_error "shelf.drop missing" "E_NOT_FOUND" "$CAPTURED_STDOUT"
 
 section "file revision persisted"
 rev=$(jq -r '.revision' "$TMP_WS/state/shelf.json")
-assert_eq "revision after mutations" "4" "$rev"
+assert_eq "revision after mutations" "6" "$rev"
 status=$(jq -r '.items[0].status' "$TMP_WS/state/shelf.json")
 assert_eq "file status done" "done" "$status"
 

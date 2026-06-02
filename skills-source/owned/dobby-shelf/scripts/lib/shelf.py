@@ -244,6 +244,15 @@ def add_subparsers(parent: argparse.ArgumentParser) -> None:
     fmt(p)
     p.set_defaults(handler=cmd_defer)
 
+    p = sub.add_parser("note", help="Set, append to, or clear a Shelf item note")
+    p.add_argument("selector", help="Item id, unique id prefix, or exact title")
+    note = p.add_mutually_exclusive_group(required=True)
+    note.add_argument("--set", dest="set_note", help="Replace the item note with this text")
+    note.add_argument("--append", dest="append_note", help="Append this text to the existing item note")
+    note.add_argument("--clear", action="store_true", help="Remove the item note")
+    fmt(p)
+    p.set_defaults(handler=cmd_note)
+
     p = sub.add_parser("focus", help="Set or clear the Now/focus flag")
     p.add_argument("selector", help="Item id, unique id prefix, or exact title")
     focus = p.add_mutually_exclusive_group(required=True)
@@ -344,6 +353,27 @@ def cmd_defer(args: argparse.Namespace) -> int:
         item["deferCount"] = int(item.get("deferCount") or 0) + 1
         item["lastDeferredAt"] = stamp
     return mutate_item(args, "shelf.defer", apply)
+
+
+def cmd_note(args: argparse.Namespace) -> int:
+    def clean(value: str | None, mode: str) -> str:
+        text = (value or "").strip()
+        if not text:
+            raise ShelfError("shelf.note", "E_VALIDATION", f"{mode} note text must not be empty")
+        return text
+
+    def apply(item: dict[str, Any]) -> None:
+        if args.clear:
+            item.pop("note", None)
+            return
+        if args.set_note is not None:
+            item["note"] = clean(args.set_note, "set")
+            return
+        addition = clean(args.append_note, "append")
+        existing = str(item.get("note") or "").strip()
+        item["note"] = f"{existing}\n\n{addition}" if existing else addition
+
+    return mutate_item(args, "shelf.note", apply)
 
 
 def cmd_focus(args: argparse.Namespace) -> int:
