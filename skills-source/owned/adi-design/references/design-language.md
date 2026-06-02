@@ -5,16 +5,40 @@ the *values*; this file is the *why and how* — the part that keeps future work
 recognizably his. When the tokens and this doc disagree, fix one to match the
 other; they are meant to stay in lockstep.
 
-## The feel
+## The feeling (the north star)
 
-A calm reading room. Quiet, file-backed, unhurried. One cohesive language on
-every surface. Warmth comes from a literary serif on reading prose, a sage
-accent, an amber secondary, and generous spacing — never from a warm-tinted
-background. Flat surfaces, hairline borders, no ghost-card shadows. Motion is
-restrained and earns its place by signalling state, not decorating.
+Walking a forest trail mid-morning. The canopy is green but not dense, and soft
+golden sunlight streams through it in patches: warm, never glaring. The air is
+fresh. It is calm, and the calm makes room to think. That green-and-gold
+warmth, dappled light through leaves, is the feeling every surface should give.
+Dobby-dashboard already hits it; everything else should feel like the same walk.
+
+How the tokens carry it:
+
+- **Sage** (`--accent`) is the green: the canopy, the leaves, the cool living
+  part.
+- **Amber** (`--amber`) is the golden light breaking through. Warmth used
+  sparingly, the way sun falls in patches, not a flood.
+- **The off-white** (`--bg`) is fresh open air and light: cool-fresh, faintly
+  green-tinted, NOT cream. Cream is stuffy indoor warmth; we want outdoor
+  freshness with warm light *in* it.
+- **Space and restraint** are the calm: generous spacing, flat surfaces, quiet
+  motion. Room to breathe and think.
+
+The trap: chasing "warm" by warming the background toward cream. That kills the
+freshness and turns a forest morning into a beige room. The warmth must come
+from the golden light (amber) and the serif, laid over fresh green-tinted light,
+never from a warm background. This is *why* the no-cream rule exists, not just a
+ban.
 
 It should read as "a person made this with taste," not "an AI generated a
 dashboard."
+
+## The make-up
+
+Quiet, file-backed, unhurried. One cohesive language on every surface. Flat
+surfaces, hairline borders, no ghost-card shadows. Motion is restrained and
+earns its place by signalling state, not decorating.
 
 ## Color
 
