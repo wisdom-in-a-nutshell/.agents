@@ -36,6 +36,7 @@ directly by Codex as `model_instructions_file`. Person-specific context lives in
 | `projects/` | Active Dobby/app/system improvement trackers. |
 | `scripts/` | Repo-local checks, lifecycle wrappers, and local helpers. |
 | `.agents/skills/` | Repo-local links to operational skills. |
+| `.claude/` | Claude/Claude Code repo-local runtime or skill links; not Dobby memory. |
 | `.codex/` | Runtime/tooling configuration. |
 | `.antigravitycli/` | Local Antigravity CLI experiment/runtime state; not Dobby memory. |
 | `tmp/` | Disposable scratch and hook logs. |
@@ -58,6 +59,7 @@ directly by Codex as `model_instructions_file`. Person-specific context lives in
 | Dobby/agent work tracker | `projects/<project>/tasks.md` |
 | Dobby's own high-bar behavioral corrections, blindspots, operational instincts, and promotions | `dobby/growth.jsonl` |
 | Exact command/schema/operational recipe | Relevant skill under `~/.agents/skills-source/owned/` |
+| Claude/Claude Code runtime or skill-link state | `.claude/` |
 | Antigravity CLI runtime/experiment state | `.antigravitycli/` |
 | Temporary scratch / hook logs | `tmp/` |
 
