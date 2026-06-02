@@ -1,0 +1,133 @@
+/* Adi Design — canonical design tokens.
+ *
+ * The shared aesthetic for Adi's apps (dobby-dashboard, blog/adithyan.io,
+ * ~/.agents/dashboard, and future projects). Source of truth lives in this
+ * skill; products consume a copy of this file.
+ *
+ * Color space is oklch throughout (perceptually even light/dark).
+ * Light mode is the default; dark mode overrides via prefers-color-scheme.
+ *
+ * This file is the SHARED CORE only. Product-specific tokens (e.g. an app's
+ * chart series, an architecture map's phase colors, a dashboard's scope
+ * colors) do NOT belong here — keep those in a small per-product tokens file
+ * so this core stays the one thing everyone agrees on. See the note at the end.
+ */
+
+:root {
+  /* --- Neutrals: clean off-white, whisper-tinted toward the sage hue.
+   *     Never a warm cream/sand/paper background. --- */
+  --bg: oklch(0.977 0.004 150);
+  --surface: oklch(0.993 0.003 150);
+  --surface-soft: oklch(0.958 0.006 150);
+  --text: oklch(0.27 0.014 152);
+  --muted: oklch(0.47 0.013 152);
+  --faint: oklch(0.6 0.011 152);
+  --line: oklch(0.9 0.006 152);
+  --line-soft: oklch(0.93 0.005 152);
+
+  /* --- Accent: sage. The single accent — action, selection, state. --- */
+  --accent: oklch(0.56 0.082 151);
+  --accent-ink: oklch(0.43 0.078 151);
+  --accent-soft: oklch(0.93 0.03 151);
+  --accent-line: oklch(0.78 0.06 151);
+
+  /* --- Secondary: amber. Warmth / wellbeing / journal context. --- */
+  --amber: oklch(0.68 0.1 74);
+  --amber-ink: oklch(0.47 0.082 68);
+  --amber-soft: oklch(0.94 0.04 78);
+  --amber-line: oklch(0.82 0.07 76);
+
+  /* --- Rose: rare emphasis / "needs a look" state. --- */
+  --rose: oklch(0.62 0.16 25);
+  --rose-ink: oklch(0.5 0.13 25);
+
+  /* --- Shape: cards/panels 14, controls 10, large reading frames 18,
+   *     pills full-round. Cards never exceed ~16. --- */
+  --radius-sm: 10px;
+  --radius: 14px;
+  --radius-lg: 18px;
+  --radius-pill: 999px;
+
+  /* --- Spacing rhythm: 4, 8, 12, 18, 28, 44. --- */
+  --space-xs: 4px;
+  --space-sm: 8px;
+  --space-md: 12px;
+  --space-lg: 18px;
+  --space-xl: 28px;
+  --space-xxl: 44px;
+
+  /* --- Typography. Serif for reading prose + titles; sans for all UI
+   *     chrome; mono for code/ids. Family count capped at 3. --- */
+  --font-serif: "Newsreader", ui-serif, Georgia, "Times New Roman", serif;
+  --font-sans: "Inter", -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", sans-serif;
+  --font-mono: "SF Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+
+  /* Fixed-rem product scale, ~1.18 ratio (not fluid clamp). */
+  --font-micro: 0.69rem;
+  --font-xxs: 0.74rem;
+  --font-xs: 0.79rem;
+  --font-sm: 0.85rem;
+  --font-md: 0.92rem;
+  --font-body: 0.95rem;
+  --font-read: 1.04rem;
+  --font-lg: 1.2rem;
+  --font-xl: 1.42rem;
+  --font-page: 1.6rem;
+
+  --leading-tight: 1.2;
+  --leading-copy: 1.55;
+  --leading-read: 1.68;
+
+  --weight-label: 550;
+  --weight-strong: 600;
+
+  /* --- Motion: restrained, state-only. Ease out, no bounce. --- */
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --t-fast: 150ms;
+  --t-mid: 220ms;
+
+  /* --- Focus + layering. --- */
+  --focus-ring: 2px solid var(--accent);
+  --z-sticky: 100;
+  --z-overlay: 400;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    /* Warm-neutral charcoal — not green, not pure black. */
+    --bg: oklch(0.173 0.005 152);
+    --surface: oklch(0.213 0.006 152);
+    --surface-soft: oklch(0.255 0.008 152);
+    --text: oklch(0.93 0.006 150);
+    --muted: oklch(0.71 0.009 150);
+    --faint: oklch(0.56 0.008 150);
+    --line: oklch(0.32 0.007 152);
+    --line-soft: oklch(0.28 0.006 152);
+
+    --accent: oklch(0.77 0.08 151);
+    --accent-ink: oklch(0.84 0.075 151);
+    --accent-soft: oklch(0.3 0.04 151);
+    --accent-line: oklch(0.46 0.06 151);
+
+    --amber: oklch(0.79 0.09 78);
+    --amber-ink: oklch(0.84 0.08 78);
+    --amber-soft: oklch(0.31 0.04 74);
+    --amber-line: oklch(0.5 0.06 74);
+
+    --rose: oklch(0.7 0.14 25);
+    --rose-ink: oklch(0.78 0.12 25);
+  }
+}
+
+/* --- Product extensions (do NOT add here) ---
+ * Tokens that belong to a single app live in that app's own file, layered
+ * after this one, e.g. tokens.local.css:
+ *
+ *   :root {
+ *     --phase-capture: oklch(0.66 0.12 74);   // dobby architecture map
+ *     --scope-global:  oklch(0.42 0.074 245); // .agents dashboard
+ *     --trend-sleep:   oklch(0.58 0.1 255);   // a wellbeing chart
+ *   }
+ *
+ * Keep this core file identical across every product.
+ */

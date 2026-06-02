@@ -1,0 +1,35 @@
+/* Product-local tokens for the .agents control-plane dashboard.
+ *
+ * Layered AFTER the shared adi-design tokens.css. These encode the one concept
+ * the core palette doesn't: scope. The whole dashboard reads as "what is global
+ * (base, everywhere)" vs "what a repo adds on top". That distinction earns two
+ * tones — but sage stays THE accent:
+ *
+ *   - scope-local  = the sage accent itself (a repo's own additions, the lively
+ *     foreground thing this dashboard is about).
+ *   - scope-global = a calm, steady blue (system-wide base; informational, not
+ *     competing with sage for attention).
+ *
+ * Warnings stay amber, errors stay rose — both from the core file.
+ */
+
+:root {
+  --scope-local: var(--accent);
+  --scope-local-ink: var(--accent-ink);
+  --scope-local-soft: var(--accent-soft);
+  --scope-local-line: var(--accent-line);
+
+  --scope-global: oklch(0.5 0.07 245);
+  --scope-global-ink: oklch(0.43 0.07 245);
+  --scope-global-soft: oklch(0.95 0.022 245);
+  --scope-global-line: oklch(0.8 0.045 245);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --scope-global: oklch(0.74 0.08 245);
+    --scope-global-ink: oklch(0.82 0.07 245);
+    --scope-global-soft: oklch(0.31 0.04 245);
+    --scope-global-line: oklch(0.48 0.06 245);
+  }
+}
