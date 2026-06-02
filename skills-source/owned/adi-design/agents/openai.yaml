@@ -1,0 +1,4 @@
+interface:
+  display_name: "Adi Design"
+  short_description: "Apply Adi's design language across his apps."
+  default_prompt: "Apply Adi's design system to this UI: oklch sage + amber palette, Newsreader for reading and Inter for UI, clean off-white (never warm-cream), flat hairline surfaces, restrained state-only motion. Pull tokens from the skill's assets/tokens.css and follow references/design-language.md."

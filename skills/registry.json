@@ -75,6 +75,14 @@
       "upstream_ref": "-"
     },
     {
+      "skill": "adi-design",
+      "origin": "owned",
+      "scope": "global",
+      "repos": [],
+      "source_path": "skills-source/owned/adi-design",
+      "upstream_ref": "-"
+    },
+    {
       "skill": "social-media-publishing",
       "origin": "owned",
       "scope": "repo",
