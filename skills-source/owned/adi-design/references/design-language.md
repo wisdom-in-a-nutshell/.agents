@@ -102,9 +102,14 @@ Don't:
   Serif: the main thing to migrate. Map these tokens into the Tailwind theme
   (Tailwind reads CSS variables), swap Source Serif → Newsreader, kill the cream
   bg for `--bg`.
-- **~/.agents/dashboard** — plain HTML/CSS, already oklch + Inter + a sage-family
-  hue. Close already; align the accent (it skews teal ~175 → bring to sage 151)
-  and add the serif reading layer where prose appears.
+- **~/.agents/dashboard** — React + Vite + TS (same stack as dobby). Source in
+  `~/.agents/dashboard-app`, built into `~/.agents/dashboard`, served by the
+  Python control-plane engine at `/dashboard/`. Consumes the canonical
+  `tokens.css` (copied to `src/`) plus a small `tokens.local.css` for its
+  scope-global / scope-local tokens (scope-local *is* the sage accent; scope-global
+  is a calm blue — a sanctioned product extension, not a second accent). Titles
+  are Newsreader; surfaces are flat hairline; the old teal accent is gone. Keep
+  the Python data engine as the single source of truth; the dashboard is UI only.
 
 ## On Claude Design (claude.ai/design)
 

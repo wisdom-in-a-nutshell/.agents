@@ -1,104 +1,20 @@
 <!doctype html>
 <html lang="en">
   <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="color-scheme" content="light dark" />
     <title>Agent Control</title>
-    <link rel="stylesheet" href="/dashboard/styles.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;450;500;600;700&family=Newsreader:opsz,wght@6..72,400;6..72,500;6..72,600;6..72,700&display=swap"
+      rel="stylesheet"
+    />
+    <script type="module" crossorigin src="/dashboard/assets/index-BezVPG1-.js"></script>
+    <link rel="stylesheet" crossorigin href="/dashboard/assets/index-CdfizqgC.css">
   </head>
   <body>
-    <div class="app-shell">
-      <aside class="sidebar" aria-label="Dashboard navigation">
-        <div class="sidebar-head">
-          <div class="brand-lockup">
-            <span>Agent Control</span>
-            <strong>.agents</strong>
-          </div>
-          <button
-            id="sidebarToggle"
-            class="sidebar-toggle"
-            type="button"
-            aria-label="Collapse navigation"
-            aria-expanded="true"
-            title="Collapse navigation"
-          >
-            <span aria-hidden="true">&lt;</span>
-          </button>
-        </div>
-
-        <nav class="nav-stack" aria-label="Control-plane sections">
-          <button class="nav-button active" data-section="overview" type="button">
-            <span class="nav-label">Overview</span>
-            <span class="nav-short" aria-hidden="true">O</span>
-            <strong id="navCountOverview">0</strong>
-          </button>
-          <button class="nav-button" data-section="attention" type="button">
-            <span class="nav-label">Attention</span>
-            <span class="nav-short" aria-hidden="true">!</span>
-            <strong id="navCountAttention">0</strong>
-          </button>
-          <button class="nav-button" data-section="repos" type="button">
-            <span class="nav-label">Repos</span>
-            <span class="nav-short" aria-hidden="true">R</span>
-            <strong id="navCountRepos">0</strong>
-          </button>
-          <button class="nav-button" data-section="skills" type="button">
-            <span class="nav-label">Skills</span>
-            <span class="nav-short" aria-hidden="true">S</span>
-            <strong id="navCountSkills">0</strong>
-          </button>
-          <button class="nav-button" data-section="plugins" type="button">
-            <span class="nav-label">Plugins</span>
-            <span class="nav-short" aria-hidden="true">P</span>
-            <strong id="navCountPlugins">0</strong>
-          </button>
-          <button class="nav-button" data-section="mcp" type="button">
-            <span class="nav-label">MCP</span>
-            <span class="nav-short" aria-hidden="true">M</span>
-            <strong id="navCountMcp">0</strong>
-          </button>
-          <button class="nav-button" data-section="hooks" type="button">
-            <span class="nav-label">Hooks</span>
-            <span class="nav-short" aria-hidden="true">H</span>
-            <strong id="navCountHooks">0</strong>
-          </button>
-        </nav>
-
-        <label class="search-box sidebar-search">
-          <span>Search</span>
-          <input id="searchInput" type="search" placeholder="Search names, repos, paths">
-        </label>
-
-        <div class="sidebar-footer">
-          <span id="lastUpdated">Not loaded</span>
-          <span id="refreshStatus">Auto-refresh every 5m</span>
-        </div>
-      </aside>
-
-      <main class="main-panel">
-        <header class="topbar">
-          <div class="section-title">
-            <p class="eyebrow" id="sectionEyebrow">Overview</p>
-            <h2 id="sectionTitle">Control-plane status</h2>
-          </div>
-          <div id="topbarMeta" class="topbar-meta" aria-label="Control-plane status"></div>
-        </header>
-
-        <section id="metricsGrid" class="metrics-grid" aria-label="Section totals"></section>
-
-        <section id="warningPanel" class="warning-panel hidden" aria-label="Registry warnings">
-          <div class="panel-heading">
-            <h2>Warnings</h2>
-            <span id="warningCount">0</span>
-          </div>
-          <div id="warningList" class="warning-list"></div>
-        </section>
-
-        <section id="filterBar" class="filter-bar" aria-label="Section filters"></section>
-        <section id="contentRegion" class="content-region" aria-live="polite"></section>
-      </main>
-    </div>
-
-    <script src="/dashboard/app.js" defer></script>
+    <div id="root"></div>
   </body>
 </html>
