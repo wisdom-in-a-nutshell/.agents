@@ -336,12 +336,12 @@ body.sidebar-collapsed .nav-short {
 }
 
 .topbar-pill.warning {
-  background: var(--amber-soft);
-  border-color: var(--amber-line);
+  background: var(--rose-soft);
+  border-color: var(--rose-line);
 }
 
 .topbar-pill.warning strong {
-  color: var(--amber-ink);
+  color: var(--rose-ink);
 }
 
 /* ---- Metrics ------------------------------------------------------------ */
@@ -375,7 +375,7 @@ body.sidebar-collapsed .nav-short {
 }
 
 .metric-block.warning strong {
-  color: var(--amber-ink);
+  color: var(--rose-ink);
 }
 
 .metric-block.scope-global {
@@ -443,14 +443,14 @@ body.sidebar-collapsed .nav-short {
 
 .warning-item {
   padding: 11px 12px;
-  border: 1px solid var(--amber-line);
+  border: 1px solid var(--rose-line);
   border-radius: var(--radius-sm);
-  background: var(--amber-soft);
+  background: var(--rose-soft);
 }
 
 .warning-item.error {
   border-color: var(--rose);
-  background: oklch(0.96 0.034 25);
+  background: oklch(0.93 0.05 25);
 }
 
 .warning-item strong {
@@ -679,11 +679,11 @@ body.sidebar-collapsed .nav-short {
   overflow-wrap: anywhere;
 }
 
-/* Warnings are the one status that keeps a color (amber). */
+/* Alerts (warnings / attention reasons) use rose; gold is the global base. */
 .chip.warning {
-  border-color: var(--amber-line);
-  background: var(--amber-soft);
-  color: var(--amber-ink);
+  border-color: var(--rose-line);
+  background: var(--rose-soft);
+  color: var(--rose-ink);
 }
 
 .chip.scope-global {

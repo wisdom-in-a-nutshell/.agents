@@ -1,16 +1,15 @@
 /* Product-local tokens for the .agents control-plane dashboard.
  *
- * Layered AFTER the shared adi-design tokens.css. These encode the one concept
- * the core palette doesn't: scope. The whole dashboard reads as "what is global
- * (base, everywhere)" vs "what a repo adds on top". That distinction earns two
- * tones — but sage stays THE accent:
+ * Layered AFTER the shared adi-design tokens.css. The dashboard's one core idea
+ * is scope: the global base kit (everywhere) vs. what each repo adds on top.
+ * That maps onto the brand's own two colors — sage and gold — so the whole
+ * surface reads as "grove + gold", never a second/foreign accent:
  *
- *   - scope-local  = the sage accent itself (a repo's own additions, the lively
- *     foreground thing this dashboard is about).
- *   - scope-global = a calm, steady blue (system-wide base; informational, not
- *     competing with sage for attention).
+ *   - scope-local  = the sage accent (a repo's own additions; the living green).
+ *   - scope-global = amber/gold (the base kit reaching every repo; the golden
+ *     light through the canopy). Used as a meaningful tint, not warm-bg flooding.
  *
- * Warnings stay amber, errors stay rose — both from the core file.
+ * Alerts move to rose so "needs a look" stays distinct from the gold base tone.
  */
 
 :root {
@@ -19,17 +18,18 @@
   --scope-local-soft: var(--accent-soft);
   --scope-local-line: var(--accent-line);
 
-  --scope-global: oklch(0.5 0.07 245);
-  --scope-global-ink: oklch(0.43 0.07 245);
-  --scope-global-soft: oklch(0.95 0.022 245);
-  --scope-global-line: oklch(0.8 0.045 245);
+  --scope-global: var(--amber);
+  --scope-global-ink: var(--amber-ink);
+  --scope-global-soft: var(--amber-soft);
+  --scope-global-line: var(--amber-line);
+
+  --rose-soft: oklch(0.95 0.03 25);
+  --rose-line: oklch(0.83 0.06 25);
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --scope-global: oklch(0.74 0.08 245);
-    --scope-global-ink: oklch(0.82 0.07 245);
-    --scope-global-soft: oklch(0.31 0.04 245);
-    --scope-global-line: oklch(0.48 0.06 245);
+    --rose-soft: oklch(0.31 0.04 25);
+    --rose-line: oklch(0.5 0.06 25);
   }
 }
