@@ -10,12 +10,15 @@ This file contains the “command catalog” for the bundled image generation CL
 Real API calls require **network access**. `--dry-run` does not.
 
 ## Quick start (works from any repo)
-Set a stable path to the skill CLI (default `CODEX_HOME` is `~/.codex`):
+Set a stable path to the managed global skill CLI:
 
 ```
-export CODEX_HOME="${CODEX_HOME:-$HOME/.codex}"
-export IMAGE_GEN="$CODEX_HOME/skills/imagegen/scripts/image_gen.py"
+export IMAGE_GEN="${IMAGE_GEN:-$HOME/.agents/skills/imagegen/scripts/image_gen.py}"
 ```
+
+Real API calls use the shared LiteLLM proxy environment: `LLM_API_ENDPOINT` and
+`LLM_API_KEY`. On managed machines these are sourced from
+`~/.secrets/litellm/env`, which is generated from Azure Key Vault.
 
 Dry-run (no API call; no network required; does not require the `openai` package):
 
