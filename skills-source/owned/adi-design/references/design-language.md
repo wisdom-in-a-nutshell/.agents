@@ -107,7 +107,8 @@ Don't:
   Python control-plane engine at `/dashboard/`. Consumes the canonical
   `tokens.css` (copied to `src/`) plus a small `tokens.local.css` for its
   scope-global / scope-local tokens (scope-local *is* the sage accent; scope-global
-  is a calm blue — a sanctioned product extension, not a second accent). Titles
+  *is* amber/gold — the base kit as the golden light through the grove, the brand's
+  own two colors, not a foreign accent; alerts move to rose). Titles
   are Newsreader; surfaces are flat hairline; the old teal accent is gone. Keep
   the Python data engine as the single source of truth; the dashboard is UI only.
 
