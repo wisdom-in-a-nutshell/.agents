@@ -37,6 +37,29 @@ feels like one product made by one person with taste.
 This skill is canon. Tools like claude.ai/design are sketchpads to explore in,
 then bring changes back here — see the note in `references/design-language.md`.
 
+## With impeccable (the craft companion)
+
+`impeccable` is a general frontend-craft engine — contrast, motion, anti-slop
+bans, build/critique/polish workflows. It has rigor but deliberately no house
+style. This skill is the missing half: the **identity**. They compose on
+different axes — impeccable is the *how* (method), adi-design is the *what*
+(Adi's look) — so use them together, not instead of each other.
+
+When running impeccable (or any craft pass) on one of Adi's apps
+(dobby-dashboard, blog/adithyan.io, ~/.agents dashboard, or a new personal app):
+
+- Treat `assets/tokens.css` as **committed brand colors**. Do NOT run
+  impeccable's palette-generation / brand-seed step — the identity is already
+  decided. (impeccable's own setup says to skip palette generation when
+  committed colors exist; identity-preservation wins.)
+- Apply impeccable's craft rigor *on top of* these tokens, never in place of
+  them. Sage stays the one accent; no new palette, no cream background.
+- The handshake is the project's own tokens + `DESIGN.md`: keep those pointing
+  at this skill so impeccable picks up the identity automatically.
+
+In short: **impeccable for craft, adi-design for identity. Where they meet on
+Adi's apps, adi-design wins on look.**
+
 ## Evolving the language
 
 When the aesthetic changes, change it in **two places together**: the value in
