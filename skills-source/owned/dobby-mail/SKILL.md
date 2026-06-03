@@ -1,6 +1,6 @@
 ---
 name: dobby-mail
-description: "Operate Dobby's Gmail-first mail client: search/read recent mail, fetch message bodies, poll Gmail history, create drafts, create reply drafts, and perform safe Gmail mutations. Apple Mail/EMLX backends are legacy explicit-only escape hatches, not the primary path."
+description: "Operate Dobby's Gmail-only mail client: search/read Gmail, fetch message bodies, use a small local Gmail cache, poll Gmail history, create drafts/replies, send only with explicit confirmation, and perform safe Gmail mutations."
 ---
 
 # Dobby Mail
@@ -11,13 +11,10 @@ Email operations go through the skill-bundled CLI:
 $HOME/.agents/skills-source/owned/dobby-mail/scripts/dobby-mail
 ```
 
-The CLI is **Gmail API–first** for reads, search, polling, drafts, sends, and
-Gmail-native mutations. It is JSON-first, non-interactive, and permission-safe.
-
-Apple Mail `Envelope Index` / `.emlx` and Mail.app automation are deprecated
-legacy backends. Use them only when the user explicitly needs Apple Mail / iCloud
-/ selected-message behavior. Do not use Apple Mail as the normal fallback for
-Gmail/Workspace mail.
+The CLI is **Gmail API only**. It is JSON-first, non-interactive, cache-aware,
+and permission-safe. Apple Mail / EMLX / Mail.app automation is no longer part
+of this client; if a future task genuinely needs non-Gmail local mail state, use
+a separate explicit tool rather than reintroducing it here.
 
 ## Identity and secrets
 
@@ -39,6 +36,43 @@ Local files default to `~/.secrets/gmail/client_secret.json` and
 and `DOBBY_GMAIL_TOKENS_FILE`). Do not pass OAuth secrets or refresh tokens via
 flags or ordinary environment variables.
 
+## Cache model
+
+The cache is a small SQLite state store, not a full local mailbox clone.
+
+Default path:
+
+```text
+~/.cache/dobby-mail/cache.sqlite
+```
+
+Override with `DOBBY_MAIL_CACHE_PATH` or `--cache-path`.
+
+It stores:
+
+- Gmail `history_id` sync cursor per account.
+- Metadata for messages Dobby has searched/fetched.
+- Body text / attachment metadata only for messages Dobby has explicitly read,
+  synced with `--include-body`, exported, or attachment-inspected.
+
+Why it exists:
+
+- Enables reliable 15-minute polling with `sync` / `history` without losing the
+  last cursor.
+- Dedupes repeated “what changed?” checks.
+- Avoids refetching the same body during follow-up work in the same day/thread.
+- Gives Dobby a resumable local state surface for monitors and inbox triage.
+
+When it is not needed:
+
+- One-off `search`, `recent`, or `get` commands can run stateless with
+  `--no-cache`.
+- Historical search should still start with Gmail search; only cache matched
+  messages that Dobby actually needs.
+
+Use `get --refresh` to bypass a cached body and refetch from Gmail. Use
+`cache-status` to inspect the local state.
+
 ## Common commands
 
 ```bash
@@ -46,16 +80,20 @@ flags or ordinary environment variables.
 $HOME/.agents/skills-source/owned/dobby-mail/scripts/dobby-mail doctor --check-gmail-api --no-input
 $HOME/.agents/skills-source/owned/dobby-mail/scripts/dobby-mail gmail-auth --account adithyan@wisdominanutshell.academy
 
+# cache / polling
+$HOME/.agents/skills-source/owned/dobby-mail/scripts/dobby-mail cache-status --no-input
+$HOME/.agents/skills-source/owned/dobby-mail/scripts/dobby-mail sync --reset --no-input
+$HOME/.agents/skills-source/owned/dobby-mail/scripts/dobby-mail sync --fetch --no-input
+$HOME/.agents/skills-source/owned/dobby-mail/scripts/dobby-mail history --no-input
+$HOME/.agents/skills-source/owned/dobby-mail/scripts/dobby-mail history --since HISTORY_ID --fetch --no-input
+
 # Gmail reads
 $HOME/.agents/skills-source/owned/dobby-mail/scripts/dobby-mail recent --limit 20 --no-input
 $HOME/.agents/skills-source/owned/dobby-mail/scripts/dobby-mail search --query "invoice newer_than:30d" --limit 20 --no-input
 $HOME/.agents/skills-source/owned/dobby-mail/scripts/dobby-mail get --id gmail-message:MESSAGE_ID --max-body-chars 12000 --no-input
+$HOME/.agents/skills-source/owned/dobby-mail/scripts/dobby-mail get --id gmail-message:MESSAGE_ID --refresh --no-input
 $HOME/.agents/skills-source/owned/dobby-mail/scripts/dobby-mail export --id gmail-message:MESSAGE_ID --out-dir /tmp/mail-export --raw --no-input
 $HOME/.agents/skills-source/owned/dobby-mail/scripts/dobby-mail attachments --id gmail-message:MESSAGE_ID --out-dir /tmp/mail-attachments --no-input
-
-# 15-minute poll/sync primitive
-$HOME/.agents/skills-source/owned/dobby-mail/scripts/dobby-mail history --no-input
-$HOME/.agents/skills-source/owned/dobby-mail/scripts/dobby-mail history --since HISTORY_ID --fetch --no-input
 
 # draft-first writes
 $HOME/.agents/skills-source/owned/dobby-mail/scripts/dobby-mail draft --to person@example.com --subject "Subject" --body-file /tmp/body.txt --no-input
@@ -68,47 +106,33 @@ $HOME/.agents/skills-source/owned/dobby-mail/scripts/dobby-mail gmail-mark-read 
 $HOME/.agents/skills-source/owned/dobby-mail/scripts/dobby-mail gmail-filter --from noise@example.com --action trash --confirm-mutate --dry-run --no-input
 ```
 
-## Backend rules
-
-- Default read backend is `--backend auto`, which means **Gmail API**.
-- `--backend gmail-api` is the explicit primary backend.
-- `--backend fast` and `--backend mail-app` are deprecated Apple legacy
-  backends. They emit `W_LEGACY_APPLE_BACKEND` warnings and should only be used
-  for Apple Mail / iCloud / local selected-message edge cases.
-- `--all-accounts` is not supported for Gmail API reads. Use one account at a
-  time. Multi-account aggregation belongs in a higher-level Dobby coordinator or
-  cache, not inside a single ambiguous read command.
-
 ## Gmail read/search behavior
 
 - `search --query` uses Gmail query syntax.
 - `recent` defaults to `in:inbox` and supports `--label`.
-- `get` fetches the full Gmail message body and attachment metadata.
+- `get` fetches the full Gmail message body and attachment metadata, then caches
+  the fetched body unless `--no-cache` is passed.
 - Search/recent fetch metadata/snippets only; fetch full bodies with `get`.
-- For heavy historical work, search Gmail first, then cache/fetch only matched
+- For heavy historical work, search Gmail first, then fetch/cache only matched
   messages as needed. Do not bulk-fetch full bodies without throttling.
 
 ## Gmail history / polling
 
-Use `history` for lightweight polling:
+Use `sync` for the normal cached polling path:
 
-1. Call `history` with no `--since` to get a baseline `history_id`.
-2. Store that ID in the caller/cache.
-3. Every polling interval, call `history --since HISTORY_ID`.
-4. Use `--fetch` to fetch changed message metadata; add `--include-body` only
-   when body text is needed.
-5. If Gmail returns a stale-history error, do a bounded resync and store a new
-   baseline.
+1. `sync --reset` creates a baseline and stores Gmail's current `history_id`.
+2. Every polling interval, run `sync --fetch`.
+3. Add `--include-body` only when body text is needed for automation.
+4. If Gmail says the cursor is stale, run `sync --reset` and do a bounded
+   resync/search for the gap.
 
-For a local Dobby client, 15-minute polling via Gmail history is safe and far
-cleaner than Apple Mail sync/EMLX hydration.
+Use `history` directly when a caller wants stateless control over cursor storage.
 
-## Gmail API writes and mutations
+## Gmail writes and mutations
 
-Use Gmail API so headless Dobby does not wake Mail.app or fight Apple Mail sync.
+Use Gmail API so headless Dobby does not depend on local app sync.
 
-- `draft`, `draft-reply`, and `send` accept `--write-backend auto|gmail-api|mail-app`.
-- `auto` uses Gmail API when `DOBBY_MAIL_DEFAULT_ACCOUNT` is configured.
+- `draft` and `draft-reply` create unsent Gmail drafts.
 - `send` requires explicit user approval plus `--confirm-send`.
 - Gmail mutation/filter commands require `--confirm-mutate`; use `--dry-run`
   first for anything non-trivial.
@@ -121,7 +145,7 @@ Use Gmail API so headless Dobby does not wake Mail.app or fight Apple Mail sync.
 - Do not delete/archive/move/mark messages unless Adi explicitly approves that
   exact mailbox mutation in the current turn.
 - Do not create Gmail filters unless Adi explicitly approves; dry-run first.
-- `export` and `attachments` support Gmail message ids and write only to caller-provided output dirs. Legacy `fast:<rowid>` ids remain explicit Apple-only escape hatches.
+- `export` and `attachments` write only to caller-provided output directories.
 
 ## Contract
 
