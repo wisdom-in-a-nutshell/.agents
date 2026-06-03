@@ -6,6 +6,7 @@ import base64
 import contextlib
 import datetime as dt
 import email
+import html
 from email.message import EmailMessage
 from email import policy
 from email.utils import formatdate, make_msgid, parseaddr
@@ -1909,6 +1910,11 @@ def gmail_header_map(payload: dict[str, Any]) -> dict[str, str]:
     return headers
 
 
+def gmail_public_headers(headers: dict[str, str]) -> dict[str, str]:
+    keep = {name.lower() for name in GMAIL_METADATA_HEADERS}
+    return {k: v for k, v in headers.items() if k in keep}
+
+
 def gmail_internal_date_iso(raw: Any) -> str | None:
     if raw is None:
         return None
@@ -1927,6 +1933,18 @@ def gmail_decode_body_data(raw: str | None) -> str:
         return base64.urlsafe_b64decode(padded.encode("ascii")).decode("utf-8", errors="replace")
     except Exception:
         return ""
+
+
+def html_to_text(raw: str) -> str:
+    text = re.sub(r"(?is)<(script|style).*?>.*?</\1>", " ", raw)
+    text = re.sub(r"(?i)<br\s*/?>", "\n", text)
+    text = re.sub(r"(?i)</p\s*>", "\n", text)
+    text = re.sub(r"(?i)</div\s*>", "\n", text)
+    text = re.sub(r"(?s)<[^>]+>", " ", text)
+    text = html.unescape(text)
+    text = re.sub(r"[ \t\r\f\v]+", " ", text)
+    text = re.sub(r"\n\s*\n\s*\n+", "\n\n", text)
+    return text.strip()
 
 
 def gmail_walk_parts(payload: dict[str, Any]) -> Iterable[dict[str, Any]]:
@@ -1966,6 +1984,8 @@ def gmail_extract_content(payload: dict[str, Any], max_body_chars: int | None = 
             html_parts.append(text)
     plain = "\n".join(p.strip() for p in plain_parts if p and p.strip()) or None
     html = "\n".join(p.strip() for p in html_parts if p and p.strip()) or None
+    if not plain and html:
+        plain = html_to_text(html)
     if max_body_chars is not None:
         if plain and len(plain) > max_body_chars:
             plain = plain[: max_body_chars - 1] + "…"
@@ -1996,7 +2016,8 @@ def normalize_gmail_message(result: dict[str, Any], *, include_body: bool = Fals
         "size_bytes": result.get("sizeEstimate"),
         "read_status": False if "UNREAD" in (result.get("labelIds") or []) else True,
         "threading_supported": True,
-        "headers": headers,
+        "headers": gmail_public_headers(headers),
+        "headers_count": len(headers),
     }
     if include_body:
         body_text, body_html, attachments = gmail_extract_content(payload, max_body_chars=max_body_chars)
@@ -2437,6 +2458,13 @@ def make_store(args: argparse.Namespace) -> FastMailStore:
 
 def run_with_fallback(args: argparse.Namespace, warnings: WarningSink, op_name: str, fast_fn, app_fn):
     requested = getattr(args, "backend", "auto")
+    if requested in {"fast", "mail-app"}:
+        warnings.warn(
+            "W_LEGACY_APPLE_BACKEND",
+            f"{requested} is a legacy Apple Mail backend; Gmail API is the primary Dobby Mail read backend.",
+            "Use --backend gmail-api or omit --backend for Gmail-first auto reads.",
+            backend=requested,
+        )
     allow_fallback = requested == "auto" and not getattr(args, "no_fallback", False)
     if requested in {"auto", "fast"}:
         try:
@@ -2522,22 +2550,26 @@ def command_doctor(args: argparse.Namespace, warnings: WarningSink) -> dict[str,
                 "keychain_service": GMAIL_KEYCHAIN_SERVICE,
             },
         )
+        gmail_api_ok = False
         if getattr(args, "check_gmail_api", False) and cfg and has_token:
             try:
                 gmail_access_token(gmail_account, args.timeout_sec)
-                add("gmail_api_write_backend", "ok", f"Access token refresh succeeded for {gmail_account}")
+                gmail_api_ok = True
+                add("gmail_api_backend", "ok", f"Access token refresh succeeded for {gmail_account}")
             except CliError as exc:
-                add("gmail_api_write_backend", "warn" if exc.exit_code in {EXIT_AUTH, EXIT_TIMEOUT} else "error", exc.message, exc.hint, {"code": exc.code})
+                add("gmail_api_backend", "warn" if exc.exit_code in {EXIT_AUTH, EXIT_TIMEOUT} else "error", exc.message, exc.hint, {"code": exc.code})
         elif getattr(args, "check_gmail_api", False):
             reason = "oauth_client_missing" if not cfg else "refresh_token_missing"
-            add("gmail_api_write_backend", "skipped", f"Cannot test Gmail API write backend: {reason}", "Fix the Gmail OAuth client/token checks above, then re-run doctor --check-gmail-api.")
+            add("gmail_api_backend", "skipped", f"Cannot test Gmail API backend: {reason}", "Fix the Gmail OAuth client/token checks above, then re-run doctor --check-gmail-api.")
         elif not getattr(args, "check_gmail_api", False):
-            add("gmail_api_write_backend", "skipped", "Pass --check-gmail-api to test token refresh; no mail is read or written.")
+            gmail_api_ok = bool(cfg and has_token)
+            add("gmail_api_backend", "skipped", "Pass --check-gmail-api to test token refresh; no mail is read or written.")
     else:
         add("gmail_refresh_token", "skipped", f"No {DEFAULT_ACCOUNT_ENV} configured for Gmail write account.")
+        gmail_api_ok = False
 
     statuses = {c["status"] for c in checks}
-    selected = "fast" if any(c["name"] == "fast_backend" and c["status"] == "ok" for c in checks) else "mail-app"
+    selected = "gmail-api" if gmail_account and gmail_api_ok else ("fast" if any(c["name"] == "fast_backend" and c["status"] == "ok" for c in checks) else "mail-app")
     summary = "needs_attention" if "error" in statuses else ("degraded" if "warn" in statuses else "ok")
     return {
         "selected_backend": selected,
@@ -2567,7 +2599,11 @@ def command_mailboxes(args: argparse.Namespace, warnings: WarningSink) -> dict[s
 
 def command_search(args: argparse.Namespace, warnings: WarningSink) -> dict[str, Any]:
     if getattr(args, "backend", "auto") in {"auto", "gmail-api"}:
-        return command_gmail_search_read(args, warnings, query=args.query)
+        parts = [args.query]
+        date_query = gmail_query_from_dates(getattr(args, "date_from", None), getattr(args, "date_to", None))
+        if date_query:
+            parts.append(date_query)
+        return command_gmail_search_read(args, warnings, query=" ".join(part for part in parts if part).strip())
 
     limit = clamp_limit(args.limit)
     account_scope = resolve_account_scope(args, warnings)
@@ -2611,13 +2647,21 @@ def normalize_message_id(raw: str) -> tuple[str, str]:
     return "fast", raw
 
 
+def resolve_gmail_id_for_read(raw_id: str, *, explicit_gmail: bool = False) -> str | None:
+    kind, value = normalize_message_id(raw_id)
+    if kind in {"gmail", "gmail-message", "message"}:
+        return strip_gmail_message_prefix(raw_id)
+    if explicit_gmail or (kind == "fast" and not re.fullmatch(r"\d+", value)):
+        return value
+    return None
+
+
 def command_get(args: argparse.Namespace, warnings: WarningSink) -> dict[str, Any]:
     kind, value = normalize_message_id(args.id)
     max_body_chars = args.max_body_chars
     if getattr(args, "backend", "auto") in {"auto", "gmail-api"}:
-        if kind in {"gmail", "gmail-message", "message"}:
-            gmail_id = strip_gmail_message_prefix(args.id)
-        elif kind in {"fast", "rowid", "mail", "draft"}:
+        gmail_id = resolve_gmail_id_for_read(args.id, explicit_gmail=getattr(args, "backend", "auto") == "gmail-api")
+        if gmail_id is None and kind in {"fast", "rowid", "mail", "draft"}:
             if getattr(args, "backend", "auto") == "gmail-api":
                 raise CliError(
                     "E_GMAIL_ID_UNSUPPORTED",
@@ -2630,8 +2674,6 @@ def command_get(args: argparse.Namespace, warnings: WarningSink) -> dict[str, An
             legacy_args = argparse.Namespace(**vars(args))
             legacy_args.backend = "fast" if kind in {"fast", "rowid"} else "mail-app"
             return command_get(legacy_args, warnings)
-        else:
-            gmail_id = value
         account = resolve_gmail_read_account(args)
         full = gmail_get_message(account, gmail_id, args.timeout_sec, fmt="full")
         msg = normalize_gmail_message(full, include_body=True, max_body_chars=max_body_chars)
@@ -3045,14 +3087,14 @@ def command_setup(args: argparse.Namespace, warnings: WarningSink) -> dict[str, 
             {
                 "permission": "Full Disk Access",
                 "targets": recommended_access_targets(),
-                "why": "Needed for fast read-only Apple Mail Envelope Index + .emlx access.",
-                "status": "ok" if checks.get("selected_backend") == "fast" else "needed",
+                "why": "Legacy Apple only: needed for read-only Apple Mail Envelope Index + .emlx access.",
+                "status": "optional_legacy" if checks.get("selected_backend") == "gmail-api" else ("ok" if checks.get("selected_backend") == "fast" else "needed"),
             },
             {
                 "permission": "Automation: control Mail.app",
                 "targets": recommended_access_targets(),
-                "why": "Needed for Mail.app fallback reads and draft/send/write actions.",
-                "status": "ok" if any(c["name"] == "mail_app_automation" and c["status"] == "ok" for c in checks.get("checks", [])) else "check_with_doctor",
+                "why": "Legacy Apple only: needed for Mail.app fallback reads and Mail.app write actions.",
+                "status": "optional_legacy" if checks.get("selected_backend") == "gmail-api" else ("ok" if any(c["name"] == "mail_app_automation" and c["status"] == "ok" for c in checks.get("checks", [])) else "check_with_doctor"),
             },
         ],
         "checks": checks.get("checks", []),
@@ -3093,8 +3135,37 @@ def command_flag(args: argparse.Namespace, warnings: WarningSink) -> dict[str, A
 
 def command_export(args: argparse.Namespace, warnings: WarningSink) -> dict[str, Any]:
     kind, value = normalize_message_id(args.id)
+    gmail_id = resolve_gmail_id_for_read(args.id, explicit_gmail=getattr(args, "backend", "auto") == "gmail-api")
+    if getattr(args, "backend", "auto") in {"auto", "gmail-api"} and gmail_id is not None:
+        account = resolve_gmail_read_account(args)
+        out_dir = Path(args.out_dir).expanduser().resolve()
+        out_dir.mkdir(parents=True, exist_ok=True)
+        full = gmail_get_message(account, gmail_id, args.timeout_sec, fmt="full")
+        msg = normalize_gmail_message(full, include_body=True)
+        safe_id = sanitize_filename(gmail_id, "gmail-message")
+        written: list[dict[str, Any]] = []
+
+        meta_path = out_dir / f"message-{safe_id}.json"
+        meta_path.write_text(json.dumps(msg, ensure_ascii=False, indent=2), encoding="utf-8")
+        written.append({"kind": "metadata_json", "path": str(meta_path)})
+        if msg.get("body_text"):
+            body_path = out_dir / f"message-{safe_id}.txt"
+            body_path.write_text(str(msg["body_text"]), encoding="utf-8")
+            written.append({"kind": "body_text", "path": str(body_path)})
+        if msg.get("body_html"):
+            html_path = out_dir / f"message-{safe_id}.html"
+            html_path.write_text(str(msg["body_html"]), encoding="utf-8")
+            written.append({"kind": "body_html", "path": str(html_path)})
+        if args.raw:
+            raw_result = gmail_get_message(account, gmail_id, args.timeout_sec, fmt="raw")
+            raw_data = str(raw_result.get("raw") or "")
+            raw_path = out_dir / f"message-{safe_id}.eml"
+            raw_path.write_bytes(base64.urlsafe_b64decode((raw_data + "=" * (-len(raw_data) % 4)).encode("ascii")))
+            written.append({"kind": "raw_eml", "path": str(raw_path)})
+        return {"backend": "gmail-api", "gmail_account": account, "message": msg, "out_dir": str(out_dir), "written": written, "warnings": warnings.items}
+
     if kind not in {"fast", "rowid"}:
-        raise CliError("E_EXPORT_FAST_ONLY", "export currently requires a fast:<rowid> id", "Use search/recent with the fast backend first.", EXIT_USAGE)
+        raise CliError("E_EXPORT_ID_UNSUPPORTED", "export requires a gmail-message:<id> or legacy fast:<rowid> id", "Use Gmail search/recent first, or explicitly use --backend fast for legacy Apple export.", EXIT_USAGE)
     account_scope = resolve_account_scope(args, warnings)
     out_dir = Path(args.out_dir).expanduser().resolve()
     item, emlx = make_store(args).get_emlx_for_rowid(value, account_tokens=account_scope["tokens"])
@@ -3124,8 +3195,35 @@ def command_export(args: argparse.Namespace, warnings: WarningSink) -> dict[str,
 
 def command_attachments(args: argparse.Namespace, warnings: WarningSink) -> dict[str, Any]:
     kind, value = normalize_message_id(args.id)
+    gmail_id = resolve_gmail_id_for_read(args.id, explicit_gmail=getattr(args, "backend", "auto") == "gmail-api")
+    if getattr(args, "backend", "auto") in {"auto", "gmail-api"} and gmail_id is not None:
+        account = resolve_gmail_read_account(args)
+        out_dir = Path(args.out_dir).expanduser().resolve()
+        out_dir.mkdir(parents=True, exist_ok=True)
+        full = gmail_get_message(account, gmail_id, args.timeout_sec, fmt="full")
+        msg = normalize_gmail_message(full, include_body=True)
+        saved: list[dict[str, Any]] = []
+        for index, att in enumerate(msg.get("attachments") or [], start=1):
+            attachment_id = att.get("attachment_id")
+            if not attachment_id:
+                continue
+            result = gmail_api_request(account, "GET", f"messages/{quoted_gmail_id(gmail_id)}/attachments/{quoted_gmail_id(str(attachment_id))}", None, args.timeout_sec)
+            raw_data = str(result.get("data") or "")
+            data = base64.urlsafe_b64decode((raw_data + "=" * (-len(raw_data) % 4)).encode("ascii"))
+            safe_name = sanitize_filename(att.get("filename"), f"attachment-{index}")
+            target = out_dir / safe_name
+            if target.exists():
+                stem, suffix = target.stem, target.suffix
+                i = 2
+                while (out_dir / f"{stem}-{i}{suffix}").exists():
+                    i += 1
+                target = out_dir / f"{stem}-{i}{suffix}"
+            target.write_bytes(data)
+            saved.append({**att, "path": str(target), "size_bytes": len(data)})
+        return {"backend": "gmail-api", "gmail_account": account, "message": msg, "out_dir": str(out_dir), "attachments": saved, "warnings": warnings.items}
+
     if kind not in {"fast", "rowid"}:
-        raise CliError("E_ATTACHMENTS_FAST_ONLY", "attachments currently requires a fast:<rowid> id", "Use search/recent with the fast backend first.", EXIT_USAGE)
+        raise CliError("E_ATTACHMENTS_ID_UNSUPPORTED", "attachments requires a gmail-message:<id> or legacy fast:<rowid> id", "Use Gmail search/recent first, or explicitly use --backend fast for legacy Apple attachments.", EXIT_USAGE)
     account_scope = resolve_account_scope(args, warnings)
     out_dir = Path(args.out_dir).expanduser().resolve()
     item, emlx = make_store(args).get_emlx_for_rowid(value, account_tokens=account_scope["tokens"])
@@ -3142,10 +3240,10 @@ def add_common(parser: argparse.ArgumentParser) -> None:
 
 
 def add_backend(parser: argparse.ArgumentParser) -> None:
-    parser.add_argument("--backend", choices=["auto", "fast", "mail-app"], default="auto", help="Read backend. auto tries fast local index then explicitly falls back to Mail.app.")
-    parser.add_argument("--no-fallback", action="store_true", help="Do not fall back from fast path to Mail.app automation.")
-    parser.add_argument("--mail-root", help="Apple Mail root. Defaults to ~/Library/Mail or DOBBY_MAIL_ROOT.")
-    parser.add_argument("--index-path", help="Apple Mail Envelope Index path. Defaults to latest V*/MailData/Envelope Index or DOBBY_MAIL_INDEX.")
+    parser.add_argument("--backend", choices=["auto", "gmail-api", "fast", "mail-app"], default="auto", help="Read backend. auto uses Gmail API. fast/mail-app are deprecated Apple legacy backends.")
+    parser.add_argument("--no-fallback", action="store_true", help="Legacy Apple only: do not fall back from fast path to Mail.app automation.")
+    parser.add_argument("--mail-root", help="Legacy Apple only: Apple Mail root. Defaults to ~/Library/Mail or DOBBY_MAIL_ROOT.")
+    parser.add_argument("--index-path", help="Legacy Apple only: Apple Mail Envelope Index path. Defaults to latest V*/MailData/Envelope Index or DOBBY_MAIL_INDEX.")
 
 
 def add_account_scope(parser: argparse.ArgumentParser) -> None:
@@ -3201,17 +3299,17 @@ def add_gmail_filter_args(parser: argparse.ArgumentParser, *, from_required: boo
 
 
 def parse_args(argv: list[str]) -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Local Apple Mail/Gmail write client for Dobby. JSON-first, local-first for reads, permission-safe.")
+    parser = argparse.ArgumentParser(description="Gmail-first mail client for Dobby. JSON-first, non-interactive, draft-safe; Apple Mail backends are legacy explicit-only.")
     add_common(parser)
     parser.add_argument("--version", action="store_true", help="Print version envelope.")
     sub = parser.add_subparsers(dest="cmd")
 
-    p = sub.add_parser("doctor", help="Check Apple Mail/local backend availability.")
+    p = sub.add_parser("doctor", help="Check Gmail primary backend plus legacy Apple backend availability.")
     add_common(p)
     p.add_argument("--mail-root")
     p.add_argument("--index-path")
     p.add_argument("--check-mail-app", action="store_true", help="Test live Mail.app automation; may launch Mail.app.")
-    p.add_argument("--check-gmail-api", action="store_true", help="Test Gmail API access-token refresh for write backend; no mail is read/written.")
+    p.add_argument("--check-gmail-api", action="store_true", help="Test Gmail API access-token refresh; no mail is read/written.")
     p.set_defaults(func=command_doctor)
 
     p = sub.add_parser("setup", help="Show/access-check one-time macOS permissions for Dobby Mail.")
@@ -3223,7 +3321,7 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     p.add_argument("--open-settings", action="store_true", help="Open Full Disk Access settings.")
     p.set_defaults(func=command_setup)
 
-    p = sub.add_parser("gmail-auth", help="One-time interactive Gmail OAuth setup for Gmail API write backend.")
+    p = sub.add_parser("gmail-auth", help="One-time interactive Gmail OAuth setup for Gmail API.")
     add_common(p)
     p.add_argument("--account", help=f"Gmail/Google Workspace account to authorize. Defaults to {DEFAULT_ACCOUNT_ENV}.")
     p.add_argument("--no-browser", action="store_true", help="Print OAuth URL but do not open a browser.")
@@ -3233,18 +3331,19 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     add_common(p)
     p.set_defaults(func=command_accounts)
 
-    p = sub.add_parser("mailboxes", help="List Apple Mail mailboxes.")
+    p = sub.add_parser("mailboxes", help="Legacy Apple: list Apple Mail mailboxes.")
     add_common(p); add_backend(p); add_account_scope(p)
     p.add_argument("--limit", type=int, default=200)
     p.set_defaults(func=command_mailboxes)
 
-    p = sub.add_parser("search", help="Search message metadata.")
+    p = sub.add_parser("search", help="Search Gmail messages using Gmail query syntax.")
     add_common(p); add_backend(p); add_account_scope(p)
-    p.add_argument("--query", required=True, help="Case-insensitive search over subject/sender metadata.")
+    p.add_argument("--query", required=True, help="Gmail query syntax, e.g. from:person@example.com newer_than:7d invoice.")
     p.add_argument("--limit", type=int, default=DEFAULT_LIMIT)
-    p.add_argument("--from", dest="date_from", help="Lower bound date (fast backend).")
-    p.add_argument("--to", dest="date_to", help="Upper bound date (fast backend).")
-    p.add_argument("--mailbox", help="Mailbox name/url filter (fast backend).")
+    p.add_argument("--from", dest="date_from", help="Legacy Apple fast only: lower bound date.")
+    p.add_argument("--to", dest="date_to", help="Legacy Apple fast only: upper bound date.")
+    p.add_argument("--mailbox", help="Legacy Apple fast only: mailbox name/url filter.")
+    p.add_argument("--include-spam-trash", action="store_true", default=True, help="Gmail API: include Spam/Trash in search.")
     p.add_argument("--scope", choices=["inbox", "selected"], default="inbox", help="Mail.app fallback search scope.")
     p.set_defaults(func=command_search)
 
@@ -3254,15 +3353,30 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     p.add_argument("--from", dest="date_from")
     p.add_argument("--to", dest="date_to")
     p.add_argument("--mailbox")
+    p.add_argument("--label", default="inbox", help="Gmail label/search section for recent; default inbox.")
+    p.add_argument("--include-spam-trash", action="store_true", default=True, help="Gmail API: include Spam/Trash in search.")
     p.add_argument("--scope", choices=["inbox", "selected"], default="inbox")
     p.set_defaults(func=command_recent)
 
     p = sub.add_parser("get", help="Get one message by id from search/recent.")
     add_common(p); add_backend(p); add_account_scope(p)
-    p.add_argument("--id", required=True, help="Message id, e.g. fast:123 or mail:456.")
+    p.add_argument("--id", required=True, help="Message id, preferably gmail-message:<id> from search/recent. fast:/mail: are legacy Apple ids.")
     p.add_argument("--max-body-chars", type=int, default=None)
     p.add_argument("--scope", choices=["inbox", "selected"], default="inbox", help="Mail.app fallback get scope.")
     p.set_defaults(func=command_get)
+
+    p = sub.add_parser("history", help="Gmail incremental history primitive for polling/sync.")
+    add_common(p); add_account_scope(p)
+    p.add_argument("--since", help="Gmail historyId from a previous baseline/poll. Omit to return a baseline history_id.")
+    p.add_argument("--label", default="INBOX", help="Gmail label id to watch, e.g. INBOX.")
+    p.add_argument("--history-type", action="append", choices=["messageAdded", "messageDeleted", "labelAdded", "labelRemoved"], help="History type. Repeatable; default messageAdded.")
+    p.add_argument("--limit", type=int, default=100)
+    p.add_argument("--max-pages", type=int, default=1)
+    p.add_argument("--page", help="Continue from a Gmail nextPageToken.")
+    p.add_argument("--fetch", action="store_true", help="Fetch changed message metadata.")
+    p.add_argument("--include-body", action="store_true", help="With --fetch, fetch full message bodies.")
+    p.add_argument("--max-body-chars", type=int, default=None)
+    p.set_defaults(func=command_history)
 
     p = sub.add_parser("selected", help="List messages currently selected in Mail.app.")
     add_common(p)
@@ -3289,16 +3403,16 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     p.add_argument("--dry-run", action="store_true")
     p.set_defaults(func=command_flag)
 
-    p = sub.add_parser("export", help="Export one fast-backend message body/metadata to files.")
+    p = sub.add_parser("export", help="Export one Gmail message body/metadata to files. fast:<rowid> is legacy Apple.")
     add_common(p); add_backend(p); add_account_scope(p)
-    p.add_argument("--id", required=True, help="fast:<rowid> id.")
+    p.add_argument("--id", required=True, help="gmail-message:<id> from search/recent, or legacy fast:<rowid>.")
     p.add_argument("--out-dir", required=True)
     p.add_argument("--raw", action="store_true", help="Also export raw .eml content.")
     p.set_defaults(func=command_export)
 
-    p = sub.add_parser("attachments", help="Extract attachments from one fast-backend message.")
+    p = sub.add_parser("attachments", help="Extract attachments from one Gmail message. fast:<rowid> is legacy Apple.")
     add_common(p); add_backend(p); add_account_scope(p)
-    p.add_argument("--id", required=True, help="fast:<rowid> id.")
+    p.add_argument("--id", required=True, help="gmail-message:<id> from search/recent, or legacy fast:<rowid>.")
     p.add_argument("--out-dir", required=True)
     p.set_defaults(func=command_attachments)
 
@@ -3309,7 +3423,7 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     p = sub.add_parser("draft-reply", help="Create an unsent reply draft from a message id.")
     add_common(p); add_backend(p); add_account_scope(p); add_draft_args(p)
     p.add_argument("--id", required=True, help="Original message id, e.g. fast:123.")
-    p.add_argument("--read-backend", choices=["auto", "fast", "mail-app"], default="auto", help="Backend used to read original message metadata.")
+    p.add_argument("--read-backend", choices=["auto", "gmail-api", "fast", "mail-app"], default="auto", help="Backend used to read original message metadata.")
     p.set_defaults(func=command_draft_reply)
 
     p = sub.add_parser("send", help="Send a new email through the write backend. Requires --confirm-send.")

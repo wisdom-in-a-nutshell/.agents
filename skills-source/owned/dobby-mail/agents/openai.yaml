@@ -1,5 +1,5 @@
 interface:
   display_name: "Dobby Mail"
-  short_description: "Local Apple Mail reads and safe Gmail writes"
+  short_description: "Gmail-first mail reads, history polling, and safe draft-first writes"
   brand_color: "#2563EB"
-  default_prompt: "Use $dobby-mail to search my recent Apple Mail and create an unsent Gmail/API draft if needed."
+  default_prompt: "Use $dobby-mail to search/read my Gmail, poll Gmail history, and create safe unsent drafts when needed."

@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import json
 import os
+import base64
 from pathlib import Path
 import sqlite3
 import subprocess
@@ -97,7 +98,122 @@ def make_fixture(tmp: Path) -> tuple[Path, Path]:
     return mail_root, db
 
 
+def write_gmail_mock(path: Path, responses: list[dict]) -> Path:
+    path.write_text(json.dumps({"responses": responses}, ensure_ascii=False, indent=2), encoding="utf-8")
+    return path
+
+
+def gmail_body(text: str) -> str:
+    return base64.urlsafe_b64encode(text.encode("utf-8")).decode("ascii").rstrip("=")
+
+
 class DobbyMailTests(unittest.TestCase):
+    def test_gmail_search_and_get_are_primary(self):
+        with tempfile.TemporaryDirectory() as d:
+            tmp = Path(d)
+            mock = write_gmail_mock(
+                tmp / "gmail-mock.json",
+                [
+                    {
+                        "method": "GET",
+                        "path_contains": "messages?q=fiber",
+                        "response": {"messages": [{"id": "m1", "threadId": "t1"}]},
+                    },
+                    {
+                        "method": "GET",
+                        "path_contains": "messages/m1?format=metadata",
+                        "response": {
+                            "id": "m1",
+                            "threadId": "t1",
+                            "labelIds": ["INBOX", "UNREAD"],
+                            "snippet": "The technician appointment is confirmed.",
+                            "internalDate": "1800000000000",
+                            "payload": {
+                                "headers": [
+                                    {"name": "From", "value": "Telekom <telekom@example.com>"},
+                                    {"name": "To", "value": "Adi <adi@example.com>"},
+                                    {"name": "Subject", "value": "Fiber appointment update"},
+                                    {"name": "Message-ID", "value": "<fiber@example>"},
+                                ]
+                            },
+                        },
+                    },
+                    {
+                        "method": "GET",
+                        "path_contains": "messages/m1?format=full",
+                        "response": {
+                            "id": "m1",
+                            "threadId": "t1",
+                            "labelIds": ["INBOX"],
+                            "snippet": "The technician appointment is confirmed.",
+                            "internalDate": "1800000000000",
+                            "payload": {
+                                "mimeType": "multipart/mixed",
+                                "headers": [
+                                    {"name": "From", "value": "Telekom <telekom@example.com>"},
+                                    {"name": "To", "value": "Adi <adi@example.com>"},
+                                    {"name": "Subject", "value": "Fiber appointment update"},
+                                    {"name": "Message-ID", "value": "<fiber@example>"},
+                                ],
+                                "parts": [
+                                    {"mimeType": "text/plain", "body": {"data": gmail_body("The technician appointment is confirmed.")}},
+                                    {"mimeType": "text/plain", "filename": "note.txt", "body": {"attachmentId": "att1", "size": 16}},
+                                ],
+                            },
+                        },
+                    },
+                    {
+                        "method": "GET",
+                        "path_contains": "messages/m1/attachments/att1",
+                        "response": {"data": gmail_body("Attachment body.")},
+                    },
+                ],
+            )
+            env = {"DOBBY_MAIL_DEFAULT_ACCOUNT": "adi@example.com", "DOBBY_GMAIL_API_MOCK_FILE": str(mock)}
+            _, payload = run_cli(["search", "--query", "fiber"], env=env)
+            self.assertEqual(payload["status"], "ok")
+            self.assertEqual(payload["data"]["backend"], "gmail-api")
+            self.assertEqual(payload["data"]["messages"][0]["id"], "gmail-message:m1")
+            self.assertEqual(payload["data"]["messages"][0]["subject"], "Fiber appointment update")
+
+            _, got = run_cli(["get", "--id", "gmail-message:m1"], env=env)
+            self.assertEqual(got["data"]["backend"], "gmail-api")
+            self.assertIn("technician appointment", got["data"]["message"]["body_text"])
+            self.assertEqual(got["data"]["message"]["attachments"][0]["attachment_id"], "att1")
+
+            out = tmp / "attachments"
+            _, att = run_cli(["attachments", "--id", "gmail-message:m1", "--out-dir", str(out)], env=env)
+            self.assertEqual(att["data"]["backend"], "gmail-api")
+            self.assertEqual(att["data"]["attachments"][0]["filename"], "note.txt")
+            self.assertEqual(Path(att["data"]["attachments"][0]["path"]).read_text(), "Attachment body.")
+
+    def test_gmail_history_baseline_and_incremental(self):
+        with tempfile.TemporaryDirectory() as d:
+            tmp = Path(d)
+            mock = write_gmail_mock(
+                tmp / "gmail-history-mock.json",
+                [
+                    {
+                        "method": "GET",
+                        "path": "profile",
+                        "response": {"emailAddress": "adi@example.com", "historyId": "100", "messagesTotal": 10, "threadsTotal": 8},
+                    },
+                    {
+                        "method": "GET",
+                        "path_contains": "history?startHistoryId=100",
+                        "response": {"historyId": "101", "history": [{"messagesAdded": [{"message": {"id": "m2", "threadId": "t2"}}]}]},
+                    },
+                ],
+            )
+            env = {"DOBBY_MAIL_DEFAULT_ACCOUNT": "adi@example.com", "DOBBY_GMAIL_API_MOCK_FILE": str(mock)}
+            _, baseline = run_cli(["history"], env=env)
+            self.assertEqual(baseline["data"]["mode"], "baseline")
+            self.assertEqual(baseline["data"]["history_id"], "100")
+
+            _, poll = run_cli(["history", "--since", "100"], env=env)
+            self.assertEqual(poll["data"]["mode"], "incremental")
+            self.assertEqual(poll["data"]["added_message_ids"], ["m2"])
+
     def test_fast_search_and_get(self):
         with tempfile.TemporaryDirectory() as d:
             mail_root, db = make_fixture(Path(d))
@@ -142,7 +258,7 @@ class DobbyMailTests(unittest.TestCase):
             self.assertIn("Fiber appointment update", subjects)
             self.assertNotIn("Other account alert", subjects)
 
-    def test_explicit_fallback_warning(self):
+    def test_explicit_legacy_mail_app_backend_warning(self):
         with tempfile.TemporaryDirectory() as d:
             mock = Path(d) / "osascript-mock"
             mock.write_text(
@@ -152,14 +268,14 @@ class DobbyMailTests(unittest.TestCase):
             )
             mock.chmod(0o755)
             proc, payload = run_cli(
-                ["search", "--all-accounts", "--query", "anything", "--mail-root", str(Path(d) / "missing"), "--backend", "auto"],
+                ["search", "--all-accounts", "--query", "anything", "--mail-root", str(Path(d) / "missing"), "--backend", "mail-app"],
                 env={"DOBBY_MAIL_OSASCRIPT": str(mock)},
             )
             self.assertEqual(payload["status"], "ok")
             self.assertEqual(payload["data"]["backend"], "mail-app")
-            self.assertTrue(payload["data"]["fallback_used"])
-            self.assertIn("falling back", proc.stderr.lower())
-            self.assertEqual(payload["data"]["warnings"][0]["code"], "E_MAIL_ROOT_NOT_FOUND")
+            self.assertFalse(payload["data"]["fallback_used"])
+            self.assertIn("legacy apple", proc.stderr.lower())
+            self.assertEqual(payload["data"]["warnings"][0]["code"], "W_LEGACY_APPLE_BACKEND")
 
     def test_draft_dry_run_and_send_requires_confirmation(self):
         _, payload = run_cli(["draft", "--to", "a@example.com", "--subject", "Hi", "--body", "Hello", "--dry-run"], env={"DOBBY_MAIL_DEFAULT_FROM": "default@example.com"})
