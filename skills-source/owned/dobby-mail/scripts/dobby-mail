@@ -32,7 +32,7 @@ from typing import Any, Iterable
 
 SCHEMA_VERSION = "1.0"
 TOOL = "dobby-mail"
-VERSION = "0.4.0"
+VERSION = "0.5.0"
 
 EXIT_OK = 0
 EXIT_FAILURE = 1
@@ -1698,7 +1698,46 @@ def gmail_access_token(account: str, timeout_sec: int) -> str:
     return access
 
 
+def gmail_mock_api_request(method: str, path: str) -> dict[str, Any] | None:
+    mock_file = os.environ.get("DOBBY_GMAIL_API_MOCK_FILE", "").strip()
+    if not mock_file:
+        return None
+    try:
+        raw = json.loads(Path(mock_file).expanduser().read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise CliError(
+            "E_GMAIL_API_MOCK_READ",
+            f"Cannot read Gmail API mock file: {mock_file}",
+            f"Fix the test/mock fixture. Error: {exc}",
+            EXIT_DEP,
+        ) from exc
+    responses = raw.get("responses") if isinstance(raw, dict) else None
+    if not isinstance(responses, list):
+        raise CliError("E_GMAIL_API_MOCK_SCHEMA", "Gmail API mock file must contain responses[]", "Use responses with method plus path/path_contains/response.", EXIT_DEP)
+    for item in responses:
+        if not isinstance(item, dict):
+            continue
+        if str(item.get("method") or "GET").upper() != method.upper():
+            continue
+        exact = item.get("path")
+        contains = item.get("path_contains")
+        if exact is not None and str(exact) != path:
+            continue
+        if contains is not None and str(contains) not in path:
+            continue
+        if exact is None and contains is None:
+            continue
+        response = item.get("response")
+        if not isinstance(response, dict):
+            raise CliError("E_GMAIL_API_MOCK_SCHEMA", "Gmail API mock response must be an object", "Fix the mock fixture response.", EXIT_DEP)
+        return response
+    raise CliError("E_GMAIL_API_MOCK_MISS", f"No Gmail API mock response for {method} {path}", "Add a matching mock response.", EXIT_DEP)
+
+
 def gmail_api_request(account: str, method: str, path: str, body: dict[str, Any] | None, timeout_sec: int) -> dict[str, Any]:
+    mocked = gmail_mock_api_request(method, path)
+    if mocked is not None:
+        return mocked
     access_token = gmail_access_token(account, timeout_sec)
     url = "https://gmail.googleapis.com/gmail/v1/users/me/" + path.lstrip("/")
     data = json.dumps(body or {}, ensure_ascii=False).encode("utf-8") if body is not None else None
@@ -1769,6 +1808,26 @@ def resolve_gmail_account(args: argparse.Namespace) -> str:
     return account
 
 
+def resolve_gmail_read_account(args: argparse.Namespace) -> str:
+    if getattr(args, "all_accounts", False):
+        raise CliError(
+            "E_GMAIL_ALL_ACCOUNTS_UNSUPPORTED",
+            "Gmail API reads require one account",
+            "Pass --account you@example.com or set DOBBY_MAIL_DEFAULT_ACCOUNT. Use --backend fast for legacy Apple all-account reads.",
+            EXIT_USAGE,
+        )
+    raw = getattr(args, "account", None) or getattr(args, "gmail_account", None) or config_value(DEFAULT_ACCOUNT_ENV)
+    account = clean_email_address(raw)
+    if not account:
+        raise CliError(
+            "E_DEFAULT_ACCOUNT_REQUIRED",
+            f"{DEFAULT_ACCOUNT_ENV} or --account is required for Gmail API reads",
+            f"Set {DEFAULT_ACCOUNT_ENV} in the workspace .env/static defaults, or pass --account you@example.com.",
+            EXIT_USAGE,
+        )
+    return account
+
+
 def strip_gmail_message_prefix(raw: str) -> str:
     value = str(raw or "").strip()
     for prefix in ["gmail-message:", "gmail:", "message:"]:
@@ -1805,6 +1864,169 @@ def gmail_list_messages(account: str, query: str, timeout_sec: int, *, max_resul
     if not isinstance(messages, list):
         raise CliError("E_GMAIL_API_BAD_JSON", "Gmail API messages.list returned malformed messages", "Retry or inspect Gmail API status.", EXIT_FAILURE)
     return [m for m in messages if isinstance(m, dict)]
+
+
+GMAIL_METADATA_HEADERS = ["From", "To", "Cc", "Bcc", "Subject", "Date", "Message-ID", "In-Reply-To", "References"]
+
+
+def gmail_query_from_dates(date_from: str | None, date_to: str | None) -> str:
+    parts: list[str] = []
+
+    def gmail_date(raw: str) -> str:
+        text = raw.strip()
+        if re.fullmatch(r"\d{4}-\d{2}-\d{2}", text):
+            parsed = dt.datetime.fromisoformat(text)
+        else:
+            parsed = dt.datetime.fromisoformat(text.replace("Z", "+00:00"))
+            if parsed.tzinfo:
+                parsed = parsed.astimezone(dt.timezone.utc).replace(tzinfo=None)
+        return parsed.strftime("%Y/%m/%d")
+
+    if date_from:
+        parts.append(f"after:{gmail_date(date_from)}")
+    if date_to:
+        parts.append(f"before:{gmail_date(date_to)}")
+    return " ".join(parts)
+
+
+def gmail_get_message(account: str, gmail_id: str, timeout_sec: int, *, fmt: str = "full", metadata_headers: list[str] | None = None) -> dict[str, Any]:
+    params: list[tuple[str, str]] = [("format", fmt)]
+    for header in metadata_headers or []:
+        params.append(("metadataHeaders", header))
+    suffix = "?" + urllib.parse.urlencode(params) if params else ""
+    return gmail_api_request(account, "GET", f"messages/{quoted_gmail_id(gmail_id)}{suffix}", None, timeout_sec)
+
+
+def gmail_header_map(payload: dict[str, Any]) -> dict[str, str]:
+    headers: dict[str, str] = {}
+    for item in payload.get("headers") or []:
+        if not isinstance(item, dict):
+            continue
+        name = str(item.get("name") or "").strip()
+        value = str(item.get("value") or "")
+        if name:
+            headers[name.lower()] = value
+    return headers
+
+
+def gmail_internal_date_iso(raw: Any) -> str | None:
+    if raw is None:
+        return None
+    try:
+        ms = int(str(raw))
+        return dt.datetime.fromtimestamp(ms / 1000, tz=dt.timezone.utc).isoformat().replace("+00:00", "Z")
+    except (TypeError, ValueError, OSError, OverflowError):
+        return None
+
+
+def gmail_decode_body_data(raw: str | None) -> str:
+    if not raw:
+        return ""
+    padded = raw + "=" * (-len(raw) % 4)
+    try:
+        return base64.urlsafe_b64decode(padded.encode("ascii")).decode("utf-8", errors="replace")
+    except Exception:
+        return ""
+
+
+def gmail_walk_parts(payload: dict[str, Any]) -> Iterable[dict[str, Any]]:
+    yield payload
+    for part in payload.get("parts") or []:
+        if isinstance(part, dict):
+            yield from gmail_walk_parts(part)
+
+
+def gmail_extract_content(payload: dict[str, Any], max_body_chars: int | None = None) -> tuple[str | None, str | None, list[dict[str, Any]]]:
+    plain_parts: list[str] = []
+    html_parts: list[str] = []
+    attachments: list[dict[str, Any]] = []
+    for part in gmail_walk_parts(payload):
+        mime = str(part.get("mimeType") or "").lower()
+        body = part.get("body") if isinstance(part.get("body"), dict) else {}
+        filename = str(part.get("filename") or "").strip()
+        attachment_id = body.get("attachmentId")
+        size = body.get("size")
+        if filename or attachment_id:
+            attachments.append({
+                "filename": filename or None,
+                "content_type": part.get("mimeType"),
+                "size_bytes": size,
+                "attachment_id": attachment_id,
+                "part_id": part.get("partId"),
+            })
+        data = body.get("data")
+        if not data:
+            continue
+        text = gmail_decode_body_data(str(data))
+        if not text.strip():
+            continue
+        if mime == "text/plain":
+            plain_parts.append(text)
+        elif mime == "text/html":
+            html_parts.append(text)
+    plain = "\n".join(p.strip() for p in plain_parts if p and p.strip()) or None
+    html = "\n".join(p.strip() for p in html_parts if p and p.strip()) or None
+    if max_body_chars is not None:
+        if plain and len(plain) > max_body_chars:
+            plain = plain[: max_body_chars - 1] + "…"
+        if html and len(html) > max_body_chars:
+            html = html[: max_body_chars - 1] + "…"
+    return plain, html, attachments
+
+
+def normalize_gmail_message(result: dict[str, Any], *, include_body: bool = False, max_body_chars: int | None = None) -> dict[str, Any]:
+    payload = result.get("payload") if isinstance(result.get("payload"), dict) else {}
+    headers = gmail_header_map(payload)
+    msg: dict[str, Any] = {
+        "id": f"gmail-message:{result.get('id')}" if result.get("id") else None,
+        "backend": "gmail-api",
+        "gmail_message_id": result.get("id"),
+        "gmail_thread_id": result.get("threadId"),
+        "thread_id": result.get("threadId"),
+        "source_message_id": headers.get("message-id"),
+        "subject": headers.get("subject"),
+        "sender": headers.get("from"),
+        "to": headers.get("to"),
+        "cc": headers.get("cc"),
+        "date_received": gmail_internal_date_iso(result.get("internalDate")),
+        "date_sent": headers.get("date"),
+        "snippet": result.get("snippet"),
+        "label_ids": result.get("labelIds") or [],
+        "history_id": result.get("historyId"),
+        "size_bytes": result.get("sizeEstimate"),
+        "read_status": False if "UNREAD" in (result.get("labelIds") or []) else True,
+        "threading_supported": True,
+        "headers": headers,
+    }
+    if include_body:
+        body_text, body_html, attachments = gmail_extract_content(payload, max_body_chars=max_body_chars)
+        msg["body_text"] = body_text
+        msg["body_html"] = body_html
+        msg["attachments"] = attachments
+        msg["body_unavailable_reason"] = None if (body_text or body_html) else "E_GMAIL_BODY_EMPTY"
+    return msg
+
+
+def command_gmail_search_read(args: argparse.Namespace, warnings: WarningSink, *, query: str) -> dict[str, Any]:
+    limit = clamp_limit(args.limit)
+    account = resolve_gmail_read_account(args)
+    matches = gmail_list_messages(account, query, args.timeout_sec, max_results=limit, include_spam_trash=getattr(args, "include_spam_trash", True))
+    messages = []
+    for match in matches:
+        gmail_id = str(match.get("id") or "").strip()
+        if not gmail_id:
+            continue
+        full = gmail_get_message(account, gmail_id, args.timeout_sec, fmt="metadata", metadata_headers=GMAIL_METADATA_HEADERS)
+        messages.append(normalize_gmail_message(full, include_body=False))
+    return {
+        "backend": "gmail-api",
+        "requested_backend": getattr(args, "backend", "auto"),
+        "fallback_used": False,
+        "gmail_account": account,
+        "query": query,
+        "messages": messages,
+        "warnings": warnings.items,
+    }
 
 
 def resolve_gmail_message_target(args: argparse.Namespace, account: str) -> dict[str, Any]:
@@ -2344,6 +2566,9 @@ def command_mailboxes(args: argparse.Namespace, warnings: WarningSink) -> dict[s
 
 
 def command_search(args: argparse.Namespace, warnings: WarningSink) -> dict[str, Any]:
+    if getattr(args, "backend", "auto") in {"auto", "gmail-api"}:
+        return command_gmail_search_read(args, warnings, query=args.query)
+
     limit = clamp_limit(args.limit)
     account_scope = resolve_account_scope(args, warnings)
     backend, fallback, result = run_with_fallback(
@@ -2365,6 +2590,16 @@ def command_search(args: argparse.Namespace, warnings: WarningSink) -> dict[str,
 
 
 def command_recent(args: argparse.Namespace, warnings: WarningSink) -> dict[str, Any]:
+    if getattr(args, "backend", "auto") in {"auto", "gmail-api"}:
+        parts = []
+        date_query = gmail_query_from_dates(getattr(args, "date_from", None), getattr(args, "date_to", None))
+        if date_query:
+            parts.append(date_query)
+        label = str(getattr(args, "label", "") or "inbox").strip()
+        if label:
+            parts.append(f"in:{label}")
+        return command_gmail_search_read(args, warnings, query=" ".join(parts).strip() or "in:inbox")
+
     args.query = None
     return command_search(args, warnings)
 
@@ -2379,6 +2614,36 @@ def normalize_message_id(raw: str) -> tuple[str, str]:
 def command_get(args: argparse.Namespace, warnings: WarningSink) -> dict[str, Any]:
     kind, value = normalize_message_id(args.id)
     max_body_chars = args.max_body_chars
+    if getattr(args, "backend", "auto") in {"auto", "gmail-api"}:
+        if kind in {"gmail", "gmail-message", "message"}:
+            gmail_id = strip_gmail_message_prefix(args.id)
+        elif kind in {"fast", "rowid", "mail", "draft"}:
+            if getattr(args, "backend", "auto") == "gmail-api":
+                raise CliError(
+                    "E_GMAIL_ID_UNSUPPORTED",
+                    f"Gmail backend cannot read {kind}: ids",
+                    "Use a gmail-message:<id> from Gmail search/recent, or explicitly pass --backend fast/mail-app for legacy Apple ids.",
+                    EXIT_USAGE,
+                )
+            # Explicit old ids should not silently route to Gmail. Keep legacy
+            # Apple behavior for a transitional auto path.
+            legacy_args = argparse.Namespace(**vars(args))
+            legacy_args.backend = "fast" if kind in {"fast", "rowid"} else "mail-app"
+            return command_get(legacy_args, warnings)
+        else:
+            gmail_id = value
+        account = resolve_gmail_read_account(args)
+        full = gmail_get_message(account, gmail_id, args.timeout_sec, fmt="full")
+        msg = normalize_gmail_message(full, include_body=True, max_body_chars=max_body_chars)
+        return {
+            "backend": "gmail-api",
+            "requested_backend": getattr(args, "backend", "auto"),
+            "fallback_used": False,
+            "gmail_account": account,
+            "message": msg,
+            "warnings": warnings.items,
+        }
+
     account_scope = resolve_account_scope(args, warnings)
 
     def fast_get() -> dict[str, Any]:
@@ -2681,6 +2946,85 @@ def command_gmail_block_sender(args: argparse.Namespace, warnings: WarningSink) 
     # "blocked sender" primitive. This command intentionally means:
     # create a future-message filter that sends matching mail to Trash.
     return command_gmail_filter(args, warnings, default_action="trash", command_action="created_sender_trash_filter")
+
+
+def command_history(args: argparse.Namespace, warnings: WarningSink) -> dict[str, Any]:
+    account = resolve_gmail_read_account(args)
+    if not getattr(args, "since", None):
+        profile = gmail_api_request(account, "GET", "profile", None, args.timeout_sec)
+        return {
+            "backend": "gmail-api",
+            "gmail_account": account,
+            "mode": "baseline",
+            "history_id": profile.get("historyId"),
+            "email_address": profile.get("emailAddress"),
+            "messages_total": profile.get("messagesTotal"),
+            "threads_total": profile.get("threadsTotal"),
+            "messages": [],
+            "deleted_message_ids": [],
+            "next_action": "store history_id and pass it as --since on the next poll",
+            "warnings": warnings.items,
+        }
+
+    params: list[tuple[str, str]] = [
+        ("startHistoryId", str(args.since)),
+        ("maxResults", str(clamp_limit(args.limit))),
+    ]
+    if getattr(args, "label", None):
+        params.append(("labelId", str(args.label)))
+    for history_type in getattr(args, "history_type", None) or ["messageAdded"]:
+        params.append(("historyTypes", str(history_type)))
+
+    all_added: dict[str, dict[str, Any]] = {}
+    deleted: list[str] = []
+    page_token: str | None = getattr(args, "page", None)
+    latest_history_id: str | None = None
+    pages = 0
+    while True:
+        page_params = list(params)
+        if page_token:
+            page_params.append(("pageToken", page_token))
+        path = "history?" + urllib.parse.urlencode(page_params)
+        result = gmail_api_request(account, "GET", path, None, args.timeout_sec)
+        latest_history_id = str(result.get("historyId") or latest_history_id or "")
+        for history in result.get("history") or []:
+            if not isinstance(history, dict):
+                continue
+            for entry in history.get("messagesAdded") or []:
+                msg = entry.get("message") if isinstance(entry, dict) else None
+                if isinstance(msg, dict) and msg.get("id"):
+                    all_added[str(msg["id"])] = msg
+            for entry in history.get("messagesDeleted") or []:
+                msg = entry.get("message") if isinstance(entry, dict) else None
+                if isinstance(msg, dict) and msg.get("id"):
+                    deleted.append(str(msg["id"]))
+        page_token = result.get("nextPageToken")
+        pages += 1
+        if not page_token or pages >= max(1, int(getattr(args, "max_pages", 1) or 1)):
+            break
+
+    messages = []
+    if getattr(args, "fetch", False):
+        for gmail_id in sorted(all_added):
+            fmt = "full" if getattr(args, "include_body", False) else "metadata"
+            full = gmail_get_message(account, gmail_id, args.timeout_sec, fmt=fmt, metadata_headers=GMAIL_METADATA_HEADERS if fmt == "metadata" else None)
+            messages.append(normalize_gmail_message(full, include_body=bool(getattr(args, "include_body", False)), max_body_chars=getattr(args, "max_body_chars", None)))
+
+    return {
+        "backend": "gmail-api",
+        "gmail_account": account,
+        "mode": "incremental",
+        "since_history_id": str(args.since),
+        "history_id": latest_history_id,
+        "added_message_ids": sorted(all_added),
+        "deleted_message_ids": deleted,
+        "messages": messages,
+        "fetched": bool(getattr(args, "fetch", False)),
+        "pages_read": pages,
+        "has_more": bool(page_token),
+        "next_page_token": page_token,
+        "warnings": warnings.items,
+    }
 
 
 def command_selected(args: argparse.Namespace, warnings: WarningSink) -> dict[str, Any]:
