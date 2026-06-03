@@ -12,8 +12,8 @@ Date: 2026-05-29
 ## Public Routing Snapshot
 | Hostname | Observed Route | Cleanup Decision |
 | --- | --- | --- |
-| `adithyan.io` | Cloudflare proxied to Mac mini tunnel `f1037d14-4b4b-4f72-8f6f-cac8bfe38119.cfargotunnel.com`; tunnel ingress to `127.0.0.1:8793` | Monitor, then remove Azure fallback resources when comfortable |
-| `www.adithyan.io` | Cloudflare proxied to Mac mini tunnel `f1037d14-4b4b-4f72-8f6f-cac8bfe38119.cfargotunnel.com`; tunnel ingress to `127.0.0.1:8793` | Monitor, then remove Azure fallback resources when comfortable |
+| `adithyan.io` | Cloudflare proxied to Mac mini tunnel `f1037d14-4b4b-4f72-8f6f-cac8bfe38119.cfargotunnel.com`; tunnel ingress to `127.0.0.1:8793` | Monitor, then remove remaining Azure Web App resources when comfortable. Azure deploy workflow removed. |
+| `www.adithyan.io` | Cloudflare proxied to Mac mini tunnel `f1037d14-4b4b-4f72-8f6f-cac8bfe38119.cfargotunnel.com`; tunnel ingress to `127.0.0.1:8793` | Monitor, then remove remaining Azure Web App resources when comfortable. Azure deploy workflow removed. |
 | `mindreader.adithyan.io` | Cloudflare proxied to `whos-in-your-head-adi.azurewebsites.net` | Keep |
 | `aipodcast.ing` | DNS-only to `ghost-endpoint-cpg9bkeyfrdedfbq.z02.azurefd.net` | Keep until planned migration |
 | `app.aipodcast.ing` | DNS-only to `ghost-endpoint-cpg9bkeyfrdedfbq.z02.azurefd.net` | Keep until planned migration |
@@ -55,6 +55,7 @@ Date: 2026-05-29
   - `https://adithyan.io/api/health` returned HTTP 200 with `{"service":"blog-personal","status":"ok"}`.
   - `https://www.adithyan.io/api/health` returned HTTP 200 with `{"service":"blog-personal","status":"ok"}`.
   - `https://adithyan.io/`, `https://www.adithyan.io/`, and `https://adithyan.io/blog` returned HTTP 200.
+- 2026-06-03: Removed the `blog-personal` GitHub Actions Azure Web App deploy workflow after Mac mini cutover validation.
 - 2026-05-29: Remaining Front Door routes/custom domains after cleanup:
   - `thoughtforms-route` -> `thoughtforms-life.aipodcast.ing` -> `thoughtforms-life.azurewebsites.net`
   - `aipodcasting-landing-route` -> `aipodcast.ing` -> `aipodcasting-public-website.azurewebsites.net`

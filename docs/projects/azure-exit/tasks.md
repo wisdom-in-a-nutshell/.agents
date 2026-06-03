@@ -83,7 +83,7 @@ The current deployment has a meaningful daily floor cost from Azure App Service 
 - [ ] Create and maintain `resources/baseline-routing.md` with current Azure/Cloudflare route map and cleanup evidence.
 - [ ] Build a full hostname ownership table for all Azure App Service, Front Door, Cloudflare, Vercel, and tunnel-backed hostnames.
 - [ ] Use `~/GitHub/scripts/docs/references/mac-mini-cloudflare-tunnel.md` as the Mac mini tunnel-backed hostname inventory while planning local replacements.
-- [ ] Monitor `adithyan.io` / `www.adithyan.io` after Mac mini cutover, then decide when to remove Azure Web App hostname bindings, Azure deploy workflow fallback, and the `blog-personal-adi` app.
+- [ ] Monitor `adithyan.io` / `www.adithyan.io` after Mac mini cutover, then decide when to remove Azure Web App hostname bindings and the `blog-personal-adi` app. The Azure deploy workflow has been removed.
 - [ ] Create or recover a tracked `dobby-dashboard` service LaunchAgent installer for the existing `adi.adithyan.io` and `angie.adithyan.io` local services.
 - [ ] Draft a no-change migration runbook for `thoughtforms-life.aipodcast.ing` as the first likely Front Door replacement candidate.
 - [ ] Decide whether to delete empty `ghost-backup-vault-lrs` after portal/CLI confirmation.
@@ -113,3 +113,4 @@ The current deployment has a meaningful daily floor cost from Azure App Service 
 - 2026-05-29: [DONE] Next recommended work is documentation-only first: draft the `thoughtforms-life.aipodcast.ing` Front Door migration runbook, then review before any DNS or Azure mutation.
 - 2026-06-03: [DONE] Consolidated shared Mac mini Cloudflare Tunnel ownership into `~/GitHub/scripts`; current Cloudflare audit shows `dobby-dashboard` already tunnel-backed via `adi.adithyan.io` / `angie.adithyan.io`, while `blog-personal` remains Azure-backed through proxied Cloudflare CNAMEs for `adithyan.io` and `www.adithyan.io`.
 - 2026-06-03: [DONE] Cut over `adithyan.io` and `www.adithyan.io` from `blog-personal-adi.azurewebsites.net` to the Mac mini Cloudflare Tunnel. Local service is `com.dobby.blog-personal` on `127.0.0.1:8793`; public `/api/health` returned `{"service":"blog-personal","status":"ok"}` for both hostnames.
+- 2026-06-03: [DONE] Removed the `blog-personal` GitHub Actions Azure Web App deploy workflow so commits cannot deploy the site back to Azure.
