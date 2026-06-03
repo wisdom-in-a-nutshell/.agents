@@ -122,6 +122,13 @@ Cloudflare Access:
 https://agents.adithyan.io/
 ```
 
+The shared tunnel inventory, launchd owner, and cross-service validation
+commands live in:
+
+```text
+~/GitHub/scripts/docs/references/mac-mini-cloudflare-tunnel.md
+```
+
 Cloudflare Access protects the entire hostname. The current policy allows only:
 
 ```text

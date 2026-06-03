@@ -82,6 +82,9 @@ The current deployment has a meaningful daily floor cost from Azure App Service 
 ## Backlog / Remaining Work
 - [ ] Create and maintain `resources/baseline-routing.md` with current Azure/Cloudflare route map and cleanup evidence.
 - [ ] Build a full hostname ownership table for all Azure App Service, Front Door, Cloudflare, Vercel, and tunnel-backed hostnames.
+- [ ] Use `~/GitHub/scripts/docs/references/mac-mini-cloudflare-tunnel.md` as the Mac mini tunnel-backed hostname inventory while planning local replacements.
+- [ ] Create a `blog-personal` local service LaunchAgent and cutover runbook for `adithyan.io` / `www.adithyan.io`.
+- [ ] Create or recover a tracked `dobby-dashboard` service LaunchAgent installer for the existing `adi.adithyan.io` and `angie.adithyan.io` local services.
 - [ ] Draft a no-change migration runbook for `thoughtforms-life.aipodcast.ing` as the first likely Front Door replacement candidate.
 - [ ] Decide whether to delete empty `ghost-backup-vault-lrs` after portal/CLI confirmation.
 - [ ] Audit Redis callers and decide whether `aip-redis` can be removed, replaced, or left temporarily.
@@ -108,3 +111,4 @@ The current deployment has a meaningful daily floor cost from Azure App Service 
 - 2026-05-29: [DONE] Read-only deep audit confirmed `adithyan-io` and `www-adithyan-io` custom domains disappeared from Front Door. Remaining Front Door domains are `thoughtforms-life.aipodcast.ing`, `podcast.futureoflife.org`, `aipodcast.ing`, and `app.aipodcast.ing`.
 - 2026-05-29: [DONE] Read-only deep audit found 14-day usage signals: App Service plan averaged about 15.8% CPU and 38.4% memory; Front Door served about 227k requests and 96 GB response; Redis averaged about 2.4 clients, 0% memory, and 0.19 ops/sec; databases are active and should not be treated as quick cleanup.
 - 2026-05-29: [DONE] Next recommended work is documentation-only first: draft the `thoughtforms-life.aipodcast.ing` Front Door migration runbook, then review before any DNS or Azure mutation.
+- 2026-06-03: [DONE] Consolidated shared Mac mini Cloudflare Tunnel ownership into `~/GitHub/scripts`; current Cloudflare audit shows `dobby-dashboard` already tunnel-backed via `adi.adithyan.io` / `angie.adithyan.io`, while `blog-personal` remains Azure-backed through proxied Cloudflare CNAMEs for `adithyan.io` and `www.adithyan.io`.
