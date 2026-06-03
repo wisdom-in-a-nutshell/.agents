@@ -85,7 +85,7 @@ The current deployment has a meaningful daily floor cost from Azure App Service 
 - [ ] Use `~/GitHub/scripts/docs/references/mac-mini-cloudflare-tunnel.md` as the Mac mini tunnel-backed hostname inventory while planning local replacements.
 - [ ] Monitor `adithyan.io` / `www.adithyan.io` after Mac mini cutover, then decide when to remove Azure Web App hostname bindings and the `blog-personal-adi` app. The Azure deploy workflow has been removed.
 - [ ] Monitor `mindreader.adithyan.io` after Mac mini cutover, then decide when to remove Azure Web App hostname bindings and the `whos-in-your-head-adi` app. The Azure deploy workflow has been removed.
-- [ ] Create or recover a tracked `dobby-dashboard` service LaunchAgent installer for the existing `adi.adithyan.io` and `angie.adithyan.io` local services.
+- [x] Create or recover a tracked `dobby-dashboard` service LaunchAgent installer for the existing `adi.adithyan.io` and `angie.adithyan.io` local services.
 - [ ] Draft a no-change migration runbook for `thoughtforms-life.aipodcast.ing` as the first likely Front Door replacement candidate.
 - [ ] Decide whether to delete empty `ghost-backup-vault-lrs` after portal/CLI confirmation.
 - [ ] Audit Redis callers and decide whether `aip-redis` can be removed, replaced, or left temporarily.
@@ -117,3 +117,4 @@ The current deployment has a meaningful daily floor cost from Azure App Service 
 - 2026-06-03: [DONE] Removed the `blog-personal` GitHub Actions Azure Web App deploy workflow so commits cannot deploy the site back to Azure.
 - 2026-06-03: [DONE] Cut over `mindreader.adithyan.io` from `whos-in-your-head-adi.azurewebsites.net` to the Mac mini Cloudflare Tunnel. Local service is `com.dobby.whos-in-your-head` on `127.0.0.1:8794`; public `/api/health` returned `{"ok":true,"service":"whos-in-your-head"}` and `/api/openai/status` confirmed runtime config.
 - 2026-06-03: [DONE] Removed the `whos-in-your-head` GitHub Actions Azure Web App deploy workflow and container deploy artifacts.
+- 2026-06-03: [DONE] Added tracked `dobby-dashboard` LaunchAgent installer for `adi.adithyan.io` and `angie.adithyan.io`; reloaded both local services and verified `/api/health` on `127.0.0.1:8766` and `127.0.0.1:8767`.
