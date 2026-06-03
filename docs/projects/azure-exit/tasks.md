@@ -27,7 +27,7 @@ The current deployment has a meaningful daily floor cost from Azure App Service 
 - Cloudflare token currently allows zone DNS reads/writes but returned `403` for account-level tunnels, Pages, Workers, R2, rulesets, and zone settings API calls.
 - One Linux App Service plan, `ASP-aipodcastinggroup-aef6` (`P1mv3`), hosts 10 container apps with `alwaysOn=true`.
 - Azure Front Door profile `ghost-front-door` routes several public hostnames to single App Service origins.
-- DNS audit showed `adithyan.io`, `www.adithyan.io`, and `mindreader.adithyan.io` are Cloudflare-proxied directly to App Service, while `aipodcast.ing`, `app.aipodcast.ing`, `thoughtforms-life.aipodcast.ing`, and `podcast.futureoflife.org` are still served through Azure Front Door.
+- DNS audit showed `adithyan.io`, `www.adithyan.io`, and `mindreader.adithyan.io` were Cloudflare-proxied directly to App Service before Mac mini tunnel cutovers, while `aipodcast.ing`, `app.aipodcast.ing`, `thoughtforms-life.aipodcast.ing`, and `podcast.futureoflife.org` are still served through Azure Front Door.
 - Deep audit on 2026-05-29 showed the stale `adithyan.io` and `www.adithyan.io` Front Door custom-domain deletes completed; remaining Front Door custom domains are `thoughtforms-life.aipodcast.ing`, `podcast.futureoflife.org`, `aipodcast.ing`, and `app.aipodcast.ing`.
 - Front Door origins use `*.azurewebsites.net` as the origin host header. Direct requests to those Azure origins with the public hostname returned 404 during audit, so active Front Door hostnames need an App Service custom-domain/TLS or host-header plan before DNS is flipped to Cloudflare.
 - User approved immediate cleanup for:
@@ -84,6 +84,7 @@ The current deployment has a meaningful daily floor cost from Azure App Service 
 - [ ] Build a full hostname ownership table for all Azure App Service, Front Door, Cloudflare, Vercel, and tunnel-backed hostnames.
 - [ ] Use `~/GitHub/scripts/docs/references/mac-mini-cloudflare-tunnel.md` as the Mac mini tunnel-backed hostname inventory while planning local replacements.
 - [ ] Monitor `adithyan.io` / `www.adithyan.io` after Mac mini cutover, then decide when to remove Azure Web App hostname bindings and the `blog-personal-adi` app. The Azure deploy workflow has been removed.
+- [ ] Monitor `mindreader.adithyan.io` after Mac mini cutover, then decide when to remove Azure Web App hostname bindings and the `whos-in-your-head-adi` app. The Azure deploy workflow has been removed.
 - [ ] Create or recover a tracked `dobby-dashboard` service LaunchAgent installer for the existing `adi.adithyan.io` and `angie.adithyan.io` local services.
 - [ ] Draft a no-change migration runbook for `thoughtforms-life.aipodcast.ing` as the first likely Front Door replacement candidate.
 - [ ] Decide whether to delete empty `ghost-backup-vault-lrs` after portal/CLI confirmation.
@@ -114,3 +115,5 @@ The current deployment has a meaningful daily floor cost from Azure App Service 
 - 2026-06-03: [DONE] Consolidated shared Mac mini Cloudflare Tunnel ownership into `~/GitHub/scripts`; current Cloudflare audit shows `dobby-dashboard` already tunnel-backed via `adi.adithyan.io` / `angie.adithyan.io`, while `blog-personal` remains Azure-backed through proxied Cloudflare CNAMEs for `adithyan.io` and `www.adithyan.io`.
 - 2026-06-03: [DONE] Cut over `adithyan.io` and `www.adithyan.io` from `blog-personal-adi.azurewebsites.net` to the Mac mini Cloudflare Tunnel. Local service is `com.dobby.blog-personal` on `127.0.0.1:8793`; public `/api/health` returned `{"service":"blog-personal","status":"ok"}` for both hostnames.
 - 2026-06-03: [DONE] Removed the `blog-personal` GitHub Actions Azure Web App deploy workflow so commits cannot deploy the site back to Azure.
+- 2026-06-03: [DONE] Cut over `mindreader.adithyan.io` from `whos-in-your-head-adi.azurewebsites.net` to the Mac mini Cloudflare Tunnel. Local service is `com.dobby.whos-in-your-head` on `127.0.0.1:8794`; public `/api/health` returned `{"ok":true,"service":"whos-in-your-head"}` and `/api/openai/status` confirmed runtime config.
+- 2026-06-03: [DONE] Removed the `whos-in-your-head` GitHub Actions Azure Web App deploy workflow and container deploy artifacts.
