@@ -83,8 +83,8 @@ The current deployment has a meaningful daily floor cost from Azure App Service 
 - [ ] Create and maintain `resources/baseline-routing.md` with current Azure/Cloudflare route map and cleanup evidence.
 - [ ] Build a full hostname ownership table for all Azure App Service, Front Door, Cloudflare, Vercel, and tunnel-backed hostnames.
 - [ ] Use `~/GitHub/scripts/docs/references/mac-mini-cloudflare-tunnel.md` as the Mac mini tunnel-backed hostname inventory while planning local replacements.
-- [ ] Monitor `adithyan.io` / `www.adithyan.io` after Mac mini cutover, then decide when to remove Azure Web App hostname bindings and the `blog-personal-adi` app. The Azure deploy workflow has been removed.
-- [ ] Monitor `mindreader.adithyan.io` after Mac mini cutover, then decide when to remove Azure Web App hostname bindings and the `whos-in-your-head-adi` app. The Azure deploy workflow has been removed.
+- [x] Remove Azure Web App leftovers for `adithyan.io` / `www.adithyan.io`: `blog-personal-adi`, its ACR repository, and the stale `adithyan.io` origin certificate.
+- [x] Remove Azure Web App leftovers for `mindreader.adithyan.io`: `whos-in-your-head-adi`, its ACR repository, and stale app hostname bindings.
 - [x] Create or recover a tracked `dobby-dashboard` service LaunchAgent installer for the existing `adi.adithyan.io` and `angie.adithyan.io` local services.
 - [ ] Draft a no-change migration runbook for `thoughtforms-life.aipodcast.ing` as the first likely Front Door replacement candidate.
 - [ ] Decide whether to delete empty `ghost-backup-vault-lrs` after portal/CLI confirmation.
@@ -118,3 +118,5 @@ The current deployment has a meaningful daily floor cost from Azure App Service 
 - 2026-06-03: [DONE] Cut over `mindreader.adithyan.io` from `whos-in-your-head-adi.azurewebsites.net` to the Mac mini Cloudflare Tunnel. Local service is `com.dobby.whos-in-your-head` on `127.0.0.1:8794`; public `/api/health` returned `{"ok":true,"service":"whos-in-your-head"}` and `/api/openai/status` confirmed runtime config.
 - 2026-06-03: [DONE] Removed the `whos-in-your-head` GitHub Actions Azure Web App deploy workflow and container deploy artifacts.
 - 2026-06-03: [DONE] Added tracked `dobby-dashboard` LaunchAgent installer for `adi.adithyan.io` and `angie.adithyan.io`; reloaded both local services and verified `/api/health` on `127.0.0.1:8766` and `127.0.0.1:8767`.
+- 2026-06-03: [DONE] Hardened the Mac mini service pattern: compacted `blog-personal` LaunchAgent status output and documented the app-owned launchd installer boundary in `~/GitHub/scripts/docs/references/mac-mini-cloudflare-tunnel.md`.
+- 2026-06-03: [DONE] Removed obsolete Azure Web Apps `blog-personal-adi` and `whos-in-your-head-adi`; removed ACR repositories `blog-personal-adi` and `whos-in-your-head`; deleted stale `cf-origin-adithyan-io` certificate. Post-cleanup Azure app list no longer includes either app, ACR no longer lists either repository, and public health checks still pass for `adithyan.io`, `www.adithyan.io`, and `mindreader.adithyan.io`.

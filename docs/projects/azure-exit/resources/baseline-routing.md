@@ -12,9 +12,9 @@ Date: 2026-05-29
 ## Public Routing Snapshot
 | Hostname | Observed Route | Cleanup Decision |
 | --- | --- | --- |
-| `adithyan.io` | Cloudflare proxied to Mac mini tunnel `f1037d14-4b4b-4f72-8f6f-cac8bfe38119.cfargotunnel.com`; tunnel ingress to `127.0.0.1:8793` | Monitor, then remove remaining Azure Web App resources when comfortable. Azure deploy workflow removed. |
-| `www.adithyan.io` | Cloudflare proxied to Mac mini tunnel `f1037d14-4b4b-4f72-8f6f-cac8bfe38119.cfargotunnel.com`; tunnel ingress to `127.0.0.1:8793` | Monitor, then remove remaining Azure Web App resources when comfortable. Azure deploy workflow removed. |
-| `mindreader.adithyan.io` | Cloudflare proxied to Mac mini tunnel `f1037d14-4b4b-4f72-8f6f-cac8bfe38119.cfargotunnel.com`; tunnel ingress to `127.0.0.1:8794` | Monitor, then remove remaining Azure Web App resources when comfortable. Azure deploy workflow removed. |
+| `adithyan.io` | Cloudflare proxied to Mac mini tunnel `f1037d14-4b4b-4f72-8f6f-cac8bfe38119.cfargotunnel.com`; tunnel ingress to `127.0.0.1:8793` | Azure Web App, ACR repo, and stale origin cert removed after cutover validation. |
+| `www.adithyan.io` | Cloudflare proxied to Mac mini tunnel `f1037d14-4b4b-4f72-8f6f-cac8bfe38119.cfargotunnel.com`; tunnel ingress to `127.0.0.1:8793` | Azure Web App, ACR repo, and stale origin cert removed after cutover validation. |
+| `mindreader.adithyan.io` | Cloudflare proxied to Mac mini tunnel `f1037d14-4b4b-4f72-8f6f-cac8bfe38119.cfargotunnel.com`; tunnel ingress to `127.0.0.1:8794` | Azure Web App and ACR repo removed after cutover validation. |
 | `aipodcast.ing` | DNS-only to `ghost-endpoint-cpg9bkeyfrdedfbq.z02.azurefd.net` | Keep until planned migration |
 | `app.aipodcast.ing` | DNS-only to `ghost-endpoint-cpg9bkeyfrdedfbq.z02.azurefd.net` | Keep until planned migration |
 | `thoughtforms-life.aipodcast.ing` | DNS-only to `ghost-endpoint-cpg9bkeyfrdedfbq.z02.azurefd.net` | Keep until planned migration |
@@ -65,6 +65,18 @@ Date: 2026-05-29
   - `POST https://mindreader.adithyan.io/api/game/turn` with `{"action":"start"}` returned phase `asking`, question count `1`, and opener `Is this person alive?`.
   - `https://mindreader.adithyan.io/` returned HTTP 200.
 - 2026-06-03: Removed the `whos-in-your-head` GitHub Actions Azure Web App deploy workflow and container deploy artifacts after Mac mini cutover validation.
+- 2026-06-03: Removed Azure Web Apps:
+  - `blog-personal-adi`
+  - `whos-in-your-head-adi`
+- 2026-06-03: Removed ACR repositories:
+  - `blog-personal-adi`
+  - `whos-in-your-head`
+- 2026-06-03: Deleted stale Azure App Service certificate `cf-origin-adithyan-io`; no remaining Azure Web App has an `adithyan.io` hostname.
+- 2026-06-03: Post-cleanup validation results:
+  - Azure Web App list no longer includes `blog-personal-adi` or `whos-in-your-head-adi`.
+  - ACR repository list no longer includes `blog-personal-adi` or `whos-in-your-head`.
+  - Azure SSL certificate list no longer includes `cf-origin-adithyan-io` or another `adithyan.io` certificate in resource group `ghost`.
+  - `https://adithyan.io/api/health`, `https://www.adithyan.io/api/health`, and `https://mindreader.adithyan.io/api/health` still returned HTTP 200 from the Mac mini services.
 - 2026-05-29: Remaining Front Door routes/custom domains after cleanup:
   - `thoughtforms-route` -> `thoughtforms-life.aipodcast.ing` -> `thoughtforms-life.azurewebsites.net`
   - `aipodcasting-landing-route` -> `aipodcast.ing` -> `aipodcasting-public-website.azurewebsites.net`
