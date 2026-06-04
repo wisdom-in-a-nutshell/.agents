@@ -15,7 +15,7 @@ from tests.control_plane.support import (
 )
 
 
-class ClaudeSpikeSyncTests(TempDirTestCase):
+class ClaudeSyncTests(TempDirTestCase):
     def _write_registry(self, root: Path, skills: list[dict[str, object]]) -> Path:
         for item in skills:
             make_skill_source(root / str(item["source_path"]), str(item["skill"]))
@@ -70,7 +70,7 @@ class ClaudeSpikeSyncTests(TempDirTestCase):
 
         run_command(
             [
-                str(REPO_ROOT / "scripts/sync-claude-spike.py"),
+                str(REPO_ROOT / "scripts/sync-claude.py"),
                 "--apply",
                 "--claude-home",
                 str(claude_home),
@@ -150,7 +150,7 @@ class ClaudeSpikeSyncTests(TempDirTestCase):
 
         run_command(
             [
-                str(REPO_ROOT / "scripts/sync-claude-spike.py"),
+                str(REPO_ROOT / "scripts/sync-claude.py"),
                 "--apply",
                 "--claude-home",
                 str(claude_home),
@@ -200,7 +200,7 @@ class ClaudeSpikeSyncTests(TempDirTestCase):
 
         run_command(
             [
-                str(REPO_ROOT / "scripts/sync-claude-spike.py"),
+                str(REPO_ROOT / "scripts/sync-claude.py"),
                 "--apply",
                 "--claude-home",
                 str(claude_home),
@@ -222,6 +222,109 @@ class ClaudeSpikeSyncTests(TempDirTestCase):
         self.assertFalse((claude_home / "skills/repo-only").exists())
         self.assertFalse((repo_b / ".claude/skills/repo-b-only").exists())
 
+    def test_apply_renders_repo_dev_server_launch_config(self) -> None:
+        root = self.temp_path / "agents"
+        registry = self._write_registry(root, [])
+        github_root = self.temp_path / "GitHub"
+        repo_a = init_git_repo(github_root / "repo-a")
+        claude_home = self.temp_path / "claude"
+        dev_servers = write_json(
+            root / "dev-servers/registry.json",
+            {
+                "managed_dev_servers": [
+                    {
+                        "repo": "repo-a",
+                        "servers": [
+                            {
+                                "name": "dev",
+                                "runtimeExecutable": "pnpm",
+                                "runtimeArgs": ["dev"],
+                                "port": 3000,
+                                "autoPort": True,
+                            }
+                        ],
+                    }
+                ]
+            },
+        )
+
+        run_command(
+            [
+                str(REPO_ROOT / "scripts/sync-claude.py"),
+                "--apply",
+                "--claude-home",
+                str(claude_home),
+                "--github-root",
+                str(github_root),
+                "--repo",
+                "repo-a",
+                "--dev-servers-registry",
+                str(dev_servers),
+                "--skip-skills",
+                "--skip-global-context",
+                "--skip-settings",
+                "--skip-launcher",
+                str(registry),
+            ]
+        )
+
+        launch = json.loads((repo_a / ".claude/launch.json").read_text(encoding="utf-8"))
+        self.assertEqual("0.0.1", launch["version"])
+        self.assertEqual(1, len(launch["configurations"]))
+        config = launch["configurations"][0]
+        self.assertEqual("pnpm", config["runtimeExecutable"])
+        self.assertEqual(["dev"], config["runtimeArgs"])
+        self.assertEqual(3000, config["port"])
+        self.assertTrue(config["autoPort"])
+
+    def test_dev_server_launch_config_is_opt_in_per_repo(self) -> None:
+        root = self.temp_path / "agents"
+        registry = self._write_registry(root, [])
+        github_root = self.temp_path / "GitHub"
+        repo_a = init_git_repo(github_root / "repo-a")
+        repo_b = init_git_repo(github_root / "repo-b")
+        claude_home = self.temp_path / "claude"
+        dev_servers = write_json(
+            root / "dev-servers/registry.json",
+            {
+                "managed_dev_servers": [
+                    {
+                        "repo": "repo-a",
+                        "servers": [
+                            {
+                                "name": "dev",
+                                "runtimeExecutable": "pnpm",
+                                "runtimeArgs": ["dev"],
+                                "port": 3000,
+                            }
+                        ],
+                    }
+                ]
+            },
+        )
+
+        run_command(
+            [
+                str(REPO_ROOT / "scripts/sync-claude.py"),
+                "--apply",
+                "--claude-home",
+                str(claude_home),
+                "--github-root",
+                str(github_root),
+                "--dev-servers-registry",
+                str(dev_servers),
+                "--skip-skills",
+                "--skip-global-context",
+                "--skip-settings",
+                "--skip-launcher",
+                str(registry),
+            ]
+        )
+
+        # Listed repo gets a launch config; unlisted repo is never touched.
+        self.assertTrue((repo_a / ".claude/launch.json").is_file())
+        self.assertFalse((repo_b / ".claude/launch.json").exists())
+
     def test_apply_merges_trusted_workspaces(self) -> None:
         root = init_git_repo(self.temp_path / "agents")
         registry = self._write_registry(root, [])
@@ -235,7 +338,7 @@ class ClaudeSpikeSyncTests(TempDirTestCase):
 
         run_command(
             [
-                str(REPO_ROOT / "scripts/sync-claude-spike.py"),
+                str(REPO_ROOT / "scripts/sync-claude.py"),
                 "--apply",
                 "--claude-home",
                 str(claude_home),
@@ -268,7 +371,7 @@ class ClaudeSpikeSyncTests(TempDirTestCase):
 
         run_command(
             [
-                str(REPO_ROOT / "scripts/sync-claude-spike.py"),
+                str(REPO_ROOT / "scripts/sync-claude.py"),
                 "--apply",
                 "--skip-yolo",
                 "--skip-settings",

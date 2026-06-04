@@ -1,0 +1,29 @@
+{
+  "version": 1,
+  "description": "Canonical, frontend-agnostic dev/preview server definitions per repo. Rendered into each runtime's own format (Claude Code: .claude/launch.json; Codex/others: their own consumers). Opt-in only: a repo gets a launch surface ONLY if it appears here. Repos not listed are never touched, so public repos and served public/ directories are never written to.",
+  "paths": {
+    "github_root": "~/GitHub"
+  },
+  "managed_dev_servers": [
+    {
+      "repo": "blog-personal",
+      "servers": [
+        {
+          "name": "blog dev (next)",
+          "runtimeExecutable": "pnpm",
+          "runtimeArgs": ["dev"],
+          "port": 3000,
+          "autoPort": true
+        },
+        {
+          "name": "blog production (local standalone)",
+          "runtimeExecutable": "pnpm",
+          "runtimeArgs": ["start"],
+          "port": 8793,
+          "autoPort": false
+        }
+      ]
+    }
+  ],
+  "unmanaged_repo_local_dev_servers": []
+}

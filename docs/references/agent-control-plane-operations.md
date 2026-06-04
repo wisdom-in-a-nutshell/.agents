@@ -21,7 +21,7 @@ For repo authors adding `scripts/hooks/*.py`, start with
   - machine-facing full bootstrap batch
   - syncs managed skill links from `skills/registry.json`
   - syncs managed repo local Git `core.hooksPath` to the shared Git hooks directory
-  - applies temporary Antigravity and Claude Code spike surfaces
+  - applies the Claude Code control-plane surface
   - applies the Codex runtime via `codex/scripts/bootstrap-machine-codex.sh`
 - `scripts/auto-apply-agent-control-planes.sh`
   - machine-facing post-sync reconcile entrypoint
@@ -39,8 +39,8 @@ For repo authors adding `scripts/hooks/*.py`, start with
 - `scripts/sync-managed-git-hooks.sh`
   - sets repo-local `core.hooksPath` to `~/.agents/hooks/git`
   - supports `--check`
-- `scripts/sync-claude-spike.sh`
-  - temporary Claude Code bootstrap surface
+- `scripts/sync-claude.sh`
+  - Claude Code control-plane bootstrap surface
   - renders `~/.claude/CLAUDE.md` from the global agent guidance source
   - renders managed global skill links under `~/.claude/skills`
   - renders managed repo-scoped skill links under each target repo's
@@ -49,6 +49,8 @@ For repo authors adding `scripts/hooks/*.py`, start with
   - enables YOLO through Claude Code's native bypass mode, not through
     broad `PreToolUse` or `PermissionRequest` auto-allow hooks
   - renders a `~/bin/claude` wrapper that starts sessions with `--dangerously-skip-permissions`
+  - renders per-repo dev-server launch configs (`.claude/launch.json`) from
+    `dev-servers/registry.json`, opt-in per repo (only listed repos are touched)
 - `scripts/switch-claude-provider.sh`
   - switches the machine-local Claude Code credential profile used by the
     wrapper
@@ -100,7 +102,7 @@ cd ~/.agents
 ./scripts/test-control-plane.sh
 ./scripts/sync-managed-git-hooks.sh --apply
 ./scripts/sync-managed-git-hooks.sh --check
-./scripts/sync-claude-spike.sh --apply
+./scripts/sync-claude.sh --apply
 ./scripts/switch-claude-provider.sh status
 ./scripts/switch-claude-provider.sh subscription --apply
 ./scripts/switch-claude-provider.sh aws --apply

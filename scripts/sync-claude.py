@@ -12,14 +12,17 @@ from pathlib import Path
 from typing import Any
 
 
-# Temporary Claude Code experiment: keep isolated until the durable
-# cross-runtime bootstrap model is clear.
+# Durable Claude Code control-plane sync: renders global instructions, skills,
+# settings/hooks, the launcher, and per-repo dev-server launch configs from the
+# canonical sources in ~/.agents.
 DEFAULT_CLAUDE_HOME = Path.home() / ".claude"
 DEFAULT_GITHUB_ROOT = Path.home() / "GitHub"
 DEFAULT_GLOBAL_CONTEXT_SOURCE = Path.home() / ".agents" / "codex" / "config" / "global.agents.md"
 DEFAULT_GLOBAL_CONTEXT_TARGET = Path.home() / ".claude" / "CLAUDE.md"
 DEFAULT_LAUNCHER_TARGET = Path.home() / "bin" / "claude"
 DEFAULT_REAL_CLI_PATH = Path("/opt/homebrew/bin/claude")
+DEFAULT_DEV_SERVERS_REGISTRY = Path.home() / ".agents" / "dev-servers" / "registry.json"
+LAUNCH_CONFIG_VERSION = "0.0.1"
 CLAUDE_STOP_COMMAND = "python3 ~/.agents/hooks/scripts/claude_stop.py"
 ALLOWED_SCOPES = {"global", "repo", "dormant"}
 PRUNED_REPO_DIR_NAMES = {
@@ -495,6 +498,90 @@ def render_launcher(launcher_target: Path, real_cli_path: Path, apply: bool) -> 
     launcher_target.chmod(0o755)
 
 
+def load_dev_servers(registry_file: Path) -> list[dict[str, Any]]:
+    data = read_json_object(registry_file)
+    raw_items = data.get("managed_dev_servers", [])
+    if not isinstance(raw_items, list):
+        raise ValueError("managed_dev_servers must be an array")
+    entries: list[dict[str, Any]] = []
+    for idx, item in enumerate(raw_items):
+        if not isinstance(item, dict):
+            raise ValueError(f"managed_dev_servers[{idx}] must be an object")
+        repo = ensure_str(item.get("repo"), "repo", "managed_dev_servers", idx)
+        servers_raw = item.get("servers", [])
+        if not isinstance(servers_raw, list) or not servers_raw:
+            raise ValueError(f"managed_dev_servers[{idx}] needs a non-empty servers array")
+        servers: list[dict[str, Any]] = []
+        label = f"managed_dev_servers[{idx}].servers"
+        for sidx, server in enumerate(servers_raw):
+            if not isinstance(server, dict):
+                raise ValueError(f"{label}[{sidx}] must be an object")
+            name = ensure_str(server.get("name"), "name", label, sidx)
+            runtime = ensure_str(server.get("runtimeExecutable"), "runtimeExecutable", label, sidx)
+            args_raw = server.get("runtimeArgs", [])
+            if not isinstance(args_raw, list) or not all(isinstance(arg, str) for arg in args_raw):
+                raise ValueError(f"{label}[{sidx}] runtimeArgs must be an array of strings")
+            port = server.get("port")
+            if not isinstance(port, int) or isinstance(port, bool):
+                raise ValueError(f"{label}[{sidx}] port must be an integer")
+            config: dict[str, Any] = {
+                "name": name,
+                "runtimeExecutable": runtime,
+                "runtimeArgs": list(args_raw),
+                "port": port,
+            }
+            if "autoPort" in server:
+                auto_port = server.get("autoPort")
+                if not isinstance(auto_port, bool):
+                    raise ValueError(f"{label}[{sidx}] autoPort must be a boolean")
+                config["autoPort"] = auto_port
+            servers.append(config)
+        entries.append({"repo": repo, "servers": servers})
+
+    seen: set[str] = set()
+    duplicates = sorted(
+        entry["repo"] for entry in entries if entry["repo"] in seen or seen.add(entry["repo"])
+    )
+    if duplicates:
+        raise ValueError(f"duplicate dev-server repo entries: {', '.join(duplicates)}")
+    return entries
+
+
+def render_launch_config(target: Path, desired: dict[str, Any], apply: bool) -> None:
+    existing = read_json_object(target)
+    if existing == desired:
+        print(f"UNCHANGED {target}")
+        return
+    print(f"SYNC {target} (dev-server launch config)")
+    if not apply:
+        return
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_text(json.dumps(desired, indent=2, sort_keys=False) + "\n", encoding="utf-8")
+
+
+def render_launch_configs(
+    entries: list[dict[str, Any]],
+    github_root: Path,
+    repo_filters: set[Path],
+    apply: bool,
+) -> None:
+    home = Path.home()
+    for entry in entries:
+        repo_root = resolve_repo_root(entry["repo"], github_root, home)
+        if repo_filters and repo_root not in repo_filters:
+            continue
+        actual_repo = repo_git_root(repo_root)
+        if actual_repo is None:
+            if repo_root.exists():
+                print(f"WARNING: skipping existing non-git path: {repo_root}", file=sys.stderr)
+            continue
+        if repo_filters and actual_repo not in repo_filters:
+            continue
+        desired = {"version": LAUNCH_CONFIG_VERSION, "configurations": entry["servers"]}
+        target = actual_repo / ".claude" / "launch.json"
+        render_launch_config(target, desired, apply)
+
+
 def run_sync(args: argparse.Namespace) -> None:
     registry_file = absolute_path(Path(args.registry_file).expanduser()).resolve()
     claude_home = absolute_path(Path(args.claude_home).expanduser()).resolve()
@@ -528,11 +615,19 @@ def run_sync(args: argparse.Namespace) -> None:
         render_settings(claude_home / "settings.json", trusted, args.apply, args.skip_yolo)
     if not args.skip_launcher:
         render_launcher(launcher_target, real_cli_path, args.apply)
+    if not args.skip_launch_configs:
+        dev_servers_registry = absolute_path(Path(args.dev_servers_registry).expanduser()).resolve()
+        render_launch_configs(
+            load_dev_servers(dev_servers_registry),
+            github_root,
+            repo_filters,
+            args.apply,
+        )
 
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Spike sync for Claude Code global instructions, skills, hooks, and YOLO launcher."
+        description="Sync Claude Code global instructions, skills, settings/hooks, launcher, and per-repo dev-server launch configs."
     )
     parser.add_argument("--apply", action="store_true", help="Apply changes (default is dry-run).")
     parser.add_argument("--claude-home", default=str(DEFAULT_CLAUDE_HOME), help="Claude Code user directory.")
@@ -549,6 +644,16 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--skip-launcher", action="store_true", help="Do not render Claude launcher.")
     parser.add_argument("--skip-skills", action="store_true", help="Do not render Claude skill links.")
     parser.add_argument(
+        "--dev-servers-registry",
+        default=str(DEFAULT_DEV_SERVERS_REGISTRY),
+        help="Canonical dev-server registry JSON for per-repo Claude launch configs.",
+    )
+    parser.add_argument(
+        "--skip-launch-configs",
+        action="store_true",
+        help="Do not render per-repo dev-server launch configs (.claude/launch.json).",
+    )
+    parser.add_argument(
         "registry_file",
         nargs="?",
         default=str(Path.home() / ".agents" / "skills" / "registry.json"),
@@ -562,7 +667,7 @@ def main() -> int:
     try:
         run_sync(args)
     except ValueError as exc:
-        print(f"Claude spike sync failed: {exc}", file=sys.stderr)
+        print(f"Claude sync failed: {exc}", file=sys.stderr)
         return 1
     if args.apply:
         print("Apply complete.")

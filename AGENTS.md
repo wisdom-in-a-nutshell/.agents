@@ -15,6 +15,7 @@ Personal agent, Codex, and repo-local lifecycle hook control plane.
 - `plugins/registry.json` is the canonical plugin registry.
 - `mcp/config/presets.json` is the canonical shared MCP registry.
 - `hooks/registry.json` is the canonical Codex lifecycle hook registry.
+- `dev-servers/registry.json` is the canonical, frontend-agnostic dev/preview server registry. The Claude sync renders per-repo `.claude/launch.json` from it; other runtimes (Codex, etc.) consume the same source. It is opt-in per repo: a repo gets a launch surface only if listed, so public repos and served `public/` directories are never written to.
 - `codex/` holds canonical personal Codex control-plane inputs.
 - `codex/config/global.agents.md` is the canonical machine-wide guidance source for `~/.codex/AGENTS.md`.
 - `codex/config/bundled-skills-policy.json` is the canonical policy for classifying OpenAI-bundled Codex skills that appear under `~/.codex/skills/.system` or `~/.codex/skills/codex-primary-runtime`.
@@ -86,6 +87,7 @@ Detailed operations live in:
 - If `plugins/registry.json` changes, run plugin sync/check in the same change.
 - Do not hand-edit generated repo-local `.codex/config.toml` files in managed repos; update `codex/config/repo-bootstrap.json` and re-run the sync scripts.
 - Do not hand-edit generated repo-local `.codex/hooks.json` files in managed repos; update `hooks/registry.json` and re-run the sync scripts.
+- Do not hand-edit generated repo-local `.claude/launch.json` files in managed repos; update `dev-servers/registry.json` and re-run `scripts/sync-claude.sh`.
 - When a new OpenAI-bundled Codex skill appears locally, classify it in `codex/config/bundled-skills-policy.json` as either `allowed` or `disabled`; do not leave it as untracked local runtime drift.
 - When changing shared bootstrap inputs such as `mcp/config/presets.json`, `codex/config/repo-bootstrap.json`, or repo MCP assignment, prefer `./scripts/bootstrap-machine-agent-control-planes.sh --apply --repo <repo>` so Codex runtime and repo-local Codex hook state are re-rendered together. Use component-only scripts only for intentional single-surface troubleshooting.
 - If `mcp/config/presets.json` changes, run Codex control-plane validation in the same change.
