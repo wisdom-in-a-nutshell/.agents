@@ -111,7 +111,6 @@ export function CatalogExplorer({
         <thead>
           <tr>
             <th>Name</th>
-            <th className="cat-scope-h">Scope</th>
             <th>Used by</th>
             <th className="cat-src-h">Source</th>
           </tr>
@@ -122,11 +121,6 @@ export function CatalogExplorer({
               <td className="cat-name">
                 <span className="cat-name-main">{item.name}</span>
                 {subtitle(item) ? <span className="cat-sub">{subtitle(item)}</span> : null}
-              </td>
-              <td className="cat-scope-c">
-                <span className={`cat-scope ${isGlobal(item) ? 'g' : 'r'}`}>
-                  {isGlobal(item) ? 'global' : 'repo'}
-                </span>
               </td>
               <td className="cat-used">
                 <UsedBy item={item} totalRepos={totalRepos} />
