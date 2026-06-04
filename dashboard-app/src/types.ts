@@ -1,4 +1,5 @@
 export type SectionId =
+  | 'board'
   | 'overview'
   | 'attention'
   | 'repos'
@@ -7,7 +8,7 @@ export type SectionId =
   | 'mcp'
   | 'hooks';
 
-export type ItemKind = 'skill' | 'plugin' | 'mcp' | 'hook' | 'repo' | 'warning';
+export type ItemKind = 'skill' | 'plugin' | 'mcp' | 'hook' | 'repo' | 'dev_server' | 'warning';
 
 export interface ItemDetails {
   origin?: string;
@@ -28,6 +29,14 @@ export interface ItemDetails {
   runtimes?: string[];
   timeout?: number;
   code?: string;
+  servers?: string[];
+  server_count?: number;
+  ports?: number[];
+  skill_count?: number;
+  plugin_count?: number;
+  mcp_count?: number;
+  hook_count?: number;
+  dev_count?: number;
   [key: string]: unknown;
 }
 
@@ -65,6 +74,7 @@ export interface Counts {
   mcp: number;
   repos: number;
   hooks: number;
+  dev_servers: number;
   warnings: number;
   global: number;
   repo_scoped: number;
@@ -77,12 +87,32 @@ export interface Groups {
   mcp: Item[];
   repos: Item[];
   hooks: Item[];
+  dev_servers: Item[];
+}
+
+export type RuntimeStatus = 'stable' | 'new' | 'planned' | 'na';
+
+export interface RuntimeCell {
+  status: RuntimeStatus;
+  note: string;
+}
+
+export interface Capability {
+  key: string;
+  name: string;
+  desc: string;
+  source: string;
+  count: number | null;
+  codex: RuntimeCell;
+  claude: RuntimeCell;
 }
 
 export interface ControlPlaneData {
   schema_version: string;
   generated_at_utc: string;
   repo_root: string;
+  runtimes?: string[];
+  capabilities?: Capability[];
   sources: Record<string, SourceRef>;
   counts: Counts;
   warnings: Warning[];

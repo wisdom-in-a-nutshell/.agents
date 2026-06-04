@@ -305,6 +305,7 @@ export function metricsForSection(d: ControlPlaneData, section: SectionId): Metr
 
 // ---- Filters -------------------------------------------------------------
 export const filterOptions: Record<SectionId, FilterOption[]> = {
+  board: [{ id: 'all', label: 'All' }],
   overview: [{ id: 'all', label: 'All' }],
   attention: [
     { id: 'all', label: 'All' },
@@ -468,6 +469,7 @@ export function countForFilter(
 
 // ---- Section meta + sources ---------------------------------------------
 export const sectionMeta: Record<SectionId, { eyebrow: string; title: string }> = {
+  board: { eyebrow: 'Control Plane', title: 'Capabilities × runtimes' },
   overview: { eyebrow: 'Overview', title: 'Control-plane status' },
   attention: { eyebrow: 'Attention', title: 'Needs attention' },
   repos: { eyebrow: 'Repos', title: 'Managed repo map' },
@@ -479,6 +481,8 @@ export const sectionMeta: Record<SectionId, { eyebrow: string; title: string }> 
 
 export function navCount(d: ControlPlaneData, section: SectionId): number {
   switch (section) {
+    case 'board':
+      return d.capabilities?.length ?? 0;
     case 'overview':
       return d.counts.items;
     case 'attention':

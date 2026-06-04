@@ -72,6 +72,10 @@ the Mac-backed `local_transcription` provider, keeps cache enabled, uploads
 local files under R2 `cache/`, and returns `data.transcript` plus
 `data.artifacts.transcript_url`, `data.artifacts.words_url`, and
 `data.artifacts.sentences_url`.
+Pass `--identify-speakers` when the transcript should run WIN speaker
+identification before returning artifacts; YouTube title/description context is
+added by WIN when available. Optional flags: `--speaker-identification-context`
+and `--force-speaker-identification`.
 
 Segment an image:
 

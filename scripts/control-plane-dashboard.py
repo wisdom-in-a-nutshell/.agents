@@ -31,7 +31,77 @@ REGISTRY_SOURCES = {
     "mcp": "mcp/config/presets.json",
     "hooks": "hooks/registry.json",
     "repos": "codex/config/repo-bootstrap.json",
+    "dev_servers": "dev-servers/registry.json",
 }
+
+RUNTIMES = ["codex", "claude"]
+
+
+def build_capability_board(counts: dict[str, Any]) -> list[dict[str, Any]]:
+    """Declarative capability x runtime model, populated with live counts.
+
+    status is one of: stable | new | planned | na. The wiring (which runtime
+    consumes which lever) is the durable model of this control plane; the counts
+    come from the live registries.
+    """
+    return [
+        {
+            "key": "knowledge", "name": "Knowledge",
+            "desc": "Global guidance the agent wakes up with",
+            "source": "codex/config/global.agents.md", "count": None,
+            "codex": {"status": "stable", "note": "~/.codex/AGENTS.md"},
+            "claude": {"status": "stable", "note": "~/.claude/CLAUDE.md"},
+        },
+        {
+            "key": "skills", "name": "Skills",
+            "desc": "Reusable procedures",
+            "source": "skills/registry.json", "count": counts.get("skills"),
+            "codex": {"status": "stable", "note": "~/.codex/skills"},
+            "claude": {"status": "stable", "note": "~/.claude/skills + repo"},
+        },
+        {
+            "key": "mcp", "name": "Tools · MCP",
+            "desc": "External endpoints the agent can call",
+            "source": "mcp/config/presets.json", "count": counts.get("mcp"),
+            "codex": {"status": "stable", "note": "rendered to config.toml"},
+            "claude": {"status": "planned", "note": "not yet control-plane wired"},
+        },
+        {
+            "key": "plugins", "name": "Plugins",
+            "desc": "Codex-native capability bundles",
+            "source": "plugins/registry.json", "count": counts.get("plugins"),
+            "codex": {"status": "stable", "note": "global · repo · dormant"},
+            "claude": {"status": "na", "note": ""},
+        },
+        {
+            "key": "lifecycle", "name": "Lifecycle",
+            "desc": "Hooks around each turn — commit, checks, finalize",
+            "source": "hooks/registry.json", "count": counts.get("hooks"),
+            "codex": {"status": "stable", "note": "SessionStart · Prompt · Stop"},
+            "claude": {"status": "stable", "note": "Stop (via settings.json)"},
+        },
+        {
+            "key": "runtime", "name": "Runtime config",
+            "desc": "Per-repo model, effort, exposure",
+            "source": "codex/config/repo-bootstrap.json", "count": counts.get("repos"),
+            "codex": {"status": "stable", "note": ".codex/config.toml"},
+            "claude": {"status": "stable", "note": "~/.claude/settings.json"},
+        },
+        {
+            "key": "dev", "name": "Dev & Preview",
+            "desc": "How the agent runs & verifies the app",
+            "source": "dev-servers/registry.json", "count": counts.get("dev_servers"),
+            "codex": {"status": "planned", "note": "wired from ~/GitHub/scripts"},
+            "claude": {"status": "new", "note": ".claude/launch.json"},
+        },
+        {
+            "key": "design", "name": "Design",
+            "desc": "One look across every app — adi-design",
+            "source": "adi-design / tokens.css", "count": None,
+            "codex": {"status": "stable", "note": "via skill + tokens"},
+            "claude": {"status": "stable", "note": "via skill + tokens"},
+        },
+    ]
 
 
 def utc_timestamp() -> str:
@@ -225,6 +295,7 @@ def build_control_plane_data(root: Path) -> dict[str, Any]:
     mcp_registry = load_json(root / REGISTRY_SOURCES["mcp"], warnings)
     hooks_registry = load_json(root / REGISTRY_SOURCES["hooks"], warnings)
     repo_bootstrap = load_json(root / REGISTRY_SOURCES["repos"], warnings)
+    dev_servers_registry = load_json(root / REGISTRY_SOURCES["dev_servers"], warnings)
 
     repo_entries = repo_bootstrap.get("repos", [])
     if not isinstance(repo_entries, list):
@@ -502,9 +573,48 @@ def build_control_plane_data(root: Path) -> dict[str, Any]:
             )
         )
 
-    attach_repo_counts(repos, skills, plugins, mcp_presets, hooks)
+    dev_servers: list[dict[str, Any]] = []
+    raw_dev_servers = dev_servers_registry.get("managed_dev_servers", [])
+    if not isinstance(raw_dev_servers, list):
+        raw_dev_servers = []
+        warnings.append(
+            {
+                "severity": "error",
+                "code": "invalid_dev_servers_shape",
+                "message": "dev-servers/registry.json managed_dev_servers must be a list.",
+                "source": REGISTRY_SOURCES["dev_servers"],
+            }
+        )
+    for entry in raw_dev_servers:
+        if not isinstance(entry, dict):
+            continue
+        repo = str(entry.get("repo", "")).strip()
+        if not repo:
+            continue
+        servers = entry.get("servers", [])
+        servers = servers if isinstance(servers, list) else []
+        server_names = [str(s.get("name", "")).strip() for s in servers if isinstance(s, dict)]
+        ports = [s.get("port") for s in servers if isinstance(s, dict) and "port" in s]
+        dev_servers.append(
+            base_item(
+                kind="dev_server",
+                name=repo_name(repo),
+                title=f"{repo_name(repo)} dev servers",
+                scope="repo",
+                status="active" if servers else "empty",
+                source=REGISTRY_SOURCES["dev_servers"],
+                repos=[repo],
+                details={
+                    "servers": [n for n in server_names if n],
+                    "server_count": len(servers),
+                    "ports": ports,
+                },
+            )
+        )
 
-    items = skills + plugins + mcp_presets + repos + hooks
+    attach_repo_counts(repos, skills, plugins, mcp_presets, hooks, dev_servers)
+
+    items = skills + plugins + mcp_presets + repos + hooks + dev_servers
     counts = {
         "items": len(items),
         "skills": len(skills),
@@ -512,6 +622,7 @@ def build_control_plane_data(root: Path) -> dict[str, Any]:
         "mcp": len(mcp_presets),
         "repos": len(repos),
         "hooks": len(hooks),
+        "dev_servers": len(dev_servers),
         "warnings": len(warnings),
         "global": sum(1 for item in items if item["scope"] == "global"),
         "repo_scoped": sum(1 for item in items if "repo" in item["scope"]),
@@ -522,8 +633,10 @@ def build_control_plane_data(root: Path) -> dict[str, Any]:
         "schema_version": SCHEMA_VERSION,
         "generated_at_utc": utc_timestamp(),
         "repo_root": str(root),
+        "runtimes": RUNTIMES,
         "sources": sources,
         "counts": counts,
+        "capabilities": build_capability_board(counts),
         "warnings": warnings,
         "items": items,
         "groups": {
@@ -532,6 +645,7 @@ def build_control_plane_data(root: Path) -> dict[str, Any]:
             "mcp": mcp_presets,
             "repos": repos,
             "hooks": hooks,
+            "dev_servers": dev_servers,
         },
     }
 
@@ -542,13 +656,20 @@ def attach_repo_counts(
     plugins: list[dict[str, Any]],
     mcp_presets: list[dict[str, Any]],
     hooks: list[dict[str, Any]],
+    dev_servers: list[dict[str, Any]] | None = None,
 ) -> None:
+    dev_servers = dev_servers or []
     for repo in repos:
         key = repo_key(repo["name"])
         repo["details"]["skill_count"] = sum(item_applies_to_repo(item, key) for item in skills)
         repo["details"]["plugin_count"] = sum(item_applies_to_repo(item, key) for item in plugins)
         repo["details"]["mcp_count"] = sum(item_applies_to_repo(item, key) for item in mcp_presets)
         repo["details"]["hook_count"] = sum(item_applies_to_repo(item, key) for item in hooks)
+        repo["details"]["dev_count"] = sum(
+            item["details"].get("server_count", 0)
+            for item in dev_servers
+            if item_applies_to_repo(item, key)
+        )
 
 
 def item_applies_to_repo(item: dict[str, Any], repo: str) -> bool:

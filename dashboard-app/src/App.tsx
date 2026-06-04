@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useState } from 'react';
 import { useControlPlane } from './api';
+import { BoardSection } from './components/BoardSection';
 import { FilterBar, MetricsGrid, Topbar, WarningsPanel } from './components/Chrome';
 import { Sidebar } from './components/Sidebar';
 import { NavProvider } from './primitives';
@@ -8,11 +9,11 @@ import { SectionView } from './sections';
 import type { SectionId } from './types';
 
 const SIDEBAR_KEY = 'agentControlSidebarCollapsed';
-const SECTIONS: SectionId[] = ['overview', 'attention', 'repos', 'skills', 'plugins', 'mcp', 'hooks'];
+const SECTIONS: SectionId[] = ['board', 'overview', 'attention', 'repos', 'skills', 'plugins', 'mcp', 'hooks'];
 
 function initialSection(): SectionId {
   const requested = new URLSearchParams(window.location.search).get('section');
-  return SECTIONS.includes(requested as SectionId) ? (requested as SectionId) : 'overview';
+  return SECTIONS.includes(requested as SectionId) ? (requested as SectionId) : 'board';
 }
 
 export function App() {
@@ -34,7 +35,7 @@ export function App() {
     setSection(next);
     setFilter('all');
     setFocusedRepoKey('');
-    const url = next === 'overview' ? window.location.pathname : `?section=${next}`;
+    const url = next === 'board' ? window.location.pathname : `?section=${next}`;
     window.history.replaceState(null, '', url);
   }, []);
 
@@ -86,23 +87,31 @@ export function App() {
       />
       <main className="main-panel">
         {data ? (
-          <>
-            <Topbar data={data} section={section} />
-            <MetricsGrid data={data} section={section} />
-            <WarningsPanel data={data} section={section} />
-            <FilterBar data={data} section={section} filter={filter} onSelect={setFilter} />
+          section === 'board' ? (
             <section className="content-region" aria-live="polite">
               <NavProvider value={navigateToRepo}>
-                <SectionView
-                  section={section}
-                  data={data}
-                  filter={filter}
-                  query={query}
-                  focusedRepoKey={focusedRepoKey}
-                />
+                <BoardSection data={data} />
               </NavProvider>
             </section>
-          </>
+          ) : (
+            <>
+              <Topbar data={data} section={section} />
+              <MetricsGrid data={data} section={section} />
+              <WarningsPanel data={data} section={section} />
+              <FilterBar data={data} section={section} filter={filter} onSelect={setFilter} />
+              <section className="content-region" aria-live="polite">
+                <NavProvider value={navigateToRepo}>
+                  <SectionView
+                    section={section}
+                    data={data}
+                    filter={filter}
+                    query={query}
+                    focusedRepoKey={focusedRepoKey}
+                  />
+                </NavProvider>
+              </section>
+            </>
+          )
         ) : (
           <>
             <header className="topbar">

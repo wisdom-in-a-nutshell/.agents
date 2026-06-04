@@ -120,6 +120,7 @@ def _build_transcribe_parser(subparsers: argparse._SubParsersAction[Any]) -> Non
             "Examples:\n"
             "  media-toolkit transcribe --file $HOME/media/audio.mp3\n"
             "  media-toolkit transcribe --url https://example.com/audio.mp3 --output /tmp/transcribe.json\n"
+            "  media-toolkit transcribe --url https://www.youtube.com/watch?v=VIDEO_ID --identify-speakers\n"
             "  media-toolkit transcribe --file $HOME/media/audio.mp3 --no-wait"
         ),
         formatter_class=argparse.RawTextHelpFormatter,
@@ -136,6 +137,21 @@ def _build_transcribe_parser(subparsers: argparse._SubParsersAction[Any]) -> Non
         "--no-wait",
         action="store_true",
         help="Submit the job and return immediately without polling.",
+    )
+    parser.add_argument(
+        "--identify-speakers",
+        action="store_true",
+        help="Identify diarized speakers as real names before returning transcript artifacts.",
+    )
+    parser.add_argument(
+        "--speaker-identification-context",
+        default=None,
+        help="Optional extra context for speaker identification.",
+    )
+    parser.add_argument(
+        "--force-speaker-identification",
+        action="store_true",
+        help="Rerun speaker identification even if mapped speakers already exist.",
     )
 
 
@@ -712,6 +728,9 @@ def _build_command_payload(
                 "use_cache": True,
                 "provider": TRANSCRIPTION_PROVIDER,
                 "diarize": True,
+                "identify_speakers": bool(args.identify_speakers),
+                "speaker_identification_context": args.speaker_identification_context,
+                "force_speaker_identification": bool(args.force_speaker_identification),
             },
             input_meta,
         )
@@ -849,6 +868,11 @@ def _build_transcription_output(
         "artifacts": artifacts,
         "source_id": result_payload.get("source_id") if isinstance(result_payload, dict) else None,
         "provider": result_payload.get("provider") if isinstance(result_payload, dict) else None,
+        "speaker_identification": (
+            result_payload.get("speaker_identification")
+            if isinstance(result_payload, dict)
+            else None
+        ),
         "job": job_summary,
         "input": input_meta,
     }

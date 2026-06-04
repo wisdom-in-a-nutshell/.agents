@@ -24,6 +24,9 @@ Use it when an agent needs one command surface for:
   - Provider is fixed to WIN `local_transcription`
   - Cache use is fixed on
   - Diarization is fixed on
+  - Optional speaker identification: `--identify-speakers`
+    - `--speaker-identification-context` adds caller-provided hints
+    - `--force-speaker-identification` reruns existing mappings
   - Local files are uploaded to R2 `cache/`
   - Returns transcript text plus cached transcript/words/sentences artifact URLs
   - Optional file output: `--output`
