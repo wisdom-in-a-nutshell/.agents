@@ -22,7 +22,7 @@ Use this skill when the goal is to run media processing from either a local file
 1. Use the client script:
 
 ```bash
-.agents/skills/media-toolkit/scripts/media_toolkit.sh ...
+./scripts/media_toolkit.sh ...
 ```
 
 2. Prefer the canonical subcommands:
@@ -54,7 +54,7 @@ Use this skill when the goal is to run media processing from either a local file
 Upload a local file and return the uploaded media URL:
 
 ```bash
-.agents/skills/media-toolkit/scripts/media_toolkit.sh \
+./scripts/media_toolkit.sh \
   upload --file $HOME/media/video.mp4 \
   --output /tmp/upload.json
 ```
@@ -62,7 +62,7 @@ Upload a local file and return the uploaded media URL:
 Transcribe a local file:
 
 ```bash
-.agents/skills/media-toolkit/scripts/media_toolkit.sh \
+./scripts/media_toolkit.sh \
   transcribe --file $HOME/media/audio.mp3 \
   --output /tmp/transcribe.json
 ```
@@ -80,7 +80,7 @@ and `--force-speaker-identification`.
 Segment an image:
 
 ```bash
-.agents/skills/media-toolkit/scripts/media_toolkit.sh \
+./scripts/media_toolkit.sh \
   segment image --file $HOME/media/image.png \
   --prompt "black ball" \
   --output /tmp/segment-image.json
@@ -91,7 +91,7 @@ Add `--with-alpha` only when you specifically need a precomposited transparent a
 Segment a video:
 
 ```bash
-.agents/skills/media-toolkit/scripts/media_toolkit.sh \
+./scripts/media_toolkit.sh \
   segment video --file $HOME/media/video.mp4 \
   --prompt "black ball" \
   --anchor-seconds 14 \
@@ -105,7 +105,7 @@ Segment a video:
 Transform a remote video:
 
 ```bash
-.agents/skills/media-toolkit/scripts/media_toolkit.sh \
+./scripts/media_toolkit.sh \
   transform --url https://example.com/video.mp4 \
   --scale-width 1280 \
   --scale-height 720
@@ -114,7 +114,7 @@ Transform a remote video:
 Create a foreground matte and dump the manifest:
 
 ```bash
-.agents/skills/media-toolkit/scripts/media_toolkit.sh \
+./scripts/media_toolkit.sh \
   matte --file $HOME/media/video.mp4 \
   --output /tmp/matte-result.json
 ```
@@ -122,7 +122,7 @@ Create a foreground matte and dump the manifest:
 Inspect a job:
 
 ```bash
-.agents/skills/media-toolkit/scripts/media_toolkit.sh \
+./scripts/media_toolkit.sh \
   status --job-id VIDEO_TRANSFORM_123 --wait
 ```
 
