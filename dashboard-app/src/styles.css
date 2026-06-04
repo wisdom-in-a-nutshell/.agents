@@ -1069,7 +1069,10 @@ input:focus-visible {
 .cp-repo-link:hover { color: var(--accent-ink); }
 .cp-num { text-align: right; font-variant-numeric: tabular-nums; color: var(--muted); width: 72px; }
 .cp-center { text-align: center; width: 54px; }
-.cp-bar { display: inline-block; height: 5px; border-radius: 3px; background: var(--accent); vertical-align: middle; margin-left: 8px; opacity: 0.5; }
+.cp-skillcell { white-space: nowrap; text-align: right; font-variant-numeric: tabular-nums; color: var(--muted); width: 92px; }
+.cp-skillnum { display: inline-block; min-width: 18px; text-align: right; }
+.cp-track { display: inline-block; width: 48px; margin-left: 10px; text-align: left; vertical-align: middle; }
+.cp-bar { display: inline-block; height: 5px; border-radius: 3px; background: var(--accent); vertical-align: middle; opacity: 0.5; }
 .cp-devdot { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); display: inline-block; }
 .cp-faint { color: var(--faint); }
 .cp-foot { margin-top: 28px; color: var(--faint); font-size: 12px; }

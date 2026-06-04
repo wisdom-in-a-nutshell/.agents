@@ -78,9 +78,11 @@ function RepoCoverage({ repos }: { repos: Item[] }) {
                   {repoDisplayName(repo.name)}
                 </button>
               </td>
-              <td className="cp-num">
-                {skills}
-                <span className="cp-bar" style={{ width: `${w}px` }} />
+              <td className="cp-skillcell">
+                <span className="cp-skillnum">{skills}</span>
+                <span className="cp-track">
+                  <span className="cp-bar" style={{ width: `${w}px` }} />
+                </span>
               </td>
               <td className="cp-num">{repo.details.plugin_count ?? 0}</td>
               <td className="cp-num">{mcp || <span className="cp-faint">·</span>}</td>
