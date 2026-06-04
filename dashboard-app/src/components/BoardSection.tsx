@@ -108,7 +108,6 @@ export function BoardSection({ data }: { data: ControlPlaneData }) {
         <div>
           <div className="cp-brand">
             <h1>Control Plane</h1>
-            <span className="cp-dot" />
           </div>
           <p className="cp-tagline">
             How the agents are set up to write better code — every capability the runtimes inherit, and which runtime gets it.

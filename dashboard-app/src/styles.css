@@ -762,7 +762,6 @@ input:focus-visible {
 .cp-top { display: flex; align-items: baseline; justify-content: space-between; gap: 24px; flex-wrap: wrap; }
 .cp-brand { display: flex; align-items: center; gap: 9px; }
 .cp-brand h1 { font-family: var(--font-sans); font-weight: 600; font-size: 20px; letter-spacing: -0.01em; margin: 0; color: var(--text); }
-.cp-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); display: inline-block; }
 .cp-tagline { color: var(--muted); font-size: 14px; margin: 6px 0 0; max-width: 54ch; }
 .cp-meta { color: var(--faint); font-size: 12.5px; text-align: right; font-variant-numeric: tabular-nums; line-height: 1.7; }
 .cp-meta b { color: var(--muted); font-weight: 550; }
