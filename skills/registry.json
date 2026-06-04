@@ -48,8 +48,7 @@
       "origin": "owned",
       "scope": "repo",
       "repos": [
-        "adi",
-        "blog-personal"
+        "adi"
       ],
       "source_path": "skills-source/owned/pretty-mermaid",
       "upstream_ref": "-"
@@ -380,7 +379,6 @@
         "adithyan-ai-videos",
         "aipodcasting",
         "aipodcasting-public-website",
-        "blog-personal",
         "whos-in-your-head"
       ],
       "source_path": "skills-source/external/vercel-react-best-practices",
@@ -394,7 +392,6 @@
         "adithyan-ai-videos",
         "aipodcasting",
         "aipodcasting-public-website",
-        "blog-personal",
         "whos-in-your-head",
         "~/.agents",
         "adi",
@@ -412,16 +409,6 @@
       ],
       "source_path": "skills-source/external/remotion",
       "upstream_ref": "remotion-dev/remotion:packages/skills/skills/remotion@main"
-    },
-    {
-      "skill": "web-typography",
-      "origin": "external",
-      "scope": "repo",
-      "repos": [
-        "blog-personal"
-      ],
-      "source_path": "skills-source/external/web-typography",
-      "upstream_ref": "wondelai/skills:web-typography@main"
     }
   ],
   "unmanaged_repo_local_skills": [
