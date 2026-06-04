@@ -7,6 +7,12 @@ This file is machine-wide baseline guidance. Keep it generic and avoid portfolio
 ## Scope Routing
 - For repo best-practice recommendations, use [$agent-native-repo-playbook](/Users/dobby/.agents/skills-source/owned/agent-native-repo-playbook/SKILL.md).
 
+## Operating Model
+- Humans set intent, priorities, and acceptance criteria; agents implement, validate, maintain docs, and improve the harness.
+- Default to autonomous execution in trusted repos. Ask only for unclear intent, destructive or out-of-scope actions, secrets, spending, or irreversible external effects.
+- Treat repeated agent failure, check failure, review feedback, or human nudging as a harness gap. Prefer durable repo docs, tools, checks, or skills over repeating the same prompt.
+- For meaningful implementation work, report compact evidence in the final response: checks run, product/service proof when relevant, skipped validation with the reason, and any harness gap that made proof weaker.
+
 ## Global Defaults
 - Prefer automation over manual repetition.
 - Keep instructions concise, operational, and durable.
@@ -18,7 +24,6 @@ This file is machine-wide baseline guidance. Keep it generic and avoid portfolio
 - Do not assume nested `AGENTS.md` files load dynamically as you navigate later in a session; they apply when Codex starts in that subtree.
 - When a new repeatable pattern belongs to one repo, update that repo's local guidance or docs instead of expanding this global file.
 - Put durable knowledge in repo docs rather than relying on prompt-only memory.
-- If a repo defines local docs placement guidance, follow it. If not, use `docs/architecture/` for system shape and `docs/references/` for exact implementation facts.
 - Do not convert agent guidance into `README.md` by default. Use `README.md` only when a repo explicitly wants a human-facing landing page.
 - When a change clearly introduces durable behavior, architecture boundaries, or operational workflow that future work will rely on, update the relevant repo docs in the same change.
 - When choosing where docs belong inside a repo, prefer the repo's own guidance when it exists. Otherwise use `docs/architecture/` for system shape, `docs/references/` for durable facts, and project tracking docs only for active execution state. If placement is still unclear, make the best-fit update and call it out briefly.
@@ -34,10 +39,9 @@ This file is machine-wide baseline guidance. Keep it generic and avoid portfolio
 ## Git Automation (Agent Stop Hook)
 - Managed repos use the global Codex Stop hook that runs after each agent turn and auto-stages, commits, runs repo-owned fast checks through `git commit`, rebases, and pushes.
 - If repo-owned checks fail, the hook returns the failure details to the current agent so it can fix the issue in the same session.
-- Shared hook dispatch supports repo-owned Python lifecycle hooks at `scripts/hooks/session_start.py` and `scripts/hooks/user_prompt_submit.py` when those events are assigned to the repo in `~/.agents/hooks/registry.json` and those files exist. There is no managed fake `SessionEnd`; explicit thread finalization can run repo-owned, self-contained `scripts/hooks/finalize_codex_thread.py` through the global `finalize-codex-thread` command. Finalization hooks receive only the minimal contract (`schema_version`, `hook_event_name`, `thread_id`, optional `reason`) and should do their own lookups from `thread_id`.
-- Repo-owned lifecycle hook scripts receive a normalized JSON adapter payload on stdin with the original runtime payload preserved under `raw_payload`.
+- Repo-owned lifecycle hook policy and hook payload contracts belong in repo docs or the shared hook adapter reference, not in machine-wide guidance.
 - Managed repos use a shared local Git hook from `~/.agents/hooks/git/`; repo-specific commit-time checks live in `scripts/check-fast.sh` when a repo needs fast validation.
-- Keep `scripts/check-fast.sh` deterministic, local, quick, and actionable. Prefer staged/affected checks there; use `scripts/check-full.sh` for slower repo-wide validation.
+- Keep `scripts/check-fast.sh` deterministic, local, quick, and actionable; use `scripts/check-full.sh` for slower repo-wide validation.
 - Do not directly run `git commit` or `git push` for normal work unless the user explicitly asks.
 - Repo-owned automation may stage, commit, rebase, or push as part of a documented workflow; treat this as normal automation, not as a manual git operation or a warning-worthy side effect.
 - Focus on making changes and reporting what changed; the hook and repo-owned automation handle git sync.

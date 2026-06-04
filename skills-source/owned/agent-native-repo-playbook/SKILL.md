@@ -13,6 +13,13 @@ Operating model:
 - Agents always write 100% of code and maintain docs.
 - Repository structure is optimized for agent legibility and repeatability.
 
+## Modes
+- Default audit: produce recommendation-first guidance.
+- Scorecard audit: when the user asks for score, rubric, readiness, maturity, or benchmark, load `references/harness-readiness-rubric.md`.
+- AGENTS audit: when reviewing root or nested guidance, load `references/agents-md-best-practices.md`.
+- Docs audit: when reviewing docs placement or freshness, load `references/docs-structure-and-maintenance.md`.
+- Source trace: use `references/ryan-harness-principles.md`; load raw Ryan sources only when exact source lookup is requested.
+
 ## Workflow
 1. Read the repo's current guidance and structure:
    - `AGENTS.md` files
@@ -22,6 +29,8 @@ Operating model:
    - local `.agents/skills/`
 2. Compare current state against:
    - `references/best-practices.md`
+   - `references/harness-readiness-rubric.md` when scoring or benchmarking
+   - `references/ryan-harness-principles.md` when applying OpenAI harness-engineering patterns
    - `references/agents-md-best-practices.md`
    - `references/docs-structure-and-maintenance.md`
    - When recommending or writing any `AGENTS.md` content, apply `references/agents-md-best-practices.md` as the AGENTS-specific quality standard.
@@ -62,6 +71,8 @@ Operating model:
 
 ## Resources
 - `references/best-practices.md`: baseline best practices for this workflow.
+- `references/harness-readiness-rubric.md`: scorecard dimensions and output shape for agent-native readiness audits.
+- `references/ryan-harness-principles.md`: distilled Ryan Lopopolo / OpenAI harness-engineering principles adapted for this skill.
 - `references/agents-md-best-practices.md`: AGENTS quality gate, nested AGENTS decision rules, and keep/move/delete audit checklist.
 - `references/docs-structure-and-maintenance.md`: baseline docs layout and update rules.
 - `references/raw/ryan-lopopolo-openai/source-manifest.md`: Ryan Lopopolo harness-engineering source inventory and raw transcript file map; use only for source lookup or future distillation work.
