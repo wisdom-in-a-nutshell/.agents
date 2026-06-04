@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useLayoutEffect, useState } from 'react';
 import { useControlPlane } from './api';
 import { BoardSection } from './components/BoardSection';
+import { CatalogExplorer } from './components/CatalogExplorer';
 import { FilterBar, MetricsGrid, Topbar, WarningsPanel } from './components/Chrome';
 import { RepoExplorer } from './components/RepoExplorer';
 import { Sidebar } from './components/Sidebar';
@@ -97,6 +98,12 @@ export function App() {
           ) : section === 'repos' ? (
             <section className="content-region content-region-flush" aria-live="polite">
               <RepoExplorer data={data} query={query} initialRepoKey={focusedRepoKey} />
+            </section>
+          ) : section === 'skills' || section === 'plugins' || section === 'mcp' || section === 'hooks' ? (
+            <section className="content-region content-region-flush" aria-live="polite">
+              <NavProvider value={navigateToRepo}>
+                <CatalogExplorer data={data} kind={section} query={query} />
+              </NavProvider>
             </section>
           ) : (
             <>

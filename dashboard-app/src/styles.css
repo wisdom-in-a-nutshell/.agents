@@ -1166,3 +1166,9 @@ input:focus-visible {
 .entity-row:last-child,
 .compact-row:last-child { border-bottom: none; }
 .clickable-row { border-radius: 8px; }
+
+/* Catalog explorer detail extras (reuses the repo-explorer .re-* styles). */
+.re-chip-btn { cursor: pointer; font: inherit; transition: background 120ms var(--ease-out, ease), color 120ms var(--ease-out, ease); }
+.re-chip-btn:hover { background: var(--accent-line); color: var(--accent-ink); }
+.re-source-link { font-family: var(--font-mono); font-size: 12px; color: var(--accent-ink); text-decoration: none; word-break: break-all; }
+.re-source-link:hover { text-decoration: underline; }
