@@ -46,10 +46,19 @@ earns its place by signalling state, not decorating.
   Dark mode is a warm-neutral charcoal, not green, not pure black.
 - **Sage is the single accent** (`--accent`): action, selection, focus, active
   state. One accent, used sparingly. Do not introduce a second "primary."
+- **The accent is functional, never decorative.** Sage only marks things you can
+  act on or that carry state — links, active item, focus, selection. No
+  accent-colored dots, bullets, flourishes, or wordmark marks. If a spot of
+  accent isn't backed by action or state, it's ornament; cut it. (Same logic as
+  the motion rule — it earns its place by signalling, not decorating. Ornament
+  you have to justify usually wants to go.)
 - **Amber is the secondary** (`--amber`): warmth, wellbeing, journal context.
 - **Rose** (`--rose`) is rare — emphasis or a "needs a look" state only.
-- Gray-on-tint is the most common contrast failure. Body text must clear
-  4.5:1; if it's close, push toward `--text`, never toward `--faint`.
+- Gray-on-tint is the most common contrast failure — and *meta* text (dates,
+  captions, small labels) is where it hides. All text must clear 4.5:1, meta
+  included. The trap is hard-coding a faint neutral (e.g. `neutral-400`) to make
+  meta read "quiet"; reach for the muted token instead, which is tuned to pass.
+  If a value is close, push toward `--text`, never toward `--faint`.
 
 ## Typography
 
@@ -59,6 +68,16 @@ earns its place by signalling state, not decorating.
 - Three families, hard cap. Hierarchy comes from scale + weight, not new fonts.
 - Reading column caps at ~65–75ch. Reading line-height is generous
   (`--leading-read`).
+
+## Imagery
+
+Photos and illustrations are *content*, not chrome — the one-accent rule governs
+the UI around an image, not the image itself. Let a real photo be honestly
+full-color; don't desaturate it to grayscale or duotone it to "match" the
+palette (it reads cold, and grayscale-on-hover reveals are invisible on touch).
+The warmth of a real face or scene does the same job amber does elsewhere. Crop
+to the subject on purpose — position the crop on the face/subject, not the
+default center — so nothing important is clipped.
 
 ## Space & shape
 
