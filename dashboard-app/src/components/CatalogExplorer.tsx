@@ -1,13 +1,6 @@
 import { useState } from 'react';
 import { useNavigateRepo } from '../primitives';
-import {
-  cleanArray,
-  labelForScope,
-  repoDisplayName,
-  sourceHref,
-  sourceLabel,
-  titleCase,
-} from '../selectors';
+import { cleanArray, repoDisplayName, sourceHref, sourceLabel } from '../selectors';
 import type { ControlPlaneData, Item } from '../types';
 
 type CatalogKind = 'skills' | 'plugins' | 'mcp' | 'hooks';
@@ -19,100 +12,47 @@ const KIND_LABEL: Record<CatalogKind, string> = {
   hooks: 'Hooks',
 };
 
-function Pill({ label, value }: { label: string; value?: string | null }) {
-  if (!value) return null;
-  return (
-    <span className="re-pill">
-      <span>{label}</span>
-      <strong>{value}</strong>
-    </span>
-  );
-}
+type ScopeFilter = 'all' | 'global' | 'repo';
 
 function isGlobal(item: Item): boolean {
   return item.scope === 'global' || item.details.global === true || item.scope.split('+').includes('global');
 }
 
-function RepoUsage({ item }: { item: Item }) {
+function usage(item: Item, totalRepos: number): number {
+  return isGlobal(item) ? totalRepos : cleanArray(item.repos).length;
+}
+
+function subtitle(item: Item): string {
+  const d = item.details;
+  if (item.kind === 'skill') return String(d.source_path || '');
+  if (item.kind === 'plugin') return [d.category, d.marketplace].filter(Boolean).join(' · ');
+  if (item.kind === 'mcp') return [d.transport, d.url].filter(Boolean).join(' · ');
+  if (item.kind === 'hook') {
+    return [d.event, cleanArray(d.runtimes).join('/'), d.timeout ? `${d.timeout}s` : '']
+      .filter(Boolean)
+      .join(' · ');
+  }
+  return '';
+}
+
+function UsedBy({ item, totalRepos }: { item: Item; totalRepos: number }) {
   const navigate = useNavigateRepo();
-  if (isGlobal(item)) return <span className="re-chip accent">All repos</span>;
+  if (isGlobal(item)) return <span className="cat-all">All {totalRepos}</span>;
   const repos = cleanArray(item.repos);
   const plugins = cleanArray(item.details.plugins);
-  if (repos.length === 0 && plugins.length === 0) return <span className="re-empty">No repo assignment</span>;
+  if (repos.length === 0 && plugins.length === 0) return <span className="cat-none">—</span>;
   return (
-    <div className="re-chips">
+    <div className="cat-used-chips">
       {repos.map((r, i) => (
-        <button
-          key={`r-${r}-${i}`}
-          type="button"
-          className="re-chip accent re-chip-btn"
-          onClick={() => navigate(r)}
-        >
+        <button key={`r-${i}`} type="button" className="cat-repo" onClick={() => navigate(r)}>
           {repoDisplayName(r)}
         </button>
       ))}
       {plugins.map((p, i) => (
-        <span key={`p-${p}-${i}`} className="re-chip">
-          plugin: {p}
+        <span key={`p-${i}`} className="cat-plugin">
+          {p}
         </span>
       ))}
-    </div>
-  );
-}
-
-function Detail({ item }: { item: Item }) {
-  const d = item.details;
-  return (
-    <div className="re-detail-inner">
-      <header className="re-detail-head">
-        <h2>{item.name}</h2>
-        {d.source_path ? <code className="re-path">{d.source_path}</code> : null}
-        <div className="re-pills">
-          <Pill label="scope" value={labelForScope(item)} />
-          <Pill label="status" value={item.status} />
-          {item.kind === 'skill' ? <Pill label="origin" value={titleCase(d.origin)} /> : null}
-          {item.kind === 'plugin' ? <Pill label="category" value={d.category} /> : null}
-          {item.kind === 'plugin' ? <Pill label="marketplace" value={d.marketplace} /> : null}
-          {item.kind === 'mcp' ? <Pill label="transport" value={d.transport} /> : null}
-          {item.kind === 'hook' ? <Pill label="event" value={d.event} /> : null}
-          {item.kind === 'hook' ? <Pill label="runtimes" value={cleanArray(d.runtimes).join(', ')} /> : null}
-          {item.kind === 'hook' && d.timeout ? <Pill label="timeout" value={`${d.timeout}s`} /> : null}
-        </div>
-      </header>
-
-      {item.kind === 'mcp' && d.url ? (
-        <section className="re-cap">
-          <div className="re-cap-head">
-            <h4>Endpoint</h4>
-          </div>
-          <code className="re-path">{d.url}</code>
-        </section>
-      ) : null}
-
-      {item.kind === 'skill' && d.upstream_ref && d.upstream_ref !== '-' ? (
-        <section className="re-cap">
-          <div className="re-cap-head">
-            <h4>Upstream</h4>
-          </div>
-          <code className="re-path">{String(d.upstream_ref)}</code>
-        </section>
-      ) : null}
-
-      <section className="re-cap">
-        <div className="re-cap-head">
-          <h4>Used by</h4>
-        </div>
-        <RepoUsage item={item} />
-      </section>
-
-      <section className="re-cap">
-        <div className="re-cap-head">
-          <h4>Source</h4>
-        </div>
-        <a className="re-source-link" href={sourceHref(item)} target="_blank" rel="noreferrer">
-          {sourceLabel(item)} · {item.source}
-        </a>
-      </section>
     </div>
   );
 }
@@ -126,54 +66,81 @@ export function CatalogExplorer({
   kind: CatalogKind;
   query: string;
 }) {
+  const totalRepos = data.counts.repos;
+  const [scope, setScope] = useState<ScopeFilter>('all');
   const q = query.trim().toLowerCase();
-  const items = data.groups[kind]
-    .filter((i) => !q || i.search_text.includes(q))
+
+  const base = data.groups[kind].filter((i) => !q || i.search_text.includes(q));
+  const counts: Record<ScopeFilter, number> = {
+    all: base.length,
+    global: base.filter(isGlobal).length,
+    repo: base.filter((i) => !isGlobal(i)).length,
+  };
+  const items = base
+    .filter((i) => scope === 'all' || (scope === 'global' ? isGlobal(i) : !isGlobal(i)))
     .slice()
-    .sort((a, b) => {
-      const ag = isGlobal(a) ? 0 : 1;
-      const bg = isGlobal(b) ? 0 : 1;
-      return ag - bg || a.name.localeCompare(b.name);
-    });
-  const [selId, setSelId] = useState('');
-  const selected = items.find((i) => i.id === selId) ?? items[0];
+    .sort((a, b) => usage(b, totalRepos) - usage(a, totalRepos) || a.name.localeCompare(b.name));
+
+  const filters: Array<{ id: ScopeFilter; label: string }> = [
+    { id: 'all', label: 'All' },
+    { id: 'global', label: 'Global' },
+    { id: 'repo', label: 'Repo-scoped' },
+  ];
 
   return (
-    <div className="repo-explorer">
-      <aside className="re-list">
-        <div className="re-list-head">
-          <span>{KIND_LABEL[kind]}</span>
-          <strong>{items.length}</strong>
+    <div className="cat">
+      <div className="cat-head">
+        <h2>{KIND_LABEL[kind]}</h2>
+        <div className="cat-filters">
+          {filters.map((f) => (
+            <button
+              key={f.id}
+              type="button"
+              className={`cat-chip${scope === f.id ? ' active' : ''}`}
+              onClick={() => setScope(f.id)}
+            >
+              {f.label}
+              <strong>{counts[f.id]}</strong>
+            </button>
+          ))}
         </div>
-        <ul>
-          {items.map((item) => {
-            const isSel = selected && item.id === selected.id;
-            const repos = cleanArray(item.repos).length;
-            const meta = isGlobal(item) ? 'global' : repos ? `${repos} repo${repos > 1 ? 's' : ''}` : item.status;
-            return (
-              <li key={item.id}>
-                <button
-                  type="button"
-                  className={`re-list-item${isSel ? ' active' : ''}`}
-                  onClick={() => setSelId(item.id)}
-                >
-                  <span className="re-list-name">{item.name}</span>
-                  <span className="re-list-meta">{meta}</span>
-                </button>
-              </li>
-            );
-          })}
-        </ul>
-      </aside>
-      <div className="re-detail">
-        {selected ? (
-          <Detail item={selected} />
-        ) : (
-          <div className="empty-state">
-            <p>No {KIND_LABEL[kind].toLowerCase()} match this search.</p>
-          </div>
-        )}
+        <span className="cat-hint">sorted by how many repos use it</span>
       </div>
+
+      <table className="cat-table">
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th className="cat-scope-h">Scope</th>
+            <th>Used by</th>
+            <th className="cat-src-h">Source</th>
+          </tr>
+        </thead>
+        <tbody>
+          {items.map((item) => (
+            <tr key={item.id}>
+              <td className="cat-name">
+                <span className="cat-name-main">{item.name}</span>
+                {subtitle(item) ? <span className="cat-sub">{subtitle(item)}</span> : null}
+              </td>
+              <td className="cat-scope-c">
+                <span className={`cat-scope ${isGlobal(item) ? 'g' : 'r'}`}>
+                  {isGlobal(item) ? 'global' : 'repo'}
+                </span>
+              </td>
+              <td className="cat-used">
+                <UsedBy item={item} totalRepos={totalRepos} />
+              </td>
+              <td className="cat-src">
+                <a href={sourceHref(item)} target="_blank" rel="noreferrer">
+                  {sourceLabel(item)}
+                </a>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      {items.length === 0 ? <p className="cat-empty">No {KIND_LABEL[kind].toLowerCase()} match this view.</p> : null}
     </div>
   );
 }

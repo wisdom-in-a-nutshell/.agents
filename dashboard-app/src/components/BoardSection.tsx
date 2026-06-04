@@ -52,7 +52,6 @@ function Board({ capabilities }: { capabilities: Capability[] }) {
 
 function RepoCoverage({ repos }: { repos: Item[] }) {
   const navigate = useNavigateRepo();
-  const maxSkills = Math.max(1, ...repos.map((r) => r.details.skill_count ?? 0));
   return (
     <table className="cp-repos">
       <thead>
@@ -70,7 +69,6 @@ function RepoCoverage({ repos }: { repos: Item[] }) {
           const skills = repo.details.skill_count ?? 0;
           const mcp = repo.details.mcp_count ?? 0;
           const dev = repo.details.dev_count ?? 0;
-          const w = Math.round((skills / maxSkills) * 46);
           return (
             <tr key={repo.id}>
               <td className="cp-repo">
@@ -78,12 +76,7 @@ function RepoCoverage({ repos }: { repos: Item[] }) {
                   {repoDisplayName(repo.name)}
                 </button>
               </td>
-              <td className="cp-skillcell">
-                <span className="cp-skillnum">{skills}</span>
-                <span className="cp-track">
-                  <span className="cp-bar" style={{ width: `${w}px` }} />
-                </span>
-              </td>
+              <td className="cp-num">{skills}</td>
               <td className="cp-num">{repo.details.plugin_count ?? 0}</td>
               <td className="cp-num">{mcp || <span className="cp-faint">·</span>}</td>
               <td className="cp-num">{repo.details.hook_count ?? 0}</td>
