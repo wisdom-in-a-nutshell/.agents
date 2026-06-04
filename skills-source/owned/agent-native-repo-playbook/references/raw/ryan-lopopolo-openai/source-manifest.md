@@ -70,8 +70,9 @@ this manifest.
 
 ## Suggested Search Terms
 
-Use these with `rg -n -i` over `references/raw/*.txt` and
-`references/raw/openai-harness-engineering-article-text.md`:
+Use these with `rg -n -i` over
+`references/raw/ryan-lopopolo-openai/*.txt` and
+`references/raw/ryan-lopopolo-openai/openai-harness-engineering-article-text.md`:
 
 - `slop|guardrail|lint|test|review agent|CI|validation`
 - `AGENTS.md|skills|context|documentation|repo|repository`
