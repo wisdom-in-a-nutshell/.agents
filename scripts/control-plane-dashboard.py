@@ -875,8 +875,8 @@ def parse_args() -> argparse.Namespace:
     serve_parser.add_argument(
         "--port",
         type=int,
-        default=8765,
-        help="Port to bind (default: 8765). Use 0 to request an available port.",
+        default=int(os.environ.get("PORT", "8765")),
+        help="Port to bind (default: $PORT or 8765). Use 0 to request an available port.",
     )
     serve_parser.add_argument(
         "--open",

@@ -23,6 +23,18 @@
           "autoPort": false
         }
       ]
+    },
+    {
+      "repo": "~/.agents",
+      "servers": [
+        {
+          "name": "control-plane dashboard",
+          "runtimeExecutable": "python3",
+          "runtimeArgs": ["scripts/control-plane-dashboard.py", "serve", "--root", "."],
+          "port": 8765,
+          "autoPort": true
+        }
+      ]
     }
   ],
   "unmanaged_repo_local_dev_servers": []

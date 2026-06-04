@@ -1,0 +1,17 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "control-plane dashboard",
+      "runtimeExecutable": "python3",
+      "runtimeArgs": [
+        "scripts/control-plane-dashboard.py",
+        "serve",
+        "--root",
+        "."
+      ],
+      "port": 8765,
+      "autoPort": true
+    }
+  ]
+}
