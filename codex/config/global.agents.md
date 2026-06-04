@@ -10,6 +10,7 @@ This file is machine-wide baseline guidance. Keep it generic and avoid portfolio
 ## Operating Model
 - Humans set intent, priorities, and acceptance criteria; agents implement, validate, maintain docs, and improve the harness.
 - Default to autonomous execution in trusted repos. Ask only for unclear intent, destructive or out-of-scope actions, secrets, spending, or irreversible external effects.
+- When the next concrete step is clear, keep working through implementation, validation, cleanup, and reporting instead of pausing for permission or status.
 - Treat repeated agent failure, check failure, review feedback, or human nudging as a harness gap. Prefer durable repo docs, tools, checks, or skills over repeating the same prompt.
 - For meaningful implementation work, report compact evidence in the final response: checks run, product/service proof when relevant, skipped validation with the reason, and any harness gap that made proof weaker.
 

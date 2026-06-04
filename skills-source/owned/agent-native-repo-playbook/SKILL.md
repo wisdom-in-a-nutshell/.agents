@@ -1,6 +1,6 @@
 ---
 name: agent-native-repo-playbook
-description: Provide agent-native repository best-practice recommendations for a solo developer workflow where humans provide intent and agents write 100% of code. Use when asked how to improve AGENTS/docs/guardrails, reduce agent drift, improve autonomous execution loops, or align a repo to OpenAI harness-engineering style practices without overcomplicating process.
+description: Audit and improve repositories for a solo developer, high-permission, agent-native workflow where humans set intent and improve the harness while agents write code, docs, tests, tooling, and checks. Use for repo harness audits, readiness scores, AGENTS/docs/guardrail reviews, proof-of-work expectations, YOLO/direct-to-main workflow design, reducing agent drift, improving autonomous execution loops, or aligning repos to OpenAI harness-engineering practices without adding team-heavy process.
 ---
 
 # Agent Native Repo Playbook
