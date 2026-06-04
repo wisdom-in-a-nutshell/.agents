@@ -22,6 +22,16 @@ from lib.workspace import workspace_root
 VALID_KINDS = {"do", "buy", "remember"}
 VALID_STATUSES = {"open", "done", "dropped"}
 VIEWS = {"open", "now", "today", "upcoming", "later", "done", "dropped", "all"}
+SNAPSHOT_MODES = {"boot", "plan-day", "full"}
+SNAPSHOT_SECTION_ORDER = ("now", "today", "upcoming", "later")
+SNAPSHOT_LIMITS = {
+    # Minimal boot context: enough to orient an agent without flooding prompt.
+    "boot": {"now": 3, "today": 5, "upcoming": 2, "later": 0},
+    # Default decision surface for "what should I work on today?"
+    "plan-day": {"now": 5, "today": 8, "upcoming": 3, "later": 2},
+    # Full open-loop decision surface. Archives still live behind list --view done/dropped/all.
+    "full": {"now": 0, "today": 0, "upcoming": 0, "later": 0},
+}
 LOCAL_TIMEZONE = os.environ.get("DOBBY_LOCAL_TIMEZONE", "Europe/Berlin")
 
 
@@ -84,12 +94,19 @@ def write_state(data: dict[str, Any], command: str) -> None:
         raise ShelfError(command, "E_IO", f"failed to write Shelf: {exc}") from exc
 
 
-def show_date(item: dict[str, Any]) -> str | None:
-    value = item.get("showAt")
+def date_prefix(value: Any) -> str | None:
     if not isinstance(value, str):
         return None
     match = re.match(r"^\d{4}-\d{2}-\d{2}", value)
     return match.group(0) if match else None
+
+
+def show_date(item: dict[str, Any]) -> str | None:
+    return date_prefix(item.get("showAt"))
+
+
+def due_date(item: dict[str, Any]) -> str | None:
+    return date_prefix(item.get("dueAt"))
 
 
 def item_view(item: dict[str, Any], today: str | None = None) -> str:
@@ -199,6 +216,192 @@ def format_items_plain(view: str, state: dict[str, Any], items: list[dict[str, A
     return "\n".join(lines)
 
 
+def sort_key_for_snapshot(section: str, item: dict[str, Any]) -> tuple[str, str, str, str]:
+    """Stable, decision-useful ordering within snapshot sections."""
+    title = str(item.get("title") or "").casefold()
+    created = str(item.get("createdAt") or "")
+    due = due_date(item) or "9999-99-99"
+    show = show_date(item) or "9999-99-99"
+    if section in {"now", "today"}:
+        return (due, show, created, title)
+    if section == "upcoming":
+        return (show, due, created, title)
+    return (created, title, show, due)
+
+
+def snapshot_raw_sections(items: list[Any]) -> dict[str, list[dict[str, Any]]]:
+    today = today_local()
+    sections: dict[str, list[dict[str, Any]]] = {name: [] for name in SNAPSHOT_SECTION_ORDER}
+    for item in items:
+        if not isinstance(item, dict) or item.get("status") != "open":
+            continue
+        view = item_view(item, today)
+        if view in sections:
+            sections[view].append(item)
+    for name, section_items in sections.items():
+        section_items.sort(key=lambda item, section=name: sort_key_for_snapshot(section, item))
+    return sections
+
+
+def compact_item(item: dict[str, Any], today: str | None = None) -> dict[str, Any]:
+    """Compact projection for agent decision context.
+
+    Keep this intentionally smaller than public_item(): no long notes, source
+    metadata, raw timestamps, or archive fields unless they affect decisions.
+    """
+    today = today or today_local()
+    out: dict[str, Any] = {
+        "id": item.get("id"),
+        "title": item.get("title"),
+        "kind": item.get("kind", "do"),
+        "status": item.get("status"),
+        "view": item_view(item, today),
+    }
+    for key in ("showAt", "dueAt"):
+        if item.get(key):
+            out[key] = item.get(key)
+    show = show_date(item)
+    due = due_date(item)
+    if show:
+        out["showDate"] = show
+        if show < today:
+            out["surfaced"] = "before_today"
+        elif show == today:
+            out["surfaced"] = "today"
+    if due:
+        out["dueDate"] = due
+        if due < today:
+            out["due"] = "overdue"
+        elif due == today:
+            out["due"] = "today"
+        else:
+            out["due"] = "future"
+    if item.get("isNow") is True:
+        out["isNow"] = True
+    defer_count = item.get("deferCount")
+    if isinstance(defer_count, int) and defer_count > 0:
+        out["deferCount"] = defer_count
+    return out
+
+
+def snapshot_signals(sections: dict[str, list[dict[str, Any]]]) -> dict[str, Any]:
+    today = today_local()
+    open_items = [item for section in sections.values() for item in section]
+    now_count = len(sections["now"])
+    today_count = len(sections["today"])
+    return {
+        "has_now_focus": now_count > 0,
+        "needs_focus_choice": now_count != 1,
+        "now_overload": now_count > 3,
+        "today_overload": today_count > 7,
+        "due_overdue_count": sum(1 for item in open_items if (due_date(item) or "9999-99-99") < today),
+        "due_today_count": sum(1 for item in open_items if due_date(item) == today),
+        "surfaced_before_today_count": sum(
+            1
+            for item in sections["today"]
+            if (show_date(item) or "9999-99-99") < today
+        ),
+        "later_backlog_count": len(sections["later"]),
+    }
+
+
+def build_snapshot(state: dict[str, Any], mode: str) -> dict[str, Any]:
+    today = today_local()
+    raw_sections = snapshot_raw_sections(state.get("items", []))
+    limits = SNAPSHOT_LIMITS[mode]
+    sections: dict[str, list[dict[str, Any]]] = {}
+    hidden_counts: dict[str, int] = {}
+    for name in SNAPSHOT_SECTION_ORDER:
+        raw = raw_sections[name]
+        limit = limits[name]
+        visible = raw if limit <= 0 else raw[:limit]
+        sections[name] = [compact_item(item, today) for item in visible]
+        hidden_counts[name] = max(0, len(raw) - len(visible))
+
+    return {
+        "path": str(shelf_path().relative_to(workspace_root())),
+        "revision": state.get("revision", 0),
+        "updatedAt": state.get("updatedAt"),
+        "mode": mode,
+        "localDate": today,
+        "counts": counts(state.get("items", [])),
+        "section_counts": {name: len(raw_sections[name]) for name in SNAPSHOT_SECTION_ORDER},
+        "section_limits": limits,
+        "sections": sections,
+        "hidden_counts": hidden_counts,
+        "signals": snapshot_signals(raw_sections),
+    }
+
+
+def format_snapshot_plain(data: dict[str, Any]) -> str:
+    counts_data = data["counts"]
+    lines = [
+        (
+            f"Shelf snapshot mode={data['mode']} revision={data.get('revision', 0)} "
+            f"open={counts_data['open']} now={counts_data['now']} today={counts_data['today']} "
+            f"upcoming={counts_data['upcoming']} later={counts_data['later']}"
+        )
+    ]
+    signals = data.get("signals") or {}
+    signal_bits = [
+        f"due_overdue={signals.get('due_overdue_count', 0)}",
+        f"due_today={signals.get('due_today_count', 0)}",
+        f"surfaced_before_today={signals.get('surfaced_before_today_count', 0)}",
+    ]
+    if signals.get("now_overload"):
+        signal_bits.append("now_overload=true")
+    if signals.get("today_overload"):
+        signal_bits.append("today_overload=true")
+    if signals.get("needs_focus_choice"):
+        signal_bits.append("needs_focus_choice=true")
+    lines.append("signals: " + " ".join(signal_bits))
+
+    labels = {
+        "now": "Focus / now",
+        "today": "Today / surfaced",
+        "upcoming": "Upcoming soon",
+        "later": "Later / unscheduled",
+    }
+
+    def fmt_item(item: dict[str, Any]) -> str:
+        bits: list[str] = []
+        kind = item.get("kind")
+        if kind and kind != "do":
+            bits.append(str(kind))
+        if item.get("dueAt"):
+            bits.append(f"dueAt={item['dueAt']}")
+        if item.get("showAt"):
+            bits.append(f"showAt={item['showAt']}")
+        if item.get("isNow"):
+            bits.append("now")
+        if item.get("deferCount"):
+            bits.append(f"deferred={item['deferCount']}x")
+        if item.get("due") == "overdue":
+            bits.append("overdue")
+        suffix = f" ({', '.join(bits)})" if bits else ""
+        return f"- {item.get('id')}: {item.get('title')}{suffix}"
+
+    sections = data.get("sections") or {}
+    hidden = data.get("hidden_counts") or {}
+    printed_any_section = False
+    for name in SNAPSHOT_SECTION_ORDER:
+        items = sections.get(name) or []
+        hidden_count = int(hidden.get(name) or 0)
+        if not items and hidden_count == 0:
+            continue
+        printed_any_section = True
+        lines.append("")
+        lines.append(f"## {labels[name]}")
+        for item in items:
+            lines.append(fmt_item(item))
+        if hidden_count:
+            lines.append(f"- … {hidden_count} more hidden")
+    if not printed_any_section:
+        lines.append("")
+        lines.append("(empty)")
+    return "\n".join(lines)
+
+
 def fmt(parser: argparse.ArgumentParser) -> None:
     group = parser.add_mutually_exclusive_group()
     group.add_argument("--json", action="store_true", help="Emit JSON envelope (default)")
@@ -208,6 +411,16 @@ def fmt(parser: argparse.ArgumentParser) -> None:
 
 def add_subparsers(parent: argparse.ArgumentParser) -> None:
     sub = parent.add_subparsers(dest="shelf_cmd", required=True)
+
+    p = sub.add_parser("snapshot", help="Curated agent-facing Shelf decision surface")
+    p.add_argument(
+        "--mode",
+        choices=sorted(SNAPSHOT_MODES),
+        default="plan-day",
+        help="Snapshot density: boot, plan-day, or full open-loop surface (default: plan-day)",
+    )
+    fmt(p)
+    p.set_defaults(handler=cmd_snapshot)
 
     p = sub.add_parser("list", help="List Shelf items")
     p.add_argument("--view", choices=sorted(VIEWS), default="open", help="Shelf view to list (default: open)")
@@ -283,6 +496,13 @@ def cmd_list(args: argparse.Namespace) -> int:
         "items": [public_item(item) for item in items],
     }
     return emit_result(env, data, format_items_plain(args.view, state, items), args)
+
+
+def cmd_snapshot(args: argparse.Namespace) -> int:
+    env = Envelope("shelf.snapshot")
+    state = read_state("shelf.snapshot")
+    data = build_snapshot(state, args.mode)
+    return emit_result(env, data, format_snapshot_plain(data), args)
 
 
 def cmd_add(args: argparse.Namespace) -> int:

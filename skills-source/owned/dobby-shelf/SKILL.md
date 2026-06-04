@@ -55,6 +55,9 @@ for a real deadline.
 Use the skill-bundled CLI for ordinary Shelf operations:
 
 ```bash
+$HOME/.agents/skills-source/owned/dobby-shelf/scripts/dobby-shelf snapshot
+$HOME/.agents/skills-source/owned/dobby-shelf/scripts/dobby-shelf snapshot --mode boot
+$HOME/.agents/skills-source/owned/dobby-shelf/scripts/dobby-shelf snapshot --mode full
 $HOME/.agents/skills-source/owned/dobby-shelf/scripts/dobby-shelf list --view open
 $HOME/.agents/skills-source/owned/dobby-shelf/scripts/dobby-shelf add --title "Buy oats" --kind buy --show-at 2026-05-10
 $HOME/.agents/skills-source/owned/dobby-shelf/scripts/dobby-shelf done <id-or-prefix>
@@ -67,6 +70,30 @@ $HOME/.agents/skills-source/owned/dobby-shelf/scripts/dobby-shelf focus <id-or-p
 ```
 
 The CLI emits JSON envelopes by default; use `--plain` only for operator inspection.
+
+### Default agent picture
+
+For default Dobby reasoning, day planning, boot context, and questions like
+"what should I work on?", use:
+
+```bash
+$HOME/.agents/skills-source/owned/dobby-shelf/scripts/dobby-shelf snapshot
+```
+
+`snapshot` is a read-only decision surface, not an archive view. It groups open
+loops into `now`, `today`, `upcoming`, and `later`, returns compact item
+projections, hides long notes and done/dropped history, and includes signals
+such as overdue due dates, focus overload, and today overload.
+
+Modes:
+
+- `--mode boot` — minimal context for startup prompts.
+- `--mode plan-day` — default surface for choosing what to do today.
+- `--mode full` — all open items grouped by decision view.
+
+Use `list --view ...` when you need an exact view, `done`/`dropped` archive
+inspection, or full item payloads. Do not read raw `state/shelf.json` for
+ordinary orientation unless debugging storage shape.
 
 For workspace checks, use the skill-owned validator:
 

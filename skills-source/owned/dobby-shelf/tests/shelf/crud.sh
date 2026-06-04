@@ -35,6 +35,15 @@ assert_envelope_ok "shelf.list" "$CAPTURED_STDOUT"
 assert_jq_eq "command=shelf.list" '.command' "shelf.list" "$CAPTURED_STDOUT"
 assert_jq_eq "open count 0" '.data.counts.open' "0" "$CAPTURED_STDOUT"
 
+section "snapshot empty shelf"
+run_dobby shelf snapshot --mode boot
+assert_exit "snapshot empty exit 0" 0 "$CAPTURED_EXIT"
+assert_envelope_ok "shelf.snapshot empty" "$CAPTURED_STDOUT"
+assert_jq_eq "snapshot command" '.command' "shelf.snapshot" "$CAPTURED_STDOUT"
+assert_jq_eq "snapshot mode boot" '.data.mode' "boot" "$CAPTURED_STDOUT"
+assert_jq_eq "snapshot now count 0" '.data.section_counts.now' "0" "$CAPTURED_STDOUT"
+assert_jq_eq "snapshot has focus signal false" '.data.signals.has_now_focus' "false" "$CAPTURED_STDOUT"
+
 section "add item"
 run_dobby shelf add --title "Test Shelf Client" --kind do --show-at "$UPCOMING_DATE" --note "from test" --id test-shelf-client
 assert_exit "add exit 0" 0 "$CAPTURED_EXIT"
@@ -63,6 +72,18 @@ section "focus and plain list"
 run_dobby shelf focus test-shelf-client --on
 assert_exit "focus exit 0" 0 "$CAPTURED_EXIT"
 assert_jq_eq "isNow true" '.data.item.isNow' "true" "$CAPTURED_STDOUT"
+run_dobby shelf snapshot
+assert_exit "snapshot focused exit 0" 0 "$CAPTURED_EXIT"
+assert_envelope_ok "shelf.snapshot focused" "$CAPTURED_STDOUT"
+assert_jq_eq "snapshot default mode" '.data.mode' "plan-day" "$CAPTURED_STDOUT"
+assert_jq_eq "snapshot now item id" '.data.sections.now[0].id' "test-shelf-client" "$CAPTURED_STDOUT"
+assert_jq_eq "snapshot omits note" '.data.sections.now[0] | has("note")' "false" "$CAPTURED_STDOUT"
+assert_jq_eq "snapshot has focus signal true" '.data.signals.has_now_focus' "true" "$CAPTURED_STDOUT"
+run_dobby shelf snapshot --mode boot --plain
+assert_exit "plain snapshot exit 0" 0 "$CAPTURED_EXIT"
+assert_contains "plain snapshot includes heading" "Shelf snapshot mode=boot" "$CAPTURED_STDOUT"
+assert_contains "plain snapshot includes id" "test-shelf-client" "$CAPTURED_STDOUT"
+assert_not_contains "plain snapshot no json" '"schema_version"' "$CAPTURED_STDOUT"
 run_dobby shelf list --view now --plain
 assert_exit "plain now exit 0" 0 "$CAPTURED_EXIT"
 assert_contains "plain includes id" "test-shelf-client" "$CAPTURED_STDOUT"
