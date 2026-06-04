@@ -1,0 +1,674 @@
+Aakash Gupta:
+One of the craziest statements I heard from you was, "Code is a liability." What does that mean exactly and- Yeah, there's a bunch of different ways that this expresses, but primarily, all of our human software engineering organizations have been tooled around this idea that code is the most expensive thing to produce.
+
+Ryan Lopopolo:
+You have synchronous limited throughput of your human engineer operators on the keyboard.
+
+Aakash Gupta:
+Ryan Lopopolo led the team building it. He works on the OpenAI Frontier team, and today he is letting you inside how you can transform your code base, transform how you work to operate at the frontier. You've said that if you're not using a billion tokens a day, you're basically negligent.
+
+Ryan Lopopolo:
+The more tokens that you're running through these models, the smarter they get, the more intelligence you're able to extract from them. This is sort of like the realization behind why we have reasoning models in the first place, right? If we give the model more effort to do inference, we're actually able to get greater results out of this.
+
+Aakash Gupta:
+The engineer owns the code, the designer owns how it looks, the PM owns the problems we're trying to solve. What do the new lines look like in a new EPD org? Before we get into today's episode, I wanted to share that you can get a free year of my favorite AI tools, including Bolt.new, Mobbin, Arise, Relay App, Dovetail, Linear, Magic Patterns, Reforge Build, Descript, and Speechify, if you join my bundle at bundle.akashg.com.
+
+Aakash Gupta:
+On top of that, I wanted to quickly ask you to please double-check that you are subscribed on YouTube, Apple, and Spotify Podcasts. It's a free thing you can do that really helps support the show. And now into today's episode.
+
+Aakash Gupta:
+Every time I talk to people from OpenAI, I get the feeling that they are operating how the rest of us are going to be operating in two years, whether that's PMs and designers actually having access to the code base. How many of us still don't have access to the code base, right? Or actually building the right scaffolding so that PMs and designers can feel confident operating the code base.
+
+Aakash Gupta:
+That is the next level. And today we have on one of the people who gave the best talks on harness engineering that I have ever seen, Ryan Lopopolo. He leads one of the teams at OpenAI on the frontier, OpenAI Frontier.
+
+Aakash Gupta:
+And today he's going to break down how you can go from the old way of working to the new way of working. Ryan, thanks so much for being on the podcast.
+
+Ryan Lopopolo:
+Thanks, Akash, for having me. And I'm super excited to talk a little bit about today around, like, what it means to enter this new wave of working where we can sort of empower the machine to do much of the work for us, which frees up the humans in our organizations and teams to focus on the things that, the true value that they bring to the table, right? Scheduling the work, bringing their taste and expertise, and making sure that we're shipping actual delightful, high-quality products to the world that solve real user needs, right?
+
+Ryan Lopopolo:
+That's the job. Uh, and it's been fun to be able to experiment with how we can do that more effectively and at higher velocity.
+
+Aakash Gupta:
+I'm so glad you said that because I think there's a sort of a definitional phase we need to help people with at the front. One of the craziest statements I heard from you was, "Code is a liability." What does that mean exactly, and what has been recently enabled with the latest versions of GPT 5 and 5.5 that allows you to say that?
+
+Ryan Lopopolo:
+Yeah, there's a bunch of different ways that this expresses, but primarily, all of our human software engineering organizations have been tooled around this idea that code is the most expensive thing to produce. You have synchronous limited throughput of your human engineer operators on the keyboard, right? Uh, so there has been a high sense of, like, protectedness around that code.
+
+Ryan Lopopolo:
+It is expensive to produce. It is expensive to validate. It is expensive to deploy.
+
+Ryan Lopopolo:
+So these things have been treated as requiring the bulk of the organizational apparatus to manage. In this world we are today, where the token prediction machine, these lovely, highly advanced models that we have, Codex is fantastic at taking all the best parts of GPT 5 and putting those, uh, you know, codes and words into the world. The code is trivial to generate.
+
+Ryan Lopopolo:
+It can be generated at arbitrarily parallelism, depending on how confident you are that the code is able to solve those problems, which we will get into in a little bit more detail, right? But you kind of have to change the way you think about scheduling work and exploring when you no longer have what was the overriding constraint in your teams. And because of this, you can sort of remove humans from the loop almost entirely on that production aspect of the code, and then you have a whole host of other problems on what it means to ensure quality, right?
+
+Ryan Lopopolo:
+You have a less tight feedback loop for those human engineers, right? Because they're not physically typing on the keyboard. They can't attest to every line of code as it is produced.
+
+Ryan Lopopolo:
+But this is sort of the same spot that the rest of the organization has traditionally been in, right? Like, there is an indirection from my designer putting a mock in Figma to me actually realizing that in HTML, SVG, and CSS. There's also this lossy translation between doing customer interviews, going to a PRD, and turning that into code and deployed artifacts.
+
+Ryan Lopopolo:
+So it's kind of nice that we have this equalizing force here, where we can potentially end up in this world where every member of these software delivery teams kind of is on equal footing in terms of what it means to actually produce that executable artifact which we're delivering.
+
+Aakash Gupta:
+When everybody's on equal footing, though, what even is the purpose of roles? Traditionally, we've had this triangle, product manager, designer, engineering. We've been able to cling to what we own.
+
+Aakash Gupta:
+The engineer owns the code. The designer owns how it looks. The PM owns the problems we're trying to solve.
+
+Aakash Gupta:
+What do the new lines look like in a new EPD org that's built to take advantage of the latest this technology is offering?
+
+Ryan Lopopolo:
+Now, this is really interesting. It's a, uh, a question I've gotten a lot actually from, uh, executives and VP director-shaped folks that I'm talking to here. And everyone comes to this question with a slightly different set of priors, basically asking, "Which roles do I need to hire more of or less of?" sort of thing.
+
+Ryan Lopopolo:
+But I think that's the wrong way to answer this question. Every one of these individuals on your team brings their unique lens of viewing the world, and these coding agents have all the best parts and all the worst parts of how to build software in them. So having a diverse team with a bunch of different perspectives on what successful delivery looks like means that you're actually able to take the best parts of everybody's worldview and compile them into your single code-producing agent to do the full job.
+
+Ryan Lopopolo:
+Uh, this is sort of what it means, I think, for a GPT-5 series of models to be, like, fully agentic. They're able to do the full job. It's not just fancy autocomplete.
+
+Ryan Lopopolo:
+It's not pair programming. It's being able to go from understanding of the user challenges, understanding the actual code base we have, the design system that we're building on top of, what our typography primitives are, how we actually are able to deploy these vehicles in order to get them into the hands of users, what it means to observe whether or not they are effective, and then feeding bug reports and user feedback back into the work. This is like a fully closed loop that I would traditionally expect a team of four, five, six, seven to have to do.
+
+Ryan Lopopolo:
+But if instead, all of these different people with diverse perspectives are empowering the same agent, that one agent can kind of like, with full context, do the full job.
+
+Aakash Gupta:
+So if you were to frame what the old and the new roles are, how would you do that?
+
+Ryan Lopopolo:
+So sort of in the old way of working, you've got your engineering team who is responsible for compiling the user-visible artifacts that we want to see into code that is then deployed into the world. And to do that, because code has been very expensive to produce and loops have been long on feedback, it... This has been something that has been bounded by throughput because the human engineers need to spend a lot of synchronous time and attention maintaining the quality bar, maintaining the long-term viability of the code base as a long-lived artifact sort of thing.
+
+Ryan Lopopolo:
+And because their time has been largely focused on the production of code within this system, there has been, at least in my career, comparatively little effort around empowering others to do that same sort of work. This is why, you know, very often in organizations you see elbows out around not permitting folks outside of the team or outside of the engineering organization to contribute directly, because, uh, the code that is produced is potentially very expensive to unwind or very expensive to lift to the quality bar versus having had your, you know, expert code authors producing it from scratch. And this has sort of led to each role on the team operating within their own lane with these very expensive coordination points and handoff points between folks.
+
+Ryan Lopopolo:
+And because you have these sort of bottlenecks between handing off work, they're highly contended and low signal. There's lossiness there. It's very difficult for the designer to, in the weeds, observe how difficult it is to compile some of their mocks into code given the constraints of the design system that the engineering team is working with.
+
+Ryan Lopopolo:
+And because the designer doesn't feel that pain directly, there can be sort of either resentment or missing feedback channels from the engineers to design, which means, like, on the whole, the system is not working together as effectively as it could be. Um, sort of when I think about, you know, collaborating with my infrastructure teams and, uh, developer productivity teams, we often want to shift left as early as possible, right? We want to feel the breakage in a system before it gets to customers, before it gets to a PR, early in the developer loop, because it's easier to correct then.
+
+Ryan Lopopolo:
+Um, similarly, if it is the case that we are adopting product explorations that are difficult to prototype or experiment with because we don't have the right experimentation infrastructure here, right, as a hypothetical example, it may be difficult to push back on product priorities in favor of this sort of product platform work. But this collection of three roles as a whole would very much benefit from being able to pull that work above the line in order to inflect their throughput going forward. And basically, being able to, in this new world, get all three of these roles directly collaborating in the same code base artifact, feeling each other's challenges-Means there's much more empathy between them, folks are able to help each other more often, and in the happy case where everyone has contributed their expertise here, we get higher throughput, higher velocity, more experimentation, more high-quality UI, and more product delivered into end user hands.
+
+Aakash Gupta:
+I hope you're enjoying today's episode. Are you interested in becoming an AI product manager, making hundreds of thousands of dollars more joining OpenAI and Anthropic? Then you might wanna do a course that I've taken myself, the AI PM certificate ran by OpenAI product leader Miqdad Jaffer.
+
+Aakash Gupta:
+If you use my code and my link, you get a special discount on this course. It is a course that I highly recommend. We have done a lot of collaborations together on things like AI product strategy.
+
+Aakash Gupta:
+So check out our newsletter articles if you want to see the quality of the type of thinking you'll get. One of my frequent collaborators, Pavel Hern, is the Build Labs leader, so you're gonna live build an AI product with Pavel's feedback if you take this AI PM certificate. So be sure to check that out.
+
+Aakash Gupta:
+Be sure to use my code and my link in order to get a special discount. Here's the dirty secret about prototyping. You spend two weeks building a prototype.
+
+Aakash Gupta:
+You validate your assumptions. Engineering loves the direction. Then what happens?
+
+Aakash Gupta:
+You throw the whole thing away. Bolt changes this completely. When you prototype in Bolt, you're not building throwaway mockup.
+
+Aakash Gupta:
+You're building real front-end code that integrates with your existing design system. So when you hand it to engineering, they don't throw it away, they ship on top of what you've built. I use Bolt every single day.
+
+Aakash Gupta:
+I host my LAN PM job cohort on it, and honestly, I'm up till two AM some days just vibing in the tool, having fun, and building. That's when you know a product is good, when you're using it past midnight, not because you need to, but because you want to. Check out Bolt at bolt.new.
+
+Aakash Gupta:
+Link in the show notes. That's what I wanna see. How...
+
+Aakash Gupta:
+what is, what are the receipts? What actually happens? How can we quantify whether we're getting more product velocity, more throughput at quality?
+
+Ryan Lopopolo:
+So I can talk a little bit about sort of the project that I worked on here, this experiment that I was running. And back in June of last year, these coding models had just started to become viable, right? We were working with Codex Mini and internally the early versions of GPT 5.
+
+Ryan Lopopolo:
+We had just launched Codex CLI. And for historical happenstance and accident, I set about to try and build an agent utilizing these capabilities that was for non-coding knowledge work. Uh, the thesis was that all agents were coding agents, and we were going to prototype an internal agent that we were gonna deploy at OpenAI.
+
+Ryan Lopopolo:
+Uh, and in order to do that, we started from zero, empty code base, uh, and had Codex do the full software engineering job to produce this artifact. One interesting thing here from a product development perspective is that having this process of Codex can only do the job to produce something that was not an engineering native agent was super, super useful because it forced us into delivering value to actual end customers that were not the builders, uh, which helped with prioritization and externalizing the learnings that we would do in this new product category, uh, to folks that could give feedback about the product rather feedback about the process of developing the product. Uh, but in doing so, we produced a repository with about a million lines of code.
+
+Ryan Lopopolo:
+Um, funny story about producing agents. There's a lot of prompts embedded in agents. Uh, there's about two hundred and fifty thousand lines of markdown in this repository, uh, because when you're shipping an agent, what you're really shipping is a multi-agent system.
+
+Ryan Lopopolo:
+You have agents running around all over the place, uh, in what was, uh, an electron app for us. Things that, you know, garden the individual Git repositories that are used to, uh, bootstrap all the tasks that the agents are working on, uh, things for summarization, things for distilling skills, things for actually executing the work that we're doing on user's behalf. Uh, pretty, pretty cool way of building products and an interesting way for non-engineering users to collaborate.
+
+Ryan Lopopolo:
+Because if many of the product surfaces are driven by agents, improving their behavior or changing their behavior is prompt engineering, is tweaking text, and everybody knows how to tweak text. Everybody can tweak text and run the agent to get a vibe check to do an eval on whether or not the change was good. And that in and of itself is super, super empowering.
+
+Ryan Lopopolo:
+Um, but the important thing is not just that we produced an app with a million lines of code, it's that when doing so, literally zero of those lines of code were written by humans. And this was like Ryan as dictator constraint that I imposed on my team here, which I thought was very interesting because it forces the engineers, right, into the back seat of the Uber, right? You can't drive.
+
+Ryan Lopopolo:
+The only thing you can do is like very politely give backseat driver directions. Uh, and you know, that sort of mental model is, I think, very useful because, like, it's not great to yell at your Uber driver, right? Like you, you need to, you know, have them use the tools available them, to them in the car in order to get you to where you're going.
+
+Ryan Lopopolo:
+Uh, so a big part of building in this way is making sure that the car, the GPS, the test harness, the links in the code base, all the knowledge corpus of all the features we've built, critical user journeys is there in the moment ready for the coding agent to drive. Uh, so when Codex was given a task and for whatever reason was not able to do the thing, the job of the engineers working on the code base was to basically stop, diagnose what went wrong, figure out creatively how to prevent the agent from making those mistakes going forward, and try again.And every time you do that, you've taken feedback that normally you would have to give via synchronous steering and figured out a way for the repository itself to give that context to the agent. And this is why it was so easy for us to have non-engineers contribute to the code base.
+
+Ryan Lopopolo:
+Because every time the agent made a mistake, the engineers were forcing the agent to learn how to self-correct, which means we basically did not have slop in the code base. It was very slow to get to that point, but you can not have slop by simply not permitting the agent to re-write slop in the first place. And you do that with tests, review agents, and other mechanisms that are, you know, LLM as judge driven to prevent that slop from being permitted to be committed in the first place.
+
+Aakash Gupta:
+You mentioned it took a little while to get there, and I think elsewhere you also talked about how the first month was about 10X slower than it would have been doing it slow solo. Can you explain, like what did the first month and the evolution look like?
+
+Ryan Lopopolo:
+Yeah. So the earliest versions of the product exploration, uh, starting from zero was to kinda have the agent triage pages on my behalf, right? Going on call is a thing that I do.
+
+Ryan Lopopolo:
+We're exploring what it means to have these agents do knowledge work, and, you know, dealing with outages is a thing that I do. It's he- text-heavy. I thought it was pretty amenable to having agents do this work.
+
+Ryan Lopopolo:
+And from zero at the time, without all these lovely apps we have in Codex today, if you said, "Read my Slack and figure out what inbound outages are happening," it's just not a thing the harness was able to do. Uh, so it's obviously, of course, much quicker for me to tab over to Slack and copy and paste into Codex, but that's not the goal, right? The goal is to get Codex to do the full job.
+
+Ryan Lopopolo:
+Uh, so kinda had to stop, say, "Okay, I can copy and paste, but I don't want to. What must I build first to give Codex access to Slack?" And actually, the thing I have to build first is like credential management in the harness, so Codex is able to request credentials on my behalf. And in order to do that, I need access to the keychain.
+
+Ryan Lopopolo:
+And in order to do that, I need like secure coding practices that prevent me from making cryptography mistakes when we're dealing with this sensitive material. And you can kind of recurse into a task like that sometimes like six, seven, eight times before you bottom out at the core primitive capability that is missing. And then you kinda like boop, boop, boop, boop, boop, pop back up the stack to accomplish the actual higher level primitive that you were trying to add to the product.
+
+Ryan Lopopolo:
+One neat thing about that is like as you're doing this breadth-first search through the tools and quality gates that you need to give the agent, uh, you knock those out one by one. You don't have to do them going forward, right? Like you are importing leverage into the code base for every subsequent change.
+
+Ryan Lopopolo:
+Um, it means that every bit of feedback I give, I at most have to give two or three times, but before we figure out a way for that misbehavior to just go away entirely.
+
+Aakash Gupta:
+So one part that blew my mind, and I always like this PM angle, is that your PM just wrote a PRD in Markdown, and they went to a shipped pull request. Can you give us a couple concrete examples of what they shipped and how that flow works?
+
+Ryan Lopopolo:
+Sure. Um, back in September of last year, uh, we were experimenting with what were the precursor to skills in this agent. This idea that the human driver should be able to teach the model about the things they care about.
+
+Ryan Lopopolo:
+Uh, we were doing some data analysis tasks, so understanding the data ontology of what it means to do, uh, business metrics in this particular part of the company was important. Uh, and we want the model, we want the harness to be able to pull this information out from the user, right? And, you know, we have this lovely machine that is able to write a bunch of text.
+
+Ryan Lopopolo:
+It should be easy for it to have a conversation with the user to figure out the things they care about versus the things they don't, so that all subsequent runs that are doing these business metrics questions kind of accrue that leverage context. And the thing that we wanted to explore was what product shape does this look like, right? How can we give the user the ability to inject durable knowledge into the agent over and over again?
+
+Ryan Lopopolo:
+Uh, so our PM set about to explore this, and the hypothesis was that a library with the ability to both interview the user and learn from all the tasks that the agent was already doing, uh, was the way we wanted to package up this capability. And we kinda reviewed the PRD as a team in sort of the beginning of the week team meeting. And at the end of the week on our demos, without any of the engineers having, you know, talked at all to the PM, we had a demo of this feature, and it rolled out to customers, uh, in the next week.
+
+Ryan Lopopolo:
+Uh, and this is very, very cool. Uh, it was able to be done safely because we have architected our code in a very, very modular way, uh, where individual pieces of business logic, uh, are able to connect together in safe ways without kinda spaghetti dependencies. Everything takes an interface.
+
+Ryan Lopopolo:
+The concrete implementations are hidden. It means every bit of business logic that we have, whether it was the skill wiki or the ability to manage connectors, uh, always exports a high fidelity fake for tests, which means the tests that our PM was vibing into existence actually exercise its dependent services and the real business logic of the skill library without, you know, having to worry about monkey patching or having tests that don't reflect reality. Uh, the eval here is whether or not the agent was, uh, you know-Able to learn from these skills, whether or not they were mounted into context, uh, whether or not the UI presented, uh, in the way that it should.
+
+Ryan Lopopolo:
+This is the same way I would think about evaling this slide deck we're looking at now, which was also created by Codex, right? Codex is a coding agent. It's gonna write code in order to make this slide deck, but I don't care about that code.
+
+Ryan Lopopolo:
+I care that it produces a final artifact that I care about. Uh, and putting all this work into the harness, into the repo means that we can actually move to sort of PRD as code input with the app as compiled output. Uh, but you know, slow in the beginning.
+
+Ryan Lopopolo:
+You can't, you can't do that, you know, in any brownfield code base today and expect to get good results, I think. Uh, we'll talk a little bit around how we can sort of, uh, give you a cookbook for what to do next week, uh, in your code bases. Uh, but I think the idea here is to have the role of the engineering team to encode leverage around what it means to do a good job.
+
+Ryan Lopopolo:
+So the actual specifics around what you build and how it is rec- realized in code are just kinda artifacts of the repository itself.
+
+Aakash Gupta:
+And coding leverage is the name of the game. We've heard a success story on the PM side. In our pre-call, you had mentioned that it wasn't always successful.
+
+Aakash Gupta:
+There were some things that, for instance, you guys built with your designer early on. It was like an open clause style that you had to trash. So what failed?
+
+Aakash Gupta:
+What did you learn? And how can people learn from that failure so it doesn't happen to them?
+
+Ryan Lopopolo:
+Yeah. So one thing we were trying to build, uh, was what you now see in the Codex app as automation, sort of this scheduled cron, uh, mechanism in order to kick off agent tasks, uh, on your behalf on a schedule, uh, very open claw like, as you said. Uh, and this was a capability that our designer put into the product, uh, but in doing so, had to bite off a fairly chunky bit of app infrastructure work in order to put in a cron system which interfaced cleanly with our agentic core.
+
+Ryan Lopopolo:
+Uh, we wanted, you know, the cron itself to create tasks, not necessarily be responsible for driving them to completion. We wanted a nice loose coupling between these core infrastructure primitives. The ultimate thing that our designer wanted to prove out was the UI interaction pattern, what it would mean to even surface scheduling to users in ways that they felt in-- was intuitive.
+
+Ryan Lopopolo:
+Uh, but in order to go from zero to putting that feature in front of users felt that the back end needed to exist as well. Uh, and the reason we ended up unwinding that is because, uh, we ended up with, uh, spaghetti. Right?
+
+Ryan Lopopolo:
+Like, uh, we were still halfway through, uh, you know, realizing the true value of the harness here, right? Engineering had not yet fully specified all these nonfunctional requirements, right, of what it means to write high quality code that is scalable for future maintenance. Uh, this is really all the harness is, is figuring out ways to get those nonfunctional requirements written down and injected into the agent just in time.
+
+Ryan Lopopolo:
+Uh, this is what enables everyone to contribute to it safely. This is what empowers growth of the team to continue acc- to accrue leverage back into the harness. But in the absence of that, we ended up with a spaghetti mess.
+
+Ryan Lopopolo:
+I think the scheduler lived in, uh, the front end JavaScript at some point. Uh, it's just like, uh, like I, I look at this and I'm like, "Oh, I'm gonna regret this later." So, uh, we made the decision to, uh, revert the PR, uh, but we did want to enable the core objective here, which was to experiment with what this product surface could look like to figure out which interaction patterns were most intuitive to users. Uh, and we do want our designer contributing to the code base because we need his expertise on how to use the design system effectively, how we should think about component architecture.
+
+Ryan Lopopolo:
+We wanted to continue to explore good information architecture, so we're not overwhelming users, but also giving them the power tools that they need. So the norm we aligned on was we would kinda put a door between the UI as exposed to users and actually implemented functionality on the back end and ended up with what we're calling a painted door style, where we can get the full product feature implemented with just a no op on the back end. Uh, with, you know, the addition of some creative product instrumentation, actually able to get most of the way there in terms of doing that experimentation and actually get higher signal for the engineering team on whether or not we should even prioritize this work.
+
+Ryan Lopopolo:
+With code generation increasingly being automated, the bulk of my time is spent on feature triage and scheduling. Uh, so figuring out ways to get more information into that part of my work is an amazing, uh, outcome of this sort of norm we aligned on.
+
+Aakash Gupta:
+I used to think I had a retention problem. Turns out I had a messaging problem. I was sending the same onboarding emails to every new user, whether they activated on day one or never logged in again.
+
+Aakash Gupta:
+I had no idea who was slipping or why. Customer.io changed that. Every message I send is now based on what users actually do in the product.
+
+Aakash Gupta:
+Someone hits a key activation moment, they get nudged to the next one. Someone goes quiet, they get a different path entirely. Their AI agent makes it fast.
+
+Aakash Gupta:
+I describe the campaign I want, and it builds the full journey for me. Triggers, timing, copy, even branching logic. And when I want to know how something is performing, I just ask the agent directly, and it tells me what to do next.
+
+Aakash Gupta:
+They also have an MCP server, which means AI tools like Claude can see directly what's happening in your Customer.io workspace. Your segments, your customer data, your attribution, all of it. So instead of explaining your business context every time you need help, Claude already knows it.
+
+Aakash Gupta:
+Notion used Customer.io to personalize their onboarding and hit nearly fifty percent open rate, improved conversion by six to seven percent with localized campaigns, and pushed open rates up another twenty percent through AB testing. The idea is simple. Customer.io helps you deliver more impact from every message you send.
+
+Aakash Gupta:
+If you're a PM or founder and your onboarding is still one size fits all, try Customer.io at customer.io. I'm notoriously bad at my inboxes. I guess there's a version of that where I seem cool and unavailable, but the reality is I miss sponsor emails, guest pitches, and stuff that my team actually needs me for.
+
+Aakash Gupta:
+So I got an AI assistant, the sponsor of today's episode.Ariso. Ariso connects to my email, calendar, and Slack. Then I just chat with it over Slack, and it helps me with everything.
+
+Aakash Gupta:
+It builds workflows to respond to emails, resolve customer issues, prep me for meetings. It actually comes to my meetings, updates its own knowledge, and remembers context from past conversations. So every time I talk to it, it already knows what I'm working on.
+
+Aakash Gupta:
+I used to pay for Granola and Lindy separately. Ariso replaced both. One tool does more, and it lives right in Slack where I already work.
+
+Aakash Gupta:
+Check it out at ariso.ai/akash. That's A-R-I-S-O.A-I/A-A-K-A-S-H. Today's podcast is brought to you by Pendo, the leading software experience management platform.
+
+Aakash Gupta:
+McKinsey found that seventy-eight percent of companies are using GenAI, but just as many have reported no bottom line improvements. So how do you know if your AI agents are actually working? Are they giving users the wrong answers, creating more work instead of less, improving retention or hurting it?
+
+Aakash Gupta:
+When your software data and AI data are disconnected, you can't answer these questions. But when you bring all your usage data together in one place, you can see what users do before, during, and after they use AI, showing you when agents work, how they help you grow, and when to prioritize on your roadmap. Pendo Agent Analytics is the only solution built to do this for product teams.
+
+Aakash Gupta:
+Start measuring your AI's performance with Agent Analytics at pendo.io/akash. That's P-E-N-D-O.I-O/A-A-K-A-S-H. Okay, so PM writes PRD in markdown, designer paints a door, then engineering team takes over the actual backend.
+
+Aakash Gupta:
+That's the high level, boiled down summary that I'm hearing. The thing that makes this all possible is the harness. Can you show us what's actually in it?
+
+Ryan Lopopolo:
+The harness lives in the repository, but really the harness is a mechanism for getting the coding agent, getting Codex, the right context it needs in order to do the job at all phases of the implementation life cycle. I think there's kind of three phases you would think about here. One is, I'm getting ready to go to work.
+
+Ryan Lopopolo:
+I have a ticket, I have a PRD, and I need to figure out what must be done in order to implement the thing and get it deployed. The next phase is kind of in the messy middle of implementation. I'm writing code, I'm exercising the UI, I'm seeing the bugs, I'm seeing logs.
+
+Ryan Lopopolo:
+I'm making sure that, you know, everything is pixel perfect. And then there's the back half of things where I have produced a diff that I claim implements the feature, and I need to convince the rest of my team to merge it, that it is acceptable, that it meets the actual user need that we're trying to solve with this change. And in each of those phases, we have different mechanisms in order to surface context to Codex in order for it to do a good job.
+
+Ryan Lopopolo:
+Uh, in the beginning here, uh, we really have agents.md, which is this file that lives in the root of the repository that is forcibly injected into Codex. It's like what Codex CLI does is take the contents of that agents.md and give it into context for the agent. And this is both good and bad, right?
+
+Ryan Lopopolo:
+Uh, things in agents.md we know are a hundred percent reliably going to inform the agent's actions. But we're paying for that with context window usage. And with these models, context window is a hard constraint.
+
+Ryan Lopopolo:
+You know, you cannot fight against it. There is only so many hundreds of thousands of tokens you get. Uh, I will say that auto compaction in GPT five two, five three, five four, five five is so, so good.
+
+Ryan Lopopolo:
+I never run out of context these days. Uh, sort of like a crown jewel of research here to, uh, have good auto compaction. It is truly amazing to be able to go on any size of ticket completely end to end on a single session.
+
+Ryan Lopopolo:
+Uh, it's magical. But still, you do have to contend with things getting paged out of context, even with auto compaction. So agents.md is a tool, but one that we wanna kinda be constantly trading off from this scarce resource of context.
+
+Aakash Gupta:
+Yeah.
+
+Ryan Lopopolo:
+So what we do there is we put an operating model for Codex in there. Basically, a sort of like three-step, four, five-step plan of how you should think about doing a task. And what that means for us is you ground the decisions that you make in the documentation we have in the repository.
+
+Ryan Lopopolo:
+There's a big docs tree. It includes everything from what it means to write performant React, to writing reliable networking code, to all the design docs and critical user journey flows that we have in the app. And that's important to have as part of the operating loop because we don't inject that stuff all into the agents.md upfront.
+
+Ryan Lopopolo:
+Instead, we just tell Codex in the agents.md, "You have all these reses- resources available to you. They are of X, Y, and Z shape, and they live here. Uh, you decide whether or not to look at them." Uh, which is nice 'cause we can like deterministically steer the agent toward the context we want it to discover, but we let the magic of these models' reasoning decide what is important, what it actually thinks should pull into context.
+
+Ryan Lopopolo:
+This is sort of the outset of the task. So ground yourself in the documentation that we have, the app as it is written, uh, and then move into implementation. During implementation, the thing the agent is naturally gonna do, the thing it is trained to do, is write code and make tool calls.
+
+Ryan Lopopolo:
+So we have to figure out ways to use those two mechanisms to inject our context into the agent. Uh, this is kind of a silly thing, but actually the code in the repository is prompts. Uh, Codex is gonna pull code into its context window in order to figure out what business logic do we have?
+
+Ryan Lopopolo:
+How do we do things here? What database adapter am I using? Uh, am I using Jotai on the front end for state management?
+
+Ryan Lopopolo:
+Uh, so-Actually having the repository enforce that the code is all the same, or uses the same patterns, or is structured similarly, allows you to efficiently and sort of like in parallel across the code base apply context you've read in one file to other files. Uh, it means that the agent is able to more effectively cargo cult. I love to cargo cult stuff.
+
+Ryan Lopopolo:
+This is how I have worked in big brownfield code bases when I'm new, right? I'm like, "The team has probably done this before. Let me kinda like poke around and copy and paste some stuff." Uh, and, you know, we can let Codex be lazy too by making it do the hard work of making the code base homogenous.
+
+Ryan Lopopolo:
+Um, but another way we can inject context into the agent over the course of doing these runs is to take all that human judgment around what good looks like and basically make it fail tests if the code doesn't match. Um, a stupid one that I do is to fail the build if there is any text in markdown files or HTML that does not use the curly quotes, uh, because our design team loves that proper typography in our user-facing strings to have the, the smart curly quotes and apostrophes. And this is probably a thing that is, like, unevenly adhered to, I think, in most code bases, if at all.
+
+Ryan Lopopolo:
+But because this kinda like irked our designer a couple of times, had him vibe code some tests into existence, we don't really care about the quality of this code, right? So long as it actually does the job and prevents the code from becoming misaligned with the user intent. Uh, and we have a lot of tests like that that do probably weird things, maybe things you would consider low leverage, but collectively improve the quality of the software that we're delivering, which I think is pretty cool.
+
+Ryan Lopopolo:
+And then on the back end, right, we've got sort of the agent executing grounded in the documentation we have in the repository, which is this accumulation of all of the team's historical work and knowledge. We've got taste refining the output as we go via these tests and lints and the code itself showing the agent what good looks like. And on the back end, kinda take all of that same context and give it to a review agent.
+
+Ryan Lopopolo:
+Um, in that docs repository, right, we have, you know, frontendarchitect.md, reliabilityengineer.md, appsecengineer.md. And for each one of those, we have this big matrixed CI job that says, "You review for frontend architecture. Here's your guardrails.
+
+Ryan Lopopolo:
+Here's the diff. Identify all the P2 issues with this thing, and, uh, leave some feedback on the PR." This feedback, more context, just like those tool call error messages that we're giving the implementation agent to say, "You must address this," right? "We found some issues where you are misaligned with the way we expect things to be produced." And with sort of all of this effort in prompt injecting the agent with the collective human judgment on the team, my synchronous involvement here can basically move all the way to the back of this process, where the code is presumably already reviewed and approved and aligned by all this machinery that we've put in place over the course of executing, producing the change.
+
+Ryan Lopopolo:
+And then my job is to say, "Okay, we've got this change. It looks good, but I think it's misaligned in ways X, Y, and Z." And then once the, those things are addressed in the moment, my job is to close the loop by taking all this feedback that I had to give and making it so I don't have to give it next time, and then back into the harness it goes.
+
+Aakash Gupta:
+So we got the high level now of what it involves. Can you go really gla- granular, show your actual Codex setup, show what's on every engineer, PM, designer's machine, and how to put this all together practically?
+
+Ryan Lopopolo:
+I would say that, uh, the way I have steered my team has been intentionally friction-full so that we don't want them staring at the computer looking at their agent, which means they have largely been booting up Codex in the CLI, going to multiple tabs, where it's actually painful in order to pay attention to these things, 'cause we don't, we don't want them to. Um, if I were doing it again today, this is probably not what I would do, right? The, the app is quite fantastic, and it is a thing that we are seeing meteoric growth in.
+
+Ryan Lopopolo:
+I think it was, uh, just past 400 or four million, uh, weekly active users. Uh, and all the good parts of the workflow that I'm describing are in the app, right? I would package all that collective designer taste into a plugin that, you know, my team has a little shared marketplace of that I can just suck all of that expertise into the app.
+
+Ryan Lopopolo:
+That's gonna pre-wire Figma, which means the place my designer naturally works is gonna be a thing that is directly addressable by Codex. Um, in the same way that I have access to Figma and maybe I'm unreliable at refreshing my, uh, knowledge of the current mocks. So Codex is just gonna do that because these agents will follow instructions well.
+
+Ryan Lopopolo:
+That is, that is a core part of how they are built. Um, so these plugins which bundle the skills include those instructions on these are the tools we use, these are how they are built. Uh, so I think the app today, as sort of the central coordination mechanisms of teams, gives a much more user-friendly affordance for distributing these sorts of things.
+
+Ryan Lopopolo:
+Uh, plugins are definitely the future and what I would lean into today.
+
+Aakash Gupta:
+All right. Can you show us what this actually looks like inside of Codex, how someone would set all this up?
+
+Ryan Lopopolo:
+Sure. Let's get into the nitty-gritty of it. This is my favorite part here.
+
+Ryan Lopopolo:
+So-Right. We started with an empty repository, right? Which means we had a high degree of freedom to start structuring the code in a way that Codex most natively understood.
+
+Ryan Lopopolo:
+And this is how we kinda came to the pattern that all the things we want Codex to know need to live in the repository itself. This was its workspace. This was its brain.
+
+Ryan Lopopolo:
+In order to mise en place get the agent set up, we wanted it to have the easiest time, and the thing that Codex loves to do is search code with Rip Grip. So we put everything in one place. And what that looks like in practice is this big docs directory that has a ton of different content in there.
+
+Ryan Lopopolo:
+Uh, we make heavy use of a thing called an exec plan, which you can find on the OpenAI cookbook, which is essentially a skill you can give Codex in order to write a good implementation plan phase with milestones and deliverables, so it can track its work and make sure that it is continuing to make progress against sort of high level and tricky implementation plans. And we kinda keep every single one of those that has ever been produced in the repository. They form a durable log of the implementation choices we have historically made.
+
+Ryan Lopopolo:
+Similarly, every design doc ever written, rather than being buried in Slack threads and Google Docs, live in the code base, which means these things are actually continuously kept up to date to reflect the actual state of our app. They're sunset and archived when they become irrelevant or features get removed. And we have also built code and tests around this documentation tree.
+
+Ryan Lopopolo:
+So all these markdown files cross-link to each other. They embed Git repository revisions of when they are current as of. If Codex ever touches one of them to update it, the build will fail unless all the cross-linked documents are also updated to reflect the current state of the world.
+
+Ryan Lopopolo:
+Uh, and this is what it means in order to have the harness self-maintained, to have the test prompt injecting Codex with what it must do. We don't rely on Codex knowing that this is how it maintains the doc repository. A test will tell it what it needs to do, how it must proceed in order to get the build to green.
+
+Ryan Lopopolo:
+The agents are super trained in order to get the test to pass. So if we can figure out ways to build context injection primitives into failing tests, we're not fighting the harness here. This is not a thing that will be obsoleted by the model capability improving.
+
+Ryan Lopopolo:
+This is just a very neat way of aligning what must be done with the scarce resources of context with the actual thing the model will and always do, which is call tools and run tests. Um, similarly here, you can see in this references section, we have a bunch of these llms.text. I don't know if everybody knows this, but, like, a lot of programming projects, uh, will publish a, you know, plain text version of their documentation at llms.text.
+
+Ryan Lopopolo:
+Uh, and this strips away all the tokens from the HTML, and it's just like Markdown. Stripe has these. OpenAI docs have these.
+
+Ryan Lopopolo:
+Uh, UV, which is a Python runtime, has these. Our internal design system has these. And we check these directly into the code base, which basically give Codex a full reference manual for all of the big chunky libraries and components that we depend on.
+
+Ryan Lopopolo:
+And we point to those, you know. Our documentation on the design system highlights the key components that are probably going to be used most of the time and how to look for them in this llms.text. Um, here you can see these persona-oriented documentation that we talked about earlier, right?
+
+Ryan Lopopolo:
+What it means to write secure code. Uh, this productsense.md is how we think about encoding what it means to document a feature, how to turn a PRD into code in a QA plan. And this is a sort of thing that I doubt any teams are writing down today.
+
+Ryan Lopopolo:
+It's just a thing they kinda, you know, talk about together and maybe whack each other on the nose when, uh, they don't do this when producing a PR. But figuring out a way to actually durably document what it means for the team to operate is necessary for these agents, which every time they spin up, have a blank slate in terms of context. Um, another neat thing here is this qualityscore.md, which is sort of a meta way for Codex to diagnose the state of the code base.
+
+Ryan Lopopolo:
+We have it keep notes here every time it writes code, because over the process of making a change, it's gonna pull a t-ton of code into context, maybe code that hasn't been touched in a month, but our guardrails have changed. So this is a way for Codex to be continually assessing the quality of the code base, doing some gardening, and spinning up some tasks for later on how we can keep aligning the code base to baseline. Another neat thing we can sorta talk about here is what it means to close the loop.
+
+Ryan Lopopolo:
+When we're working on this app, we split it into a back-end and front-end pattern, which means they could be tested independently. And we tried to house as much of the business logic as possible in our back end. And that means Codex should be able to validate the behavior of our business logic headlessly, right?
+
+Ryan Lopopolo:
+You don't need to drive a UI. You can hit APIs and look at the database to observe the side effects that you were hoping to have. And normally, for almost all of my career, when I'm working with services in local dev, I run them in my terminal, and I get this never-ending l-stream of logs in the console that, like, I have no idea what to do with, and it's kind of impossible to use 'cause they scroll away so quickly.
+
+Ryan Lopopolo:
+What we've done instead is permit Codex to spin up, like, something approximating a production observability stack. Uh, you know, think giving Datadog to Codex for every change that it makes. Uh, and this allows it to use, like-normal observability tooling for metrics and logs, the same things your engineers would be using to diagnose issues in production, and we let Codex use it to diagnose issues in local dev, right?
+
+Ryan Lopopolo:
+Shift left, validate the change, and exercise it end to end. And we do the same thing with the UI itself. We mount the UI into a local browser shell that pre-wires up Chrome dev tools.
+
+Ryan Lopopolo:
+Today, we would do this with computer use to allow Codex to actually inspect the app, drive it, click the buttons, observe that the loop is closed, that the feature is implemented, and that it can attest that it works end to end. So I mentioned a little bit how, uh, being super overly architected in the application was a point of leverage for the engineering team. And the reason that is because we actually limited statically the plausible places that code can go.
+
+Ryan Lopopolo:
+Uh, you see this kind of represented here as sort of a package layering stack. One common pattern in hypergrowth code bases that is a failure mode is that business logic kind of just gets spewed everywhere, and it becomes a sort of code base that approximates a ball of mud. Uh, these are very difficult to deal with, uh, and evolve because, uh, there's a ton of non-local side effects from touching any bit of code.
+
+Ryan Lopopolo:
+Uh, but I mentioned that we have these nice isolated business logic domains that are able to take all their dependencies as fakes and make it safe for us to prototype new features. And the only reason we're able to do that is because we actually, with code, enforce that these things are hard separated with package boundaries between them. You cannot possibly create a ball of mud in the first place.
+
+Ryan Lopopolo:
+Uh, which basically means that for, uh, the engineers, we permit them to write packages at any layer of the stack. They can write database code, config parsing, you know, React code in the front end, business logic. Our PM, we kind of by norm and convention said, "You can write business logic and UI code, but try not to touch these lower level primitives in the app." And to get that painted door invariant for our designer had him focus largely in the UI layer of the app, uh, with, you know, some affordances for stubbing out APIs on the back end so that, uh, we could get those, uh, usage signals, uh, that we cared about.
+
+Ryan Lopopolo:
+Um, which is kind of neat to be able to think about reflecting sort of like ACLs on who is permitted to touch what code and the actual structure of the code itself. Like, this is actually by folder paths that we're able to determine whether changes are allowed or not.
+
+Aakash Gupta:
+This adds up, and I think you're, you have a really hot take on how it should add up. You've said that if you're not using a billion tokens a day, you're basically negligent. Now, that's two to three thousand dollars per engineer.
+
+Aakash Gupta:
+How does an engineering leader at a normal company build the case for that internally?
+
+Ryan Lopopolo:
+The idea here is that the more tokens that you're running through these models, the smarter they get, the more intelligence you are able to extract from them. This is sort of like the, the realization behind why we have reasoning models in the first place, right? If we give the model more effort to, you know, do inference, we're actually able to get greater results out of this.
+
+Ryan Lopopolo:
+Uh, and we see this time and time again with longer time horizons that agents are able to execute over. Uh, and I think it is the case that in order to have the sort of lofty goal of being a token billionaire, right, you kind of have to find ways to get the agent to do more work on your behalf, to execute in parallel more autonomously. And because I believe that GPT 5 is able to do the full job, kind of having that as a North Star constraint means that I am constantly looking for ways to get the agent to do the hard parts of my job that take a lot of my time, and constantly, uh, being surprised in ways this frees me up.
+
+Ryan Lopopolo:
+Um, one, uh, sort of insane thing, uh, is not just, you know, a billion tokens a day, but sometimes it can be three hundred and fifty million tokens on a single PR. Uh, there was a time a couple of months ago where, uh, I was buckling my laptop into the back of my car, going back and forth to the office, tethered to my corporate phone, uh, in order to have the agent continue to cook while I was commuting to work. This was like a sixty-hour Codex CLI session that like I was like, "Please don't go to sleep, laptop." Uh, and this is a PR that probably would have taken me three weeks in order to do.
+
+Ryan Lopopolo:
+Like, one of the hardest refactors I have ever done in my career, and it took place over the course of three, four days, uh, and did as good a job as I would have here. Uh, because of the investment we've put into letting the harness prompt inject the agent and manage its context efficiently, over that sixty hours, I only had to provide two prompts in addition to my first prompt that we gave the agent, which is truly magical. Um, it means that it was actually, you know, approximating a human engineer on my team, right?
+
+Ryan Lopopolo:
+I did not have to, you know, synchronously bash it on the head in order to make progress. It just, you know, went heads down and did the work the way I would.
+
+Aakash Gupta:
+Okay. So sixty-hour ru- running long task. I think that points to something that if people have their conception of these models five, six months ago, it's really outdated.
+
+Aakash Gupta:
+It's the what's recently become possible that's enabling this new way of working. How would you describe it? When did that happen?
+
+Ryan Lopopolo:
+Yeah. So there was a huge uplift in capability when GPT 5.2 came out, and the rate of progress with each additional point release of the model has been much bigger than what came before. Um-GPT 5.2 came out while I was on holiday for winter break.
+
+Ryan Lopopolo:
+Uh, and when I came back, without any additional investment, we were getting one or two PRs more per day per engineer on the team. Uh, which had this very strange effect where folks were looking for ways to do more work with the agent. It was kinda like, uh, you know, adding another lane to the highway.
+
+Ryan Lopopolo:
+It was like, "How can I put more cars on this thing right now?" Um, and because we had done so much work in order to get Codex to operate over those long horizons, the next sort of frontier was to go in parallel. Uh, we just blogged yesterday about a, a sort of agent orchestrator that came out of my team called Symphony, uh, which once we saw the uplift in capability with 5.2 and invested in this additional orchestrator, allowed us to further 10X the PRs per engineer, uh, per week. And that investment in increased parallelization is only a thing we were able to do because we were confident in the code that was being produced already by the agent, right?
+
+Ryan Lopopolo:
+If I'm 10X-ing the number of PRs I am producing a week, I cannot possibly look at all of them. I couldn't possibly look at them all before. Uh, so the only way we could do this safely is with these techniques in order to eliminate classes of misbehavior and have confidence by default in the code that's being produced.
+
+Ryan Lopopolo:
+But yeah, uh, we continue to see these huge improvements in autonomy and confidence with each model revision. One of the most interesting things, uh, about 5.5 is with computer use, there's much less wrangling we have to do in order to get the agent to actually see and drive the app. This was a significant point of friction for us early on.
+
+Ryan Lopopolo:
+We were having to figure out ways to wire up FFmpeg to Docker containers, to give Codex, you know, a virtual X server so it could drive the app. Like, this is all a ton of low-level goo plumbing nonsense that was slow to develop and ultimately undifferentiated. But with Codex now shipping computer use, a tool that's natively post-trained into the model, we kinda get to throw away all that bespoke code, keep the same process of having Codex drive the app, and do it much more efficiently with better image understanding, ability to faithfully replicate wireframes and mocks, these sorts of things.
+
+Ryan Lopopolo:
+Uh, truly amazing.
+
+Aakash Gupta:
+So you mentioned one of the hardest refactors in your career. You've worked at the regular companies, the Bracks, the Stripe. These types of companies, if you were an engineer at this and you're looking at this new way of working, what is the new engineering job?
+
+Ryan Lopopolo:
+The new engineering job, I think, is to have everybody be staff engineers. And the role of a staff engineer, the primary role, at least for me, is not to be producing all of the code, but to be empowering my team to produce the code. And today, it is the case that every single engineer on this planet, modulo token budget, has access to five, 50, or 5,000 concurrent hands-on keyboards.
+
+Ryan Lopopolo:
+And not being able to leverage that amount of parallelism today is largely a reflection of not having put in the work to harness those resources. One experiment we're running internally in order to drive toward this amount of parallelism is to tell teams that they have been forced to hire five interns named Codex. Part of their success criteria is judged on how effectively they incorporate these resources into their team.
+
+Ryan Lopopolo:
+What does it mean to make use of this capacity that the organization has given them? And part of success is being able to use those resources. And if we think that, you know, with access to these lovely models and compute being available to use them, letting those GPUs idle is in a way not having hands on keyboards.
+
+Ryan Lopopolo:
+Uh, so my job is to figure out ways to saturate these things, to have them doing productive work, to have them not waste cycles, to have fewer PRs that we throw away because they are high quality by default, to have fewer cycles back and forth in CI, fewer reviewer agents having to repeatedly burn cycles for the same feedback, that sort of thing. Uh, it is very much a systems thinking sort of mindset where, you know, in a way, you're playing Factorio with your code base and figuring out ways to build the token factory.
+
+Aakash Gupta:
+You're describing essentially being totally divorced from the code and really focused on using these interns. But I guess a lot of engineers, they prided themselves on being the best at writing code. That has been their output for so long.
+
+Aakash Gupta:
+I imagine people in your team have struggled with this mental shift. What is the right way to think about it?
+
+Ryan Lopopolo:
+This is a thing I have struggled with too. Uh, for a long time because the primary function of the job was to produce code in order to achieve, you know, our product and business objectives, it's very easy to fixate on the production of code itself as the job. But ultimately, the reason we work in tech is to deliver product into the world.
+
+Ryan Lopopolo:
+Uh, and initially kind of like having this hard break in mental model of what it means to do work was a little bit like weird on the ego sort of thing. But, uh, where I have gotten to is latching onto the same creativity, the production aspect of things. Uh, ultimately, the thing that motivates me is to get product into the hands of users and see their delight and how they're able to improve their lives with the, uh, with the tools we build.
+
+Ryan Lopopolo:
+And I'm still able to do that today. I'm able to do a lot more of that today.And, you know, I kinda like puzzles. Uh, you know, you can have puzzles in how you structure the code, or you can have puzzles in terms of how you put teams together to produce it.
+
+Ryan Lopopolo:
+Um, to me, these, uh, skills and challenges are, you know, pretty transferable between each other. So I think there is a new art to be found, a new craft in terms of how you, you know, effectively assemble a virtual team to go solve these things.
+
+Aakash Gupta:
+Okay. So let's move into the roadmap. Your counterpart at Bracks or Citadel or Stripe, they want their PM shipping 100,000 lines of code.
+
+Aakash Gupta:
+What's the Monday morning roadmap that they need to take so that they can get started right now to move to this way of working over the next six months?
+
+Ryan Lopopolo:
+I'm s-so looking forward to the Monday morning roadmap. You have no idea. I, I, I was super excited to divide this slide into existence with Codex because, you know, this is the hook right here.
+
+Ryan Lopopolo:
+This is why, this is why we're talking. Um, so I think those map or those phases of the code production process that we talked about map pretty clearly to sort of what the Monday morning roadmap should be. Uh, you need the repository to be legible to the agent.
+
+Ryan Lopopolo:
+Uh, it needs to know all the things that your team does, right? The process of bringing product into the world, to producing code, to having good design has a ton of implicit context around what good looks like. Hundreds or thousands of little decisions that we all make by default because we cut our teeth the hard way gaining experience.
+
+Ryan Lopopolo:
+But, you know, the agents don't have this, right? Well, they do, but they have every possible permutation of all those thousands of decisions 'cause they have seen so much code and so much product over the course of their training. So it's our job to take the specific choices that we as a team would make, write them down, give them to the agent, and starting with this simple technique of putting a map in agents.md on where the agent should look.
+
+Ryan Lopopolo:
+I really like having a documentation tree as sort of the entry point for making this happen for your code base because it's super easy for humans to think about just writing stuff down. Uh, and it's also really easy to use some of the tools that we have to do that. Uh, it's very often the case that, you know, agent will produce code we didn't like or, uh, there's a bug in production.
+
+Ryan Lopopolo:
+We'll have a Slack thread as a team where we discuss what went wrong, how we think it should be done differently. And it's really easy at the end of that to just do @codex, you know, update docs X, Y, and Z to reflect these new guardrails, this new taste we have discussed. And, you know, that kinda removes us from the loop entirely from maintaining the legibility.
+
+Ryan Lopopolo:
+We just kinda get to talk, and we let Codex maintain it for us. Uh, and this is a way too that I think, um, sort of by default in larger teams, you can kinda sort of build a flywheel around imple-proving agent behavior and build sorta cultural norms and processes around having this happen as the default way of doing the work. Uh, the other next step is to make validation cheap.
+
+Ryan Lopopolo:
+Validation is happening at all parts of the code production pipeline that I talked about. On the review side of looking at those guardrails, over the course of writing the code with all these lints and tests, being able to actually close the loop and exercise the app to see that, yes, the search box that was in the PRD actually appears in the UI, and when I click on it, it shows a pending set of results that are our best guess, and it has very nice type ahead without any jank in the box when we type, right? These are, you know, kind of the squishy, ill-specified parts of the task.
+
+Ryan Lopopolo:
+But kinda providing proof of work to the reviewer agents and the humans looking at these PRs is necessary in order to build confidence. This is what it takes in order for me to not have to shoulder surf the Codex, the same way I'm not gonna shoulder surf my teammates in VS Code or Cursor. Uh, and finally, it's important to have the users of this harness be more than just the engineers themselves, right?
+
+Ryan Lopopolo:
+The exercise here is to empower all of the team in order to write code safely. Uh, so having a tight collaboration loop with the other members of the team, product, design, user ops, uh, your DevOps folks, allows for really high bandwidth feedback between these, uh, uh, different roles, and it allows you to do more work, different types of work, extract different domain expertise from the folks on your team, and reflect it all back into the repository for the benefit of everyone. Uh, one sort of like emergent property we had here that I thought was really, really cool was we hired a new engineer onto the team, uh, who had formerly been a PM.
+
+Ryan Lopopolo:
+And he noticed that we had no documentation in the code base for what product features we had. Uh, and this is kind of an important thing because it grounds all the engineers, all the designers, all the product, the reviewer agents, everything in what we are actually trying to achieve. What are we shipping here?
+
+Ryan Lopopolo:
+Uh, and Codex is very good at crawling through a code base and figuring out what the product features are and writing them down and surfacing them for human review. But what fell out of that was a set of QA agents that are constantly booting the app, running it through these critical user journeys, and asserting things work, which means that when it comes time for deploy, we have to do less manual smoke testing because we actually have sort of these just-in-time generated runbooks around what it means to have acceptance testing. And all of that came out of a single person with domain expertise and an idea of what good looks like.
+
+Ryan Lopopolo:
+AndSort of the rest of the work we had done made these higher level correctness, uh, verifiers kind of fall out of that one thing.
+
+Aakash Gupta:
+So we're actually s- full circle all the way back to the beginning of the discussion. Now that people understand the harness, they understand the Monday morning roadmap, what does the product team of 2027 look like? How are these individual functions working together if everybody has access to the code?
+
+Ryan Lopopolo:
+I think we're going to see a lot more prototyping in the world, a lot more diversity of products as a result. I think too, in this new wave of computing with AI and agents, we are currently at the early part of the technology curve where a lot of the products you see today are low fidelity text interfaces. Uh, and when I think about where I sit in OpenAI working on Frontier and deploying to businesses, uh, in order to get the machine to do the work, there is a fractal nature of work, different surfaces, different ways of working to wedge these models into the nooks and crannies of the hard knowledge work that happens.
+
+Ryan Lopopolo:
+So I'm really excited to be able to rapidly experiment with different modalities and different ways of delivering this technology. Like this is core part of the OpenAI mission here, right? Is to have wide access to do economically valuable work with these models, with these tools.
+
+Ryan Lopopolo:
+Uh, so I'm excited to increase the rate of experimentation, to increase the diversity of product we see in the world, and to see new and exciting ways where we're able to use technology to do great things for users.
+
+Aakash Gupta:
+All right. So we're into the home stretch here. I wanna ask you a couple quick questions.
+
+Aakash Gupta:
+Is that okay?
+
+Ryan Lopopolo:
+Yeah, sure. Let's do it.
+
+Aakash Gupta:
+What's one skill a tech lead who's trying to move to this way should build this weekend?
+
+Ryan Lopopolo:
+I really think it's important that you figure out a way to get Codex to be able to see your app and drive the business logic. Uh, in the absence of any other modularity or investment, to be able — the ability to actually close the loop and observe the behavior that you're changing is what it takes in order to know that you have completed the job. Uh, I see this all the time where folks will vibe something up and not be able to attest that it solves the problem they set out to do.
+
+Ryan Lopopolo:
+Uh, and in order to convince the rest of the team to accept the code in the first place, you gotta be able to prove somehow that the code meets the brief, that it does what it says on the tin. Uh, and the way to do that is to invest in closed verification loops, the highest leverage of which is the full end-to-end integration test. You know, click the buttons, observe the side effect, that sort of thing.
+
+Aakash Gupta:
+It's funny how it comes back to some of the fundamentals but- Yeah ... now applied to AI. What's the biggest mistake engineering leaders are making with AI coding tools right now?
+
+Ryan Lopopolo:
+I think having the tools in your head or in a box as these things that are tools that must be driven synchronously by a human is limiting, uh, the amount of creativity in terms of deploying these things widely. Uh, ever since GPT 5.2 came out, my belief is that it is as capable as me at doing the full job, and it's sort of my job to figure out ways to have it do as much of my job as possible. Uh, a lot of that means I can't be sitting in front of it because I don't sit in front of my teammates.
+
+Ryan Lopopolo:
+Uh, so there's this whole meta game of building confidence in the code that these agents are producing so that we can have it do more and more of the job to execute on longer and longer time horizons, to be more and more independent. And this is necessary in order to unlock that true parallelism, right? That 5,000 engineers worth of compute that I talked about.
+
+Ryan Lopopolo:
+I can't possibly do that if, you know, I'm locked behind, you know, two tabs in the app or three panes in my tmux in my terminal.
+
+Aakash Gupta:
+Final sort of meaty question here for you. We've been talking about GPT 5.2. At the same time came out Opus is 4.6 roughly, and the, the whole discussion really changed in that December time period.
+
+Aakash Gupta:
+If a team can only pick one, the Anthropic stack or the OpenAI stack, what's the case for picking the OpenAI one?
+
+Ryan Lopopolo:
+Our models are optimized around that full agentic behavior to being able to do the full job. I am super easily able to delegate entire swaths of work to the GPT 5 series without having to constantly poke and prod it, and this is the fundamental unlock for me that has gotten to that parallelism. Uh, Symphony, this agent orchestrator that we have released, is fundamentally very uncomplicated.
+
+Ryan Lopopolo:
+It is a thing that advances linear tickets through states and gives the ticket text to Codex, uh, and expects it to produce a PR. There's very little magic to it, uh, which is why I think that, uh, sort of these GPT series of models that we have are the ones, uh, that are gonna unlock the true power of agentic software engineering in your organizations. Additionally, the pace of product delivery on the model capability side in order to get more and more of that loop closing in place has just been fantastic.
+
+Ryan Lopopolo:
+Things like parallel tool calling and background shells in GPT 5.3 to ever-increasing auto compaction capability to computer use and the ability to have multimodal understanding at high fidelity with built-in image generation capabilities in the latest 5.5 means that-What would normally have been two or three people on the team handing off between them means that instead, those two or three people can encode all their leverage into one tool, which is then able to do the full job. Um, there is this kinda neat story that I have been telling that in multi-agent systems, the correct amount of agents to want to optimize toward is not multi, it is one. Because one agent is able to have full addressability over the entire task and its entire context, which means being able to do design backend and frontend in a single agent means you're gonna get higher quality results than having these lossy, frictionful handoffs between them.
+
+Ryan Lopopolo:
+And that experience comes from me having built agents for knowledge work with handoffs in them and seeing the massively incru- uh, increasing capability of the GPT 5 series over time. I want a single agent to cook and do the full job, and we have done a fantastic job, I think, at increasing Codex's ability to address all parts of the SDLC in a single agent.
+
+Aakash Gupta:
+Wow. There, there was so much information in there. If I wanna get more, if I wanna get more of Ryan, where can I find you online?
+
+Ryan Lopopolo:
+Uh, I tweet a lot, uh, on X. My handle is, uh, @_lapopolo. Uh, and, uh, me and the team should have more content coming, uh, on the OpenAI blog, and, uh, I, uh, am doing a bunch of conference tour over the summer.
+
+Ryan Lopopolo:
+I am next going to be at AI DevCon in London. We'll see you there.
+
+Aakash Gupta:
+All right, guys. Follow him on Twitter. Check out his amazing blog post on the OpenAI blog, and we'll see you guys in the next episode.
+
+Ryan Lopopolo:
+It's been a pleasure, Akash. Thank you.
+
+Aakash Gupta:
+Thank you. I hope you enjoyed that episode. Couple things you can do to support the show.
+
+Aakash Gupta:
+One, comment. Two, review. Those ratings and reviews really help other people understand the value and the production that we are putting into this, right?
+
+Aakash Gupta:
+This wasn't an easy episode to produce. We put in a ton of pre-work. We edited it for you.
+
+Aakash Gupta:
+We brought in the best guests. If you don't mind sharing a rating and review, sharing the episode with others, making sure you are subscribed, that really helps the show do bigger and better productions. I'll see you in the next episode.
+
+Aakash Gupta:
+Here's one of those that YouTube thinks would be a great fit for you

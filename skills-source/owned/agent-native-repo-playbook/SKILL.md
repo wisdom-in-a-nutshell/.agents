@@ -64,3 +64,4 @@ Operating model:
 - `references/best-practices.md`: baseline best practices for this workflow.
 - `references/agents-md-best-practices.md`: AGENTS quality gate, nested AGENTS decision rules, and keep/move/delete audit checklist.
 - `references/docs-structure-and-maintenance.md`: baseline docs layout and update rules.
+- `references/raw/source-manifest.md`: Ryan Lopopolo harness-engineering source inventory and raw transcript file map; use only for source lookup or future distillation work.

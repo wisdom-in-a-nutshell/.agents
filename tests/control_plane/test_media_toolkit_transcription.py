@@ -82,20 +82,28 @@ class MediaToolkitTranscriptionTests(TempDirTestCase):
                 "use_cache": True,
                 "provider": "local_transcription",
                 "diarize": True,
+                "identify_speakers": False,
+                "speaker_identification_context": None,
+                "force_speaker_identification": False,
             },
         )
 
     def test_transcribe_help_hides_old_provider_and_cache_knobs(self) -> None:
         module = load_client_module()
 
-        with contextlib.redirect_stdout(io.StringIO()):
+        stdout_buffer = io.StringIO()
+        with contextlib.redirect_stdout(stdout_buffer):
             exit_code, stdout = module.run(["transcribe", "--help"])
 
+        help_text = stdout or stdout_buffer.getvalue()
         self.assertEqual(exit_code, 0)
-        self.assertNotIn("--provider", stdout)
-        self.assertNotIn("--use-cache", stdout)
-        self.assertNotIn("--no-use-cache", stdout)
-        self.assertNotIn("--diarize", stdout)
+        self.assertNotIn("--provider", help_text)
+        self.assertNotIn("--use-cache", help_text)
+        self.assertNotIn("--no-use-cache", help_text)
+        self.assertNotIn("--diarize", help_text)
+        self.assertIn("--identify-speakers", help_text)
+        self.assertIn("--speaker-identification-context", help_text)
+        self.assertIn("--force-speaker-identification", help_text)
 
 
 class _FakeApiClient:

@@ -1,0 +1,245 @@
+Paul McMillan:
+If your security program is perfect, I'm happy for you. This talk is not for you. For the rest of us, however, hi, I'm Paul.
+
+Paul McMillan:
+This is Ryan. I've been a security engineer here at OpenAI for the last three years, and Ryan and I are here to tell you a little bit about how we work together to secure one of our projects. So let's talk a little bit about how software security worked in the past.
+
+Paul McMillan:
+You identify a need, you try a couple options, you spend a lot of time integrating those into your environment to see if they work, and eventually you pick one. And then you pay your vendor a lot of money. And then you spend a lot more time integrating it everywhere else into your environment.
+
+Paul McMillan:
+And after all that work, months later, are you really getting value? Probably some. Compliance is probably happy.
+
+Paul McMillan:
+But it's still stiff, it's inflexible, and you still have a lot of special edge cases and vendor feature requests take quarters at least. Uh, sorry to my vendors who are here. But at the end of the day, what really matters is what really happens is you have a long list of things you wish you had time to do.
+
+Paul McMillan:
+We all know what the best practices are. There are endless lists, innumerable vendors who will sell us a solution which is almost as much good-- it, which is almost as much work as building the thing ourselves, especially in the enterprise or in a company that wasn't founded yesterday. All that legacy infrastructure adds up, and often it doesn't mesh well with the assumptions of sec- the security tooling is making.
+
+Paul McMillan:
+We don't need expensive consultants to come in and tell us how to make our security programs better. We already have a long list of things we want. We need more engineering hands, and we need less friction.
+
+Paul McMillan:
+It doesn't have to be this way. No, seriously, it doesn't. Code is free.
+
+Paul McMillan:
+I mean it. Code is free. Software doesn't cost anything to build anymore.
+
+Paul McMillan:
+And the secret is that includes security software too. So if you want a security outcome, you can ask for it. You don't have to wire up a giant vendor harness and dashboard.
+
+Paul McMillan:
+You don't need to integrate deeply with someone else's idea of what you should be doing. Your developers are already using LLMs to build your code. What are you waiting for?
+
+Paul McMillan:
+Just add a new test to your existing CI/CD pipeline, commit a text file with things you want checked, a tool call that returns zero or one, and some text about why. Feed that back into your CI framework, and you're set. No vendor contracts, no frameworks.
+
+Paul McMillan:
+I'm not even releasing anything open source here because you should just ask Codex or Quad to write this integration for you customized to your own environment. So that was actually a lie. Uh, here's some open source.
+
+Paul McMillan:
+Put it in your test runner. Write an output schema with judgments, comments, and of course, whether or not Codex thinks your code passes the tests. Run it non-interactively on your security file.
+
+Paul McMillan:
+Parse the output. Show it in your CI. Now I'm gonna kick it over to Ryan, a product engineer I've been partnering with, and Ryan will show you what it means to just ask and to just do things.
+
+Ryan Lopopolo:
+Hey, folks. How's it going? I'm a product engineer.
+
+Ryan Lopopolo:
+I've been working at OpenAI for a year and a half, and for the last eight months, I have had the privilege and the space to build a team where we write zero of the code. And over the course of that time, we've built a product with about a million lines of code in it, about two hundred and fifty thousand of which are prompts. And to do that, I have basically leaned on these wonderful coding models that we have and the collective expertise and intelligence of all the subject matter experts that are scattered around the company.
+
+Ryan Lopopolo:
+I'm gonna show you today what it means in order to pull from these experts and reflect that back into the code base so you empower all the humans and the agents that you're working with in order to do what you already know good looks like. So kind of foundational thing here, right? We're building products.
+
+Ryan Lopopolo:
+There's a threat model associated with them. You'll probably take some time in order to go through an exercise to build one. It'll become stale immediately.
+
+Ryan Lopopolo:
+No one will really look at it or use it to inform the way they write software. So you can just make one, you can check it in, and then you can use that to have all the engineers and agents that are operating in these code bases on these products incorporated into their process, right? What remains illegible, both organizationally and textually in the code, is not possibly a thing that anyone in your business is able to build leverage out of, right?
+
+Ryan Lopopolo:
+A threat model that's locked in a Slack thread or some Google Doc that I know I am never gonna read is not something that I am able to build durable product with. These coding agents, they exist in the universe of code, markdown, and scripts in your repositories. That Google Doc that's trapped away in a Slack thread from three months ago is not something that they're able to use to inform their execution.
+
+Ryan Lopopolo:
+So instead, just ask for a threat model. These models are good enough to deduce one from the code as it already exists. Check it in and then validate it constantly.
+
+Ryan Lopopolo:
+There's no reason why this can't be a required review step in every PR. Tokens are cheap. Throw an agent at it.
+
+Ryan Lopopolo:
+Tell it, "You're responsible for ensuring the threat model of this code base is current and up to date, and that this PR does not invalidate any of the assumptions that are in it." This is very cheap to do. This is like forty lines of YAML in GitHub actions right now. The agents crave text, so figure out ways to give them text and inject it into all the other agents that you have working on the code base or those humans, if you still have those too, rightWith the threat model in the code base, you're able to incorporate it into the way the code is written, the way the code is reviewed, the way those review comments must be interacted with in order to make sure that your code is marching forward along that golden thread of what you already know good looks like.
+
+Ryan Lopopolo:
+And, you know, maybe we don't have the full amount of trust in these agents to be fully autonomous in all the ways that, you know, we want them to be. So if you need a human in the loop here, you can just ask them to do that too, right? In CI, grant the agent access to the GHCLI, tell it that if a material change has happened to the code that invalidates some of the things you've documented and already risk accepted as a business, tag the expert human to review it.
+
+Ryan Lopopolo:
+Tell them why you've brought them into scope here, and tell them what ambiguity that you need them to help resolve. One of the core ways that I've changed how I operate here is to treat the humans as tools to empower the agents and other engineers in the code base in order to make forward progress. This is how we all interact with each other here, right?
+
+Ryan Lopopolo:
+Like, you know, I know that I'm not an expert here in threat modeling. I know I need help. I talk to my partners in the security organization.
+
+Ryan Lopopolo:
+I invoke them just like the model would invoke a tool. And the thing I have tried to do is take all those tool outputs and durably encode them in a code base that is constantly reflecting prompt injections back into my human engineers and agents that are driving that code base forward. Paul mentioned that we all know the best practices.
+
+Ryan Lopopolo:
+We've got years of collective expertise in our heads. But we as humans have limited synchronous time and attention. It is not the case that every one of you here is able to look at every single design doc, every single PR, every single deployment, and bug report, and vulnerability report, and dependency update, and, you know, breaking changes, and individual diffs from all of those by source, you know, dependencies you take.
+
+Ryan Lopopolo:
+But you do know what good looks like. You know what you would be doing if you had all the time in the world to do all those things serially. So take all those things that are in your head and write them down.
+
+Ryan Lopopolo:
+Or better yet, ask one of the coding agents to write them down. Have them interview you. These agents are trained on the whole universe of the human experience.
+
+Ryan Lopopolo:
+They know in their weights all the things that you already know, and it's up to you to focus those attention layers in the model to extract those good insights, generate some text, which I hear these LLMs are quite good at, and check it in. Feed it into your agents.md so the agents are looking at it. Feed it through your review process.
+
+Ryan Lopopolo:
+Feed it through the crons that you are using to review dependency update PRs as they come in. You can just do these things. The code is free to write.
+
+Ryan Lopopolo:
+So one bit of magic here is that in order to build trust with these agentic systems and with the humans that are contributing to your code base, you basically have to put guardrails around them. And one thing you can just do here is simply not permit slop. You can just ask the models to not do that.
+
+Ryan Lopopolo:
+There's a ton of techniques you can use to not permit slop, but one of the ways you can do that is to write things down about what good looks like. Every Slack message I have ever gotten that says there's a concern I'm not taking into consideration, every PR review comment I have ever gotten, every test failure, every lint error, every dependency update I have rolled back is in some way missing context that has prevented me, the members of my team, and the agents that we have working on our behalf from doing the right thing up front. So the mindset that we have is to take all of those gifts of feedback and expertise and distilling them into prompts, documentation, lints, tests, review agents back into the code base to constantly be reflecting that taste and durable expertise into the folks that are actually doing the job.
+
+Ryan Lopopolo:
+To kind of like put this a little bit concretely, right? We have a security.md that includes all the good practices around what it makes to have secure code. And you would be shocked at the amount of uplift we had by essentially adding two sentences that say, "Secure code comes from secure interfaces that are impossible to misuse." You can just tell that to the agent, and it knows what that means.
+
+Ryan Lopopolo:
+All of a sudden, you have these high-level primitives for doing rooted file system access with high-level operations as opposed to stitching together real path and clean and hoping for the best. In this way, you can take entire classes of v- vulnerabilities, compress them into a paragraph of text, and then just have an agent review every PR against those guardrails, tell the engineers and agents that are writing those PRs, "Hey, you screwed it up here. You know what good looks like.
+
+Ryan Lopopolo:
+Go chase after it." So every Slack message that you have ever sent to let an engineering team know that they're not operating in the way that you need them to, just reply to it at Codex. Make it so. Write the docs, write the tests, and migrate the code base while you're at it.
+
+Ryan Lopopolo:
+Tokens are cheap. This is free to do. You can also do that with every PR comment, right?
+
+Ryan Lopopolo:
+You've got GitHub connected to your data warehouse. You can slurp all these things up, dream over them, and distill documentation, tests, guardrails out of them constantly to refine the output of your engineering organization to constrain the production of code in a way that is aligned with what you expect.You can also do this with, like, your durable processes too, right? AppSec reviews are this thing that I know I need, but I wanna move fast, and I'm probably gonna wait until the last minute to ask for one because, you know, this is how it goes here.
+
+Ryan Lopopolo:
+But if I have the foresight to ask for one ahead of time, right, I am basically being asked-- I'm basically asking for the gift of feedback so I can know what good looks like from your eyes. I wanna know the risks that you see in the code that I am writing, and the way I treat this feedback is not just as a point-in-time snapshot, but as a set of principles of how I should be operating, writing the code going forward, and building products. So rather than just saying, "Oh, I got this review, it identified a bunch of issues, let me go fix them in a cheap way in order to get my security partners happy with me," instead, I step back a level.
+
+Ryan Lopopolo:
+I say, "What are the process failures that led to the code being permitted to be produced in this way?" Fix the point issues, and then add executable guardrails to the codebase that statically disallow these mistakes from being made in the first place. Right? Cheap, bespoke, fit-for-purpose lints that will never see the light of day out of your enterprise are free things that you can vibe up.
+
+Ryan Lopopolo:
+There's no need for these to be, like, super rigorous, robust, platformized things. You observe behavior in your enterprise, you wish you could fix it, you vibe up a thing, you run it against the existing codebase, observe the gaps that it finds, kinda do some labeling on your own to say, "Yeah, this is probably good. We should do this," check it in, migrate the codebase, and disallow classes of mistakes.
+
+Ryan Lopopolo:
+Another thing that you can just do here is work on supply chain hardening. This is a thing that's incredibly high value. It addresses tail risk in your organizations.
+
+Ryan Lopopolo:
+But I have a feeling for a lot of you, this is constantly below the line. It's just not a thing that's able to be done. But, you know, with code being free, you can take fifteen minutes to interview a security engineer on your team to extract some general principles from them and then tell one of the coding agents to go make it so.
+
+Ryan Lopopolo:
+So here, Matthew has given a gift to the Codex team here. This is a PR in the, uh, open source Codex repository to basically update pnpm to a, uh, recent version that fixes some security vulnerabilities, and it is going to additionally harden the package installer policy to forbid post-install scripts from running. This is a great point-in-time thing that I'm just gonna steal.
+
+Ryan Lopopolo:
+Right? I saw this Slack message 'cause I happen to follow along the Codex-- with the Codex team. I'm deeply invested in their product, as you can probably guess.
+
+Ryan Lopopolo:
+Uh, I copy and pasted the diff, and I was like, "Hey, Codex, make it so." Uh, this Agent X thing here, this is a, uh, a fake code name. Don't go tweeting about this. There's nothing interesting there.
+
+Ryan Lopopolo:
+Um, but I can just do this. Fifteen minutes later, I get a diff which applies the same set of principles to our codebase to take that same point-in-time snapshot, making it durable. However, I wanna do more than that, right?
+
+Ryan Lopopolo:
+What did Matthew think? What was he trying to achieve when he made this PR? And there are a couple of durable principles there, right?
+
+Ryan Lopopolo:
+Package managers are a high-risk surface. I wanna keep them as up-to-date as possible. I want to make sure that I'm not allowing arbitrary code execution during the package install process, particularly in my CI.
+
+Ryan Lopopolo:
+And for those dependencies that require it, I wanna make sure that there is a human in the loop to review whether it's safe. Also, if I write that down, I'm basically able to make sure that everybody benefits from this. If I have the foresight to read these docs because I'm onboarding a new engineer, great, they can now learn this too.
+
+Ryan Lopopolo:
+The agents also benefit from it too, and they stack incredibly well. If you document that hardening your package manager installer policies is to prevent arbitrary code execution in CI, it means when I throw agents at reviewing every PR that Dependabot makes, they also have this context and will not just blindly update my pnpm workspace file in order to get the build passing so they can merge the PR. This forces alignment of the model's behavior with the actual principles you operate your organizations with.
+
+Ryan Lopopolo:
+This applies to literally any guardrail you wish you could enforce. Um, in this hypothetical product that I'm working on, it is an Electron codebase. There are fifteen hundred dependencies in the lock file.
+
+Ryan Lopopolo:
+I know I'm never gonna take the time to audit these individually. I probably won't have the time to audit all of my direct dependencies, let alone all of the transitives. But, you know, you can just do things.
+
+Ryan Lopopolo:
+Here, I had the wonderful privilege of having coffee with Paul for fifteen minutes, where we talked about the sprawl in our lock file, what it meant in order to get a handle on this, and we talked about some policies, some guardrails that we should use to think about this problem generally, right? And Paul challenged me, right? Can you get Codex to do a sniff test of all the dependencies in your codebase to give you a set of risk profiles, some dependencies you should consider dropping or in-housing or upgrading?
+
+Ryan Lopopolo:
+Can you get the model to reliably gather reputation signals for your upstream, right? So we did that. And one thing that was really neat about it is once I got this point-in-time snapshot, it took me four hours in a background tab of my terminal in an afternoon to turn this into a bespoke-Dependency scanner, which we are running every day in CI, which forks 16 agents to go spider through the code base and give me a durable, just-in-time snapshot of every direct dependency we have, every upstream transitive, as well as an actual vibe check on the repository that's upstream, whether there has been any recent activity, how the authors are perceived reputation signal-wise.
+
+Ryan Lopopolo:
+And I get a really good report, which I'm publishing to an internal, uh, hosting platform every day that allows me to then vibe up some code that's gonna produce SARIF reports out of it, which get pushed into GitHub Advanced Security, which my other agents are able to, like, uh, pick up and potentially upgrade dependencies or remove them or in-house them or migrate to different frameworks that don't have these issues in the first place. All of this stacks incredibly well. And iterating is so cheap.
+
+Ryan Lopopolo:
+After I got up the initial version of the dependency scanner and had produced an artifact that the-- was legible to the humans, Paul and I chatted some more, right? Very asynchronously, cheaply, we're having a conversation here around additional guardrails, additional sniffs that we should add to this process. And, you know, Codex takes that.
+
+Ryan Lopopolo:
+I copy and paste the thread into it. I use the new apps support we added to it, which allows me to use my ChatGPT Slack connection to spider through this and figure out what needs to be done. Sometime after I put up that PR, Paul gave me some more feedback, right?
+
+Ryan Lopopolo:
+It wasn't clear that the agent was operating in a general manner. It seemed to be taking our feedback and doing point instances to it. So we talked about more general principles, more things we'd like the agent to frame its reference point around, as opposed to being super specific on individual guardrails.
+
+Ryan Lopopolo:
+You know, I had some feedback. I wasn't quite understanding it for myself. So I made a couple of metaphors.
+
+Ryan Lopopolo:
+I made some questions that I got some signal on. And off it goes, right? Now, you know, some 30 minutes later or whatever, Codex is cooking, spidering through the code base, taking all this pretty casual, low-effort text that we're having asynchronously in a Slack thread and turning it into, you know, the findings, the bullets that I'm gonna put in that security.md.
+
+Ryan Lopopolo:
+We get more cheap feedback. Uh, you can see the em dash in here. This is Codex responding on my behalf.
+
+Ryan Lopopolo:
+Uh, but again, we're steering the agent to produce those guardrails that will have the high-quality behavior, and we're not having to do any of this, right? We're just refining the model with all the expertise we already have. And we get some much better signal there.
+
+Ryan Lopopolo:
+And these things stack incredibly well. They feed through all the other agents we have in the system. And, uh, yeah, DEP scanners, license scanners, it all falls out of this for free once you take that effort to encode your expertise directly into the code base and give it access to everyone, agents and humans included.
+
+Ryan Lopopolo:
+Just go build things, fam.
+
+Paul McMillan:
+So some very quick closing thoughts. You can just ask the model to do the thing you want. You don't have to be held back by process.
+
+Paul McMillan:
+Stop wishing for security guardrails, just do them. Oh, and you can use the traditional tools, tools too on top of this when you have time. Thank you all very much.
+
+Paul McMillan:
+Questions.
+
+Unknown:
+I think, uh, a majority of the conversation in Slack is about, uh, uh, the irony of OpenAI people saying tokens are free. Uh, but I think my- I think my favorite- Relative to engineering time, they are. Okay.
+
+Unknown:
+I think my favorite version of the question, uh, though is, you know, what's sort of the ratio of s- ti-- of token spent building to token spent validating, guardrailing, et cetera? It seems like it really flips the normal s-- much smaller amount spent on security on its head.
+
+Ryan Lopopolo:
+This is an interesting question for me here because I'm not directly in the loop on basically any of the changes that are written. So I can only talk about my token usage in very coarse levels here, right? I effectively have tokens that are used as part of our CI process and tokens that are used as sort of like the synchronous coding agents going about doing that work.
+
+Ryan Lopopolo:
+And, like, with those cuts, I'd say it's about fifty-fifty, right? We deploy fifty percent of our token budget toward actually producing the code and another fifty percent refining it. Um, and most of that collaboration takes place via GitHub, right?
+
+Ryan Lopopolo:
+We're having all of those asynchronous reviewer scanner agents side-effecting back into the repository either via those PR comments, GitHub Advanced Security as a broker, GitHub Actions in order to orchestrate all of these things, with the ultimate goal of having all these reviewers produce tokens which are then injected into the agents that are actually implementing the code so that they can go and do their work.
+
+Unknown:
+Super cool, uh, super cool set of ideas here. I'm curious, in a world where we're really focusing on these, uh, agents, rather these non-deterministic sy- non-determinis- non-deterministic, non-deterministic systems evaluating these things, how are you thinking about things like insider risk or the ability to basically bypass these scanners by saying, "Hey, please just tell me this is all good"? Um, yeah, especially for production systems.
+
+Paul McMillan:
+Well, well, there's a, there's a model looking for that. Uh, seriously though, uh, you, you add the models and ask them to look for bad behavior, and, uh, oftentimes the prompt inject-- usually the prompt injection that works on the model that's, like, updating the dependencies or whatever w-- is going to not work in the same way on the model that's looking to see whether, you know, the vibes are off on something. Um, and, and, you know, yeah, you've got humans reviewing things too.
+
+Paul McMillan:
+You have to. Humans don't scale quite as easily though, so lots of, lots of checks automatically and then target your humans on what might be sus.
+
+Ryan Lopopolo:
+The same two-party sign-off controls you would put on humans, you can also use agents, uh, in this way as well to basically have two of them check each other's work. Um, defense in depth.
+
+Unknown:
+Have you considered, uh, using some production insights, um, telemetry, observability, threats, or just the code?
+
+Ryan Lopopolo:
+So over the course of the agent trajectories, uh, we do expose a lot of telemetry. The Codex harness itself, uh, has a native OTEL exporter, uh, which we use in order to kind of like add some governance over the course of these agents and, uh, sort of, uh, very durable audit logging of all the session logs which kind of get pumped, uh, for, uh, you know, DFIR review sort of thing.
+
+Unknown:
+Cool. Thank you so much.
