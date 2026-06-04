@@ -1,3 +1,5 @@
+YouTube: https://www.youtube.com/watch?v=8suwvrF0Lv0
+
 Aakash Gupta:
 One of the craziest statements I heard from you was, "Code is a liability." What does that mean exactly and- Yeah, there's a bunch of different ways that this expresses, but primarily, all of our human software engineering organizations have been tooled around this idea that code is the most expensive thing to produce.
 

@@ -32,11 +32,11 @@ audits where humans set intent and agents write code.
 
 | ID | Score | Type | Title | Source | Local Raw File | Notes |
 | --- | ---: | --- | --- | --- | --- | --- |
-| `openai-harness-engineering` | 5 | Article | Harness engineering | https://openai.com/index/harness-engineering/ | Not copied | Primary article. Later synthesize into our own compact patterns; do not duplicate the full article body here. |
-| `youtube-am_oeAoUhew` | 5 | Video transcript | Harness Engineering: How to Build Software When Humans Steer, Agents Execute - Ryan Lopopolo, OpenAI | https://www.youtube.com/watch?v=am_oeAoUhew | `youtube-am_oeAoUhew-transcript.txt` | AI Engineer talk and Q&A. Highest signal for repo legibility, guardrails, review agents, and validation loops. |
-| `youtube-CeOXx-XTYek` | 5 | Video transcript | Extreme Harness Engineering: 1M LOC, 1B toks/day, 0% human code or review - Ryan Lopopolo, OpenAI | https://www.youtube.com/watch?v=CeOXx-XTYek | `youtube-CeOXx-XTYek-transcript.txt` | Latent Space interview. Highest signal for skill design, repository scaffolding, feedback loops, and orchestration. |
-| `youtube-U2O14Jd3MBU` | 4 | Video transcript | Paul McMillan & Ryan Lopopolo - Code Is Free: Securing Software \| [un]prompted 2026 | https://www.youtube.com/watch?v=U2O14Jd3MBU | `youtube-U2O14Jd3MBU-transcript.txt` | Security-focused supporting source. Mine for threat-model docs, security guardrails, and CI-based agent review patterns. |
-| `youtube-8suwvrF0Lv0` | 4 | Video transcript | I got an inside look at how OpenAI PMs ship code | https://www.youtube.com/watch?v=8suwvrF0Lv0 | `youtube-8suwvrF0Lv0-transcript.txt` | PM/product collaboration source. Mine for cross-functional repo legibility, app-driving skills, and validation proof-of-work. |
+| `openai-harness-engineering` | 5 | Article | Harness engineering | https://openai.com/index/harness-engineering/ | `openai-harness-engineering-article-text.md` | Primary article. Text-reference version only; later synthesize into our own compact patterns. |
+| `youtube-am_oeAoUhew` | 5 | Video transcript | Harness Engineering: How to Build Software When Humans Steer, Agents Execute - Ryan Lopopolo, OpenAI | https://www.youtube.com/watch?v=am_oeAoUhew | `youtube-harness-engineering-how-to-build-software-when-humans-steer-agents-execute-ryan-lopopolo-openai-transcript.txt` | AI Engineer talk and Q&A. Highest signal for repo legibility, guardrails, review agents, and validation loops. |
+| `youtube-CeOXx-XTYek` | 5 | Video transcript | Extreme Harness Engineering: 1M LOC, 1B toks/day, 0% human code or review - Ryan Lopopolo, OpenAI | https://www.youtube.com/watch?v=CeOXx-XTYek | `youtube-extreme-harness-engineering-1m-loc-1b-toks-day-0-percent-human-code-or-review-ryan-lopopolo-openai-transcript.txt` | Latent Space interview. Highest signal for skill design, repository scaffolding, feedback loops, and orchestration. |
+| `youtube-U2O14Jd3MBU` | 4 | Video transcript | Paul McMillan & Ryan Lopopolo - Code Is Free: Securing Software \| [un]prompted 2026 | https://www.youtube.com/watch?v=U2O14Jd3MBU | `youtube-paul-mcmillan-and-ryan-lopopolo-code-is-free-securing-software-unprompted-2026-transcript.txt` | Security-focused supporting source. Mine for threat-model docs, security guardrails, and CI-based agent review patterns. |
+| `youtube-8suwvrF0Lv0` | 4 | Video transcript | I got an inside look at how OpenAI PMs ship code | https://www.youtube.com/watch?v=8suwvrF0Lv0 | `youtube-i-got-an-inside-look-at-how-openai-pms-ship-code-transcript.txt` | PM/product collaboration source. Mine for cross-functional repo legibility, app-driving skills, and validation proof-of-work. |
 
 ## Transcript Artifacts
 
@@ -70,7 +70,8 @@ this manifest.
 
 ## Suggested Search Terms
 
-Use these with `rg -n -i` over `references/raw/youtube-*-transcript.txt`:
+Use these with `rg -n -i` over `references/raw/*.txt` and
+`references/raw/openai-harness-engineering-article-text.md`:
 
 - `slop|guardrail|lint|test|review agent|CI|validation`
 - `AGENTS.md|skills|context|documentation|repo|repository`

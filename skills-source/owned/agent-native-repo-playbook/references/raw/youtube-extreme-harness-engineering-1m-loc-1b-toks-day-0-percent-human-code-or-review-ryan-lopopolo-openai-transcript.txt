@@ -1,3 +1,5 @@
+YouTube: https://www.youtube.com/watch?v=CeOXx-XTYek
+
 Ryan Lopopolo:
 I do think that there is an interesting space to explore here with Codex, the harness as part of building AI products, right? There's a ton of momentum around getting the models to be good at coding. We've seen big leaps in like the task complexity with each incremental model release, where if you can figure out how to collapse a product that you're trying to build, a user journey that you're trying to solve into code, it's pretty natural to use the Codex harness to solve that problem for you.
 
