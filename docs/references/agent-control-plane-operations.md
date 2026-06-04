@@ -21,6 +21,7 @@ For repo authors adding `scripts/hooks/*.py`, start with
   - machine-facing full bootstrap batch
   - syncs managed skill links from `skills/registry.json`
   - syncs managed repo local Git `core.hooksPath` to the shared Git hooks directory
+  - applies the temporary Antigravity spike surface
   - applies the Claude Code control-plane surface
   - applies the Codex runtime via `codex/scripts/bootstrap-machine-codex.sh`
 - `scripts/auto-apply-agent-control-planes.sh`
