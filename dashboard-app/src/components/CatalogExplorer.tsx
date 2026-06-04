@@ -110,9 +110,9 @@ export function CatalogExplorer({
       <table className="cat-table">
         <thead>
           <tr>
-            <th>Name</th>
-            <th>Used by</th>
-            <th className="cat-src-h">Source</th>
+            <th scope="col">Name</th>
+            <th scope="col">Used by</th>
+            <th className="cat-src-h" scope="col">Source</th>
           </tr>
         </thead>
         <tbody>

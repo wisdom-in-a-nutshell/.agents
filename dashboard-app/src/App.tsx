@@ -128,7 +128,7 @@ export function App() {
           <>
             <header className="topbar">
               <div className="section-title">
-                <p className="eyebrow">Overview</p>
+                <p className="eyebrow">Control Plane</p>
                 <h2>Control-plane status</h2>
               </div>
               <div className="topbar-meta">

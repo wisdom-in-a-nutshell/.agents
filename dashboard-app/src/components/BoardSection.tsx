@@ -56,12 +56,12 @@ function RepoCoverage({ repos }: { repos: Item[] }) {
     <table className="cp-repos">
       <thead>
         <tr>
-          <th>Repo</th>
-          <th className="cp-num">Skills</th>
-          <th className="cp-num">Plugins</th>
-          <th className="cp-num">MCP</th>
-          <th className="cp-num">Hooks</th>
-          <th className="cp-center">Dev</th>
+          <th scope="col">Repo</th>
+          <th className="cp-num" scope="col">Skills</th>
+          <th className="cp-num" scope="col">Plugins</th>
+          <th className="cp-num" scope="col">MCP</th>
+          <th className="cp-num" scope="col">Hooks</th>
+          <th className="cp-center" scope="col">Dev</th>
         </tr>
       </thead>
       <tbody>
