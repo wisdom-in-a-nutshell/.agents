@@ -1,12 +1,11 @@
-import { useCallback, useEffect, useLayoutEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useControlPlane } from './api';
 import { BoardSection } from './components/BoardSection';
 import { CatalogExplorer } from './components/CatalogExplorer';
-import { FilterBar, MetricsGrid, Topbar, WarningsPanel } from './components/Chrome';
 import { RepoExplorer } from './components/RepoExplorer';
 import { Sidebar } from './components/Sidebar';
 import { NavProvider } from './primitives';
-import { countForFilter, formatDate, repoDisplayName, repoKey } from './selectors';
+import { formatDate, repoDisplayName, repoKey } from './selectors';
 import { SectionView } from './sections';
 import type { SectionId } from './types';
 
@@ -21,12 +20,9 @@ function initialSection(): SectionId {
 export function App() {
   const { data, error, refreshStatus } = useControlPlane();
   const [section, setSection] = useState<SectionId>(initialSection);
-  const [filter, setFilter] = useState('all');
   const [query, setQuery] = useState('');
   const [focusedRepoKey, setFocusedRepoKey] = useState('');
-  const [collapsed, setCollapsed] = useState(
-    () => localStorage.getItem(SIDEBAR_KEY) === 'true',
-  );
+  const [collapsed, setCollapsed] = useState(() => localStorage.getItem(SIDEBAR_KEY) === 'true');
 
   // Persist + reflect sidebar collapse on <body> (CSS keys off it).
   useEffect(() => {
@@ -35,7 +31,6 @@ export function App() {
 
   const selectSection = useCallback((next: SectionId) => {
     setSection(next);
-    setFilter('all');
     setFocusedRepoKey('');
     const url = next === 'board' ? window.location.pathname : `?section=${next}`;
     window.history.replaceState(null, '', url);
@@ -43,7 +38,6 @@ export function App() {
 
   const navigateToRepo = useCallback((name: string) => {
     setSection('repos');
-    setFilter('all');
     setFocusedRepoKey(repoKey(name));
     setQuery(repoDisplayName(name));
   }, []);
@@ -55,22 +49,6 @@ export function App() {
       return next;
     });
   }, []);
-
-  // Drop a filter that no longer matches anything (mirrors original normalize).
-  useEffect(() => {
-    if (data && filter !== 'all' && countForFilter(data, section, filter) === 0) {
-      setFilter('all');
-    }
-  }, [data, section, filter]);
-
-  // Smooth-scroll + focus the targeted repo card after it renders.
-  useLayoutEffect(() => {
-    if (!data || section !== 'repos' || !focusedRepoKey) return;
-    const card = document.querySelector<HTMLElement>(`[data-repo-key="${focusedRepoKey}"]`);
-    if (!card) return;
-    card.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    card.focus({ preventScroll: true });
-  }, [data, section, focusedRepoKey]);
 
   const lastUpdated = data ? `Updated ${formatDate(data.generated_at_utc)}` : 'Not loaded';
 
@@ -106,23 +84,21 @@ export function App() {
               </NavProvider>
             </section>
           ) : (
-            <>
-              <Topbar data={data} section={section} />
-              <MetricsGrid data={data} section={section} />
-              <WarningsPanel data={data} section={section} />
-              <FilterBar data={data} section={section} filter={filter} onSelect={setFilter} />
-              <section className="content-region" aria-live="polite">
-                <NavProvider value={navigateToRepo}>
-                  <SectionView
-                    section={section}
-                    data={data}
-                    filter={filter}
-                    query={query}
-                    focusedRepoKey={focusedRepoKey}
-                  />
-                </NavProvider>
-              </section>
-            </>
+            <section className="content-region content-region-flush" aria-live="polite">
+              <NavProvider value={navigateToRepo}>
+                <div className="cat-head">
+                  <h2>Attention</h2>
+                  <span className="cat-hint">disabled, dormant, unassigned, and unscoped items</span>
+                </div>
+                <SectionView
+                  section={section}
+                  data={data}
+                  filter="all"
+                  query={query}
+                  focusedRepoKey={focusedRepoKey}
+                />
+              </NavProvider>
+            </section>
           )
         ) : (
           <>

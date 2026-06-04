@@ -1,12 +1,5 @@
 import { createContext, type ReactNode, useContext } from 'react';
-import {
-  cleanArray,
-  repoDisplayName,
-  scopeHas,
-  scopeToneForItem,
-  sourceHref,
-  sourceLabel,
-} from './selectors';
+import { sourceHref, sourceLabel } from './selectors';
 import type { Item, Tone } from './types';
 
 // Repo navigation is needed deep inside rows/chips; carry it via context.
@@ -22,23 +15,6 @@ function cx(...parts: Array<string | false | undefined>): string {
 
 export function Chip({ text, tone = '', scopeTone = '' }: { text: string; tone?: Tone | ''; scopeTone?: Tone | '' }) {
   return <span className={cx('chip', tone, scopeTone)}>{text}</span>;
-}
-
-export function RepoChip({ name, scopeTone = '' }: { name: string; scopeTone?: Tone | '' }) {
-  const navigate = useNavigateRepo();
-  return (
-    <button
-      type="button"
-      className={cx('chip', 'repo-link', scopeTone)}
-      title={`Show ${repoDisplayName(name)} in Repos`}
-      onClick={(event) => {
-        event.stopPropagation();
-        navigate(name);
-      }}
-    >
-      {repoDisplayName(name)}
-    </button>
-  );
 }
 
 export function EntityMain({
@@ -59,28 +35,6 @@ export function EntityMain({
   );
 }
 
-export function StatLine({ label, value }: { label: string; value: number }) {
-  return (
-    <div className="stat-line">
-      <span>{label}</span>
-      <strong>{value}</strong>
-    </div>
-  );
-}
-
-export function SmallCount({ label, value, tone = '' }: { label: string; value: number; tone?: Tone | '' }) {
-  return (
-    <span className={cx('small-count', tone)}>
-      <span>{label}</span>
-      <strong>{value}</strong>
-    </span>
-  );
-}
-
-export function RuntimePill({ text }: { text: string }) {
-  return <span className="runtime-pill">{text}</span>;
-}
-
 export function EmptyState({ message }: { message: string }) {
   return (
     <div className="empty-state">
@@ -97,56 +51,6 @@ export function ChipBlock({ values, tone = '' }: { values: string[]; tone?: Tone
       ))}
     </div>
   );
-}
-
-export function AvailabilityBlock({ item }: { item: Item }) {
-  if (item.scope === 'global') {
-    return (
-      <div className="availability-block">
-        <Chip text="All repos" scopeTone="scope-global" />
-      </div>
-    );
-  }
-  if (item.status === 'dormant' || item.scope === 'dormant') {
-    return (
-      <div className="availability-block">
-        <Chip text="Dormant" tone="warning" />
-      </div>
-    );
-  }
-  const repos = cleanArray(item.repos);
-  if (repos.length === 0) {
-    return (
-      <div className="availability-block">
-        <span className="muted">No repo assignment</span>
-      </div>
-    );
-  }
-  const tone = scopeToneForItem(item);
-  return (
-    <div className="availability-block">
-      {repos.map((r, i) => (
-        <RepoChip key={`${r}-${i}`} name={r} scopeTone={tone} />
-      ))}
-    </div>
-  );
-}
-
-export function McpAvailabilityBlock({ item }: { item: Item }) {
-  const children: ReactNode[] = [];
-  if (scopeHas(item, 'global')) {
-    children.push(<Chip key="global" text="Global" scopeTone="scope-global" />);
-  }
-  cleanArray(item.repos).forEach((r, i) => {
-    children.push(<RepoChip key={`repo-${r}-${i}`} name={r} scopeTone="scope-local" />);
-  });
-  cleanArray(item.details.plugins).forEach((p, i) => {
-    children.push(<Chip key={`plugin-${p}-${i}`} text={`Plugin: ${p}`} />);
-  });
-  if (children.length === 0) {
-    children.push(<Chip key="unassigned" text="Unassigned" tone="warning" />);
-  }
-  return <div className="availability-block">{children}</div>;
 }
 
 export function RowActions({ item }: { item: Item }) {
