@@ -52,9 +52,10 @@ to the command that uses it.
 
 Boot context is delivered by the repo's `SessionStart` hook
 (`scripts/hooks/session_start.py`), which delegates to the skill-bundled hook.
-The hook reads the shared `dobby-workspace` body map, `now.json`,
-`state/shelf.json`, walks `memory/areas/`, reads recent session-memory JSON, and
-calls the `dobby-calendar` skill CLI for upcoming events.
+The hook reads the shared `dobby-workspace` body map and `now.json`, walks
+`memory/areas/`, reads recent session-memory JSON, calls `dobby-shelf snapshot
+--mode boot --plain` for the curated Shelf decision surface, and calls the
+`dobby-calendar` skill CLI for upcoming events.
 
 What boot context should include:
 
@@ -73,6 +74,7 @@ Operational limits:
   on collision
 - shared body-map boot cap: 12000 chars
 - boot context: last 3 records plus records from the last 7 days, capped at 10
+- Shelf boot context: `dobby-shelf snapshot --mode boot --plain`
 - per-record boot cap: 2500 chars
 - total recent-session boot block cap: 12000 chars
 

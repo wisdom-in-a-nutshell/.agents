@@ -30,7 +30,7 @@ SNAPSHOT_LIMITS = {
     # Default decision surface for "what should I work on today?"
     "plan-day": {"now": 5, "today": 8, "upcoming": 3, "later": 2},
     # Full open-loop decision surface. Archives still live behind list --view done/dropped/all.
-    "full": {"now": 0, "today": 0, "upcoming": 0, "later": 0},
+    "full": {"now": -1, "today": -1, "upcoming": -1, "later": -1},
 }
 LOCAL_TIMEZONE = os.environ.get("DOBBY_LOCAL_TIMEZONE", "Europe/Berlin")
 
@@ -314,7 +314,7 @@ def build_snapshot(state: dict[str, Any], mode: str) -> dict[str, Any]:
     for name in SNAPSHOT_SECTION_ORDER:
         raw = raw_sections[name]
         limit = limits[name]
-        visible = raw if limit <= 0 else raw[:limit]
+        visible = raw if limit < 0 else raw[:limit]
         sections[name] = [compact_item(item, today) for item in visible]
         hidden_counts[name] = max(0, len(raw) - len(visible))
 
