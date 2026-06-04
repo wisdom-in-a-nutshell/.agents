@@ -2,6 +2,7 @@ import { useCallback, useEffect, useLayoutEffect, useState } from 'react';
 import { useControlPlane } from './api';
 import { BoardSection } from './components/BoardSection';
 import { FilterBar, MetricsGrid, Topbar, WarningsPanel } from './components/Chrome';
+import { RepoExplorer } from './components/RepoExplorer';
 import { Sidebar } from './components/Sidebar';
 import { NavProvider } from './primitives';
 import { countForFilter, formatDate, repoDisplayName, repoKey } from './selectors';
@@ -9,7 +10,7 @@ import { SectionView } from './sections';
 import type { SectionId } from './types';
 
 const SIDEBAR_KEY = 'agentControlSidebarCollapsed';
-const SECTIONS: SectionId[] = ['board', 'overview', 'attention', 'repos', 'skills', 'plugins', 'mcp', 'hooks'];
+const SECTIONS: SectionId[] = ['board', 'repos', 'attention', 'skills', 'plugins', 'mcp', 'hooks'];
 
 function initialSection(): SectionId {
   const requested = new URLSearchParams(window.location.search).get('section');
@@ -92,6 +93,10 @@ export function App() {
               <NavProvider value={navigateToRepo}>
                 <BoardSection data={data} />
               </NavProvider>
+            </section>
+          ) : section === 'repos' ? (
+            <section className="content-region content-region-flush" aria-live="polite">
+              <RepoExplorer data={data} query={query} initialRepoKey={focusedRepoKey} />
             </section>
           ) : (
             <>

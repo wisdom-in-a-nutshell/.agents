@@ -84,7 +84,7 @@ export function FilterBar({
   filter: string;
   onSelect: (filter: string) => void;
 }) {
-  const options = filterOptions[section] || filterOptions.overview;
+  const options = filterOptions[section] || filterOptions.board;
   const visible = options.filter((o) => o.id === 'all' || countForFilter(data, section, o.id) > 0);
   if (visible.length <= 1) return null;
   return (

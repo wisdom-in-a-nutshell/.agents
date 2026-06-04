@@ -3,9 +3,8 @@ import { navCount } from '../selectors';
 
 const NAV: Array<{ id: SectionId; label: string; short: string }> = [
   { id: 'board', label: 'Board', short: 'B' },
-  { id: 'overview', label: 'Overview', short: 'O' },
-  { id: 'attention', label: 'Attention', short: '!' },
   { id: 'repos', label: 'Repos', short: 'R' },
+  { id: 'attention', label: 'Attention', short: '!' },
   { id: 'skills', label: 'Skills', short: 'S' },
   { id: 'plugins', label: 'Plugins', short: 'P' },
   { id: 'mcp', label: 'MCP', short: 'M' },

@@ -1,6 +1,5 @@
 export type SectionId =
   | 'board'
-  | 'overview'
   | 'attention'
   | 'repos'
   | 'skills'
