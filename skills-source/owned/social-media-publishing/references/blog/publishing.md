@@ -36,10 +36,9 @@ Go to `../blog-personal` and treat it as the working repo.
 ### Read in this order
 
 1. `AGENTS.md`
-2. `docs/AGENTS.md`
-3. `.agents/skills/blog-posting/SKILL.md`
-4. `docs/architecture/site-architecture.md`
-5. `docs/references/content-verification.md`
+2. `.agents/skills/blog-posting/SKILL.md`
+3. `docs/architecture/site-architecture.md`
+4. `docs/references/content-verification.md`
 
 Use `.agents/skills/blog-posting/SKILL.md` for repo-local publishing mechanics.
 Use `adi-writing` for the post copy so the writing stays in Adi's voice.
@@ -47,33 +46,36 @@ Do the work in `../blog-personal`; do not keep the real blog mechanics in this s
 
 When delegating, spawn a sub-agent scoped to `../blog-personal` and tell it to read:
 - `AGENTS.md`
-- `docs/AGENTS.md`
 - `.agents/skills/blog-posting/SKILL.md`
 
 There is no special blog parameter to set. The important part is the repo path plus the repo-local instructions.
 
 ### Content pattern
 
-- Source of truth lives in `content/*.mdx`
-- Public assets live under `public/blog/<slug>/`
-- Reusable visual explainers can use `app/components/blog/<slug>/sequence.tsx`
-- Shared sequence renderer lives at `app/components/blog/image-sequence.tsx`
-- Register new MDX components in `app/components/mdx.tsx`
+The blog is a static Astro site. Treat the repo-local `blog-posting` skill as the
+source of truth; the high-level shape is:
 
-### Visual sequence post pattern
+- Source of truth lives in `src/content/blog/*.mdx` (Astro content collection)
+- Public assets live under `public/blog/<slug>/`
+- Reusable visuals are static `.astro` components in `src/components/`
+- Register new MDX components in `src/components/mdx-components.ts`
+- There are no live charts: present data as static tables (e.g. the
+  `*Table.astro` components) rather than client-rendered chart widgets
+
+### Visual sequence / explainer post pattern
 
 For panel-by-panel explainers:
 
-1. Create `content/<slug>.mdx`
+1. Create `src/content/blog/<slug>.mdx`
 2. Copy exported images to `public/blog/<slug>/`
-3. Create `app/components/blog/<slug>/sequence.tsx`
-4. Register the sequence in `app/components/mdx.tsx`
-5. Render the sequence near the top of the post
+3. Build any reusable visual as a static `.astro` component in `src/components/`
+4. Register that component in `src/components/mdx-components.ts`
+5. Render it near the top of the post
 6. Keep the surrounding text short and useful
 7. Set `hidden: false`
 
-`blog-personal` now also documents this locally in:
-- `docs/references/visual-sequence-posts.md`
+Defer to the repo-local docs in `../blog-personal` for the exact, current
+mechanics rather than relying on the summary above.
 
 ### Verification
 
@@ -81,8 +83,8 @@ Run at minimum:
 
 ```bash
 pnpm run -s check:fast
-pnpm run -s verify:guidelines:content
 pnpm run -s build
+pnpm run -s verify:production
 ```
 
 ### Publish

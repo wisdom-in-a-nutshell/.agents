@@ -117,13 +117,13 @@ Don't:
 - **dobby-dashboard** — the reference implementation. Plain CSS, single
   `styles.css`, tokens already match this file. When the language evolves,
   evolve it here *and* in dobby together.
-- **blog / adithyan.io** — Next.js + Tailwind (shadcn HSL token system, class-based
-  dark). Migrated: the shadcn tokens in `app/global.css` (`:root` + `.dark`) now
+- **blog / adithyan.io** — static Astro + Tailwind (shadcn HSL token system,
+  class-based dark). The shadcn tokens in `src/styles/global.css` (`:root` + `.dark`)
   carry the adi-design palette as HSL conversions of the canonical oklch values
   (token *names* kept so components + opacity modifiers still work); `--primary`
-  and `--ring` are sage, `--destructive` is rose, charts retuned to sage/gold.
-  Fonts are Newsreader + Inter via `next/font`. The warm cream/beige is gone
-  (bg, dark bg, prose ink, selection, theme-color, subscribe UI, resume dots).
+  and `--ring` are sage, `--destructive` is rose. Fonts are Newsreader + Inter
+  (self-hosted via `@fontsource-variable/*`, not `next/font`). The warm cream/beige
+  is gone (bg, dark bg, prose ink, selection, theme-color, resume dots).
 - **~/.agents/dashboard** — React + Vite + TS (same stack as dobby). Source in
   `~/.agents/dashboard-app`, built into `~/.agents/dashboard`, served by the
   Python control-plane engine at `/dashboard/`. Consumes the canonical

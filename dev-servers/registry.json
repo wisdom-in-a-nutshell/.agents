@@ -9,14 +9,14 @@
       "repo": "blog-personal",
       "servers": [
         {
-          "name": "blog dev (next)",
+          "name": "blog dev (astro)",
           "runtimeExecutable": "pnpm",
           "runtimeArgs": ["dev"],
-          "port": 3000,
+          "port": 4321,
           "autoPort": true
         },
         {
-          "name": "blog production (local standalone)",
+          "name": "blog production (static, serve dist)",
           "runtimeExecutable": "pnpm",
           "runtimeArgs": ["start"],
           "port": 8793,
