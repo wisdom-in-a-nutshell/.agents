@@ -116,6 +116,9 @@ Do:
 - Use the serif for anything meant to be *read*; sans for anything meant to be
   *operated*.
 - Keep one accent. Let amber/rose stay contextual.
+- Keep every interactive element keyboard-operable with a visible focus ring
+  (use `--focus-ring`) and a reduced-motion path. Accessibility is universal, not
+  a per-app concern — it lives here, not in product docs.
 
 Don't:
 - **No warm cream / sand / paper / beige background.** This is the single most
@@ -129,8 +132,11 @@ Don't:
 ## Per-product notes
 
 - **dobby-dashboard** — the reference implementation. Plain CSS, single
-  `styles.css`, tokens already match this file. When the language evolves,
-  evolve it here *and* in dobby together.
+  `styles.css`, tokens already match this file (including the `--accent` /
+  `--accent-ink` split). When the language evolves, evolve it here *and* in dobby
+  together. Repo pointer: `docs/references/design-system.md`; the local CSS classes
+  and component vocabulary live in `docs/references/ui-system.md` (implementation,
+  not canon).
 - **blog / adithyan.io** — static Astro + Tailwind (shadcn HSL token system,
   class-based dark). The shadcn tokens in `src/styles/global.css` (`:root` + `.dark`)
   carry the adi-design palette as HSL conversions of the canonical oklch values
@@ -138,6 +144,13 @@ Don't:
   and `--ring` are sage, `--destructive` is rose. Fonts are Newsreader + Inter
   (self-hosted via `@fontsource-variable/*`, not `next/font`). The warm cream/beige
   is gone (bg, dark bg, prose ink, selection, theme-color, resume dots).
+- **aipodcasting-website** (aipodcast.ing) — static Astro + Tailwind, same shadcn
+  HSL token system as the blog (class-based dark). Tokens in `src/styles/global.css`
+  carry the palette as HSL conversions; `--primary` and `--ring` are the **ink-depth**
+  sage (`137 30% 36%`, AA-safe as a button fill behind white text and as link text),
+  `--destructive` is the AA-safe rose. Wider than the blog: `max-w-site` (1040px) for
+  grids/stat rows, `max-w-readable` (720px) for text pages. Repo pointer:
+  `docs/references/design-system.md`.
 - **~/.agents/dashboard** — React + Vite + TS (same stack as dobby). Source in
   `~/.agents/dashboard-app`, built into `~/.agents/dashboard`, served by the
   Python control-plane engine at `/dashboard/`. Consumes the canonical
