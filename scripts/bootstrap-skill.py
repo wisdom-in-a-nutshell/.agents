@@ -14,6 +14,9 @@ from urllib.parse import parse_qs, urlparse
 
 SCHEMA_VERSION = "1.0"
 COMMAND = "bootstrap-skill"
+ROOT_DIR = Path(__file__).resolve().parent.parent
+DEFAULT_REGISTRY_FILE = ROOT_DIR / "skills" / "registry.json"
+DEFAULT_USER_SKILLS_DIR = Path.home() / ".agents" / "skills"
 
 EXIT_SUCCESS = 0
 EXIT_FAILURE = 1
@@ -185,7 +188,7 @@ def run(
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description=(
-            "Bootstrap an external skill into ~/.agents canonical registry and "
+            "Bootstrap an external skill into the canonical agents registry and "
             "optionally sync it into one or more repos."
         )
     )
@@ -212,7 +215,7 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--registry-file",
-        default=str(Path.home() / ".agents" / "skills" / "registry.json"),
+        default=str(DEFAULT_REGISTRY_FILE),
         help="Path to skills registry JSON.",
     )
     parser.add_argument(
@@ -259,7 +262,7 @@ def main() -> int:
             started_at,
             code="E_REGISTRY_NOT_FOUND",
             message=f"Registry not found: {registry_file}",
-            hint="Run this inside the ~/.agents control-plane repo or pass --registry-file.",
+            hint="Run this inside the agents control-plane repo or pass --registry-file.",
             exit_code=EXIT_USAGE,
             plain=args.plain,
         )
@@ -474,7 +477,7 @@ def main() -> int:
             repo_root = resolve_repo_root(repo, github_root, home)
             repo_links.append(str(repo_root / ".agents" / "skills" / skill))
     elif effective_scope == "global":
-        repo_links.append(str(root_dir / "skills" / skill))
+        repo_links.append(str(DEFAULT_USER_SKILLS_DIR / skill))
 
     data = {
         "skill": skill,

@@ -151,7 +151,7 @@ codex_jump() {
   local dir
   local line
   local display_label
-  local dirs_file="${CODEX_JUMP_DIRS_FILE:-$HOME/.agents/codex/shell/codex-jump-dirs.txt}"
+  local dirs_file="${CODEX_JUMP_DIRS_FILE:-$HOME/GitHub/agents/codex/shell/codex-jump-dirs.txt}"
   local github_root="${CODEX_JUMP_GITHUB_ROOT:-$HOME/GitHub}"
   local usage_file="${CODEX_JUMP_USAGE_FILE:-$HOME/.local/state/codex-jump-usage.tsv}"
   local smart_sort="${CODEX_JUMP_SMART_SORT:-1}"
@@ -185,7 +185,7 @@ codex_jump() {
       "$github_root"
       "$github_root/scripts"
       "$github_root/win"
-      "$HOME/.agents"
+      "$github_root/agents"
       "$HOME/.codex"
     )
   fi

@@ -2,7 +2,7 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-CONTROL_PLANE_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+CONTROL_PLANE_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
 
 APPLY=0
 GLOBAL_AGENTS="${HOME}/.codex/AGENTS.md"
@@ -13,7 +13,7 @@ usage() {
 Usage: $(basename "$0") [options]
 
 Ensure ~/.codex/AGENTS.md points at the canonical machine-wide guidance
-file managed in ~/.agents.
+file managed in the agents control plane.
 
 Default mode is dry-run. Use --apply to write changes.
 
@@ -25,8 +25,8 @@ Options:
   -h, --help             Show this help
 
 Examples:
-  ~/.agents/codex/scripts/sync-global-agents-md.sh
-  ~/.agents/codex/scripts/sync-global-agents-md.sh --apply
+  ~/GitHub/agents/codex/scripts/sync-global-agents-md.sh
+  ~/GitHub/agents/codex/scripts/sync-global-agents-md.sh --apply
 USAGE
 }
 

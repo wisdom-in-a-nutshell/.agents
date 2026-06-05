@@ -14,6 +14,8 @@ from urllib.parse import urlparse
 
 SCHEMA_VERSION = "1.0"
 COMMAND = "bootstrap-plugin"
+ROOT_DIR = Path(__file__).resolve().parent.parent
+DEFAULT_REGISTRY_FILE = ROOT_DIR / "plugins" / "registry.json"
 
 EXIT_SUCCESS = 0
 EXIT_FAILURE = 1
@@ -186,7 +188,7 @@ def run(
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Bootstrap a native Codex plugin entry into ~/.agents."
+        description="Bootstrap a native Codex plugin entry into the canonical agents registry."
     )
     parser.add_argument(
         "plugin_ref",
@@ -221,7 +223,7 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--registry-file",
-        default=str(Path.home() / ".agents" / "plugins" / "registry.json"),
+        default=str(DEFAULT_REGISTRY_FILE),
         help="Path to plugins registry JSON.",
     )
     parser.add_argument(
@@ -268,7 +270,7 @@ def main() -> int:
             started_at,
             code="E_REGISTRY_NOT_FOUND",
             message=f"Registry not found: {registry_file}",
-            hint="Run this inside the ~/.agents control-plane repo or pass --registry-file.",
+            hint="Run this inside the agents control-plane repo or pass --registry-file.",
             exit_code=EXIT_USAGE,
             plain=args.plain,
         )

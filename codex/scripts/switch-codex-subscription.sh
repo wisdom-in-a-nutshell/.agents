@@ -37,9 +37,9 @@ Options:
   -h, --help               Show this help
 
 Examples:
-  ~/.agents/codex/scripts/switch-codex-subscription.sh status
-  ~/.agents/codex/scripts/switch-codex-subscription.sh chatgpt --apply
-  ~/.agents/codex/scripts/switch-codex-subscription.sh azure --apply
+  ~/GitHub/agents/codex/scripts/switch-codex-subscription.sh status
+  ~/GitHub/agents/codex/scripts/switch-codex-subscription.sh chatgpt --apply
+  ~/GitHub/agents/codex/scripts/switch-codex-subscription.sh azure --apply
 
 One-off runs can use the synced profiles without changing the global default:
   codex --profile chatgpt

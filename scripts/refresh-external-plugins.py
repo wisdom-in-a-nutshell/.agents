@@ -14,6 +14,7 @@ from typing import Any
 
 
 SKIP_UPSTREAM_REFS = {"", "-", "local-import"}
+DEFAULT_REGISTRY_FILE = Path(__file__).resolve().parent.parent / "plugins" / "registry.json"
 PRESERVE_RELATIVE_PATHS = ("agents/openai.yaml",)
 
 
@@ -265,8 +266,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "registry_file",
         nargs="?",
-        default=str(Path.home() / ".agents" / "plugins" / "registry.json"),
-        help="Path to plugins registry JSON (default: ~/.agents/plugins/registry.json)",
+        default=str(DEFAULT_REGISTRY_FILE),
+        help="Path to plugins registry JSON (default: <control-plane>/plugins/registry.json)",
     )
     return parser.parse_args()
 

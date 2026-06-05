@@ -9,6 +9,9 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+ROOT_DIR = Path(__file__).resolve().parent.parent
+DEFAULT_REGISTRY_FILE = ROOT_DIR / "codex" / "config" / "repo-bootstrap.json"
+
 
 @dataclass(frozen=True)
 class RepoCandidate:
@@ -121,7 +124,7 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--registry",
-        default=str(Path.home() / ".agents/codex/config/repo-bootstrap.json"),
+        default=str(DEFAULT_REGISTRY_FILE),
         help="Repo bootstrap registry path",
     )
     return parser.parse_args()

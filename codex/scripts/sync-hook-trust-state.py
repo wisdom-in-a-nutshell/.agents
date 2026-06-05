@@ -21,10 +21,13 @@ EVENT_LABELS = {
     "Stop": "stop",
 }
 
+ROOT_DIR = Path(__file__).resolve().parents[2]
+DEFAULT_REPO_REGISTRY = ROOT_DIR / "codex" / "config" / "repo-bootstrap.json"
+
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Trust Codex hooks rendered by the managed ~/.agents control plane."
+        description="Trust Codex hooks rendered by the managed agents control plane."
     )
     parser.add_argument("--apply", action="store_true", help="write config.toml")
     parser.add_argument(
@@ -44,7 +47,7 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--registry",
-        default="~/.agents/codex/config/repo-bootstrap.json",
+        default=str(DEFAULT_REPO_REGISTRY),
         help="managed repo bootstrap registry",
     )
     parser.add_argument(

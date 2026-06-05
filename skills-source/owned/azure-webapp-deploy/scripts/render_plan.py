@@ -81,7 +81,7 @@ def build_plan(args: argparse.Namespace) -> dict[str, Any]:
             "Inspect repo and confirm deploy readiness",
             False,
             [
-                "python3 ~/.agents/skills-source/owned/azure-webapp-deploy/scripts/inspect_webapp_deploy.py "
+                "python3 ~/GitHub/agents/skills-source/owned/azure-webapp-deploy/scripts/inspect_webapp_deploy.py "
                 f"--repo-dir {repo_dir or '<repo-dir>'} --no-input"
             ],
         ),
@@ -140,7 +140,7 @@ def build_plan(args: argparse.Namespace) -> dict[str, Any]:
             "Verify deployed app",
             False,
             [
-                "python3 ~/.agents/skills-source/owned/azure-webapp-deploy/scripts/verify_deploy.py "
+                "python3 ~/GitHub/agents/skills-source/owned/azure-webapp-deploy/scripts/verify_deploy.py "
                 f"--base-url https://{args.app_name or '<app-name>'}.azurewebsites.net "
                 f"--path {args.health_path}"
             ],

@@ -154,7 +154,7 @@ export function BoardSection({ data }: { data: ControlPlaneData }) {
       </div>
       <RepoCoverage repos={data.groups.repos} />
       <p className="cp-foot">
-        Source of truth: the registries under <code>~/.agents</code>. Generated from{' '}
+        Source of truth: the registries under <code>~/GitHub/agents</code>. Generated from{' '}
         <code>control-plane-dashboard.py</code> — read-only, no state of its own.
       </p>
     </div>

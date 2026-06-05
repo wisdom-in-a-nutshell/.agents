@@ -22,7 +22,7 @@ usage() {
   cat <<USAGE
 Usage: $(basename "$0") [options]
 
-Sync canonical Codex settings from the `~/.agents` control plane into
+Sync canonical Codex settings from the `~/GitHub/agents` control plane into
 the global Codex runtime without overwriting machine/session-specific fields.
 
 Default mode is dry-run. Use --apply to write changes.
@@ -47,8 +47,8 @@ Options:
   -h, --help                 Show this help
 
 Examples:
-  ~/.agents/codex/scripts/sync-config.sh
-  ~/.agents/codex/scripts/sync-config.sh --apply
+  ~/GitHub/agents/codex/scripts/sync-config.sh
+  ~/GitHub/agents/codex/scripts/sync-config.sh --apply
 USAGE
 }
 

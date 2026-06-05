@@ -28,9 +28,9 @@ Options:
   -h, --help             Show this help
 
 Examples:
-  ~/.agents/codex/scripts/sync-trusted-projects.sh
-  ~/.agents/codex/scripts/sync-trusted-projects.sh --apply
-  ~/.agents/codex/scripts/sync-trusted-projects.sh --apply --root ~/GitHub --root ~/Work
+  ~/GitHub/agents/codex/scripts/sync-trusted-projects.sh
+  ~/GitHub/agents/codex/scripts/sync-trusted-projects.sh --apply
+  ~/GitHub/agents/codex/scripts/sync-trusted-projects.sh --apply --root ~/GitHub --root ~/Work
 USAGE
 }
 
@@ -439,6 +439,8 @@ fi
 if (( ${#TRUSTED_REPO_ROOTS[@]} == 0 && ${#UNTRUSTED_REPO_ROOTS[@]} == 0 )); then
   die "No Git repos discovered under the configured root set."
 fi
+
+UNTRUSTED_REPO_ROOTS+=("${HOME}/.agents")
 
 log "Discovered ${#TRUSTED_REPO_ROOTS[@]} trusted repo roots."
 for repo in ${TRUSTED_REPO_ROOTS[@]+"${TRUSTED_REPO_ROOTS[@]}"}; do

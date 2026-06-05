@@ -1,6 +1,6 @@
 # Plugins Registry Reference
 
-Canonical source of truth: [`plugins/registry.json`](/Users/dobby/.agents/plugins/registry.json)
+Canonical source of truth: [`plugins/registry.json`](/Users/dobby/GitHub/agents/plugins/registry.json)
 
 ## What Lives Where
 

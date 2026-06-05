@@ -97,7 +97,7 @@ def make_control_plane_root(base_dir: Path) -> Path:
     root = base_dir / "control-plane-root"
     for relative_path in (
         "codex/config/bundled-skills-policy.json",
-        "codex/config/global.agents.md",
+        "config/global.agents.md",
         "codex/config/global.config.toml",
         "hooks/__init__.py",
         "hooks/control_plane.py",

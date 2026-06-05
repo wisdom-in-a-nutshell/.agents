@@ -58,7 +58,7 @@ directly by Codex as `model_instructions_file`. Person-specific context lives in
 | Personal actionable open loop | `state/shelf.json` via `dobby-shelf` |
 | Dobby/agent work tracker | `projects/<project>/tasks.md` |
 | Dobby's own high-bar behavioral corrections, blindspots, operational instincts, and promotions | `dobby/growth.jsonl` |
-| Exact command/schema/operational recipe | Relevant skill under `~/.agents/skills-source/owned/` |
+| Exact command/schema/operational recipe | Relevant skill under `~/GitHub/agents/skills-source/owned/` |
 | Claude/Claude Code runtime or skill-link state | `.claude/` |
 | Antigravity CLI runtime/experiment state | `.antigravitycli/` |
 | Temporary scratch / hook logs | `tmp/` |

@@ -8,7 +8,7 @@ description: "Operate Dobby's Gmail-only mail client: search/read Gmail, fetch m
 Email operations go through the skill-bundled CLI:
 
 ```bash
-$HOME/.agents/skills-source/owned/dobby-mail/scripts/dobby-mail
+$HOME/GitHub/agents/skills-source/owned/dobby-mail/scripts/dobby-mail
 ```
 
 The CLI is **Gmail API only**. It is JSON-first, non-interactive, cache-aware,
@@ -77,33 +77,33 @@ Use `get --refresh` to bypass a cached body and refetch from Gmail. Use
 
 ```bash
 # health / auth
-$HOME/.agents/skills-source/owned/dobby-mail/scripts/dobby-mail doctor --check-gmail-api --no-input
-$HOME/.agents/skills-source/owned/dobby-mail/scripts/dobby-mail gmail-auth --account adithyan@wisdominanutshell.academy
+$HOME/GitHub/agents/skills-source/owned/dobby-mail/scripts/dobby-mail doctor --check-gmail-api --no-input
+$HOME/GitHub/agents/skills-source/owned/dobby-mail/scripts/dobby-mail gmail-auth --account adithyan@wisdominanutshell.academy
 
 # cache / polling
-$HOME/.agents/skills-source/owned/dobby-mail/scripts/dobby-mail cache-status --no-input
-$HOME/.agents/skills-source/owned/dobby-mail/scripts/dobby-mail sync --reset --no-input
-$HOME/.agents/skills-source/owned/dobby-mail/scripts/dobby-mail sync --fetch --no-input
-$HOME/.agents/skills-source/owned/dobby-mail/scripts/dobby-mail history --no-input
-$HOME/.agents/skills-source/owned/dobby-mail/scripts/dobby-mail history --since HISTORY_ID --fetch --no-input
+$HOME/GitHub/agents/skills-source/owned/dobby-mail/scripts/dobby-mail cache-status --no-input
+$HOME/GitHub/agents/skills-source/owned/dobby-mail/scripts/dobby-mail sync --reset --no-input
+$HOME/GitHub/agents/skills-source/owned/dobby-mail/scripts/dobby-mail sync --fetch --no-input
+$HOME/GitHub/agents/skills-source/owned/dobby-mail/scripts/dobby-mail history --no-input
+$HOME/GitHub/agents/skills-source/owned/dobby-mail/scripts/dobby-mail history --since HISTORY_ID --fetch --no-input
 
 # Gmail reads
-$HOME/.agents/skills-source/owned/dobby-mail/scripts/dobby-mail recent --limit 20 --no-input
-$HOME/.agents/skills-source/owned/dobby-mail/scripts/dobby-mail search --query "invoice newer_than:30d" --limit 20 --no-input
-$HOME/.agents/skills-source/owned/dobby-mail/scripts/dobby-mail get --id gmail-message:MESSAGE_ID --max-body-chars 12000 --no-input
-$HOME/.agents/skills-source/owned/dobby-mail/scripts/dobby-mail get --id gmail-message:MESSAGE_ID --refresh --no-input
-$HOME/.agents/skills-source/owned/dobby-mail/scripts/dobby-mail export --id gmail-message:MESSAGE_ID --out-dir /tmp/mail-export --raw --no-input
-$HOME/.agents/skills-source/owned/dobby-mail/scripts/dobby-mail attachments --id gmail-message:MESSAGE_ID --out-dir /tmp/mail-attachments --no-input
+$HOME/GitHub/agents/skills-source/owned/dobby-mail/scripts/dobby-mail recent --limit 20 --no-input
+$HOME/GitHub/agents/skills-source/owned/dobby-mail/scripts/dobby-mail search --query "invoice newer_than:30d" --limit 20 --no-input
+$HOME/GitHub/agents/skills-source/owned/dobby-mail/scripts/dobby-mail get --id gmail-message:MESSAGE_ID --max-body-chars 12000 --no-input
+$HOME/GitHub/agents/skills-source/owned/dobby-mail/scripts/dobby-mail get --id gmail-message:MESSAGE_ID --refresh --no-input
+$HOME/GitHub/agents/skills-source/owned/dobby-mail/scripts/dobby-mail export --id gmail-message:MESSAGE_ID --out-dir /tmp/mail-export --raw --no-input
+$HOME/GitHub/agents/skills-source/owned/dobby-mail/scripts/dobby-mail attachments --id gmail-message:MESSAGE_ID --out-dir /tmp/mail-attachments --no-input
 
 # draft-first writes
-$HOME/.agents/skills-source/owned/dobby-mail/scripts/dobby-mail draft --to person@example.com --subject "Subject" --body-file /tmp/body.txt --no-input
-$HOME/.agents/skills-source/owned/dobby-mail/scripts/dobby-mail draft-reply --id gmail-message:MESSAGE_ID --body-file /tmp/body.txt --no-input
+$HOME/GitHub/agents/skills-source/owned/dobby-mail/scripts/dobby-mail draft --to person@example.com --subject "Subject" --body-file /tmp/body.txt --no-input
+$HOME/GitHub/agents/skills-source/owned/dobby-mail/scripts/dobby-mail draft-reply --id gmail-message:MESSAGE_ID --body-file /tmp/body.txt --no-input
 
 # confirmed Gmail mutations
-$HOME/.agents/skills-source/owned/dobby-mail/scripts/dobby-mail gmail-archive --gmail-id gmail-message:abc123 --confirm-mutate --dry-run --no-input
-$HOME/.agents/skills-source/owned/dobby-mail/scripts/dobby-mail gmail-trash --gmail-id gmail-message:abc123 --confirm-mutate --dry-run --no-input
-$HOME/.agents/skills-source/owned/dobby-mail/scripts/dobby-mail gmail-mark-read --gmail-id gmail-message:abc123 --confirm-mutate --dry-run --no-input
-$HOME/.agents/skills-source/owned/dobby-mail/scripts/dobby-mail gmail-filter --from noise@example.com --action trash --confirm-mutate --dry-run --no-input
+$HOME/GitHub/agents/skills-source/owned/dobby-mail/scripts/dobby-mail gmail-archive --gmail-id gmail-message:abc123 --confirm-mutate --dry-run --no-input
+$HOME/GitHub/agents/skills-source/owned/dobby-mail/scripts/dobby-mail gmail-trash --gmail-id gmail-message:abc123 --confirm-mutate --dry-run --no-input
+$HOME/GitHub/agents/skills-source/owned/dobby-mail/scripts/dobby-mail gmail-mark-read --gmail-id gmail-message:abc123 --confirm-mutate --dry-run --no-input
+$HOME/GitHub/agents/skills-source/owned/dobby-mail/scripts/dobby-mail gmail-filter --from noise@example.com --action trash --confirm-mutate --dry-run --no-input
 ```
 
 ## Gmail read/search behavior
@@ -160,6 +160,6 @@ Use Gmail API so headless Dobby does not depend on local app sync.
 ## Testing
 
 ```bash
-bash $HOME/.agents/skills-source/owned/dobby-mail/tests/run.sh
-RUN_LIVE=1 bash $HOME/.agents/skills-source/owned/dobby-mail/tests/run.sh
+bash $HOME/GitHub/agents/skills-source/owned/dobby-mail/tests/run.sh
+RUN_LIVE=1 bash $HOME/GitHub/agents/skills-source/owned/dobby-mail/tests/run.sh
 ```

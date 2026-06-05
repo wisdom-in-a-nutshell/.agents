@@ -19,7 +19,7 @@ usage() {
   cat <<USAGE
 Usage: $(basename "$0") [options]
 
-Run the machine-facing Codex control-plane bootstrap batch from ~/.agents.
+Run the machine-facing agent control-plane bootstrap batch from ~/GitHub/agents.
 
 Default mode is dry-run. Use --apply to write changes.
 
@@ -33,9 +33,9 @@ Options:
   -h, --help       Show this help
 
 Examples:
-  ~/.agents/scripts/bootstrap-machine-agent-control-planes.sh
-  ~/.agents/scripts/bootstrap-machine-agent-control-planes.sh --apply
-  ~/.agents/scripts/bootstrap-machine-agent-control-planes.sh --apply --repo ~/.agents
+  ~/GitHub/agents/scripts/bootstrap-machine-agent-control-planes.sh
+  ~/GitHub/agents/scripts/bootstrap-machine-agent-control-planes.sh --apply
+  ~/GitHub/agents/scripts/bootstrap-machine-agent-control-planes.sh --apply --repo ~/GitHub/agents
 USAGE
 }
 

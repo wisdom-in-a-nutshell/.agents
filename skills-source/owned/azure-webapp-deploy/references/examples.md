@@ -5,7 +5,7 @@ These examples are illustrative. Confirm values with the user before applying.
 ## Flexible Plan
 
 ```bash
-python3 ~/.agents/skills-source/owned/azure-webapp-deploy/scripts/render_plan.py \
+python3 ~/GitHub/agents/skills-source/owned/azure-webapp-deploy/scripts/render_plan.py \
   --repo-dir ~/GitHub/my-app \
   --github-repo owner/my-app \
   --app-name my-app-demo \
@@ -21,7 +21,7 @@ python3 ~/.agents/skills-source/owned/azure-webapp-deploy/scripts/render_plan.py
 ## LLM Runtime Plan
 
 ```bash
-python3 ~/.agents/skills-source/owned/azure-webapp-deploy/scripts/render_plan.py \
+python3 ~/GitHub/agents/skills-source/owned/azure-webapp-deploy/scripts/render_plan.py \
   --repo-dir ~/GitHub/my-llm-app \
   --github-repo owner/my-llm-app \
   --app-name my-llm-app \

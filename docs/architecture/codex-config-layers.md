@@ -2,83 +2,82 @@
 
 This page explains how Codex config is layered in this setup.
 
-The short version is: canonical config lives in `~/.agents`, live machine config lives in `~/.codex`, and repo-specific behavior lives in repo-local `.codex/config.toml`. The important detail is that trusted repo-local config is additive, while the machine config sync is managed from templates.
+The short version: canonical Codex config inputs live in `~/GitHub/agents`, live machine config lives in `~/.codex`, Codex user-scope skills live in `~/.agents/skills`, and repo-specific behavior lives in repo-local `.codex/config.toml` plus `.codex/hooks.json`.
 
 ## Figure 1: Config Layers
 
 ```mermaid
 flowchart TD
-    A[~/.agents/codex/config/global.config.toml]
-    C[~/.agents/codex/config/repo-bootstrap.json]
-    D[~/.agents/mcp/config/presets.json]
-    P[~/.agents/plugins/registry.json]
-    L[~/.agents/codex/config/bundled-skills-policy.json]
-    E[sync-trusted-projects.sh]
-    F[sync-repo-codex-configs.sh]
-    K[sync-config.sh]
-    G[~/.codex/config.toml]
-    I[Repo-local .codex/config.toml]
-    J[Codex runtime]
+    A["~/GitHub/agents/codex/config/global.config.toml"]
+    C["~/GitHub/agents/codex/config/repo-bootstrap.json"]
+    D["~/GitHub/agents/mcp/config/presets.json"]
+    P["~/GitHub/agents/plugins/registry.json"]
+    H["~/GitHub/agents/hooks/registry.json"]
+    L["~/GitHub/agents/codex/config/bundled-skills-policy.json"]
+    K["sync-config.sh"]
+    T["sync-trusted-projects.sh"]
+    R["sync-repo-codex-configs.sh"]
+    G["~/.codex/config.toml"]
+    J["~/.codex/hooks.json"]
+    I["Repo-local .codex/config.toml"]
+    Q["Repo-local .codex/hooks.json"]
+    Z["Codex runtime"]
 
     A --> K
     L --> K
-    C --> E
-    C --> F
     D --> K
-    D --> F
     P --> K
-    P --> F
+    H --> K
+    C --> T
+    C --> R
+    D --> R
+    P --> R
+    H --> R
     K --> G
-    E --> G
-    F --> I
-    G --> J
-    I --> J
+    K --> J
+    T --> G
+    R --> I
+    R --> Q
+    G --> Z
+    J --> Z
+    I --> Z
+    Q --> Z
 ```
 
-## Main Parts
+## Canonical Templates
 
-### Canonical Templates
+- `codex/config/global.config.toml` defines the managed baseline for terminal Codex.
+- `codex/config/bundled-skills-policy.json` classifies OpenAI-bundled runtime skills as allowed or disabled so upstream bundled skills cannot silently drift into the local control plane.
+- `mcp/config/presets.json` defines shared MCP presets and machine-wide global MCP defaults.
+- `plugins/registry.json` defines native Codex plugin scope and enable/disable state.
+- `hooks/registry.json` defines shared lifecycle hooks rendered into global and repo-local Codex hook files.
+- `codex/config/repo-bootstrap.json` defines managed repos, trust behavior, repo MCP presets, and optional per-repo model/personality/service-tier overrides.
 
-- `global.config.toml` defines the managed baseline for terminal Codex.
-- `bundled-skills-policy.json` classifies OpenAI-bundled runtime skills as allowed or disabled so new upstream bundled skills cannot silently drift into the local control plane.
-- `../mcp/config/presets.json` defines the shared MCP presets and machine-wide global MCP defaults.
-- `../../plugins/registry.json` defines native Codex plugin scope and enable/disable state.
-- `repo-bootstrap.json` defines:
-  - which repos are managed
-  - whether each managed repo is written to global Codex trusted-project config
-  - which MCP presets each repo gets
-  - optional per-repo model, reasoning, and service-tier overrides
+## Live Machine Config
 
-These files are the source of truth.
+- `codex/scripts/sync-config.sh` writes the managed baseline into `~/.codex/config.toml`.
+- It preserves machine-specific and runtime-specific state that should not live in git.
+- It renders global-scope native Codex plugin entries from `plugins/registry.json`.
+- It writes disabled bundled-skill entries from `bundled-skills-policy.json`.
+- It renders global `~/.codex/hooks.json` from `hooks/registry.json`.
+- It prunes stale managed keys when canonical templates no longer want them.
 
-### Live Machine Config
+## Trusted Repo Config
 
-- `sync-config.sh` writes the managed baseline into `~/.codex/config.toml`.
-- `sync-config.sh` prunes stale managed agent role declarations and role files from older versions of this control plane.
-- It preserves machine-specific/runtime-specific state that should not live in git.
-- It renders only global-scope native Codex plugin entries from `plugins/registry.json` and writes disabled bundled-skill entries from `bundled-skills-policy.json`.
-- It points Codex at the native bundled plugin marketplace inside `Codex.app` and only seeds `~/.codex/plugins/cache` for bundled plugins that are explicitly enabled by the registry.
-- It also prunes stale managed keys when the canonical templates no longer want them, while preserving unrelated runtime MCP sections and only injecting the shared global MCP defaults.
-
-Example:
-- If a top-level key is removed from the canonical templates, `sync-config.sh` removes stale managed copies from the live configs.
-
-### Trusted Repo Config
-
-- `sync-trusted-projects.sh` writes exact trusted repo roots into the live machine config.
+- `codex/scripts/sync-trusted-projects.sh` writes exact trusted repo roots into the live machine config.
 - Managed repo entries can set `codex_trust: false` to keep repo-local generated files and hook management while removing the repo from global Codex trusted-project config.
-- That matters because repo-local `.codex/config.toml` is only loaded when the repo is trusted.
+- Repo-local `.codex/config.toml` is only loaded when the repo is trusted.
 
-So trust sync is part of config layering, not a separate unrelated feature.
+## Repo-Local Config
 
-### Repo-Local Config
-
-- `sync-repo-codex-configs.sh` generates repo-local `.codex/config.toml` files from `repo-bootstrap.json` and shared MCP presets. Native Codex plugin enablement is treated as global/user-level rather than repo-scoped.
+- `codex/scripts/sync-repo-codex-configs.sh` generates repo-local `.codex/config.toml` files from `repo-bootstrap.json`, shared MCP presets, and plugin assignments.
+- The same script renders repo-local `.codex/hooks.json` for repo-scoped hooks.
 - Most repos can have a minimal managed file with no repo-local overrides.
-- Some repos get MCP presets or later model-specific overrides.
-- `control-plane-dashboard.py` serves the same registry data through the local dashboard, including effective plugins from [`plugins/registry.json`](/Users/dobby/.agents/plugins/registry.json) and effective skills from [`skills/registry.json`](/Users/dobby/.agents/skills/registry.json).
+- Some repos get MCP presets, model overrides, or project-root markers.
+- `scripts/control-plane-dashboard.py` serves the same registry data through the local dashboard, including effective plugins from [`plugins/registry.json`](/Users/dobby/GitHub/agents/plugins/registry.json) and effective skills from [`skills/registry.json`](/Users/dobby/GitHub/agents/skills/registry.json).
 
 Current per-repo fields in `repo-bootstrap.json`:
+
 - `codex_trust`
 - `mcp_presets`
 - `model`
@@ -92,21 +91,15 @@ Current per-repo fields in `repo-bootstrap.json`:
 - `features`
 - `service_tier`
 
-Shared MCP definitions live in `mcp/config/presets.json`.
-
-Bundled Codex runtime skill policy lives in `codex/config/bundled-skills-policy.json`.
-
 ## Main Flow
 
-1. Edit canonical config in `~/.agents/codex/config/`.
-2. Run `sync-config.sh` to update live machine config.
-3. Run `sync-trusted-projects.sh` so Codex will load repo-local config for managed repos.
-4. Run `sync-repo-codex-configs.sh` to render repo-local `.codex/config.toml` files.
-5. Codex starts with `~/.codex/config.toml` and layers trusted repo-local config on top.
+1. Edit canonical config in `~/GitHub/agents/codex/config/`, `~/GitHub/agents/mcp/`, `~/GitHub/agents/plugins/`, or `~/GitHub/agents/hooks/`.
+2. Run `~/GitHub/agents/codex/scripts/bootstrap-machine-codex.sh --apply` for Codex-only apply, or `~/GitHub/agents/scripts/bootstrap-machine-agent-control-planes.sh --apply` for all client surfaces.
+3. Codex starts with `~/.codex/config.toml` and layers trusted repo-local config on top.
 
 ## Notes
 
-- Use `docs/architecture/` to understand the shape of the system.
-- Use [Capability Bootstrap Model](/Users/dobby/.agents/docs/architecture/capability-bootstrap-model.md) for the consolidated skills / MCPs model.
-- Use [Codex Control Plane Operations](/Users/dobby/.agents/docs/references/codex-control-plane-operations.md) for exact commands.
-- Use [Codex Control Plane Ownership](/Users/dobby/.agents/docs/references/codex-control-plane-ownership.md) for the keep/move/generate split.
+- `~/.agents/skills` is part of Codex skill discovery, not the canonical config tree.
+- Use [Capability Bootstrap Model](/Users/dobby/GitHub/agents/docs/architecture/capability-bootstrap-model.md) for the consolidated skills / MCPs model.
+- Use [Codex Control Plane Operations](/Users/dobby/GitHub/agents/docs/references/codex-control-plane-operations.md) for exact commands.
+- Use [Codex Control Plane Ownership](/Users/dobby/GitHub/agents/docs/references/codex-control-plane-ownership.md) for the keep/move/generate split.

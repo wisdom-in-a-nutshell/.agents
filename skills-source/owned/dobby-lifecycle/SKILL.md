@@ -47,13 +47,13 @@ scripts/hooks/finalize_codex_thread.py -> scripts/hooks/finalize-codex-thread
 The hook scripts live here:
 
 ```bash
-$HOME/.agents/skills-source/owned/dobby-lifecycle/scripts/hooks/session-start
-$HOME/.agents/skills-source/owned/dobby-lifecycle/scripts/hooks/user-prompt-submit
-$HOME/.agents/skills-source/owned/dobby-lifecycle/scripts/hooks/finalize-codex-thread
-$HOME/.agents/skills-source/owned/dobby-lifecycle/scripts/remember-session
-$HOME/.agents/skills-source/owned/dobby-lifecycle/scripts/session-memory
-$HOME/.agents/skills-source/owned/dobby-lifecycle/scripts/validate
-$HOME/.agents/skills-source/owned/dobby-lifecycle/prompts/remember-session.md
+$HOME/GitHub/agents/skills-source/owned/dobby-lifecycle/scripts/hooks/session-start
+$HOME/GitHub/agents/skills-source/owned/dobby-lifecycle/scripts/hooks/user-prompt-submit
+$HOME/GitHub/agents/skills-source/owned/dobby-lifecycle/scripts/hooks/finalize-codex-thread
+$HOME/GitHub/agents/skills-source/owned/dobby-lifecycle/scripts/remember-session
+$HOME/GitHub/agents/skills-source/owned/dobby-lifecycle/scripts/session-memory
+$HOME/GitHub/agents/skills-source/owned/dobby-lifecycle/scripts/validate
+$HOME/GitHub/agents/skills-source/owned/dobby-lifecycle/prompts/remember-session.md
 ```
 
 `scripts/validate` is the public validator facade for lifecycle-owned workspace

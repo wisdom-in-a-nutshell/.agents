@@ -17,7 +17,7 @@ Current split:
 ## Status
 
 ```bash
-python3 ~/.agents/skills-source/owned/social-media-publishing/scripts/youtube/cli.py status
+python3 ~/GitHub/agents/skills-source/owned/social-media-publishing/scripts/youtube/cli.py status
 ```
 
 `status` checks local config paths and whether the current Python can import the Modal SDK. If the default Python cannot import Modal, upload commands re-run themselves with `/Users/dobby/GitHub/modal_functions/venv/bin/python` when available.
@@ -25,7 +25,7 @@ python3 ~/.agents/skills-source/owned/social-media-publishing/scripts/youtube/cl
 ## Upload from a public direct video URL
 
 ```bash
-python3 ~/.agents/skills-source/owned/social-media-publishing/scripts/youtube/cli.py upload-video \
+python3 ~/GitHub/agents/skills-source/owned/social-media-publishing/scripts/youtube/cli.py upload-video \
   --video-url https://example.com/video.mp4 \
   --title "Video title" \
   --description-file /abs/path/description.md \
@@ -38,7 +38,7 @@ Remove `--dry-run` to publish for real.
 ## Upload from a local video file
 
 ```bash
-python3 ~/.agents/skills-source/owned/social-media-publishing/scripts/youtube/cli.py --progress plain upload-video \
+python3 ~/GitHub/agents/skills-source/owned/social-media-publishing/scripts/youtube/cli.py --progress plain upload-video \
   --video /abs/path/video.mp4 \
   --title "Video title" \
   --description-file /abs/path/description.md \

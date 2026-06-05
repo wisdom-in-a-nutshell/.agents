@@ -1,6 +1,6 @@
 # Skills Registry Reference
 
-Canonical source of truth: [`skills/registry.json`](/Users/dobby/.agents/skills/registry.json)
+Canonical source of truth: [`skills/registry.json`](/Users/dobby/GitHub/agents/skills/registry.json)
 
 ## 1) What Lives Where
 
@@ -64,7 +64,7 @@ flowchart LR
 - `scope`: `global`, `repo`, or `dormant`.
 - `repos`: target repos for repo-scoped links.
   - When a skill depends on a repo MCP preset, keep this list aligned with the repos that declare that preset in `codex/config/repo-bootstrap.json`.
-  - Entries can be repo names under `~/GitHub` or explicit repo roots such as `~/.agents`.
+  - Entries can be repo names under `~/GitHub` or explicit repo roots such as `~/GitHub/agents`.
   - Sync skips missing repo checkouts silently on the current machine. Existing non-git folders still warn because they may be broken placeholders. Sync must not create placeholder folders under `~/GitHub` just because a repo is listed in the registry.
   - Dormant skills keep their source tracked but must use an empty `repos` list and are not linked into any runtime.
 - `source_path`: real source folder under `skills-source/...`.

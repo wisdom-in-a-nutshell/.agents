@@ -48,7 +48,7 @@ def build_capability_board(counts: dict[str, Any]) -> list[dict[str, Any]]:
         {
             "key": "knowledge", "name": "Knowledge",
             "desc": "Global guidance the agent wakes up with",
-            "source": "codex/config/global.agents.md", "count": None,
+            "source": "config/global.agents.md", "count": None,
             "codex": {"status": "stable", "note": "~/.codex/AGENTS.md"},
             "claude": {"status": "stable", "note": "~/.claude/CLAUDE.md"},
         },
@@ -56,7 +56,7 @@ def build_capability_board(counts: dict[str, Any]) -> list[dict[str, Any]]:
             "key": "skills", "name": "Skills",
             "desc": "Reusable procedures",
             "source": "skills/registry.json", "count": counts.get("skills"),
-            "codex": {"status": "stable", "note": "~/.codex/skills"},
+            "codex": {"status": "stable", "note": "~/.agents/skills + repo"},
             "claude": {"status": "stable", "note": "~/.claude/skills + repo"},
         },
         {

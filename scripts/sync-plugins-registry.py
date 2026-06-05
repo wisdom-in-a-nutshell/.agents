@@ -9,6 +9,7 @@ from pathlib import Path
 ROOT_DIR = Path(__file__).resolve().parent.parent
 if str(ROOT_DIR) not in sys.path:
     sys.path.insert(0, str(ROOT_DIR))
+DEFAULT_REGISTRY_FILE = ROOT_DIR / "plugins" / "registry.json"
 
 from plugins.derived import validate_plugin_registry
 
@@ -25,7 +26,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "registry_file",
         nargs="?",
-        default=str(Path.home() / ".agents" / "plugins" / "registry.json"),
+        default=str(DEFAULT_REGISTRY_FILE),
         help="Path to canonical plugin registry JSON file.",
     )
     return parser.parse_args()

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-AGENTS_REPO="${HOME}/.agents"
+AGENTS_REPO="${AGENTS_CONTROL_PLANE_ROOT:-${HOME}/GitHub/agents}"
 GITHUB_ROOT="${HOME}/GitHub"
 STAMP_FILE="${HOME}/.local/state/agents-control-plane/last-reconciled-agents.sha"
 MODE="--apply"
@@ -16,7 +16,7 @@ usage() {
   cat <<USAGE
 Usage: $(basename "$0") [options]
 
-Auto-apply shared agent control-plane state after ~/.agents sync when tracked
+Auto-apply shared agent control-plane state after the agents repo sync when tracked
 runtime-relevant files changed.
 
 Default mode is apply. Use --dry-run to report what would run.
@@ -24,7 +24,7 @@ Default mode is apply. Use --dry-run to report what would run.
 Options:
   --apply                Apply changes (default)
   --dry-run              Report only
-  --agents-repo <path>   Override ~/.agents repo path
+  --agents-repo <path>   Override agents control-plane repo path
   --github-root <path>   Override ~/GitHub root for Codex bootstrap
   --stamp-file <path>    Override machine-local reconcile stamp file
   -h, --help             Show this help
@@ -88,7 +88,7 @@ SYNC_PLUGINS_SCRIPT="${AGENTS_REPO}/scripts/sync-plugins-registry.sh"
 SYNC_GIT_HOOKS_SCRIPT="${AGENTS_REPO}/scripts/sync-managed-git-hooks.sh"
 CODEX_BOOTSTRAP_SCRIPT="${AGENTS_REPO}/codex/scripts/bootstrap-machine-codex.sh"
 
-[[ -d "$AGENTS_REPO/.git" ]] || die "Missing ~/.agents git repo: $AGENTS_REPO"
+[[ -d "$AGENTS_REPO/.git" ]] || die "Missing agents control-plane git repo: $AGENTS_REPO"
 [[ -x "$ROOT_BOOTSTRAP_SCRIPT" ]] || die "Missing executable: $ROOT_BOOTSTRAP_SCRIPT"
 [[ -x "$SYNC_SKILLS_SCRIPT" ]] || die "Missing executable: $SYNC_SKILLS_SCRIPT"
 [[ -x "$SYNC_PLUGINS_SCRIPT" ]] || die "Missing executable: $SYNC_PLUGINS_SCRIPT"
@@ -131,6 +131,7 @@ while IFS= read -r path; do
 done < <(
   git -C "$AGENTS_REPO" diff --name-only "$last_sha" "$current_sha" -- \
     codex \
+    config \
     hooks \
     mcp \
     plugins \
@@ -157,6 +158,11 @@ repo_registry_changed=0
 for path in "${changed_paths[@]}"; do
   case "$path" in
     scripts/bootstrap-machine-agent-control-planes.sh)
+      root_bootstrap_changed=1
+      ;;
+  esac
+  case "$path" in
+    config/*)
       root_bootstrap_changed=1
       ;;
   esac

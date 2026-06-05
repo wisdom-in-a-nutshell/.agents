@@ -30,8 +30,8 @@ Options:
   -h, --help       Show this help
 
 Examples:
-  ~/.agents/scripts/check-agent-control-planes.sh
-  ~/.agents/scripts/check-agent-control-planes.sh --repo ~/.agents
+  ~/GitHub/agents/scripts/check-agent-control-planes.sh
+  ~/GitHub/agents/scripts/check-agent-control-planes.sh --repo ~/GitHub/agents
 USAGE
 }
 

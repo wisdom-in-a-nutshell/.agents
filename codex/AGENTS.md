@@ -4,7 +4,7 @@ Canonical personal Codex control-plane assets live here.
 
 ## Purpose
 
-- Keep synced, durable Codex configuration under `~/.agents`.
+- Keep synced, durable Codex-specific configuration here.
 - Keep `~/GitHub/scripts` as the machine bootstrap/apply shell, not the long-term owner of Codex policy.
 - Keep `~/.codex` as the applied runtime home.
 - Keep Codex-adjacent terminal workflow behavior here when it exists to drive Codex, even if the trigger surface is Ghostty or Keyboard Maestro.
@@ -12,8 +12,8 @@ Canonical personal Codex control-plane assets live here.
 ## Layout
 
 - `config/`: canonical Codex config fragments and templates.
-  - `config/global.agents.md`: canonical machine-wide guidance source for `~/.codex/AGENTS.md`.
   - `config/bundled-skills-policy.json`: allow/disable policy for OpenAI-bundled Codex runtime skills.
+- `../config/global.agents.md`: shared machine-wide guidance source for `~/.codex/AGENTS.md` and `~/.claude/CLAUDE.md`.
 - `scripts/`: canonical Codex-specific automation scripts.
   - includes Ghostty/Codex helper scripts and any thin helper invoked by Keyboard Maestro for Codex workflows.
 - `shell/`: Codex-specific shell and Ghostty integration fragments.

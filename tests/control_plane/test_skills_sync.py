@@ -37,10 +37,11 @@ class ManagedSkillsRegistrySyncTests(TempDirTestCase):
             root / "skills-source/owned/stale-helper",
             "stale-helper",
         )
-        stale_link = root / "skills/stale-helper"
+        user_skills_dir = home / ".agents/skills"
+        stale_link = user_skills_dir / "stale-helper"
         stale_link.parent.mkdir(parents=True, exist_ok=True)
         stale_link.symlink_to(stale_source)
-        dormant_global_link = root / "skills/dormant-helper"
+        dormant_global_link = user_skills_dir / "dormant-helper"
         dormant_global_link.parent.mkdir(parents=True, exist_ok=True)
         dormant_global_link.symlink_to(dormant_source)
         dormant_repo_link = adi / ".agents/skills/dormant-helper"
@@ -95,7 +96,7 @@ class ManagedSkillsRegistrySyncTests(TempDirTestCase):
             env={"HOME": str(home)},
         )
 
-        global_link = root / "skills/global-helper"
+        global_link = user_skills_dir / "global-helper"
         repo_link = adi / ".agents/skills/repo-helper"
 
         self.assertTrue(global_link.is_symlink())

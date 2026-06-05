@@ -3,7 +3,8 @@ set -euo pipefail
 
 MODE="--dry-run"
 CONFIG_PATH="${HOME}/Library/Application Support/com.mitchellh.ghostty/config"
-WRAPPER_PATH="${HOME}/.agents/codex/scripts/ghostty-codex-then-shell.sh"
+CONTROL_PLANE_ROOT="${AGENTS_CONTROL_PLANE_ROOT:-${HOME}/GitHub/agents}"
+WRAPPER_PATH="${CONTROL_PLANE_ROOT}/codex/scripts/ghostty-codex-then-shell.sh"
 TMP_DIR="$(mktemp -d)"
 
 cleanup() {
@@ -31,8 +32,8 @@ Options:
   -h, --help             Show this help
 
 Examples:
-  ~/.agents/codex/scripts/configure-ghostty-cwd.sh
-  ~/.agents/codex/scripts/configure-ghostty-cwd.sh --apply
+  ~/GitHub/agents/codex/scripts/configure-ghostty-cwd.sh
+  ~/GitHub/agents/codex/scripts/configure-ghostty-cwd.sh --apply
 USAGE
 }
 

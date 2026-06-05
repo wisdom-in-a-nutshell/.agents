@@ -111,7 +111,7 @@ def _bridge_socket_path() -> Path:
 def _bridge_install_hint() -> str:
     return (
         "Install/start the native helper with: "
-        "~/.agents/skills-source/owned/dobby-calendar/scripts/dobby_calendar/bridge/install --request-access"
+        "~/GitHub/agents/skills-source/owned/dobby-calendar/scripts/dobby_calendar/bridge/install --request-access"
     )
 
 

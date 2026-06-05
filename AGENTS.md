@@ -17,7 +17,7 @@ Personal agent, Codex, and repo-local lifecycle hook control plane.
 - `hooks/registry.json` is the canonical Codex lifecycle hook registry.
 - `dev-servers/registry.json` is the canonical, frontend-agnostic dev/preview server registry. The Claude sync renders per-repo `.claude/launch.json` from it; other runtimes (Codex, etc.) consume the same source. It is opt-in per repo: a repo gets a launch surface only if listed, so public repos and served `public/` directories are never written to.
 - `codex/` holds canonical personal Codex control-plane inputs.
-- `codex/config/global.agents.md` is the canonical machine-wide guidance source for `~/.codex/AGENTS.md`.
+- `config/global.agents.md` is the canonical machine-wide guidance source for client-specific global guidance such as `~/.codex/AGENTS.md` and `~/.claude/CLAUDE.md`.
 - `codex/config/bundled-skills-policy.json` is the canonical policy for classifying OpenAI-bundled Codex skills that appear under `~/.codex/skills/.system` or `~/.codex/skills/codex-primary-runtime`.
 - `codex/config/repo-bootstrap.json` is the canonical shared repo registry for managed repo-local behavior.
   - Per repo it can define:
@@ -36,7 +36,7 @@ Personal agent, Codex, and repo-local lifecycle hook control plane.
   - `skills-source/external/<skill>/`
   - `skills-source/owned/<skill>/`
 - Codex-native plugin scope and enablement lives in `plugins/registry.json`.
-- Global runtime skills live in `skills/<skill>` as symlinks.
+- Global Codex runtime skills live in `~/.agents/skills/<skill>` as symlinks rendered from `skills/registry.json`.
 - Read-only browser dashboard assets live in `dashboard/` and are served by
   `scripts/control-plane-dashboard.py`.
 - Shared lifecycle hook scripts live in:

@@ -35,7 +35,7 @@ relevant operational skill.
 Use the script:
 
 ```bash
-~/.agents/skills-source/owned/dobby-workspace/scripts/lint-workspace --workspace-root /path/to/workspace
+~/GitHub/agents/skills-source/owned/dobby-workspace/scripts/lint-workspace --workspace-root /path/to/workspace
 ```
 
 The linter is a cheap mechanical reflex. It should stay deterministic and fast.

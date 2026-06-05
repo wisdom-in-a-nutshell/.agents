@@ -49,10 +49,10 @@ TIKTOK_CONTENT_POSTING_AUDIT_PASSED=false
 ## CLI
 
 ```bash
-python3 ~/.agents/skills-source/owned/social-media-publishing/scripts/tiktok/cli.py status
-python3 ~/.agents/skills-source/owned/social-media-publishing/scripts/tiktok/cli.py post-video --text-file /abs/path/caption.txt --video-url https://example.com/video.mp4 --privacy SELF_ONLY --dry-run
-python3 ~/.agents/skills-source/owned/social-media-publishing/scripts/tiktok/cli.py post-video --text "Short caption" --source FILE_UPLOAD --video /abs/path/video.mp4 --ai-generated --dry-run
-python3 ~/.agents/skills-source/owned/social-media-publishing/scripts/tiktok/cli.py post-photos --title "Photo title" --description-file /abs/path/description.txt --photo-url https://example.com/1.jpg --photo-url https://example.com/2.jpg --cover-index 0 --privacy SELF_ONLY --dry-run
+python3 ~/GitHub/agents/skills-source/owned/social-media-publishing/scripts/tiktok/cli.py status
+python3 ~/GitHub/agents/skills-source/owned/social-media-publishing/scripts/tiktok/cli.py post-video --text-file /abs/path/caption.txt --video-url https://example.com/video.mp4 --privacy SELF_ONLY --dry-run
+python3 ~/GitHub/agents/skills-source/owned/social-media-publishing/scripts/tiktok/cli.py post-video --text "Short caption" --source FILE_UPLOAD --video /abs/path/video.mp4 --ai-generated --dry-run
+python3 ~/GitHub/agents/skills-source/owned/social-media-publishing/scripts/tiktok/cli.py post-photos --title "Photo title" --description-file /abs/path/description.txt --photo-url https://example.com/1.jpg --photo-url https://example.com/2.jpg --cover-index 0 --privacy SELF_ONLY --dry-run
 ```
 
 The CLI defaults to JSON and follows the agent-first contract:

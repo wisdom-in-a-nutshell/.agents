@@ -13,6 +13,8 @@ from typing import Any
 
 ALLOWED_ORIGINS = {"external", "owned"}
 ALLOWED_SCOPES = {"global", "repo", "dormant"}
+DEFAULT_REGISTRY_FILE = Path(__file__).resolve().parent.parent / "skills" / "registry.json"
+DEFAULT_USER_SKILLS_DIR = Path.home() / ".agents" / "skills"
 
 
 def expand_path(raw: str, home: Path) -> Path:
@@ -237,6 +239,7 @@ def validate_registry(
 def run_sync(
     managed: list[dict[str, Any]],
     root_dir: Path,
+    user_skills_dir: Path,
     github_root: Path,
     apply: bool,
     repo_filters: set[Path] | None = None,
@@ -250,7 +253,7 @@ def run_sync(
         skill = item["skill"]
         src = item["source_abs"]
         if item["scope"] == "global":
-            dst = root_dir / "skills" / skill
+            dst = user_skills_dir / skill
             desired_links[dst] = src
             if sync_link(dst, src, apply):
                 touched_links.add(dst)
@@ -275,7 +278,7 @@ def run_sync(
             if sync_link(dst, src, apply):
                 touched_links.add(dst)
 
-    touched_links.update(prune_obsolete_global_links(root_dir, desired_links, apply))
+    touched_links.update(prune_obsolete_global_links(root_dir, user_skills_dir, desired_links, apply))
     touched_links.update(
         prune_obsolete_repo_links(root_dir, github_root, desired_links, apply, repo_filters)
     )
@@ -289,6 +292,7 @@ def run_sync(
 
 def prune_obsolete_global_links(
     root_dir: Path,
+    user_skills_dir: Path,
     desired_links: dict[Path, Path],
     apply: bool,
 ) -> set[Path]:
@@ -297,7 +301,7 @@ def prune_obsolete_global_links(
         (root_dir / "skills-source").resolve(),
         (root_dir / "plugins-source").resolve(),
     ]
-    skills_dir = root_dir / "skills"
+    skills_dir = user_skills_dir
     if not skills_dir.exists():
         return touched_links
     for entry in sorted(skills_dir.iterdir()):
@@ -457,9 +461,14 @@ def parse_args() -> argparse.Namespace:
         help="Limit repo-local sync to an exact repo path or repo name (repeatable).",
     )
     parser.add_argument(
+        "--user-skills-dir",
+        default=str(DEFAULT_USER_SKILLS_DIR),
+        help="Codex user-scope skills directory to render global links into (default: ~/.agents/skills).",
+    )
+    parser.add_argument(
         "registry_file",
         nargs="?",
-        default=str(Path.home() / ".agents" / "skills" / "registry.json"),
+        default=str(DEFAULT_REGISTRY_FILE),
         help="Path to canonical registry JSON file.",
     )
     return parser.parse_args()
@@ -468,6 +477,7 @@ def parse_args() -> argparse.Namespace:
 def main() -> int:
     args = parse_args()
     registry_file = Path(args.registry_file).expanduser().resolve()
+    user_skills_dir = Path(args.user_skills_dir).expanduser().resolve()
     if not registry_file.is_file():
         print(f"Registry not found: {registry_file}", file=sys.stderr)
         return 1
@@ -494,7 +504,7 @@ def main() -> int:
         if raw.strip()
     }
 
-    run_sync(managed, root_dir, github_root, args.apply, repo_filters)
+    run_sync(managed, root_dir, user_skills_dir, github_root, args.apply, repo_filters)
 
     if args.apply:
         print("Apply complete.")

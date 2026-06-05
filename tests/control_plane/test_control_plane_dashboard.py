@@ -95,7 +95,7 @@ class ControlPlaneDashboardDataTests(TempDirTestCase):
                         "scope": "global",
                         "runtimes": ["codex"],
                         "timeout": 900,
-                        "command": "python3 ~/.agents/hooks/scripts/stop.py",
+                        "command": 'python3 "$HOME/GitHub/agents/hooks/scripts/stop.py"',
                     }
                 ],
             },

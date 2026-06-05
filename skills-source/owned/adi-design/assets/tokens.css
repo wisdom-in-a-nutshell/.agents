@@ -1,14 +1,14 @@
 /* Adi Design — canonical design tokens.
  *
  * The shared aesthetic for Adi's apps (dobby-dashboard, blog/adithyan.io,
- * aipodcasting-website, ~/.agents/dashboard, and future projects). This file is
+ * aipodcasting-website, ~/GitHub/agents/dashboard, and future projects). This file is
  * the SOURCE OF TRUTH; every product consumes a copy.
  *
  * Color space is oklch throughout (perceptually even light/dark).
  * Light mode is the default; dark mode overrides via prefers-color-scheme.
  *
  * Mirror locations — when a token changes here, propagate to every copy:
- *   - ~/.agents/dashboard:  dashboard-app/src/tokens.css  (direct copy of this file)
+ *   - ~/GitHub/agents/dashboard:  dashboard-app/src/tokens.css  (direct copy of this file)
  *   - dobby-dashboard:      src/styles.css                (inline oklch, 1:1 with this)
  *   - blog-personal:        src/styles/global.css         (HSL conversion, shadcn names)
  *   - aipodcasting-website: src/styles/global.css         (HSL conversion, shadcn names)

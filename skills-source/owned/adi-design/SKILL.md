@@ -1,6 +1,6 @@
 ---
 name: adi-design
-description: Apply Adi's personal design language so his apps look like one cohesive product. Use when building, restyling, or reviewing any UI for Adi's personal projects (dobby-dashboard, blog/adithyan.io, ~/.agents/dashboard) or a new personal app/page, including choosing colors, typography, spacing, radius, or motion, setting up a theme or design tokens, migrating a surface off a generic or warm-cream look, or judging whether a screen is on-brand. The aesthetic is clean off-white (never warm cream), oklch sage accent with amber secondary, Newsreader serif for reading and Inter for UI, flat hairline surfaces, and restrained state-only motion.
+description: Apply Adi's personal design language so his apps look like one cohesive product. Use when building, restyling, or reviewing any UI for Adi's personal projects (dobby-dashboard, blog/adithyan.io, ~/GitHub/agents/dashboard) or a new personal app/page, including choosing colors, typography, spacing, radius, or motion, setting up a theme or design tokens, migrating a surface off a generic or warm-cream look, or judging whether a screen is on-brand. The aesthetic is clean off-white (never warm cream), oklch sage accent with amber secondary, Newsreader serif for reading and Inter for UI, flat hairline surfaces, and restrained state-only motion.
 ---
 
 # Adi Design
@@ -26,7 +26,7 @@ feels like one product made by one person with taste.
 
 ## Consuming the tokens per stack
 
-- **Plain CSS** (dobby-dashboard, ~/.agents/dashboard): copy `tokens.css` in and
+- **Plain CSS** (dobby-dashboard, ~/GitHub/agents/dashboard): copy `tokens.css` in and
   `@import` / link it before app styles. Tokens cascade as-is.
 - **Tailwind** (blog/adithyan.io): import `tokens.css` for the variable
   definitions, then point the Tailwind theme at the variables
@@ -63,7 +63,7 @@ different axes — impeccable is the *how* (method), adi-design is the *what*
 (Adi's look) — so use them together, not instead of each other.
 
 When running impeccable (or any craft pass) on one of Adi's apps
-(dobby-dashboard, blog/adithyan.io, ~/.agents dashboard, or a new personal app):
+(dobby-dashboard, blog/adithyan.io, ~/GitHub/agents dashboard, or a new personal app):
 
 - Treat `assets/tokens.css` as **committed brand colors**. Do NOT run
   impeccable's palette-generation / brand-seed step — the identity is already

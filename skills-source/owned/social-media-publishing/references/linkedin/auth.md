@@ -69,7 +69,7 @@ This is intentionally not Key Vault-backed because it is mutable runtime session
 ## Authorize locally
 
 ```bash
-python3 ~/.agents/skills-source/owned/social-media-publishing/scripts/linkedin/cli.py authorize
+python3 ~/GitHub/agents/skills-source/owned/social-media-publishing/scripts/linkedin/cli.py authorize
 ```
 
 What it does:
@@ -82,5 +82,5 @@ What it does:
 ## Confirm identity
 
 ```bash
-python3 ~/.agents/skills-source/owned/social-media-publishing/scripts/linkedin/cli.py whoami
+python3 ~/GitHub/agents/skills-source/owned/social-media-publishing/scripts/linkedin/cli.py whoami
 ```

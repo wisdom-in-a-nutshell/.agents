@@ -76,6 +76,6 @@ MCPs are standalone endpoints and transports. If a plugin contains MCP internall
 
 ## Related Docs
 
-- [Codex Control Plane](/Users/dobby/.agents/docs/architecture/codex-control-plane.md)
-- [Codex Config Layers](/Users/dobby/.agents/docs/architecture/codex-config-layers.md)
-- [Control Plane Dashboard](/Users/dobby/.agents/docs/references/control-plane-dashboard.md)
+- [Codex Control Plane](/Users/dobby/GitHub/agents/docs/architecture/codex-control-plane.md)
+- [Codex Config Layers](/Users/dobby/GitHub/agents/docs/architecture/codex-config-layers.md)
+- [Control Plane Dashboard](/Users/dobby/GitHub/agents/docs/references/control-plane-dashboard.md)

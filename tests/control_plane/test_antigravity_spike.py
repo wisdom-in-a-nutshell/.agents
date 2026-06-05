@@ -30,7 +30,7 @@ class AntigravitySpikeSyncTests(TempDirTestCase):
         )
 
     def _isolated_targets(self, root: Path) -> list[str]:
-        source = write_text(root / "codex/config/global.agents.md", "# Global\n")
+        source = write_text(root / "config/global.agents.md", "# Global\n")
         return [
             "--global-context-source",
             str(source),
@@ -185,9 +185,26 @@ class AntigravitySpikeSyncTests(TempDirTestCase):
         root = self.temp_path / "agents"
         registry = self._write_registry(root, [])
         app_data = self.temp_path / "antigravity-cli"
-        source = write_text(root / "codex/config/global.agents.md", "# Global Agent Context\n")
+        source = write_text(root / "config/global.agents.md", "# Global Agent Context\n")
         global_context_target = self.temp_path / "gemini/GEMINI.md"
         hooks_file = self.temp_path / "gemini/config/hooks.json"
+        write_json(
+            hooks_file,
+            {
+                "hooks": {
+                    "Stop": [
+                        {
+                            "hooks": [
+                                {
+                                    "command": "python3 ~/.agents/hooks/scripts/antigravity_stop.py",
+                                    "type": "command",
+                                }
+                            ]
+                        }
+                    ]
+                }
+            },
+        )
 
         run_command(
             [
@@ -210,8 +227,9 @@ class AntigravitySpikeSyncTests(TempDirTestCase):
         self.assertTrue(global_context_target.is_symlink())
         self.assertEqual(source.resolve(), (global_context_target.parent / os.readlink(global_context_target)).resolve())
         hooks = json.loads(hooks_file.read_text(encoding="utf-8"))
+        self.assertEqual(1, len(hooks["hooks"]["Stop"]))
         self.assertEqual(
-            "python3 ~/.agents/hooks/scripts/antigravity_stop.py",
+            'python3 "$HOME/GitHub/agents/hooks/scripts/antigravity_stop.py"',
             hooks["hooks"]["Stop"][0]["hooks"][0]["command"],
         )
 
@@ -219,7 +237,7 @@ class AntigravitySpikeSyncTests(TempDirTestCase):
         root = self.temp_path / "agents"
         registry = self._write_registry(root, [])
         app_data = self.temp_path / "antigravity-cli"
-        source = write_text(root / "codex/config/global.agents.md", "# Global Agent Context\n")
+        source = write_text(root / "config/global.agents.md", "# Global Agent Context\n")
         global_context_target = self.temp_path / "gemini/GEMINI.md"
         global_context_target.parent.mkdir(parents=True)
         global_context_target.symlink_to(os.path.relpath(source, global_context_target.parent))

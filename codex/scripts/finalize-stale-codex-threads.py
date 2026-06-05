@@ -23,9 +23,10 @@ DEFAULT_TIMEOUT_SECONDS = 30.0
 DEFAULT_FINALIZATION_TIMEOUT_SECONDS = 900.0
 DEFAULT_PAGE_LIMIT = 100
 DEFAULT_MAX_REPORT = 80
-DEFAULT_REGISTRY = Path.home() / ".agents" / "codex" / "config" / "repo-bootstrap.json"
+ROOT_DIR = Path(__file__).resolve().parents[2]
+DEFAULT_REGISTRY = ROOT_DIR / "codex" / "config" / "repo-bootstrap.json"
 DEFAULT_LOCK = Path.home() / ".local" / "state" / "codex-control-plane" / "finalize-stale-codex-threads.lock"
-DEFAULT_FINALIZER_COMMAND = Path.home() / ".agents" / "codex" / "scripts" / "finalize-codex-thread.py"
+DEFAULT_FINALIZER_COMMAND = ROOT_DIR / "codex" / "scripts" / "finalize-codex-thread.py"
 
 SOURCE_KINDS = [
     "cli",

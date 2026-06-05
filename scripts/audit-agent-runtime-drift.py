@@ -80,7 +80,7 @@ def run_control_plane_check(agents_repo: Path, timeout_sec: int, *, skip: bool) 
             name,
             "error",
             f"missing executable: {script}",
-            hint="Restore the shared control-plane check script in ~/.agents/scripts/.",
+            hint="Restore the shared control-plane check script in ~/GitHub/agents/scripts/.",
             error_code="E_MISSING_CHECK_SCRIPT",
         )
 
@@ -102,7 +102,7 @@ def run_control_plane_check(agents_repo: Path, timeout_sec: int, *, skip: bool) 
             "error",
             f"control-plane check timed out after {timeout_sec}s",
             details={"duration_ms": duration_ms, "output_tail": tail_text(output)},
-            hint="Run ~/.agents/scripts/check-agent-control-planes.sh manually and inspect the slow or stuck check.",
+            hint="Run ~/GitHub/agents/scripts/check-agent-control-planes.sh manually and inspect the slow or stuck check.",
             error_code="E_CONTROL_PLANE_TIMEOUT",
         )
 
@@ -120,7 +120,7 @@ def run_control_plane_check(agents_repo: Path, timeout_sec: int, *, skip: bool) 
         "error",
         f"shared agent control-plane check failed with exit code {completed.returncode}",
         details=details,
-        hint="Run ~/.agents/scripts/check-agent-control-planes.sh and fix the first failing control-plane surface.",
+        hint="Run ~/GitHub/agents/scripts/check-agent-control-planes.sh and fix the first failing control-plane surface.",
         error_code="E_CONTROL_PLANE_CHECK_FAILED",
     )
 
@@ -386,7 +386,7 @@ def audit_required_codex_plugins(agents_repo: Path, home: Path) -> dict[str, Any
             "error",
             "required Codex plugin availability check failed",
             details={**details, "failures": failures},
-            hint="Re-run ~/.agents/codex/scripts/sync-config.sh --apply or install the missing Codex plugin.",
+            hint="Re-run ~/GitHub/agents/codex/scripts/sync-config.sh --apply or install the missing Codex plugin.",
             error_code="E_REQUIRED_CODEX_PLUGIN_UNAVAILABLE",
         )
 
@@ -434,7 +434,7 @@ def build_payload(args: argparse.Namespace) -> tuple[dict[str, Any], int]:
             "code": "E_AGENT_RUNTIME_DRIFT",
             "message": f"{len(error_checks)} agent runtime drift check(s) failed",
             "retryable": False,
-            "hint": "Run ~/.agents/scripts/audit-agent-runtime-drift.py --plain and fix the failing checks.",
+            "hint": "Run ~/GitHub/agents/scripts/audit-agent-runtime-drift.py --plain and fix the failing checks.",
         },
         "meta": {
             "request_id": request_id,
@@ -479,7 +479,7 @@ def print_plain(payload: dict[str, Any]) -> None:
 
 def parse_args(argv: list[str]) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Audit local agent runtime drift against the ~/.agents control plane."
+        description="Audit local agent runtime drift against the ~/GitHub/agents control plane."
     )
     output = parser.add_mutually_exclusive_group()
     output.add_argument("--json", action="store_true", help="Emit the stable JSON result contract (default).")

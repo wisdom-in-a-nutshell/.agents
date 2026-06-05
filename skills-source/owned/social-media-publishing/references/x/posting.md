@@ -78,7 +78,7 @@ The X CLI follows the same machine-first pattern:
 ### First command on a fresh boot
 
 ```bash
-python3 ~/.agents/skills-source/owned/social-media-publishing/scripts/x/cli.py status
+python3 ~/GitHub/agents/skills-source/owned/social-media-publishing/scripts/x/cli.py status
 ```
 
 What it surfaces:
@@ -90,7 +90,7 @@ What it surfaces:
 ### Dry-run a post
 
 ```bash
-python3 ~/.agents/skills-source/owned/social-media-publishing/scripts/x/cli.py post \
+python3 ~/GitHub/agents/skills-source/owned/social-media-publishing/scripts/x/cli.py post \
   --text-file /abs/path/body.txt \
   --dry-run
 ```
@@ -98,21 +98,21 @@ python3 ~/.agents/skills-source/owned/social-media-publishing/scripts/x/cli.py p
 ### Publish for real
 
 ```bash
-python3 ~/.agents/skills-source/owned/social-media-publishing/scripts/x/cli.py post \
+python3 ~/GitHub/agents/skills-source/owned/social-media-publishing/scripts/x/cli.py post \
   --text-file /abs/path/body.txt
 ```
 
 ### Delete a post
 
 ```bash
-python3 ~/.agents/skills-source/owned/social-media-publishing/scripts/x/cli.py delete \
+python3 ~/GitHub/agents/skills-source/owned/social-media-publishing/scripts/x/cli.py delete \
   --tweet-id 1234567890
 ```
 
 ### Dry-run a video post
 
 ```bash
-python3 ~/.agents/skills-source/owned/social-media-publishing/scripts/x/cli.py post-video \
+python3 ~/GitHub/agents/skills-source/owned/social-media-publishing/scripts/x/cli.py post-video \
   --text-file /abs/path/body.txt \
   --video /abs/path/video.mp4 \
   --dry-run
@@ -121,7 +121,7 @@ python3 ~/.agents/skills-source/owned/social-media-publishing/scripts/x/cli.py p
 ### Dry-run a video post from a public direct URL
 
 ```bash
-python3 ~/.agents/skills-source/owned/social-media-publishing/scripts/x/cli.py post-video \
+python3 ~/GitHub/agents/skills-source/owned/social-media-publishing/scripts/x/cli.py post-video \
   --text-file /abs/path/body.txt \
   --video-url https://example.com/video.mp4 \
   --dry-run
@@ -130,7 +130,7 @@ python3 ~/.agents/skills-source/owned/social-media-publishing/scripts/x/cli.py p
 ### Publish a video post for real
 
 ```bash
-python3 ~/.agents/skills-source/owned/social-media-publishing/scripts/x/cli.py --progress plain post-video \
+python3 ~/GitHub/agents/skills-source/owned/social-media-publishing/scripts/x/cli.py --progress plain post-video \
   --text-file /abs/path/body.txt \
   --video /abs/path/video.mp4
 ```

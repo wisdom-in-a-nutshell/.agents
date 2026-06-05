@@ -15,6 +15,9 @@ if str(ROOT_DIR) not in sys.path:
 from plugins.derived import validate_plugin_registry
 
 
+DEFAULT_REGISTRY_FILE = ROOT_DIR / "plugins" / "registry.json"
+
+
 def load_json(path: Path) -> Any:
     return json.loads(path.read_text(encoding="utf-8"))
 
@@ -45,7 +48,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--apply", action="store_true", help="Install missing plugin packages.")
     parser.add_argument(
         "--registry-file",
-        default=str(Path.home() / ".agents" / "plugins" / "registry.json"),
+        default=str(DEFAULT_REGISTRY_FILE),
         help="Path to canonical plugins registry JSON file.",
     )
     parser.add_argument("--home", default=str(Path.home()), help="Home directory containing .codex.")

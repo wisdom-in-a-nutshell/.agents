@@ -14,14 +14,19 @@ from typing import Any
 
 # Temporary Antigravity experiment: this may be ripped out once the durable
 # cross-runtime bootstrap model is clear.
+ROOT_DIR = Path(__file__).resolve().parent.parent
 DEFAULT_APP_DATA_DIR = Path.home() / ".gemini" / "antigravity-cli"
 DEFAULT_GITHUB_ROOT = Path.home() / "GitHub"
-DEFAULT_GLOBAL_CONTEXT_SOURCE = Path.home() / ".agents" / "codex" / "config" / "global.agents.md"
+DEFAULT_GLOBAL_CONTEXT_SOURCE = ROOT_DIR / "config" / "global.agents.md"
 DEFAULT_GLOBAL_CONTEXT_TARGET = Path.home() / ".gemini" / "GEMINI.md"
 DEFAULT_HOOKS_FILE = Path.home() / ".gemini" / "config" / "hooks.json"
 DEFAULT_LAUNCHER_TARGET = Path.home() / "bin" / "agy"
 DEFAULT_REAL_CLI_PATH = Path.home() / ".local" / "bin" / "agy"
-ANTIGRAVITY_STOP_COMMAND = "python3 ~/.agents/hooks/scripts/antigravity_stop.py"
+ANTIGRAVITY_STOP_COMMAND = 'python3 "$HOME/GitHub/agents/hooks/scripts/antigravity_stop.py"'
+LEGACY_ANTIGRAVITY_STOP_COMMANDS = (
+    "python3 ~/.agents/hooks/scripts/antigravity_stop.py",
+    "python3 $HOME/.agents/hooks/scripts/antigravity_stop.py",
+)
 DEFAULT_SETTINGS = {"toolPermission": "always-proceed"}
 ALLOWED_SCOPES = {"global", "repo", "dormant"}
 PRUNED_REPO_DIR_NAMES = {
@@ -318,7 +323,10 @@ def is_antigravity_stop_entry(entry: Any) -> bool:
     if not isinstance(hooks, list):
         return False
     for hook in hooks:
-        if isinstance(hook, dict) and hook.get("command") == ANTIGRAVITY_STOP_COMMAND:
+        if isinstance(hook, dict) and hook.get("command") in (
+            ANTIGRAVITY_STOP_COMMAND,
+            *LEGACY_ANTIGRAVITY_STOP_COMMANDS,
+        ):
             return True
     return False
 
@@ -538,7 +546,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "registry_file",
         nargs="?",
-        default=str(Path.home() / ".agents" / "skills" / "registry.json"),
+        default=str(ROOT_DIR / "skills" / "registry.json"),
         help="Path to canonical skills registry JSON file.",
     )
     return parser.parse_args()

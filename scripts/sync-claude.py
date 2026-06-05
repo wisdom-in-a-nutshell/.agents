@@ -11,8 +11,8 @@ import sys
 from pathlib import Path
 from typing import Any
 
-# The shared hook control plane lives at ~/.agents/hooks; make it importable so
-# Claude per-repo hooks render from the same registry Codex uses.
+# The shared hook control plane lives in this repo; make it importable so Claude
+# per-repo hooks render from the same registry Codex uses.
 _AGENTS_ROOT = Path(__file__).resolve().parent.parent
 if str(_AGENTS_ROOT) not in sys.path:
     sys.path.insert(0, str(_AGENTS_ROOT))
@@ -25,17 +25,23 @@ from hooks.control_plane import (  # noqa: E402
 
 # Durable Claude Code control-plane sync: renders global instructions, skills,
 # settings/hooks, the launcher, and per-repo dev-server launch configs from the
-# canonical sources in ~/.agents.
+# canonical sources in this agents control-plane repo.
 DEFAULT_CLAUDE_HOME = Path.home() / ".claude"
 DEFAULT_GITHUB_ROOT = Path.home() / "GitHub"
-DEFAULT_GLOBAL_CONTEXT_SOURCE = Path.home() / ".agents" / "codex" / "config" / "global.agents.md"
+DEFAULT_GLOBAL_CONTEXT_SOURCE = _AGENTS_ROOT / "config" / "global.agents.md"
 DEFAULT_GLOBAL_CONTEXT_TARGET = Path.home() / ".claude" / "CLAUDE.md"
 DEFAULT_LAUNCHER_TARGET = Path.home() / "bin" / "claude"
 DEFAULT_REAL_CLI_PATH = Path("/opt/homebrew/bin/claude")
-DEFAULT_DEV_SERVERS_REGISTRY = Path.home() / ".agents" / "dev-servers" / "registry.json"
-DEFAULT_HOOKS_REGISTRY = Path.home() / ".agents" / "hooks" / "registry.json"
+DEFAULT_DEV_SERVERS_REGISTRY = _AGENTS_ROOT / "dev-servers" / "registry.json"
+DEFAULT_HOOKS_REGISTRY = _AGENTS_ROOT / "hooks" / "registry.json"
+DEFAULT_REPO_REGISTRY = _AGENTS_ROOT / "codex" / "config" / "repo-bootstrap.json"
 LAUNCH_CONFIG_VERSION = "0.0.1"
-CLAUDE_STOP_COMMAND = "python3 ~/.agents/hooks/scripts/claude_stop.py"
+CLAUDE_STOP_COMMAND = 'python3 "$HOME/GitHub/agents/hooks/scripts/claude_stop.py"'
+LEGACY_CLAUDE_STOP_COMMANDS = (
+    "python3 ~/.agents/hooks/scripts/claude_stop.py",
+    "python3 $HOME/.agents/hooks/scripts/claude_stop.py",
+)
+REPO_CLAUDE_IMPORT = "@../AGENTS.md"
 ALLOWED_SCOPES = {"global", "repo", "dormant"}
 PRUNED_REPO_DIR_NAMES = {
     ".cache",
@@ -186,6 +192,24 @@ def load_registry(registry_file: Path) -> tuple[list[dict[str, Any]], Path]:
     return items, root_dir
 
 
+def load_repo_registry(registry_file: Path) -> list[str]:
+    data = read_json_object(registry_file)
+    raw_items = data.get("repos", [])
+    if not isinstance(raw_items, list):
+        raise ValueError("repo registry repos must be an array")
+    repos: list[str] = []
+    seen: set[str] = set()
+    for idx, item in enumerate(raw_items):
+        if not isinstance(item, dict):
+            raise ValueError(f"repos[{idx}] must be an object")
+        raw_path = ensure_str(item.get("path"), "path", "repos", idx)
+        if raw_path in seen:
+            raise ValueError(f"duplicate repo path: {raw_path}")
+        seen.add(raw_path)
+        repos.append(raw_path)
+    return repos
+
+
 def sync_link(dst: Path, src: Path, apply: bool) -> None:
     rel = rel_link(dst, src)
     if dst.is_symlink() and resolved_target(dst) == src.resolve():
@@ -328,14 +352,19 @@ def trusted_workspaces(root_dir: Path, github_root: Path, extra: list[Path]) -> 
     return [str(path) for path in sorted(desired, key=lambda item: str(item))]
 
 
-def merge_string_list(existing: Any, desired: list[str]) -> list[str]:
+def merge_string_list(existing: Any, desired: list[str], *, prune: set[str] | None = None) -> list[str]:
     merged: list[str] = []
     seen: set[str] = set()
+    prune = prune or set()
     if isinstance(existing, list):
         for item in existing:
-            if isinstance(item, str) and item.strip() and item not in seen:
-                seen.add(item)
-                merged.append(item)
+            if not isinstance(item, str) or not item.strip():
+                continue
+            value = str(Path(item).expanduser().resolve())
+            if value in prune or value in seen:
+                continue
+            seen.add(value)
+            merged.append(value)
     for item in desired:
         value = str(Path(item).expanduser().resolve())
         if value not in seen:
@@ -413,6 +442,60 @@ def render_global_context(source: Path, target: Path, apply: bool) -> None:
     target.symlink_to(rel_link(target, source))
 
 
+def render_repo_claude_guidance(repo_root: Path, apply: bool) -> None:
+    agents_file = repo_root / "AGENTS.md"
+    if not agents_file.is_file():
+        print(f"SKIP {repo_root} (.claude/CLAUDE.md: no AGENTS.md)")
+        return
+
+    target = repo_root / ".claude" / "CLAUDE.md"
+    desired = f"{REPO_CLAUDE_IMPORT}\n"
+    if target.is_symlink() and resolved_target(target) == agents_file.resolve():
+        print(f"UNCHANGED {target} (symlink to AGENTS.md)")
+        return
+    if target.is_file():
+        current = target.read_text(encoding="utf-8")
+        first_line = current.splitlines()[0].strip() if current.splitlines() else ""
+        if first_line == REPO_CLAUDE_IMPORT:
+            print(f"UNCHANGED {target} (imports AGENTS.md)")
+            return
+        print(
+            f"WARNING: skipping existing Claude guidance without {REPO_CLAUDE_IMPORT}: {target}",
+            file=sys.stderr,
+        )
+        return
+    if target.exists() or target.is_symlink():
+        print(f"WARNING: skipping unsupported Claude guidance path: {target}", file=sys.stderr)
+        return
+
+    print(f"SYNC {target} (imports ../AGENTS.md)")
+    if not apply:
+        return
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_text(desired, encoding="utf-8")
+
+
+def render_repo_claude_guidance_files(
+    repos: list[str],
+    github_root: Path,
+    repo_filters: set[Path],
+    apply: bool,
+) -> None:
+    home = Path.home()
+    for repo in repos:
+        repo_root = resolve_repo_root(repo, github_root, home)
+        if repo_filters and repo_root not in repo_filters:
+            continue
+        actual_repo = repo_git_root(repo_root)
+        if actual_repo is None:
+            if repo_root.exists():
+                print(f"WARNING: skipping existing non-git path: {repo_root}", file=sys.stderr)
+            continue
+        if repo_filters and actual_repo not in repo_filters:
+            continue
+        render_repo_claude_guidance(actual_repo, apply)
+
+
 def render_settings(settings_file: Path, trusted: list[str], apply: bool, skip_yolo: bool) -> None:
     data = read_json_object(settings_file)
     desired = dict(data)
@@ -422,7 +505,12 @@ def render_settings(settings_file: Path, trusted: list[str], apply: bool, skip_y
     permissions = dict(permissions) if isinstance(permissions, dict) else {}
     allow = merge_literal_string_list(permissions.get("allow"), DEFAULT_ALLOW_RULES)
     permissions["allow"] = allow
-    permissions["additionalDirectories"] = merge_string_list(permissions.get("additionalDirectories"), trusted)
+    legacy_control_plane_dirs = {str((Path.home() / ".agents").resolve())}
+    permissions["additionalDirectories"] = merge_string_list(
+        permissions.get("additionalDirectories"),
+        trusted,
+        prune=legacy_control_plane_dirs,
+    )
     if not skip_yolo:
         permissions["defaultMode"] = "bypassPermissions"
         permissions["skipDangerousModePermissionPrompt"] = True
@@ -453,7 +541,7 @@ def render_settings(settings_file: Path, trusted: list[str], apply: bool, skip_y
         current_entries = current if isinstance(current, list) else []
         command = entry["hooks"][0]["command"]
         hooks[event_name] = current_entries
-        remove_hook_commands(hooks, event_name, [command])
+        remove_hook_commands(hooks, event_name, [command, *LEGACY_CLAUDE_STOP_COMMANDS])
         current = hooks.get(event_name)
         current_entries = current if isinstance(current, list) else []
         hooks[event_name] = current_entries + [entry]
@@ -494,7 +582,10 @@ def _is_managed_claude_hook(hook: Any) -> bool:
     return (
         isinstance(hook, dict)
         and isinstance(hook.get("command"), str)
-        and "/.agents/hooks/scripts/" in hook["command"]
+        and (
+            "/.agents/hooks/scripts/" in hook["command"]
+            or "/GitHub/agents/hooks/scripts/" in hook["command"]
+        )
         and "--runtime claude" in hook["command"]
     )
 
@@ -596,7 +687,7 @@ def render_repo_hooks(
 
 def render_workspace_trust(claude_json_file: Path, trusted: list[str], apply: bool) -> None:
     """Pre-accept Claude Code's per-folder "trust this workspace" dialog for every
-    managed workspace, so opening a new repo under ~/GitHub or ~/.agents never
+    managed workspace, so opening a new repo under ~/GitHub never
     prompts. Trust lives in ~/.claude.json under projects[path].hasTrustDialogAccepted
     (separate from settings.json permissions.additionalDirectories, which is only
     the permission scope). Claude owns this runtime file, so we merge in place and
@@ -807,6 +898,14 @@ def run_sync(args: argparse.Namespace) -> None:
             Path(args.hooks_registry).expanduser()
         ).resolve()
         render_repo_hooks(hooks_registry_file, github_root, repo_filters, args.apply)
+    if not args.skip_repo_guidance:
+        repo_registry_file = absolute_path(Path(args.repo_registry).expanduser()).resolve()
+        render_repo_claude_guidance_files(
+            load_repo_registry(repo_registry_file),
+            github_root,
+            repo_filters,
+            args.apply,
+        )
     if not args.skip_workspace_trust:
         if args.claude_json:
             claude_json = absolute_path(Path(args.claude_json).expanduser()).resolve()
@@ -848,6 +947,16 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--skip-launcher", action="store_true", help="Do not render Claude launcher.")
     parser.add_argument("--skip-skills", action="store_true", help="Do not render Claude skill links.")
     parser.add_argument(
+        "--repo-registry",
+        default=str(DEFAULT_REPO_REGISTRY),
+        help="Canonical managed repo registry JSON for per-repo Claude guidance bridges.",
+    )
+    parser.add_argument(
+        "--skip-repo-guidance",
+        action="store_true",
+        help="Do not render per-repo .claude/CLAUDE.md files that import AGENTS.md.",
+    )
+    parser.add_argument(
         "--hooks-registry",
         default=str(DEFAULT_HOOKS_REGISTRY),
         help="Canonical hook registry JSON for per-repo Claude lifecycle hooks.",
@@ -870,7 +979,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "registry_file",
         nargs="?",
-        default=str(Path.home() / ".agents" / "skills" / "registry.json"),
+        default=str(_AGENTS_ROOT / "skills" / "registry.json"),
         help="Path to canonical skills registry JSON file.",
     )
     return parser.parse_args()

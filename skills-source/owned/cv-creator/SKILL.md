@@ -46,14 +46,14 @@ Read `references/template-patterns.md` when you need to understand or modify the
 Use the bundled script when possible:
 
 ```bash
-python3 ~/.agents/skills-source/owned/cv-creator/scripts/cv.py init --company synthesia
-python3 ~/.agents/skills-source/owned/cv-creator/scripts/cv.py init --company synthesia --no-input --json
-python3 ~/.agents/skills-source/owned/cv-creator/scripts/cv.py build --kind resume
-python3 ~/.agents/skills-source/owned/cv-creator/scripts/cv.py build --kind resume --company synthesia
-python3 ~/.agents/skills-source/owned/cv-creator/scripts/cv.py review --kind resume --company synthesia
-python3 ~/.agents/skills-source/owned/cv-creator/scripts/cv.py build --kind resume --company synthesia --no-input --json
-python3 ~/.agents/skills-source/owned/cv-creator/scripts/cv.py review --kind resume --company synthesia --no-input --json
-python3 ~/.agents/skills-source/owned/cv-creator/scripts/cv.py clean
+python3 ~/GitHub/agents/skills-source/owned/cv-creator/scripts/cv.py init --company synthesia
+python3 ~/GitHub/agents/skills-source/owned/cv-creator/scripts/cv.py init --company synthesia --no-input --json
+python3 ~/GitHub/agents/skills-source/owned/cv-creator/scripts/cv.py build --kind resume
+python3 ~/GitHub/agents/skills-source/owned/cv-creator/scripts/cv.py build --kind resume --company synthesia
+python3 ~/GitHub/agents/skills-source/owned/cv-creator/scripts/cv.py review --kind resume --company synthesia
+python3 ~/GitHub/agents/skills-source/owned/cv-creator/scripts/cv.py build --kind resume --company synthesia --no-input --json
+python3 ~/GitHub/agents/skills-source/owned/cv-creator/scripts/cv.py review --kind resume --company synthesia --no-input --json
+python3 ~/GitHub/agents/skills-source/owned/cv-creator/scripts/cv.py clean
 ```
 
 The script expects to run from somewhere inside the target repo and will discover the repo root automatically.

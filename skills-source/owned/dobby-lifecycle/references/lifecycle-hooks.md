@@ -86,7 +86,7 @@ Session continuity lives in `memory/sessions/YYYY/MM/DD-HHMMSS.json`, not in
 The JSON contract is intentionally minimal and code-backed by:
 
 ```bash
-$HOME/.agents/skills-source/owned/dobby-lifecycle/scripts/session-memory schema
+$HOME/GitHub/agents/skills-source/owned/dobby-lifecycle/scripts/session-memory schema
 ```
 
 V2 records are continuity index cards:
@@ -113,14 +113,14 @@ Current trigger vocabulary:
 
 - `codexclaw-idle-expiry` — CodexClaw finalized an idle mapped thread.
 - `codexclaw-chat-end` — CodexClaw finalized a thread after explicit chat end.
-- `stale-cleanup` — global `~/.agents` stale Codex thread finalizer archived an old thread.
+- `stale-cleanup` — global `~/GitHub/agents` stale Codex thread finalizer archived an old thread.
 - `manual` — direct/manual finalization or repair from a Dobby workspace.
 - `migration` — legacy imported session records only; do not use for new writes.
 
 Use the client instead of hand-writing records:
 
 ```bash
-$HOME/.agents/skills-source/owned/dobby-lifecycle/scripts/session-memory write \
+$HOME/GitHub/agents/skills-source/owned/dobby-lifecycle/scripts/session-memory write \
   --workspace-root /path/to/dobby-workspace \
   --trigger manual \
   --thread-id <codex-thread-id> \
@@ -135,7 +135,7 @@ $HOME/.agents/skills-source/owned/dobby-lifecycle/scripts/session-memory write \
 The global Codex control-plane finalizer is the preferred end-of-thread entry:
 
 ```bash
-$HOME/.agents/codex/scripts/finalize-codex-thread.py \
+$HOME/GitHub/agents/codex/scripts/finalize-codex-thread.py \
   --thread-id <codex-thread-id> \
   --apply
 ```
@@ -178,14 +178,14 @@ duplicate finalization turns.
 In Dobby workspaces the repo wrapper delegates to:
 
 ```bash
-$HOME/.agents/skills-source/owned/dobby-lifecycle/scripts/hooks/finalize-codex-thread
+$HOME/GitHub/agents/skills-source/owned/dobby-lifecycle/scripts/hooks/finalize-codex-thread
 ```
 
 That hook runs the Dobby memory-preservation behavior with the
 source thread id and finalization trigger:
 
 ```bash
-$HOME/.agents/skills-source/owned/dobby-lifecycle/scripts/remember-session \
+$HOME/GitHub/agents/skills-source/owned/dobby-lifecycle/scripts/remember-session \
   --thread-id <codex-thread-id> \
   --trigger manual \
   --no-input
@@ -193,7 +193,7 @@ $HOME/.agents/skills-source/owned/dobby-lifecycle/scripts/remember-session \
 
 `remember-session` starts one final same-thread Codex turn and asks the agent to
 carry forward only useful memory. The agent-facing instruction lives in
-[`prompts/remember-session.md`](/Users/dobby/.agents/skills-source/owned/dobby-lifecycle/prompts/remember-session.md),
+[`prompts/remember-session.md`](/Users/dobby/GitHub/agents/skills-source/owned/dobby-lifecycle/prompts/remember-session.md),
 not inline in the Python runner. The runner performs its own
 `thread/read(thread_id)`, derives the repo root from the thread cwd, renders the
 prompt with strict placeholders, and starts the final turn with that cwd. It
@@ -202,7 +202,7 @@ does not infer trigger semantics from label prefixes. The final turn may call
 make clearly routed durable updates when the body map says so. The repo hook
 does not archive; the global finalizer owns archive after the hook succeeds.
 
-Do not put Dobby memory synthesis directly in the shared `~/.agents` dispatcher.
+Do not put Dobby memory synthesis directly in the shared `~/GitHub/agents` dispatcher.
 The dispatcher routes lifecycle events; this skill owns Dobby-specific behavior.
 
 ## Repo wrapper note
@@ -221,7 +221,7 @@ Explicit finalization wrapper:
 
 - `scripts/hooks/finalize_codex_thread.py` is not a native Codex hook and should
   not appear in `.codex/hooks.json`.
-- It is called by the global `$HOME/.agents/codex/scripts/finalize-codex-thread.py`
+- It is called by the global `$HOME/GitHub/agents/codex/scripts/finalize-codex-thread.py`
   command when that command derives the repo from `thread/read` and asks the
   repo to finalize itself before archive.
 

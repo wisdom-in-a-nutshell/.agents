@@ -6,7 +6,8 @@ LABEL="com.${USER}.codex-sidebar-project-pruner"
 HOUR=1
 MINUTE=0
 OLDER_THAN_DAYS=2
-SCRIPT_PATH="${HOME}/.agents/codex/scripts/prune-sidebar-projects.py"
+CONTROL_PLANE_ROOT="${AGENTS_CONTROL_PLANE_ROOT:-${HOME}/GitHub/agents}"
+SCRIPT_PATH="${CONTROL_PLANE_ROOT}/codex/scripts/prune-sidebar-projects.py"
 PLIST_PATH="${HOME}/Library/LaunchAgents/${LABEL}.plist"
 LOG_DIR="${HOME}/.local/state/codex-control-plane/log"
 OUT_LOG="${LOG_DIR}/sidebar-project-prune.out.log"
@@ -41,9 +42,9 @@ Options:
   -h, --help                 Show this help
 
 Examples:
-  ~/.agents/codex/scripts/install-sidebar-project-prune-launchagent.sh
-  ~/.agents/codex/scripts/install-sidebar-project-prune-launchagent.sh --apply
-  ~/.agents/codex/scripts/install-sidebar-project-prune-launchagent.sh --apply --remote-host macmini --no-unsaved-thread-projects
+  ~/GitHub/agents/codex/scripts/install-sidebar-project-prune-launchagent.sh
+  ~/GitHub/agents/codex/scripts/install-sidebar-project-prune-launchagent.sh --apply
+  ~/GitHub/agents/codex/scripts/install-sidebar-project-prune-launchagent.sh --apply --remote-host macmini --no-unsaved-thread-projects
 USAGE
 }
 

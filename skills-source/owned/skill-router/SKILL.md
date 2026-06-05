@@ -1,6 +1,6 @@
 ---
 name: skill-router
-description: Route skill placement for the `~/.agents` control-plane repo. Use when deciding whether a skill should be `owned`, `external`, or `repo-local`; when creating a new skill with `skill-creator`; or when promoting/moving skills between repo-local and managed registry. Apply this repo's AGENTS.md policy, update `skills/registry.json`, and run sync/check.
+description: Route skill placement for the `~/GitHub/agents` control-plane repo. Use when deciding whether a skill should be `owned`, `external`, or `repo-local`; when creating a new skill with `skill-creator`; or when promoting/moving skills between repo-local and managed registry. Apply this repo's AGENTS.md policy, update `skills/registry.json`, and run sync/check.
 ---
 
 # Skill Router
@@ -9,9 +9,9 @@ Use this skill to decide where a skill should live in the `.agents` system and e
 
 ## Scope
 
-- This skill is specific to the `~/.agents` repository.
-- Always apply policy from `~/.agents/AGENTS.md` first.
-- If current repo is not `~/.agents`, only decide placement and list exact changes; do not assume write access to `.agents` files.
+- This skill is specific to the `~/GitHub/agents` repository.
+- Always apply policy from `~/GitHub/agents/AGENTS.md` first.
+- If current repo is not `~/GitHub/agents`, only decide placement and list exact changes; do not assume write access to control-plane files.
 
 ## Decision Rules
 
@@ -25,13 +25,13 @@ Use this skill to decide where a skill should live in the `.agents` system and e
 
 ## Paths in This Environment
 
-- Control plane repo: `~/.agents`
-- Managed owned skills: `~/.agents/skills-source/owned/<skill>`
-- Managed external skills: `~/.agents/skills-source/external/<skill>`
+- Control plane repo: `~/GitHub/agents`
+- Managed owned skills: `~/GitHub/agents/skills-source/owned/<skill>`
+- Managed external skills: `~/GitHub/agents/skills-source/external/<skill>`
 - Global runtime links: `~/.agents/skills/<skill>`
-- Registry: `~/.agents/skills/registry.json`
+- Registry: `~/GitHub/agents/skills/registry.json`
 - Repo-local skill location: `<repo>/.agents/skills/<skill>`
-- Repo targets in managed `repos` can be repo names under `~/GitHub` or explicit repo roots such as `~/.agents` when the target repo lives outside `~/GitHub`.
+- Repo targets in managed `repos` can be repo names under `~/GitHub` or explicit repo roots such as `~/GitHub/agents`.
 
 ## Standard Flow (When User Says "Create Skill")
 
@@ -51,7 +51,7 @@ Use the canonical bootstrap script instead of hand-editing the registry when the
 Command:
 
 ```bash
-cd ~/.agents
+cd ~/GitHub/agents
 ./scripts/bootstrap-skill.sh <skills.sh-url-or-upstream-ref> --repo <repo> --apply
 ```
 
@@ -81,10 +81,10 @@ Defaults:
 
 1. Scaffold skill:
 ```bash
-python3 ~/.agents/skills-source/external/skill-creator/scripts/init_skill.py <skill-name> --path ~/.agents/skills-source/owned
+python3 ~/GitHub/agents/skills-source/external/skill-creator/scripts/init_skill.py <skill-name> --path ~/GitHub/agents/skills-source/owned
 ```
 2. Ensure `SKILL.md` + `agents/openai.yaml` are correct.
-3. Add entry to `~/.agents/skills/registry.json`:
+3. Add entry to `~/GitHub/agents/skills/registry.json`:
    - `skill`: `<skill-name>`
    - `origin`: `owned`
    - `scope`: `global`
@@ -93,14 +93,14 @@ python3 ~/.agents/skills-source/external/skill-creator/scripts/init_skill.py <sk
    - `upstream_ref`: `-`
 4. Run:
 ```bash
-cd ~/.agents
+cd ~/GitHub/agents
 ./scripts/bootstrap-machine-agent-control-planes.sh --apply
 ./scripts/check-agent-control-planes.sh
 ```
 
 ### B) Add External Skill
 
-1. Add the managed entry in `~/.agents/skills/registry.json`:
+1. Add the managed entry in `~/GitHub/agents/skills/registry.json`:
    - `skill: <skill>`
    - `origin: external`
    - `scope: global` or `scope: repo` as needed
@@ -108,13 +108,13 @@ cd ~/.agents
    - valid `upstream_ref`
 2. Import the canonical source from upstream:
 ```bash
-cd ~/.agents
+cd ~/GitHub/agents
 ./scripts/refresh-external-skills.sh --apply --skill <skill>
 ```
-3. Confirm the imported source now exists under `~/.agents/skills-source/external/<skill>`.
+3. Confirm the imported source now exists under `~/GitHub/agents/skills-source/external/<skill>`.
 4. Run sync/check:
 ```bash
-cd ~/.agents
+cd ~/GitHub/agents
 ./scripts/bootstrap-machine-agent-control-planes.sh --apply
 ./scripts/check-agent-control-planes.sh
 ```
@@ -124,12 +124,12 @@ cd ~/.agents
 ### C) Keep Skill Repo-Local
 
 1. Store in `<repo>/.agents/skills/<skill>`.
-2. Add `{ repo, skill }` to `unmanaged_repo_local_skills` in `~/.agents/skills/registry.json` for visibility.
+2. Add `{ repo, skill }` to `unmanaged_repo_local_skills` in `~/GitHub/agents/skills/registry.json` for visibility.
 3. Do not add a managed entry unless promoting.
 
 ### D) Promote Repo-Local -> Managed Owned
 
-1. Copy skill folder from `<repo>/.agents/skills/<skill>` to `~/.agents/skills-source/owned/<skill>`.
+1. Copy skill folder from `<repo>/.agents/skills/<skill>` to `~/GitHub/agents/skills-source/owned/<skill>`.
 2. Add managed entry in registry (usually `scope: repo` first, then `global` if needed).
 3. If needed, remove old unmanaged repo-local entry.
 4. Run sync/check.
@@ -137,7 +137,7 @@ cd ~/.agents
 For repo-scoped managed skills, use `--repo <repo-root>` with the shared bootstrap/check when you want a scoped run:
 
 ```bash
-cd ~/.agents
+cd ~/GitHub/agents
 ./scripts/bootstrap-machine-agent-control-planes.sh --apply --repo <repo-root>
 ./scripts/check-agent-control-planes.sh --repo <repo-root>
 ```

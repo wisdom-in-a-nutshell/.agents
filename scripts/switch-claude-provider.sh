@@ -32,10 +32,10 @@ Options:
   -h, --help               Show this help
 
 Examples:
-  ~/.agents/scripts/switch-claude-provider.sh status
-  ~/.agents/scripts/switch-claude-provider.sh subscription --apply
-  ~/.agents/scripts/switch-claude-provider.sh subscription --apply --login
-  ~/.agents/scripts/switch-claude-provider.sh aws --apply
+  ~/GitHub/agents/scripts/switch-claude-provider.sh status
+  ~/GitHub/agents/scripts/switch-claude-provider.sh subscription --apply
+  ~/GitHub/agents/scripts/switch-claude-provider.sh subscription --apply --login
+  ~/GitHub/agents/scripts/switch-claude-provider.sh aws --apply
 USAGE
 }
 

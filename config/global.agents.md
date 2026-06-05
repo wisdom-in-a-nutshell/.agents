@@ -5,7 +5,7 @@
 This file is machine-wide baseline guidance. Keep it generic and avoid portfolio-specific policy here.
 
 ## Scope Routing
-- For repo best-practice recommendations, use [$agent-native-repo-playbook](/Users/dobby/.agents/skills-source/owned/agent-native-repo-playbook/SKILL.md).
+- For repo best-practice recommendations, use [$agent-native-repo-playbook](/Users/dobby/GitHub/agents/skills-source/owned/agent-native-repo-playbook/SKILL.md).
 
 ## Operating Model
 - Humans set intent, priorities, and acceptance criteria; agents implement, validate, maintain docs, and improve the harness.
@@ -41,7 +41,7 @@ This file is machine-wide baseline guidance. Keep it generic and avoid portfolio
 - Managed repos use the global Codex Stop hook that runs after each agent turn and auto-stages, commits, runs repo-owned fast checks through `git commit`, rebases, and pushes.
 - If repo-owned checks fail, the hook returns the failure details to the current agent so it can fix the issue in the same session.
 - Repo-owned lifecycle hook policy and hook payload contracts belong in repo docs or the shared hook adapter reference, not in machine-wide guidance.
-- Managed repos use a shared local Git hook from `~/.agents/hooks/git/`; repo-specific commit-time checks live in `scripts/check-fast.sh` when a repo needs fast validation.
+- Managed repos use a shared local Git hook from `~/GitHub/agents/hooks/git/`; repo-specific commit-time checks live in `scripts/check-fast.sh` when a repo needs fast validation.
 - Keep `scripts/check-fast.sh` deterministic, local, quick, and actionable; use `scripts/check-full.sh` for slower repo-wide validation.
 - Do not directly run `git commit` or `git push` for normal work unless the user explicitly asks.
 - Repo-owned automation may stage, commit, rebase, or push as part of a documented workflow; treat this as normal automation, not as a manual git operation or a warning-worthy side effect.

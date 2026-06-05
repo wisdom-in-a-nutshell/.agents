@@ -1,5 +1,5 @@
 // Deploy the built dashboard into the dir the Python control-plane server serves.
-// Source lives in ~/.agents/dashboard-app; the server serves ~/.agents/dashboard
+// Source lives in ~/GitHub/agents/dashboard-app; the server serves ~/GitHub/agents/dashboard
 // at the /dashboard/ URL path. We build to ./dist then sync into ../dashboard.
 import { cpSync, existsSync, mkdirSync, readdirSync, rmSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';

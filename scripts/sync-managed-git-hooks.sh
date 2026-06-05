@@ -32,9 +32,9 @@ Options:
   -h, --help             Show this help
 
 Examples:
-  ~/.agents/scripts/sync-managed-git-hooks.sh
-  ~/.agents/scripts/sync-managed-git-hooks.sh --apply
-  ~/.agents/scripts/sync-managed-git-hooks.sh --check --repo ~/GitHub/win
+  ~/GitHub/agents/scripts/sync-managed-git-hooks.sh
+  ~/GitHub/agents/scripts/sync-managed-git-hooks.sh --apply
+  ~/GitHub/agents/scripts/sync-managed-git-hooks.sh --check --repo ~/GitHub/win
 USAGE
 }
 

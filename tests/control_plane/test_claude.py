@@ -30,7 +30,7 @@ class ClaudeSyncTests(TempDirTestCase):
         )
 
     def _isolated_targets(self, root: Path) -> list[str]:
-        source = write_text(root / "codex/config/global.agents.md", "# Global\n")
+        source = write_text(root / "config/global.agents.md", "# Global\n")
         return [
             "--global-context-source",
             str(source),
@@ -90,7 +90,7 @@ class ClaudeSyncTests(TempDirTestCase):
         instructions = self.temp_path / "claude/CLAUDE.md"
         self.assertTrue(instructions.is_symlink())
         self.assertEqual(
-            (root / "codex/config/global.agents.md").resolve(),
+            (root / "config/global.agents.md").resolve(),
             (instructions.parent / os.readlink(instructions)).resolve(),
         )
 
@@ -109,7 +109,7 @@ class ClaudeSyncTests(TempDirTestCase):
         self.assertNotIn("PreToolUse", settings["hooks"])
         self.assertNotIn("PermissionRequest", settings["hooks"])
         self.assertEqual(
-            "python3 ~/.agents/hooks/scripts/claude_stop.py",
+            'python3 "$HOME/GitHub/agents/hooks/scripts/claude_stop.py"',
             settings["hooks"]["Stop"][0]["hooks"][0]["command"],
         )
 
@@ -138,6 +138,17 @@ class ClaudeSyncTests(TempDirTestCase):
             claude_home / "settings.json",
             {
                 "hooks": {
+                    "Stop": [
+                        {
+                            "hooks": [
+                                {
+                                    "type": "command",
+                                    "command": "python3 ~/.agents/hooks/scripts/claude_stop.py",
+                                },
+                                {"type": "command", "command": "custom-stop"},
+                            ],
+                        }
+                    ],
                     "PreToolUse": [
                         {
                             "matcher": "*",
@@ -172,8 +183,12 @@ class ClaudeSyncTests(TempDirTestCase):
         )
         self.assertNotIn("PermissionRequest", settings["hooks"])
         self.assertEqual(
-            "python3 ~/.agents/hooks/scripts/claude_stop.py",
+            "custom-stop",
             settings["hooks"]["Stop"][0]["hooks"][0]["command"],
+        )
+        self.assertEqual(
+            'python3 "$HOME/GitHub/agents/hooks/scripts/claude_stop.py"',
+            settings["hooks"]["Stop"][1]["hooks"][0]["command"],
         )
 
     def test_apply_renders_repo_scoped_skills_into_repo_claude_skills(self) -> None:
@@ -227,6 +242,41 @@ class ClaudeSyncTests(TempDirTestCase):
         )
         self.assertFalse((claude_home / "skills/repo-only").exists())
         self.assertFalse((repo_b / ".claude/skills/repo-b-only").exists())
+
+    def test_apply_renders_repo_claude_guidance_import_bridge(self) -> None:
+        root = self.temp_path / "agents"
+        registry = self._write_registry(root, [])
+        repo_registry = write_json(
+            root / "codex/config/repo-bootstrap.json",
+            {
+                "defaults": {},
+                "repos": [{"path": str(self.temp_path / "GitHub/repo-a")}],
+            },
+        )
+        github_root = self.temp_path / "GitHub"
+        repo_a = init_git_repo(github_root / "repo-a")
+        write_text(repo_a / "AGENTS.md", "# Repo Guidance\n")
+        claude_home = self.temp_path / "claude"
+
+        run_command(
+            [
+                str(REPO_ROOT / "scripts/sync-claude.py"),
+                "--apply",
+                "--claude-home",
+                str(claude_home),
+                "--github-root",
+                str(github_root),
+                "--repo-registry",
+                str(repo_registry),
+                "--repo",
+                "repo-a",
+                *self._isolated_targets(root),
+                str(registry),
+            ]
+        )
+
+        guidance = repo_a / ".claude/CLAUDE.md"
+        self.assertEqual("@../AGENTS.md\n", guidance.read_text(encoding="utf-8"))
 
     def test_apply_renders_repo_dev_server_launch_config(self) -> None:
         root = self.temp_path / "agents"
@@ -414,7 +464,7 @@ class ClaudeSyncTests(TempDirTestCase):
         settings = json.loads((claude_home / "settings.json").read_text(encoding="utf-8"))
         self.assertEqual(
             [
-                str(existing),
+                str(existing.resolve()),
                 str(repo_b.resolve()),
                 str(repo_a.resolve()),
                 str(root.resolve()),
@@ -426,7 +476,7 @@ class ClaudeSyncTests(TempDirTestCase):
         root = self.temp_path / "agents"
         registry = self._write_registry(root, [])
         claude_home = self.temp_path / "claude"
-        source = write_text(root / "codex/config/global.agents.md", "# Global Agent Context\n")
+        source = write_text(root / "config/global.agents.md", "# Global Agent Context\n")
         target = self.temp_path / "claude/CLAUDE.md"
         target.parent.mkdir(parents=True)
         target.symlink_to(os.path.relpath(source, target.parent))

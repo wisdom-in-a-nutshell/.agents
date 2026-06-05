@@ -58,7 +58,7 @@ Use for credentials shared across repos on one machine for operator tooling.
 - Keep the value canonical in Key Vault.
 - Sync it to `~/.secrets/<integration>/...`.
 - Source it from shell bootstrap only as a generated machine-local file.
-- Do not store secret values in `~/.agents` or tracked shell config.
+- Do not store secret values in `~/GitHub/agents`, `~/.agents`, or tracked shell config.
 
 ### GitHub CI
 

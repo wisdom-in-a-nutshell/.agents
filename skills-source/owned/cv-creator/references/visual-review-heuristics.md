@@ -39,8 +39,8 @@ If `cv.py review` exists in the skill, it already handles rendering to a
 temporary directory, so prefer it:
 
 ```bash
-python3 ~/.agents/skills-source/owned/cv-creator/scripts/cv.py build --kind resume --company <slug>
-python3 ~/.agents/skills-source/owned/cv-creator/scripts/cv.py review --kind resume --company <slug>
+python3 ~/GitHub/agents/skills-source/owned/cv-creator/scripts/cv.py build --kind resume --company <slug>
+python3 ~/GitHub/agents/skills-source/owned/cv-creator/scripts/cv.py review --kind resume --company <slug>
 ```
 
 The review command is intentionally self-contained around the repo contract. It

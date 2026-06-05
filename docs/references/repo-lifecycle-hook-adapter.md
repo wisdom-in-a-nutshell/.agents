@@ -3,7 +3,7 @@
 Use this page when adding repo-specific behavior to Codex lifecycle hooks or
 explicit thread finalization.
 
-The shared `.agents` control plane owns Codex integration and dispatch. Each
+The shared `~/GitHub/agents` control plane owns Codex integration and dispatch. Each
 repository owns what it wants to do when a supported lifecycle event or explicit
 thread finalization arrives.
 
@@ -11,13 +11,13 @@ thread finalization arrives.
 
 ```text
 Native Codex runtime event
-  -> shared ~/.agents hook script
+  -> shared ~/GitHub/agents hook script
   -> hooks/scripts/hook_runtime.py
   -> normalized JSON adapter payload
   -> repo script when it exists
 
 Explicit thread finalization
-  -> ~/.agents/codex/scripts/finalize-codex-thread.py --thread-id <id> --apply
+  -> ~/GitHub/agents/codex/scripts/finalize-codex-thread.py --thread-id <id> --apply
   -> app-server thread/read derives cwd + repo root
   -> repo scripts/hooks/finalize_codex_thread.py when it exists
   -> one same-thread finalization turn
@@ -28,7 +28,7 @@ Explicit thread finalization
 
 Put repo policy in the repo. Keep the shared control plane boring.
 
-- Shared `.agents` layer:
+- Shared `~/GitHub/agents` layer:
   - receives supported Codex hook payloads or explicit finalizer invocations
   - runs event-specific entrypoints such as `session_start.py`
   - keeps common dispatch plumbing in `hooks/scripts/hook_runtime.py`
@@ -45,7 +45,7 @@ Put repo policy in the repo. Keep the shared control plane boring.
 ## Repo Hook Locations
 
 Lifecycle events are not enabled just because a script exists. The shared
-[`hooks/registry.json`](/Users/dobby/.agents/hooks/registry.json) decides which
+[`hooks/registry.json`](/Users/dobby/GitHub/agents/hooks/registry.json) decides which
 managed repos receive which native Codex events, and the repo script only runs
 when the event is assigned to that repo.
 
@@ -261,13 +261,13 @@ Run through the shared dispatcher:
 ```bash
 cd /path/to/repo
 printf '{"hook_event_name":"SessionStart","cwd":"%s","session_id":"test-session","source":"startup"}' "$PWD" \
-  | python3 ~/.agents/hooks/scripts/session_start.py --runtime codex
+  | python3 ~/GitHub/agents/hooks/scripts/session_start.py --runtime codex
 ```
 
 Run explicit finalization:
 
 ```bash
-~/.agents/codex/scripts/finalize-codex-thread.py \
+~/GitHub/agents/codex/scripts/finalize-codex-thread.py \
   --thread-id <codex-thread-id> \
   --reason manual \
   --apply \
@@ -294,10 +294,10 @@ When adding or changing repo lifecycle hooks:
 - If the hook emits context, make it concise and directly useful.
 - If the hook needs slow memory work, move it to explicit finalization.
 
-When changing shared hook dispatchers in `.agents`, run:
+When changing shared hook dispatchers in `~/GitHub/agents`, run:
 
 ```bash
-cd ~/.agents
+cd ~/GitHub/agents
 python3 -m py_compile \
   hooks/scripts/hook_adapter.py \
   hooks/scripts/hook_runtime.py \
@@ -316,7 +316,7 @@ python3 -m unittest tests.control_plane.test_hooks_control_plane
 Use this when asking another agent to add repo-specific hook behavior:
 
 ```text
-Use ~/.agents/docs/references/repo-lifecycle-hook-adapter.md.
+Use ~/GitHub/agents/docs/references/repo-lifecycle-hook-adapter.md.
 
 Add repo-specific lifecycle behavior only under scripts/hooks/*.py.
 Do not edit rendered .codex/hooks.json.

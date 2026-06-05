@@ -67,7 +67,7 @@ Global flags such as `--json`, `--plain`, and `--progress` should be passed befo
 ### First command on a fresh boot
 
 ```bash
-python3 ~/.agents/skills-source/owned/social-media-publishing/scripts/linkedin/cli.py status
+python3 ~/GitHub/agents/skills-source/owned/social-media-publishing/scripts/linkedin/cli.py status
 ```
 
 What it surfaces:
@@ -97,7 +97,7 @@ LinkedIn's newer Posts API describes commentary as text stored in `little` text 
 ### Dry-run a blog post share
 
 ```bash
-python3 ~/.agents/skills-source/owned/social-media-publishing/scripts/linkedin/cli.py post \
+python3 ~/GitHub/agents/skills-source/owned/social-media-publishing/scripts/linkedin/cli.py post \
   --text-file /abs/path/body.txt \
   --url https://adithyan.io/blog/codex-plugins-visual-explainer \
   --title "Codex plugins, visually explained" \
@@ -108,7 +108,7 @@ python3 ~/.agents/skills-source/owned/social-media-publishing/scripts/linkedin/c
 ### Publish for real
 
 ```bash
-python3 ~/.agents/skills-source/owned/social-media-publishing/scripts/linkedin/cli.py post \
+python3 ~/GitHub/agents/skills-source/owned/social-media-publishing/scripts/linkedin/cli.py post \
   --text-file /abs/path/body.txt \
   --url https://adithyan.io/blog/codex-plugins-visual-explainer \
   --title "Codex plugins, visually explained" \
@@ -118,7 +118,7 @@ python3 ~/.agents/skills-source/owned/social-media-publishing/scripts/linkedin/c
 ### Dry-run a single-image post
 
 ```bash
-python3 ~/.agents/skills-source/owned/social-media-publishing/scripts/linkedin/cli.py post-image \
+python3 ~/GitHub/agents/skills-source/owned/social-media-publishing/scripts/linkedin/cli.py post-image \
   --text-file /abs/path/body.txt \
   --image /abs/path/cover.jpg \
   --dry-run
@@ -127,7 +127,7 @@ python3 ~/.agents/skills-source/owned/social-media-publishing/scripts/linkedin/c
 ### Dry-run a video post
 
 ```bash
-python3 ~/.agents/skills-source/owned/social-media-publishing/scripts/linkedin/cli.py post-video \
+python3 ~/GitHub/agents/skills-source/owned/social-media-publishing/scripts/linkedin/cli.py post-video \
   --text-file /abs/path/body.txt \
   --video /abs/path/video.mp4 \
   --title "Clear public-facing video title" \
@@ -137,7 +137,7 @@ python3 ~/.agents/skills-source/owned/social-media-publishing/scripts/linkedin/c
 ### Dry-run a video post from a public direct URL
 
 ```bash
-python3 ~/.agents/skills-source/owned/social-media-publishing/scripts/linkedin/cli.py post-video \
+python3 ~/GitHub/agents/skills-source/owned/social-media-publishing/scripts/linkedin/cli.py post-video \
   --text-file /abs/path/body.txt \
   --video-url https://example.com/video.mp4 \
   --title "Clear public-facing video title" \
@@ -147,7 +147,7 @@ python3 ~/.agents/skills-source/owned/social-media-publishing/scripts/linkedin/c
 ### Publish a video post for real
 
 ```bash
-python3 ~/.agents/skills-source/owned/social-media-publishing/scripts/linkedin/cli.py --progress plain post-video \
+python3 ~/GitHub/agents/skills-source/owned/social-media-publishing/scripts/linkedin/cli.py --progress plain post-video \
   --text-file /abs/path/body.txt \
   --video /abs/path/video.mp4 \
   --title "Clear public-facing video title"
@@ -183,7 +183,7 @@ Useful knobs:
 ### Dry-run a multi-image post
 
 ```bash
-python3 ~/.agents/skills-source/owned/social-media-publishing/scripts/linkedin/cli.py post-images \
+python3 ~/GitHub/agents/skills-source/owned/social-media-publishing/scripts/linkedin/cli.py post-images \
   --text-file /abs/path/body.txt \
   --image /abs/path/slide-1.jpg \
   --image /abs/path/slide-2.jpg \
@@ -194,7 +194,7 @@ python3 ~/.agents/skills-source/owned/social-media-publishing/scripts/linkedin/c
 Optional alt text can be passed once per image in the same order:
 
 ```bash
-python3 ~/.agents/skills-source/owned/social-media-publishing/scripts/linkedin/cli.py post-images \
+python3 ~/GitHub/agents/skills-source/owned/social-media-publishing/scripts/linkedin/cli.py post-images \
   --text-file /abs/path/body.txt \
   --image /abs/path/slide-1.jpg \
   --image /abs/path/slide-2.jpg \
@@ -206,7 +206,7 @@ python3 ~/.agents/skills-source/owned/social-media-publishing/scripts/linkedin/c
 ### Publish a multi-image post for real
 
 ```bash
-python3 ~/.agents/skills-source/owned/social-media-publishing/scripts/linkedin/cli.py post-images \
+python3 ~/GitHub/agents/skills-source/owned/social-media-publishing/scripts/linkedin/cli.py post-images \
   --text-file /abs/path/body.txt \
   --image /abs/path/slide-1.jpg \
   --image /abs/path/slide-2.jpg \
@@ -216,7 +216,7 @@ python3 ~/.agents/skills-source/owned/social-media-publishing/scripts/linkedin/c
 ### Dry-run a comment / first comment
 
 ```bash
-python3 ~/.agents/skills-source/owned/social-media-publishing/scripts/linkedin/cli.py comment \
+python3 ~/GitHub/agents/skills-source/owned/social-media-publishing/scripts/linkedin/cli.py comment \
   --post-urn urn:li:ugcPost:1234567890 \
   --text-file /abs/path/comment.txt \
   --dry-run
@@ -233,14 +233,14 @@ Dry-run and live comment results include `requested_route`, `selected_route`, `r
 ### Fetch one post by URN
 
 ```bash
-python3 ~/.agents/skills-source/owned/social-media-publishing/scripts/linkedin/cli.py --json get-post \
+python3 ~/GitHub/agents/skills-source/owned/social-media-publishing/scripts/linkedin/cli.py --json get-post \
   --post-urn urn:li:ugcPost:1234567890
 ```
 
 ### List recent posts
 
 ```bash
-python3 ~/.agents/skills-source/owned/social-media-publishing/scripts/linkedin/cli.py --json list-posts --count 5
+python3 ~/GitHub/agents/skills-source/owned/social-media-publishing/scripts/linkedin/cli.py --json list-posts --count 5
 ```
 
 ## Important implementation note

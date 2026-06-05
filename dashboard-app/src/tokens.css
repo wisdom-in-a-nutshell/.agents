@@ -1,7 +1,7 @@
 /* Adi Design — canonical design tokens.
  *
  * The shared aesthetic for Adi's apps (dobby-dashboard, blog/adithyan.io,
- * ~/.agents/dashboard, and future projects). Source of truth lives in this
+ * ~/GitHub/agents/dashboard, and future projects). Source of truth lives in this
  * skill; products consume a copy of this file.
  *
  * Color space is oklch throughout (perceptually even light/dark).

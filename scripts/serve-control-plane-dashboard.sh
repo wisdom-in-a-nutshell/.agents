@@ -26,9 +26,9 @@ Options:
   -h, --help                 Show this help
 
 Examples:
-  ~/.agents/scripts/serve-control-plane-dashboard.sh start
-  ~/.agents/scripts/serve-control-plane-dashboard.sh status
-  ~/.agents/scripts/serve-control-plane-dashboard.sh stop
+  ~/GitHub/agents/scripts/serve-control-plane-dashboard.sh start
+  ~/GitHub/agents/scripts/serve-control-plane-dashboard.sh status
+  ~/GitHub/agents/scripts/serve-control-plane-dashboard.sh stop
 USAGE
 }
 

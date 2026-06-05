@@ -163,7 +163,7 @@
       "origin": "owned",
       "scope": "repo",
       "repos": [
-        "~/.agents",
+        "agents",
         "adi",
         "codexclaw",
         "symphony"
@@ -231,7 +231,7 @@
         "adi",
         "angie",
         "codexclaw",
-        "~/.agents"
+        "agents"
       ],
       "source_path": "skills-source/owned/dobby-mail",
       "upstream_ref": "-"
@@ -275,7 +275,7 @@
       "origin": "external",
       "scope": "repo",
       "repos": [
-        "~/.agents",
+        "agents",
         "whos-in-your-head"
       ],
       "source_path": "skills-source/external/openai-docs",
@@ -313,7 +313,7 @@
       "origin": "owned",
       "scope": "repo",
       "repos": [
-        "~/.agents"
+        "agents"
       ],
       "source_path": "skills-source/owned/skill-router",
       "upstream_ref": "-"
@@ -334,7 +334,7 @@
       "origin": "owned",
       "scope": "repo",
       "repos": [
-        "~/.agents",
+        "agents",
         "adi",
         "adithyan-ai-videos",
         "angie",
@@ -393,7 +393,7 @@
         "aipodcasting",
         "aipodcasting-public-website",
         "whos-in-your-head",
-        "~/.agents",
+        "agents",
         "adi",
         "dobby-dashboard"
       ],

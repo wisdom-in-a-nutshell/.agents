@@ -1,5 +1,5 @@
-# Managed by ~/.agents/codex/scripts/sync-repo-codex-configs.sh.
-# Edit ~/.agents/codex/config/repo-bootstrap.json and re-run the sync script.
+# Managed by ~/GitHub/agents/codex/scripts/sync-repo-codex-configs.sh.
+# Edit ~/GitHub/agents/codex/config/repo-bootstrap.json and re-run the sync script.
 
 model = "gpt-5.5"
 model_reasoning_effort = "high"

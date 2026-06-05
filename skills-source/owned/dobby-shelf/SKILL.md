@@ -55,18 +55,18 @@ for a real deadline.
 Use the skill-bundled CLI for ordinary Shelf operations:
 
 ```bash
-$HOME/.agents/skills-source/owned/dobby-shelf/scripts/dobby-shelf snapshot
-$HOME/.agents/skills-source/owned/dobby-shelf/scripts/dobby-shelf snapshot --mode boot
-$HOME/.agents/skills-source/owned/dobby-shelf/scripts/dobby-shelf snapshot --mode full
-$HOME/.agents/skills-source/owned/dobby-shelf/scripts/dobby-shelf list --view open
-$HOME/.agents/skills-source/owned/dobby-shelf/scripts/dobby-shelf add --title "Buy oats" --kind buy --show-at 2026-05-10
-$HOME/.agents/skills-source/owned/dobby-shelf/scripts/dobby-shelf done <id-or-prefix>
-$HOME/.agents/skills-source/owned/dobby-shelf/scripts/dobby-shelf defer <id-or-prefix> --show-at 2026-05-12
-$HOME/.agents/skills-source/owned/dobby-shelf/scripts/dobby-shelf note <id-or-prefix> --set "Replacement note"
-$HOME/.agents/skills-source/owned/dobby-shelf/scripts/dobby-shelf note <id-or-prefix> --append "Additional note"
-$HOME/.agents/skills-source/owned/dobby-shelf/scripts/dobby-shelf note <id-or-prefix> --clear
-$HOME/.agents/skills-source/owned/dobby-shelf/scripts/dobby-shelf drop <id-or-prefix> --reason "no longer relevant"
-$HOME/.agents/skills-source/owned/dobby-shelf/scripts/dobby-shelf focus <id-or-prefix> --on
+$HOME/GitHub/agents/skills-source/owned/dobby-shelf/scripts/dobby-shelf snapshot
+$HOME/GitHub/agents/skills-source/owned/dobby-shelf/scripts/dobby-shelf snapshot --mode boot
+$HOME/GitHub/agents/skills-source/owned/dobby-shelf/scripts/dobby-shelf snapshot --mode full
+$HOME/GitHub/agents/skills-source/owned/dobby-shelf/scripts/dobby-shelf list --view open
+$HOME/GitHub/agents/skills-source/owned/dobby-shelf/scripts/dobby-shelf add --title "Buy oats" --kind buy --show-at 2026-05-10
+$HOME/GitHub/agents/skills-source/owned/dobby-shelf/scripts/dobby-shelf done <id-or-prefix>
+$HOME/GitHub/agents/skills-source/owned/dobby-shelf/scripts/dobby-shelf defer <id-or-prefix> --show-at 2026-05-12
+$HOME/GitHub/agents/skills-source/owned/dobby-shelf/scripts/dobby-shelf note <id-or-prefix> --set "Replacement note"
+$HOME/GitHub/agents/skills-source/owned/dobby-shelf/scripts/dobby-shelf note <id-or-prefix> --append "Additional note"
+$HOME/GitHub/agents/skills-source/owned/dobby-shelf/scripts/dobby-shelf note <id-or-prefix> --clear
+$HOME/GitHub/agents/skills-source/owned/dobby-shelf/scripts/dobby-shelf drop <id-or-prefix> --reason "no longer relevant"
+$HOME/GitHub/agents/skills-source/owned/dobby-shelf/scripts/dobby-shelf focus <id-or-prefix> --on
 ```
 
 The CLI emits JSON envelopes by default; use `--plain` only for operator inspection.
@@ -77,7 +77,7 @@ For default Dobby reasoning, day planning, boot context, and questions like
 "what should I work on?", use:
 
 ```bash
-$HOME/.agents/skills-source/owned/dobby-shelf/scripts/dobby-shelf snapshot
+$HOME/GitHub/agents/skills-source/owned/dobby-shelf/scripts/dobby-shelf snapshot
 ```
 
 `snapshot` is a read-only decision surface, not an archive view. It groups open
@@ -98,7 +98,7 @@ ordinary orientation unless debugging storage shape.
 For workspace checks, use the skill-owned validator:
 
 ```bash
-$HOME/.agents/skills-source/owned/dobby-shelf/scripts/validate --workspace-root /path/to/workspace state/shelf.json
+$HOME/GitHub/agents/skills-source/owned/dobby-shelf/scripts/validate --workspace-root /path/to/workspace state/shelf.json
 ```
 
 ## Operating rules
@@ -113,7 +113,7 @@ $HOME/.agents/skills-source/owned/dobby-shelf/scripts/validate --workspace-root 
 ## Testing
 
 ```bash
-bash $HOME/.agents/skills-source/owned/dobby-shelf/tests/run.sh
+bash $HOME/GitHub/agents/skills-source/owned/dobby-shelf/tests/run.sh
 ```
 
 For examples and edge cases, read `references/shelf.md`.

@@ -8,7 +8,8 @@ INTERVAL_SECONDS=3600
 OLDER_THAN_HOURS=24
 MAX_REPORT=25
 RUN_AT_LOAD=1
-SCRIPT_PATH="${HOME}/.agents/codex/scripts/finalize-stale-codex-threads.py"
+CONTROL_PLANE_ROOT="${AGENTS_CONTROL_PLANE_ROOT:-${HOME}/GitHub/agents}"
+SCRIPT_PATH="${CONTROL_PLANE_ROOT}/codex/scripts/finalize-stale-codex-threads.py"
 PLIST_PATH="${HOME}/Library/LaunchAgents/${LABEL}.plist"
 LEGACY_PLIST_PATH="${HOME}/Library/LaunchAgents/${LEGACY_LABEL}.plist"
 LOG_DIR="${HOME}/.local/state/codex-control-plane/log"
@@ -35,8 +36,8 @@ Options:
   -h, --help                 Show this help
 
 Examples:
-  ~/.agents/codex/scripts/install-finalize-stale-codex-threads-launchagent.sh
-  ~/.agents/codex/scripts/install-finalize-stale-codex-threads-launchagent.sh --apply
+  ~/GitHub/agents/codex/scripts/install-finalize-stale-codex-threads-launchagent.sh
+  ~/GitHub/agents/codex/scripts/install-finalize-stale-codex-threads-launchagent.sh --apply
 USAGE
 }
 

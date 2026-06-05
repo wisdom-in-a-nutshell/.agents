@@ -53,10 +53,10 @@ META_GRAPH_VERSION=v23.0
 ## CLI
 
 ```bash
-python3 ~/.agents/skills-source/owned/social-media-publishing/scripts/instagram/cli.py status
-python3 ~/.agents/skills-source/owned/social-media-publishing/scripts/instagram/cli.py post-image --text-file /abs/path/caption.txt --image-url https://example.com/image.jpg --dry-run
-python3 ~/.agents/skills-source/owned/social-media-publishing/scripts/instagram/cli.py post-video --text-file /abs/path/caption.txt --video-url https://example.com/video.mp4 --reel --share-to-feed --dry-run
-python3 ~/.agents/skills-source/owned/social-media-publishing/scripts/instagram/cli.py post-carousel --text-file /abs/path/caption.txt --media-url https://example.com/1.jpg --media-url https://example.com/2.jpg --dry-run
+python3 ~/GitHub/agents/skills-source/owned/social-media-publishing/scripts/instagram/cli.py status
+python3 ~/GitHub/agents/skills-source/owned/social-media-publishing/scripts/instagram/cli.py post-image --text-file /abs/path/caption.txt --image-url https://example.com/image.jpg --dry-run
+python3 ~/GitHub/agents/skills-source/owned/social-media-publishing/scripts/instagram/cli.py post-video --text-file /abs/path/caption.txt --video-url https://example.com/video.mp4 --reel --share-to-feed --dry-run
+python3 ~/GitHub/agents/skills-source/owned/social-media-publishing/scripts/instagram/cli.py post-carousel --text-file /abs/path/caption.txt --media-url https://example.com/1.jpg --media-url https://example.com/2.jpg --dry-run
 ```
 
 The CLI defaults to JSON and follows the agent-first contract:

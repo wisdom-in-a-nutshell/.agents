@@ -25,8 +25,8 @@ The active Python interpreter should have:
 On a fresh boot, start with:
 
 ```bash
-python3 ~/.agents/skills-source/owned/social-media-publishing/scripts/reddit/cli.py status
-python3 ~/.agents/skills-source/owned/social-media-publishing/scripts/reddit/native_video_cli.py status
+python3 ~/GitHub/agents/skills-source/owned/social-media-publishing/scripts/reddit/cli.py status
+python3 ~/GitHub/agents/skills-source/owned/social-media-publishing/scripts/reddit/native_video_cli.py status
 ```
 
 ## Keep state outside the skill
@@ -56,7 +56,7 @@ The skill should stay reusable; the campaign should stay local to the work.
 3. Inspect flairs with:
 
 ```bash
-python3 ~/.agents/skills-source/owned/social-media-publishing/scripts/reddit/cli.py list-flairs --subreddit LocalLLaMA
+python3 ~/GitHub/agents/skills-source/owned/social-media-publishing/scripts/reddit/cli.py list-flairs --subreddit LocalLLaMA
 ```
 
 4. Prepare a single plan JSON file when the post is non-trivial.
@@ -113,43 +113,43 @@ Account-specific state that affects which subs to attempt:
 Status:
 
 ```bash
-python3 ~/.agents/skills-source/owned/social-media-publishing/scripts/reddit/cli.py status
-python3 ~/.agents/skills-source/owned/social-media-publishing/scripts/reddit/native_video_cli.py status
+python3 ~/GitHub/agents/skills-source/owned/social-media-publishing/scripts/reddit/cli.py status
+python3 ~/GitHub/agents/skills-source/owned/social-media-publishing/scripts/reddit/native_video_cli.py status
 ```
 
 List flairs:
 
 ```bash
-python3 ~/.agents/skills-source/owned/social-media-publishing/scripts/reddit/cli.py list-flairs --subreddit OpenAI
+python3 ~/GitHub/agents/skills-source/owned/social-media-publishing/scripts/reddit/cli.py list-flairs --subreddit OpenAI
 ```
 
 List recent submissions:
 
 ```bash
-python3 ~/.agents/skills-source/owned/social-media-publishing/scripts/reddit/cli.py list-submissions --max-items 20 --days 7
+python3 ~/GitHub/agents/skills-source/owned/social-media-publishing/scripts/reddit/cli.py list-submissions --max-items 20 --days 7
 ```
 
 Add a comment to an existing post:
 
 ```bash
-python3 ~/.agents/skills-source/owned/social-media-publishing/scripts/reddit/cli.py comment --post-url https://reddit.com/r/OpenAI/comments/abc123/example/ --text-file /abs/path/comment.md --dry-run
-python3 ~/.agents/skills-source/owned/social-media-publishing/scripts/reddit/cli.py comment --post-id abc123 --text "Short follow-up"
-python3 ~/.agents/skills-source/owned/social-media-publishing/scripts/reddit/cli.py comment --comment-url https://reddit.com/r/OpenAI/comments/abc123/example/def456/ --text-file /abs/path/reply.md --dry-run
-python3 ~/.agents/skills-source/owned/social-media-publishing/scripts/reddit/cli.py comment --comment-id def456 --text "Short reply"
+python3 ~/GitHub/agents/skills-source/owned/social-media-publishing/scripts/reddit/cli.py comment --post-url https://reddit.com/r/OpenAI/comments/abc123/example/ --text-file /abs/path/comment.md --dry-run
+python3 ~/GitHub/agents/skills-source/owned/social-media-publishing/scripts/reddit/cli.py comment --post-id abc123 --text "Short follow-up"
+python3 ~/GitHub/agents/skills-source/owned/social-media-publishing/scripts/reddit/cli.py comment --comment-url https://reddit.com/r/OpenAI/comments/abc123/example/def456/ --text-file /abs/path/reply.md --dry-run
+python3 ~/GitHub/agents/skills-source/owned/social-media-publishing/scripts/reddit/cli.py comment --comment-id def456 --text "Short reply"
 ```
 
 Submit a plan:
 
 ```bash
-python3 ~/.agents/skills-source/owned/social-media-publishing/scripts/reddit/cli.py submit-plan --plan /abs/path/post-plan.json --dry-run
-python3 ~/.agents/skills-source/owned/social-media-publishing/scripts/reddit/cli.py submit-plan --plan /abs/path/post-plan.json
+python3 ~/GitHub/agents/skills-source/owned/social-media-publishing/scripts/reddit/cli.py submit-plan --plan /abs/path/post-plan.json --dry-run
+python3 ~/GitHub/agents/skills-source/owned/social-media-publishing/scripts/reddit/cli.py submit-plan --plan /abs/path/post-plan.json
 ```
 
 Native Reddit video posting:
 
 ```bash
-python3 ~/.agents/skills-source/owned/social-media-publishing/scripts/reddit/native_video_cli.py post --targets-file /abs/path/targets.json --comment-file /abs/path/comment.md --video-path /abs/path/demo.mp4 --dry-run
-python3 ~/.agents/skills-source/owned/social-media-publishing/scripts/reddit/native_video_cli.py post --targets-file /abs/path/targets.json --comment-file /abs/path/comment.md --video-path /abs/path/demo.mp4
+python3 ~/GitHub/agents/skills-source/owned/social-media-publishing/scripts/reddit/native_video_cli.py post --targets-file /abs/path/targets.json --comment-file /abs/path/comment.md --video-path /abs/path/demo.mp4 --dry-run
+python3 ~/GitHub/agents/skills-source/owned/social-media-publishing/scripts/reddit/native_video_cli.py post --targets-file /abs/path/targets.json --comment-file /abs/path/comment.md --video-path /abs/path/demo.mp4
 ```
 
 ## Analytics scope

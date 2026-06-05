@@ -1,9 +1,9 @@
 # Codex Control Plane Script Flows
 
 This page breaks the Codex control-plane scripts into a few small flows. Use
-[Codex Control Plane](/Users/dobby/.agents/docs/architecture/codex-control-plane.md)
+[Codex Control Plane](/Users/dobby/GitHub/agents/docs/architecture/codex-control-plane.md)
 for the top-level system shape and
-[Codex Control Plane Operations](/Users/dobby/.agents/docs/references/codex-control-plane-operations.md)
+[Codex Control Plane Operations](/Users/dobby/GitHub/agents/docs/references/codex-control-plane-operations.md)
 for exact commands.
 
 ## Apply Flow
@@ -41,7 +41,7 @@ Main scripts:
 ```mermaid
 flowchart TD
     A["git-auto-sync.sh"] --> B["auto-apply-agent-control-planes.sh"]
-    B --> C{"What changed in ~/.agents?"}
+    B --> C{"What changed in ~/GitHub/agents?"}
     C -->|"skills"| D["sync-skills-registry.sh"]
     C -->|"plugins"| E["sync-plugins-registry.sh"]
     C -->|"git hooks or repo registry"| F["sync-managed-git-hooks.sh"]

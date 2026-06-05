@@ -8,7 +8,7 @@ description: "Operate Dobby calendar reads and writes through the skill-bundled 
 Calendar operations go through the skill-bundled CLI:
 
 ```bash
-$HOME/.agents/skills-source/owned/dobby-calendar/scripts/dobby-calendar
+$HOME/GitHub/agents/skills-source/owned/dobby-calendar/scripts/dobby-calendar
 ```
 
 Use it from a Dobby workspace root, or set `DOBBY_WORKSPACE=/path/to/workspace`.
@@ -18,13 +18,13 @@ operator inspection.
 ## Common commands
 
 ```bash
-$HOME/.agents/skills-source/owned/dobby-calendar/scripts/dobby-calendar doctor
-$HOME/.agents/skills-source/owned/dobby-calendar/scripts/dobby-calendar calendars
-$HOME/.agents/skills-source/owned/dobby-calendar/scripts/dobby-calendar today
-$HOME/.agents/skills-source/owned/dobby-calendar/scripts/dobby-calendar week
-$HOME/.agents/skills-source/owned/dobby-calendar/scripts/dobby-calendar upcoming --days 14
-$HOME/.agents/skills-source/owned/dobby-calendar/scripts/dobby-calendar search "Neha" --from 2026-01-01 --to 2026-12-31 --all-calendars
-$HOME/.agents/skills-source/owned/dobby-calendar/scripts/dobby-calendar upsert-event --title "Trip" --start 2026-04-30 --end 2026-05-06 --all-day --match-from 2026-04-01 --match-to 2026-05-31
+$HOME/GitHub/agents/skills-source/owned/dobby-calendar/scripts/dobby-calendar doctor
+$HOME/GitHub/agents/skills-source/owned/dobby-calendar/scripts/dobby-calendar calendars
+$HOME/GitHub/agents/skills-source/owned/dobby-calendar/scripts/dobby-calendar today
+$HOME/GitHub/agents/skills-source/owned/dobby-calendar/scripts/dobby-calendar week
+$HOME/GitHub/agents/skills-source/owned/dobby-calendar/scripts/dobby-calendar upcoming --days 14
+$HOME/GitHub/agents/skills-source/owned/dobby-calendar/scripts/dobby-calendar search "Neha" --from 2026-01-01 --to 2026-12-31 --all-calendars
+$HOME/GitHub/agents/skills-source/owned/dobby-calendar/scripts/dobby-calendar upsert-event --title "Trip" --start 2026-04-30 --end 2026-05-06 --all-day --match-from 2026-04-01 --match-to 2026-05-31
 ```
 
 ## Rules
@@ -45,7 +45,7 @@ The CLI uses the native Dobby Calendar Bridge helper only. For setup/debugging, 
 ## Testing
 
 ```bash
-bash $HOME/.agents/skills-source/owned/dobby-calendar/tests/run.sh
-RUN_LIVE=1 bash $HOME/.agents/skills-source/owned/dobby-calendar/tests/run.sh
-bash $HOME/.agents/skills-source/owned/dobby-calendar/tests/run.sh calendar live
+bash $HOME/GitHub/agents/skills-source/owned/dobby-calendar/tests/run.sh
+RUN_LIVE=1 bash $HOME/GitHub/agents/skills-source/owned/dobby-calendar/tests/run.sh
+bash $HOME/GitHub/agents/skills-source/owned/dobby-calendar/tests/run.sh calendar live
 ```

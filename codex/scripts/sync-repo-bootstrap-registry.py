@@ -8,6 +8,9 @@ import sys
 from pathlib import Path
 from typing import Any
 
+ROOT_DIR = Path(__file__).resolve().parents[2]
+DEFAULT_REGISTRY_FILE = ROOT_DIR / "codex" / "config" / "repo-bootstrap.json"
+DEFAULT_MCP_REGISTRY_FILE = ROOT_DIR / "mcp" / "config" / "presets.json"
 
 try:
     import tomllib  # noqa: F401
@@ -192,12 +195,12 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "registry_file",
         nargs="?",
-        default=str(Path.home() / ".agents" / "codex" / "config" / "repo-bootstrap.json"),
+        default=str(DEFAULT_REGISTRY_FILE),
         help="Path to repo bootstrap registry JSON file.",
     )
     parser.add_argument(
         "--mcp-registry",
-        default=str(Path.home() / ".agents" / "mcp" / "config" / "presets.json"),
+        default=str(DEFAULT_MCP_REGISTRY_FILE),
         help="Path to shared MCP registry JSON file.",
     )
     parser.add_argument(

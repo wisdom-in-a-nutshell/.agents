@@ -10,11 +10,11 @@ Keep a reference doc only when it gives exact facts an agent needs to change or 
 
 ## Key References
 
-- [Agent Control-Plane Operations](/Users/dobby/.agents/docs/references/agent-control-plane-operations.md)
-- [Codex Control Plane Ownership](/Users/dobby/.agents/docs/references/codex-control-plane-ownership.md)
-- [Codex Control Plane Operations](/Users/dobby/.agents/docs/references/codex-control-plane-operations.md)
-- [Repo Lifecycle Hook Adapter](/Users/dobby/.agents/docs/references/repo-lifecycle-hook-adapter.md)
-- [Control Plane Dashboard](/Users/dobby/.agents/docs/references/control-plane-dashboard.md)
-- [Skills Registry](/Users/dobby/.agents/docs/references/skills-registry.md)
-- [Plugins Registry](/Users/dobby/.agents/docs/references/plugins-registry.md)
-- [CLI Interface Contract](/Users/dobby/.agents/docs/references/cli-interface-contract.md)
+- [Agent Control-Plane Operations](/Users/dobby/GitHub/agents/docs/references/agent-control-plane-operations.md)
+- [Codex Control Plane Ownership](/Users/dobby/GitHub/agents/docs/references/codex-control-plane-ownership.md)
+- [Codex Control Plane Operations](/Users/dobby/GitHub/agents/docs/references/codex-control-plane-operations.md)
+- [Repo Lifecycle Hook Adapter](/Users/dobby/GitHub/agents/docs/references/repo-lifecycle-hook-adapter.md)
+- [Control Plane Dashboard](/Users/dobby/GitHub/agents/docs/references/control-plane-dashboard.md)
+- [Skills Registry](/Users/dobby/GitHub/agents/docs/references/skills-registry.md)
+- [Plugins Registry](/Users/dobby/GitHub/agents/docs/references/plugins-registry.md)
+- [CLI Interface Contract](/Users/dobby/GitHub/agents/docs/references/cli-interface-contract.md)

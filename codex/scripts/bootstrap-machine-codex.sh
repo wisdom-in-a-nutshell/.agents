@@ -14,7 +14,7 @@ usage() {
 Usage: $(basename "$0") [options]
 
 Apply the Codex-specific portion of machine bootstrap from the canonical
-personal control plane in ~/.agents.
+personal control plane in ~/GitHub/agents.
 
 Default mode is dry-run. Use --apply to write changes.
 
@@ -31,9 +31,9 @@ Options:
   -h, --help             Show this help
 
 Examples:
-  ~/.agents/codex/scripts/bootstrap-machine-codex.sh
-  ~/.agents/codex/scripts/bootstrap-machine-codex.sh --apply
-  ~/.agents/codex/scripts/bootstrap-machine-codex.sh --apply --repo ~/GitHub/adi
+  ~/GitHub/agents/codex/scripts/bootstrap-machine-codex.sh
+  ~/GitHub/agents/codex/scripts/bootstrap-machine-codex.sh --apply
+  ~/GitHub/agents/codex/scripts/bootstrap-machine-codex.sh --apply --repo ~/GitHub/adi
 USAGE
 }
 

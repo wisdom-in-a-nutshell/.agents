@@ -37,7 +37,7 @@
       ]
     },
     {
-      "repo": "~/.agents",
+      "repo": "agents",
       "servers": [
         {
           "name": "control-plane dashboard",

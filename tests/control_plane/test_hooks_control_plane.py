@@ -45,7 +45,7 @@ class HooksControlPlaneTests(TempDirTestCase):
         self.assertEqual(set(global_codex_hooks["hooks"].keys()), {"Stop"})
         self.assertEqual(
             global_codex_hooks["hooks"]["Stop"][0]["hooks"][0]["command"],
-            "python3 ~/.agents/hooks/scripts/stop.py --runtime codex",
+            'python3 "$HOME/GitHub/agents/hooks/scripts/stop.py" --runtime codex',
         )
         self.assertEqual(
             global_codex_hooks["hooks"]["Stop"][0]["hooks"][0]["timeout"],
@@ -63,7 +63,7 @@ class HooksControlPlaneTests(TempDirTestCase):
         )
         self.assertEqual(
             codex_hooks["hooks"]["UserPromptSubmit"][0]["hooks"][0]["command"],
-            "python3 ~/.agents/hooks/scripts/user_prompt_submit.py --runtime codex",
+            'python3 "$HOME/GitHub/agents/hooks/scripts/user_prompt_submit.py" --runtime codex',
         )
         self.assertEqual(
             set(render_codex_hooks(registry, repo_name="win")["hooks"].keys()),
@@ -422,7 +422,7 @@ class HooksControlPlaneTests(TempDirTestCase):
         hooks = read_json(home / ".codex/hooks.json")
         self.assertEqual(
             hooks["hooks"]["Stop"][0]["hooks"][0]["command"],
-            "python3 ~/.agents/hooks/scripts/stop.py --runtime codex",
+            'python3 "$HOME/GitHub/agents/hooks/scripts/stop.py" --runtime codex',
         )
 
     def test_codex_sync_config_uses_native_bundled_marketplace_and_caches_enabled_plugins(self) -> None:

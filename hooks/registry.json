@@ -1,7 +1,7 @@
 {
   "managed_hooks": [
     {
-      "command": "python3 ~/.agents/hooks/scripts/session_start.py --runtime {runtime}",
+      "command": "python3 \"$HOME/GitHub/agents/hooks/scripts/session_start.py\" --runtime {runtime}",
       "enabled": true,
       "event": "SessionStart",
       "id": "repo-session-start",
@@ -21,7 +21,7 @@
       "timeout": 5
     },
     {
-      "command": "python3 ~/.agents/hooks/scripts/user_prompt_submit.py --runtime {runtime}",
+      "command": "python3 \"$HOME/GitHub/agents/hooks/scripts/user_prompt_submit.py\" --runtime {runtime}",
       "enabled": true,
       "event": "UserPromptSubmit",
       "id": "repo-user-prompt-submit",
@@ -37,7 +37,7 @@
       "timeout": 5
     },
     {
-      "command": "python3 ~/.agents/hooks/scripts/stop.py --runtime {runtime}",
+      "command": "python3 \"$HOME/GitHub/agents/hooks/scripts/stop.py\" --runtime {runtime}",
       "enabled": true,
       "event": "Stop",
       "id": "global-stop",

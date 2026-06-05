@@ -6,7 +6,7 @@ UNINSTALL=0
 STATUS_ONLY=0
 LOG_LINES=0
 LABEL="com.${USER}.agents-control-plane-dashboard"
-ROOT_DIR="${HOME}/.agents"
+ROOT_DIR="${AGENTS_CONTROL_PLANE_ROOT:-${HOME}/GitHub/agents}"
 HOST="127.0.0.1"
 PORT="8765"
 PYTHON_BIN="${PYTHON_BIN:-python3}"
@@ -19,7 +19,7 @@ usage() {
   cat <<USAGE
 Usage: $(basename "$0") [options]
 
-Install/update a macOS LaunchAgent for the local .agents control-plane dashboard.
+Install/update a macOS LaunchAgent for the local agents control-plane dashboard.
 Default mode is dry-run. Use --apply to write and load.
 
 Options:
@@ -29,16 +29,16 @@ Options:
   --status             Print launchctl status and local readiness
   --logs [n]           Tail launchd logs (default lines: 80)
   --label <label>      LaunchAgent label
-  --root <path>        .agents repo root (default: ~/.agents)
+  --root <path>        agents control-plane repo root (default: ~/GitHub/agents)
   --host <host>        Local bind host (default: 127.0.0.1)
   --port <port>        Local dashboard port (default: 8765)
   --python <path>      Python executable (default: python3)
   -h, --help           Show this help
 
 Examples:
-  ~/.agents/scripts/install-control-plane-dashboard-launchagent.sh
-  ~/.agents/scripts/install-control-plane-dashboard-launchagent.sh --apply
-  ~/.agents/scripts/install-control-plane-dashboard-launchagent.sh --status
+  ~/GitHub/agents/scripts/install-control-plane-dashboard-launchagent.sh
+  ~/GitHub/agents/scripts/install-control-plane-dashboard-launchagent.sh --apply
+  ~/GitHub/agents/scripts/install-control-plane-dashboard-launchagent.sh --status
 USAGE
 }
 

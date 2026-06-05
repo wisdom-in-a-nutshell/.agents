@@ -151,8 +151,8 @@ Don't:
   `--destructive` is the AA-safe rose. Wider than the blog: `max-w-site` (1040px) for
   grids/stat rows, `max-w-readable` (720px) for text pages. Repo pointer:
   `docs/references/design-system.md`.
-- **~/.agents/dashboard** — React + Vite + TS (same stack as dobby). Source in
-  `~/.agents/dashboard-app`, built into `~/.agents/dashboard`, served by the
+- **~/GitHub/agents/dashboard** — React + Vite + TS (same stack as dobby). Source in
+  `~/GitHub/agents/dashboard-app`, built into `~/GitHub/agents/dashboard`, served by the
   Python control-plane engine at `/dashboard/`. Consumes the canonical
   `tokens.css` (copied to `src/`) plus a small `tokens.local.css` for its
   scope-global / scope-local tokens (scope-local *is* the sage accent; scope-global

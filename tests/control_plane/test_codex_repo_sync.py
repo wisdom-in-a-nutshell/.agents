@@ -24,7 +24,7 @@ class CodexRepoSyncTests(TempDirTestCase):
             adi / ".codex/agents/writer.toml",
             "\n".join(
                 [
-                    "# Managed by ~/.agents/codex/scripts/sync-repo-codex-configs.sh.",
+                    "# Managed by ~/GitHub/agents/codex/scripts/sync-repo-codex-configs.sh.",
                     "# Old generated file.",
                     'name = "writer"',
                     'description = "Stale managed writer."',

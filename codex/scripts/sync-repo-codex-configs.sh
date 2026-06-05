@@ -42,9 +42,9 @@ Options:
   -h, --help             Show this help
 
 Examples:
-  ~/.agents/codex/scripts/sync-repo-codex-configs.sh
-  ~/.agents/codex/scripts/sync-repo-codex-configs.sh --apply
-  ~/.agents/codex/scripts/sync-repo-codex-configs.sh --apply --repo ~/GitHub/win
+  ~/GitHub/agents/codex/scripts/sync-repo-codex-configs.sh
+  ~/GitHub/agents/codex/scripts/sync-repo-codex-configs.sh --apply
+  ~/GitHub/agents/codex/scripts/sync-repo-codex-configs.sh --apply --repo ~/GitHub/win
 USAGE
 }
 
@@ -309,8 +309,8 @@ def render_repo_config(
     repo_plugins: list,
 ) -> str:
     lines = [
-        "# Managed by ~/.agents/codex/scripts/sync-repo-codex-configs.sh.",
-        "# Edit ~/.agents/codex/config/repo-bootstrap.json and re-run the sync script.",
+        "# Managed by ~/GitHub/agents/codex/scripts/sync-repo-codex-configs.sh.",
+        "# Edit ~/GitHub/agents/codex/config/repo-bootstrap.json and re-run the sync script.",
     ]
     rendered_anything = False
 
@@ -443,7 +443,7 @@ for plugin in plugins:
             repo_plugins_by_root[repo_root].append(plugin)
 
 manifest_lines: list[str] = []
-managed_header = "# Managed by ~/.agents/codex/scripts/sync-repo-codex-configs.sh."
+managed_header = "# Managed by ~/GitHub/agents/codex/scripts/sync-repo-codex-configs.sh."
 for item in repo_items_all:
     actual_repo = item["_actual_repo"]
     if filters and actual_repo not in filters:

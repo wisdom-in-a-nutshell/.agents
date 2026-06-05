@@ -2,7 +2,7 @@
 """Dobby session-start hook.
 
 Emits situational boot context to stdout; the shared dispatcher at
-`~/.agents/hooks/scripts/session_start.py` forwards it to the agent as
+`~/GitHub/agents/hooks/scripts/session_start.py` forwards it to the agent as
 `hookSpecificOutput.additionalContext`.
 
 Section order:

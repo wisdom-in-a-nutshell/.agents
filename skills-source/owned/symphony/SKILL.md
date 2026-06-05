@@ -110,7 +110,7 @@ The client returns a stable JSON envelope with `schema_version`, `command`, `sta
 Thin wrapper. Use this only when a shorter command is useful; if anything looks stuck or confusing, switch back to the direct Node CLI above.
 
 ```bash
-$HOME/.agents/skills-source/owned/symphony/scripts/task
+$HOME/GitHub/agents/skills-source/owned/symphony/scripts/task
 ```
 
 This wrapper forwards to `~/GitHub/symphony/dist/src/cli.js task ...` and preserves the same stable JSON envelope. Treat it as a fallback convenience path, not the first debugging path.
@@ -118,28 +118,28 @@ This wrapper forwards to `~/GitHub/symphony/dist/src/cli.js task ...` and preser
 Load a work item:
 
 ```bash
-"$HOME/.agents/skills-source/owned/symphony/scripts/task" get <work-id> --no-input
+"$HOME/GitHub/agents/skills-source/owned/symphony/scripts/task" get <work-id> --no-input
 ```
 
 Complete a work item:
 
 ```bash
 printf '%s\n' "<human handoff>" \
-  | "$HOME/.agents/skills-source/owned/symphony/scripts/task" complete <work-id> --note-file - --no-input
+  | "$HOME/GitHub/agents/skills-source/owned/symphony/scripts/task" complete <work-id> --note-file - --no-input
 ```
 
 Mark a work item blocked:
 
 ```bash
 printf '%s\n' "<smallest useful request>" \
-  | "$HOME/.agents/skills-source/owned/symphony/scripts/task" needs-input <work-id> --note-file - --no-input
+  | "$HOME/GitHub/agents/skills-source/owned/symphony/scripts/task" needs-input <work-id> --note-file - --no-input
 ```
 
 Mark a work item failed:
 
 ```bash
 printf '%s\n' "<failure summary>" \
-  | "$HOME/.agents/skills-source/owned/symphony/scripts/task" failed <work-id> --note-file - --no-input
+  | "$HOME/GitHub/agents/skills-source/owned/symphony/scripts/task" failed <work-id> --note-file - --no-input
 ```
 
 The helper updates Symphony state directly; it does not talk to Things. It has a short timeout by default and returns the same stable JSON envelope as the direct Node CLI.

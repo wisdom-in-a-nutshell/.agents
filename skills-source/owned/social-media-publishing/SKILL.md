@@ -43,12 +43,12 @@ If the content is Codex / App Server / coding-agent-internals related and you ex
 Core commands:
 
 ```bash
-python3 ~/.agents/skills-source/owned/social-media-publishing/scripts/reddit/cli.py status
-python3 ~/.agents/skills-source/owned/social-media-publishing/scripts/reddit/cli.py list-flairs --subreddit OpenAI
-python3 ~/.agents/skills-source/owned/social-media-publishing/scripts/reddit/cli.py list-submissions --max-items 20 --days 7
-python3 ~/.agents/skills-source/owned/social-media-publishing/scripts/reddit/cli.py comment --post-url https://reddit.com/r/OpenAI/comments/abc123/example/ --text-file /abs/path/comment.md --dry-run
-python3 ~/.agents/skills-source/owned/social-media-publishing/scripts/reddit/cli.py submit-plan --plan /abs/path/post-plan.json --dry-run
-python3 ~/.agents/skills-source/owned/social-media-publishing/scripts/reddit/cli.py submit-plan --plan /abs/path/post-plan.json
+python3 ~/GitHub/agents/skills-source/owned/social-media-publishing/scripts/reddit/cli.py status
+python3 ~/GitHub/agents/skills-source/owned/social-media-publishing/scripts/reddit/cli.py list-flairs --subreddit OpenAI
+python3 ~/GitHub/agents/skills-source/owned/social-media-publishing/scripts/reddit/cli.py list-submissions --max-items 20 --days 7
+python3 ~/GitHub/agents/skills-source/owned/social-media-publishing/scripts/reddit/cli.py comment --post-url https://reddit.com/r/OpenAI/comments/abc123/example/ --text-file /abs/path/comment.md --dry-run
+python3 ~/GitHub/agents/skills-source/owned/social-media-publishing/scripts/reddit/cli.py submit-plan --plan /abs/path/post-plan.json --dry-run
+python3 ~/GitHub/agents/skills-source/owned/social-media-publishing/scripts/reddit/cli.py submit-plan --plan /abs/path/post-plan.json
 ```
 
 The CLI supports:
@@ -88,16 +88,16 @@ Current supported flow:
 Core commands:
 
 ```bash
-python3 ~/.agents/skills-source/owned/social-media-publishing/scripts/linkedin/cli.py status
-python3 ~/.agents/skills-source/owned/social-media-publishing/scripts/linkedin/cli.py authorize
-python3 ~/.agents/skills-source/owned/social-media-publishing/scripts/linkedin/cli.py whoami
-python3 ~/.agents/skills-source/owned/social-media-publishing/scripts/linkedin/cli.py post --text-file /abs/path/body.txt --url https://example.com/post --title "Post title" --description "Short description" --dry-run
-python3 ~/.agents/skills-source/owned/social-media-publishing/scripts/linkedin/cli.py post-image --text-file /abs/path/body.txt --image /abs/path/cover.jpg --dry-run
-python3 ~/.agents/skills-source/owned/social-media-publishing/scripts/linkedin/cli.py post-video --text-file /abs/path/body.txt --video /abs/path/video.mp4 --title "Public video title" --thumbnail /abs/path/thumbnail.png --dry-run
-python3 ~/.agents/skills-source/owned/social-media-publishing/scripts/linkedin/cli.py post-video --text-file /abs/path/body.txt --video-url https://example.com/video.mp4 --title "Public video title" --thumbnail /abs/path/thumbnail.png --dry-run
-python3 ~/.agents/skills-source/owned/social-media-publishing/scripts/linkedin/cli.py post-images --text-file /abs/path/body.txt --image /abs/path/slide-1.jpg --image /abs/path/slide-2.jpg --dry-run
-python3 ~/.agents/skills-source/owned/social-media-publishing/scripts/linkedin/cli.py comment --post-urn urn:li:ugcPost:... --text-file /abs/path/comment.txt --dry-run
-python3 ~/.agents/skills-source/owned/social-media-publishing/scripts/linkedin/cli.py --json list-posts --count 5
+python3 ~/GitHub/agents/skills-source/owned/social-media-publishing/scripts/linkedin/cli.py status
+python3 ~/GitHub/agents/skills-source/owned/social-media-publishing/scripts/linkedin/cli.py authorize
+python3 ~/GitHub/agents/skills-source/owned/social-media-publishing/scripts/linkedin/cli.py whoami
+python3 ~/GitHub/agents/skills-source/owned/social-media-publishing/scripts/linkedin/cli.py post --text-file /abs/path/body.txt --url https://example.com/post --title "Post title" --description "Short description" --dry-run
+python3 ~/GitHub/agents/skills-source/owned/social-media-publishing/scripts/linkedin/cli.py post-image --text-file /abs/path/body.txt --image /abs/path/cover.jpg --dry-run
+python3 ~/GitHub/agents/skills-source/owned/social-media-publishing/scripts/linkedin/cli.py post-video --text-file /abs/path/body.txt --video /abs/path/video.mp4 --title "Public video title" --thumbnail /abs/path/thumbnail.png --dry-run
+python3 ~/GitHub/agents/skills-source/owned/social-media-publishing/scripts/linkedin/cli.py post-video --text-file /abs/path/body.txt --video-url https://example.com/video.mp4 --title "Public video title" --thumbnail /abs/path/thumbnail.png --dry-run
+python3 ~/GitHub/agents/skills-source/owned/social-media-publishing/scripts/linkedin/cli.py post-images --text-file /abs/path/body.txt --image /abs/path/slide-1.jpg --image /abs/path/slide-2.jpg --dry-run
+python3 ~/GitHub/agents/skills-source/owned/social-media-publishing/scripts/linkedin/cli.py comment --post-urn urn:li:ugcPost:... --text-file /abs/path/comment.txt --dry-run
+python3 ~/GitHub/agents/skills-source/owned/social-media-publishing/scripts/linkedin/cli.py --json list-posts --count 5
 ```
 
 For polished LinkedIn native video posts, always pass `--title`; LinkedIn shows it as the media title below the player. Pass `--thumbnail` when a custom cover is available. If `--title` is omitted, the helper leaves the media title unset instead of deriving one from a temporary download filename.
@@ -120,10 +120,10 @@ Current supported flow:
 Core commands:
 
 ```bash
-python3 ~/.agents/skills-source/owned/social-media-publishing/scripts/instagram/cli.py status
-python3 ~/.agents/skills-source/owned/social-media-publishing/scripts/instagram/cli.py post-image --text-file /abs/path/caption.txt --image-url https://example.com/image.jpg --dry-run
-python3 ~/.agents/skills-source/owned/social-media-publishing/scripts/instagram/cli.py post-video --text-file /abs/path/caption.txt --video-url https://example.com/video.mp4 --reel --share-to-feed --dry-run
-python3 ~/.agents/skills-source/owned/social-media-publishing/scripts/instagram/cli.py post-carousel --text-file /abs/path/caption.txt --media-url https://example.com/1.jpg --media-url https://example.com/2.jpg --dry-run
+python3 ~/GitHub/agents/skills-source/owned/social-media-publishing/scripts/instagram/cli.py status
+python3 ~/GitHub/agents/skills-source/owned/social-media-publishing/scripts/instagram/cli.py post-image --text-file /abs/path/caption.txt --image-url https://example.com/image.jpg --dry-run
+python3 ~/GitHub/agents/skills-source/owned/social-media-publishing/scripts/instagram/cli.py post-video --text-file /abs/path/caption.txt --video-url https://example.com/video.mp4 --reel --share-to-feed --dry-run
+python3 ~/GitHub/agents/skills-source/owned/social-media-publishing/scripts/instagram/cli.py post-carousel --text-file /abs/path/caption.txt --media-url https://example.com/1.jpg --media-url https://example.com/2.jpg --dry-run
 ```
 
 ## TikTok
@@ -142,10 +142,10 @@ Current supported flow:
 Core commands:
 
 ```bash
-python3 ~/.agents/skills-source/owned/social-media-publishing/scripts/tiktok/cli.py status
-python3 ~/.agents/skills-source/owned/social-media-publishing/scripts/tiktok/cli.py post-video --text-file /abs/path/caption.txt --video-url https://example.com/video.mp4 --privacy SELF_ONLY --dry-run
-python3 ~/.agents/skills-source/owned/social-media-publishing/scripts/tiktok/cli.py post-video --text "Short caption" --source FILE_UPLOAD --video /abs/path/video.mp4 --ai-generated --dry-run
-python3 ~/.agents/skills-source/owned/social-media-publishing/scripts/tiktok/cli.py post-photos --title "Photo title" --description-file /abs/path/description.txt --photo-url https://example.com/1.jpg --photo-url https://example.com/2.jpg --cover-index 0 --privacy SELF_ONLY --dry-run
+python3 ~/GitHub/agents/skills-source/owned/social-media-publishing/scripts/tiktok/cli.py status
+python3 ~/GitHub/agents/skills-source/owned/social-media-publishing/scripts/tiktok/cli.py post-video --text-file /abs/path/caption.txt --video-url https://example.com/video.mp4 --privacy SELF_ONLY --dry-run
+python3 ~/GitHub/agents/skills-source/owned/social-media-publishing/scripts/tiktok/cli.py post-video --text "Short caption" --source FILE_UPLOAD --video /abs/path/video.mp4 --ai-generated --dry-run
+python3 ~/GitHub/agents/skills-source/owned/social-media-publishing/scripts/tiktok/cli.py post-photos --title "Photo title" --description-file /abs/path/description.txt --photo-url https://example.com/1.jpg --photo-url https://example.com/2.jpg --cover-index 0 --privacy SELF_ONLY --dry-run
 ```
 
 
@@ -167,10 +167,10 @@ Current supported flow:
 Core commands:
 
 ```bash
-python3 ~/.agents/skills-source/owned/social-media-publishing/scripts/youtube/cli.py status
-python3 ~/.agents/skills-source/owned/social-media-publishing/scripts/youtube/cli.py upload-video --video /abs/path/video.mp4 --title "Video title" --description-file /abs/path/description.md --privacy private --dry-run
-python3 ~/.agents/skills-source/owned/social-media-publishing/scripts/youtube/cli.py --progress plain upload-video --video /abs/path/video.mp4 --title "Video title" --description-file /abs/path/description.md --privacy unlisted
-python3 ~/.agents/skills-source/owned/social-media-publishing/scripts/youtube/cli.py upload-video --video-url https://example.com/video.mp4 --title "Video title" --description-file /abs/path/description.md --privacy unlisted --dry-run
+python3 ~/GitHub/agents/skills-source/owned/social-media-publishing/scripts/youtube/cli.py status
+python3 ~/GitHub/agents/skills-source/owned/social-media-publishing/scripts/youtube/cli.py upload-video --video /abs/path/video.mp4 --title "Video title" --description-file /abs/path/description.md --privacy private --dry-run
+python3 ~/GitHub/agents/skills-source/owned/social-media-publishing/scripts/youtube/cli.py --progress plain upload-video --video /abs/path/video.mp4 --title "Video title" --description-file /abs/path/description.md --privacy unlisted
+python3 ~/GitHub/agents/skills-source/owned/social-media-publishing/scripts/youtube/cli.py upload-video --video-url https://example.com/video.mp4 --title "Video title" --description-file /abs/path/description.md --privacy unlisted --dry-run
 ```
 
 YouTube is Modal-backed by design. The CLI is personal-account-first: credentials id `ADITHYAN`, notify subscribers on, made-for-kids off, embeddable on. Do not import WIN or duplicate the local YouTube uploader in this skill unless Modal becomes a proven bottleneck.
@@ -197,11 +197,11 @@ Current supported flow:
 Core commands:
 
 ```bash
-python3 ~/.agents/skills-source/owned/social-media-publishing/scripts/x/cli.py status
-python3 ~/.agents/skills-source/owned/social-media-publishing/scripts/x/cli.py post --text-file /abs/path/body.txt --dry-run
-python3 ~/.agents/skills-source/owned/social-media-publishing/scripts/x/cli.py post-video --text-file /abs/path/body.txt --video /abs/path/video.mp4 --dry-run
-python3 ~/.agents/skills-source/owned/social-media-publishing/scripts/x/cli.py post-video --text-file /abs/path/body.txt --video-url https://example.com/video.mp4 --dry-run
-python3 ~/.agents/skills-source/owned/social-media-publishing/scripts/x/cli.py post --text-file /abs/path/body.txt
+python3 ~/GitHub/agents/skills-source/owned/social-media-publishing/scripts/x/cli.py status
+python3 ~/GitHub/agents/skills-source/owned/social-media-publishing/scripts/x/cli.py post --text-file /abs/path/body.txt --dry-run
+python3 ~/GitHub/agents/skills-source/owned/social-media-publishing/scripts/x/cli.py post-video --text-file /abs/path/body.txt --video /abs/path/video.mp4 --dry-run
+python3 ~/GitHub/agents/skills-source/owned/social-media-publishing/scripts/x/cli.py post-video --text-file /abs/path/body.txt --video-url https://example.com/video.mp4 --dry-run
+python3 ~/GitHub/agents/skills-source/owned/social-media-publishing/scripts/x/cli.py post --text-file /abs/path/body.txt
 ```
 
 ## Packaging Rules

@@ -16,5 +16,5 @@ $HOME/GitHub/platform-ops
 $HOME/GitHub/litellm
 $HOME/GitHub/stadia-macos-controller
 $HOME/GitHub/thoughtforms-life-theme
-$HOME/.agents
+$HOME/GitHub/agents
 $HOME/.codex
