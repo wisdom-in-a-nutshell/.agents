@@ -5,6 +5,11 @@ the *values*; this file is the *why and how* — the part that keeps future work
 recognizably his. When the tokens and this doc disagree, fix one to match the
 other; they are meant to stay in lockstep.
 
+**What lives here vs local:** this file holds the *universal* identity — the rules
+that apply to every app. Anything specific to one app's function or data (a
+dashboard's chart palette, an internal tool's layout, a map's phase colors) stays
+in that app's local `tokens.local.css` or docs, never here.
+
 ## The feeling (the north star)
 
 Walking a forest trail mid-morning. The canopy is green but not dense, and soft

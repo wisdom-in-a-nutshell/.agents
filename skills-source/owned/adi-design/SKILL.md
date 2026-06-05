@@ -37,6 +37,23 @@ feels like one product made by one person with taste.
 This skill is canon. Tools like claude.ai/design are sketchpads to explore in,
 then bring changes back here — see the note in `references/design-language.md`.
 
+## Scope — identity, craft, voice
+
+Three skills shape Adi's work, split by axis. Keeping each lesson in the skill
+that owns its axis is what stops any one from bloating into a catch-all:
+
+- **adi-design — identity (the _look_).** Palette, the three fonts, space/shape,
+  the functional-accent and no-cream rules. The values + the why.
+- **impeccable — craft (the _method_).** Contrast/motion rigor, anti-slop,
+  layout-pattern selection (master-detail vs table vs cards), build/critique/polish.
+  Deliberately no house style of its own.
+- **adi-writing — voice (the _words_).** How copy and prose sound like Adi.
+
+On Adi's apps, where they overlap, **identity wins on look.** File each new lesson
+where it belongs: a _look_ rule → here; a _method_ rule → impeccable; a _voice_
+rule → adi-writing; a one-app implementation detail → that app's local docs or
+`tokens.local.css`. Do not fold craft, content, or app-specifics into this skill.
+
 ## With impeccable (the craft companion)
 
 `impeccable` is a general frontend-craft engine — contrast, motion, anti-slop
