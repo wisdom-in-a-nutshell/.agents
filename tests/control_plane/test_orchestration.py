@@ -32,6 +32,7 @@ class SharedBootstrapWrapperTests(TempDirTestCase):
         script_path.chmod(0o755)
         write_executable(root / "scripts/sync-skills-registry.sh", STUB_SCRIPT)
         write_executable(root / "scripts/sync-plugins-registry.sh", STUB_SCRIPT)
+        write_executable(root / "scripts/sync-codex-plugin-installs.py", STUB_SCRIPT)
         write_executable(root / "scripts/sync-antigravity-spike.sh", STUB_SCRIPT)
         write_executable(root / "scripts/sync-claude.sh", STUB_SCRIPT)
         write_executable(root / "scripts/sync-managed-git-hooks.sh", STUB_SCRIPT)
@@ -62,6 +63,7 @@ class SharedBootstrapWrapperTests(TempDirTestCase):
             [
                 f"sync-skills-registry.sh|--apply --repo {repo_a} --repo {repo_b}",
                 "sync-plugins-registry.sh|--apply",
+                "sync-codex-plugin-installs.py|--apply --no-input",
                 f"sync-antigravity-spike.sh|--apply --github-root {github_root}",
                 f"sync-claude.sh|--apply --github-root {github_root} --repo {repo_a} --repo {repo_b}",
                 f"sync-managed-git-hooks.sh|--apply --repo {repo_a} --repo {repo_b}",
@@ -85,6 +87,7 @@ class SharedCheckWrapperTests(TempDirTestCase):
         write_executable(root / "scripts/check-plugins-registry.sh", STUB_SCRIPT)
         write_executable(root / "scripts/sync-managed-git-hooks.sh", STUB_SCRIPT)
         write_executable(root / "codex/scripts/check-codex-control-plane.sh", STUB_SCRIPT)
+        write_executable(root / "scripts/audit-agent-runtime-drift.py", STUB_SCRIPT)
         write_executable(root / "scripts/test-control-plane.sh", STUB_SCRIPT)
         return root, log_path
 
@@ -111,6 +114,7 @@ class SharedCheckWrapperTests(TempDirTestCase):
                 "check-plugins-registry.sh|",
                 f"sync-managed-git-hooks.sh|--check --repo {repo_a} --repo {repo_b}",
                 f"check-codex-control-plane.sh|--repo {repo_a} --repo {repo_b}",
+                "audit-agent-runtime-drift.py|--plain --skip-control-plane-check --no-input",
                 "test-control-plane.sh|",
             ],
             log_path.read_text(encoding="utf-8").splitlines(),

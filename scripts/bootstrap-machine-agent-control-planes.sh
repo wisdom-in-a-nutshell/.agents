@@ -9,6 +9,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
 SYNC_SKILLS_SCRIPT="${SCRIPT_DIR}/sync-skills-registry.sh"
 SYNC_PLUGINS_SCRIPT="${SCRIPT_DIR}/sync-plugins-registry.sh"
+SYNC_CODEX_PLUGIN_INSTALLS_SCRIPT="${SCRIPT_DIR}/sync-codex-plugin-installs.py"
 SYNC_ANTIGRAVITY_SPIKE_SCRIPT="${SCRIPT_DIR}/sync-antigravity-spike.sh"
 SYNC_CLAUDE_SCRIPT="${SCRIPT_DIR}/sync-claude.sh"
 SYNC_GIT_HOOKS_SCRIPT="${SCRIPT_DIR}/sync-managed-git-hooks.sh"
@@ -87,6 +88,7 @@ fi
 
 [[ -x "$SYNC_SKILLS_SCRIPT" ]] || die "Missing executable: $SYNC_SKILLS_SCRIPT"
 [[ -x "$SYNC_PLUGINS_SCRIPT" ]] || die "Missing executable: $SYNC_PLUGINS_SCRIPT"
+[[ -x "$SYNC_CODEX_PLUGIN_INSTALLS_SCRIPT" ]] || die "Missing executable: $SYNC_CODEX_PLUGIN_INSTALLS_SCRIPT"
 [[ -x "$SYNC_ANTIGRAVITY_SPIKE_SCRIPT" ]] || die "Missing executable: $SYNC_ANTIGRAVITY_SPIKE_SCRIPT"
 [[ -x "$SYNC_CLAUDE_SCRIPT" ]] || die "Missing executable: $SYNC_CLAUDE_SCRIPT"
 [[ -x "$SYNC_GIT_HOOKS_SCRIPT" ]] || die "Missing executable: $SYNC_GIT_HOOKS_SCRIPT"
@@ -110,6 +112,14 @@ sync_plugins_cmd=(
 )
 log "+ ${sync_plugins_cmd[*]}"
 "${sync_plugins_cmd[@]}"
+
+sync_codex_plugin_installs_cmd=(
+  "$SYNC_CODEX_PLUGIN_INSTALLS_SCRIPT"
+  "${SYNC_ARGS[@]}"
+  --no-input
+)
+log "+ ${sync_codex_plugin_installs_cmd[*]}"
+"${sync_codex_plugin_installs_cmd[@]}"
 
 # Temporary Antigravity experiment: this may be ripped out once the durable
 # cross-runtime bootstrap model is clear.

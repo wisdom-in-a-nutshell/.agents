@@ -5,6 +5,7 @@ Canonical source of truth: [`plugins/registry.json`](/Users/dobby/.agents/plugin
 ## What Lives Where
 
 - `plugins/registry.json` is the canonical list of native Codex plugin scope and state.
+- `scripts/sync-codex-plugin-installs.py` installs enabled non-bundled plugin packages into the local Codex runtime cache.
 - `codex/scripts/sync-config.sh` renders global plugin sections into the global Codex config.
 - `codex/scripts/sync-repo-codex-configs.sh` renders repo-scoped plugin sections into assigned repo-local Codex configs.
 - `sync-plugins-registry.sh` validates the plugin registry.
@@ -26,6 +27,7 @@ flowchart LR
 A managed plugin entry means:
 
 - Codex should know the plugin by `<plugin>@<marketplace>`
+- enabled non-bundled entries should be installed in `~/.codex/plugins/cache` during bootstrap
 - global-scope entries should be rendered as enabled or disabled in the global Codex config
 - repo-scope entries should be rendered only into the listed managed repos
 - dormant entries are tracked but not rendered
@@ -35,12 +37,16 @@ This registry does not project plugin contents into the skill or MCP registries.
 
 For `openai-bundled` plugins, keep the registry name aligned with the plugin manifest in the Codex app bundle at `/Applications/Codex.app/Contents/Resources/plugins/openai-bundled/plugins/<plugin>`. Do not maintain an outside copy of bundled plugin source. `codex/scripts/sync-config.sh --apply` renders the config, seeds the runtime cache from the app bundle, and prunes bundled cache entries that are no longer enabled in `plugins/registry.json`.
 
+For non-bundled plugins, `scripts/bootstrap-machine-agent-control-planes.sh --apply` runs `scripts/sync-codex-plugin-installs.py --apply` before rendering Codex config. This lets the registry remain declarative: adding an enabled plugin entry is enough for machine bootstrap to install the package. If `codex plugin add` temporarily writes a global plugin section for a repo-scoped plugin, the later Codex config sync prunes that global section.
+
+Repo-scoped native plugin config is not the same as a standalone MCP assignment. If a plugin-bundled MCP must be available reliably for one repo, promote that MCP into `mcp/config/presets.json` and assign it through `codex/config/repo-bootstrap.json`.
+
 ## Normal Workflow
 
 - Edit `plugins/registry.json`.
 - Run `./scripts/sync-plugins-registry.sh --apply`.
 - Run `./scripts/bootstrap-machine-agent-control-planes.sh --apply`.
-- Run `./scripts/check-plugins-registry.sh`.
+- Run `./scripts/check-agent-control-planes.sh`.
 
 If you only need to add or update one plugin entry, use:
 

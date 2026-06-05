@@ -6,14 +6,16 @@
       "event": "SessionStart",
       "id": "repo-session-start",
       "matchers": {
-        "codex": "startup|resume|clear"
+        "codex": "startup|resume|clear",
+        "claude": "startup|resume|clear|compact"
       },
       "repos": [
         "adi",
         "angie"
       ],
       "runtimes": [
-        "codex"
+        "codex",
+        "claude"
       ],
       "scope": "repo",
       "timeout": 5
@@ -28,7 +30,8 @@
         "angie"
       ],
       "runtimes": [
-        "codex"
+        "codex",
+        "claude"
       ],
       "scope": "repo",
       "timeout": 5

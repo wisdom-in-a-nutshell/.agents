@@ -7,12 +7,15 @@ from pathlib import Path
 from typing import Any
 
 
-VALID_RUNTIMES = {"codex"}
+VALID_RUNTIMES = {"codex", "claude"}
 VALID_SCOPES = {"global", "repo"}
 ALL_REPOS = "*"
 EVENT_RUNTIME_SUPPORT = {
-    "SessionStart": {"codex"},
-    "UserPromptSubmit": {"codex"},
+    # Codex and Claude share the lifecycle scripts (each takes --runtime <name>).
+    # Claude's Stop hook is wired separately (claude_stop.py via sync-claude), so
+    # Stop stays codex-only in this registry.
+    "SessionStart": {"codex", "claude"},
+    "UserPromptSubmit": {"codex", "claude"},
     "Stop": {"codex"},
 }
 VALID_EVENTS = set(EVENT_RUNTIME_SUPPORT)
@@ -236,6 +239,14 @@ def render_codex_hooks(
     return render_runtime_hooks(registry, "codex", repo_name=repo_name)
 
 
+def render_claude_hooks(
+    registry: dict[str, Any],
+    *,
+    repo_name: str | None = None,
+) -> dict[str, Any]:
+    return render_runtime_hooks(registry, "claude", repo_name=repo_name)
+
+
 def _write_output(path: Path, data: dict[str, Any]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(render_json(data), encoding="utf-8")
@@ -253,6 +264,13 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     codex.add_argument("--output", required=True)
     codex.add_argument("--repo-name")
 
+    claude = subparsers.add_parser(
+        "render-claude", help="Render Claude settings.json hooks block"
+    )
+    claude.add_argument("--registry", required=True)
+    claude.add_argument("--output", required=True)
+    claude.add_argument("--repo-name")
+
     return parser.parse_args(argv)
 
 
@@ -266,6 +284,12 @@ def main(argv: list[str] | None = None) -> int:
             _write_output(
                 Path(args.output).expanduser().resolve(),
                 render_codex_hooks(registry, repo_name=args.repo_name),
+            )
+            return 0
+        if args.command == "render-claude":
+            _write_output(
+                Path(args.output).expanduser().resolve(),
+                render_claude_hooks(registry, repo_name=args.repo_name),
             )
             return 0
     except HookRegistryError as exc:

@@ -11,6 +11,18 @@
     "cloudflare-docs": {
       "transport": "http",
       "url": "https://docs.mcp.cloudflare.com/mcp"
+    },
+    "xcodebuildmcp": {
+      "transport": "stdio",
+      "command": "npx",
+      "args": [
+        "-y",
+        "xcodebuildmcp@latest",
+        "mcp"
+      ],
+      "env": {
+        "XCODEBUILDMCP_ENABLED_WORKFLOWS": "simulator,ui-automation,debugging,logging"
+      }
     }
   },
   "global_presets": [],

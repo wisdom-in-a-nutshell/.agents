@@ -62,7 +62,10 @@
     },
     {
       "path": "~/GitHub/codexclaw",
-      "codex_trust": true
+      "codex_trust": true,
+      "mcp_presets": [
+        "xcodebuildmcp"
+      ]
     },
     {
       "path": "~/GitHub/dobby-dashboard"

@@ -15,6 +15,7 @@ CHECK_PLUGINS_SCRIPT="${SCRIPT_DIR}/check-plugins-registry.sh"
 CHECK_HYGIENE_SCRIPT="${SCRIPT_DIR}/check-repo-hygiene.sh"
 CHECK_GIT_HOOKS_SCRIPT="${SCRIPT_DIR}/sync-managed-git-hooks.sh"
 CHECK_CODEX_SCRIPT="${ROOT_DIR}/codex/scripts/check-codex-control-plane.sh"
+AUDIT_RUNTIME_DRIFT_SCRIPT="${SCRIPT_DIR}/audit-agent-runtime-drift.py"
 TEST_CONTROL_PLANE_SCRIPT="${SCRIPT_DIR}/test-control-plane.sh"
 REPO_FILTERS=()
 
@@ -64,6 +65,7 @@ done
 [[ -x "$CHECK_HYGIENE_SCRIPT" ]] || die "Missing executable: $CHECK_HYGIENE_SCRIPT"
 [[ -x "$CHECK_GIT_HOOKS_SCRIPT" ]] || die "Missing executable: $CHECK_GIT_HOOKS_SCRIPT"
 [[ -x "$CHECK_CODEX_SCRIPT" ]] || die "Missing executable: $CHECK_CODEX_SCRIPT"
+[[ -x "$AUDIT_RUNTIME_DRIFT_SCRIPT" ]] || die "Missing executable: $AUDIT_RUNTIME_DRIFT_SCRIPT"
 [[ -x "$TEST_CONTROL_PLANE_SCRIPT" ]] || die "Missing executable: $TEST_CONTROL_PLANE_SCRIPT"
 
 REPO_ARGS=()
@@ -103,6 +105,15 @@ if (( ${#REPO_ARGS[@]} > 0 )); then
 fi
 log "+ ${codex_cmd[*]}"
 "${codex_cmd[@]}"
+
+runtime_drift_cmd=(
+  "$AUDIT_RUNTIME_DRIFT_SCRIPT"
+  --plain
+  --skip-control-plane-check
+  --no-input
+)
+log "+ ${runtime_drift_cmd[*]}"
+"${runtime_drift_cmd[@]}"
 
 test_cmd=("$TEST_CONTROL_PLANE_SCRIPT")
 log "+ ${test_cmd[*]}"
