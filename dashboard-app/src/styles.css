@@ -914,10 +914,14 @@ input:focus-visible {
 .re-badge { font-size: 10.5px; font-weight: 550; letter-spacing: 0.02em; color: var(--muted); background: var(--surface-soft); border: 1px solid var(--line); border-radius: 999px; padding: 2px 8px; }
 .re-base { color: var(--muted); font-size: 12.5px; margin: 0 0 8px; }
 .re-base strong { color: var(--text); }
+.re-count { display: inline-flex; align-items: center; justify-content: center; min-width: 21px; padding: 0 6px; border: 1px solid; border-radius: 999px; background: transparent; font-weight: var(--weight-strong); font-size: 11.5px; line-height: 1.55; font-variant-numeric: tabular-nums; }
+.re-count.global { color: var(--scope-global-ink); border-color: var(--scope-global-line); }
+.re-count.local { color: var(--scope-local-ink); border-color: var(--scope-local-line); }
 .re-config { display: flex; flex-direction: column; gap: 8px; }
 .re-chips { display: flex; flex-wrap: wrap; gap: 6px; }
 .re-chip { font-size: 12px; padding: 3px 9px; border-radius: 8px; background: var(--surface-soft); border: 1px solid var(--line); color: var(--muted); }
 .re-chip.accent { background: var(--accent-soft); border-color: var(--accent-line); color: var(--accent-ink); }
+.re-chip.global { background: transparent; border-color: var(--scope-global-line); color: var(--scope-global-ink); }
 .re-empty { color: var(--faint); font-size: 12.5px; }
 
 @media (max-width: 860px) {
