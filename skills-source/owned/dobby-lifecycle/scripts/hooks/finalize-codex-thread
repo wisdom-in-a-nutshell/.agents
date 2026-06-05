@@ -59,7 +59,7 @@ def remember_session_bin() -> Path:
     return Path(
         os.environ.get(
             "DOBBY_REMEMBER_SESSION_BIN",
-            str(Path.home() / ".agents/skills-source/owned/dobby-lifecycle/scripts/remember-session"),
+            str(Path.home() / "GitHub/agents/skills-source/owned/dobby-lifecycle/scripts/remember-session"),
         )
     ).expanduser()
 

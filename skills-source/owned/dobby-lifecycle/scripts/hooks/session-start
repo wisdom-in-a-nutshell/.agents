@@ -65,19 +65,19 @@ REPO_ROOT = git_root()
 CALENDAR_SCRIPTS_DIR = Path(
     os.environ.get(
         "DOBBY_CALENDAR_SCRIPTS_DIR",
-        str(Path.home() / ".agents/skills-source/owned/dobby-calendar/scripts"),
+        str(Path.home() / "GitHub/agents/skills-source/owned/dobby-calendar/scripts"),
     )
 ).expanduser()
 SHELF_SCRIPTS_DIR = Path(
     os.environ.get(
         "DOBBY_SHELF_SCRIPTS_DIR",
-        str(Path.home() / ".agents/skills-source/owned/dobby-shelf/scripts"),
+        str(Path.home() / "GitHub/agents/skills-source/owned/dobby-shelf/scripts"),
     )
 ).expanduser()
 DOBBY_WORKSPACE_SKILL_DIR = Path(
     os.environ.get(
         "DOBBY_WORKSPACE_SKILL_DIR",
-        str(Path.home() / ".agents/skills-source/owned/dobby-workspace"),
+        str(Path.home() / "GitHub/agents/skills-source/owned/dobby-workspace"),
     )
 ).expanduser()
 

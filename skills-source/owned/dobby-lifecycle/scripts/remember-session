@@ -370,8 +370,8 @@ def build_instruction(
     thread_id: str,
     trigger: str,
 ) -> str:
-    session_memory_cli = Path.home() / ".agents/skills-source/owned/dobby-lifecycle/scripts/session-memory"
-    body_map_path = Path.home() / ".agents/skills-source/owned/dobby-workspace/references/body-map.md"
+    session_memory_cli = Path.home() / "GitHub/agents/skills-source/owned/dobby-lifecycle/scripts/session-memory"
+    body_map_path = Path.home() / "GitHub/agents/skills-source/owned/dobby-workspace/references/body-map.md"
     template_path = prompt_template_path()
     try:
         template = template_path.read_text(encoding="utf-8")
