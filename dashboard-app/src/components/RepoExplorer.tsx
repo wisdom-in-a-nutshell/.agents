@@ -94,7 +94,7 @@ function RepoDetail({ data, repo }: { data: ControlPlaneData; repo: Item }) {
 
   const stats: Array<[string, number]> = [
     ['Skills', caps.globalSkills.length + caps.repoSkills.length],
-    ['Plugins', caps.globalPlugins.length + caps.repoPlugins.length],
+    ['Plugins', caps.globalPlugins.length],
     ['MCP', caps.globalMcp.length + caps.directMcp.length],
     ['Hooks', caps.globalHooks.length + caps.repoHooks.length],
     ['Dev', devNames.length],
@@ -147,16 +147,11 @@ function RepoDetail({ data, repo }: { data: ControlPlaneData; repo: Item }) {
         />
       </CapGroup>
 
-      <CapGroup title="Plugins" runtime="Codex" count={caps.globalPlugins.length + caps.repoPlugins.length}>
+      <CapGroup title="Plugins" runtime="Codex" count={caps.globalPlugins.length}>
         <p className="re-base">
           Base kit: <ScopeCount n={caps.globalPlugins.length} scope="global" /> global plugins
-          {caps.repoPlugins.length ? <> · <ScopeCount n={caps.repoPlugins.length} scope="local" /> repo</> : null}
         </p>
-        <ScopedChips
-          global={caps.globalPlugins.map((i) => i.title || i.name)}
-          local={caps.repoPlugins.map((i) => i.title || i.name)}
-          empty="No plugins"
-        />
+        <ScopedChips global={caps.globalPlugins.map((i) => i.title || i.name)} local={[]} empty="No plugins" />
       </CapGroup>
 
       <CapGroup title="Tools · MCP" runtime="Codex" count={caps.globalMcp.length + caps.directMcp.length}>

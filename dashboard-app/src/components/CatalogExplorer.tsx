@@ -33,9 +33,16 @@ function subtitle(item: Item): string {
   return '';
 }
 
-function UsedBy({ item, totalRepos }: { item: Item; totalRepos: number }) {
+function UsedBy({ item }: { item: Item }) {
   const navigate = useNavigateRepo();
-  if (isGlobal(item)) return <span className="cat-all">All {totalRepos}</span>;
+  if (isGlobal(item)) {
+    return (
+      <span className="cat-all">
+        <span className="cat-all-dot" aria-hidden="true" />
+        Global
+      </span>
+    );
+  }
   const repos = cleanArray(item.repos);
   const plugins = cleanArray(item.details.plugins);
   if (repos.length === 0 && plugins.length === 0) return <span className="cat-none">—</span>;
@@ -153,7 +160,7 @@ export function CatalogExplorer({
                 ) : null}
               </td>
               <td className="cat-used">
-                {isPlugins ? <PluginStatus item={item} /> : <UsedBy item={item} totalRepos={totalRepos} />}
+                {isPlugins ? <PluginStatus item={item} /> : <UsedBy item={item} />}
               </td>
               <td className="cat-src">
                 <a href={sourceHref(item)} target="_blank" rel="noreferrer">

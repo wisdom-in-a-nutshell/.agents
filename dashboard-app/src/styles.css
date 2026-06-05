@@ -841,7 +841,8 @@ input:focus-visible {
 .cat-sub { font-family: var(--font-sans); font-size: var(--font-xs); color: var(--muted); display: block; margin-top: 3px; }
 .cat-sub.is-path { font-family: var(--font-mono); font-size: 11px; word-break: break-all; }
 .cat-used-chips { display: flex; flex-wrap: wrap; gap: 5px; }
-.cat-all { font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.cat-all { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--muted); }
+.cat-all-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--scope-global); flex: 0 0 auto; }
 .cat-state { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--muted); }
 .cat-state-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); flex: 0 0 auto; }
 .cat-state.disabled { color: var(--rose-ink); font-weight: var(--weight-label); }
