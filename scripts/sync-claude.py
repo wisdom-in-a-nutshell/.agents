@@ -457,6 +457,42 @@ def render_settings(settings_file: Path, trusted: list[str], apply: bool, skip_y
     settings_file.write_text(json.dumps(desired, indent=2, sort_keys=False) + "\n", encoding="utf-8")
 
 
+def render_workspace_trust(claude_json_file: Path, trusted: list[str], apply: bool) -> None:
+    """Pre-accept Claude Code's per-folder "trust this workspace" dialog for every
+    managed workspace, so opening a new repo under ~/GitHub or ~/.agents never
+    prompts. Trust lives in ~/.claude.json under projects[path].hasTrustDialogAccepted
+    (separate from settings.json permissions.additionalDirectories, which is only
+    the permission scope). Claude owns this runtime file, so we merge in place and
+    never create it from scratch."""
+    if not claude_json_file.exists():
+        print(f"SKIP workspace trust: {claude_json_file} missing (start Claude once first)")
+        return
+    data = read_json_object(claude_json_file)
+    projects = data.get("projects")
+    projects = dict(projects) if isinstance(projects, dict) else {}
+
+    seeded: list[str] = []
+    for path in trusted:
+        entry = projects.get(path)
+        entry = dict(entry) if isinstance(entry, dict) else {}
+        already = entry.get("hasTrustDialogAccepted") is True and entry.get("hasCompletedProjectOnboarding") is True
+        if already:
+            continue
+        entry["hasTrustDialogAccepted"] = True
+        entry["hasCompletedProjectOnboarding"] = True
+        projects[path] = entry
+        seeded.append(path)
+
+    if not seeded:
+        print(f"UNCHANGED {claude_json_file} (workspace trust)")
+        return
+    print(f"SYNC {claude_json_file} (workspace trust: {len(seeded)} workspace(s))")
+    if not apply:
+        return
+    data["projects"] = projects
+    claude_json_file.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
+
+
 def launcher_text(real_cli_path: Path) -> str:
     real_cli = shlex.quote(str(real_cli_path))
     return f"""#!/usr/bin/env bash
@@ -629,6 +665,14 @@ def run_sync(args: argparse.Namespace) -> None:
         render_global_context(global_context_source, global_context_target, args.apply)
     if not args.skip_settings:
         render_settings(claude_home / "settings.json", trusted, args.apply, args.skip_yolo)
+    if not args.skip_workspace_trust:
+        if args.claude_json:
+            claude_json = absolute_path(Path(args.claude_json).expanduser()).resolve()
+        else:
+            # ~/.claude.json sits beside the ~/.claude home; deriving it from
+            # claude_home keeps tests isolated automatically (temp/.claude.json).
+            claude_json = claude_home.parent / ".claude.json"
+        render_workspace_trust(claude_json, trusted, args.apply)
     if not args.skip_launcher:
         render_launcher(launcher_target, real_cli_path, args.apply)
     if not args.skip_launch_configs:
@@ -655,6 +699,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--launcher-target", default=str(DEFAULT_LAUNCHER_TARGET), help="Claude YOLO launcher target.")
     parser.add_argument("--real-cli-path", default=str(DEFAULT_REAL_CLI_PATH), help="Real Claude CLI binary path wrapped by launcher.")
     parser.add_argument("--skip-yolo", action="store_true", help="Do not render bypass-permission defaults.")
+    parser.add_argument("--claude-json", default=None, help="Claude Code runtime config used to pre-accept workspace trust (defaults to <claude-home>/../.claude.json).")
+    parser.add_argument("--skip-workspace-trust", action="store_true", help="Do not pre-accept the per-folder trust dialog for managed workspaces.")
     parser.add_argument("--skip-global-context", action="store_true", help="Do not render global CLAUDE.md.")
     parser.add_argument("--skip-settings", action="store_true", help="Do not render Claude settings.")
     parser.add_argument("--skip-launcher", action="store_true", help="Do not render Claude launcher.")

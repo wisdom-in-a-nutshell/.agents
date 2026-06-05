@@ -331,6 +331,62 @@ class ClaudeSyncTests(TempDirTestCase):
         self.assertTrue((repo_a / ".claude/launch.json").is_file())
         self.assertFalse((repo_b / ".claude/launch.json").exists())
 
+    def test_apply_seeds_workspace_trust_for_managed_repos(self) -> None:
+        root = init_git_repo(self.temp_path / "agents")
+        registry = self._write_registry(root, [])
+        github_root = self.temp_path / "GitHub"
+        repo_a = init_git_repo(github_root / "repo-a")
+        claude_home = self.temp_path / "claude"
+        # ~/.claude.json is derived as <claude_home>/../.claude.json -> temp/.claude.json
+        claude_json = self.temp_path / ".claude.json"
+        write_json(
+            claude_json,
+            {
+                "numStartups": 7,
+                "projects": {"/already/trusted": {"hasTrustDialogAccepted": True, "lastCost": 1.5}},
+            },
+        )
+
+        run_command(
+            [
+                str(REPO_ROOT / "scripts/sync-claude.py"),
+                "--apply",
+                "--claude-home",
+                str(claude_home),
+                "--github-root",
+                str(github_root),
+                *self._isolated_targets(root),
+                str(registry),
+            ]
+        )
+
+        data = json.loads(claude_json.read_text(encoding="utf-8"))
+        # Unrelated top-level keys and existing project data are preserved.
+        self.assertEqual(7, data["numStartups"])
+        self.assertEqual(1.5, data["projects"]["/already/trusted"]["lastCost"])
+        # Managed workspaces (control-plane repo + discovered GitHub repos) are now trusted.
+        self.assertTrue(data["projects"][str(repo_a.resolve())]["hasTrustDialogAccepted"])
+        self.assertTrue(data["projects"][str(repo_a.resolve())]["hasCompletedProjectOnboarding"])
+        self.assertTrue(data["projects"][str(root.resolve())]["hasTrustDialogAccepted"])
+
+    def test_workspace_trust_is_skipped_when_claude_json_missing(self) -> None:
+        root = init_git_repo(self.temp_path / "agents")
+        registry = self._write_registry(root, [])
+        claude_home = self.temp_path / "claude"
+
+        # No temp/.claude.json exists -> trust seeding is a no-op (never creates the file).
+        run_command(
+            [
+                str(REPO_ROOT / "scripts/sync-claude.py"),
+                "--apply",
+                "--claude-home",
+                str(claude_home),
+                *self._isolated_targets(root),
+                str(registry),
+            ]
+        )
+        self.assertFalse((self.temp_path / ".claude.json").exists())
+
     def test_apply_merges_trusted_workspaces(self) -> None:
         root = init_git_repo(self.temp_path / "agents")
         registry = self._write_registry(root, [])
