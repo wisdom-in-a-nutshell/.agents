@@ -120,7 +120,9 @@ export function CatalogExplorer({
             <tr key={item.id}>
               <td className="cat-name">
                 <span className="cat-name-main">{item.name}</span>
-                {subtitle(item) ? <span className="cat-sub">{subtitle(item)}</span> : null}
+                {subtitle(item) ? (
+                  <span className={`cat-sub${item.kind === 'skill' ? ' is-path' : ''}`}>{subtitle(item)}</span>
+                ) : null}
               </td>
               <td className="cat-used">
                 <UsedBy item={item} totalRepos={totalRepos} />
