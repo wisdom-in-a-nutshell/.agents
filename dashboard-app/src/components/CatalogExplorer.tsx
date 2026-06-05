@@ -85,7 +85,8 @@ export function CatalogExplorer({
 }) {
   const totalRepos = data.counts.repos;
   const isPlugins = kind === 'plugins';
-  const [filter, setFilter] = useState<string>('all');
+  // Plugins default to the active set — disabled ones are one filter click away.
+  const [filter, setFilter] = useState<string>(isPlugins ? 'enabled' : 'all');
   const q = query.trim().toLowerCase();
 
   const base = data.groups[kind].filter((i) => !q || i.search_text.includes(q));

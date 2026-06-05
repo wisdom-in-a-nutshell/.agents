@@ -72,6 +72,14 @@ export function globalSkills(d: ControlPlaneData): Item[] {
 export function enabledGlobalPlugins(d: ControlPlaneData): Item[] {
   return d.groups.plugins.filter((i) => i.scope === 'global' && i.status === 'enabled');
 }
+// Headline counts mean "what the agent actually has on" — active, not registered.
+// Disabled plugins / hooks stay discoverable via filters + the Attention view.
+export function enabledPlugins(d: ControlPlaneData): Item[] {
+  return d.groups.plugins.filter((i) => i.status === 'enabled');
+}
+export function enabledHooks(d: ControlPlaneData): Item[] {
+  return d.groups.hooks.filter((i) => i.status === 'enabled');
+}
 export function enabledGlobalHooks(d: ControlPlaneData): Item[] {
   return d.groups.hooks.filter((i) => i.scope === 'global' && i.status === 'enabled');
 }
@@ -488,11 +496,11 @@ export function navCount(d: ControlPlaneData, section: SectionId): number {
     case 'skills':
       return d.counts.skills;
     case 'plugins':
-      return d.counts.plugins;
+      return enabledPlugins(d).length;
     case 'mcp':
       return d.counts.mcp;
     case 'hooks':
-      return d.counts.hooks;
+      return enabledHooks(d).length;
   }
 }
 

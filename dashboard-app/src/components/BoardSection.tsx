@@ -1,4 +1,4 @@
-import { formatDate, repoDisplayName } from '../selectors';
+import { enabledHooks, enabledPlugins, formatDate, repoDisplayName } from '../selectors';
 import { useNavigateRepo } from '../primitives';
 import type { Capability, ControlPlaneData, Item, RuntimeCell } from '../types';
 
@@ -92,13 +92,19 @@ function RepoCoverage({ repos }: { repos: Item[] }) {
 }
 
 export function BoardSection({ data }: { data: ControlPlaneData }) {
-  const caps = data.capabilities ?? [];
   const c = data.counts;
+  const enabledPluginCount = enabledPlugins(data).length;
+  const enabledHookCount = enabledHooks(data).length;
+  // Headline = active capabilities. Plugins' registry count is overridden here so
+  // the Board agrees with the nav badge and repo detail (active, not registered).
+  const caps = (data.capabilities ?? []).map((cap) =>
+    cap.key === 'plugins' ? { ...cap, count: enabledPluginCount } : cap,
+  );
   const stats: Array<[number, string]> = [
     [c.skills, 'Skills'],
-    [c.plugins, 'Plugins'],
+    [enabledPluginCount, 'Plugins'],
     [c.mcp, 'MCP tools'],
-    [c.hooks, 'Hooks'],
+    [enabledHookCount, 'Hooks'],
     [c.repos, 'Repos'],
     [c.dev_servers, 'Dev servers'],
   ];
