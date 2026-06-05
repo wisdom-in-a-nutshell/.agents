@@ -108,7 +108,7 @@
       "scope": "repo",
       "repos": [
         "adi",
-        "aipodcasting-public-website",
+        "aipodcasting-website-astro",
         "blog-personal"
       ],
       "source_path": "skills-source/owned/aip-company",

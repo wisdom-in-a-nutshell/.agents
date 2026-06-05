@@ -11,6 +11,17 @@ import sys
 from pathlib import Path
 from typing import Any
 
+# The shared hook control plane lives at ~/.agents/hooks; make it importable so
+# Claude per-repo hooks render from the same registry Codex uses.
+_AGENTS_ROOT = Path(__file__).resolve().parent.parent
+if str(_AGENTS_ROOT) not in sys.path:
+    sys.path.insert(0, str(_AGENTS_ROOT))
+
+from hooks.control_plane import (  # noqa: E402
+    load_hooks_registry,
+    render_claude_hooks,
+)
+
 
 # Durable Claude Code control-plane sync: renders global instructions, skills,
 # settings/hooks, the launcher, and per-repo dev-server launch configs from the
@@ -22,6 +33,7 @@ DEFAULT_GLOBAL_CONTEXT_TARGET = Path.home() / ".claude" / "CLAUDE.md"
 DEFAULT_LAUNCHER_TARGET = Path.home() / "bin" / "claude"
 DEFAULT_REAL_CLI_PATH = Path("/opt/homebrew/bin/claude")
 DEFAULT_DEV_SERVERS_REGISTRY = Path.home() / ".agents" / "dev-servers" / "registry.json"
+DEFAULT_HOOKS_REGISTRY = Path.home() / ".agents" / "hooks" / "registry.json"
 LAUNCH_CONFIG_VERSION = "0.0.1"
 CLAUDE_STOP_COMMAND = "python3 ~/.agents/hooks/scripts/claude_stop.py"
 ALLOWED_SCOPES = {"global", "repo", "dormant"}
@@ -457,6 +469,131 @@ def render_settings(settings_file: Path, trusted: list[str], apply: bool, skip_y
     settings_file.write_text(json.dumps(desired, indent=2, sort_keys=False) + "\n", encoding="utf-8")
 
 
+# Events whose Claude hooks are rendered per-repo from the shared hook registry.
+CLAUDE_REPO_HOOK_EVENTS = ("SessionStart", "UserPromptSubmit")
+
+
+def claude_hook_repos(hooks_registry: dict[str, Any]) -> list[str]:
+    """Repos that have at least one claude-enabled, repo-scoped managed hook."""
+    repos: list[str] = []
+    seen: set[str] = set()
+    for hook in hooks_registry.get("managed_hooks", []):
+        if not isinstance(hook, dict) or hook.get("scope") != "repo":
+            continue
+        if "claude" not in (hook.get("runtimes") or []):
+            continue
+        for repo in hook.get("repos", []):
+            name = str(repo).strip()
+            if name and name not in seen:
+                seen.add(name)
+                repos.append(name)
+    return repos
+
+
+def _is_managed_claude_hook(hook: Any) -> bool:
+    return (
+        isinstance(hook, dict)
+        and isinstance(hook.get("command"), str)
+        and "/.agents/hooks/scripts/" in hook["command"]
+        and "--runtime claude" in hook["command"]
+    )
+
+
+def render_repo_hook_settings(
+    repo_root: Path,
+    hooks_registry: dict[str, Any],
+    apply: bool,
+) -> None:
+    """Merge rendered Claude hooks into ``<repo>/.claude/settings.json``.
+
+    Mirrors how Codex writes ``<repo>/.codex/hooks.json``, but as a hooks block
+    inside the project settings the Claude Agent SDK loads when run with
+    ``cwd = repo`` and ``settingSources`` including ``project`` (the mobile-gateway
+    Claude runtime, and interactive Claude Code in that repo).
+    """
+    rendered = render_claude_hooks(hooks_registry, repo_name=repo_root.name).get(
+        "hooks", {}
+    )
+    settings_file = repo_root / ".claude" / "settings.json"
+    data = read_json_object(settings_file)
+    desired = dict(data)
+    desired.setdefault(
+        "$schema", "https://json.schemastore.org/claude-code-settings.json"
+    )
+
+    hooks = desired.get("hooks")
+    hooks = dict(hooks) if isinstance(hooks, dict) else {}
+
+    # Idempotent + prune: drop any previously-managed Claude lifecycle hooks from
+    # the events we own, then add the freshly rendered entries. Other hooks and
+    # settings keys in the file are preserved untouched.
+    for event_name in CLAUDE_REPO_HOOK_EVENTS:
+        current = hooks.get(event_name)
+        current = current if isinstance(current, list) else []
+        pruned: list[Any] = []
+        for entry in current:
+            if not isinstance(entry, dict) or not isinstance(entry.get("hooks"), list):
+                pruned.append(entry)
+                continue
+            kept = [h for h in entry["hooks"] if not _is_managed_claude_hook(h)]
+            if kept:
+                pruned.append({**entry, "hooks": kept})
+        if pruned:
+            hooks[event_name] = pruned
+        else:
+            hooks.pop(event_name, None)
+
+    for event_name, entries in rendered.items():
+        existing = hooks.get(event_name)
+        existing = existing if isinstance(existing, list) else []
+        hooks[event_name] = existing + list(entries)
+
+    if hooks:
+        desired["hooks"] = hooks
+    else:
+        desired.pop("hooks", None)
+
+    if desired == data:
+        print(f"UNCHANGED {settings_file}")
+        return
+    print(f"SYNC {settings_file} (claude hooks)")
+    if not apply:
+        return
+    settings_file.parent.mkdir(parents=True, exist_ok=True)
+    settings_file.write_text(
+        json.dumps(desired, indent=2, sort_keys=False) + "\n", encoding="utf-8"
+    )
+
+
+def render_repo_hooks(
+    hooks_registry_file: Path,
+    github_root: Path,
+    repo_filters: set[Path],
+    apply: bool,
+) -> None:
+    if not hooks_registry_file.is_file():
+        print(
+            f"WARNING: hooks registry missing, skipping per-repo Claude hooks: {hooks_registry_file}",
+            file=sys.stderr,
+        )
+        return
+    hooks_registry = load_hooks_registry(hooks_registry_file)
+    home = Path.home()
+    for repo in claude_hook_repos(hooks_registry):
+        repo_root = resolve_repo_root(repo, github_root, home)
+        actual_repo = repo_git_root(repo_root)
+        if actual_repo is None:
+            if repo_root.exists():
+                print(
+                    f"WARNING: skipping existing non-git path: {repo_root}",
+                    file=sys.stderr,
+                )
+            continue
+        if repo_filters and actual_repo not in repo_filters:
+            continue
+        render_repo_hook_settings(actual_repo, hooks_registry, apply)
+
+
 def render_workspace_trust(claude_json_file: Path, trusted: list[str], apply: bool) -> None:
     """Pre-accept Claude Code's per-folder "trust this workspace" dialog for every
     managed workspace, so opening a new repo under ~/GitHub or ~/.agents never
@@ -665,6 +802,11 @@ def run_sync(args: argparse.Namespace) -> None:
         render_global_context(global_context_source, global_context_target, args.apply)
     if not args.skip_settings:
         render_settings(claude_home / "settings.json", trusted, args.apply, args.skip_yolo)
+    if not args.skip_repo_hooks:
+        hooks_registry_file = absolute_path(
+            Path(args.hooks_registry).expanduser()
+        ).resolve()
+        render_repo_hooks(hooks_registry_file, github_root, repo_filters, args.apply)
     if not args.skip_workspace_trust:
         if args.claude_json:
             claude_json = absolute_path(Path(args.claude_json).expanduser()).resolve()
@@ -705,6 +847,16 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--skip-settings", action="store_true", help="Do not render Claude settings.")
     parser.add_argument("--skip-launcher", action="store_true", help="Do not render Claude launcher.")
     parser.add_argument("--skip-skills", action="store_true", help="Do not render Claude skill links.")
+    parser.add_argument(
+        "--hooks-registry",
+        default=str(DEFAULT_HOOKS_REGISTRY),
+        help="Canonical hook registry JSON for per-repo Claude lifecycle hooks.",
+    )
+    parser.add_argument(
+        "--skip-repo-hooks",
+        action="store_true",
+        help="Do not render per-repo Claude lifecycle hooks (.claude/settings.json).",
+    )
     parser.add_argument(
         "--dev-servers-registry",
         default=str(DEFAULT_DEV_SERVERS_REGISTRY),

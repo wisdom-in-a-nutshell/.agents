@@ -184,7 +184,7 @@ What would our customers do if AIP didn't exist?
 
 ## Current public website messaging notes
 
-Useful current public phrasing from `aipodcasting-public-website`:
+Useful current public phrasing from `aipodcasting-website-astro`:
 
 - "Simple pricing. Full production."
 - "Built by operators, for creators"

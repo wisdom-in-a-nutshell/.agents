@@ -1,6 +1,6 @@
 ---
 name: aip-company
-description: "Canonical company knowledge for AI Podcasting (AIP): positioning, business details, messaging, target customer, proof points, company facts, client context, and reusable company templates. Use when working on AIP strategy, website copy, messaging, pitches, founder/company descriptions, case-study framing, pricing context, client dossiers, or any task that needs the authoritative company understanding across `adi`, `aipodcasting-public-website`, and `blog-personal`."
+description: "Canonical company knowledge for AI Podcasting (AIP): positioning, business details, messaging, target customer, proof points, company facts, client context, and reusable company templates. Use when working on AIP strategy, website copy, messaging, pitches, founder/company descriptions, case-study framing, pricing context, client dossiers, or any task that needs the authoritative company understanding across `adi`, `aipodcasting-website-astro`, and `blog-personal`."
 ---
 
 # AIP Company
@@ -66,5 +66,5 @@ Avoid:
 This managed owned skill is routed to:
 
 - `adi`
-- `aipodcasting-public-website`
+- `aipodcasting-website-astro`
 - `blog-personal`

@@ -25,6 +25,18 @@
       ]
     },
     {
+      "repo": "aipodcasting-website-astro",
+      "servers": [
+        {
+          "name": "AI Podcasting production (static)",
+          "runtimeExecutable": "pnpm",
+          "runtimeArgs": ["start"],
+          "port": 8796,
+          "autoPort": false
+        }
+      ]
+    },
+    {
       "repo": "~/.agents",
       "servers": [
         {
