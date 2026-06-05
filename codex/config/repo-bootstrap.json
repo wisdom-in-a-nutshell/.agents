@@ -62,7 +62,7 @@
     },
     {
       "path": "~/GitHub/codexclaw",
-      "codex_trust": false
+      "codex_trust": true
     },
     {
       "path": "~/GitHub/dobby-dashboard"

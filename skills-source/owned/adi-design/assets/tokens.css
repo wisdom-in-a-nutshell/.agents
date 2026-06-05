@@ -25,7 +25,11 @@
   --line: oklch(0.9 0.006 152);
   --line-soft: oklch(0.93 0.005 152);
 
-  /* --- Accent: sage. The single accent — action, selection, state. --- */
+  /* --- Accent: sage. The single accent — action, selection, state.
+   *     base  = fills, large accents, hairlines, soft bg, state behind dark text.
+   *     -ink  = AA-safe depth for colored TEXT (links, labels) + white-on-sage
+   *             buttons. Use -ink whenever sage is small text; base fails 4.5:1
+   *             there. Same base/ink split applies to amber and rose below. --- */
   --accent: oklch(0.56 0.082 151);
   --accent-ink: oklch(0.43 0.078 151);
   --accent-soft: oklch(0.93 0.03 151);

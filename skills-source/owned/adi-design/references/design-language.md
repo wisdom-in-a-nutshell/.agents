@@ -64,6 +64,15 @@ earns its place by signalling state, not decorating.
   included. The trap is hard-coding a faint neutral (e.g. `neutral-400`) to make
   meta read "quiet"; reach for the muted token instead, which is tuned to pass.
   If a value is close, push toward `--text`, never toward `--faint`.
+- **Colored text uses the ink depth, not the fill.** Sage, rose, and amber as
+  *text* (links, errors, labels) — or as a button fill behind white text — must
+  clear 4.5:1, so use the `-ink` variant (`--accent-ink`, `--rose-ink`,
+  `--amber-ink`); they are tuned to pass. The base `--accent` / `--rose` /
+  `--amber` are for fills, large non-text accents, hairlines, soft backgrounds,
+  and state behind dark text — they do NOT clear AA as small text. In the
+  Tailwind/shadcn apps (blog, adithyan.io, the AIP site) where one `--primary`
+  token does both jobs, set `--primary` to the ink-depth sage, not the lighter
+  fill (the canonical `135 25% 41%` is ~0.3 under; `137 30% 36%` clears it).
 
 ## Typography
 
