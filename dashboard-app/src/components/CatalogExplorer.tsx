@@ -107,6 +107,19 @@ export function CatalogExplorer({
   const passes = (i: Item, f: string): boolean =>
     f === 'all' ? true : isPlugins ? i.status === f : f === 'global' ? isGlobal(i) : !isGlobal(i);
 
+  // Map each filter to its scope colour so the chip row reads as a legend:
+  // gold = global, sage = repo / enabled, rose = disabled.
+  const chipTone = (id: string): string =>
+    id === 'global'
+      ? ' s-global'
+      : id === 'repo'
+        ? ' s-local'
+        : id === 'enabled'
+          ? ' s-enabled'
+          : id === 'disabled'
+            ? ' s-disabled'
+            : '';
+
   const counts: Record<string, number> = {};
   for (const f of filters) counts[f.id] = base.filter((i) => passes(i, f.id)).length;
 
