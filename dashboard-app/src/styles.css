@@ -825,10 +825,25 @@ input:focus-visible {
 .cat-head h2 { font-family: var(--font-serif); font-weight: var(--weight-strong); font-size: var(--font-page); letter-spacing: -0.005em; margin: 0; color: var(--text); }
 .cat-filters { display: inline-flex; gap: 6px; }
 .cat-chip { display: inline-flex; align-items: center; gap: 6px; font: inherit; font-size: 12.5px; padding: 4px 11px; border-radius: 999px; border: 1px solid var(--line); background: var(--surface); color: var(--muted); cursor: pointer; transition: background 120ms, border-color 120ms, color 120ms; }
-.cat-chip:hover { border-color: var(--accent-line); }
+.cat-chip:hover { border-color: var(--faint); }
 .cat-chip strong { font-variant-numeric: tabular-nums; font-weight: 600; color: var(--faint); }
-.cat-chip.active { background: var(--accent-soft); border-color: var(--accent-line); color: var(--accent-ink); }
-.cat-chip.active strong { color: var(--accent-ink); }
+/* "All" active is neutral; every scoped chip carries its meaning in colour —
+   gold = global, sage = repo / enabled, rose = disabled — so the filter row is
+   a legend you can read at a glance, and the active chip matches its rows. */
+.cat-chip.active { background: var(--surface-soft); border-color: var(--line); color: var(--text); }
+.cat-chip.active strong { color: var(--text); }
+.cat-chip.s-global strong { color: var(--scope-global-ink); }
+.cat-chip.s-local strong,
+.cat-chip.s-enabled strong { color: var(--scope-local-ink); }
+.cat-chip.s-disabled strong { color: var(--rose-ink); }
+.cat-chip.s-global:hover { border-color: var(--scope-global-line); }
+.cat-chip.s-local:hover,
+.cat-chip.s-enabled:hover { border-color: var(--scope-local-line); }
+.cat-chip.s-disabled:hover { border-color: var(--rose-line); }
+.cat-chip.s-global.active { background: var(--scope-global-soft); border-color: var(--scope-global-line); color: var(--scope-global-ink); }
+.cat-chip.s-local.active,
+.cat-chip.s-enabled.active { background: var(--scope-local-soft); border-color: var(--scope-local-line); color: var(--scope-local-ink); }
+.cat-chip.s-disabled.active { background: var(--rose-soft); border-color: var(--rose-line); color: var(--rose-ink); }
 .cat-hint { color: var(--muted); font-size: var(--font-xs); margin-left: auto; }
 
 .cat-table { width: auto; min-width: 600px; max-width: 100%; border-collapse: collapse; border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; background: var(--surface); }

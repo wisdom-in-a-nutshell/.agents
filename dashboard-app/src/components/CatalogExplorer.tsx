@@ -142,7 +142,7 @@ export function CatalogExplorer({
             <button
               key={f.id}
               type="button"
-              className={`cat-chip${filter === f.id ? ' active' : ''}`}
+              className={`cat-chip${filter === f.id ? ' active' : ''}${chipTone(f.id)}`}
               onClick={() => setFilter(f.id)}
             >
               {f.label}
