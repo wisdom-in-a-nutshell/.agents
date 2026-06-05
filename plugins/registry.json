@@ -29,6 +29,14 @@
       "category": "Productivity"
     },
     {
+      "plugin": "build-ios-apps",
+      "marketplace": "openai-curated",
+      "enabled": false,
+      "scope": "dormant",
+      "repos": [],
+      "category": "Developer Tools"
+    },
+    {
       "plugin": "gmail",
       "marketplace": "openai-curated",
       "enabled": false,
