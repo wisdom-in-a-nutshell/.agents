@@ -49,6 +49,12 @@ For repo authors adding `scripts/hooks/*.py`, start with
   - renders user settings and the managed `Stop` hook under `~/.claude/settings.json`
   - enables YOLO through Claude Code's native bypass mode, not through
     broad `PreToolUse` or `PermissionRequest` auto-allow hooks
+  - sets the top-level "max YOLO" acceptance flags (`YOLO_ACCEPTANCE_FLAGS` in
+    `sync-claude.py`) so no one-time dialog ever blocks an autonomous session:
+    `skipDangerousModePermissionPrompt`, `skipAutoPermissionPrompt`,
+    `skipWorkflowUsageWarning` (the multi-agent Workflow usage warning), and
+    `enableAllProjectMcpServers` (no per-project MCP approval prompt). `Workflow`
+    is also in the default allow-list.
   - renders a `~/bin/claude` wrapper that starts sessions with `--dangerously-skip-permissions`
   - renders per-repo dev-server launch configs (`.claude/launch.json`) from
     `dev-servers/registry.json`, opt-in per repo (only listed repos are touched)

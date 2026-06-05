@@ -56,8 +56,20 @@ DEFAULT_ALLOW_RULES = [
     "TodoWrite",
     "WebFetch",
     "WebSearch",
+    "Workflow",
     "Write",
 ]
+# Top-level "max YOLO" acceptance flags. The launcher already passes
+# --dangerously-skip-permissions, but that flag does not pre-accept the one-time
+# confirmation dialogs below (bypass-mode dialog, auto-mode opt-in, the
+# multi-agent Workflow usage warning), so set them durably here. The result is a
+# fully autonomous agent that is never blocked on a permission/usage prompt.
+YOLO_ACCEPTANCE_FLAGS = {
+    "skipDangerousModePermissionPrompt": True,
+    "skipAutoPermissionPrompt": True,
+    "skipWorkflowUsageWarning": True,
+    "enableAllProjectMcpServers": True,
+}
 
 
 def rel_link(dst: Path, src: Path) -> str:
@@ -403,6 +415,10 @@ def render_settings(settings_file: Path, trusted: list[str], apply: bool, skip_y
         permissions["defaultMode"] = "bypassPermissions"
         permissions["skipDangerousModePermissionPrompt"] = True
     desired["permissions"] = permissions
+
+    if not skip_yolo:
+        for flag, value in YOLO_ACCEPTANCE_FLAGS.items():
+            desired[flag] = value
 
     hooks = desired.get("hooks")
     hooks = dict(hooks) if isinstance(hooks, dict) else {}

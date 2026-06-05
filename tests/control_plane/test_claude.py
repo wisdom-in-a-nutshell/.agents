@@ -99,6 +99,12 @@ class ClaudeSyncTests(TempDirTestCase):
         self.assertEqual("bypassPermissions", settings["permissions"]["defaultMode"])
         self.assertEqual(True, settings["permissions"]["skipDangerousModePermissionPrompt"])
         self.assertIn("Bash", settings["permissions"]["allow"])
+        self.assertIn("Workflow", settings["permissions"]["allow"])
+        # Max-YOLO acceptance flags: never blocked on a one-time usage/permission dialog.
+        self.assertEqual(True, settings["skipDangerousModePermissionPrompt"])
+        self.assertEqual(True, settings["skipAutoPermissionPrompt"])
+        self.assertEqual(True, settings["skipWorkflowUsageWarning"])
+        self.assertEqual(True, settings["enableAllProjectMcpServers"])
         self.assertIn("Stop", settings["hooks"])
         self.assertNotIn("PreToolUse", settings["hooks"])
         self.assertNotIn("PermissionRequest", settings["hooks"])
