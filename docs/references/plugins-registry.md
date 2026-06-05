@@ -7,7 +7,6 @@ Canonical source of truth: [`plugins/registry.json`](/Users/dobby/.agents/plugin
 - `plugins/registry.json` is the canonical list of native Codex plugin scope and state.
 - `scripts/sync-codex-plugin-installs.py` installs enabled non-bundled plugin packages into the local Codex runtime cache.
 - `codex/scripts/sync-config.sh` renders global plugin sections into the global Codex config.
-- `codex/scripts/sync-repo-codex-configs.sh` renders repo-scoped plugin sections into assigned repo-local Codex configs.
 - `sync-plugins-registry.sh` validates the plugin registry.
 - Standalone skills stay in `skills/registry.json`.
 - Standalone MCP presets stay in `mcp/config/presets.json`.
@@ -16,10 +15,8 @@ Canonical source of truth: [`plugins/registry.json`](/Users/dobby/.agents/plugin
 flowchart LR
     A[plugins/registry.json] --> B[sync-plugins-registry.sh]
     A --> C[codex/scripts/sync-config.sh]
-    A --> F[codex/scripts/sync-repo-codex-configs.sh]
     B --> D[validation output]
     C --> E[~/.codex/config.toml]
-    F --> G[repo .codex/config.toml]
 ```
 
 ## Current Model
@@ -29,17 +26,18 @@ A managed plugin entry means:
 - Codex should know the plugin by `<plugin>@<marketplace>`
 - enabled non-bundled entries should be installed in `~/.codex/plugins/cache` during bootstrap
 - global-scope entries should be rendered as enabled or disabled in the global Codex config
-- repo-scope entries should be rendered only into the listed managed repos
 - dormant entries are tracked but not rendered
 - the plugin remains a plugin, even when its package contains skills, MCP, apps, assets, or helper binaries
 
 This registry does not project plugin contents into the skill or MCP registries. If a capability should become standalone, add it directly to `skills/registry.json` or `mcp/config/presets.json`.
 
+Native Codex plugin enablement is treated as global/user-level for now. The current OpenAI Codex config schema describes `plugins` as user-level plugin config, and local testing has not shown reliable native plugin skill injection from repo-local `.codex/config.toml`. Do not try to make native plugin UX repo-specific through bootstrap. If a plugin should be used only occasionally, leave it unmanaged and enable it manually in Codex Desktop when needed.
+
 For `openai-bundled` plugins, keep the registry name aligned with the plugin manifest in the Codex app bundle at `/Applications/Codex.app/Contents/Resources/plugins/openai-bundled/plugins/<plugin>`. Do not maintain an outside copy of bundled plugin source. `codex/scripts/sync-config.sh --apply` renders the config, seeds the runtime cache from the app bundle, and prunes bundled cache entries that are no longer enabled in `plugins/registry.json`.
 
-For non-bundled plugins, `scripts/bootstrap-machine-agent-control-planes.sh --apply` runs `scripts/sync-codex-plugin-installs.py --apply` before rendering Codex config. This lets the registry remain declarative: adding an enabled plugin entry is enough for machine bootstrap to install the package. If `codex plugin add` temporarily writes a global plugin section for a repo-scoped plugin, the later Codex config sync prunes that global section.
+For non-bundled plugins, `scripts/bootstrap-machine-agent-control-planes.sh --apply` runs `scripts/sync-codex-plugin-installs.py --apply` before rendering Codex config. This lets the registry remain declarative: adding an enabled global plugin entry is enough for machine bootstrap to install the package.
 
-Repo-scoped native plugin config is not the same as a standalone MCP assignment. If a plugin-bundled MCP must be available reliably for one repo, promote that MCP into `mcp/config/presets.json` and assign it through `codex/config/repo-bootstrap.json`.
+Repo-specific native plugin UX is not currently a supported bootstrap target. If a plugin-bundled MCP must be available reliably for one repo, promote that MCP into `mcp/config/presets.json` and assign it through `codex/config/repo-bootstrap.json`.
 
 ## Normal Workflow
 
@@ -51,8 +49,7 @@ Repo-scoped native plugin config is not the same as a standalone MCP assignment.
 If you only need to add or update one plugin entry, use:
 
 ```bash
-./scripts/bootstrap-plugin.sh build-ios-apps --apply
-./scripts/bootstrap-plugin.sh build-ios-apps --scope repo --repo codexclaw --apply
+./scripts/bootstrap-plugin.sh browser --apply
 ```
 
 ## Field Quick Reference
@@ -60,6 +57,6 @@ If you only need to add or update one plugin entry, use:
 - `plugin`: plugin name, for example `build-ios-apps`
 - `marketplace`: Codex marketplace id, for example `openai-curated` or `openai-bundled`
 - `enabled`: whether Codex should enable the plugin
-- `scope`: `global`, `repo`, or `dormant`
-- `repos`: repo names under `paths.github_root` or explicit paths; required for `repo` scope
+- `scope`: use `global` for native plugin bootstrap, or `dormant` to track a disabled plugin. Avoid `repo` for native plugins until Codex supports repo-scoped plugin activation reliably.
+- `repos`: historical field for repo scope; leave empty for global or dormant entries
 - `category`: dashboard grouping category only

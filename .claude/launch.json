@@ -12,13 +12,6 @@
       ],
       "port": 8765,
       "autoPort": true
-    },
-    {
-      "name": "dashboard-dev",
-      "runtimeExecutable": "npm",
-      "runtimeArgs": ["--prefix", "dashboard-app", "run", "dev"],
-      "port": 5180,
-      "autoPort": false
     }
   ]
 }

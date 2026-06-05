@@ -77,9 +77,18 @@ Date: 2026-05-29
   - ACR repository list no longer includes `blog-personal-adi` or `whos-in-your-head`.
   - Azure SSL certificate list no longer includes `cf-origin-adithyan-io` or another `adithyan.io` certificate in resource group `ghost`.
   - `https://adithyan.io/api/health`, `https://www.adithyan.io/api/health`, and `https://mindreader.adithyan.io/api/health` still returned HTTP 200 from the Mac mini services.
-- 2026-05-29: Remaining Front Door routes/custom domains after cleanup:
+- 2026-06-05: `aipodcast.ing` moved from Azure Front Door to the shared Mac mini Cloudflare
+  Tunnel:
+  - Cloudflare DNS now points `aipodcast.ing` to
+    `f1037d14-4b4b-4f72-8f6f-cac8bfe38119.cfargotunnel.com` with proxy enabled.
+  - Shared tunnel ingress routes `aipodcast.ing` to `http://127.0.0.1:8796`.
+  - Removed Front Door `aipodcasting-landing-route`, custom domain `aipodcasting-landing`,
+    origin group `aipodcasting-public-website-origin-group`, and origin
+    `aipodcasting-public-website-origin`.
+  - Deleted Azure Web App `aipodcasting-public-website`.
+  - Deleted ACR repository `aipodcasting-public-website`.
+- 2026-06-05: Remaining Front Door routes/custom domains after `aipodcast.ing` cleanup:
   - `thoughtforms-route` -> `thoughtforms-life.aipodcast.ing` -> `thoughtforms-life.azurewebsites.net`
-  - `aipodcasting-landing-route` -> `aipodcast.ing` -> `aipodcasting-public-website.azurewebsites.net`
   - `aipodcasting-app-route` -> `app.aipodcast.ing` -> `aipodcasting-app.azurewebsites.net`
   - `podcast-futureoflife-route` -> `podcast.futureoflife.org` -> `future-of-life-institute-podcast-aipodcast-ing.azurewebsites.net`
   - `default-route` -> Front Door default endpoint -> `thoughtforms-life.azurewebsites.net`

@@ -13,16 +13,6 @@
       "category": "Engineering"
     },
     {
-      "plugin": "build-ios-apps",
-      "marketplace": "openai-curated",
-      "enabled": true,
-      "scope": "repo",
-      "repos": [
-        "codexclaw"
-      ],
-      "category": "Coding"
-    },
-    {
       "plugin": "chrome",
       "marketplace": "openai-bundled",
       "enabled": false,

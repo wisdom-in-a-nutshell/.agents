@@ -48,10 +48,11 @@ Use [Codex Control Plane Ownership](/Users/dobby/.agents/docs/references/codex-c
 - Validate managed plugins:
   - [`sync-plugins-registry.sh`](/Users/dobby/.agents/scripts/sync-plugins-registry.sh)
   - `~/.agents/scripts/sync-plugins-registry.sh --apply`
-  - global native Codex plugin enable/disable state is rendered by `sync-config.sh`; repo-scoped native plugin assignments are rendered by `sync-repo-codex-configs.sh`
+  - global native Codex plugin enable/disable state is rendered by `sync-config.sh`
+  - native Codex plugins are treated as global/user-level; use repo-local MCP presets for repo-specific tool availability
 - Bootstrap one managed plugin into the canonical registry:
   - [`bootstrap-plugin.sh`](/Users/dobby/.agents/scripts/bootstrap-plugin.sh)
-  - `~/.agents/scripts/bootstrap-plugin.sh build-ios-apps --apply`
+  - `~/.agents/scripts/bootstrap-plugin.sh browser --apply`
   - this writes the registry entry, validates it, and reapplies the shared control planes
 - Apply the full Codex bootstrap batch:
   - [`bootstrap-machine-codex.sh`](/Users/dobby/.agents/codex/scripts/bootstrap-machine-codex.sh)
@@ -207,7 +208,6 @@ Verification expectations:
   - skips no-op rewrites
 - [`sync-repo-codex-configs.sh`](/Users/dobby/.agents/codex/scripts/sync-repo-codex-configs.sh)
   - renders managed repo-local Codex files from the shared repo inventory plus shared MCP and hook registries
-  - renders repo-scoped native Codex plugin assignments from [`plugins/registry.json`](/Users/dobby/.agents/plugins/registry.json)
   - supports `--check` to fail when rendered repo-local files differ from the current `.codex` files
   - writes `.codex/config.toml` for all managed repos
   - writes `.codex/hooks.json` for all managed repos with only the hooks assigned to that repo

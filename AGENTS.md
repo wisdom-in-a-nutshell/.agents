@@ -65,16 +65,15 @@ Detailed operations live in:
 ## Rules
 
 - Runtime distribution is link-first for standalone skills; Codex plugins stay native plugin entries in `plugins/registry.json`.
-- Treat global skills and global plugins as a minimal default kit; prefer repo scope or repo-local unless a capability is broadly useful across unrelated repos.
+- Treat global skills and global plugins as a minimal default kit. For native Codex plugins, use global/manual enablement only for now; current Codex docs and runtime behavior treat plugin enablement as user-level, not reliably repo-scoped.
 - When a user provides a `skills.sh` URL or upstream skill reference and wants it installed into a repo, prefer `./scripts/bootstrap-skill.sh` over manual registry edits.
 - Do not edit managed skills through repo symlink destinations; edit canonical source paths.
 - Do not split Codex plugins into skill or MCP registries by default. If a plugin capability should become standalone, promote it manually into `skills/registry.json` or `mcp/config/presets.json`.
-- Managed plugin entries render global plugin state into `~/.codex/config.toml` and repo-scoped plugin state into managed repo `.codex/config.toml`; standalone skills and MCPs remain separate registries.
+- Managed plugin entries render global plugin state into `~/.codex/config.toml`; standalone skills and MCPs remain separate registries.
 - A rendered native plugin entry is not the same as an installed Codex plugin package. `scripts/bootstrap-machine-agent-control-planes.sh --apply` installs missing enabled non-bundled packages through `scripts/sync-codex-plugin-installs.py`; `scripts/check-agent-control-planes.sh` runs the runtime drift audit to catch missing or stale runtime plugin state.
-- Treat repo-scoped native Codex plugins as unproven for bundled MCP/tool visibility until verified in a fresh `codex exec` or Codex Desktop thread. If a plugin's bundled MCP must be reliably repo-scoped, promote that MCP as a standalone repo MCP preset instead of widening the whole plugin by default.
+- Do not bootstrap native Codex plugins as repo-scoped by default. If a plugin's bundled MCP must be reliably available for one repo, promote that MCP as a standalone repo MCP preset instead of widening the whole plugin or decomposing the plugin into skills.
 - Keep repo-local skills listed in `skills/registry.json` under `unmanaged_repo_local_skills`.
 - Keep `unmanaged_repo_local_skills` honest: if the target repo exists locally, the repo must contain `.agents/skills/<skill>/SKILL.md` or skill sync should fail until the stale registry entry is removed.
-- Keep managed repo-scoped native plugins in `plugins/registry.json` under `managed_plugins` with `scope: "repo"` and `repos`.
 - Keep unmanaged repo-local plugins listed in `plugins/registry.json` under `unmanaged_repo_local_plugins`.
 - Do not add additional manifest files for skill mapping; update `skills/registry.json`.
 - Do not add additional manifest files for plugin mapping; update `plugins/registry.json`.

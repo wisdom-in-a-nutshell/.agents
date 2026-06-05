@@ -73,7 +73,7 @@ So trust sync is part of config layering, not a separate unrelated feature.
 
 ### Repo-Local Config
 
-- `sync-repo-codex-configs.sh` generates repo-local `.codex/config.toml` files from `repo-bootstrap.json`, shared MCP presets, and repo-scoped plugin assignments from `plugins/registry.json`.
+- `sync-repo-codex-configs.sh` generates repo-local `.codex/config.toml` files from `repo-bootstrap.json` and shared MCP presets. Native Codex plugin enablement is treated as global/user-level rather than repo-scoped.
 - Most repos can have a minimal managed file with no repo-local overrides.
 - Some repos get MCP presets or later model-specific overrides.
 - `control-plane-dashboard.py` serves the same registry data through the local dashboard, including effective plugins from [`plugins/registry.json`](/Users/dobby/.agents/plugins/registry.json) and effective skills from [`skills/registry.json`](/Users/dobby/.agents/skills/registry.json).
