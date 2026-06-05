@@ -25,7 +25,7 @@
       ]
     },
     {
-      "repo": "aipodcasting-website-astro",
+      "repo": "aipodcasting-website",
       "servers": [
         {
           "name": "AI Podcasting production (static)",

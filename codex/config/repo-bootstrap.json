@@ -45,9 +45,6 @@
       "path": "~/GitHub/aipodcasting-website"
     },
     {
-      "path": "~/GitHub/aipodcasting-website-astro"
-    },
-    {
       "path": "~/GitHub/angie",
       "model": "gpt-5.5",
       "model_auto_compact_token_limit": 204000,
