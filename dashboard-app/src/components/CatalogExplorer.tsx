@@ -12,8 +12,6 @@ const KIND_LABEL: Record<CatalogKind, string> = {
   hooks: 'Hooks',
 };
 
-type ScopeFilter = 'all' | 'global' | 'repo';
-
 function isGlobal(item: Item): boolean {
   return item.scope === 'global' || item.details.global === true || item.scope.split('+').includes('global');
 }
@@ -57,6 +55,18 @@ function UsedBy({ item, totalRepos }: { item: Item; totalRepos: number }) {
   );
 }
 
+// Plugins are always global, so "used by" is constant — what matters is whether
+// the plugin is on. Sage dot = active, rose = disabled (and named, so it reads).
+function PluginStatus({ item }: { item: Item }) {
+  const disabled = item.status === 'disabled';
+  return (
+    <span className={`cat-state${disabled ? ' disabled' : ''}`}>
+      <span className="cat-state-dot" aria-hidden="true" />
+      {disabled ? 'Disabled' : 'Active'}
+    </span>
+  );
+}
+
 export function CatalogExplorer({
   data,
   kind,
@@ -67,25 +77,41 @@ export function CatalogExplorer({
   query: string;
 }) {
   const totalRepos = data.counts.repos;
-  const [scope, setScope] = useState<ScopeFilter>('all');
+  const isPlugins = kind === 'plugins';
+  const [filter, setFilter] = useState<string>('all');
   const q = query.trim().toLowerCase();
 
   const base = data.groups[kind].filter((i) => !q || i.search_text.includes(q));
-  const counts: Record<ScopeFilter, number> = {
-    all: base.length,
-    global: base.filter(isGlobal).length,
-    repo: base.filter((i) => !isGlobal(i)).length,
-  };
-  const items = base
-    .filter((i) => scope === 'all' || (scope === 'global' ? isGlobal(i) : !isGlobal(i)))
-    .slice()
-    .sort((a, b) => usage(b, totalRepos) - usage(a, totalRepos) || a.name.localeCompare(b.name));
 
-  const filters: Array<{ id: ScopeFilter; label: string }> = [
-    { id: 'all', label: 'All' },
-    { id: 'global', label: 'Global' },
-    { id: 'repo', label: 'Repo-scoped' },
-  ];
+  // Plugins can only be global, so scope filtering is noise — filter by on/off
+  // state instead. Every other kind keeps the global vs repo-scoped split.
+  const filters: Array<{ id: string; label: string }> = isPlugins
+    ? [
+        { id: 'all', label: 'All' },
+        { id: 'enabled', label: 'Enabled' },
+        { id: 'disabled', label: 'Disabled' },
+      ]
+    : [
+        { id: 'all', label: 'All' },
+        { id: 'global', label: 'Global' },
+        { id: 'repo', label: 'Repo-scoped' },
+      ];
+
+  const passes = (i: Item, f: string): boolean =>
+    f === 'all' ? true : isPlugins ? i.status === f : f === 'global' ? isGlobal(i) : !isGlobal(i);
+
+  const counts: Record<string, number> = {};
+  for (const f of filters) counts[f.id] = base.filter((i) => passes(i, f.id)).length;
+
+  const items = base
+    .filter((i) => passes(i, filter))
+    .slice()
+    .sort((a, b) =>
+      isPlugins
+        ? Number(a.status === 'disabled') - Number(b.status === 'disabled') ||
+          a.name.localeCompare(b.name)
+        : usage(b, totalRepos) - usage(a, totalRepos) || a.name.localeCompare(b.name),
+    );
 
   return (
     <div className="cat">
@@ -96,28 +122,30 @@ export function CatalogExplorer({
             <button
               key={f.id}
               type="button"
-              className={`cat-chip${scope === f.id ? ' active' : ''}`}
-              onClick={() => setScope(f.id)}
+              className={`cat-chip${filter === f.id ? ' active' : ''}`}
+              onClick={() => setFilter(f.id)}
             >
               {f.label}
               <strong>{counts[f.id]}</strong>
             </button>
           ))}
         </div>
-        <span className="cat-hint">sorted by how many repos use it</span>
+        <span className="cat-hint">
+          {isPlugins ? 'global base kit — on by default' : 'sorted by how many repos use it'}
+        </span>
       </div>
 
       <table className="cat-table">
         <thead>
           <tr>
             <th scope="col">Name</th>
-            <th scope="col">Used by</th>
+            <th scope="col">{isPlugins ? 'Status' : 'Used by'}</th>
             <th className="cat-src-h" scope="col">Source</th>
           </tr>
         </thead>
         <tbody>
           {items.map((item) => (
-            <tr key={item.id}>
+            <tr key={item.id} className={isPlugins && item.status === 'disabled' ? 'is-disabled' : undefined}>
               <td className="cat-name">
                 <span className="cat-name-main">{item.name}</span>
                 {subtitle(item) ? (
@@ -125,7 +153,7 @@ export function CatalogExplorer({
                 ) : null}
               </td>
               <td className="cat-used">
-                <UsedBy item={item} totalRepos={totalRepos} />
+                {isPlugins ? <PluginStatus item={item} /> : <UsedBy item={item} totalRepos={totalRepos} />}
               </td>
               <td className="cat-src">
                 <a href={sourceHref(item)} target="_blank" rel="noreferrer">
