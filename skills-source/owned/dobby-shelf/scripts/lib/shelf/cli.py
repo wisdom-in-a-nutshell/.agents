@@ -48,6 +48,7 @@ def add_subparsers(parent: argparse.ArgumentParser) -> None:
     p.add_argument("--id")
     p.add_argument("--client-mutation-id")
     p.add_argument("--source-ref", default="dobby-shelf-cli")
+    p.add_argument("--source-type", choices=["agent", "chat", "ui"], default="agent")
     fmt(p)
     p.set_defaults(handler=cmd_add)
 
@@ -63,6 +64,7 @@ def add_subparsers(parent: argparse.ArgumentParser) -> None:
     hp.add_argument("--id")
     hp.add_argument("--client-mutation-id")
     hp.add_argument("--source-ref", default="dobby-shelf-cli")
+    hp.add_argument("--source-type", choices=["agent", "chat", "ui"], default="agent")
     fmt(hp)
     hp.set_defaults(handler=cmd_habit_add)
 
@@ -82,6 +84,22 @@ def add_subparsers(parent: argparse.ArgumentParser) -> None:
     p.add_argument("--show-on", required=True)
     fmt(p)
     p.set_defaults(handler=cmd_defer)
+
+    p = sub.add_parser("update", help="Edit title/type/date/note fields")
+    p.add_argument("selector")
+    p.add_argument("--title")
+    p.add_argument("--type", choices=["do", "buy"], dest="item_type")
+    show = p.add_mutually_exclusive_group()
+    show.add_argument("--show-on")
+    show.add_argument("--clear-show", action="store_true")
+    due = p.add_mutually_exclusive_group()
+    due.add_argument("--due-on")
+    due.add_argument("--clear-due", action="store_true")
+    note = p.add_mutually_exclusive_group()
+    note.add_argument("--note")
+    note.add_argument("--clear-note", action="store_true")
+    fmt(p)
+    p.set_defaults(handler=cmd_update)
 
     p = sub.add_parser("note", help="Set, append to, or clear a Shelf item note")
     p.add_argument("selector")
@@ -116,7 +134,7 @@ def cmd_list(args: argparse.Namespace) -> int:
 
 def cmd_add(args: argparse.Namespace) -> int:
     env = Envelope("shelf.add")
-    result = service.add_single(title=args.title, item_type=args.item_type, show_on=args.show_on, due_on=args.due_on, note=args.note, item_id=args.id, source_ref=args.source_ref, client_mutation_id=args.client_mutation_id)
+    result = service.add_single(title=args.title, item_type=args.item_type, show_on=args.show_on, due_on=args.due_on, note=args.note, item_id=args.id, source_ref=args.source_ref, source_type=args.source_type, client_mutation_id=args.client_mutation_id)
     data = {"item": result.item, "revision": result.state.get("revision"), "updatedAt": result.state.get("updatedAt")}
     return emit_result(env, data, f"added {result.item['id']}: {result.item['title']}", args)
 
@@ -124,7 +142,7 @@ def cmd_add(args: argparse.Namespace) -> int:
 def cmd_habit_add(args: argparse.Namespace) -> int:
     env = Envelope("shelf.habit.add")
     days = [day.strip().lower() for day in args.days.split(",") if day.strip()] if args.days else None
-    result = service.add_habit(title=args.title, cadence=args.cadence, start_on=args.start_on, end_on=args.end_on, days_of_week=days, note=args.note, item_id=args.id, source_ref=args.source_ref, client_mutation_id=args.client_mutation_id)
+    result = service.add_habit(title=args.title, cadence=args.cadence, start_on=args.start_on, end_on=args.end_on, days_of_week=days, note=args.note, item_id=args.id, source_ref=args.source_ref, source_type=args.source_type, client_mutation_id=args.client_mutation_id)
     data = {"item": result.item, "revision": result.state.get("revision"), "updatedAt": result.state.get("updatedAt")}
     return emit_result(env, data, f"added habit {result.item['id']}: {result.item['title']}", args)
 
@@ -148,6 +166,23 @@ def cmd_defer(args: argparse.Namespace) -> int:
     result = service.defer(args.selector, args.show_on)
     data = {"item": result.item, "revision": result.state.get("revision"), "updatedAt": result.state.get("updatedAt")}
     return emit_result(env, data, f"deferred {result.item['id']}: {result.item['title']}", args)
+
+
+def cmd_update(args: argparse.Namespace) -> int:
+    env = Envelope("shelf.update")
+    show_on = None if args.clear_show else args.show_on
+    due_on = None if args.clear_due else args.due_on
+    note = "" if args.clear_note else args.note
+    result = service.update_item(
+        args.selector,
+        title=args.title,
+        item_type=args.item_type,
+        show_on=show_on if args.clear_show or args.show_on is not None else service._UNSET,
+        due_on=due_on if args.clear_due or args.due_on is not None else service._UNSET,
+        note=note if args.clear_note or args.note is not None else service._UNSET,
+    )
+    data = {"item": result.item, "revision": result.state.get("revision"), "updatedAt": result.state.get("updatedAt")}
+    return emit_result(env, data, f"updated {result.item['id']}: {result.item['title']}", args)
 
 
 def cmd_note(args: argparse.Namespace) -> int:

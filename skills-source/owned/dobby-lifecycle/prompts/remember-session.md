@@ -42,7 +42,7 @@ Avoid generic topic summaries, transcript-like detail, noisy implementation chat
 Default to session memory. Promote outside session memory only when clear:
 
 - `memory/sessions/YYYY/MM/DD-HHMMSS.json` — default continuity index card for this ending thread.
-- `state/shelf.json` via the Shelf client — personal actionable open loops, reminders, waiting items, or commitments from Adi.
+- `state/shelf.json` via the Shelf client — personal actionable open loops, purchases, habits, waiting items, or commitments from Adi.
 - project tracker under `projects/<project>/tasks.md` — Dobby/system/project work state, decisions, resume points, and open implementation questions.
 - `memory/now.json` — this week’s active orientation only; do not use it as a generic session summary.
 - `memory/areas/<area>/log.jsonl` — concrete dated area facts/events.

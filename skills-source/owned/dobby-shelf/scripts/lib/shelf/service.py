@@ -231,6 +231,68 @@ def defer(selector: str, show_on: str) -> CommandResult:
     return CommandResult(state, item=item)
 
 
+_UNSET = object()
+
+
+def update_item(
+    selector: str,
+    *,
+    title: str | None = None,
+    item_type: str | None = None,
+    show_on: str | None | object = _UNSET,
+    due_on: str | None | object = _UNSET,
+    note: str | None | object = _UNSET,
+) -> CommandResult:
+    if title is not None:
+        title = title.strip()
+        if not title:
+            raise ShelfValidationError("title must not be empty")
+    if item_type is not None and item_type not in {"do", "buy"}:
+        raise ShelfValidationError("type updates must be do or buy")
+    if show_on is not _UNSET and show_on is not None:
+        validate_date(show_on, "showOn")
+    if due_on is not _UNSET and due_on is not None:
+        validate_date(due_on, "dueOn")
+    if note is not _UNSET and note is not None:
+        note = note.strip()
+
+    if title is None and item_type is None and show_on is _UNSET and due_on is _UNSET and note is _UNSET:
+        raise ShelfValidationError("at least one update field is required")
+
+    def apply(state: dict[str, Any], now: str) -> dict[str, Any]:
+        item = resolve_item(state.get("items", []), selector)
+        if item.get("state") == "dropped":
+            raise ShelfValidationError("dropped items cannot be edited")
+        if title is not None:
+            item["title"] = title
+        if note is not _UNSET:
+            if note:
+                item["note"] = note
+            else:
+                item.pop("note", None)
+        if item.get("type") == "habit":
+            if item_type is not None or show_on is not _UNSET or due_on is not _UNSET:
+                raise ShelfValidationError("habit updates support title/note only; edit schedule separately")
+        else:
+            if item_type is not None:
+                item["type"] = item_type
+            if show_on is not _UNSET:
+                if show_on:
+                    item["showOn"] = show_on
+                else:
+                    item.pop("showOn", None)
+            if due_on is not _UNSET:
+                if due_on:
+                    item["dueOn"] = due_on
+                else:
+                    item.pop("dueOn", None)
+        item["updatedAt"] = now
+        return item
+
+    state, item = mutate(apply)
+    return CommandResult(state, item=item)
+
+
 def update_note(selector: str, *, set_note: str | None = None, append_note: str | None = None, clear: bool = False) -> CommandResult:
     def clean(value: str | None, mode: str) -> str:
         text = (value or "").strip()
