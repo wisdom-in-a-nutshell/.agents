@@ -9,7 +9,6 @@ import {
   enabledPlugins,
   globalMcp,
   globalSkills,
-  itemAppliesToRepo,
   missingRepoAssignments,
   repoCapabilitySummary,
   repoDisplayName,
@@ -51,16 +50,12 @@ export function OverviewSection({
   const reviewCount = housekeeping.reduce((sum, h) => sum + h.n, 0);
   const allClear = warnings === 0 && housekeeping.length === 0;
 
-  // Repos ranked by their own additions; base-kit-only repos are summarised, not listed.
+  // Highlight repos that configure something of their own; the base-kit-only
+  // tail is one summary line. (Dev servers live on the Board, not the glance.)
   const ranked = data.groups.repos
-    .map((r) => ({
-      repo: r,
-      add: repoCapabilitySummary(data, r).localTotal,
-      dev: data.groups.dev_servers.some((s) => itemAppliesToRepo(s, r)),
-    }))
+    .map((r) => ({ repo: r, add: repoCapabilitySummary(data, r).localTotal }))
     .sort((a, b) => b.add - a.add);
-  // Show every repo that adds something; the base-kit-only tail is one summary line.
-  const highlights = ranked.filter((r) => r.add > 0 || r.dev);
+  const highlights = ranked.filter((r) => r.add > 0);
   const baseOnly = ranked.length - highlights.length;
 
   const totals: Array<{ label: string; n: number; section: SectionId }> = [
@@ -69,7 +64,6 @@ export function OverviewSection({
     { label: 'MCP tools', n: c.mcp, section: 'mcp' },
     { label: 'Hooks', n: enabledHooks(data).length, section: 'hooks' },
     { label: 'Repos', n: c.repos, section: 'repos' },
-    { label: 'Dev servers', n: c.dev_servers, section: 'board' },
   ];
 
   const statusTone = allClear ? 'ok' : warnings ? 'alert' : 'note';
@@ -188,16 +182,13 @@ export function OverviewSection({
             <span className="ov-key">
               <b>+N</b> repo additions
             </span>
-            <span className="ov-key">
-              <span className="ov-devdot" /> dev server
-            </span>
           </span>
           <button className="ov-link" type="button" onClick={() => onNavigate('repos')}>
             Open repos →
           </button>
         </div>
         <div className="ov-repos">
-          {highlights.map(({ repo, add, dev }) => (
+          {highlights.map(({ repo, add }) => (
             <button
               key={repo.id}
               className="ov-repo"
@@ -205,17 +196,12 @@ export function OverviewSection({
               onClick={() => navigateRepo(repo.name)}
             >
               <span className="ov-repo-name">{repoDisplayName(repo.name)}</span>
-              <span className="ov-repo-meta">
-                {add > 0 ? <span className="ov-repo-add">+{add}</span> : null}
-                {dev ? <span className="ov-devdot" title="has dev server" /> : null}
-              </span>
+              <span className="ov-repo-add">+{add}</span>
             </button>
           ))}
         </div>
         {baseOnly > 0 ? (
-          <p className="ov-baseonly">
-            {baseOnly} more inherit the base kit only — nothing repo-specific configured.
-          </p>
+          <p className="ov-baseonly">{baseOnly} more inherit the base kit only.</p>
         ) : null}
       </section>
     </div>

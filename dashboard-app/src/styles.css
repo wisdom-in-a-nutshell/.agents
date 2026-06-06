@@ -1105,7 +1105,7 @@ body.sidebar-collapsed .nav-group + .nav-group { margin-top: 8px; }
 .ov-house-item strong { color: var(--muted); font-variant-numeric: tabular-nums; }
 
 /* What's installed — totals as quiet entry points; zeros mute, don't click. */
-.ov-totals { display: grid; grid-template-columns: repeat(6, 1fr); gap: 10px; }
+.ov-totals { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; }
 .ov-total {
   display: block; text-align: left;
   padding: 13px 15px;
@@ -1137,9 +1137,7 @@ body.sidebar-collapsed .nav-group + .nav-group { margin-top: 8px; }
 }
 .ov-repo:hover { background: var(--surface-soft); border-color: var(--faint); }
 .ov-repo-name { font-size: var(--font-sm); }
-.ov-repo-meta { display: inline-flex; align-items: center; gap: 6px; }
 .ov-repo-add { color: var(--scope-global-ink); font-size: var(--font-xxs); font-weight: 600; font-variant-numeric: tabular-nums; }
-.ov-devdot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); display: inline-block; }
 .ov-baseonly { margin: 12px 0 0; color: var(--muted); font-size: var(--font-xs); }
 
 @media (max-width: 720px) {

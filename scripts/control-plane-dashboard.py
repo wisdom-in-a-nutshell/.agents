@@ -94,13 +94,6 @@ def build_capability_board(counts: dict[str, Any]) -> list[dict[str, Any]]:
             "codex": {"status": "stable", "note": ".codex/environments"},
             "claude": {"status": "stable", "note": ".claude/launch.json"},
         },
-        {
-            "key": "design", "name": "Design",
-            "desc": "One look across every app — adi-design",
-            "source": "adi-design / tokens.css", "count": None,
-            "codex": {"status": "stable", "note": "via skill + tokens"},
-            "claude": {"status": "stable", "note": "via skill + tokens"},
-        },
     ]
 
 
