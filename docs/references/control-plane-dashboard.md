@@ -95,6 +95,16 @@ Inspect the service:
 ./scripts/install-control-plane-dashboard-launchagent.sh --logs
 ```
 
+Deploy the built dashboard assets and refresh the LaunchAgent through the
+repo-owned deploy wrapper:
+
+```bash
+./scripts/deploy-control-plane-dashboard.sh --apply --plain --no-input
+```
+
+The central Mac mini production reconciler in `~/GitHub/scripts` runs this
+wrapper automatically after committed dashboard/runtime changes on `main`.
+
 Remove only the persistent local server:
 
 ```bash
