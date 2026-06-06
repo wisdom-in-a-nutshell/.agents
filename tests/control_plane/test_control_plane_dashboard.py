@@ -10,7 +10,13 @@ from tests.control_plane.support import REPO_ROOT, TempDirTestCase, write_json, 
 class ControlPlaneDashboardDataTests(TempDirTestCase):
     def write_minimal_control_plane(self) -> None:
         root = self.temp_path
+        github_root = root / "GitHub"
+        adi = github_root / "adi"
+        codexclaw = github_root / "codexclaw"
+        adi.mkdir(parents=True)
+        codexclaw.mkdir(parents=True)
         write_text(root / "skills-source/owned/global-helper/SKILL.md", "# global-helper\n")
+        write_text(root / "skills-source/owned/repo-helper/SKILL.md", "# repo-helper\n")
         write_json(
             root / "skills/registry.json",
             {
@@ -111,15 +117,16 @@ class ControlPlaneDashboardDataTests(TempDirTestCase):
                 },
                 "repos": [
                     {
-                        "path": "~/GitHub/adi",
+                        "path": str(adi),
                         "mcp_presets": ["cloudflare-docs"],
                     },
                     {
-                        "path": "~/GitHub/codexclaw",
+                        "path": str(codexclaw),
                     },
                 ],
             },
         )
+        write_json(root / "dev-servers/registry.json", {"repos": []})
 
     def test_data_command_emits_agent_contract_and_normalized_groups(self) -> None:
         self.write_minimal_control_plane()
@@ -149,10 +156,53 @@ class ControlPlaneDashboardDataTests(TempDirTestCase):
         self.assertEqual(data["counts"]["mcp"], 2)
         self.assertEqual(data["counts"]["repos"], 2)
         self.assertEqual(data["counts"]["hooks"], 1)
+        self.assertEqual(data["counts"]["warnings"], 0)
         self.assertEqual(data["groups"]["repos"][0]["details"]["skill_count"], 3)
         self.assertEqual(data["groups"]["repos"][0]["details"]["mcp_count"], 2)
         self.assertEqual(data["groups"]["repos"][1]["details"]["plugin_count"], 2)
+        self.assertTrue(data["groups"]["repos"][0]["details"]["exists"])
         self.assertTrue(any(item["name"] == "openaiDeveloperDocs" for item in data["groups"]["mcp"]))
+
+    def test_data_warns_for_missing_managed_repo_path(self) -> None:
+        self.write_minimal_control_plane()
+        write_json(
+            self.temp_path / "codex/config/repo-bootstrap.json",
+            {
+                "defaults": {
+                    "model": "gpt-5.5",
+                    "model_reasoning_effort": "high",
+                    "plan_mode_reasoning_effort": "high",
+                    "service_tier": None,
+                },
+                "repos": [
+                    {
+                        "path": str(self.temp_path / "GitHub/adi"),
+                    },
+                    {
+                        "path": str(self.temp_path / "GitHub/deleted-repo"),
+                    },
+                ],
+            },
+        )
+
+        result = run_command(
+            [
+                sys.executable,
+                str(REPO_ROOT / "scripts/control-plane-dashboard.py"),
+                "data",
+                "--root",
+                str(self.temp_path),
+                "--no-input",
+            ]
+        )
+
+        data = json.loads(result.stdout)["data"]
+        warnings = data["warnings"]
+        self.assertEqual(data["counts"]["warnings"], 1)
+        self.assertEqual(warnings[0]["code"], "managed_repo_missing")
+        self.assertIn("deleted-repo", warnings[0]["message"])
+        deleted = [repo for repo in data["groups"]["repos"] if repo["name"] == "deleted-repo"][0]
+        self.assertFalse(deleted["details"]["exists"])
 
     def test_plain_data_command_is_stable_summary(self) -> None:
         self.write_minimal_control_plane()

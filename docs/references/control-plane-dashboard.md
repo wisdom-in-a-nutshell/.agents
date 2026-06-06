@@ -171,6 +171,11 @@ The normalized `data` object contains:
 - `items`: one flat searchable list
 - `groups`: grouped lists for skills, plugins, MCP presets, repos, and hooks
 
+Repo entries come from `codex/config/repo-bootstrap.json`. If a managed repo
+path no longer exists on the current machine, the dashboard keeps the row but
+adds a `managed_repo_missing` warning so the stale registry entry appears in the
+Attention view instead of silently looking healthy.
+
 ## Contract Boundary
 
 The dashboard is an operator inspection surface. Automation should consume
