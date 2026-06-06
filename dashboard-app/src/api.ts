@@ -44,19 +44,9 @@ export function useControlPlane(): ControlPlaneState {
   }, []);
 
   useEffect(() => {
-    // The server reads the registries fresh on every request, so each page load
-    // already renders current data. No polling — just refetch when you come back
-    // to the tab, so an already-open window is fresh the moment you look at it.
+    // The server reads the registries fresh on every request, so a single load
+    // renders current data. No background refresh — reopen or reload to refetch.
     void load(false);
-    const refetch = () => {
-      if (document.visibilityState === 'visible') void load(true);
-    };
-    window.addEventListener('focus', refetch);
-    document.addEventListener('visibilitychange', refetch);
-    return () => {
-      window.removeEventListener('focus', refetch);
-      document.removeEventListener('visibilitychange', refetch);
-    };
   }, [load]);
 
   return { data, error, refreshStatus };
