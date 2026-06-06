@@ -1,14 +1,27 @@
 import type { ControlPlaneData, SectionId } from '../types';
 import { navCount } from '../selectors';
 
-const NAV: Array<{ id: SectionId; label: string; short: string }> = [
-  { id: 'board', label: 'Board', short: 'B' },
-  { id: 'repos', label: 'Repos', short: 'R' },
-  { id: 'attention', label: 'Attention', short: '!' },
-  { id: 'skills', label: 'Skills', short: 'S' },
-  { id: 'plugins', label: 'Plugins', short: 'P' },
-  { id: 'mcp', label: 'MCP', short: 'M' },
-  { id: 'hooks', label: 'Hooks', short: 'H' },
+type NavItem = { id: SectionId; label: string; short: string };
+
+const NAV_GROUPS: Array<{ label: string; items: NavItem[] }> = [
+  {
+    label: 'Views',
+    items: [
+      { id: 'overview', label: 'Overview', short: 'O' },
+      { id: 'board', label: 'Board', short: 'B' },
+      { id: 'repos', label: 'Repos', short: 'R' },
+      { id: 'attention', label: 'Attention', short: '!' },
+    ],
+  },
+  {
+    label: 'Catalogs',
+    items: [
+      { id: 'skills', label: 'Skills', short: 'S' },
+      { id: 'plugins', label: 'Plugins', short: 'P' },
+      { id: 'mcp', label: 'MCP', short: 'M' },
+      { id: 'hooks', label: 'Hooks', short: 'H' },
+    ],
+  },
 ];
 
 export function Sidebar({
@@ -52,19 +65,29 @@ export function Sidebar({
       </div>
 
       <nav className="nav-stack" aria-label="Control-plane sections">
-        {NAV.map((item) => (
-          <button
-            key={item.id}
-            type="button"
-            className={`nav-button${section === item.id ? ' active' : ''}`}
-            onClick={() => onSelect(item.id)}
-          >
-            <span className="nav-label">{item.label}</span>
-            <span className="nav-short" aria-hidden="true">
-              {item.short}
+        {NAV_GROUPS.map((group) => (
+          <div className="nav-group" key={group.label}>
+            <span className="nav-group-label" aria-hidden="true">
+              {group.label}
             </span>
-            <strong>{data ? navCount(data, item.id) : 0}</strong>
-          </button>
+            {group.items.map((item) => {
+              const count = data ? navCount(data, item.id) : 0;
+              return (
+                <button
+                  key={item.id}
+                  type="button"
+                  className={`nav-button${section === item.id ? ' active' : ''}`}
+                  onClick={() => onSelect(item.id)}
+                >
+                  <span className="nav-label">{item.label}</span>
+                  <span className="nav-short" aria-hidden="true">
+                    {item.short}
+                  </span>
+                  {count > 0 ? <strong>{count}</strong> : null}
+                </button>
+              );
+            })}
+          </div>
         ))}
       </nav>
 

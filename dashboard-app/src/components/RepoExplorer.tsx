@@ -206,6 +206,14 @@ export function RepoExplorer({
           <span>Repos</span>
           <strong>{repos.length}</strong>
         </div>
+        <p className="re-list-legend">
+          <span>
+            <b>+N</b> repo additions
+          </span>
+          <span>
+            <span className="re-list-dev" /> dev server
+          </span>
+        </p>
         <ul>
           {repos.map((repo) => {
             const caps = repoCapabilitySummary(data, repo);

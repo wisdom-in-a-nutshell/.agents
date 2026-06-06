@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { useControlPlane } from './api';
 import { BoardSection } from './components/BoardSection';
 import { CatalogExplorer } from './components/CatalogExplorer';
+import { OverviewSection } from './components/OverviewSection';
 import { RepoExplorer } from './components/RepoExplorer';
 import { Sidebar } from './components/Sidebar';
 import { NavProvider } from './primitives';
@@ -10,11 +11,20 @@ import { SectionView } from './sections';
 import type { SectionId } from './types';
 
 const SIDEBAR_KEY = 'agentControlSidebarCollapsed';
-const SECTIONS: SectionId[] = ['board', 'repos', 'attention', 'skills', 'plugins', 'mcp', 'hooks'];
+const SECTIONS: SectionId[] = [
+  'overview',
+  'board',
+  'repos',
+  'attention',
+  'skills',
+  'plugins',
+  'mcp',
+  'hooks',
+];
 
 function initialSection(): SectionId {
   const requested = new URLSearchParams(window.location.search).get('section');
-  return SECTIONS.includes(requested as SectionId) ? (requested as SectionId) : 'board';
+  return SECTIONS.includes(requested as SectionId) ? (requested as SectionId) : 'overview';
 }
 
 export function App() {
@@ -32,7 +42,7 @@ export function App() {
   const selectSection = useCallback((next: SectionId) => {
     setSection(next);
     setFocusedRepoKey('');
-    const url = next === 'board' ? window.location.pathname : `?section=${next}`;
+    const url = next === 'overview' ? window.location.pathname : `?section=${next}`;
     window.history.replaceState(null, '', url);
   }, []);
 
@@ -67,7 +77,13 @@ export function App() {
       />
       <main className="main-panel">
         {data ? (
-          section === 'board' ? (
+          section === 'overview' ? (
+            <section className="content-region" aria-live="polite">
+              <NavProvider value={navigateToRepo}>
+                <OverviewSection data={data} onNavigate={selectSection} />
+              </NavProvider>
+            </section>
+          ) : section === 'board' ? (
             <section className="content-region" aria-live="polite">
               <NavProvider value={navigateToRepo}>
                 <BoardSection data={data} />

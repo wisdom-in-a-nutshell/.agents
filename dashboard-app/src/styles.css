@@ -981,3 +981,173 @@ input:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
 }
+
+/* ===========================================================================
+   Sidebar nav grouping — Views vs Catalogs, so the counts read as catalog
+   sizes, not stray badges. Quiet label hairline above each group.
+   =========================================================================== */
+.nav-group { display: grid; gap: 6px; }
+.nav-group + .nav-group { margin-top: 14px; }
+.nav-group-label {
+  padding: 0 11px;
+  color: var(--faint);
+  font-size: var(--font-micro);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+body.sidebar-collapsed .nav-group-label { display: none; }
+body.sidebar-collapsed .nav-group + .nav-group { margin-top: 8px; }
+
+.re-list-legend {
+  display: flex;
+  gap: 14px;
+  margin: 0;
+  padding: 8px 14px;
+  border-bottom: 1px solid var(--line-soft);
+  color: var(--muted);
+  font-size: var(--font-xxs);
+}
+.re-list-legend span { display: inline-flex; align-items: center; gap: 5px; }
+.re-list-legend b { color: var(--text); font-weight: 600; font-variant-numeric: tabular-nums; }
+
+/* ===========================================================================
+   Overview — the glanceable home. Status first, then base kit, needs-you,
+   totals, repos. Flat hairline surfaces; sage = clear/action, gold = base
+   kit, rose = needs a look. Calm by construction: zeros mute, empties summarise.
+   =========================================================================== */
+.ov-wrap { max-width: 1080px; display: grid; gap: var(--space-xl); }
+
+.ov-top { display: flex; align-items: start; justify-content: space-between; gap: 24px; flex-wrap: wrap; }
+.ov-top h1 { font-family: var(--font-serif); font-weight: var(--weight-strong); font-size: var(--font-page); letter-spacing: -0.01em; margin: 0; color: var(--text); }
+.ov-tagline { color: var(--muted); font-size: 14px; margin: 7px 0 0; max-width: 52ch; }
+.ov-status { display: grid; justify-items: end; gap: 6px; }
+.ov-pill { display: inline-flex; align-items: center; gap: 8px; padding: 5px 13px; border-radius: var(--radius-pill); border: 1px solid var(--line); background: var(--surface); font-size: var(--font-sm); font-weight: var(--weight-label); color: var(--text); }
+.ov-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--faint); }
+.ov-pill.ok { background: var(--accent-soft); border-color: var(--accent-line); color: var(--accent-ink); }
+.ov-pill.ok .ov-dot { background: var(--accent); }
+.ov-pill.note { background: var(--amber-soft); border-color: var(--amber-line); color: var(--amber-ink); }
+.ov-pill.note .ov-dot { background: var(--amber); }
+.ov-pill.alert { background: var(--rose-soft); border-color: var(--rose-line); color: var(--rose-ink); }
+.ov-pill.alert .ov-dot { background: var(--rose); }
+.ov-updated { color: var(--muted); font-size: var(--font-xs); font-variant-numeric: tabular-nums; }
+
+/* Base kit band — the golden light through the canopy reaching every repo. */
+.ov-base {
+  display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap;
+  width: 100%; text-align: left;
+  padding: 16px 18px;
+  border: 1px solid var(--scope-global-line);
+  border-radius: var(--radius);
+  background: var(--scope-global-soft);
+  cursor: pointer;
+  transition: border-color var(--t-fast) var(--ease-out), background-color var(--t-fast) var(--ease-out);
+}
+.ov-base:hover { border-color: var(--scope-global); }
+.ov-base-label { color: var(--scope-global-ink); font-size: var(--font-xs); font-weight: var(--weight-strong); letter-spacing: 0.02em; text-transform: uppercase; }
+.ov-base-nums { color: var(--muted); font-size: var(--font-read); font-family: var(--font-serif); }
+.ov-base-nums b { color: var(--scope-global-ink); font-weight: var(--weight-strong); font-variant-numeric: tabular-nums; }
+.ov-base-nums i { color: var(--faint); font-style: normal; padding: 0 1px; }
+.ov-base-go { margin-left: auto; color: var(--scope-global-ink); font-size: var(--font-lg); }
+
+/* Section heads shared by the overview blocks. */
+.ov-sec-head { display: flex; align-items: baseline; gap: 12px; margin-bottom: 12px; }
+.ov-sec-head h2 { font-family: var(--font-serif); font-weight: 500; font-size: 21px; letter-spacing: -0.005em; margin: 0; color: var(--text); }
+.ov-hint { color: var(--muted); font-size: var(--font-xs); }
+.ov-link { margin-left: auto; background: none; border: 0; padding: 4px 2px; color: var(--accent-ink); font: inherit; font-size: var(--font-sm); font-weight: var(--weight-strong); cursor: pointer; }
+.ov-link:hover { text-decoration: underline; }
+.ov-legend { display: inline-flex; gap: 14px; color: var(--muted); font-size: var(--font-xxs); }
+.ov-key { display: inline-flex; align-items: center; gap: 5px; }
+.ov-key b { color: var(--text); font-weight: 600; }
+
+/* Needs you — the agent-native hero: what only a human can move. */
+.ov-needs, .ov-block { display: block; }
+.ov-clear {
+  display: flex; align-items: center; gap: 10px;
+  padding: 16px 18px;
+  border: 1px solid var(--accent-line);
+  border-radius: var(--radius);
+  background: var(--accent-soft);
+  color: var(--accent-ink);
+  font-size: var(--font-md);
+}
+.ov-check { width: 16px; height: 16px; border-radius: 50%; flex: 0 0 auto; background: var(--accent); position: relative; }
+.ov-check::after { content: ''; position: absolute; left: 5px; top: 3px; width: 4px; height: 8px; border: solid var(--surface); border-width: 0 2px 2px 0; transform: rotate(45deg); }
+
+.ov-needs-body { display: grid; gap: 12px; }
+.ov-warns { display: grid; gap: 8px; }
+.ov-warn-row {
+  display: flex; align-items: baseline; justify-content: space-between; gap: 14px;
+  width: 100%; text-align: left;
+  padding: 11px 14px;
+  border: 1px solid var(--rose-line);
+  border-radius: var(--radius-sm);
+  background: var(--rose-soft);
+  cursor: pointer;
+}
+.ov-warn-row:hover { border-color: var(--rose); }
+.ov-warn-title { color: var(--rose-ink); font-weight: var(--weight-label); }
+.ov-warn-src { color: var(--muted); font-family: var(--font-mono); font-size: var(--font-xxs); flex: 0 0 auto; }
+
+.ov-house { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+.ov-house-label { color: var(--muted); font-size: var(--font-xs); font-weight: var(--weight-strong); margin-right: 2px; }
+.ov-house-item {
+  display: inline-flex; align-items: center; gap: 7px;
+  padding: 5px 12px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-pill);
+  background: var(--surface);
+  color: var(--text);
+  font: inherit; font-size: var(--font-xs); font-weight: var(--weight-label);
+  cursor: pointer;
+  transition: background-color var(--t-fast) var(--ease-out), border-color var(--t-fast) var(--ease-out);
+}
+.ov-house-item:hover { background: var(--surface-soft); border-color: var(--faint); }
+.ov-house-item strong { color: var(--muted); font-variant-numeric: tabular-nums; }
+
+/* What's installed — totals as quiet entry points; zeros mute, don't click. */
+.ov-totals { display: grid; grid-template-columns: repeat(6, 1fr); gap: 10px; }
+.ov-total {
+  display: block; text-align: left;
+  padding: 13px 15px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+  cursor: pointer;
+  transition: border-color var(--t-fast) var(--ease-out), background-color var(--t-fast) var(--ease-out);
+}
+.ov-total:hover { border-color: var(--accent-line); background: var(--accent-soft); }
+.ov-total-n { display: block; font-family: var(--font-serif); font-size: 27px; line-height: 1.1; letter-spacing: -0.01em; font-variant-numeric: tabular-nums; color: var(--text); }
+.ov-total-l { display: block; color: var(--muted); font-size: 12px; margin-top: 2px; }
+.ov-total.is-zero { cursor: default; background: var(--surface-soft); }
+.ov-total.is-zero .ov-total-n { color: var(--faint); }
+.ov-total.is-zero .ov-total-l { color: var(--faint); }
+
+/* Repos — highlights only; the long tail is summarised in one line. */
+.ov-repos { display: flex; flex-wrap: wrap; gap: 8px; }
+.ov-repo {
+  display: inline-flex; align-items: center; gap: 9px;
+  padding: 8px 13px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-pill);
+  background: var(--surface);
+  color: var(--text);
+  font: inherit; font-weight: var(--weight-label);
+  cursor: pointer;
+  transition: background-color var(--t-fast) var(--ease-out), border-color var(--t-fast) var(--ease-out);
+}
+.ov-repo:hover { background: var(--surface-soft); border-color: var(--faint); }
+.ov-repo-name { font-size: var(--font-sm); }
+.ov-repo-meta { display: inline-flex; align-items: center; gap: 6px; }
+.ov-repo-add { color: var(--scope-global-ink); font-size: var(--font-xxs); font-weight: 600; font-variant-numeric: tabular-nums; }
+.ov-devdot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); display: inline-block; }
+.ov-baseonly { margin: 12px 0 0; color: var(--muted); font-size: var(--font-xs); }
+
+@media (max-width: 720px) {
+  .ov-totals { grid-template-columns: repeat(3, 1fr); }
+}
+@media (max-width: 520px) {
+  .ov-totals { grid-template-columns: repeat(2, 1fr); }
+  .ov-top { flex-direction: column; }
+  .ov-status { justify-items: start; }
+}
