@@ -19,6 +19,7 @@ This file is machine-wide baseline guidance. Keep it generic and avoid portfolio
 - Keep instructions concise, operational, and durable.
 - Keep machine-wide guidance generic; let each repo define its own local docs contract.
 - Treat repo-local `AGENTS.md` files and repo docs as the source of truth for repo structure and workflow.
+- In managed repos, agent surfaces are rendered from `~/GitHub/agents`: `.agents/skills/*` and `.claude/skills/*` are symlinks to canonical skill sources, while `.codex/config.toml`, `.codex/hooks.json`, `.claude/settings.json`, and `.claude/launch.json` are generated config. Do not hand-edit those surfaces unless troubleshooting; edit the canonical source in `~/GitHub/agents` or the repo's own docs/guidance, then rerun the bootstrap/check.
 - Unless the user explicitly asks for backward compatibility or repo-local guidance requires it, migrate cleanly to the target structure. Do not add dual reads, compatibility shims, legacy-schema support, or old-path fallbacks by default.
 - When working inside a repo, put temporary artifacts under that repo's `tmp/` directory unless the repo defines a different location. Do not scatter scratch files across the repo or home directory.
 - Remove disposable temporary artifacts when finished. Keep only durable outputs in documented repo locations.
