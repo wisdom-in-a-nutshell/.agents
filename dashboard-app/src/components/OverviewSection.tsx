@@ -79,7 +79,7 @@ export function OverviewSection({
         <div>
           <h1>Control Plane</h1>
           <p className="ov-tagline">
-            Everything your agents inherit — and anything that needs a look.
+            Everything your agents inherit, and anything that needs a look.
           </p>
         </div>
         <div className="ov-status">

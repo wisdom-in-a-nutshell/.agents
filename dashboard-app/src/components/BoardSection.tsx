@@ -116,7 +116,7 @@ export function BoardSection({ data }: { data: ControlPlaneData }) {
             <h1>Control Plane</h1>
           </div>
           <p className="cp-tagline">
-            How the agents are set up to write better code — every capability the runtimes inherit, and which runtime gets it.
+            How the agents are set up to write better code: every capability the runtimes inherit, and which runtime gets it.
           </p>
         </div>
         <div className="cp-meta">
@@ -140,20 +140,20 @@ export function BoardSection({ data }: { data: ControlPlaneData }) {
       </div>
       <Board capabilities={caps} />
       <div className="cp-legend">
-        <span><span className="cp-b" style={{ background: 'var(--accent)' }} />Stable — wired &amp; in use</span>
-        <span><span className="cp-b" style={{ background: 'var(--amber)' }} />New — just landed</span>
-        <span><span className="cp-b" style={{ background: 'var(--faint)' }} />Planned — next</span>
+        <span><span className="cp-b" style={{ background: 'var(--accent)' }} />Stable · wired &amp; in use</span>
+        <span><span className="cp-b" style={{ background: 'var(--amber)' }} />New · just landed</span>
+        <span><span className="cp-b" style={{ background: 'var(--faint)' }} />Planned · next</span>
         <span><span className="cp-b cp-b-dash" />Not applicable</span>
       </div>
 
-      <div className="cp-sec-head cp-sec-head-2">
+      <div className="cp-sec-head">
         <h2>Repo coverage</h2>
         <span className="cp-hint">what each of the {data.groups.repos.length} managed repos inherits</span>
       </div>
       <RepoCoverage repos={data.groups.repos} />
       <p className="cp-foot">
         Source of truth: the registries under <code>~/GitHub/agents</code>. Generated from{' '}
-        <code>control-plane-dashboard.py</code> — read-only, no state of its own.
+        <code>control-plane-dashboard.py</code>. Read-only, no state of its own.
       </p>
     </div>
   );

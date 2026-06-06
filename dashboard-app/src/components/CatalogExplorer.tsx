@@ -149,7 +149,7 @@ export function CatalogExplorer({
           ))}
         </div>
         <span className="cat-hint">
-          {isPlugins ? 'global base kit — on by default' : 'sorted by how many repos use it'}
+          {isPlugins ? 'global base kit · on by default' : 'sorted by how many repos use it'}
         </span>
       </div>
 
@@ -174,7 +174,12 @@ export function CatalogExplorer({
                 {isPlugins ? <PluginStatus item={item} /> : <UsedBy item={item} />}
               </td>
               <td className="cat-src">
-                <a href={sourceHref(item)} target="_blank" rel="noreferrer">
+                <a
+                  href={sourceHref(item)}
+                  target="_blank"
+                  rel="noreferrer"
+                  aria-label={`${item.name} source (opens in new tab)`}
+                >
                   {sourceLabel(item)}
                 </a>
               </td>

@@ -128,14 +128,3 @@ export type AttentionType =
   | 'unscoped';
 
 export type Tone = '' | 'warning' | 'ok' | 'scope-global' | 'scope-local';
-
-export interface Metric {
-  label: string;
-  value: number;
-  tone: Tone;
-}
-
-export interface FilterOption {
-  id: string;
-  label: string;
-}

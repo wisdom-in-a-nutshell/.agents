@@ -173,7 +173,7 @@ function RepoDetail({ data, repo }: { data: ControlPlaneData; repo: Item }) {
       </CapGroup>
 
       <CapGroup title="Agent Preview" runtime="Codex + Claude" count={devNames.length}>
-        <Chips items={devNames} accent empty="No preview server — add in dev-servers/registry.json" />
+        <Chips items={devNames} accent empty="No preview server. Add in dev-servers/registry.json" />
       </CapGroup>
     </div>
   );

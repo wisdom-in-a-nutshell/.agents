@@ -62,14 +62,6 @@ p {
   margin-top: 0;
 }
 
-.muted {
-  color: var(--muted);
-}
-
-.hidden {
-  display: none;
-}
-
 /* ---- App shell ---------------------------------------------------------- */
 .app-shell {
   display: grid;
@@ -298,10 +290,6 @@ body.sidebar-collapsed .nav-short {
   overflow-wrap: anywhere;
 }
 
-.topbar-pill.ok strong {
-  color: var(--accent-ink);
-}
-
 .topbar-pill.warning {
   background: var(--rose-soft);
   border-color: var(--rose-line);
@@ -311,60 +299,7 @@ body.sidebar-collapsed .nav-short {
   color: var(--rose-ink);
 }
 
-/* ---- Metrics ------------------------------------------------------------ */
-.metrics-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(146px, 1fr));
-  gap: 10px;
-}
-
-.metric-block {
-  min-height: 80px;
-  padding: 14px;
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
-  background: var(--surface);
-}
-
-.metric-block span {
-  display: block;
-  color: var(--muted);
-  font-size: var(--font-xs);
-  font-weight: var(--weight-strong);
-}
-
-.metric-block strong {
-  display: block;
-  margin-top: 8px;
-  font-family: var(--font-serif);
-  font-size: 1.85rem;
-  line-height: 1;
-}
-
-.metric-block.warning strong {
-  color: var(--rose-ink);
-}
-
-.metric-block.scope-global {
-  background: var(--scope-global-soft);
-  border-color: var(--scope-global-line);
-}
-
-.metric-block.scope-global strong {
-  color: var(--scope-global-ink);
-}
-
-.metric-block.scope-local {
-  background: var(--scope-local-soft);
-  border-color: var(--scope-local-line);
-}
-
-.metric-block.scope-local strong {
-  color: var(--scope-local-ink);
-}
-
-/* ---- Panels (warnings / sections / overview) ---------------------------- */
-.warning-panel,
+/* ---- Panels (grouped attention sections) ------------------------------- */
 .section-panel {
   padding: var(--space-lg);
   border: 1px solid var(--line);
@@ -390,82 +325,6 @@ body.sidebar-collapsed .nav-short {
   font-weight: var(--weight-strong);
 }
 
-.warning-list {
-  display: grid;
-  gap: 8px;
-}
-
-.warning-item {
-  padding: 11px 12px;
-  border: 1px solid var(--rose-line);
-  border-radius: var(--radius-sm);
-  background: var(--rose-soft);
-}
-
-.warning-item.error {
-  border-color: var(--rose);
-  background: oklch(0.93 0.05 25);
-}
-
-.warning-item strong {
-  display: block;
-  margin-bottom: 2px;
-}
-
-.warning-item span {
-  color: var(--muted);
-  font-size: var(--font-xs);
-}
-
-/* ---- Filters ------------------------------------------------------------ */
-.filter-bar {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.filter-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  min-height: 34px;
-  padding: 6px 12px;
-  border: 1px solid var(--line);
-  border-radius: var(--radius-pill);
-  background: var(--surface);
-  color: var(--text);
-  cursor: pointer;
-  font-weight: var(--weight-label);
-  transition: background-color var(--t-fast) var(--ease-out), border-color var(--t-fast) var(--ease-out);
-}
-
-.filter-chip strong {
-  color: var(--muted);
-  font-size: var(--font-xs);
-}
-
-.filter-chip:hover,
-.filter-chip.active {
-  background: var(--accent-soft);
-  border-color: var(--accent-line);
-}
-
-.filter-chip.active strong {
-  color: var(--accent-ink);
-}
-
-.filter-chip.scope-global.active,
-.filter-chip.scope-global:hover {
-  background: var(--scope-global-soft);
-  border-color: var(--scope-global-line);
-}
-
-.filter-chip.scope-local.active,
-.filter-chip.scope-local:hover {
-  background: var(--scope-local-soft);
-  border-color: var(--scope-local-line);
-}
-
 /* ---- Content + overview grid ------------------------------------------- */
 .content-region {
   display: grid;
@@ -479,8 +338,7 @@ body.sidebar-collapsed .nav-short {
   gap: 10px;
 }
 
-.entity-row,
-.compact-row {
+.entity-row {
   display: grid;
   grid-template-columns: minmax(220px, 1fr) minmax(220px, 0.85fr) auto;
   gap: var(--space-lg);
@@ -488,25 +346,6 @@ body.sidebar-collapsed .nav-short {
   min-width: 0;
   padding: var(--space-md) var(--space-xs);
   border-bottom: 1px solid var(--line-soft);
-}
-
-.compact-row {
-  grid-template-columns: minmax(220px, 1fr) auto;
-}
-
-.clickable-row {
-  cursor: pointer;
-  transition: background-color var(--t-fast) var(--ease-out), border-color var(--t-fast) var(--ease-out);
-}
-
-.clickable-row:hover {
-  background: var(--accent-soft);
-  border-color: var(--accent-line);
-}
-
-.clickable-row:focus-visible {
-  outline: var(--focus-ring);
-  outline-offset: 2px;
 }
 
 .entity-main {
@@ -529,7 +368,7 @@ body.sidebar-collapsed .nav-short {
 
 .entity-path {
   margin-top: 4px !important;
-  color: var(--faint);
+  color: var(--muted);
   font-family: var(--font-mono);
   font-size: var(--font-xxs);
 }
@@ -556,18 +395,6 @@ body.sidebar-collapsed .nav-short {
   border-color: var(--rose-line);
   background: var(--rose-soft);
   color: var(--rose-ink);
-}
-
-.chip.scope-global {
-  border-color: var(--scope-global-line);
-  background: var(--scope-global-soft);
-  color: var(--scope-global-ink);
-}
-
-.chip.scope-local {
-  border-color: var(--scope-local-line);
-  background: var(--scope-local-soft);
-  color: var(--scope-local-ink);
 }
 
 .availability-block {
@@ -629,8 +456,7 @@ input:focus-visible {
 /* ---- Responsive --------------------------------------------------------- */
 @media (pointer: coarse) {
   .nav-button,
-  .sidebar-toggle,
-  .filter-chip {
+  .sidebar-toggle {
     min-height: 44px;
   }
 }
@@ -702,8 +528,7 @@ input:focus-visible {
     justify-content: start;
   }
 
-  .entity-row,
-  .compact-row {
+  .entity-row {
     grid-template-columns: 1fr;
     align-items: start;
   }
@@ -829,7 +654,7 @@ input:focus-visible {
 .cat-state.disabled .cat-state-dot { background: var(--rose); }
 .cat-table tr.is-disabled .cat-name-main,
 .cat-table tr.is-disabled .cat-sub { color: var(--faint); }
-.cat-none { color: var(--faint); }
+.cat-none { color: var(--muted); }
 .cat-repo, .cat-plugin { font-size: 11.5px; padding: 2px 8px; border-radius: 7px; border: 1px solid var(--line); }
 .cat-repo { font: inherit; font-size: 11.5px; background: var(--accent-soft); border-color: var(--accent-line); color: var(--accent-ink); cursor: pointer; }
 .cat-repo:hover { background: var(--accent-line); }
@@ -837,29 +662,19 @@ input:focus-visible {
 .cat-src-h, .cat-src { width: 90px; text-align: right; }
 .cat-src a { font-family: var(--font-mono); font-size: 11.5px; color: var(--accent-ink); text-decoration: none; }
 .cat-src a:hover { text-decoration: underline; }
-.cat-empty { color: var(--faint); font-size: 13px; padding: 18px 4px; }
+.cat-empty { color: var(--muted); font-size: 13px; padding: 18px 4px; }
 
 @media (max-width: 760px) {
   .cat-src-h, .cat-src { display: none; }
   .cat-sub { display: none; }
 }
-.cp-foot { margin-top: 28px; color: var(--faint); font-size: 12px; }
+.cp-foot { margin-top: 28px; color: var(--muted); font-size: 12px; }
 .cp-foot code { font-family: var(--font-mono); font-size: 11.5px; }
 
 @media (max-width: 720px) {
   .cp-stats { grid-template-columns: repeat(3, 1fr); }
   .cp-row { grid-template-columns: 1.4fr 1fr 1fr; }
   .cp-src { display: none; }
-}
-
-/* ===========================================================================
-   Calm the catalog amber — gold = "global base kit", but a quiet hairline,
-   not a filled pill on every row. The sage repo-local chips stay prominent.
-   =========================================================================== */
-.chip.scope-global {
-  background: transparent;
-  border-color: var(--amber-line);
-  color: var(--amber-ink);
 }
 
 /* ===========================================================================
@@ -876,7 +691,7 @@ input:focus-visible {
 .re-list-item:hover { background: var(--surface-soft); }
 .re-list-item.active { background: var(--accent-soft); color: var(--accent-ink); }
 .re-list-name { font-family: var(--font-sans); font-weight: 500; font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.re-list-meta { display: inline-flex; align-items: center; gap: 6px; font-size: 11.5px; color: var(--faint); font-variant-numeric: tabular-nums; flex-shrink: 0; }
+.re-list-meta { display: inline-flex; align-items: center; gap: 6px; font-size: 11.5px; color: var(--muted); font-variant-numeric: tabular-nums; flex-shrink: 0; }
 .re-list-meta.has-add { color: var(--scope-global-ink); }
 .re-list-item.active .re-list-meta { color: var(--accent-ink); }
 
@@ -886,7 +701,7 @@ input:focus-visible {
 .re-path { font-family: var(--font-mono); font-size: 12px; color: var(--muted); }
 .re-pills { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 12px; }
 .re-pill { display: inline-flex; align-items: baseline; gap: 6px; border: 1px solid var(--line); border-radius: 999px; padding: 3px 11px; font-size: 12px; background: var(--surface); }
-.re-pill span { color: var(--faint); }
+.re-pill span { color: var(--muted); }
 .re-pill strong { color: var(--text); font-weight: 550; font-variant-numeric: tabular-nums; }
 
 .re-stats { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; }
@@ -911,7 +726,7 @@ input:focus-visible {
 .re-chip { font-size: 12px; padding: 3px 9px; border-radius: 8px; background: var(--surface-soft); border: 1px solid var(--line); color: var(--muted); }
 .re-chip.accent { background: var(--accent-soft); border-color: var(--accent-line); color: var(--accent-ink); }
 .re-chip.global { background: transparent; border-color: var(--scope-global-line); color: var(--scope-global-ink); }
-.re-empty { color: var(--faint); font-size: 12.5px; }
+.re-empty { color: var(--muted); font-size: 12.5px; }
 
 @media (max-width: 860px) {
   .repo-explorer { grid-template-columns: 1fr; }
@@ -920,28 +735,13 @@ input:focus-visible {
   .re-stats { grid-template-columns: repeat(3, 1fr); }
 }
 
-/* ===========================================================================
-   Polish — unify catalog metric blocks to the Board's hairline language.
-   Scope meaning stays on the number (gold = global, sage = repo-local);
-   the card itself is calm hairline, not a filled gold/green panel.
-   =========================================================================== */
-.metric-block.scope-global,
-.metric-block.scope-local {
-  background: var(--surface);
-  border-color: var(--line);
-}
-.metric-block.scope-global strong { color: var(--scope-global-ink); }
-.metric-block.scope-local strong { color: var(--scope-local-ink); }
-
 @media (prefers-reduced-motion: reduce) {
   .re-list-item { transition: none; }
 }
 
 /* Flat list rows: hairline dividers inside the panel, not nested cards. */
 .row-stack { gap: 0; }
-.entity-row:last-child,
-.compact-row:last-child { border-bottom: none; }
-.clickable-row { border-radius: 8px; }
+.entity-row:last-child { border-bottom: none; }
 
 /* Shared keyboard focus: every interactive element gets a visible ring. */
 .app-shell :is(button, a, input, [tabindex]):focus-visible {

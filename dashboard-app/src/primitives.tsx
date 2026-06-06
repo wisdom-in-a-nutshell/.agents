@@ -56,7 +56,12 @@ export function ChipBlock({ values, tone = '' }: { values: string[]; tone?: Tone
 export function RowActions({ item }: { item: Item }) {
   return (
     <div className="row-actions">
-      <a href={sourceHref(item)} target="_blank" rel="noreferrer">
+      <a
+        href={sourceHref(item)}
+        target="_blank"
+        rel="noreferrer"
+        aria-label={`${item.name} source (opens in new tab)`}
+      >
         {sourceLabel(item)}
       </a>
     </div>

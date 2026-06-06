@@ -32,7 +32,7 @@ function AttentionRow(item: Item) {
 }
 
 function Attention({ data, filter }: SectionProps) {
-  const items = filterAttentionItems(data, filter, '', false);
+  const items = filterAttentionItems(data, filter);
   const groups: Array<{ title: string; type: AttentionType }> = [
     { title: 'Registry warnings', type: 'warnings' },
     { title: 'Unassigned MCP definitions', type: 'unassigned' },
