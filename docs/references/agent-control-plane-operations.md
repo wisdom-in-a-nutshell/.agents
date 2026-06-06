@@ -2,7 +2,7 @@
 
 Use this page for the machine-facing apply and validation entrypoints that live at the root of `~/GitHub/agents`.
 
-This repo manages shared agent surfaces for Codex, Claude Code, the temporary Antigravity spike, skills, plugins, MCP presets, lifecycle hooks, and the local dashboard. `~/.agents` is no longer the source checkout; it is reserved for runtime surfaces such as Codex user-scope skills at `~/.agents/skills`.
+This repo manages shared agent surfaces for Codex, Claude Code, skills, plugins, MCP presets, lifecycle hooks, and the local dashboard. The temporary Antigravity spike script is tracked for manual experiments but is disabled in the shared machine bootstrap. `~/.agents` is no longer the source checkout; it is reserved for runtime surfaces such as Codex user-scope skills at `~/.agents/skills`.
 
 Sparse machines are normal. A repo listed in the shared registries but not cloned on the current machine is skipped silently by sync/check commands. Existing non-git folders at managed repo paths still warn because they may be broken placeholders that should be deleted or replaced with a real checkout.
 
@@ -14,7 +14,7 @@ For repo authors adding `scripts/hooks/*.py`, start with [`repo-lifecycle-hook-a
   - machine-facing full bootstrap batch
   - syncs managed skill links from `skills/registry.json`
   - syncs managed repo local Git `core.hooksPath` to `~/GitHub/agents/hooks/git`
-  - applies the temporary Antigravity spike surface
+  - skips the temporary Antigravity spike surface by default
   - applies the Claude Code control-plane surface
   - applies the Codex runtime via `codex/scripts/bootstrap-machine-codex.sh`
 - `scripts/auto-apply-agent-control-planes.sh`
