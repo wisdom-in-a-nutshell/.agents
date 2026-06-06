@@ -235,6 +235,15 @@ def repo_name(raw: str) -> str:
     return value
 
 
+def expand_repo_path(raw: str) -> Path:
+    value = raw.strip()
+    if value == "~":
+        return Path.home().resolve()
+    if value.startswith("~/"):
+        return (Path.home() / value[2:]).resolve()
+    return Path(value).expanduser().resolve()
+
+
 def repo_key(raw: str) -> str:
     return repo_name(raw).lower()
 
@@ -326,6 +335,17 @@ def build_control_plane_data(root: Path) -> dict[str, Any]:
             )
             continue
         name = repo_name(path)
+        expanded_path = expand_repo_path(path)
+        exists = expanded_path.exists()
+        if not exists:
+            warnings.append(
+                {
+                    "severity": "warning",
+                    "code": "managed_repo_missing",
+                    "message": f"Managed repo path does not exist: {path}",
+                    "source": REGISTRY_SOURCES["repos"],
+                }
+            )
         repo = base_item(
             kind="repo",
             name=name,
@@ -334,6 +354,8 @@ def build_control_plane_data(root: Path) -> dict[str, Any]:
             source=REGISTRY_SOURCES["repos"],
             details={
                 "path": path,
+                "absolute_path": str(expanded_path),
+                "exists": exists,
                 "model": entry.get("model") or repo_bootstrap.get("defaults", {}).get("model"),
                 "reasoning": entry.get("model_reasoning_effort")
                 or repo_bootstrap.get("defaults", {}).get("model_reasoning_effort"),
