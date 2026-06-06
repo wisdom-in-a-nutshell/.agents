@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigateRepo } from '../primitives';
 import { cleanArray, repoDisplayName, sourceHref, sourceLabel } from '../selectors';
 import type { ControlPlaneData, Item } from '../types';
@@ -77,14 +77,28 @@ function PluginStatus({ item }: { item: Item }) {
 export function CatalogExplorer({
   data,
   kind,
+  focusName,
 }: {
   data: ControlPlaneData;
   kind: CatalogKind;
+  focusName?: string;
 }) {
   const totalRepos = data.counts.repos;
   const isPlugins = kind === 'plugins';
   // Plugins default to the active set — disabled ones are one filter click away.
   const [filter, setFilter] = useState<string>(isPlugins ? 'enabled' : 'all');
+
+  // Arriving from a repo-detail chip: show everything so the item is visible,
+  // then scroll it into view and highlight it.
+  useEffect(() => {
+    if (!focusName) return;
+    setFilter('all');
+  }, [focusName]);
+  useEffect(() => {
+    if (!focusName) return;
+    const el = document.querySelector(`[data-cat-item="${CSS.escape(focusName)}"]`);
+    el?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+  }, [focusName, filter, kind]);
 
   const base = data.groups[kind];
 
@@ -163,7 +177,18 @@ export function CatalogExplorer({
         </thead>
         <tbody>
           {items.map((item) => (
-            <tr key={item.id} className={isPlugins && item.status === 'disabled' ? 'is-disabled' : undefined}>
+            <tr
+              key={item.id}
+              data-cat-item={item.name}
+              className={
+                [
+                  isPlugins && item.status === 'disabled' ? 'is-disabled' : '',
+                  item.name === focusName ? 'is-focused' : '',
+                ]
+                  .filter(Boolean)
+                  .join(' ') || undefined
+              }
+            >
               <td className="cat-name">
                 <span className="cat-name-main">{item.name}</span>
                 {subtitle(item) ? (

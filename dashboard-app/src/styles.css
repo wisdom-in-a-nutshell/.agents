@@ -642,6 +642,8 @@ input:focus-visible {
 .cat-table thead th { background: var(--surface-soft); font-size: 11.5px; letter-spacing: 0.04em; text-transform: uppercase; color: var(--muted); font-weight: var(--weight-label); }
 .cat-table tbody tr { border-top: 1px solid var(--line-soft); }
 .cat-table tbody tr:hover { background: var(--surface-soft); }
+.cat-table tbody tr.is-focused { background: var(--accent-soft); }
+.cat-table tbody tr.is-focused .cat-name-main { color: var(--accent-ink); }
 .cat-name-main { font-family: var(--font-sans); font-weight: 550; font-size: 14px; color: var(--text); display: block; }
 .cat-sub { font-family: var(--font-sans); font-size: var(--font-xs); color: var(--muted); display: block; margin-top: 3px; }
 .cat-sub.is-path { font-family: var(--font-mono); font-size: 11px; word-break: break-all; }
@@ -726,6 +728,9 @@ input:focus-visible {
 .re-chip { font-size: 12px; padding: 3px 9px; border-radius: 8px; background: var(--surface-soft); border: 1px solid var(--line); color: var(--muted); }
 .re-chip.accent { background: var(--accent-soft); border-color: var(--accent-line); color: var(--accent-ink); }
 .re-chip.global { background: transparent; border-color: var(--scope-global-line); color: var(--scope-global-ink); }
+button.re-chip { font: inherit; cursor: pointer; transition: border-color var(--t-fast) var(--ease-out), background-color var(--t-fast) var(--ease-out); }
+button.re-chip.accent:hover { border-color: var(--accent); }
+button.re-chip.global:hover { border-color: var(--scope-global); background: var(--scope-global-soft); }
 .re-empty { color: var(--muted); font-size: 12.5px; }
 
 @media (max-width: 860px) {

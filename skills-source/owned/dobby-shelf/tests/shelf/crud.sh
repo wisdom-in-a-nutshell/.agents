@@ -5,13 +5,13 @@ FAIL_COUNT=0
 
 TMP_WS=$(mktemp -d)
 trap 'rm -rf "$TMP_WS"' EXIT
-mkdir -p "$TMP_WS/state" "$TMP_WS/memory" "$TMP_WS/journal"
-mkdir -p "$TMP_WS/dobby"
+mkdir -p "$TMP_WS/state" "$TMP_WS/memory" "$TMP_WS/journal" "$TMP_WS/dobby"
 printf '{"schemaVersion":1,"kind":"dobby-constitution","updatedAt":"2026-05-31T00:00:00+02:00","groups":{}}\n' > "$TMP_WS/dobby/constitution.json"
 cat > "$TMP_WS/state/shelf.json" <<'JSON'
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "revision": 0,
+  "timezone": "Europe/Berlin",
   "updatedAt": "1970-01-01T00:00:00.000Z",
   "items": []
 }
@@ -27,28 +27,20 @@ from datetime import date, timedelta
 print((date.today() + timedelta(days=31)).isoformat())
 PY
 )"
+TODAY="$(TZ=Europe/Berlin date +%F)"
 
 section "list empty shelf"
 run_dobby shelf list
 assert_exit "list exit 0" 0 "$CAPTURED_EXIT"
 assert_envelope_ok "shelf.list" "$CAPTURED_STDOUT"
-assert_jq_eq "command=shelf.list" '.command' "shelf.list" "$CAPTURED_STDOUT"
-assert_jq_eq "open count 0" '.data.counts.open' "0" "$CAPTURED_STDOUT"
-
-section "snapshot empty shelf"
-run_dobby shelf snapshot --mode boot
-assert_exit "snapshot empty exit 0" 0 "$CAPTURED_EXIT"
-assert_envelope_ok "shelf.snapshot empty" "$CAPTURED_STDOUT"
-assert_jq_eq "snapshot command" '.command' "shelf.snapshot" "$CAPTURED_STDOUT"
-assert_jq_eq "snapshot mode boot" '.data.mode' "boot" "$CAPTURED_STDOUT"
-assert_jq_eq "snapshot now count 0" '.data.section_counts.now' "0" "$CAPTURED_STDOUT"
-assert_jq_eq "snapshot has focus signal false" '.data.signals.has_now_focus' "false" "$CAPTURED_STDOUT"
+assert_jq_eq "active count 0" '.data.counts.active' "0" "$CAPTURED_STDOUT"
 
 section "add item"
-run_dobby shelf add --title "Test Shelf Client" --kind do --show-at "$UPCOMING_DATE" --note "from test" --id test-shelf-client
+run_dobby shelf add --title "Test Shelf Client" --type do --show-on "$UPCOMING_DATE" --note "from test" --id test-shelf-client
 assert_exit "add exit 0" 0 "$CAPTURED_EXIT"
 assert_envelope_ok "shelf.add" "$CAPTURED_STDOUT"
 assert_jq_eq "id set" '.data.item.id' "test-shelf-client" "$CAPTURED_STDOUT"
+assert_jq_eq "type set" '.data.item.type' "do" "$CAPTURED_STDOUT"
 assert_jq_eq "revision incremented" '.data.revision' "1" "$CAPTURED_STDOUT"
 
 section "edit note"
@@ -56,52 +48,39 @@ run_dobby shelf note test-shelf-client --append "second note"
 assert_exit "note append exit 0" 0 "$CAPTURED_EXIT"
 assert_envelope_ok "shelf.note" "$CAPTURED_STDOUT"
 assert_jq_eq "note appended" '.data.item.note' $'from test\n\nsecond note' "$CAPTURED_STDOUT"
-run_dobby shelf note test-shelf-client --set "replacement note"
-assert_exit "note set exit 0" 0 "$CAPTURED_EXIT"
-assert_envelope_ok "shelf.note set" "$CAPTURED_STDOUT"
-assert_jq_eq "note replaced" '.data.item.note' "replacement note" "$CAPTURED_STDOUT"
 
 section "list upcoming"
 run_dobby shelf list --view upcoming
 assert_exit "upcoming exit 0" 0 "$CAPTURED_EXIT"
 assert_envelope_ok "shelf.list upcoming" "$CAPTURED_STDOUT"
-assert_jq_eq "one item" '.data.items | length' "1" "$CAPTURED_STDOUT"
-assert_jq_eq "item title" '.data.items[0].title' "Test Shelf Client" "$CAPTURED_STDOUT"
-
-section "focus and plain list"
-run_dobby shelf focus test-shelf-client --on
-assert_exit "focus exit 0" 0 "$CAPTURED_EXIT"
-assert_jq_eq "isNow true" '.data.item.isNow' "true" "$CAPTURED_STDOUT"
-run_dobby shelf snapshot
-assert_exit "snapshot focused exit 0" 0 "$CAPTURED_EXIT"
-assert_envelope_ok "shelf.snapshot focused" "$CAPTURED_STDOUT"
-assert_jq_eq "snapshot default mode" '.data.mode' "plan-day" "$CAPTURED_STDOUT"
-assert_jq_eq "snapshot now item id" '.data.sections.now[0].id' "test-shelf-client" "$CAPTURED_STDOUT"
-assert_jq_eq "snapshot omits note" '.data.sections.now[0] | has("note")' "false" "$CAPTURED_STDOUT"
-assert_jq_eq "snapshot has focus signal true" '.data.signals.has_now_focus' "true" "$CAPTURED_STDOUT"
-run_dobby shelf snapshot --mode boot --plain
-assert_exit "plain snapshot exit 0" 0 "$CAPTURED_EXIT"
-assert_contains "plain snapshot includes heading" "Shelf snapshot mode=boot" "$CAPTURED_STDOUT"
-assert_contains "plain snapshot includes id" "test-shelf-client" "$CAPTURED_STDOUT"
-assert_not_contains "plain snapshot no json" '"schema_version"' "$CAPTURED_STDOUT"
-run_dobby shelf list --view now --plain
-assert_exit "plain now exit 0" 0 "$CAPTURED_EXIT"
-assert_contains "plain includes id" "test-shelf-client" "$CAPTURED_STDOUT"
-assert_not_contains "plain no json" '"schema_version"' "$CAPTURED_STDOUT"
+assert_jq_eq "one item" '.data.cards | length' "1" "$CAPTURED_STDOUT"
+assert_jq_eq "item title" '.data.cards[0].title' "Test Shelf Client" "$CAPTURED_STDOUT"
 
 section "defer item"
-run_dobby shelf defer test-shelf-client --show-at "$DEFER_DATE"
+run_dobby shelf defer test-shelf-client --show-on "$DEFER_DATE"
 assert_exit "defer exit 0" 0 "$CAPTURED_EXIT"
 assert_envelope_ok "shelf.defer" "$CAPTURED_STDOUT"
-assert_jq_eq "showAt updated" '.data.item.showAt' "$DEFER_DATE" "$CAPTURED_STDOUT"
+assert_jq_eq "showOn updated" '.data.item.showOn' "$DEFER_DATE" "$CAPTURED_STDOUT"
 assert_jq_eq "deferCount incremented" '.data.item.deferCount' "1" "$CAPTURED_STDOUT"
 
-section "done item"
-run_dobby shelf done test-shelf-client
-assert_exit "done exit 0" 0 "$CAPTURED_EXIT"
-assert_envelope_ok "shelf.done" "$CAPTURED_STDOUT"
-assert_jq_eq "status done" '.data.item.status' "done" "$CAPTURED_STDOUT"
+section "complete item"
+run_dobby shelf complete test-shelf-client
+assert_exit "complete exit 0" 0 "$CAPTURED_EXIT"
+assert_envelope_ok "shelf.complete" "$CAPTURED_STDOUT"
+assert_jq_eq "state completed" '.data.item.state' "completed" "$CAPTURED_STDOUT"
 assert_jq_truthy "completedAt set" '.data.item.completedAt' "$CAPTURED_STDOUT"
+
+section "add habit"
+run_dobby shelf habit add --title "No coffee" --cadence daily --start-on "$TODAY" --id no-coffee
+assert_exit "habit add exit 0" 0 "$CAPTURED_EXIT"
+assert_envelope_ok "shelf.habit.add" "$CAPTURED_STDOUT"
+assert_jq_eq "habit type" '.data.item.type' "habit" "$CAPTURED_STDOUT"
+run_dobby shelf snapshot --mode full
+habit_card=$(jq -r '.data.views.today[] | select(.itemId=="no-coffee") | .cardId' <<<"$CAPTURED_STDOUT")
+run_dobby shelf complete "$habit_card"
+assert_exit "habit complete exit 0" 0 "$CAPTURED_EXIT"
+assert_jq_eq "habit still active" '.data.item.state' "active" "$CAPTURED_STDOUT"
+assert_jq_eq "habit completion length" '.data.item.completions | length' "1" "$CAPTURED_STDOUT"
 
 section "drop missing item returns not found"
 run_dobby shelf drop nope --reason "missing"
@@ -111,7 +90,7 @@ assert_envelope_error "shelf.drop missing" "E_NOT_FOUND" "$CAPTURED_STDOUT"
 section "file revision persisted"
 rev=$(jq -r '.revision' "$TMP_WS/state/shelf.json")
 assert_eq "revision after mutations" "6" "$rev"
-status=$(jq -r '.items[0].status' "$TMP_WS/state/shelf.json")
-assert_eq "file status done" "done" "$status"
+state=$(jq -r '.items[] | select(.id=="test-shelf-client") | .state' "$TMP_WS/state/shelf.json")
+assert_eq "file state completed" "completed" "$state"
 
 finish_test "shelf/crud.sh"

@@ -5,7 +5,7 @@ import { CatalogExplorer } from './components/CatalogExplorer';
 import { OverviewSection } from './components/OverviewSection';
 import { RepoExplorer } from './components/RepoExplorer';
 import { Sidebar } from './components/Sidebar';
-import { NavProvider } from './primitives';
+import { NavItemProvider, NavProvider } from './primitives';
 import { repoKey } from './selectors';
 import { SectionView } from './sections';
 import type { SectionId } from './types';
@@ -31,6 +31,7 @@ export function App() {
   const { data, error, loadStatus } = useControlPlane();
   const [section, setSection] = useState<SectionId>(initialSection);
   const [focusedRepoKey, setFocusedRepoKey] = useState('');
+  const [focusedItem, setFocusedItem] = useState<{ section: SectionId; name: string } | null>(null);
   const [collapsed, setCollapsed] = useState(() => localStorage.getItem(SIDEBAR_KEY) === 'true');
 
   // Persist + reflect sidebar collapse on <body> (CSS keys off it).
@@ -41,6 +42,7 @@ export function App() {
   const selectSection = useCallback((next: SectionId) => {
     setSection(next);
     setFocusedRepoKey('');
+    setFocusedItem(null);
     const url = next === 'overview' ? window.location.pathname : `?section=${next}`;
     window.history.replaceState(null, '', url);
   }, []);
@@ -48,6 +50,13 @@ export function App() {
   const navigateToRepo = useCallback((name: string) => {
     setSection('repos');
     setFocusedRepoKey(repoKey(name));
+    setFocusedItem(null);
+  }, []);
+
+  const navigateToItem = useCallback((next: SectionId, name: string) => {
+    setSection(next);
+    setFocusedItem({ section: next, name });
+    window.history.replaceState(null, '', `?section=${next}`);
   }, []);
 
   const toggleCollapse = useCallback(() => {
@@ -84,12 +93,18 @@ export function App() {
             </section>
           ) : section === 'repos' ? (
             <section className="content-region content-region-flush" aria-live="polite">
-              <RepoExplorer data={data} initialRepoKey={focusedRepoKey} />
+              <NavItemProvider value={navigateToItem}>
+                <RepoExplorer data={data} initialRepoKey={focusedRepoKey} />
+              </NavItemProvider>
             </section>
           ) : section === 'skills' || section === 'plugins' || section === 'mcp' || section === 'hooks' ? (
             <section className="content-region content-region-flush" aria-live="polite">
               <NavProvider value={navigateToRepo}>
-                <CatalogExplorer data={data} kind={section} />
+                <CatalogExplorer
+                  data={data}
+                  kind={section}
+                  focusName={focusedItem && focusedItem.section === section ? focusedItem.name : undefined}
+                />
               </NavProvider>
             </section>
           ) : (

@@ -1,6 +1,7 @@
 import { useState } from 'react';
+import { useNavigateItem } from '../primitives';
 import { cleanArray, itemAppliesToRepo, repoCapabilitySummary, repoKey } from '../selectors';
-import type { ControlPlaneData, Item } from '../types';
+import type { ControlPlaneData, Item, SectionId } from '../types';
 
 function Badge({ text }: { text: string }) {
   return <span className="re-badge">{text}</span>;
@@ -26,20 +27,42 @@ function Chips({ items, accent, empty }: { items: string[]; accent?: boolean; em
 }
 
 // Global base-kit items (gold) + this repo's own additions (sage), one scannable
-// row: every inherited capability is named here, color-coded by scope.
-function ScopedChips({ global, local, empty }: { global: string[]; local: string[]; empty: string }) {
+// row: every inherited capability is named here, color-coded by scope. Each chip
+// links to that item in its catalog (scrolled to + highlighted).
+function ScopedChips({
+  global,
+  local,
+  kind,
+  empty,
+}: {
+  global: Item[];
+  local: Item[];
+  kind: SectionId;
+  empty: string;
+}) {
+  const navItem = useNavigateItem();
   if (global.length === 0 && local.length === 0) return <span className="re-empty">{empty}</span>;
   return (
     <div className="re-chips">
-      {global.map((t, i) => (
-        <span key={`g-${t}-${i}`} className="re-chip global">
-          {t}
-        </span>
+      {global.map((it, i) => (
+        <button
+          key={`g-${it.name}-${i}`}
+          type="button"
+          className="re-chip global"
+          onClick={() => navItem(kind, it.name)}
+        >
+          {it.title || it.name}
+        </button>
       ))}
-      {local.map((t, i) => (
-        <span key={`l-${t}-${i}`} className="re-chip accent">
-          {t}
-        </span>
+      {local.map((it, i) => (
+        <button
+          key={`l-${it.name}-${i}`}
+          type="button"
+          className="re-chip accent"
+          onClick={() => navItem(kind, it.name)}
+        >
+          {it.title || it.name}
+        </button>
       ))}
     </div>
   );
@@ -134,18 +157,14 @@ function RepoDetail({ data, repo }: { data: ControlPlaneData; repo: Item }) {
           Base kit: <ScopeCount n={caps.globalSkills.length} scope="global" /> global skills
           {caps.repoSkills.length ? <> · <ScopeCount n={caps.repoSkills.length} scope="local" /> repo</> : null}
         </p>
-        <ScopedChips
-          global={caps.globalSkills.map((i) => i.title || i.name)}
-          local={caps.repoSkills.map((i) => i.title || i.name)}
-          empty="No skills"
-        />
+        <ScopedChips global={caps.globalSkills} local={caps.repoSkills} kind="skills" empty="No skills" />
       </CapGroup>
 
       <CapGroup title="Plugins" runtime="Codex" count={caps.globalPlugins.length}>
         <p className="re-base">
           Base kit: <ScopeCount n={caps.globalPlugins.length} scope="global" /> global plugins
         </p>
-        <ScopedChips global={caps.globalPlugins.map((i) => i.title || i.name)} local={[]} empty="No plugins" />
+        <ScopedChips global={caps.globalPlugins} local={[]} kind="plugins" empty="No plugins" />
       </CapGroup>
 
       <CapGroup title="Tools · MCP" runtime="Codex" count={caps.globalMcp.length + caps.directMcp.length}>
@@ -153,11 +172,7 @@ function RepoDetail({ data, repo }: { data: ControlPlaneData; repo: Item }) {
           Base kit: <ScopeCount n={caps.globalMcp.length} scope="global" /> global presets
           {caps.directMcp.length ? <> · <ScopeCount n={caps.directMcp.length} scope="local" /> repo</> : null}
         </p>
-        <ScopedChips
-          global={caps.globalMcp.map((i) => i.title || i.name)}
-          local={caps.directMcp.map((i) => i.name)}
-          empty="No MCP presets"
-        />
+        <ScopedChips global={caps.globalMcp} local={caps.directMcp} kind="mcp" empty="No MCP presets" />
       </CapGroup>
 
       <CapGroup
@@ -165,11 +180,7 @@ function RepoDetail({ data, repo }: { data: ControlPlaneData; repo: Item }) {
         runtime="Codex · Stop on Claude"
         count={caps.globalHooks.length + caps.repoHooks.length}
       >
-        <ScopedChips
-          global={caps.globalHooks.map((i) => i.title || i.name)}
-          local={caps.repoHooks.map((i) => i.title || i.name)}
-          empty="No hooks"
-        />
+        <ScopedChips global={caps.globalHooks} local={caps.repoHooks} kind="hooks" empty="No hooks" />
       </CapGroup>
 
       <CapGroup title="Agent Preview" runtime="Codex + Claude" count={devNames.length}>

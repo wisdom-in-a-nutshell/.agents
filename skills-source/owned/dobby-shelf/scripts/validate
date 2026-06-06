@@ -1,11 +1,5 @@
 #!/usr/bin/env python3
-"""Validate Dobby Shelf state files.
-
-Public skill validator facade used by workspace checks. It validates the Shelf
-contract owned by the dobby-shelf skill; callers should pass repo-relative paths
-or ask for staged/full scope.
-"""
-
+"""Validate Dobby Shelf v2 state files."""
 from __future__ import annotations
 
 import argparse
@@ -13,15 +7,12 @@ import json
 import subprocess
 import sys
 from pathlib import Path
-from typing import Any
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 if str(SCRIPT_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPT_DIR))
 
-from lib.shelf import VALID_KINDS, VALID_STATUSES  # noqa: E402
-
-VALID_SOURCE_TYPES = {"chat", "ui", "agent"}
+from lib.shelf.model import ShelfValidationError, validate_state  # noqa: E402
 
 
 def parse_args() -> argparse.Namespace:
@@ -39,71 +30,11 @@ def fail(message: str) -> None:
     raise SystemExit(1)
 
 
-def is_record(value: Any) -> bool:
-    return isinstance(value, dict)
-
-
 def rel_path(root: Path, path: Path) -> str:
     try:
         return str(path.resolve().relative_to(root))
     except ValueError:
         return str(path)
-
-
-def require_string(item: dict[str, Any], field: str, item_label: str) -> None:
-    if not isinstance(item.get(field), str) or not item[field].strip():
-        fail(f"{item_label}: {field} must be a non-empty string")
-
-
-def validate_optional_string(item: dict[str, Any], field: str, item_label: str) -> None:
-    if field in item and item[field] is not None and not isinstance(item[field], str):
-        fail(f"{item_label}: {field} must be a string when present")
-
-
-def validate_item(item: Any, index: int) -> None:
-    if not is_record(item):
-        fail(f"item[{index}] must be an object")
-
-    item_label = f"item[{index}] {item.get('id', '<missing id>')}"
-
-    for field in ("id", "title", "createdAt", "updatedAt"):
-        require_string(item, field, item_label)
-
-    if item.get("kind") not in VALID_KINDS:
-        fail(f"{item_label}: kind must be one of {sorted(VALID_KINDS)}")
-
-    if item.get("status") not in VALID_STATUSES:
-        fail(f"{item_label}: status must be one of {sorted(VALID_STATUSES)}")
-
-    if not isinstance(item.get("deferCount"), int):
-        fail(f"{item_label}: deferCount must be an integer")
-
-    for field in (
-        "clientMutationId",
-        "showAt",
-        "dueAt",
-        "note",
-        "lastDeferredAt",
-        "completedAt",
-        "droppedAt",
-        "dropReason",
-    ):
-        validate_optional_string(item, field, item_label)
-
-    if "isNow" in item and item["isNow"] is not True:
-        fail(f"{item_label}: isNow must be true when present")
-
-    source = item.get("source")
-    if source is not None:
-        if not is_record(source):
-            fail(f"{item_label}: source must be an object when present")
-        if source.get("type") not in VALID_SOURCE_TYPES:
-            fail(f"{item_label}: source.type must be one of {sorted(VALID_SOURCE_TYPES)}")
-        if "ref" in source and not isinstance(source["ref"], str):
-            fail(f"{item_label}: source.ref must be a string when present")
-
-    if "notes" in item:
-        fail(f"{item_label}: use note, not notes")
 
 
 def validate_shelf_file(root: Path, path: Path) -> None:
@@ -112,39 +43,14 @@ def validate_shelf_file(root: Path, path: Path) -> None:
         return
     if not path.exists():
         fail(f"{label}: file is missing")
-
     try:
         state = json.loads(path.read_text(encoding="utf-8"))
     except json.JSONDecodeError as exc:
         fail(f"{label}: invalid JSON: {exc}")
-
-    if not is_record(state):
-        fail(f"{label}: state must be an object")
-    if state.get("schemaVersion") != 1:
-        fail(f"{label}: schemaVersion must be 1")
-    if not isinstance(state.get("revision"), int):
-        fail(f"{label}: revision must be an integer")
-    if not isinstance(state.get("updatedAt"), str) or not state["updatedAt"].strip():
-        fail(f"{label}: updatedAt must be a non-empty string")
-
-    items = state.get("items")
-    if not isinstance(items, list):
-        fail(f"{label}: items must be an array")
-
-    seen_ids: set[str] = set()
-    seen_mutation_ids: set[str] = set()
-    for index, item in enumerate(items):
-        validate_item(item, index)
-        item_id = item["id"]
-        if item_id in seen_ids:
-            fail(f"{label}: duplicate item id: {item_id}")
-        seen_ids.add(item_id)
-
-        mutation_id = item.get("clientMutationId")
-        if mutation_id:
-            if mutation_id in seen_mutation_ids:
-                fail(f"{label}: duplicate clientMutationId: {mutation_id}")
-            seen_mutation_ids.add(mutation_id)
+    try:
+        validate_state(state)
+    except ShelfValidationError as exc:
+        fail(f"{label}: {exc}")
 
 
 def git_paths(root: Path, scope: str) -> list[str]:

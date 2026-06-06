@@ -34,6 +34,12 @@ def main(argv: list[str] | None = None) -> int:
         return emit_json(err_envelope("shelf.workspace", "E_VALIDATION", str(e)))
     except shelf.ShelfError as e:
         return emit_json(err_envelope(e.command, e.code, str(e), hint=e.hint))
+    except shelf.ShelfValidationError as e:
+        return emit_json(err_envelope("shelf.validation", "E_VALIDATION", str(e)))
+    except shelf.ShelfStoreError as e:
+        return emit_json(err_envelope("shelf.store", "E_IO", str(e)))
+    except KeyError as e:
+        return emit_json(err_envelope("shelf.item", "E_NOT_FOUND", f"Shelf item not found: {e.args[0]}"))
 
 
 if __name__ == "__main__":

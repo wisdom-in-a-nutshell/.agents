@@ -1,12 +1,20 @@
 import { createContext, type ReactNode, useContext } from 'react';
 import { sourceHref, sourceLabel } from './selectors';
-import type { Item, Tone } from './types';
+import type { Item, SectionId, Tone } from './types';
 
 // Repo navigation is needed deep inside rows/chips; carry it via context.
 const NavContext = createContext<(repoName: string) => void>(() => {});
 export const NavProvider = NavContext.Provider;
 export function useNavigateRepo(): (repoName: string) => void {
   return useContext(NavContext);
+}
+
+// Catalog-item navigation (repo detail chip → its skill/plugin/mcp/hook in the
+// catalog, scrolled to and highlighted). Same plumbing, different target.
+const NavItemContext = createContext<(section: SectionId, name: string) => void>(() => {});
+export const NavItemProvider = NavItemContext.Provider;
+export function useNavigateItem(): (section: SectionId, name: string) => void {
+  return useContext(NavItemContext);
 }
 
 function cx(...parts: Array<string | false | undefined>): string {
