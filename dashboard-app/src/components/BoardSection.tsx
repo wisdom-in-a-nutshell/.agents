@@ -1,4 +1,4 @@
-import { enabledHooks, enabledPlugins, formatDate, repoDisplayName } from '../selectors';
+import { enabledHooks, enabledPlugins, repoDisplayName } from '../selectors';
 import { useNavigateRepo } from '../primitives';
 import type { Capability, ControlPlaneData, Item, RuntimeCell } from '../types';
 
@@ -120,8 +120,6 @@ export function BoardSection({ data }: { data: ControlPlaneData }) {
           </p>
         </div>
         <div className="cp-meta">
-          updated <b>{formatDate(data.generated_at_utc)}</b>
-          <br />
           <b>{c.repos}</b> repos · <b>{(data.runtimes ?? []).length}</b> runtimes ·{' '}
           <b className={c.warnings ? 'cp-warn' : ''}>{c.warnings}</b> warnings
         </div>

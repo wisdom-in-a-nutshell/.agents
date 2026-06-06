@@ -1030,7 +1030,6 @@ body.sidebar-collapsed .nav-group + .nav-group { margin-top: 8px; }
 .ov-pill.note .ov-dot { background: var(--amber); }
 .ov-pill.alert { background: var(--rose-soft); border-color: var(--rose-line); color: var(--rose-ink); }
 .ov-pill.alert .ov-dot { background: var(--rose); }
-.ov-updated { color: var(--muted); font-size: var(--font-xs); font-variant-numeric: tabular-nums; }
 
 /* Base kit band — the golden light through the canopy reaching every repo. */
 .ov-base {

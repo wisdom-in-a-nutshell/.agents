@@ -28,7 +28,7 @@ function initialSection(): SectionId {
 }
 
 export function App() {
-  const { data, error, refreshStatus } = useControlPlane();
+  const { data, error, loadStatus } = useControlPlane();
   const [section, setSection] = useState<SectionId>(initialSection);
   const [query, setQuery] = useState('');
   const [focusedRepoKey, setFocusedRepoKey] = useState('');
@@ -67,7 +67,7 @@ export function App() {
         section={section}
         collapsed={collapsed}
         query={query}
-        refreshStatus={refreshStatus}
+        loadStatus={loadStatus}
         onSelect={selectSection}
         onToggleCollapse={toggleCollapse}
         onQueryChange={setQuery}
