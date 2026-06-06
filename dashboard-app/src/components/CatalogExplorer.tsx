@@ -77,19 +77,16 @@ function PluginStatus({ item }: { item: Item }) {
 export function CatalogExplorer({
   data,
   kind,
-  query,
 }: {
   data: ControlPlaneData;
   kind: CatalogKind;
-  query: string;
 }) {
   const totalRepos = data.counts.repos;
   const isPlugins = kind === 'plugins';
   // Plugins default to the active set — disabled ones are one filter click away.
   const [filter, setFilter] = useState<string>(isPlugins ? 'enabled' : 'all');
-  const q = query.trim().toLowerCase();
 
-  const base = data.groups[kind].filter((i) => !q || i.search_text.includes(q));
+  const base = data.groups[kind];
 
   // Plugins can only be global, so scope filtering is noise — filter by on/off
   // state instead. Every other kind keeps the global vs repo-scoped split.

@@ -1,11 +1,5 @@
 import { useState } from 'react';
-import {
-  cleanArray,
-  filteredRepos,
-  itemAppliesToRepo,
-  repoCapabilitySummary,
-  repoKey,
-} from '../selectors';
+import { cleanArray, itemAppliesToRepo, repoCapabilitySummary, repoKey } from '../selectors';
 import type { ControlPlaneData, Item } from '../types';
 
 function Badge({ text }: { text: string }) {
@@ -187,14 +181,12 @@ function RepoDetail({ data, repo }: { data: ControlPlaneData; repo: Item }) {
 
 export function RepoExplorer({
   data,
-  query,
   initialRepoKey,
 }: {
   data: ControlPlaneData;
-  query: string;
   initialRepoKey: string;
 }) {
-  const repos = filteredRepos(data, 'all', query);
+  const repos = data.groups.repos;
   const [selectedKey, setSelectedKey] = useState(initialRepoKey);
   const selected =
     repos.find((r) => repoKey(r.name) === (selectedKey || initialRepoKey)) ?? repos[0];

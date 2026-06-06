@@ -28,20 +28,16 @@ export function Sidebar({
   data,
   section,
   collapsed,
-  query,
   loadStatus,
   onSelect,
   onToggleCollapse,
-  onQueryChange,
 }: {
   data: ControlPlaneData | null;
   section: SectionId;
   collapsed: boolean;
-  query: string;
   loadStatus: string;
   onSelect: (section: SectionId) => void;
   onToggleCollapse: () => void;
-  onQueryChange: (value: string) => void;
 }) {
   return (
     <aside className="sidebar" aria-label="Dashboard navigation">
@@ -88,16 +84,6 @@ export function Sidebar({
           </div>
         ))}
       </nav>
-
-      <label className="search-box sidebar-search">
-        <span>Search</span>
-        <input
-          type="search"
-          placeholder="Search names, repos, paths"
-          value={query}
-          onChange={(event) => onQueryChange(event.target.value)}
-        />
-      </label>
 
       {loadStatus ? (
         <div className="sidebar-footer">

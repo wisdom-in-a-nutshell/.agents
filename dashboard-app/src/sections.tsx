@@ -31,8 +31,8 @@ function AttentionRow(item: Item) {
   );
 }
 
-function Attention({ data, filter, query }: SectionProps) {
-  const items = filterAttentionItems(data, filter, query, true);
+function Attention({ data, filter }: SectionProps) {
+  const items = filterAttentionItems(data, filter, '', false);
   const groups: Array<{ title: string; type: AttentionType }> = [
     { title: 'Registry warnings', type: 'warnings' },
     { title: 'Unassigned MCP definitions', type: 'unassigned' },
@@ -52,8 +52,6 @@ function Attention({ data, filter, query }: SectionProps) {
 export interface SectionProps {
   data: ControlPlaneData;
   filter: string;
-  query: string;
-  focusedRepoKey: string;
 }
 
 export function SectionView({ section: _section, ...props }: SectionProps & { section: SectionId }) {

@@ -212,7 +212,6 @@ body.sidebar-collapsed .nav-button {
 
 body.sidebar-collapsed .nav-label,
 body.sidebar-collapsed .nav-button strong,
-body.sidebar-collapsed .sidebar-search,
 body.sidebar-collapsed .sidebar-footer {
   display: none;
 }
@@ -220,38 +219,6 @@ body.sidebar-collapsed .sidebar-footer {
 body.sidebar-collapsed .nav-short {
   display: inline;
   font-weight: 700;
-}
-
-.search-box {
-  display: grid;
-  gap: 5px;
-  width: 100%;
-  min-width: 0;
-}
-
-.search-box span {
-  color: var(--muted);
-  font-size: var(--font-xs);
-  font-weight: var(--weight-strong);
-}
-
-.search-box input {
-  height: 40px;
-  width: 100%;
-  padding: 0 12px;
-  border: 1px solid var(--line);
-  border-radius: var(--radius-sm);
-  background: var(--surface);
-  color: var(--text);
-  outline: none;
-}
-
-.search-box input:focus {
-  border-color: var(--accent-line);
-}
-
-.search-box input::placeholder {
-  color: var(--faint);
 }
 
 .sidebar-footer {
@@ -663,8 +630,7 @@ input:focus-visible {
 @media (pointer: coarse) {
   .nav-button,
   .sidebar-toggle,
-  .filter-chip,
-  .search-box input {
+  .filter-chip {
     min-height: 44px;
   }
 }
@@ -706,7 +672,6 @@ input:focus-visible {
     display: inline;
   }
 
-  body.sidebar-collapsed .sidebar-search,
   body.sidebar-collapsed .sidebar-footer {
     display: grid;
   }
@@ -981,6 +946,7 @@ input:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
 }
+
 
 /* ===========================================================================
    Sidebar nav grouping — Views vs Catalogs, so the counts read as catalog

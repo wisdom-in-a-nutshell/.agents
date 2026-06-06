@@ -6,7 +6,7 @@ import { OverviewSection } from './components/OverviewSection';
 import { RepoExplorer } from './components/RepoExplorer';
 import { Sidebar } from './components/Sidebar';
 import { NavProvider } from './primitives';
-import { repoDisplayName, repoKey } from './selectors';
+import { repoKey } from './selectors';
 import { SectionView } from './sections';
 import type { SectionId } from './types';
 
@@ -30,7 +30,6 @@ function initialSection(): SectionId {
 export function App() {
   const { data, error, loadStatus } = useControlPlane();
   const [section, setSection] = useState<SectionId>(initialSection);
-  const [query, setQuery] = useState('');
   const [focusedRepoKey, setFocusedRepoKey] = useState('');
   const [collapsed, setCollapsed] = useState(() => localStorage.getItem(SIDEBAR_KEY) === 'true');
 
@@ -49,7 +48,6 @@ export function App() {
   const navigateToRepo = useCallback((name: string) => {
     setSection('repos');
     setFocusedRepoKey(repoKey(name));
-    setQuery(repoDisplayName(name));
   }, []);
 
   const toggleCollapse = useCallback(() => {
@@ -66,11 +64,9 @@ export function App() {
         data={data}
         section={section}
         collapsed={collapsed}
-        query={query}
         loadStatus={loadStatus}
         onSelect={selectSection}
         onToggleCollapse={toggleCollapse}
-        onQueryChange={setQuery}
       />
       <main className="main-panel">
         {data ? (
@@ -88,12 +84,12 @@ export function App() {
             </section>
           ) : section === 'repos' ? (
             <section className="content-region content-region-flush" aria-live="polite">
-              <RepoExplorer data={data} query={query} initialRepoKey={focusedRepoKey} />
+              <RepoExplorer data={data} initialRepoKey={focusedRepoKey} />
             </section>
           ) : section === 'skills' || section === 'plugins' || section === 'mcp' || section === 'hooks' ? (
             <section className="content-region content-region-flush" aria-live="polite">
               <NavProvider value={navigateToRepo}>
-                <CatalogExplorer data={data} kind={section} query={query} />
+                <CatalogExplorer data={data} kind={section} />
               </NavProvider>
             </section>
           ) : (
@@ -103,13 +99,7 @@ export function App() {
                   <h2>Attention</h2>
                   <span className="cat-hint">disabled, dormant, unassigned, and unscoped items</span>
                 </div>
-                <SectionView
-                  section={section}
-                  data={data}
-                  filter="all"
-                  query={query}
-                  focusedRepoKey={focusedRepoKey}
-                />
+                <SectionView section={section} data={data} filter="all" />
               </NavProvider>
             </section>
           )
