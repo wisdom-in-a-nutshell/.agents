@@ -131,20 +131,9 @@
       "scope": "repo",
       "repos": [
         "aipodcasting",
-        "aipodcasting-public-website",
         "win"
       ],
       "source_path": "skills-source/owned/azure-webapp-config",
-      "upstream_ref": "-"
-    },
-    {
-      "skill": "azure-webapp-deploy",
-      "origin": "owned",
-      "scope": "repo",
-      "repos": [
-        "whos-in-your-head"
-      ],
-      "source_path": "skills-source/owned/azure-webapp-deploy",
       "upstream_ref": "-"
     },
     {
@@ -275,8 +264,7 @@
       "origin": "external",
       "scope": "repo",
       "repos": [
-        "agents",
-        "whos-in-your-head"
+        "agents"
       ],
       "source_path": "skills-source/external/openai-docs",
       "upstream_ref": "openai/skills:skills/.curated/openai-docs@main"
@@ -377,9 +365,7 @@
       "scope": "repo",
       "repos": [
         "adithyan-ai-videos",
-        "aipodcasting",
-        "aipodcasting-public-website",
-        "whos-in-your-head"
+        "aipodcasting"
       ],
       "source_path": "skills-source/external/vercel-react-best-practices",
       "upstream_ref": "vercel-labs/agent-skills:skills/react-best-practices@main"
@@ -391,8 +377,6 @@
       "repos": [
         "adithyan-ai-videos",
         "aipodcasting",
-        "aipodcasting-public-website",
-        "whos-in-your-head",
         "agents",
         "adi",
         "dobby-dashboard"

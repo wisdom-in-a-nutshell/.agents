@@ -31,14 +31,7 @@
       "path": "~/GitHub/adithyan-ai-videos"
     },
     {
-      "path": "~/GitHub/aip-cognitive-revolution"
-    },
-    {
       "path": "~/GitHub/aipodcasting",
-      "codex_trust": false
-    },
-    {
-      "path": "~/GitHub/aipodcasting-public-website",
       "codex_trust": false
     },
     {
@@ -78,9 +71,6 @@
       "path": "~/GitHub/focus"
     },
     {
-      "path": "~/GitHub/future-of-life-institute-podcast-aipodcast-ing-theme"
-    },
-    {
       "path": "~/GitHub/litellm",
       "codex_trust": false
     },
@@ -109,13 +99,6 @@
       "mcp_presets": [
         "openaiDeveloperDocs"
       ]
-    },
-    {
-      "path": "~/GitHub/thoughtforms-life-theme"
-    },
-    {
-      "path": "~/GitHub/whos-in-your-head",
-      "codex_trust": false
     },
     {
       "path": "~/GitHub/win"
