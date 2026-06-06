@@ -88,11 +88,11 @@ def build_capability_board(counts: dict[str, Any]) -> list[dict[str, Any]]:
             "claude": {"status": "stable", "note": "~/.claude/settings.json"},
         },
         {
-            "key": "dev", "name": "Dev & Preview",
-            "desc": "How the agent runs & verifies the app",
+            "key": "dev", "name": "Agent Preview",
+            "desc": "One fixed local preview target per repo",
             "source": "dev-servers/registry.json", "count": counts.get("dev_servers"),
-            "codex": {"status": "planned", "note": "wired from ~/GitHub/scripts"},
-            "claude": {"status": "new", "note": ".claude/launch.json"},
+            "codex": {"status": "stable", "note": ".codex/environments"},
+            "claude": {"status": "stable", "note": ".claude/launch.json"},
         },
         {
             "key": "design", "name": "Design",
@@ -593,13 +593,22 @@ def build_control_plane_data(root: Path) -> dict[str, Any]:
             continue
         servers = entry.get("servers", [])
         servers = servers if isinstance(servers, list) else []
-        server_names = [str(s.get("name", "")).strip() for s in servers if isinstance(s, dict)]
+        server_names = []
+        for server in servers:
+            if not isinstance(server, dict):
+                continue
+            name = str(server.get("name", "")).strip()
+            port = server.get("port")
+            if name and isinstance(port, int):
+                server_names.append(f"{name} :{port}")
+            elif name:
+                server_names.append(name)
         ports = [s.get("port") for s in servers if isinstance(s, dict) and "port" in s]
         dev_servers.append(
             base_item(
                 kind="dev_server",
                 name=repo_name(repo),
-                title=f"{repo_name(repo)} dev servers",
+                title=f"{repo_name(repo)} agent preview",
                 scope="repo",
                 status="active" if servers else "empty",
                 source=REGISTRY_SOURCES["dev_servers"],

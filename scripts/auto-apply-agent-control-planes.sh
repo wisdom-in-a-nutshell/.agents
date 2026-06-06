@@ -135,6 +135,7 @@ done < <(
     hooks \
     mcp \
     plugins \
+    dev-servers \
     scripts \
     skills \
     skills-source
@@ -154,6 +155,7 @@ git_hooks_changed=0
 root_bootstrap_changed=0
 shared_mcp_changed=0
 repo_registry_changed=0
+dev_servers_changed=0
 
 for path in "${changed_paths[@]}"; do
   case "$path" in
@@ -196,6 +198,11 @@ for path in "${changed_paths[@]}"; do
       shared_mcp_changed=1
       ;;
   esac
+  case "$path" in
+    dev-servers/*)
+      dev_servers_changed=1
+      ;;
+  esac
   if [[ "$path" == "codex/config/repo-bootstrap.json" ]]; then
     repo_registry_changed=1
   fi
@@ -207,7 +214,7 @@ need_sync_git_hooks=0
 need_root_bootstrap=0
 need_bootstrap_codex=0
 
-if (( root_bootstrap_changed == 1 )); then
+if (( root_bootstrap_changed == 1 || dev_servers_changed == 1 )); then
   need_root_bootstrap=1
 fi
 if (( skills_changed == 1 )); then

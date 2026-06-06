@@ -24,7 +24,7 @@ from hooks.control_plane import (  # noqa: E402
 
 
 # Durable Claude Code control-plane sync: renders global instructions, skills,
-# settings/hooks, the launcher, and per-repo dev-server launch configs from the
+# settings/hooks, the launcher, and per-repo agent preview configs from the
 # canonical sources in this agents control-plane repo.
 DEFAULT_CLAUDE_HOME = Path.home() / ".claude"
 DEFAULT_GITHUB_ROOT = Path.home() / "GitHub"
@@ -35,6 +35,7 @@ DEFAULT_REAL_CLI_PATH = Path("/opt/homebrew/bin/claude")
 DEFAULT_DEV_SERVERS_REGISTRY = _AGENTS_ROOT / "dev-servers" / "registry.json"
 DEFAULT_HOOKS_REGISTRY = _AGENTS_ROOT / "hooks" / "registry.json"
 DEFAULT_REPO_REGISTRY = _AGENTS_ROOT / "codex" / "config" / "repo-bootstrap.json"
+DEFAULT_PREVIEW_RUNNER = _AGENTS_ROOT / "scripts" / "run-agent-preview-server.py"
 LAUNCH_CONFIG_VERSION = "0.0.1"
 CLAUDE_STOP_COMMAND = 'python3 "$HOME/GitHub/agents/hooks/scripts/claude_stop.py"'
 LEGACY_CLAUDE_STOP_COMMANDS = (
@@ -778,12 +779,49 @@ def render_launcher(launcher_target: Path, real_cli_path: Path, apply: bool) -> 
     launcher_target.chmod(0o755)
 
 
+def _toml_string(value: str) -> str:
+    return '"' + value.replace("\\", "\\\\").replace('"', '\\"').replace("\n", "\\n") + '"'
+
+
+def _shell_command(parts: list[str]) -> str:
+    return " ".join(shlex.quote(part) for part in parts)
+
+
+def preview_command_parts(server: dict[str, Any], preview_runner: Path) -> list[str]:
+    return [
+        "python3",
+        str(preview_runner),
+        "--host",
+        server["host"],
+        "--port",
+        str(server["port"]),
+        "--",
+        server["runtimeExecutable"],
+        *server["runtimeArgs"],
+    ]
+
+
+def render_claude_preview_config(
+    server: dict[str, Any],
+    preview_runner: Path,
+) -> dict[str, Any]:
+    command_parts = preview_command_parts(server, preview_runner)
+    return {
+        "name": server["name"],
+        "runtimeExecutable": command_parts[0],
+        "runtimeArgs": command_parts[1:],
+        "port": server["port"],
+        "autoPort": False,
+    }
+
+
 def load_dev_servers(registry_file: Path) -> list[dict[str, Any]]:
     data = read_json_object(registry_file)
     raw_items = data.get("managed_dev_servers", [])
     if not isinstance(raw_items, list):
         raise ValueError("managed_dev_servers must be an array")
     entries: list[dict[str, Any]] = []
+    seen_ports: dict[int, str] = {}
     for idx, item in enumerate(raw_items):
         if not isinstance(item, dict):
             raise ValueError(f"managed_dev_servers[{idx}] must be an object")
@@ -791,6 +829,10 @@ def load_dev_servers(registry_file: Path) -> list[dict[str, Any]]:
         servers_raw = item.get("servers", [])
         if not isinstance(servers_raw, list) or not servers_raw:
             raise ValueError(f"managed_dev_servers[{idx}] needs a non-empty servers array")
+        if len(servers_raw) != 1:
+            raise ValueError(
+                f"managed_dev_servers[{idx}] must define exactly one agent preview server"
+            )
         servers: list[dict[str, Any]] = []
         label = f"managed_dev_servers[{idx}].servers"
         for sidx, server in enumerate(servers_raw):
@@ -798,23 +840,32 @@ def load_dev_servers(registry_file: Path) -> list[dict[str, Any]]:
                 raise ValueError(f"{label}[{sidx}] must be an object")
             name = ensure_str(server.get("name"), "name", label, sidx)
             runtime = ensure_str(server.get("runtimeExecutable"), "runtimeExecutable", label, sidx)
+            host = str(server.get("host", "127.0.0.1")).strip() or "127.0.0.1"
             args_raw = server.get("runtimeArgs", [])
             if not isinstance(args_raw, list) or not all(isinstance(arg, str) for arg in args_raw):
                 raise ValueError(f"{label}[{sidx}] runtimeArgs must be an array of strings")
             port = server.get("port")
             if not isinstance(port, int) or isinstance(port, bool):
                 raise ValueError(f"{label}[{sidx}] port must be an integer")
+            if port in seen_ports:
+                raise ValueError(f"{label}[{sidx}] port {port} duplicates {seen_ports[port]}")
+            seen_ports[port] = f"{repo}/{name}"
             config: dict[str, Any] = {
                 "name": name,
+                "host": host,
                 "runtimeExecutable": runtime,
                 "runtimeArgs": list(args_raw),
                 "port": port,
+                "autoPort": False,
             }
             if "autoPort" in server:
                 auto_port = server.get("autoPort")
                 if not isinstance(auto_port, bool):
                     raise ValueError(f"{label}[{sidx}] autoPort must be a boolean")
-                config["autoPort"] = auto_port
+                if auto_port:
+                    raise ValueError(
+                        f"{label}[{sidx}] autoPort must be false for shared agent previews"
+                    )
             servers.append(config)
         entries.append({"repo": repo, "servers": servers})
 
@@ -843,6 +894,7 @@ def render_launch_configs(
     entries: list[dict[str, Any]],
     github_root: Path,
     repo_filters: set[Path],
+    preview_runner: Path,
     apply: bool,
 ) -> None:
     home = Path.home()
@@ -857,9 +909,84 @@ def render_launch_configs(
             continue
         if repo_filters and actual_repo not in repo_filters:
             continue
-        desired = {"version": LAUNCH_CONFIG_VERSION, "configurations": entry["servers"]}
+        desired = {
+            "version": LAUNCH_CONFIG_VERSION,
+            "configurations": [
+                render_claude_preview_config(server, preview_runner)
+                for server in entry["servers"]
+            ],
+        }
         target = actual_repo / ".claude" / "launch.json"
         render_launch_config(target, desired, apply)
+
+
+def codex_environment_text(entry: dict[str, Any], preview_runner: Path) -> str:
+    actions: list[str] = []
+    for server in entry["servers"]:
+        command = _shell_command(preview_command_parts(server, preview_runner))
+        actions.append(
+            "\n".join(
+                [
+                    "[[actions]]",
+                    f"name = {_toml_string(server['name'])}",
+                    'icon = "run"',
+                    f"command = {_toml_string(command)}",
+                ]
+            )
+        )
+
+    return "\n".join(
+        [
+            "# THIS IS AUTOGENERATED. DO NOT EDIT MANUALLY",
+            "version = 1",
+            f"name = {_toml_string(entry['repo'])}",
+            "",
+            "[setup]",
+            'script = ""',
+            "",
+            "\n\n".join(actions),
+            "",
+        ]
+    )
+
+
+def render_codex_environment_config(target: Path, desired: str, apply: bool) -> None:
+    existing = target.read_text(encoding="utf-8") if target.is_file() else ""
+    if existing == desired:
+        print(f"UNCHANGED {target}")
+        return
+    print(f"SYNC {target} (Codex agent preview environment)")
+    if not apply:
+        return
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_text(desired, encoding="utf-8")
+
+
+def render_codex_environment_configs(
+    entries: list[dict[str, Any]],
+    github_root: Path,
+    repo_filters: set[Path],
+    preview_runner: Path,
+    apply: bool,
+) -> None:
+    home = Path.home()
+    for entry in entries:
+        repo_root = resolve_repo_root(entry["repo"], github_root, home)
+        if repo_filters and repo_root not in repo_filters:
+            continue
+        actual_repo = repo_git_root(repo_root)
+        if actual_repo is None:
+            if repo_root.exists():
+                print(f"WARNING: skipping existing non-git path: {repo_root}", file=sys.stderr)
+            continue
+        if repo_filters and actual_repo not in repo_filters:
+            continue
+        target = actual_repo / ".codex" / "environments" / "environment.toml"
+        render_codex_environment_config(
+            target,
+            codex_environment_text(entry, preview_runner),
+            apply,
+        )
 
 
 def run_sync(args: argparse.Namespace) -> None:
@@ -870,6 +997,7 @@ def run_sync(args: argparse.Namespace) -> None:
     global_context_target = output_path(Path(args.global_context_target).expanduser())
     launcher_target = output_path(Path(args.launcher_target).expanduser())
     real_cli_path = absolute_path(Path(args.real_cli_path).expanduser())
+    preview_runner = absolute_path(Path(args.preview_runner).expanduser()).resolve()
     extra_trusted_workspaces = [Path(raw).expanduser().resolve() for raw in args.trusted_workspace if raw.strip()]
 
     items, root_dir = load_registry(registry_file)
@@ -918,17 +1046,36 @@ def run_sync(args: argparse.Namespace) -> None:
         render_launcher(launcher_target, real_cli_path, args.apply)
     if not args.skip_launch_configs:
         dev_servers_registry = absolute_path(Path(args.dev_servers_registry).expanduser()).resolve()
+        dev_server_entries = load_dev_servers(dev_servers_registry)
         render_launch_configs(
+            dev_server_entries,
+            github_root,
+            repo_filters,
+            preview_runner,
+            args.apply,
+        )
+        if not args.skip_codex_environments:
+            render_codex_environment_configs(
+                dev_server_entries,
+                github_root,
+                repo_filters,
+                preview_runner,
+                args.apply,
+            )
+    elif not args.skip_codex_environments:
+        dev_servers_registry = absolute_path(Path(args.dev_servers_registry).expanduser()).resolve()
+        render_codex_environment_configs(
             load_dev_servers(dev_servers_registry),
             github_root,
             repo_filters,
+            preview_runner,
             args.apply,
         )
 
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Sync Claude Code global instructions, skills, settings/hooks, launcher, and per-repo dev-server launch configs."
+        description="Sync Claude Code global instructions, skills, settings/hooks, launcher, and per-repo agent preview configs."
     )
     parser.add_argument("--apply", action="store_true", help="Apply changes (default is dry-run).")
     parser.add_argument("--claude-home", default=str(DEFAULT_CLAUDE_HOME), help="Claude Code user directory.")
@@ -969,12 +1116,22 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--dev-servers-registry",
         default=str(DEFAULT_DEV_SERVERS_REGISTRY),
-        help="Canonical dev-server registry JSON for per-repo Claude launch configs.",
+        help="Canonical dev-server registry JSON for per-repo agent preview configs.",
+    )
+    parser.add_argument(
+        "--preview-runner",
+        default=str(DEFAULT_PREVIEW_RUNNER),
+        help="Shared runner that starts a preview only when its fixed port is free.",
     )
     parser.add_argument(
         "--skip-launch-configs",
         action="store_true",
         help="Do not render per-repo dev-server launch configs (.claude/launch.json).",
+    )
+    parser.add_argument(
+        "--skip-codex-environments",
+        action="store_true",
+        help="Do not render per-repo Codex environment action configs (.codex/environments/environment.toml).",
     )
     parser.add_argument(
         "registry_file",

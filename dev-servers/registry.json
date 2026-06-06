@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "description": "Canonical, frontend-agnostic dev/preview server definitions per repo. Rendered into each runtime's own format (Claude Code: .claude/launch.json; Codex/others: their own consumers). Opt-in only: a repo gets a launch surface ONLY if it appears here. Repos not listed are never touched, so public repos and served public/ directories are never written to.",
+  "description": "Canonical agent preview server definitions per repo. Rendered into each runtime's own format (Claude Code: .claude/launch.json; Codex: .codex/environments/environment.toml). Opt-in only: a repo gets a launch surface ONLY if it appears here. Keep production/public Cloudflare services in the scripts repo inventory, not here.",
   "paths": {
     "github_root": "~/GitHub"
   },
@@ -9,17 +9,11 @@
       "repo": "blog-personal",
       "servers": [
         {
-          "name": "blog dev (astro)",
+          "name": "Preview",
+          "host": "127.0.0.1",
           "runtimeExecutable": "pnpm",
-          "runtimeArgs": ["dev"],
+          "runtimeArgs": ["dev", "--host", "127.0.0.1", "--port", "4321"],
           "port": 4321,
-          "autoPort": true
-        },
-        {
-          "name": "blog production (static, serve dist)",
-          "runtimeExecutable": "pnpm",
-          "runtimeArgs": ["start"],
-          "port": 8793,
           "autoPort": false
         }
       ]
@@ -28,23 +22,25 @@
       "repo": "aipodcasting-website",
       "servers": [
         {
-          "name": "AI Podcasting production (static)",
+          "name": "Preview",
+          "host": "127.0.0.1",
           "runtimeExecutable": "pnpm",
-          "runtimeArgs": ["start"],
-          "port": 8796,
+          "runtimeArgs": ["dev", "--host", "127.0.0.1", "--port", "4322"],
+          "port": 4322,
           "autoPort": false
         }
       ]
     },
     {
-      "repo": "agents",
+      "repo": "dobby-dashboard",
       "servers": [
         {
-          "name": "control-plane dashboard",
-          "runtimeExecutable": "python3",
-          "runtimeArgs": ["scripts/control-plane-dashboard.py", "serve", "--root", "."],
-          "port": 8765,
-          "autoPort": true
+          "name": "Preview",
+          "host": "127.0.0.1",
+          "runtimeExecutable": "npm",
+          "runtimeArgs": ["run", "dev", "--", "--strictPort"],
+          "port": 5173,
+          "autoPort": false
         }
       ]
     }

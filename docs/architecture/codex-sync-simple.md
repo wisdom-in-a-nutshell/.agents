@@ -30,7 +30,7 @@ flowchart TD
 - `codex/config/`: canonical Codex machine config and repo bootstrap inputs.
 - `mcp/config/presets.json`: shared MCP preset definitions.
 - `codex/config/repo-bootstrap.json`: managed repo inventory and repo-local Codex behavior.
-- `dev-servers/registry.json`: Claude Code dev-server launch configs.
+- `dev-servers/registry.json`: shared Claude Code + Codex agent-preview launch configs.
 - `~/GitHub/scripts/sync/git-auto-sync.sh`: launchd-driven 15-minute machine sync loop.
 
 ## What Auto-Sync Does

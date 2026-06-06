@@ -41,7 +41,10 @@ For repo authors adding `scripts/hooks/*.py`, start with [`repo-lifecycle-hook-a
   - renders user settings and the managed `Stop` hook under `~/.claude/settings.json`
   - enables YOLO through Claude Code's native bypass mode
   - renders a `~/bin/claude` wrapper that starts sessions with `--dangerously-skip-permissions`
-  - renders per-repo dev-server launch configs (`.claude/launch.json`) from `dev-servers/registry.json`, opt-in per repo
+  - renders per-repo agent preview configs from `dev-servers/registry.json`, opt-in per repo:
+    - Claude Code: `.claude/launch.json`
+    - Codex: `.codex/environments/environment.toml`
+  - wraps preview commands with `scripts/run-agent-preview-server.py`, which reuses an existing listener on the fixed preview port instead of starting a second server
 - `scripts/sync-antigravity-spike.sh`
   - temporary manual-only Antigravity experiment
   - not called by `scripts/bootstrap-machine-agent-control-planes.sh`
@@ -53,6 +56,20 @@ For repo authors adding `scripts/hooks/*.py`, start with [`repo-lifecycle-hook-a
   - switches the machine-local Claude Code credential profile used by the wrapper
 - `scripts/test-control-plane.sh`
   - hermetic regression test entrypoint
+
+## Agent Preview Ports
+
+`dev-servers/registry.json` is the source of truth for short-lived local agent
+previews only. It intentionally does not own public Cloudflare/LaunchAgent
+services such as `adithyan.io` or `adi.adithyan.io`; those stay documented in
+`~/GitHub/scripts`.
+
+Each listed repo gets exactly one preview server. The renderer rejects
+`autoPort: true` so Claude Code and Codex cannot drift to different ports. Both
+clients run the same generated command through
+`scripts/run-agent-preview-server.py`: if `127.0.0.1:<port>` is already
+listening, the runner prints that the preview is already running and exits
+successfully without spawning another server.
 
 ## Runtime-Relevant Change Model
 

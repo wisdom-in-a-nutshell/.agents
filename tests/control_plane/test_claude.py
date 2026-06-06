@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+import tomllib
 from pathlib import Path
 
 from tests.control_plane.support import (
@@ -284,6 +285,7 @@ class ClaudeSyncTests(TempDirTestCase):
         github_root = self.temp_path / "GitHub"
         repo_a = init_git_repo(github_root / "repo-a")
         claude_home = self.temp_path / "claude"
+        preview_runner = (root / "scripts/run-agent-preview-server.py").resolve()
         dev_servers = write_json(
             root / "dev-servers/registry.json",
             {
@@ -292,11 +294,12 @@ class ClaudeSyncTests(TempDirTestCase):
                         "repo": "repo-a",
                         "servers": [
                             {
-                                "name": "dev",
+                                "name": "Preview",
+                                "host": "127.0.0.1",
                                 "runtimeExecutable": "pnpm",
-                                "runtimeArgs": ["dev"],
+                                "runtimeArgs": ["dev", "--host", "127.0.0.1", "--port", "3000"],
                                 "port": 3000,
-                                "autoPort": True,
+                                "autoPort": False,
                             }
                         ],
                     }
@@ -316,6 +319,8 @@ class ClaudeSyncTests(TempDirTestCase):
                 "repo-a",
                 "--dev-servers-registry",
                 str(dev_servers),
+                "--preview-runner",
+                str(preview_runner),
                 "--skip-skills",
                 "--skip-global-context",
                 "--skip-settings",
@@ -328,10 +333,38 @@ class ClaudeSyncTests(TempDirTestCase):
         self.assertEqual("0.0.1", launch["version"])
         self.assertEqual(1, len(launch["configurations"]))
         config = launch["configurations"][0]
-        self.assertEqual("pnpm", config["runtimeExecutable"])
-        self.assertEqual(["dev"], config["runtimeArgs"])
+        self.assertEqual("Preview", config["name"])
+        self.assertEqual("python3", config["runtimeExecutable"])
+        self.assertEqual(
+            [
+                str(preview_runner),
+                "--host",
+                "127.0.0.1",
+                "--port",
+                "3000",
+                "--",
+                "pnpm",
+                "dev",
+                "--host",
+                "127.0.0.1",
+                "--port",
+                "3000",
+            ],
+            config["runtimeArgs"],
+        )
         self.assertEqual(3000, config["port"])
-        self.assertTrue(config["autoPort"])
+        self.assertFalse(config["autoPort"])
+
+        codex_env = tomllib.loads(
+            (repo_a / ".codex/environments/environment.toml").read_text(encoding="utf-8")
+        )
+        self.assertEqual("repo-a", codex_env["name"])
+        self.assertEqual("Preview", codex_env["actions"][0]["name"])
+        self.assertEqual("run", codex_env["actions"][0]["icon"])
+        self.assertEqual(
+            f"python3 {preview_runner} --host 127.0.0.1 --port 3000 -- pnpm dev --host 127.0.0.1 --port 3000",
+            codex_env["actions"][0]["command"],
+        )
 
     def test_dev_server_launch_config_is_opt_in_per_repo(self) -> None:
         root = self.temp_path / "agents"
@@ -340,6 +373,7 @@ class ClaudeSyncTests(TempDirTestCase):
         repo_a = init_git_repo(github_root / "repo-a")
         repo_b = init_git_repo(github_root / "repo-b")
         claude_home = self.temp_path / "claude"
+        preview_runner = (root / "scripts/run-agent-preview-server.py").resolve()
         dev_servers = write_json(
             root / "dev-servers/registry.json",
             {
@@ -369,6 +403,8 @@ class ClaudeSyncTests(TempDirTestCase):
                 str(github_root),
                 "--dev-servers-registry",
                 str(dev_servers),
+                "--preview-runner",
+                str(preview_runner),
                 "--skip-skills",
                 "--skip-global-context",
                 "--skip-settings",
@@ -379,7 +415,67 @@ class ClaudeSyncTests(TempDirTestCase):
 
         # Listed repo gets a launch config; unlisted repo is never touched.
         self.assertTrue((repo_a / ".claude/launch.json").is_file())
+        self.assertTrue((repo_a / ".codex/environments/environment.toml").is_file())
         self.assertFalse((repo_b / ".claude/launch.json").exists())
+        self.assertFalse((repo_b / ".codex/environments/environment.toml").exists())
+
+    def test_dev_server_rejects_multiple_or_auto_port_previews(self) -> None:
+        root = self.temp_path / "agents"
+        registry = self._write_registry(root, [])
+        github_root = self.temp_path / "GitHub"
+        init_git_repo(github_root / "repo-a")
+        claude_home = self.temp_path / "claude"
+
+        for servers in (
+            [
+                {
+                    "name": "dev",
+                    "runtimeExecutable": "pnpm",
+                    "runtimeArgs": ["dev"],
+                    "port": 3000,
+                },
+                {
+                    "name": "prod",
+                    "runtimeExecutable": "pnpm",
+                    "runtimeArgs": ["start"],
+                    "port": 3001,
+                },
+            ],
+            [
+                {
+                    "name": "dev",
+                    "runtimeExecutable": "pnpm",
+                    "runtimeArgs": ["dev"],
+                    "port": 3000,
+                    "autoPort": True,
+                },
+            ],
+        ):
+            dev_servers = write_json(
+                root / "dev-servers/registry.json",
+                {"managed_dev_servers": [{"repo": "repo-a", "servers": servers}]},
+            )
+
+            result = run_command(
+                [
+                    str(REPO_ROOT / "scripts/sync-claude.py"),
+                    "--apply",
+                    "--claude-home",
+                    str(claude_home),
+                    "--github-root",
+                    str(github_root),
+                    "--dev-servers-registry",
+                    str(dev_servers),
+                    "--skip-skills",
+                    "--skip-global-context",
+                    "--skip-settings",
+                    "--skip-launcher",
+                    str(registry),
+                ],
+                check=False,
+            )
+
+            self.assertNotEqual(0, result.returncode)
 
     def test_apply_seeds_workspace_trust_for_managed_repos(self) -> None:
         root = init_git_repo(self.temp_path / "agents")

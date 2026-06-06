@@ -97,7 +97,7 @@ function RepoDetail({ data, repo }: { data: ControlPlaneData; repo: Item }) {
     ['Plugins', caps.globalPlugins.length],
     ['MCP', caps.globalMcp.length + caps.directMcp.length],
     ['Hooks', caps.globalHooks.length + caps.repoHooks.length],
-    ['Dev', devNames.length],
+    ['Preview', devNames.length],
   ];
 
   return (
@@ -178,8 +178,8 @@ function RepoDetail({ data, repo }: { data: ControlPlaneData; repo: Item }) {
         />
       </CapGroup>
 
-      <CapGroup title="Dev & Preview" runtime="Claude" count={devNames.length}>
-        <Chips items={devNames} accent empty="No dev servers — add in dev-servers/registry.json" />
+      <CapGroup title="Agent Preview" runtime="Codex + Claude" count={devNames.length}>
+        <Chips items={devNames} accent empty="No preview server — add in dev-servers/registry.json" />
       </CapGroup>
     </div>
   );

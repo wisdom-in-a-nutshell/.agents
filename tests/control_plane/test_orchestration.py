@@ -132,6 +132,7 @@ class AutoApplyRoutingTests(TempDirTestCase):
             "mcp/config/presets.json",
             "codex/config/repo-bootstrap.json",
             "hooks/registry.json",
+            "dev-servers/registry.json",
         ):
             write_text(root / relative_path, "{}\n")
 
@@ -294,6 +295,44 @@ class AutoApplyRoutingTests(TempDirTestCase):
             stamp_file,
             env={"PATH": "/usr/bin:/bin"},
         )
+
+        self.assertIn("APPLY: detected shared agent control-plane changes", output)
+        self.assertEqual(
+            [
+                f"bootstrap-machine-agent-control-planes.sh|--apply --github-root {self.temp_path / 'GitHub'}",
+            ],
+            log_path.read_text(encoding="utf-8").splitlines(),
+        )
+
+    def test_dev_server_registry_change_runs_root_bootstrap(self) -> None:
+        root, log_path, stamp_file = self._make_agents_repo()
+        baseline_sha = run_command(
+            ["git", "-C", str(root), "rev-parse", "HEAD"],
+        ).stdout.strip()
+        write_text(stamp_file, baseline_sha + "\n")
+
+        write_json(
+            root / "dev-servers/registry.json",
+            {
+                "version": 1,
+                "managed_dev_servers": [
+                    {
+                        "repo": "repo-a",
+                        "servers": [
+                            {
+                                "name": "Preview",
+                                "runtimeExecutable": "pnpm",
+                                "runtimeArgs": ["dev"],
+                                "port": 3000,
+                            }
+                        ],
+                    }
+                ],
+            },
+        )
+        commit_all(root, "update dev server registry")
+
+        output = self._run_auto_apply(root, log_path, stamp_file)
 
         self.assertIn("APPLY: detected shared agent control-plane changes", output)
         self.assertEqual(
