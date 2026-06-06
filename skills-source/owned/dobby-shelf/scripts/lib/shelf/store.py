@@ -23,7 +23,7 @@ def shelf_path() -> Path:
 
 
 def lock_path() -> Path:
-    return workspace_root() / "state" / "shelf.lock"
+    return workspace_root() / "tmp" / "shelf.lock"
 
 
 @contextmanager
