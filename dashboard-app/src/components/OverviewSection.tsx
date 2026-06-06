@@ -7,7 +7,6 @@ import {
   enabledGlobalPlugins,
   enabledHooks,
   enabledPlugins,
-  formatDate,
   globalMcp,
   globalSkills,
   itemAppliesToRepo,
@@ -94,7 +93,6 @@ export function OverviewSection({
             <span className="ov-dot" aria-hidden="true" />
             {statusText}
           </span>
-          <span className="ov-updated">updated {formatDate(data.generated_at_utc)}</span>
         </div>
       </header>
 

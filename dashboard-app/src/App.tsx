@@ -6,7 +6,7 @@ import { OverviewSection } from './components/OverviewSection';
 import { RepoExplorer } from './components/RepoExplorer';
 import { Sidebar } from './components/Sidebar';
 import { NavProvider } from './primitives';
-import { formatDate, repoDisplayName, repoKey } from './selectors';
+import { repoDisplayName, repoKey } from './selectors';
 import { SectionView } from './sections';
 import type { SectionId } from './types';
 
@@ -60,8 +60,6 @@ export function App() {
     });
   }, []);
 
-  const lastUpdated = data ? `Updated ${formatDate(data.generated_at_utc)}` : 'Not loaded';
-
   return (
     <div className="app-shell">
       <Sidebar
@@ -69,7 +67,6 @@ export function App() {
         section={section}
         collapsed={collapsed}
         query={query}
-        lastUpdated={lastUpdated}
         refreshStatus={refreshStatus}
         onSelect={selectSection}
         onToggleCollapse={toggleCollapse}

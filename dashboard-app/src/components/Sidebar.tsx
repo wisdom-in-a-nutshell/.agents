@@ -29,7 +29,6 @@ export function Sidebar({
   section,
   collapsed,
   query,
-  lastUpdated,
   refreshStatus,
   onSelect,
   onToggleCollapse,
@@ -39,7 +38,6 @@ export function Sidebar({
   section: SectionId;
   collapsed: boolean;
   query: string;
-  lastUpdated: string;
   refreshStatus: string;
   onSelect: (section: SectionId) => void;
   onToggleCollapse: () => void;
@@ -101,10 +99,11 @@ export function Sidebar({
         />
       </label>
 
-      <div className="sidebar-footer">
-        <span>{lastUpdated}</span>
-        {refreshStatus ? <span>{refreshStatus}</span> : null}
-      </div>
+      {refreshStatus ? (
+        <div className="sidebar-footer">
+          <span>{refreshStatus}</span>
+        </div>
+      ) : null}
     </aside>
   );
 }
