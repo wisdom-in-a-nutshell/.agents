@@ -103,7 +103,7 @@ export function Sidebar({
 
       <div className="sidebar-footer">
         <span>{lastUpdated}</span>
-        <span>{refreshStatus}</span>
+        {refreshStatus ? <span>{refreshStatus}</span> : null}
       </div>
     </aside>
   );
