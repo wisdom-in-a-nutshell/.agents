@@ -326,12 +326,12 @@ def list_cards(view: str = "active", item_type: str | None = None) -> dict[str, 
     snapshot = build_snapshot(state, "full")
     if view in {"today", "upcoming", "later"}:
         cards = snapshot["views"][view]
-    elif view in {"active", "open"}:
+    elif view == "active":
         cards = [card for name in ("today", "upcoming", "later") for card in snapshot["views"][name]]
-    elif view in {"completed", "done", "dropped", "archive", "all"}:
+    elif view in {"completed", "dropped", "archive", "all"}:
         cards = []
         for item in state.get("items", []):
-            if view == "all" or (view in {"completed", "done"} and item.get("state") == "completed") or (view == "dropped" and item.get("state") == "dropped") or (view == "archive" and item.get("state") in {"completed", "dropped", "paused"}):
+            if view == "all" or (view == "completed" and item.get("state") == "completed") or (view == "dropped" and item.get("state") == "dropped") or (view == "archive" and item.get("state") in {"completed", "dropped", "paused"}):
                 cards.append({"itemId": item.get("id"), "type": item.get("type"), "title": item.get("title"), "state": item.get("state"), "updatedAt": item.get("updatedAt")})
     else:
         raise ShelfValidationError(f"unknown view: {view}")

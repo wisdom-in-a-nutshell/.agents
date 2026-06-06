@@ -1,6 +1,6 @@
 ---
 name: dobby-shelf
-description: "Operate Dobby Shelf, the repo-local personal open-loop surface in `state/shelf.json`. Use for tasks, purchases, habits, follow-ups, deferrals, \"what's on my shelf/today/later\", \"add a task\", \"mark done\", \"drop this\", and any personal actionable item assigned to the user. Do not use for agent work queues; use Symphony for work assigned to agents."
+description: "Operate Dobby Shelf, the repo-local personal open-loop surface in `state/shelf.json`. Use for tasks, purchases, habits, follow-ups, deferrals, \"what's on my shelf/today/later\", \"add a task\", \"mark complete\", \"drop this\", and any personal actionable item assigned to the user. Do not use for agent work queues; use Symphony for work assigned to agents."
 ---
 
 # Dobby Shelf
@@ -80,7 +80,7 @@ $HOME/GitHub/agents/skills-source/owned/dobby-shelf/scripts/dobby-shelf snapshot
 ```
 
 `snapshot` is a read-only decision surface, not an archive view. It groups active
-loops into `today`, `upcoming`, and `later`, returns compact cards, hides done/dropped
+loops into `today`, `upcoming`, and `later`, returns compact cards, hides completed/dropped
 history, and includes signals such as overdue due dates and today overload.
 
 Modes:
