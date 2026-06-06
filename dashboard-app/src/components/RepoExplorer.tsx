@@ -111,7 +111,7 @@ function RepoDetail({ data, repo }: { data: ControlPlaneData; repo: Item }) {
 
       <div className="re-stats">
         {stats.map(([label, n]) => (
-          <div className="re-stat" key={label}>
+          <div className={`re-stat${n === 0 ? ' is-zero' : ''}`} key={label}>
             <div className="re-stat-n">{n}</div>
             <div className="re-stat-l">{label}</div>
           </div>
@@ -202,14 +202,10 @@ export function RepoExplorer({
           <span>
             <b>+N</b> repo additions
           </span>
-          <span>
-            <span className="re-list-dev" /> dev server
-          </span>
         </p>
         <ul>
           {repos.map((repo) => {
             const caps = repoCapabilitySummary(data, repo);
-            const dev = data.groups.dev_servers.some((s) => itemAppliesToRepo(s, repo));
             const isSel = selected && repoKey(repo.name) === repoKey(selected.name);
             return (
               <li key={repo.id}>
@@ -219,9 +215,8 @@ export function RepoExplorer({
                   onClick={() => setSelectedKey(repoKey(repo.name))}
                 >
                   <span className="re-list-name">{repo.name}</span>
-                  <span className="re-list-meta">
+                  <span className={`re-list-meta${caps.localTotal > 0 ? ' has-add' : ''}`}>
                     +{caps.localTotal}
-                    {dev ? <span className="re-list-dev" title="has dev server" /> : null}
                   </span>
                 </button>
               </li>
@@ -234,7 +229,7 @@ export function RepoExplorer({
           <RepoDetail data={data} repo={selected} />
         ) : (
           <div className="empty-state">
-            <p>No repos match this search.</p>
+            <p>No repos to show.</p>
           </div>
         )}
       </div>

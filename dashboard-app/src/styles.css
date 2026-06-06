@@ -877,8 +877,8 @@ input:focus-visible {
 .re-list-item.active { background: var(--accent-soft); color: var(--accent-ink); }
 .re-list-name { font-family: var(--font-sans); font-weight: 500; font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .re-list-meta { display: inline-flex; align-items: center; gap: 6px; font-size: 11.5px; color: var(--faint); font-variant-numeric: tabular-nums; flex-shrink: 0; }
+.re-list-meta.has-add { color: var(--scope-global-ink); }
 .re-list-item.active .re-list-meta { color: var(--accent-ink); }
-.re-list-dev { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); display: inline-block; }
 
 .re-detail { min-width: 0; }
 .re-detail-inner { display: flex; flex-direction: column; gap: 16px; }
@@ -893,6 +893,8 @@ input:focus-visible {
 .re-stat { border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); padding: 12px 14px; }
 .re-stat-n { font-family: var(--font-serif); font-size: 23px; line-height: 1.1; color: var(--text); font-variant-numeric: tabular-nums; }
 .re-stat-l { color: var(--muted); font-size: 11.5px; margin-top: 2px; }
+.re-stat.is-zero { background: var(--surface-soft); }
+.re-stat.is-zero .re-stat-n, .re-stat.is-zero .re-stat-l { color: var(--faint); }
 
 .re-cap { border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); padding: 14px 16px; }
 .re-cap-head { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
