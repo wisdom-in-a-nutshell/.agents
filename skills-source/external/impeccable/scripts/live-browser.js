@@ -81,39 +81,18 @@
     'html', 'head', 'body', 'script', 'style', 'link', 'meta', 'noscript', 'br', 'wbr',
   ]);
 
-  // SVG icons stack above each chip label. All strokes use currentColor so the
-  // icon recolors to C.brand when its chip is selected. 20x20 render, 24-viewBox,
-  // 1.5 stroke - visually consistent with the Foundation grid on the homepage.
-  const ICON_ATTRS = 'width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="display:block"';
-  const ICONS = {
-    impeccable: `<svg ${ICON_ATTRS}><path d="M4 20l4-1L18 9l-3-3L5 16z"/><path d="M14 7l3 3"/></svg>`,
-    bolder:     `<svg ${ICON_ATTRS}><rect x="6" y="12" width="4" height="7" rx="0.5"/><rect x="14" y="5" width="4" height="14" rx="0.5"/></svg>`,
-    quieter:    `<svg ${ICON_ATTRS}><rect x="6" y="5" width="4" height="14" rx="0.5"/><rect x="14" y="12" width="4" height="7" rx="0.5"/></svg>`,
-    distill:    `<svg ${ICON_ATTRS}><path d="M4 5h16l-6 8v7l-4-2v-5z"/></svg>`,
-    polish:     `<svg ${ICON_ATTRS}><path d="M15 3l1 3 3 1-3 1-1 3-1-3-3-1 3-1z"/><path d="M7 13l0.6 1.8 1.8 0.6-1.8 0.6-0.6 1.8-0.6-1.8-1.8-0.6 1.8-0.6z"/></svg>`,
-    typeset:    `<svg ${ICON_ATTRS}><path d="M5 6h14" stroke-width="2.6"/><path d="M5 12h9" stroke-width="1.9"/><path d="M5 18h5" stroke-width="1.3"/></svg>`,
-    colorize:   `<svg ${ICON_ATTRS}><circle cx="9" cy="10" r="5"/><circle cx="15" cy="10" r="5"/><circle cx="12" cy="15" r="5"/></svg>`,
-    layout:     `<svg ${ICON_ATTRS}><rect x="3" y="4" width="8" height="16" rx="0.5"/><rect x="13" y="4" width="8" height="7" rx="0.5"/><rect x="13" y="13" width="8" height="7" rx="0.5"/></svg>`,
-    adapt:      `<svg ${ICON_ATTRS}><rect x="2.5" y="5" width="12" height="11" rx="1"/><line x1="2.5" y1="19" x2="14.5" y2="19"/><rect x="16.5" y="8" width="5" height="11" rx="1"/></svg>`,
-    animate:    `<svg ${ICON_ATTRS}><path d="M3 18c4-4 6-10 10-10"/><path d="M13 8c3 0 5 5 8 10"/><circle cx="13" cy="8" r="1.6" fill="currentColor" stroke="none"/></svg>`,
-    delight:    `<svg ${ICON_ATTRS}><path d="M12 3l2 6 6 2-6 2-2 6-2-6-6-2 6-2z"/></svg>`,
-    overdrive:  `<svg ${ICON_ATTRS}><path d="M13 3L5 13h5l-1 8 9-12h-6z"/></svg>`,
-  };
-
-  const ACTIONS = [
-    { value: 'impeccable', label: 'Freeform' },
-    { value: 'bolder',     label: 'Bolder' },
-    { value: 'quieter',    label: 'Quieter' },
-    { value: 'distill',    label: 'Distill' },
-    { value: 'polish',     label: 'Polish' },
-    { value: 'typeset',    label: 'Typeset' },
-    { value: 'colorize',   label: 'Colorize' },
-    { value: 'layout',     label: 'Layout' },
-    { value: 'adapt',      label: 'Adapt' },
-    { value: 'animate',    label: 'Animate' },
-    { value: 'delight',    label: 'Delight' },
-    { value: 'overdrive',  label: 'Overdrive' },
-  ];
+  // Command vocabulary (values + labels + icons) comes from the canonical source,
+  // skill/scripts/live-vocabulary.mjs, which live-server.mjs serializes into
+  // window.__IMPECCABLE_VOCAB__ when it serves /live.js (same injection path as
+  // the token/port above, so it is always present here). The icons stack above
+  // each chip label and recolor to C.brand when selected (strokes use
+  // currentColor). ACTIONS drives the picker grid; ICONS maps value -> svg.
+  const VOCAB = Array.isArray(window.__IMPECCABLE_VOCAB__) ? window.__IMPECCABLE_VOCAB__ : [];
+  const ICONS = {};
+  const ACTIONS = VOCAB.map((c) => {
+    ICONS[c.value] = c.icon;
+    return { value: c.value, label: c.label };
+  });
 
   const LIVE_CHROME_MOUNT_CONTRACT = ['root', 'transport', 'state', 'actions'];
   const LIVE_UI_SURFACES = [

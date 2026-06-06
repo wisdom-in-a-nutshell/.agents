@@ -24,6 +24,7 @@ import { parseDesignMd } from './design-parser.mjs';
 import { resolveContextDir } from './context.mjs';
 import { createLiveSessionStore } from './live-session-store.mjs';
 import { validateEvent } from './live-event-validation.mjs';
+import { LIVE_COMMANDS } from './live-vocabulary.mjs';
 import {
   getDesignSidecarPath,
   getLiveDir,
@@ -1272,6 +1273,9 @@ function createRequestHandler({ detectScript, sessionPath, livePath }) {
       const body =
         `window.__IMPECCABLE_TOKEN__ = '${state.token}';\n` +
         `window.__IMPECCABLE_PORT__ = ${state.port};\n` +
+        // Canonical command vocabulary (values + labels + icons). live-browser.js
+        // builds its action picker from this instead of an inline copy.
+        `window.__IMPECCABLE_VOCAB__ = ${JSON.stringify(LIVE_COMMANDS)};\n` +
         sessionScript + '\n' +
         liveScript;
       res.writeHead(200, {
