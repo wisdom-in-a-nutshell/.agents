@@ -42,6 +42,10 @@ For repo authors adding `scripts/hooks/*.py`, start with [`repo-lifecycle-hook-a
   - enables YOLO through Claude Code's native bypass mode
   - renders a `~/bin/claude` wrapper that starts sessions with `--dangerously-skip-permissions`
   - renders per-repo dev-server launch configs (`.claude/launch.json`) from `dev-servers/registry.json`, opt-in per repo
+- `scripts/sync-antigravity-spike.sh`
+  - temporary manual-only Antigravity experiment
+  - not called by `scripts/bootstrap-machine-agent-control-planes.sh`
+  - keep out of shared bootstrap automation until a proper opt-in gate exists
 - `scripts/sync-skills-registry.sh`
   - renders global Codex skill symlinks into `~/.agents/skills`
   - renders repo-scoped Codex skill symlinks into repo `.agents/skills`

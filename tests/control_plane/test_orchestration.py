@@ -44,7 +44,7 @@ class SharedBootstrapWrapperTests(TempDirTestCase):
         repo_a = self.temp_path / "repo-a"
         repo_b = self.temp_path / "repo-b"
 
-        run_command(
+        result = run_command(
             [
                 str(root / "scripts/bootstrap-machine-agent-control-planes.sh"),
                 "--apply",
@@ -58,6 +58,7 @@ class SharedBootstrapWrapperTests(TempDirTestCase):
             env={"LOG_FILE": str(log_path)},
         )
 
+        self.assertIn("SKIP Antigravity spike sync (disabled)", result.stdout)
         self.assertEqual(
             [
                 f"sync-skills-registry.sh|--apply --repo {repo_a} --repo {repo_b}",
