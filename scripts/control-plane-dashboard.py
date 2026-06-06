@@ -807,7 +807,7 @@ def command_data(args: argparse.Namespace) -> int:
             started_at,
             code="E_ROOT_NOT_FOUND",
             message=f"Repository root does not exist: {root}",
-            hint="Pass --root pointing at the .agents repository.",
+            hint="Pass --root pointing at the agents control-plane repository.",
             exit_code=EXIT_USAGE,
             plain=args.plain,
         )
@@ -842,7 +842,7 @@ def command_serve(args: argparse.Namespace) -> int:
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Serve and inspect the local .agents control-plane dashboard."
+        description="Serve and inspect the local agents control-plane dashboard."
     )
     subparsers = parser.add_subparsers(dest="command", required=True)
 
@@ -853,7 +853,7 @@ def parse_args() -> argparse.Namespace:
     data_parser.add_argument(
         "--root",
         default=str(Path(__file__).resolve().parents[1]),
-        help="Path to the .agents repository root.",
+        help="Path to the agents control-plane repository root.",
     )
     data_parser.add_argument(
         "--plain",
@@ -874,7 +874,7 @@ def parse_args() -> argparse.Namespace:
     serve_parser.add_argument(
         "--root",
         default=str(Path(__file__).resolve().parents[1]),
-        help="Path to the .agents repository root.",
+        help="Path to the agents control-plane repository root.",
     )
     serve_parser.add_argument(
         "--host",

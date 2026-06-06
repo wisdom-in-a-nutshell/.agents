@@ -485,7 +485,7 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     output.add_argument("--json", action="store_true", help="Emit the stable JSON result contract (default).")
     output.add_argument("--plain", action="store_true", help="Emit concise plain text for operator inspection.")
     parser.add_argument("--no-input", action="store_true", help="Accepted for non-interactive callers; this command never prompts.")
-    parser.add_argument("--agents-repo", default=str(Path(__file__).resolve().parents[1]), help="Path to the .agents repo.")
+    parser.add_argument("--agents-repo", default=str(Path(__file__).resolve().parents[1]), help="Path to the agents control-plane repo.")
     parser.add_argument("--home", default=str(Path.home()), help="Home directory whose agent runtimes should be audited.")
     parser.add_argument("--timeout-sec", type=int, default=600, help="Timeout for the shared control-plane check.")
     parser.add_argument(

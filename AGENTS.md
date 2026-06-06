@@ -1,4 +1,4 @@
-# .agents repo
+# Agents Control-Plane Repo
 
 Personal agent, Codex, and repo-local lifecycle hook control plane.
 
