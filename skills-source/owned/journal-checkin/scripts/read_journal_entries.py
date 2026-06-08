@@ -204,9 +204,6 @@ def render_morning_md(entry: dict[str, Any]) -> list[str]:
     otm = entry.get("one_thing_that_matters")
     if otm:
         lines.append(f"- One thing that matters: {otm}")
-    show_up = entry.get("show_up_as")
-    if show_up:
-        lines.append(f"- Show up as: {show_up}")
     lines.append("")
     return lines
 

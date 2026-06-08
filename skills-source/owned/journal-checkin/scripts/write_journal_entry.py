@@ -30,6 +30,7 @@ REQUIRED_FIELDS = {
     "general": ["title", "summary", "body", "body_format"],
 }
 STATE_FIELDS = {"sleep", "energy", "mood"}
+REMOVED_MORNING_FIELDS = {"implementation_next_step", "show_up_as"}
 WORD_RE = re.compile(r"[\w’'/-]+")
 
 
@@ -324,6 +325,9 @@ def main() -> int:
         "captured_at": existing.get("captured_at", timestamp.isoformat()),
     }
     entry.pop("source", None)
+    if args.kind == "morning":
+        for field in REMOVED_MORNING_FIELDS:
+            entry.pop(field, None)
 
     validation_errors = validate_entry(args.kind, entry)
     if validation_errors:
