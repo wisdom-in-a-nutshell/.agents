@@ -26,7 +26,6 @@ Prompt:
 2. Three things you're grateful for?
 3. What is the one thing that matters today?
 4. What is the smallest concrete next action for that thing?
-5. Optional: how do you want to show up?
 
 Implementation bridge:
 
