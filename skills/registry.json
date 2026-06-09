@@ -393,6 +393,62 @@
       ],
       "source_path": "skills-source/external/remotion",
       "upstream_ref": "remotion-dev/remotion:packages/skills/skills/remotion@main"
+    },
+    {
+      "skill": "audit-xcode-security-settings",
+      "origin": "external",
+      "scope": "dormant",
+      "repos": [],
+      "source_path": "skills-source/external/audit-xcode-security-settings",
+      "upstream_ref": "local-import"
+    },
+    {
+      "skill": "c-bounds-safety",
+      "origin": "external",
+      "scope": "dormant",
+      "repos": [],
+      "source_path": "skills-source/external/c-bounds-safety",
+      "upstream_ref": "local-import"
+    },
+    {
+      "skill": "device-interaction",
+      "origin": "external",
+      "scope": "dormant",
+      "repos": [],
+      "source_path": "skills-source/external/device-interaction",
+      "upstream_ref": "local-import"
+    },
+    {
+      "skill": "swiftui-specialist",
+      "origin": "external",
+      "scope": "dormant",
+      "repos": [],
+      "source_path": "skills-source/external/swiftui-specialist",
+      "upstream_ref": "local-import"
+    },
+    {
+      "skill": "swiftui-whats-new-27",
+      "origin": "external",
+      "scope": "dormant",
+      "repos": [],
+      "source_path": "skills-source/external/swiftui-whats-new-27",
+      "upstream_ref": "local-import"
+    },
+    {
+      "skill": "test-modernizer",
+      "origin": "external",
+      "scope": "dormant",
+      "repos": [],
+      "source_path": "skills-source/external/test-modernizer",
+      "upstream_ref": "local-import"
+    },
+    {
+      "skill": "uikit-app-modernization",
+      "origin": "external",
+      "scope": "dormant",
+      "repos": [],
+      "source_path": "skills-source/external/uikit-app-modernization",
+      "upstream_ref": "local-import"
     }
   ],
   "unmanaged_repo_local_skills": [
