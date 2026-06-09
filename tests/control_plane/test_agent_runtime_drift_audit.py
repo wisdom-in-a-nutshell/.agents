@@ -168,3 +168,43 @@ class AgentRuntimeDriftAuditTests(TempDirTestCase):
         self.assertEqual(result.returncode, 1)
         self.assertIn("required Codex plugin availability check failed", result.stdout)
         self.assertIn("computer-use@openai-bundled is not enabled", result.stdout)
+
+    def test_audit_repairs_managed_plugin_drift_when_requested(self) -> None:
+        home = self.temp_path / "home"
+        agents_repo = make_control_plane_root(self.temp_path)
+        repair_script = agents_repo / "codex/scripts/sync-config.sh"
+        write_executable(
+            repair_script,
+            f"""#!/usr/bin/env bash
+set -euo pipefail
+mkdir -p {home}/.codex
+cat > {home}/.codex/config.toml <<'CONFIG'
+[plugins."computer-use@openai-bundled"]
+enabled = true
+CONFIG
+mkdir -p {home}/.codex/plugins/cache/openai-bundled/computer-use/1.0.0/.codex-plugin
+cat > {home}/.codex/plugins/cache/openai-bundled/computer-use/1.0.0/.codex-plugin/plugin.json <<'JSON'
+{{"name":"computer-use","version":"1.0.0"}}
+JSON
+""",
+        )
+
+        result = run_command(
+            [
+                str(REPO_ROOT / "scripts/audit-agent-runtime-drift.py"),
+                "--json",
+                "--skip-control-plane-check",
+                "--repair-managed-plugin-drift",
+                "--agents-repo",
+                str(agents_repo),
+                "--home",
+                str(home),
+            ]
+        )
+
+        payload = json.loads(result.stdout)
+        self.assertEqual(payload["status"], "ok")
+        self.assertEqual(payload["data"]["summary"]["errors"], 0)
+        checks = {check["name"]: check for check in payload["data"]["checks"]}
+        self.assertEqual(checks["managed_plugin_repair"]["status"], "ok")
+        self.assertEqual(checks["codex_required_plugins"]["status"], "ok")

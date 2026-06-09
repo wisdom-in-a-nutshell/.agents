@@ -111,6 +111,7 @@ cd ~/GitHub/agents
 ./scripts/auto-apply-agent-control-planes.sh --dry-run
 ./scripts/auto-apply-agent-control-planes.sh --apply
 ./scripts/audit-agent-runtime-drift.py --plain
+./scripts/audit-agent-runtime-drift.py --plain --repair-managed-plugin-drift
 ./scripts/check-agent-control-planes.sh
 ./scripts/test-control-plane.sh
 ./scripts/sync-managed-git-hooks.sh --apply

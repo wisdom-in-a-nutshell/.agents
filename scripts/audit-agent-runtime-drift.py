@@ -398,17 +398,100 @@ def audit_required_codex_plugins(agents_repo: Path, home: Path) -> dict[str, Any
     )
 
 
+def run_runtime_drift_checks(args: argparse.Namespace, agents_repo: Path, home: Path) -> list[dict[str, Any]]:
+    return [
+        run_control_plane_check(agents_repo, args.timeout_sec, skip=args.skip_control_plane_check),
+        audit_codex_plugins(agents_repo, home),
+        audit_required_codex_plugins(agents_repo, home),
+    ]
+
+
+def has_required_plugin_drift(checks: list[dict[str, Any]]) -> bool:
+    return any(
+        check["name"] == "codex_required_plugins"
+        and check["status"] == "error"
+        and check.get("error_code") == "E_REQUIRED_CODEX_PLUGIN_UNAVAILABLE"
+        for check in checks
+    )
+
+
+def repair_managed_plugin_drift(agents_repo: Path, home: Path, timeout_sec: int) -> dict[str, Any]:
+    script = agents_repo / "codex" / "scripts" / "sync-config.sh"
+    name = "managed_plugin_repair"
+    if not script.is_file() or not os.access(script, os.X_OK):
+        return check_result(
+            name,
+            "error",
+            f"missing executable: {script}",
+            hint="Restore codex/scripts/sync-config.sh before managed plugin drift can self-heal.",
+            error_code="E_MISSING_REPAIR_SCRIPT",
+        )
+
+    start = time.monotonic()
+    try:
+        completed = subprocess.run(
+            [
+                str(script),
+                "--apply",
+                "--global-only",
+                "--github-root",
+                str(home / "GitHub"),
+            ],
+            cwd=str(agents_repo),
+            capture_output=True,
+            text=True,
+            timeout=timeout_sec,
+            check=False,
+        )
+    except subprocess.TimeoutExpired as exc:
+        duration_ms = int((time.monotonic() - start) * 1000)
+        output = "\n".join(part for part in [exc.stdout or "", exc.stderr or ""] if part)
+        return check_result(
+            name,
+            "error",
+            f"managed plugin repair timed out after {timeout_sec}s",
+            details={"duration_ms": duration_ms, "output_tail": tail_text(output)},
+            hint="Run ~/GitHub/agents/codex/scripts/sync-config.sh --apply --global-only manually.",
+            error_code="E_MANAGED_PLUGIN_REPAIR_TIMEOUT",
+        )
+
+    duration_ms = int((time.monotonic() - start) * 1000)
+    combined_output = "\n".join(part for part in [completed.stdout, completed.stderr] if part)
+    details = {
+        "duration_ms": duration_ms,
+        "exit_code": completed.returncode,
+        "output_tail": tail_text(combined_output),
+    }
+    if completed.returncode == 0:
+        return check_result(
+            name,
+            "ok",
+            "managed Codex plugin drift repaired with sync-config.sh",
+            details=details,
+        )
+    return check_result(
+        name,
+        "error",
+        f"managed plugin repair failed with exit code {completed.returncode}",
+        details=details,
+        hint="Run ~/GitHub/agents/codex/scripts/sync-config.sh --apply --global-only and inspect the first failure.",
+        error_code="E_MANAGED_PLUGIN_REPAIR_FAILED",
+    )
+
+
 def build_payload(args: argparse.Namespace) -> tuple[dict[str, Any], int]:
     start = time.monotonic()
     request_id = str(uuid.uuid4())
     agents_repo = Path(args.agents_repo).expanduser().resolve()
     home = Path(args.home).expanduser().resolve()
 
-    checks = [
-        run_control_plane_check(agents_repo, args.timeout_sec, skip=args.skip_control_plane_check),
-        audit_codex_plugins(agents_repo, home),
-        audit_required_codex_plugins(agents_repo, home),
-    ]
+    checks = run_runtime_drift_checks(args, agents_repo, home)
+    repair_check: dict[str, Any] | None = None
+    if args.repair_managed_plugin_drift and has_required_plugin_drift(checks):
+        repair_check = repair_managed_plugin_drift(agents_repo, home, args.timeout_sec)
+        if repair_check["status"] == "ok":
+            checks = run_runtime_drift_checks(args, agents_repo, home)
+        checks.append(repair_check)
 
     error_checks = [check for check in checks if check["status"] == "error"]
     warning_checks = [check for check in checks if check["status"] == "warning"]
@@ -492,6 +575,14 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
         "--skip-control-plane-check",
         action="store_true",
         help="Skip the full shared control-plane check; intended for focused tests only.",
+    )
+    parser.add_argument(
+        "--repair-managed-plugin-drift",
+        action="store_true",
+        help=(
+            "Repair required managed Codex plugin config/cache drift by running "
+            "codex/scripts/sync-config.sh --apply --global-only once, then re-audit."
+        ),
     )
     args = parser.parse_args(argv)
     if args.timeout_sec < 1:
