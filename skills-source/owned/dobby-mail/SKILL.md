@@ -97,7 +97,9 @@ $HOME/GitHub/agents/skills-source/owned/dobby-mail/scripts/dobby-mail attachment
 
 # draft-first writes
 $HOME/GitHub/agents/skills-source/owned/dobby-mail/scripts/dobby-mail draft --to person@example.com --subject "Subject" --body-file /tmp/body.txt --no-input
+$HOME/GitHub/agents/skills-source/owned/dobby-mail/scripts/dobby-mail draft --to person@example.com --subject "Subject" --body-file /tmp/body.txt --attach /tmp/report.pdf --dry-run --no-input
 $HOME/GitHub/agents/skills-source/owned/dobby-mail/scripts/dobby-mail draft-reply --id gmail-message:MESSAGE_ID --body-file /tmp/body.txt --no-input
+$HOME/GitHub/agents/skills-source/owned/dobby-mail/scripts/dobby-mail send --to person@example.com --subject "Subject" --body-file /tmp/body.txt --attach /tmp/report.pdf --confirm-send --dry-run --no-input
 
 # confirmed Gmail mutations
 $HOME/GitHub/agents/skills-source/owned/dobby-mail/scripts/dobby-mail gmail-archive --gmail-id gmail-message:abc123 --confirm-mutate --dry-run --no-input
@@ -134,6 +136,9 @@ Use Gmail API so headless Dobby does not depend on local app sync.
 
 - `draft` and `draft-reply` create unsent Gmail drafts.
 - `send` requires explicit user approval plus `--confirm-send`.
+- `draft`, `draft-reply`, and `send` support outbound attachments with
+  repeatable or comma-separated `--attach PATH`; `--dry-run` reports attachment
+  metadata without creating/sending anything.
 - Gmail mutation/filter commands require `--confirm-mutate`; use `--dry-run`
   first for anything non-trivial.
 - Gmail trash is reversible; permanent delete is intentionally not exposed.
