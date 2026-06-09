@@ -10,6 +10,7 @@ from email.utils import formatdate, make_msgid, parseaddr
 import html
 import http.server
 import json
+import mimetypes
 import os
 from pathlib import Path
 import re
@@ -28,7 +29,7 @@ from typing import Any, Iterable
 
 SCHEMA_VERSION = "1.0"
 TOOL = "dobby-mail"
-VERSION = "0.6.0"
+VERSION = "0.6.1"
 
 EXIT_OK = 0
 EXIT_FAILURE = 1
@@ -852,6 +853,15 @@ def build_gmail_raw_message(payload: dict[str, Any]) -> tuple[str, str]:
     message_id = make_msgid(domain=domain)
     msg["Message-ID"] = message_id
     msg.set_content(payload.get("body") or "")
+    for attachment in payload.get("attachments") or []:
+        path = Path(attachment["path"])
+        try:
+            data = path.read_bytes()
+        except OSError as exc:
+            raise CliError("E_ATTACHMENT_READ", f"Cannot read attachment: {path}", "Pass readable file paths with --attach.", EXIT_USAGE) from exc
+        content_type = str(attachment.get("content_type") or "application/octet-stream")
+        maintype, subtype = content_type.split("/", 1) if "/" in content_type else ("application", "octet-stream")
+        msg.add_attachment(data, maintype=maintype, subtype=subtype, filename=str(attachment.get("filename") or path.name))
     raw = base64.urlsafe_b64encode(msg.as_bytes()).decode("ascii")
     return raw, message_id
 
@@ -886,11 +896,42 @@ def parse_recipients(values: list[str] | None) -> list[str]:
     return out
 
 
+def parse_attachment_paths(values: list[str] | None) -> list[str]:
+    out: list[str] = []
+    for value in values or []:
+        for part in value.split(","):
+            path = part.strip()
+            if path:
+                out.append(path)
+    return out
+
+
+def attachment_metadata(raw_path: str) -> dict[str, Any]:
+    path = Path(raw_path).expanduser()
+    try:
+        stat = path.stat()
+    except OSError as exc:
+        raise CliError("E_ATTACHMENT_READ", f"Cannot read attachment: {raw_path}", "Pass existing readable file paths with --attach.", EXIT_USAGE) from exc
+    if not path.is_file():
+        raise CliError("E_ATTACHMENT_NOT_FILE", f"Attachment is not a regular file: {raw_path}", "Pass file paths, not directories, with --attach.", EXIT_USAGE)
+    content_type = mimetypes.guess_type(str(path))[0] or "application/octet-stream"
+    return {
+        "path": str(path.resolve()),
+        "filename": path.name,
+        "content_type": content_type,
+        "size_bytes": stat.st_size,
+    }
+
+
+def attachments_from_args(args: argparse.Namespace) -> list[dict[str, Any]]:
+    return [attachment_metadata(path) for path in parse_attachment_paths(getattr(args, "attach", None))]
+
+
 def draft_payload_from_args(args: argparse.Namespace) -> dict[str, Any]:
     to = parse_recipients(args.to)
     if not to:
         raise CliError("E_RECIPIENT_REQUIRED", "At least one --to recipient is required", "Pass --to recipient@example.com.", EXIT_USAGE)
-    return {"to": to, "cc": parse_recipients(args.cc), "bcc": parse_recipients(args.bcc), "subject": args.subject or "", "body": read_body_arg(args), "sender": resolve_sender(args.sender), "visible": False}
+    return {"to": to, "cc": parse_recipients(args.cc), "bcc": parse_recipients(args.bcc), "subject": args.subject or "", "body": read_body_arg(args), "sender": resolve_sender(args.sender), "visible": False, "attachments": attachments_from_args(args)}
 
 
 def resolve_gmail_message_target(args: argparse.Namespace, account: str) -> dict[str, Any]:
@@ -1120,12 +1161,12 @@ def command_draft(args: argparse.Namespace, warnings: WarningSink) -> dict[str, 
     payload = draft_payload_from_args(args)
     account = resolve_gmail_account(args)
     if args.dry_run:
-        return {"backend": "gmail-api", "gmail_account": account, "dry_run": True, "draft": {"state": "would_create_unsent_draft", "to": payload["to"], "cc": payload["cc"], "bcc_count": len(payload["bcc"]), "subject": payload["subject"], "sender": payload["sender"], "visible": False, "body_preview": payload["body"][:500]}, "warnings": warnings.items}
+        return {"backend": "gmail-api", "gmail_account": account, "dry_run": True, "draft": {"state": "would_create_unsent_draft", "to": payload["to"], "cc": payload["cc"], "bcc_count": len(payload["bcc"]), "subject": payload["subject"], "sender": payload["sender"], "visible": False, "body_preview": payload["body"][:500], "attachments": payload["attachments"]}, "warnings": warnings.items}
     raw, message_id = build_gmail_raw_message(payload)
     result = gmail_api_request(account, "POST", "drafts", {"message": {"raw": raw}}, args.timeout_sec)
     message = result.get("message") if isinstance(result.get("message"), dict) else {}
     draft_id = result.get("id")
-    return {"backend": "gmail-api", "gmail_account": account, "dry_run": False, "draft": {"id": f"gmail-draft:{draft_id}" if draft_id else None, "gmail_draft_id": draft_id, "gmail_message_id": message.get("id"), "gmail_thread_id": message.get("threadId"), "source_message_id": message_id, "subject": payload["subject"], "to": payload["to"], "cc": payload["cc"], "bcc_count": len(payload["bcc"]), "sender": payload["sender"], "visible": False, "state": "created_unsent_draft", "links": {"gmail_drafts": gmail_drafts_url(account)}} , "warnings": warnings.items}
+    return {"backend": "gmail-api", "gmail_account": account, "dry_run": False, "draft": {"id": f"gmail-draft:{draft_id}" if draft_id else None, "gmail_draft_id": draft_id, "gmail_message_id": message.get("id"), "gmail_thread_id": message.get("threadId"), "source_message_id": message_id, "subject": payload["subject"], "to": payload["to"], "cc": payload["cc"], "bcc_count": len(payload["bcc"]), "sender": payload["sender"], "visible": False, "state": "created_unsent_draft", "attachments": payload["attachments"], "links": {"gmail_drafts": gmail_drafts_url(account)}} , "warnings": warnings.items}
 
 
 def command_draft_reply(args: argparse.Namespace, warnings: WarningSink) -> dict[str, Any]:
@@ -1148,12 +1189,12 @@ def command_draft_reply(args: argparse.Namespace, warnings: WarningSink) -> dict
     payload["references"] = [msg.get("source_message_id")] if msg.get("source_message_id") else []
     account = resolve_gmail_account(args)
     if args.dry_run:
-        return {"backend": "gmail-api", "gmail_account": account, "read_backend": data.get("backend"), "dry_run": True, "draft": {"state": "would_create_unsent_reply_draft", "to": payload["to"], "subject": payload["subject"], "sender": payload["sender"], "reply_to": {"id": args.id, "sender": msg.get("sender"), "source_message_id": msg.get("source_message_id")}, "body_preview": payload["body"][:500]}, "warnings": warnings.items}
+        return {"backend": "gmail-api", "gmail_account": account, "read_backend": data.get("backend"), "dry_run": True, "draft": {"state": "would_create_unsent_reply_draft", "to": payload["to"], "subject": payload["subject"], "sender": payload["sender"], "reply_to": {"id": args.id, "sender": msg.get("sender"), "source_message_id": msg.get("source_message_id")}, "body_preview": payload["body"][:500], "attachments": payload["attachments"]}, "warnings": warnings.items}
     raw, message_id = build_gmail_raw_message(payload)
     result = gmail_api_request(account, "POST", "drafts", {"message": {"raw": raw}}, args.timeout_sec)
     message = result.get("message") if isinstance(result.get("message"), dict) else {}
     draft_id = result.get("id")
-    return {"backend": "gmail-api", "gmail_account": account, "read_backend": data.get("backend"), "dry_run": False, "draft": {"id": f"gmail-draft:{draft_id}" if draft_id else None, "gmail_draft_id": draft_id, "gmail_message_id": message.get("id"), "gmail_thread_id": message.get("threadId"), "source_message_id": message_id, "subject": payload["subject"], "to": payload["to"], "sender": payload["sender"], "state": "created_unsent_reply_draft", "reply_to": {"id": args.id, "sender": msg.get("sender"), "source_message_id": msg.get("source_message_id")}, "links": {"gmail_drafts": gmail_drafts_url(account)}} , "warnings": warnings.items}
+    return {"backend": "gmail-api", "gmail_account": account, "read_backend": data.get("backend"), "dry_run": False, "draft": {"id": f"gmail-draft:{draft_id}" if draft_id else None, "gmail_draft_id": draft_id, "gmail_message_id": message.get("id"), "gmail_thread_id": message.get("threadId"), "source_message_id": message_id, "subject": payload["subject"], "to": payload["to"], "sender": payload["sender"], "state": "created_unsent_reply_draft", "attachments": payload["attachments"], "reply_to": {"id": args.id, "sender": msg.get("sender"), "source_message_id": msg.get("source_message_id")}, "links": {"gmail_drafts": gmail_drafts_url(account)}} , "warnings": warnings.items}
 
 
 def command_send(args: argparse.Namespace, warnings: WarningSink) -> dict[str, Any]:
@@ -1162,10 +1203,10 @@ def command_send(args: argparse.Namespace, warnings: WarningSink) -> dict[str, A
     payload = draft_payload_from_args(args)
     account = resolve_gmail_account(args)
     if args.dry_run:
-        return {"backend": "gmail-api", "gmail_account": account, "dry_run": True, "sent": {"state": "would_send", "to": payload["to"], "cc": payload["cc"], "bcc_count": len(payload["bcc"]), "subject": payload["subject"], "sender": payload["sender"], "body_preview": payload["body"][:500]}, "warnings": warnings.items}
+        return {"backend": "gmail-api", "gmail_account": account, "dry_run": True, "sent": {"state": "would_send", "to": payload["to"], "cc": payload["cc"], "bcc_count": len(payload["bcc"]), "subject": payload["subject"], "sender": payload["sender"], "body_preview": payload["body"][:500], "attachments": payload["attachments"]}, "warnings": warnings.items}
     raw, message_id = build_gmail_raw_message(payload)
     result = gmail_api_request(account, "POST", "messages/send", {"raw": raw}, args.timeout_sec)
-    return {"backend": "gmail-api", "gmail_account": account, "dry_run": False, "sent": {"id": f"gmail-message:{result.get('id')}" if result.get("id") else None, "gmail_message_id": result.get("id"), "gmail_thread_id": result.get("threadId"), "source_message_id": message_id, "subject": payload["subject"], "to": payload["to"], "sender": payload["sender"], "state": "sent"}, "warnings": warnings.items}
+    return {"backend": "gmail-api", "gmail_account": account, "dry_run": False, "sent": {"id": f"gmail-message:{result.get('id')}" if result.get("id") else None, "gmail_message_id": result.get("id"), "gmail_thread_id": result.get("threadId"), "source_message_id": message_id, "subject": payload["subject"], "to": payload["to"], "sender": payload["sender"], "state": "sent", "attachments": payload["attachments"]}, "warnings": warnings.items}
 
 
 def merge_label_actions(actions: Iterable[str], add_label_ids: Iterable[str] = (), remove_label_ids: Iterable[str] = ()) -> tuple[list[str], list[str]]:
@@ -1384,6 +1425,7 @@ def add_draft_args(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--subject", required=False, help="Message subject.")
     parser.add_argument("--body", help="Message body text.")
     parser.add_argument("--body-file", help="Path to body text, or - for stdin.")
+    parser.add_argument("--attach", action="append", help="Outbound attachment file path. Repeat or comma-separate.")
     parser.add_argument("--sender", help=f"Sender address. If omitted, {DEFAULT_FROM_ENV} is required.")
     parser.add_argument("--dry-run", action="store_true", help="Return intended action without creating/sending anything.")
 

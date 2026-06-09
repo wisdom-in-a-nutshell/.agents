@@ -224,6 +224,57 @@ class DobbyMailTests(unittest.TestCase):
         _, send = run_cli(["send", "--to", "a@example.com", "--subject", "Hi", "--body", "Hello", "--confirm-send", "--dry-run"], env=env)
         self.assertEqual(send["data"]["sent"]["state"], "would_send")
 
+    def test_draft_and_send_dry_run_report_outbound_attachment_metadata(self):
+        with tempfile.TemporaryDirectory() as d:
+            tmp = Path(d)
+            pdf = tmp / "report.pdf"
+            note = tmp / "note.txt"
+            pdf.write_bytes(b"%PDF-1.4 fake pdf\n")
+            note.write_text("hello attachment", encoding="utf-8")
+            env = {"DOBBY_MAIL_DEFAULT_ACCOUNT": "writer@example.com", "DOBBY_MAIL_DEFAULT_FROM": "default@example.com"}
+
+            _, draft = run_cli(
+                [
+                    "draft",
+                    "--to",
+                    "a@example.com",
+                    "--subject",
+                    "Files",
+                    "--body",
+                    "Attached.",
+                    "--attach",
+                    str(pdf),
+                    "--attach",
+                    f"{note}",
+                    "--dry-run",
+                ],
+                env=env,
+            )
+            attachments = draft["data"]["draft"]["attachments"]
+            self.assertEqual([item["filename"] for item in attachments], ["report.pdf", "note.txt"])
+            self.assertEqual(attachments[0]["content_type"], "application/pdf")
+            self.assertEqual(attachments[0]["size_bytes"], len(b"%PDF-1.4 fake pdf\n"))
+            self.assertEqual(attachments[1]["content_type"], "text/plain")
+            self.assertNotIn("data", attachments[0])
+
+            _, send = run_cli(
+                [
+                    "send",
+                    "--to",
+                    "a@example.com",
+                    "--subject",
+                    "Files",
+                    "--body",
+                    "Attached.",
+                    "--attach",
+                    f"{pdf},{note}",
+                    "--confirm-send",
+                    "--dry-run",
+                ],
+                env=env,
+            )
+            self.assertEqual([item["filename"] for item in send["data"]["sent"]["attachments"]], ["report.pdf", "note.txt"])
+
     def test_draft_create_needs_auth_but_dry_run_does_not(self):
         with tempfile.TemporaryDirectory() as d:
             tmp = Path(d)
