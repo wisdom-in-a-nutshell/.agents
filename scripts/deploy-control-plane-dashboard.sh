@@ -85,6 +85,13 @@ npm run deploy
 
 cd "$ROOT_DIR"
 scripts/install-control-plane-dashboard-launchagent.sh --apply
-curl -fsS "http://127.0.0.1:8765/api/control-plane" >/dev/null
 
+for _ in {1..20}; do
+  if curl -fsS "http://127.0.0.1:8765/api/control-plane" >/dev/null 2>&1; then
+    emit "ok" "deployed and smoked agents control-plane dashboard"
+  fi
+  sleep 0.5
+done
+
+curl -fsS "http://127.0.0.1:8765/api/control-plane" >/dev/null
 emit "ok" "deployed and smoked agents control-plane dashboard"
