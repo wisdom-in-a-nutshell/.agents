@@ -4,7 +4,7 @@
  * so the icon recolors when its chip is selected.
  *
  * Single source of truth, consumed by:
- *   - skill/scripts/live-event-validation.mjs — re-exports VISUAL_ACTIONS.
+ *   - skill/scripts/live/event-validation.mjs — re-exports VISUAL_ACTIONS.
  *   - skill/scripts/live-browser.js — the real picker. It is served raw and
  *     injected as an IIFE, so it cannot import this at runtime; live-server.mjs
  *     serializes LIVE_COMMANDS into window.__IMPECCABLE_VOCAB__ alongside the
