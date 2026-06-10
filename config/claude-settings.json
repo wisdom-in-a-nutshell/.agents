@@ -4,5 +4,12 @@
   "enabledPlugins": {
     "anthropic-skills@inline": false
   },
-  "skillOverrides": {}
+  "skillOverrides": {
+    "fewer-permission-prompts": "name-only",
+    "keybindings-help": "name-only",
+    "loop": "name-only",
+    "review": "name-only",
+    "security-review": "name-only",
+    "init": "off"
+  }
 }
