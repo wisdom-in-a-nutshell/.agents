@@ -7,7 +7,7 @@ Emits situational boot context to stdout; the shared dispatcher at
 
 Section order:
 
-    workspace body map | profile | now | recent sessions | shelf | calendar | areas
+    workspace body map | profile | now | recent sessions | last dream | shelf | calendar | areas
 
 Memory reads (`memory/profile.json`, `memory/now.json`, area manifest) and the shared workspace body
 map happen inline via file I/O. Shelf snapshots go through the `dobby-shelf`
@@ -40,6 +40,9 @@ from session_memory_lib import build_recent_session_entries  # noqa: E402
 
 PER_CALL_TIMEOUT_SEC = 4
 BODY_MAP_MAX_CHARS = 12000
+DREAM_RUNS_REL = Path("projects/dobby-continuity-dreaming/runs")
+DREAM_MAX_AGE_DAYS = 7
+DREAM_SECTION_MAX_CHARS = 2200
 
 
 # ---------------------------------------------------------------------------
@@ -380,6 +383,74 @@ def print_profile(profile: dict | None) -> None:
     print(truncate_text(rendered, 12000, "profile"))
 
 
+def read_latest_dream(repo_root: Path) -> dict | None:
+    """Newest complete dream-run bundle, or None when absent/stale."""
+    runs_dir = repo_root / DREAM_RUNS_REL
+    if not runs_dir.is_dir():
+        return None
+    for run_dir in sorted((d for d in runs_dir.iterdir() if d.is_dir()), reverse=True):
+        match = re.match(r"^(\d{4})-(\d{2})-(\d{2})", run_dir.name)
+        if not match:
+            continue
+        run_date = datetime(int(match.group(1)), int(match.group(2)), int(match.group(3)), tzinfo=timezone.utc)
+        if (datetime.now(timezone.utc) - run_date).days > DREAM_MAX_AGE_DAYS:
+            return None
+        run_data = read_json_object(run_dir / "run.json")
+        report = read_memory_file(run_dir / "report.md")
+        if not run_data or not report.strip():
+            continue
+        return {"id": run_dir.name, "run": run_data, "report": report}
+    return None
+
+
+def dream_next_actions(report: str) -> list[str]:
+    lines = report.replace("\r\n", "\n").split("\n")
+    out: list[str] = []
+    in_section = False
+    for line in lines:
+        if line.strip().lower() == "## next actions":
+            in_section = True
+            continue
+        if in_section and line.startswith("## "):
+            break
+        if in_section:
+            match = re.match(r"^\s*\d+\.\s+(.*)$", line)
+            if match:
+                out.append(match.group(1).replace("**", "").strip())
+    return out[:3]
+
+
+def print_last_dream(dream: dict | None) -> None:
+    if not dream:
+        return
+    run = dream["run"]
+    counts = run.get("counts") if isinstance(run.get("counts"), dict) else {}
+    by_category = counts.get("byCategory") if isinstance(counts.get("byCategory"), dict) else {}
+    proposals = sum(
+        int(value)
+        for key, value in by_category.items()
+        if key not in ("noop", "stale_or_conflict") and isinstance(value, int)
+    )
+    window = run.get("window") if isinstance(run.get("window"), dict) else {}
+    candidates_list = run.get("candidates")
+    total = (
+        len(candidates_list)
+        if isinstance(candidates_list, list) and candidates_list
+        else counts.get("candidates", "?")
+    )
+    lines = [
+        f"run: {dream['id']} · window {window.get('from', '?')} → {window.get('to', '?')} · "
+        f"{total} candidates ({proposals} proposals, pending Adi's review)"
+    ]
+    actions = dream_next_actions(dream["report"])
+    if actions:
+        lines.append("next actions proposed:")
+        lines.extend(f"{idx}. {action}" for idx, action in enumerate(actions, 1))
+    lines.append(f"full report: {DREAM_RUNS_REL / dream['id'] / 'report.md'}")
+    section("last dream (proposal-only; apply nothing without Adi)")
+    print(truncate_text("\n".join(lines), DREAM_SECTION_MAX_CHARS, "last dream"))
+
+
 def print_recent_sessions(entries: list[dict]) -> None:
     if not entries:
         return
@@ -468,6 +539,7 @@ def main() -> int:
         print(now)
 
     print_recent_sessions(recent_sessions)
+    print_last_dream(read_latest_dream(REPO_ROOT))
     print_shelf(shelf)
     print_calendar(calendar)
     print_areas(areas)

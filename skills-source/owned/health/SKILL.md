@@ -90,6 +90,36 @@ python3 .agents/skills/health/scripts/sync_health.py --output-root /tmp/health-s
 python3 .agents/skills/health/scripts/sync_health.py --days-back 3
 ```
 
+## Google Health / Fitbit Probe Path
+
+Use this only when researching or wiring the future Fitbit/Google Health
+integration. It is not the canonical Dobby read path yet.
+
+Important current direction:
+
+- New Fitbit-device work should target the Google Health API, not the legacy
+  Fitbit Web API.
+- Keep Dobby's canonical read surface as the local sink under
+  `memory/areas/health/`.
+- Use `scripts/google_health_client.py` as a low-level OAuth/API probe.
+- Keep OAuth client secrets and tokens in `~/.secrets/google-health/`, never in
+  the repo.
+- Later consolidation should normalize Google Health payloads into the existing
+  sink shape, preferably upstream in the snapshot API.
+
+Useful commands:
+
+```bash
+python3 .agents/skills/health/scripts/google_health_client.py auth-url
+python3 .agents/skills/health/scripts/google_health_client.py exchange-code --code 'AUTH_CODE'
+python3 .agents/skills/health/scripts/google_health_client.py identity
+python3 .agents/skills/health/scripts/google_health_client.py devices --all-pages
+python3 .agents/skills/health/scripts/google_health_client.py daily-rollup steps --start 2026-06-01 --end 2026-06-08 --all-pages
+python3 .agents/skills/health/scripts/google_health_client.py list sleep --start 2026-06-01 --end 2026-06-08 --all-pages
+```
+
+Detailed notes: `references/google-health-fitbit.md`.
+
 Current defaults:
 
 - API URL:
@@ -126,5 +156,7 @@ Current person/account boundary:
 
 - `references/data-model.md` - current sink layout and reading rules.
 - `references/query-cli.md` - query CLI commands, modes, and common routing examples.
+- `references/google-health-fitbit.md` - Fitbit/Google Health API research, OAuth storage, and probe commands.
 - `scripts/sync_health.py` - canonical sync entrypoint for this skill.
 - `scripts/query_health.py` - canonical local query/read entrypoint for common health questions.
+- `scripts/google_health_client.py` - low-level Google Health API probe client for future Fitbit integration.

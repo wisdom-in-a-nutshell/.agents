@@ -9,6 +9,7 @@ python3 -m py_compile \
   "$SKILL_DIR/scripts/transcript_lib.py" \
   "$SKILL_DIR/scripts/session-memory" \
   "$SKILL_DIR/scripts/session-transcript" \
+  "$SKILL_DIR/scripts/dream-memory" \
   "$SKILL_DIR/scripts/validate" \
   "$SKILL_DIR/scripts/remember-session" \
   "$SKILL_DIR/scripts/remember-claude-session" \
@@ -500,4 +501,57 @@ data = json.loads(sys.argv[1])["data"]
 assert data["apply"] is True, data
 # the capture-test folder is already complete; others have no matching raw
 assert data["alreadyComplete"] >= 1, data
+PY
+
+# --- dream-memory: proposal-only dreaming runner ---
+dream_cli="$SKILL_DIR/scripts/dream-memory"
+
+dream_instruction="$("$dream_cli" --workspace-root "$repo" --print-instruction --plain --no-input)"
+for needle in "proposal-only" "dialogue.md" "report.md" "run.json" "noop"; do
+  if ! grep -q "$needle" <<<"$dream_instruction"; then
+    echo "dream-memory instruction missing: $needle" >&2
+    exit 1
+  fi
+done
+if grep -q "{{" <<<"$dream_instruction"; then
+  echo "dream-memory instruction should not leave template placeholders" >&2
+  exit 1
+fi
+
+fake_dreamer="$tmp_dir/fake-dreamer"
+cat >"$fake_dreamer" <<'PY'
+#!/usr/bin/env python3
+import json, pathlib, re, sys
+instruction = sys.argv[-1]
+match = re.search(r'"runDir": "([^"]+)"', instruction)
+run_dir = pathlib.Path(match.group(1))
+run_id = run_dir.name
+(run_dir / "report.md").write_text("# Dream-memory run\n\n## Run\nok\n")
+(run_dir / "run.json").write_text(json.dumps({
+    "schemaVersion": 1,
+    "runId": run_id,
+    "window": {"from": "x", "to": "y", "days": 7},
+    "status": "ok",
+    "counts": {"candidates": 1, "noop": 1, "flags": 0, "byCategory": {"noop": 1}},
+    "candidates": [{"id": "noop-1", "category": "noop", "why": "test"}],
+}))
+print("dream written")
+PY
+chmod +x "$fake_dreamer"
+
+dream_output="$(DOBBY_CLAUDE_BIN="$fake_dreamer" "$dream_cli" --workspace-root "$repo" --json --no-input)"
+python3 - "$dream_output" "$repo" <<'PY'
+import json, pathlib, sys
+payload = json.loads(sys.argv[1])
+assert payload["status"] == "ok", payload
+data = payload["data"]
+run_dir = pathlib.Path(data["runDir"])
+assert (run_dir / "report.md").is_file()
+assert (run_dir / "run.json").is_file()
+assert (run_dir / "inputs.manifest.json").is_file()
+assert (run_dir / "events.jsonl").is_file()
+assert data["validation"]["valid"] is True, data["validation"]
+assert data["validation"]["counts"]["candidates"] == 1
+manifest = json.loads((run_dir / "inputs.manifest.json").read_text())
+assert manifest["counts"]["sessions"] >= 1, manifest["counts"]
 PY

@@ -64,9 +64,12 @@ What boot context should include:
 3. `memory/now.json`.
 4. Recent session-memory summaries: last 3 plus records from the last 7 days,
    capped at 10.
-5. Shelf snapshot.
-6. Calendar snapshot for the next 2 days.
-7. Area manifest.
+5. Last dream: newest complete dream-memory run within 7 days — run id, window,
+   candidate counts, and the report's "Next actions" (capped at 2200 chars,
+   explicitly marked proposal-only).
+6. Shelf snapshot.
+7. Calendar snapshot for the next 2 days.
+8. Area manifest.
 
 Operational limits:
 
@@ -274,3 +277,35 @@ Intentional non-goals for Dobby workspaces:
 - no fake `SessionEnd`
 - no pre-compact memory preservation
 - no sidecar consolidation thread
+
+## Dream-memory (cross-session consolidation, proposal-only)
+
+`scripts/dream-memory` is the dreaming counterpart to per-session remembering.
+It gathers a deterministic inputs manifest for a review window (session folders,
+journal days, `memory/now.json`, `state/shelf.json`, active project trackers,
+area manifests), renders the versioned `prompts/dream-memory.md`, runs one
+headless Claude turn in the workspace, and validates the run bundle written
+under `projects/dobby-continuity-dreaming/runs/<run-id>/`:
+
+- `report.md` — the human proposal memo Adi reviews (also rendered on the
+  dashboard Dreams page)
+- `run.json` — machine envelope with every candidate (categories: now,
+  area_log, area_canon, soul, shelf, project, dobby_growth, stale_or_conflict,
+  noop)
+- `inputs.manifest.json` + `events.jsonl` — runner-written audit trail
+
+```bash
+$HOME/GitHub/agents/skills-source/owned/dobby-lifecycle/scripts/dream-memory \
+  --workspace-root /path/to/dobby-workspace --days 7 --no-input
+```
+
+v0 is proposal-only: the dreaming turn must not write outside the run dir. The
+runner watches git around the turn and reports out-of-bounds paths as warnings —
+expect noise from concurrent automation (e.g. health sync) being auto-committed
+mid-run, not from the dreamer itself. The prompt tells the dreamer to read
+session `summary.md` files as the index and open `dialogue.md` selectively as
+evidence, including pipeline-audit signal (tool errors, interrupted turns,
+repeated corrections).
+
+Nightly schedule: `agents/codex/scripts/install-dream-memory-launchagent.sh`
+installs `com.<user>.dream-memory` (daily 05:30, 7-day window by default).
