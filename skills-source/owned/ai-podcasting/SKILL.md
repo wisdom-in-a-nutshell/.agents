@@ -145,7 +145,7 @@ python3 scripts/aip_local_upload_helper.py \
    available. The app accepts MP4 URLs and local MP4 paths, but the CLI will warn because those are
    fallback inputs for TCR, not the preferred source. Do not require a specific Descript path
    shape; use the Descript web URL the user or browser provides.
-   TCR main episode submissions reject `.mp3` main-file inputs. Use the original recording,
+   TCR main episode submissions reject `.mp3` main-source inputs. Use the original recording,
    session, or video source link instead, such as Riverside, YouTube, or a direct non-MP3 media
    URL. This is not a Riverside-only allowlist.
    For plain-English payloads, the CLI accepts `mainEpisodeFile` and normalizes it to the backend
