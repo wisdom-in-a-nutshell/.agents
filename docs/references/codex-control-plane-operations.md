@@ -66,6 +66,14 @@ Use [Codex Control Plane Ownership](/Users/dobby/GitHub/agents/docs/references/c
   - [`install-finalize-stale-codex-threads-launchagent.sh`](/Users/dobby/GitHub/agents/codex/scripts/install-finalize-stale-codex-threads-launchagent.sh)
   - `~/GitHub/agents/codex/scripts/install-finalize-stale-codex-threads-launchagent.sh --apply`
   - default schedule is every hour, finalizing managed-repo threads whose last update is older than 24 hours
+- Check stale Claude Desktop sidebar sessions without archiving:
+  - [`archive-stale-claude-sessions.py`](/Users/dobby/GitHub/agents/codex/scripts/archive-stale-claude-sessions.py)
+  - `~/GitHub/agents/codex/scripts/archive-stale-claude-sessions.py --plain --older-than-hours 24`
+  - eligibility is based on the session metadata `lastActivityAt`; currently-running sessions and transcripts under `~/.claude/projects` are never touched
+- Install/update the Claude session archiver LaunchAgent:
+  - [`install-archive-stale-claude-sessions-launchagent.sh`](/Users/dobby/GitHub/agents/codex/scripts/install-archive-stale-claude-sessions-launchagent.sh)
+  - `~/GitHub/agents/codex/scripts/install-archive-stale-claude-sessions-launchagent.sh --apply`
+  - default schedule is every hour, flipping `isArchived` on Claude Desktop sessions idle longer than 24 hours; archived sessions leave the sidebar on the next Claude Desktop restart
 - Auto-apply the Codex control plane after `~/GitHub/agents` sync when `codex/` changed:
   - [`auto-apply-codex-control-plane.sh`](/Users/dobby/GitHub/agents/codex/scripts/auto-apply-codex-control-plane.sh)
   - `~/GitHub/agents/codex/scripts/auto-apply-codex-control-plane.sh --apply`
@@ -243,6 +251,17 @@ Verification expectations:
   - renders `~/Library/LaunchAgents/com.<user>.codex-thread-finalizer.plist`
   - schedules [`finalize-stale-codex-threads.py`](/Users/dobby/GitHub/agents/codex/scripts/finalize-stale-codex-threads.py) every hour by default
   - removes the legacy `com.<user>.codex-session-archiver` LaunchAgent if present during apply
+  - writes logs under `~/.local/state/codex-control-plane/log/`
+  - supports dry-run output before writing or loading launchd state
+- [`archive-stale-claude-sessions.py`](/Users/dobby/GitHub/agents/codex/scripts/archive-stale-claude-sessions.py)
+  - archives stale Claude Desktop sidebar sessions by flipping `isArchived` in the per-session metadata under `~/Library/Application Support/Claude/{claude-code-sessions,local-agent-mode-sessions}`
+  - eligibility is the metadata `lastActivityAt` cutoff (default 24 hours); already-archived, `--keep-session`, and currently-running sessions are skipped, and transcripts under `~/.claude/projects` are never read or modified
+  - running sessions are detected via the live handshake files under `~/.claude/sessions/` (matching each handshake `sessionId` to the metadata `cliSessionId`)
+  - defaults to dry-run; `--apply` backs up each changed file under `~/.local/state/claude-control-plane/` before writing, behind a machine-local lock
+  - does not quit or reopen Claude Desktop; archived sessions leave the active list on the next app restart
+- [`install-archive-stale-claude-sessions-launchagent.sh`](/Users/dobby/GitHub/agents/codex/scripts/install-archive-stale-claude-sessions-launchagent.sh)
+  - renders `~/Library/LaunchAgents/com.<user>.claude-session-archiver.plist`
+  - schedules [`archive-stale-claude-sessions.py`](/Users/dobby/GitHub/agents/codex/scripts/archive-stale-claude-sessions.py) every hour by default with a 24-hour stale threshold
   - writes logs under `~/.local/state/codex-control-plane/log/`
   - supports dry-run output before writing or loading launchd state
 - [`auto-apply-codex-control-plane.sh`](/Users/dobby/GitHub/agents/codex/scripts/auto-apply-codex-control-plane.sh)

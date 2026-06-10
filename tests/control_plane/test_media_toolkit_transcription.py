@@ -5,6 +5,7 @@ import contextlib
 import io
 import json
 import os
+import tempfile
 from pathlib import Path
 from typing import Any
 from unittest.mock import patch
@@ -126,15 +127,21 @@ class MediaToolkitTranscriptionTests(TempDirTestCase):
         module = load_api_module()
         session = _FakeSession({"job_id": "TRANSCRIPTION_ARTIFACTS_test"})
 
-        with patch.dict(os.environ, {"WIN_API_KEY": "backend-secret"}, clear=True):
-            client = module.MediaToolkitApiClient(
-                api_base_url="https://backend.example",
-                request_timeout_seconds=10,
-                poll_interval_seconds=1,
-                poll_timeout_seconds=10,
-                session=session,
-            )
-            payload = client.submit_job("/media/transcribe/artifacts", {"media_url": "url"})
+        with tempfile.TemporaryDirectory() as tmpdir:
+            missing_secret_path = Path(tmpdir) / "missing-env"
+            env = {
+                "WIN_API_KEY": "backend-secret",
+                "AIPODCASTING_WIN_API_KEY_FILE": str(missing_secret_path),
+            }
+            with patch.dict(os.environ, env, clear=True):
+                client = module.MediaToolkitApiClient(
+                    api_base_url="https://backend.example",
+                    request_timeout_seconds=10,
+                    poll_interval_seconds=1,
+                    poll_timeout_seconds=10,
+                    session=session,
+                )
+                payload = client.submit_job("/media/transcribe/artifacts", {"media_url": "url"})
 
         self.assertEqual(payload["job_id"], "TRANSCRIPTION_ARTIFACTS_test")
         self.assertEqual(

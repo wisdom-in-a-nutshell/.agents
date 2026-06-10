@@ -109,6 +109,7 @@ SYNC_HOOK_TRUST_SCRIPT="${SCRIPT_DIR}/sync-hook-trust-state.py"
 PDF_DEPS_SCRIPT="${SCRIPT_DIR}/install-pdf-skill-deps.sh"
 GHOSTTY_SCRIPT="${SCRIPT_DIR}/configure-ghostty-cwd.sh"
 FINALIZE_STALE_THREADS_LAUNCHAGENT_SCRIPT="${SCRIPT_DIR}/install-finalize-stale-codex-threads-launchagent.sh"
+ARCHIVE_CLAUDE_SESSIONS_LAUNCHAGENT_SCRIPT="${SCRIPT_DIR}/install-archive-stale-claude-sessions-launchagent.sh"
 CHECK_CONTROL_PLANE_SCRIPT="${SCRIPT_DIR}/check-codex-control-plane.sh"
 
 [[ -x "$SYNC_CONFIG_SCRIPT" ]] || die "Missing executable: $SYNC_CONFIG_SCRIPT"
@@ -119,6 +120,7 @@ CHECK_CONTROL_PLANE_SCRIPT="${SCRIPT_DIR}/check-codex-control-plane.sh"
 [[ -x "$PDF_DEPS_SCRIPT" ]] || die "Missing executable: $PDF_DEPS_SCRIPT"
 [[ -x "$GHOSTTY_SCRIPT" ]] || die "Missing executable: $GHOSTTY_SCRIPT"
 [[ -x "$FINALIZE_STALE_THREADS_LAUNCHAGENT_SCRIPT" ]] || die "Missing executable: $FINALIZE_STALE_THREADS_LAUNCHAGENT_SCRIPT"
+[[ -x "$ARCHIVE_CLAUDE_SESSIONS_LAUNCHAGENT_SCRIPT" ]] || die "Missing executable: $ARCHIVE_CLAUDE_SESSIONS_LAUNCHAGENT_SCRIPT"
 [[ -x "$CHECK_CONTROL_PLANE_SCRIPT" ]] || die "Missing executable: $CHECK_CONTROL_PLANE_SCRIPT"
 
 sync_config_cmd=(
@@ -187,6 +189,18 @@ finalize_stale_threads_launchagent_cmd=(
 )
 log "+ ${finalize_stale_threads_launchagent_cmd[*]}"
 "${finalize_stale_threads_launchagent_cmd[@]}"
+
+# Claude Desktop session archiver: only install where Claude Desktop is present.
+if [[ -d "${HOME}/Library/Application Support/Claude/claude-code-sessions" ]]; then
+  archive_claude_sessions_launchagent_cmd=(
+    "$ARCHIVE_CLAUDE_SESSIONS_LAUNCHAGENT_SCRIPT"
+    "$MODE_FLAG"
+  )
+  log "+ ${archive_claude_sessions_launchagent_cmd[*]}"
+  "${archive_claude_sessions_launchagent_cmd[@]}"
+else
+  log "skip: Claude Desktop session dir not found; not installing claude-session-archiver LaunchAgent"
+fi
 
 check_cmd=(
   "$CHECK_CONTROL_PLANE_SCRIPT"

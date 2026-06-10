@@ -51,11 +51,17 @@ class AuthHeaderTests(unittest.TestCase):
         )
 
   def test_build_aip_auth_headers_uses_env_fallback(self) -> None:
-    with mock.patch.dict(os.environ, {"AIPODCASTING_API_KEY": "frontend-env-secret"}, clear=True):
-      self.assertEqual(
-        client.build_aip_auth_headers(),
-        {"Authorization": "Bearer frontend-env-secret"},
-      )
+    with tempfile.TemporaryDirectory() as tmpdir:
+      missing_secret_path = Path(tmpdir) / "missing-env"
+      env = {
+        "AIPODCASTING_API_KEY": "frontend-env-secret",
+        "AIPODCASTING_API_KEY_FILE": str(missing_secret_path),
+      }
+      with mock.patch.dict(os.environ, env, clear=True):
+        self.assertEqual(
+          client.build_aip_auth_headers(),
+          {"Authorization": "Bearer frontend-env-secret"},
+        )
 
 
 class NormalizeEpisodeItemTests(unittest.TestCase):
