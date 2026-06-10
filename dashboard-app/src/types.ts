@@ -6,7 +6,28 @@ export type SectionId =
   | 'skills'
   | 'plugins'
   | 'mcp'
-  | 'hooks';
+  | 'hooks'
+  | 'codex'
+  | 'claude';
+
+export type ConfigTone = '' | 'on' | 'off' | 'muted';
+
+export interface ConfigRow {
+  label: string;
+  value: string;
+  tone?: ConfigTone;
+}
+
+export interface ConfigGroup {
+  title: string;
+  source: string;
+  rows: ConfigRow[];
+}
+
+export interface GlobalConfig {
+  codex: ConfigGroup[];
+  claude: ConfigGroup[];
+}
 
 export type ItemKind = 'skill' | 'plugin' | 'mcp' | 'hook' | 'repo' | 'dev_server' | 'warning';
 
@@ -113,6 +134,7 @@ export interface ControlPlaneData {
   repo_root: string;
   runtimes?: string[];
   capabilities?: Capability[];
+  global_config?: GlobalConfig;
   sources: Record<string, SourceRef>;
   counts: Counts;
   warnings: Warning[];

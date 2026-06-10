@@ -32,6 +32,9 @@ REGISTRY_SOURCES = {
     "hooks": "hooks/registry.json",
     "repos": "codex/config/repo-bootstrap.json",
     "dev_servers": "dev-servers/registry.json",
+    "claude_settings": "config/claude-settings.json",
+    "codex_global": "codex/config/global.config.toml",
+    "global_guidance": "config/global.agents.md",
 }
 
 RUNTIMES = ["codex", "claude"]
@@ -279,6 +282,157 @@ def base_item(
         "details": details,
         "search_text": " ".join(search_parts).lower(),
     }
+
+
+def _config_group(title: str, source: str, rows: list[dict[str, Any]]) -> dict[str, Any]:
+    return {"title": title, "source": source, "rows": rows}
+
+
+def _scalar_value(value: Any) -> str:
+    if isinstance(value, bool):
+        return "on" if value else "off"
+    if isinstance(value, list):
+        return ", ".join(str(v) for v in value) if value else "—"
+    if value is None:
+        return "—"
+    return str(value)
+
+
+def build_global_config(
+    root: Path,
+    skills_registry: dict[str, Any],
+    plugins_registry: dict[str, Any],
+    mcp_registry: dict[str, Any],
+    repo_bootstrap: dict[str, Any],
+    warnings: list[dict[str, Any]],
+) -> dict[str, Any]:
+    """Per-runtime view of the global configuration each agent client inherits.
+
+    Sourced from the git-tracked canonical files (not the rendered runtime), so
+    the dashboard shows the reproducible source of truth for both Codex and
+    Claude global state side by side.
+    """
+    claude_src = REGISTRY_SOURCES["claude_settings"]
+    codex_src = REGISTRY_SOURCES["codex_global"]
+    guidance_src = REGISTRY_SOURCES["global_guidance"]
+    none_row = [{"label": "(none)", "value": "—", "tone": "muted"}]
+
+    global_skills = sorted(
+        str(s.get("skill"))
+        for s in skills_registry.get("managed_skills", [])
+        if isinstance(s, dict) and s.get("scope") == "global"
+    )
+    global_skill_rows = [{"label": s, "value": "global"} for s in global_skills] or none_row
+
+    # ---------------- Codex ----------------
+    codex_cfg: dict[str, Any] = {}
+    codex_path = root / codex_src
+    if codex_path.exists():
+        import tomllib
+
+        try:
+            codex_cfg = tomllib.loads(codex_path.read_text(encoding="utf-8"))
+        except (OSError, tomllib.TOMLDecodeError) as exc:
+            warnings.append(
+                {
+                    "severity": "error",
+                    "code": "invalid_codex_global",
+                    "message": f"Could not parse {codex_src}: {exc}",
+                    "source": codex_src,
+                }
+            )
+
+    codex_default_rows = [
+        {"label": k, "value": _scalar_value(v)} for k, v in codex_cfg.items() if not isinstance(v, dict)
+    ]
+    codex_feature_rows = [
+        {"label": k, "value": "on" if v else "off", "tone": "on" if v else "off"}
+        for k, v in (codex_cfg.get("features") or {}).items()
+    ]
+    codex_plugin_rows = [
+        {
+            "label": str(p.get("plugin")),
+            "value": "enabled" if p.get("enabled") else "disabled",
+            "tone": "on" if p.get("enabled") else "off",
+        }
+        for p in plugins_registry.get("managed_plugins", [])
+        if isinstance(p, dict) and p.get("scope") == "global"
+    ]
+    mcp_global = clean_list(mcp_registry.get("global_presets")) + clean_list(
+        mcp_registry.get("plugin_global_presets")
+    )
+    defaults = repo_bootstrap.get("defaults", {})
+    defaults = defaults if isinstance(defaults, dict) else {}
+
+    codex_groups = [_config_group("Runtime defaults", codex_src, codex_default_rows or none_row)]
+    if codex_feature_rows:
+        codex_groups.append(_config_group("Features", codex_src, codex_feature_rows))
+    codex_groups += [
+        _config_group(
+            "Repo defaults",
+            REGISTRY_SOURCES["repos"],
+            [{"label": k, "value": _scalar_value(v)} for k, v in defaults.items()] or none_row,
+        ),
+        _config_group("Global plugins", REGISTRY_SOURCES["plugins"], codex_plugin_rows or none_row),
+        _config_group(
+            "Global MCP presets",
+            REGISTRY_SOURCES["mcp"],
+            [{"label": m, "value": "global"} for m in mcp_global]
+            or [{"label": "None", "value": "no global MCP presets", "tone": "muted"}],
+        ),
+        _config_group("Global skills", REGISTRY_SOURCES["skills"], list(global_skill_rows)),
+    ]
+
+    # ---------------- Claude ----------------
+    claude_settings = load_json(root / claude_src, warnings)
+    enabled_plugins = claude_settings.get("enabledPlugins")
+    enabled_plugins = enabled_plugins if isinstance(enabled_plugins, dict) else {}
+    skill_overrides = claude_settings.get("skillOverrides")
+    skill_overrides = skill_overrides if isinstance(skill_overrides, dict) else {}
+
+    plugin_rows = [
+        {"label": name, "value": "enabled" if on else "disabled", "tone": "on" if on else "off"}
+        for name, on in enabled_plugins.items()
+    ]
+    override_rows = [
+        {"label": name, "value": mode, "tone": "off" if mode in ("off", "name-only") else ""}
+        for name, mode in sorted(skill_overrides.items())
+    ]
+
+    claude_groups = [
+        _config_group(
+            "Permission mode",
+            "scripts/sync-claude.py",
+            [
+                {"label": "defaultMode", "value": "bypassPermissions (YOLO)"},
+                {"label": "skipDangerousModePermissionPrompt", "value": "on", "tone": "on"},
+                {"label": "skipAutoPermissionPrompt", "value": "on", "tone": "on"},
+                {"label": "skipWorkflowUsageWarning", "value": "on", "tone": "on"},
+                {"label": "enableAllProjectMcpServers", "value": "on", "tone": "on"},
+            ],
+        ),
+        _config_group(
+            "Bundled plugins",
+            claude_src,
+            plugin_rows or [{"label": "All bundled plugins enabled", "value": "—", "tone": "muted"}],
+        ),
+        _config_group(
+            "Bundled skill visibility",
+            claude_src,
+            override_rows or [{"label": "All bundled skills visible", "value": "—", "tone": "muted"}],
+        ),
+        _config_group("Global skills", REGISTRY_SOURCES["skills"], list(global_skill_rows)),
+        _config_group(
+            "Guidance",
+            guidance_src,
+            [
+                {"label": "Global CLAUDE.md", "value": "config/global.agents.md → ~/.claude/CLAUDE.md"},
+                {"label": "Lifecycle", "value": "Stop hook → claude_stop.py"},
+            ],
+        ),
+    ]
+
+    return {"codex": codex_groups, "claude": claude_groups}
 
 
 def build_control_plane_data(root: Path) -> dict[str, Any]:
@@ -661,6 +815,9 @@ def build_control_plane_data(root: Path) -> dict[str, Any]:
         "sources": sources,
         "counts": counts,
         "capabilities": build_capability_board(counts),
+        "global_config": build_global_config(
+            root, skills_registry, plugins_registry, mcp_registry, repo_bootstrap, warnings
+        ),
         "warnings": warnings,
         "items": items,
         "groups": {

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { useControlPlane } from './api';
 import { BoardSection } from './components/BoardSection';
 import { CatalogExplorer } from './components/CatalogExplorer';
+import { GlobalConfigSection } from './components/GlobalConfigSection';
 import { OverviewSection } from './components/OverviewSection';
 import { RepoExplorer } from './components/RepoExplorer';
 import { Sidebar } from './components/Sidebar';
@@ -20,6 +21,8 @@ const SECTIONS: SectionId[] = [
   'plugins',
   'mcp',
   'hooks',
+  'codex',
+  'claude',
 ];
 
 function initialSection(): SectionId {
@@ -106,6 +109,10 @@ export function App() {
                   focusName={focusedItem && focusedItem.section === section ? focusedItem.name : undefined}
                 />
               </NavProvider>
+            </section>
+          ) : section === 'codex' || section === 'claude' ? (
+            <section className="content-region content-region-flush" aria-live="polite">
+              <GlobalConfigSection data={data} runtime={section} />
             </section>
           ) : (
             <section className="content-region content-region-flush" aria-live="polite">

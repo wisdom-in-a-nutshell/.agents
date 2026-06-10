@@ -22,6 +22,13 @@ const NAV_GROUPS: Array<{ label: string; items: NavItem[] }> = [
       { id: 'hooks', label: 'Hooks', short: 'H' },
     ],
   },
+  {
+    label: 'Global config',
+    items: [
+      { id: 'codex', label: 'Codex', short: 'C' },
+      { id: 'claude', label: 'Claude', short: 'C' },
+    ],
+  },
 ];
 
 export function Sidebar({

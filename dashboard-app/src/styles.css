@@ -921,3 +921,51 @@ body.sidebar-collapsed .nav-group + .nav-group { margin-top: 8px; }
   .ov-top { flex-direction: column; }
   .ov-status { justify-items: start; }
 }
+
+/* --- Global config (Codex / Claude inherited state) --- */
+.gc-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: var(--space-lg);
+  align-items: start;
+}
+.gc-card {
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+  overflow: hidden;
+}
+.gc-card-head {
+  display: flex; align-items: baseline; justify-content: space-between; gap: var(--space-md);
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--line-soft);
+  background: var(--surface-soft);
+}
+.gc-card-head h3 {
+  margin: 0; font-family: var(--font-serif); font-weight: 500; font-size: 15px;
+  letter-spacing: -0.005em; color: var(--text);
+}
+.gc-src { text-decoration: none; flex: 0 0 auto; }
+.gc-src code {
+  font-family: var(--font-mono); font-size: 10.5px; color: var(--muted);
+  background: var(--bg); border: 1px solid var(--line-soft);
+  padding: 2px 7px; border-radius: 6px;
+}
+.gc-src:hover code { color: var(--accent-ink); border-color: var(--accent-line); }
+.gc-rows { margin: 0; padding: 6px 0; }
+.gc-row {
+  display: flex; align-items: baseline; justify-content: space-between; gap: var(--space-md);
+  padding: 6px 16px;
+}
+.gc-row + .gc-row { border-top: 1px solid var(--line-soft); }
+.gc-row dt {
+  font-family: var(--font-mono); font-size: var(--font-xxs); color: var(--muted);
+  word-break: break-word;
+}
+.gc-val {
+  font-family: var(--font-sans); font-size: var(--font-xs); font-weight: var(--weight-label);
+  color: var(--text); text-align: right; flex: 0 0 auto;
+}
+.gc-on { color: var(--accent-ink); }
+.gc-off { color: var(--rose-ink); }
+.gc-muted { color: var(--faint); font-weight: 400; }
