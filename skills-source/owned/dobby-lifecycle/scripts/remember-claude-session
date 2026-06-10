@@ -14,7 +14,6 @@ import argparse
 import json
 import os
 import re
-import shutil
 import subprocess
 import sys
 import time
@@ -26,6 +25,7 @@ from typing import Any
 SCRIPT_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(SCRIPT_DIR))
 
+from claude_lib import claude_bin  # noqa: E402
 from remember_lib import RememberPromptError, build_instruction  # noqa: E402
 
 SCHEMA_VERSION = "1.0"
@@ -55,22 +55,7 @@ def clean_label(value: str | None, default: str) -> str:
     return label or default
 
 
-def claude_bin() -> str:
-    """Resolve the claude CLI without depending on the caller's PATH."""
-    override = os.environ.get("DOBBY_CLAUDE_BIN")
-    if override:
-        return override
-    found = shutil.which("claude")
-    if found:
-        return found
-    for candidate in (
-        Path.home() / "bin/claude",
-        Path("/opt/homebrew/bin/claude"),
-        Path("/usr/local/bin/claude"),
-    ):
-        if candidate.is_file() and os.access(candidate, os.X_OK):
-            return str(candidate)
-    return "claude"
+# claude binary resolution lives in claude_lib (shared with dream-memory).
 
 
 def run_remember_turn(
