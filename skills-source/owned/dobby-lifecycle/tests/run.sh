@@ -4,12 +4,15 @@ set -euo pipefail
 SKILL_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 python3 -m py_compile \
   "$SKILL_DIR/scripts/session_memory_lib.py" \
+  "$SKILL_DIR/scripts/remember_lib.py" \
   "$SKILL_DIR/scripts/session-memory" \
   "$SKILL_DIR/scripts/validate" \
   "$SKILL_DIR/scripts/remember-session" \
+  "$SKILL_DIR/scripts/remember-claude-session" \
   "$SKILL_DIR/scripts/hooks/session-start" \
   "$SKILL_DIR/scripts/hooks/user-prompt-submit" \
-  "$SKILL_DIR/scripts/hooks/finalize-codex-thread"
+  "$SKILL_DIR/scripts/hooks/finalize-codex-thread" \
+  "$SKILL_DIR/scripts/hooks/finalize-claude-session"
 
 if grep -R "consolidate-thread\|PreCompact\|SIDECAR" "$SKILL_DIR/scripts" "$SKILL_DIR/references" >/dev/null; then
   echo "sidecar/pre-compact/consolidate-thread references should not be part of the simple lifecycle design" >&2
@@ -296,6 +299,56 @@ if ! grep -q "workspaceChanges" <<<"$instruction_output"; then
   echo "remember-session prompt should document the workspace-changes visibility field" >&2
   exit 1
 fi
+claude_instruction_output="$("$SKILL_DIR/scripts/remember-claude-session" \
+  --session-id claude-session-test \
+  --workspace-root "$repo" \
+  --trigger codexclaw-chat-end \
+  --print-instruction \
+  --plain \
+  --no-input)"
+if ! grep -q '"sourceRuntime": "claude"' <<<"$claude_instruction_output"; then
+  echo "remember-claude-session prompt should carry the claude runtime tag" >&2
+  exit 1
+fi
+if grep -q "{{" <<<"$claude_instruction_output"; then
+  echo "remember-claude-session --print-instruction should not leave template placeholders" >&2
+  exit 1
+fi
+
+fake_claude="$tmp_dir/fake-claude"
+claude_argv_log="$tmp_dir/claude-argv.json"
+cat >"$fake_claude" <<PY
+#!/usr/bin/env python3
+import json, os, pathlib, sys
+pathlib.Path(os.environ["CLAUDE_ARGV_LOG"]).write_text(json.dumps(sys.argv[1:]))
+print("No memory changes needed")
+PY
+chmod +x "$fake_claude"
+claude_payload="$tmp_dir/claude-finalize-payload.json"
+cat >"$claude_payload" <<JSON
+{
+  "schema_version": "1.0",
+  "hook_event_name": "FinalizeClaudeSession",
+  "session_id": "claude-session-test",
+  "reason": "stale-cleanup"
+}
+JSON
+claude_hook_output="$(cd "$repo" && CLAUDE_ARGV_LOG="$claude_argv_log" DOBBY_CLAUDE_BIN="$fake_claude" \
+  "$SKILL_DIR/scripts/hooks/finalize-claude-session" <"$claude_payload")"
+if ! grep -q '"command": "remember-claude-session"' <<<"$claude_hook_output"; then
+  echo "finalize-claude-session hook should run remember-claude-session" >&2
+  exit 1
+fi
+claude_argv="$(cat "$claude_argv_log")"
+if ! grep -q -- "--resume" <<<"$claude_argv" || ! grep -q "claude-session-test" <<<"$claude_argv"; then
+  echo "remember-claude-session should resume the source session id" >&2
+  exit 1
+fi
+if ! grep -q -- "-p" <<<"$claude_argv"; then
+  echo "remember-claude-session should run claude headless with -p" >&2
+  exit 1
+fi
+
 remember_output="$(PATH="$fake_bin_dir:$PATH" FAKE_THREAD_CWD="$repo" "$SKILL_DIR/scripts/remember-session" \
   --thread-id thread-test \
   --trigger codexclaw-daily-rollover \

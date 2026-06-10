@@ -315,7 +315,21 @@ def finalize_session(
 
     cwd = transcript_cwd(transcript)
     if not cwd:
-        return skip(base, "missing_cwd", error="transcript has no usable cwd")
+        # Empty or cwd-less transcripts are aborted sessions with nothing to
+        # remember. Mark them finalized so scans stop retrying them forever.
+        if not dry_run:
+            with FinalizedState(state_path()) as state:
+                state.mark(
+                    session_id,
+                    {
+                        "finalized_at": utc_now(),
+                        "reason": reason,
+                        "repo_root": None,
+                        "transcript_path": str(transcript),
+                        "finalizer_status": "skipped-empty-transcript",
+                    },
+                )
+        return skip(base, "empty_transcript")
     base["cwd"] = cwd
 
     repo_root = repo_root_for_cwd(cwd)
@@ -423,7 +437,7 @@ def main() -> int:
             force=bool(args.force),
             finalization_timeout_seconds=args.finalization_timeout_seconds,
         )
-        ok_skips = {"dry_run", "already_finalized", "session_running"}
+        ok_skips = {"dry_run", "already_finalized", "session_running", "empty_transcript"}
         status = "ok" if result.error is None and (result.finalized or result.skipped_reason in ok_skips) else "error"
         exit_code = 0
         if status != "ok":

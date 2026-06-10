@@ -105,9 +105,12 @@ V2 records are continuity index cards:
 
 `title` is for dashboard scanning. `summary` is the curated continuity index
 loaded at boot. `threadId` points back to the original transcript when deeper
-retrieval is needed. `workspaceChanges` is for visibility into durable writes
-made during finalization; if none happened, say so plainly. Durable decisions
-still get promoted to `now.json`, area canon, or `dobby/constitution.json` or `memory/profile.json` as appropriate.
+retrieval is needed (a Codex thread id or a Claude session id). The optional
+`runtime` field (`codex`/`claude`) records which harness owned the session;
+records written before runtime tagging omit it. `workspaceChanges` is for
+visibility into durable writes made during finalization; if none happened, say
+so plainly. Durable decisions still get promoted to `now.json`, area canon, or
+`dobby/constitution.json` or `memory/profile.json` as appropriate.
 
 Current trigger vocabulary:
 
@@ -204,6 +207,42 @@ does not archive; the global finalizer owns archive after the hook succeeds.
 
 Do not put Dobby memory synthesis directly in the shared `~/GitHub/agents` dispatcher.
 The dispatcher routes lifecycle events; this skill owns Dobby-specific behavior.
+
+## FinalizeClaudeSession primitive (Claude runtime twin)
+
+Claude Code sessions get the same ending pipeline through the twin primitive:
+
+```bash
+$HOME/GitHub/agents/codex/scripts/finalize-claude-session.py \
+  --session-id <claude-session-id> \
+  --apply
+```
+
+Differences from the Codex flow, by construction:
+
+- The workspace is derived from the session transcript under
+  `~/.claude/projects/<munged-cwd>/<session-id>.jsonl` (there is no App Server to
+  ask). Empty/cwd-less transcripts are marked finalized with nothing to remember.
+- The repo hook is `scripts/hooks/finalize_claude_session.py`, which in Dobby
+  workspaces delegates to `scripts/hooks/finalize-claude-session` in this skill,
+  which runs `remember-claude-session`. That runner resumes the ending session
+  headless (`claude -p --resume <id> --permission-mode bypassPermissions`) and
+  runs the SAME versioned remember-session prompt (rendered via the shared
+  `remember_lib.py` with `runtime: "claude"`), so the card is runtime-tagged.
+- There is no archive step. Instead the primitive records the session id in
+  `~/.local/state/claude-control-plane/finalized-claude-sessions.json` so no
+  session is ever finalized twice. Claude Desktop sidebar tidying remains the
+  separate archiver's job and never touches memory.
+- Live sessions are protected: ids found in `~/.claude/sessions/*.json`
+  handshakes with a live pid are skipped.
+
+Stale coverage: `finalize-stale-claude-sessions.py` (hourly LaunchAgent
+`com.<user>.claude-session-finalizer`, installed by
+`install-finalize-stale-claude-sessions-launchagent.sh`) scans transcript mtimes
+for registered repos, 24-hour cutoff, capped per run by `--max-sessions`;
+`--mark-only` absorbs a pre-existing backlog without running remember turns.
+CodexClaw schedules the primitive on chat-end and 4-hour idle for Claude-owned
+phone conversations, mirroring the Codex paths.
 
 ## Repo wrapper note
 
