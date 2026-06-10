@@ -1,0 +1,8 @@
+{
+  "version": 1,
+  "description": "Managed overlay of global Claude Code settings keys. sync-claude.py merges these blocks into ~/.claude/settings.json so Claude-bundled plugin enablement and bundled-skill visibility stay reproducible across machines and tracked in git. This is NOT the Codex plugin registry (plugins/registry.json, Codex-native) nor the managed standalone skill registry (skills/registry.json); it governs Anthropic-bundled Claude runtime surfaces those registries do not own. Only the keys declared here are managed; any other key already in settings.json is preserved untouched.",
+  "enabledPlugins": {
+    "anthropic-skills@inline": false
+  },
+  "skillOverrides": {}
+}

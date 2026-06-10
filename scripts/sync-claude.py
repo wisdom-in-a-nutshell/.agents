@@ -30,6 +30,7 @@ DEFAULT_CLAUDE_HOME = Path.home() / ".claude"
 DEFAULT_GITHUB_ROOT = Path.home() / "GitHub"
 DEFAULT_GLOBAL_CONTEXT_SOURCE = _AGENTS_ROOT / "config" / "global.agents.md"
 DEFAULT_GLOBAL_CONTEXT_TARGET = Path.home() / ".claude" / "CLAUDE.md"
+DEFAULT_CLAUDE_SETTINGS_OVERLAY = _AGENTS_ROOT / "config" / "claude-settings.json"
 DEFAULT_LAUNCHER_TARGET = Path.home() / "bin" / "claude"
 DEFAULT_REAL_CLI_PATH = Path("/opt/homebrew/bin/claude")
 DEFAULT_DEV_SERVERS_REGISTRY = _AGENTS_ROOT / "dev-servers" / "registry.json"
@@ -89,6 +90,14 @@ YOLO_ACCEPTANCE_FLAGS = {
     "skipWorkflowUsageWarning": True,
     "enableAllProjectMcpServers": True,
 }
+# Managed dict-valued keys from config/claude-settings.json that are deep-merged
+# (overlay wins per key) into the global ~/.claude/settings.json. Keys not listed
+# here are ignored so the overlay can never clobber permissions/hooks/yolo state.
+CLAUDE_SETTINGS_OVERLAY_KEYS = ("enabledPlugins", "skillOverrides")
+# Allowed values for skillOverrides per the Claude Code settings schema
+# (https://code.claude.com/docs/en/settings.md): hide or collapse a bundled skill
+# without editing its SKILL.md. Does not apply to plugin skills.
+VALID_SKILL_OVERRIDE_VALUES = {"on", "name-only", "user-invocable-only", "off"}
 
 
 def rel_link(dst: Path, src: Path) -> str:
@@ -497,7 +506,73 @@ def render_repo_claude_guidance_files(
         render_repo_claude_guidance(actual_repo, apply)
 
 
-def render_settings(settings_file: Path, trusted: list[str], apply: bool, skip_yolo: bool) -> None:
+def load_claude_settings_overlay(overlay_file: Path) -> dict[str, dict[str, Any]]:
+    """Load and validate the managed global Claude settings overlay.
+
+    Returns a mapping of overlay key -> dict (e.g. ``enabledPlugins``,
+    ``skillOverrides``). A missing file yields an empty overlay so the renderer
+    is a no-op when nothing is managed. Validation is strict and actionable so a
+    malformed overlay fails the bootstrap instead of silently shipping bad
+    settings.
+    """
+    if not overlay_file.exists():
+        return {}
+    data = read_json_object(overlay_file)
+    overlay: dict[str, dict[str, Any]] = {}
+    label = overlay_file
+
+    enabled = data.get("enabledPlugins")
+    if enabled is not None:
+        if not isinstance(enabled, dict):
+            raise ValueError(f"{label}: enabledPlugins must be an object")
+        for key, value in enabled.items():
+            if not isinstance(value, bool):
+                raise ValueError(
+                    f"{label}: enabledPlugins[{key!r}] must be a boolean (got {type(value).__name__})"
+                )
+        overlay["enabledPlugins"] = dict(enabled)
+
+    overrides = data.get("skillOverrides")
+    if overrides is not None:
+        if not isinstance(overrides, dict):
+            raise ValueError(f"{label}: skillOverrides must be an object")
+        for key, value in overrides.items():
+            if value not in VALID_SKILL_OVERRIDE_VALUES:
+                raise ValueError(
+                    f"{label}: skillOverrides[{key!r}] must be one of "
+                    f"{sorted(VALID_SKILL_OVERRIDE_VALUES)} (got {value!r})"
+                )
+        overlay["skillOverrides"] = dict(overrides)
+
+    return overlay
+
+
+def apply_settings_overlay(desired: dict[str, Any], overlay: dict[str, dict[str, Any]]) -> None:
+    """Deep-merge managed overlay dict-keys into ``desired`` settings in place.
+
+    For each managed key the overlay declares, existing entries are preserved and
+    overlay entries win per sub-key, so a fresh machine renders exactly the
+    overlay while machines with extra manual entries keep them. Keys that merge to
+    an empty object are not written, avoiding noise keys like ``skillOverrides: {}``.
+    """
+    for key in CLAUDE_SETTINGS_OVERLAY_KEYS:
+        managed = overlay.get(key)
+        if not managed:
+            continue
+        existing = desired.get(key)
+        existing = dict(existing) if isinstance(existing, dict) else {}
+        existing.update(managed)
+        if existing:
+            desired[key] = existing
+
+
+def render_settings(
+    settings_file: Path,
+    trusted: list[str],
+    apply: bool,
+    skip_yolo: bool,
+    overlay: dict[str, dict[str, Any]] | None = None,
+) -> None:
     data = read_json_object(settings_file)
     desired = dict(data)
     desired.setdefault("$schema", "https://json.schemastore.org/claude-code-settings.json")
@@ -548,10 +623,12 @@ def render_settings(settings_file: Path, trusted: list[str], apply: bool, skip_y
         hooks[event_name] = current_entries + [entry]
     desired["hooks"] = hooks
 
+    apply_settings_overlay(desired, overlay or {})
+
     if desired == data:
         print(f"UNCHANGED {settings_file}")
         return
-    print(f"SYNC {settings_file} (permissions, hooks)")
+    print(f"SYNC {settings_file} (permissions, hooks, plugins)")
     if not apply:
         return
     settings_file.parent.mkdir(parents=True, exist_ok=True)
@@ -1020,7 +1097,15 @@ def run_sync(args: argparse.Namespace) -> None:
     if not args.skip_global_context:
         render_global_context(global_context_source, global_context_target, args.apply)
     if not args.skip_settings:
-        render_settings(claude_home / "settings.json", trusted, args.apply, args.skip_yolo)
+        overlay_file = absolute_path(Path(args.claude_settings_overlay).expanduser()).resolve()
+        overlay = load_claude_settings_overlay(overlay_file)
+        render_settings(
+            claude_home / "settings.json",
+            trusted,
+            args.apply,
+            args.skip_yolo,
+            overlay,
+        )
     if not args.skip_repo_hooks:
         hooks_registry_file = absolute_path(
             Path(args.hooks_registry).expanduser()
@@ -1091,6 +1176,11 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--skip-workspace-trust", action="store_true", help="Do not pre-accept the per-folder trust dialog for managed workspaces.")
     parser.add_argument("--skip-global-context", action="store_true", help="Do not render global CLAUDE.md.")
     parser.add_argument("--skip-settings", action="store_true", help="Do not render Claude settings.")
+    parser.add_argument(
+        "--claude-settings-overlay",
+        default=str(DEFAULT_CLAUDE_SETTINGS_OVERLAY),
+        help="Managed overlay JSON of global Claude settings (enabledPlugins, skillOverrides) merged into ~/.claude/settings.json.",
+    )
     parser.add_argument("--skip-launcher", action="store_true", help="Do not render Claude launcher.")
     parser.add_argument("--skip-skills", action="store_true", help="Do not render Claude skill links.")
     parser.add_argument(

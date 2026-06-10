@@ -568,6 +568,77 @@ class ClaudeSyncTests(TempDirTestCase):
             settings["permissions"]["additionalDirectories"],
         )
 
+    def test_apply_renders_managed_claude_settings_overlay(self) -> None:
+        root = self.temp_path / "agents"
+        registry = self._write_registry(root, [])
+        claude_home = self.temp_path / "claude"
+        # Pre-existing settings carry an unrelated key plus a manually enabled
+        # plugin that the overlay does not mention; both must survive the merge.
+        write_json(
+            claude_home / "settings.json",
+            {
+                "model": "test-model",
+                "enabledPlugins": {"keep-me@inline": True},
+            },
+        )
+        overlay = write_json(
+            root / "config/claude-settings.json",
+            {
+                "version": 1,
+                "enabledPlugins": {"anthropic-skills@inline": False},
+                "skillOverrides": {"loop": "name-only", "review": "off"},
+            },
+        )
+
+        run_command(
+            [
+                str(REPO_ROOT / "scripts/sync-claude.py"),
+                "--apply",
+                "--claude-home",
+                str(claude_home),
+                "--claude-settings-overlay",
+                str(overlay),
+                *self._isolated_targets(root),
+                str(registry),
+            ]
+        )
+
+        settings = json.loads((claude_home / "settings.json").read_text(encoding="utf-8"))
+        # Overlay disables the bundled plugin while preserving the manual entry.
+        self.assertEqual(False, settings["enabledPlugins"]["anthropic-skills@inline"])
+        self.assertEqual(True, settings["enabledPlugins"]["keep-me@inline"])
+        # Per-skill visibility overrides for bundled skills land verbatim.
+        self.assertEqual("name-only", settings["skillOverrides"]["loop"])
+        self.assertEqual("off", settings["skillOverrides"]["review"])
+        # Unrelated existing keys are untouched.
+        self.assertEqual("test-model", settings["model"])
+
+    def test_invalid_skill_override_value_fails(self) -> None:
+        root = self.temp_path / "agents"
+        registry = self._write_registry(root, [])
+        claude_home = self.temp_path / "claude"
+        overlay = write_json(
+            root / "config/claude-settings.json",
+            {"version": 1, "skillOverrides": {"loop": "sometimes"}},
+        )
+
+        result = run_command(
+            [
+                str(REPO_ROOT / "scripts/sync-claude.py"),
+                "--apply",
+                "--claude-home",
+                str(claude_home),
+                "--claude-settings-overlay",
+                str(overlay),
+                *self._isolated_targets(root),
+                str(registry),
+            ],
+            check=False,
+        )
+
+        self.assertNotEqual(0, result.returncode)
+        self.assertIn("skillOverrides", result.stderr)
+
     def test_existing_global_context_symlink_target_is_not_resolved_for_write(self) -> None:
         root = self.temp_path / "agents"
         registry = self._write_registry(root, [])
