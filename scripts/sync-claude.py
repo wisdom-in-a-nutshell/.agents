@@ -93,9 +93,7 @@ YOLO_ACCEPTANCE_FLAGS = {
 # Managed dict-valued keys from config/claude-settings.json that are deep-merged
 # (overlay wins per key) into the global ~/.claude/settings.json. Keys not listed
 # here are ignored so the overlay can never clobber permissions/hooks/yolo state.
-# `env` is a string->string map of session-wide environment variables (e.g.
-# CLAUDE_CODE_DISABLE_GIT_INSTRUCTIONS) per the Claude Code settings schema.
-CLAUDE_SETTINGS_OVERLAY_KEYS = ("enabledPlugins", "skillOverrides", "env")
+CLAUDE_SETTINGS_OVERLAY_KEYS = ("enabledPlugins", "skillOverrides")
 # Allowed values for skillOverrides per the Claude Code settings schema
 # (https://code.claude.com/docs/en/settings.md): hide or collapse a bundled skill
 # without editing its SKILL.md. Does not apply to plugin skills.
@@ -512,10 +510,10 @@ def load_claude_settings_overlay(overlay_file: Path) -> dict[str, dict[str, Any]
     """Load and validate the managed global Claude settings overlay.
 
     Returns a mapping of overlay key -> dict (e.g. ``enabledPlugins``,
-    ``skillOverrides``, ``env``). A missing file yields an empty overlay so the
-    renderer is a no-op when nothing is managed. Validation is strict and
-    actionable so a malformed overlay fails the bootstrap instead of silently
-    shipping bad settings.
+    ``skillOverrides``). A missing file yields an empty overlay so the renderer
+    is a no-op when nothing is managed. Validation is strict and actionable so a
+    malformed overlay fails the bootstrap instead of silently shipping bad
+    settings.
     """
     if not overlay_file.exists():
         return {}
@@ -545,18 +543,6 @@ def load_claude_settings_overlay(overlay_file: Path) -> dict[str, dict[str, Any]
                     f"{sorted(VALID_SKILL_OVERRIDE_VALUES)} (got {value!r})"
                 )
         overlay["skillOverrides"] = dict(overrides)
-
-    env = data.get("env")
-    if env is not None:
-        if not isinstance(env, dict):
-            raise ValueError(f"{label}: env must be an object")
-        for key, value in env.items():
-            if not isinstance(value, str):
-                raise ValueError(
-                    f"{label}: env[{key!r}] must be a string "
-                    f"(got {type(value).__name__})"
-                )
-        overlay["env"] = dict(env)
 
     return overlay
 
@@ -609,6 +595,13 @@ def render_settings(
     if not skip_yolo:
         for flag, value in YOLO_ACCEPTANCE_FLAGS.items():
             desired[flag] = value
+
+    # Always strip Claude Code's built-in commit/PR workflow instructions and the
+    # git-status snapshot from the system prompt: this machine auto-commits,
+    # rebases, and pushes via the Stop hook and its guidance forbids manual git, so
+    # the defaults only mislead the agent.
+    # https://code.claude.com/docs/en/settings (includeGitInstructions)
+    desired["includeGitInstructions"] = False
 
     hooks = desired.get("hooks")
     hooks = dict(hooks) if isinstance(hooks, dict) else {}
@@ -1193,7 +1186,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--claude-settings-overlay",
         default=str(DEFAULT_CLAUDE_SETTINGS_OVERLAY),
-        help="Managed overlay JSON of global Claude settings (enabledPlugins, skillOverrides, env) merged into ~/.claude/settings.json.",
+        help="Managed overlay JSON of global Claude settings (enabledPlugins, skillOverrides) merged into ~/.claude/settings.json.",
     )
     parser.add_argument("--skip-launcher", action="store_true", help="Do not render Claude launcher.")
     parser.add_argument("--skip-skills", action="store_true", help="Do not render Claude skill links.")

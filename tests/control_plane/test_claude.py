@@ -106,6 +106,8 @@ class ClaudeSyncTests(TempDirTestCase):
         self.assertEqual(True, settings["skipAutoPermissionPrompt"])
         self.assertEqual(True, settings["skipWorkflowUsageWarning"])
         self.assertEqual(True, settings["enableAllProjectMcpServers"])
+        # Built-in git/commit/PR instructions are always disabled on this machine.
+        self.assertEqual(False, settings["includeGitInstructions"])
         self.assertIn("Stop", settings["hooks"])
         self.assertNotIn("PreToolUse", settings["hooks"])
         self.assertNotIn("PermissionRequest", settings["hooks"])
@@ -612,66 +614,6 @@ class ClaudeSyncTests(TempDirTestCase):
         self.assertEqual("off", settings["skillOverrides"]["review"])
         # Unrelated existing keys are untouched.
         self.assertEqual("test-model", settings["model"])
-
-    def test_apply_renders_managed_env_overlay(self) -> None:
-        root = self.temp_path / "agents"
-        registry = self._write_registry(root, [])
-        claude_home = self.temp_path / "claude"
-        # An existing manual env var must survive alongside the managed one.
-        write_json(
-            claude_home / "settings.json",
-            {"env": {"EXISTING_VAR": "keep"}},
-        )
-        overlay = write_json(
-            root / "config/claude-settings.json",
-            {
-                "version": 1,
-                "env": {"CLAUDE_CODE_DISABLE_GIT_INSTRUCTIONS": "1"},
-            },
-        )
-
-        run_command(
-            [
-                str(REPO_ROOT / "scripts/sync-claude.py"),
-                "--apply",
-                "--claude-home",
-                str(claude_home),
-                "--claude-settings-overlay",
-                str(overlay),
-                *self._isolated_targets(root),
-                str(registry),
-            ]
-        )
-
-        settings = json.loads((claude_home / "settings.json").read_text(encoding="utf-8"))
-        self.assertEqual("1", settings["env"]["CLAUDE_CODE_DISABLE_GIT_INSTRUCTIONS"])
-        self.assertEqual("keep", settings["env"]["EXISTING_VAR"])
-
-    def test_invalid_env_value_fails(self) -> None:
-        root = self.temp_path / "agents"
-        registry = self._write_registry(root, [])
-        claude_home = self.temp_path / "claude"
-        overlay = write_json(
-            root / "config/claude-settings.json",
-            {"version": 1, "env": {"CLAUDE_CODE_DISABLE_GIT_INSTRUCTIONS": 1}},
-        )
-
-        result = run_command(
-            [
-                str(REPO_ROOT / "scripts/sync-claude.py"),
-                "--apply",
-                "--claude-home",
-                str(claude_home),
-                "--claude-settings-overlay",
-                str(overlay),
-                *self._isolated_targets(root),
-                str(registry),
-            ],
-            check=False,
-        )
-
-        self.assertNotEqual(0, result.returncode)
-        self.assertIn("env", result.stderr)
 
     def test_invalid_skill_override_value_fails(self) -> None:
         root = self.temp_path / "agents"
