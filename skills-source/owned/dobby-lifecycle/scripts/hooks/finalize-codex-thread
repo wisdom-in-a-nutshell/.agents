@@ -64,6 +64,50 @@ def remember_session_bin() -> Path:
     ).expanduser()
 
 
+def session_transcript_bin() -> Path:
+    return Path(
+        os.environ.get(
+            "DOBBY_SESSION_TRANSCRIPT_BIN",
+            str(Path.home() / "GitHub/agents/skills-source/owned/dobby-lifecycle/scripts/session-transcript"),
+        )
+    ).expanduser()
+
+
+def capture_session_transcript(root: Path, source_thread: str) -> None:
+    """Copy raw.jsonl + render dialogue.md into the session folder the remember
+    turn just wrote. Runs before the global finalizer archives the thread, but
+    the locator also searches archived_sessions. Best-effort: a capture failure
+    only warns because memory preservation already succeeded."""
+    cmd = [
+        str(session_transcript_bin()),
+        "capture",
+        "--workspace-root",
+        str(root),
+        "--thread-id",
+        source_thread,
+        "--json",
+        "--no-input",
+    ]
+    try:
+        result = subprocess.run(
+            cmd,
+            cwd=root,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            timeout=120,
+        )
+    except (subprocess.TimeoutExpired, OSError) as exc:
+        print(f"session-transcript capture failed to run: {exc}", file=sys.stderr)
+        return
+    if result.returncode != 0:
+        output = "\n".join(part for part in [result.stderr, result.stdout] if part.strip())
+        print(
+            truncate_text(f"session-transcript capture failed (non-fatal):\n{output}", 2000),
+            file=sys.stderr,
+        )
+
+
 def run_remember_session(payload: dict[str, Any]) -> int:
     source_thread = thread_id(payload)
     if not source_thread:
@@ -115,6 +159,7 @@ def run_remember_session(payload: dict[str, Any]) -> int:
         print(truncate_text(result.stderr), file=sys.stderr)
     if result.stdout.strip():
         print(truncate_text(result.stdout))
+    capture_session_transcript(root, source_thread)
     return 0
 
 

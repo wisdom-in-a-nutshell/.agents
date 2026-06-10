@@ -22,8 +22,9 @@ from session_memory_lib import (  # noqa: E402
     make_record,
     read_record,
     record_from_legacy_md,
-    validate_record,
+    upgrade_flat_record,
     write_record,
+    write_record_files,
 )
 
 OUTPUT_SCHEMA_VERSION = "1.0"
@@ -76,23 +77,24 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Read, write, and validate Dobby session memory records.")
     sub = parser.add_subparsers(dest="subcommand", required=True)
 
-    schema = sub.add_parser("schema", help="Print the session-memory v2 schema summary.")
+    schema = sub.add_parser("schema", help="Print the session-memory v3 schema summary.")
     add_common(schema)
 
-    validate = sub.add_parser("validate", help="Validate one session-memory JSON file.")
+    validate = sub.add_parser("validate", help="Validate one session folder (or a file inside it).")
     validate.add_argument("path")
     add_common(validate)
 
-    read = sub.add_parser("read", help="Read and validate one session-memory JSON file.")
+    read = sub.add_parser("read", help="Read and validate one session folder (or a file inside it).")
     read.add_argument("path")
     add_common(read)
 
-    write = sub.add_parser("write", help="Write one session-memory JSON file.")
+    write = sub.add_parser("write", help="Write one session folder (meta.json + summary.md).")
     write.add_argument("--workspace-root", default=".")
     write.add_argument("--trigger")
     write.add_argument("--thread-id")
     write.add_argument("--runtime", choices=["codex", "claude"], help="Source runtime that owned the session.")
     write.add_argument("--created-at")
+    write.add_argument("--cwd", dest="session_cwd", help="Working directory the session ran in, when known.")
     write.add_argument("--title")
     write.add_argument("--summary")
     write.add_argument("--workspace-changes")
@@ -103,11 +105,18 @@ def build_parser() -> argparse.ArgumentParser:
     render.add_argument("--workspace-root", default=".")
     add_common(render)
 
-    migrate = sub.add_parser("migrate-md", help="Migrate legacy Markdown session notes to JSON.")
+    migrate = sub.add_parser("migrate-md", help="Migrate legacy Markdown session notes to session folders.")
     migrate.add_argument("--workspace-root", default=".")
     migrate.add_argument("--apply", action="store_true")
     migrate.add_argument("--delete-source", action="store_true")
     add_common(migrate)
+
+    migrate_flat = sub.add_parser(
+        "migrate-flat", help="Migrate flat v2 *.json cards to v3 session folders."
+    )
+    migrate_flat.add_argument("--workspace-root", default=".")
+    migrate_flat.add_argument("--apply", action="store_true")
+    add_common(migrate_flat)
 
     return parser
 
@@ -115,25 +124,34 @@ def build_parser() -> argparse.ArgumentParser:
 def command_schema() -> dict[str, Any]:
     return {
         "schemaVersion": SCHEMA_VERSION,
+        "layout": {
+            "folder": "memory/sessions/YYYY/MM/DD-HHMMSS/",
+            "meta.json": "machine facts: schemaVersion, createdAt, threadId, runtime, trigger, optional cwd",
+            "summary.md": "# <title>, summary body, then a '## Workspace changes' section",
+            "raw.jsonl": "untouched runtime transcript copied at finalize time (may be absent)",
+            "dialogue.md": "normalized human<->agent transcript rendered from raw.jsonl (may be absent)",
+        },
         "required": [
             "schemaVersion",
             "createdAt",
             "threadId",
+            "runtime",
             "trigger",
             "title",
             "summary",
             "workspaceChanges",
         ],
-        "optional": ["runtime"],
+        "optional": ["cwd"],
         "record": {
-            "schemaVersion": 2,
+            "schemaVersion": SCHEMA_VERSION,
             "createdAt": "ISO-8601 timestamp with timezone",
             "threadId": "source session id (Codex thread id or Claude session id), or null when unavailable",
+            "runtime": "source runtime that owned the session: codex or claude",
             "trigger": "why consolidation happened, e.g. codexclaw-idle-expiry, codexclaw-chat-end, stale-cleanup, manual, migration",
+            "cwd": "optional working directory the session ran in",
             "title": f"short dashboard/index label, at most {120} characters",
             "summary": "Markdown continuity index: what matters from the thread, not a transcript recap",
-            "workspaceChanges": "Markdown/plain-English visibility note about durable workspace changes made during consolidation, excluding this session-memory file",
-            "runtime": "optional source runtime: codex or claude; absent on records written before runtime tagging",
+            "workspaceChanges": "Markdown/plain-English visibility note about durable workspace changes made during consolidation, excluding this session-memory folder",
         },
     }
 
@@ -151,6 +169,7 @@ def command_write(args: argparse.Namespace) -> dict[str, Any]:
             workspace_changes=str(raw.get("workspaceChanges") or ""),
             created_at=raw.get("createdAt") if isinstance(raw.get("createdAt"), str) else None,
             runtime=raw.get("runtime"),
+            cwd=raw.get("cwd"),
         )
     else:
         record = make_record(
@@ -161,6 +180,7 @@ def command_write(args: argparse.Namespace) -> dict[str, Any]:
             workspace_changes=args.workspace_changes or "",
             created_at=args.created_at,
             runtime=args.runtime,
+            cwd=args.session_cwd,
         )
     path = write_record(Path(args.workspace_root).expanduser().resolve(), record)
     return {"path": str(path), "record": record}
@@ -182,25 +202,49 @@ def command_render_boot(args: argparse.Namespace) -> dict[str, Any]:
     }
 
 
+def _free_session_dir(path: Path) -> Path:
+    target = path.with_name(path.stem) if path.suffix else path
+    suffix = 2
+    while target.exists():
+        target = path.with_name(f"{path.stem}-{suffix}")
+        suffix += 1
+    return target
+
+
 def command_migrate_md(args: argparse.Namespace) -> dict[str, Any]:
     root = Path(args.workspace_root).expanduser().resolve()
     sessions_dir = root / "memory" / "sessions"
     migrated: list[dict[str, str]] = []
     for path in sorted(sessions_dir.glob("*/*/*-*.md")):
         record = record_from_legacy_md(path)
-        target = path.with_suffix(".json")
-        suffix = 2
-        while target.exists():
-            target = path.with_name(f"{path.stem}-{suffix}.json")
-            suffix += 1
+        target = _free_session_dir(path)
         migrated.append({"from": str(path), "to": str(target)})
         if args.apply:
-            from session_memory_lib import atomic_write_record  # local to keep command surface small
-
-            atomic_write_record(target, record)
+            write_record_files(target, record)
             if args.delete_source:
                 path.unlink()
     return {"apply": bool(args.apply), "deleteSource": bool(args.delete_source), "migrated": migrated}
+
+
+def command_migrate_flat(args: argparse.Namespace) -> dict[str, Any]:
+    root = Path(args.workspace_root).expanduser().resolve()
+    sessions_dir = root / "memory" / "sessions"
+    migrated: list[dict[str, str]] = []
+    errors: list[dict[str, str]] = []
+    for path in sorted(sessions_dir.glob("*/*/*-*.json")):
+        if path.name == "meta.json":
+            continue
+        try:
+            record = upgrade_flat_record(json.loads(path.read_text(encoding="utf-8")))
+        except (SessionMemoryError, json.JSONDecodeError, OSError) as exc:
+            errors.append({"path": str(path), "error": str(exc)})
+            continue
+        target = _free_session_dir(path)
+        migrated.append({"from": str(path), "to": str(target)})
+        if args.apply:
+            write_record_files(target, record)
+            path.unlink()
+    return {"apply": bool(args.apply), "migrated": migrated, "errors": errors}
 
 
 def plain_output(subcommand: str, data: dict[str, Any]) -> str:
@@ -235,6 +279,8 @@ def main() -> int:
             data = command_render_boot(args)
         elif args.subcommand == "migrate-md":
             data = command_migrate_md(args)
+        elif args.subcommand == "migrate-flat":
+            data = command_migrate_flat(args)
         else:  # pragma: no cover
             raise SessionMemoryError(f"unsupported subcommand: {args.subcommand}")
     except SessionMemoryError as exc:

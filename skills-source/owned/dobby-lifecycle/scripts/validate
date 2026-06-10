@@ -17,7 +17,11 @@ from pathlib import Path
 SCRIPT_DIR = Path(__file__).resolve().parent
 SESSION_MEMORY = SCRIPT_DIR / "session-memory"
 SESSION_DIR_RE = re.compile(r"^memory/sessions/")
-SESSION_RE = re.compile(r"^memory/sessions/\d{4}/\d{2}/\d{2}-\d{6}(?:-\d+)?\.json$")
+SESSION_FOLDER = r"memory/sessions/\d{4}/\d{2}/\d{2}-\d{6}(?:-\d+)?"
+SESSION_FILE_RE = re.compile(
+    rf"^{SESSION_FOLDER}/(meta\.json|summary\.md|dialogue\.md|raw\.jsonl)$"
+)
+SESSION_RECORD_FILE_RE = re.compile(rf"^{SESSION_FOLDER}/(meta\.json|summary\.md)$")
 
 
 def parse_args() -> argparse.Namespace:
@@ -59,7 +63,11 @@ def full_session_paths(root: Path) -> list[str]:
     sessions = root / "memory" / "sessions"
     if not sessions.exists():
         return []
-    return [str(path.relative_to(root)) for path in sorted(sessions.rglob("*.json"))]
+    return [
+        str(path.relative_to(root))
+        for pattern in ("*/*/*/meta.json", "*/*/*/summary.md")
+        for path in sorted(sessions.glob(pattern))
+    ]
 
 
 def candidate_paths(root: Path, args: argparse.Namespace) -> list[Path]:
@@ -75,9 +83,14 @@ def candidate_paths(root: Path, args: argparse.Namespace) -> list[Path]:
 
 def validate_session_record(root: Path, path: Path) -> None:
     label = rel_path(root, path)
-    if SESSION_DIR_RE.match(label) and label.endswith(".json") and not SESSION_RE.match(label):
-        fail("session-memory JSON paths must be memory/sessions/YYYY/MM/DD-HHMMSS.json or DD-HHMMSS-N.json")
-    if not SESSION_RE.match(label):
+    if path.is_dir():
+        return
+    if not SESSION_FILE_RE.match(label):
+        fail(
+            f"{label}: session files must be memory/sessions/YYYY/MM/DD-HHMMSS[-N]/"
+            "{meta.json,summary.md,dialogue.md,raw.jsonl}"
+        )
+    if not SESSION_RECORD_FILE_RE.match(label):
         return
     if not path.exists():
         fail(f"{label}: file is missing")
