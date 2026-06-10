@@ -1,4 +1,4 @@
-You are running the final memory-preservation turn in this Codex thread before it is archived.
+You are running the final memory-preservation turn for this ending session before it is archived.
 
 Remember this session for continuity. This is a loss-prevention checkpoint for one ending thread, not a broad cross-session dreaming pass.
 
@@ -8,6 +8,7 @@ Remember this session for continuity. This is a loss-prevention checkpoint for o
 {
   "workspaceRoot": {{workspace_root_json}},
   "sourceThreadId": {{thread_id_json}},
+  "sourceRuntime": {{runtime_json}},
   "finalizationTrigger": {{trigger_json}},
   "bodyMapPath": {{body_map_path_json}},
   "sessionMemoryClient": {{session_memory_cli_json}}
@@ -60,6 +61,7 @@ Use the session-memory client for the compact JSON record:
 cat <<'JSON' | {{session_memory_cli_shell}} write --stdin-json --no-input
 {
   "threadId": {{thread_id_json}},
+  "runtime": {{runtime_json}},
   "trigger": {{trigger_json}},
   "title": "Short dashboard/index label",
   "summary": "Curated Markdown continuity index: what matters from this thread, not a transcript recap.",

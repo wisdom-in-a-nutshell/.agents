@@ -1,0 +1,131 @@
+#!/usr/bin/env python3
+"""Dobby Claude session finalization hook.
+
+The global `finalize-claude-session` command calls this repo-local hook before
+it marks a Claude session as finalized. This hook is self-contained repo
+policy: for Dobby workspaces it runs the `remember-claude-session` behavior
+runner, which resumes the ending session for one final memory-preservation
+turn. The global finalizer records the session as finalized only after this
+hook exits successfully.
+"""
+
+from __future__ import annotations
+
+import json
+import os
+import subprocess
+import sys
+from pathlib import Path
+from typing import Any
+
+
+HOOK_EVENT = "FinalizeClaudeSession"
+SCHEMA_VERSION = "1.0"
+DEFAULT_REMEMBER_TIMEOUT_SECONDS = 900.0
+MAX_OUTPUT_CHARS = 12_000
+
+
+def truncate_text(value: str, limit: int = MAX_OUTPUT_CHARS) -> str:
+    text = value.strip()
+    if len(text) <= limit:
+        return text
+    suffix = "\n...[truncated]"
+    return text[: max(0, limit - len(suffix))] + suffix
+
+
+def read_payload() -> dict[str, Any]:
+    raw = sys.stdin.read()
+    if not raw.strip():
+        return {}
+    try:
+        payload = json.loads(raw)
+    except json.JSONDecodeError:
+        return {}
+    return payload if isinstance(payload, dict) else {}
+
+
+def first_text(payload: dict[str, Any], *keys: str) -> str | None:
+    for key in keys:
+        value = payload.get(key)
+        if isinstance(value, str) and value.strip():
+            return value.strip()
+    return None
+
+
+def remember_claude_session_bin() -> Path:
+    return Path(
+        os.environ.get(
+            "DOBBY_REMEMBER_CLAUDE_SESSION_BIN",
+            str(Path.home() / "GitHub/agents/skills-source/owned/dobby-lifecycle/scripts/remember-claude-session"),
+        )
+    ).expanduser()
+
+
+def run_remember_claude_session(payload: dict[str, Any]) -> int:
+    session_id = first_text(payload, "session_id")
+    if not session_id:
+        print("finalize-claude-session hook: missing session_id", file=sys.stderr)
+        return 2
+
+    root = Path.cwd().resolve()
+    trigger = first_text(payload, "reason") or "manual"
+
+    runner = remember_claude_session_bin()
+    cmd = [
+        str(runner),
+        "--session-id",
+        session_id,
+        "--workspace-root",
+        str(root),
+        "--trigger",
+        trigger,
+        "--json",
+        "--no-input",
+    ]
+    env = os.environ.copy()
+    env.update(
+        {
+            "DOBBY_REMEMBER_SESSION_ACTIVE": "1",
+        }
+    )
+    try:
+        result = subprocess.run(
+            cmd,
+            cwd=root,
+            env=env,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            timeout=DEFAULT_REMEMBER_TIMEOUT_SECONDS + 60,
+        )
+    except subprocess.TimeoutExpired as exc:
+        print(f"remember-claude-session timed out after {exc.timeout}s", file=sys.stderr)
+        return 5
+    except OSError as exc:
+        print(f"remember-claude-session failed to start: {exc}", file=sys.stderr)
+        return 5
+
+    if result.returncode != 0:
+        output = "\n".join(part for part in [result.stderr, result.stdout] if part.strip())
+        print(truncate_text(output or f"remember-claude-session exited {result.returncode}"), file=sys.stderr)
+        return result.returncode
+
+    if result.stderr.strip():
+        print(truncate_text(result.stderr), file=sys.stderr)
+    if result.stdout.strip():
+        print(truncate_text(result.stdout))
+    return 0
+
+
+def main() -> int:
+    payload = read_payload()
+    event_name = payload.get("hook_event_name") or os.environ.get("AGENT_HOOK_EVENT")
+    if event_name not in {None, HOOK_EVENT}:
+        return 0
+    if payload.get("schema_version") not in {None, SCHEMA_VERSION}:
+        return 0
+    return run_remember_claude_session(payload)
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

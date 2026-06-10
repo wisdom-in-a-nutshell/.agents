@@ -18,6 +18,7 @@ from typing import Any
 from zoneinfo import ZoneInfo
 
 SCHEMA_VERSION = 2
+RUNTIMES = ("codex", "claude")
 LOCAL_TIMEZONE = "Europe/Berlin"
 RECENT_SESSION_DAYS = 7
 RECENT_SESSION_MIN_COUNT = 3
@@ -125,6 +126,15 @@ def clean_thread_id(value: Any) -> str | None:
     return value.strip()
 
 
+def clean_runtime(value: Any) -> str | None:
+    """Optional source-runtime tag; absence means a pre-tag (codex) record."""
+    if value is None:
+        return None
+    if not isinstance(value, str) or value.strip() not in RUNTIMES:
+        raise SessionMemoryError(f"runtime must be one of {', '.join(RUNTIMES)} or null")
+    return value.strip()
+
+
 def make_record(
     *,
     trigger: str,
@@ -133,6 +143,7 @@ def make_record(
     workspace_changes: str,
     thread_id: str | None,
     created_at: str | None = None,
+    runtime: str | None = None,
 ) -> dict[str, Any]:
     record: dict[str, Any] = {
         "schemaVersion": SCHEMA_VERSION,
@@ -143,6 +154,9 @@ def make_record(
         "summary": clean_text(summary, "summary"),
         "workspaceChanges": clean_text(workspace_changes, "workspaceChanges"),
     }
+    cleaned_runtime = clean_runtime(runtime)
+    if cleaned_runtime is not None:
+        record["runtime"] = cleaned_runtime
     parse_created_at(str(record["createdAt"]))
     return record
 
@@ -158,6 +172,7 @@ def validate_record(data: Any) -> dict[str, Any]:
         "title",
         "summary",
         "workspaceChanges",
+        "runtime",
     }
     extra_keys = sorted(set(data) - allowed_keys)
     if extra_keys:
@@ -177,6 +192,11 @@ def validate_record(data: Any) -> dict[str, Any]:
     out["title"] = clean_text(data.get("title"), "title", max_chars=TITLE_MAX_CHARS)
     out["summary"] = clean_text(data.get("summary"), "summary")
     out["workspaceChanges"] = clean_text(data.get("workspaceChanges"), "workspaceChanges")
+    cleaned_runtime = clean_runtime(data.get("runtime"))
+    if cleaned_runtime is None:
+        out.pop("runtime", None)
+    else:
+        out["runtime"] = cleaned_runtime
     return out
 
 

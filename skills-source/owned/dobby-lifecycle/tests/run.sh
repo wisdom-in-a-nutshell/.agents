@@ -107,6 +107,30 @@ if "$session_cli" validate "$bad_record" --no-input >/dev/null; then
   exit 1
 fi
 
+runtime_write_output="$("$session_cli" write \
+  --workspace-root "$repo" \
+  --trigger test \
+  --thread-id session-claude-test \
+  --runtime claude \
+  --title "Claude session memory" \
+  --summary "Runtime-tagged card." \
+  --workspace-changes "No durable workspace changes besides this session-memory record." \
+  --no-input)"
+python3 - "$runtime_write_output" <<'PY'
+import json, sys
+data = json.loads(sys.argv[1])["data"]
+assert data["record"]["runtime"] == "claude", data
+PY
+
+bad_runtime_record="$tmp_dir/bad-runtime-record.json"
+cat >"$bad_runtime_record" <<'JSON'
+{"schemaVersion":2,"createdAt":"2026-05-25T01:02:03+02:00","threadId":"thread-test","trigger":"test","title":"Ok","summary":"ok","workspaceChanges":"none","runtime":"gemini"}
+JSON
+if "$session_cli" validate "$bad_runtime_record" --no-input >/dev/null; then
+  echo "session-memory validate should reject unknown runtime values" >&2
+  exit 1
+fi
+
 bad_workspace_changes_record="$tmp_dir/bad-workspace-changes-record.json"
 cat >"$bad_workspace_changes_record" <<'JSON'
 {"schemaVersion":2,"createdAt":"2026-05-25T01:02:03+02:00","threadId":"thread-test","trigger":"test","title":"Ok","summary":"ok","workspaceChanges":""}
@@ -254,6 +278,10 @@ if ! grep -q "Remember this session" <<<"$instruction_output"; then
 fi
 if grep -q "{{" <<<"$instruction_output"; then
   echo "remember-session --print-instruction should not leave template placeholders" >&2
+  exit 1
+fi
+if ! grep -q '"sourceRuntime": "codex"' <<<"$instruction_output"; then
+  echo "remember-session prompt should carry the source runtime tag" >&2
   exit 1
 fi
 if ! grep -q "Adi should not have to remember" <<<"$instruction_output"; then

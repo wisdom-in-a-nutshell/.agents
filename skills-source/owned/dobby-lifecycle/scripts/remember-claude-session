@@ -1,0 +1,217 @@
+#!/usr/bin/env python3
+"""Run Dobby's end-of-session memory preservation flow for one Claude session.
+
+Twin of `remember-session` (Codex). It resumes the ending Claude Code session
+headless and runs one final memory-preservation turn using the shared
+versioned prompt. That turn may call `session-memory` to write a compact,
+runtime-tagged JSON record. The session id is reused (no fork), so the
+remember turn lands in the same conversation it preserves.
+"""
+
+from __future__ import annotations
+
+import argparse
+import json
+import os
+import re
+import subprocess
+import sys
+import time
+import uuid
+from datetime import UTC, datetime
+from pathlib import Path
+from typing import Any
+
+SCRIPT_DIR = Path(__file__).resolve().parent
+sys.path.insert(0, str(SCRIPT_DIR))
+
+from remember_lib import RememberPromptError, build_instruction  # noqa: E402
+
+SCHEMA_VERSION = "1.0"
+COMMAND = "remember-claude-session"
+DEFAULT_REMEMBER_TIMEOUT_SECONDS = 900.0
+MAX_OUTPUT_CHARS = 12_000
+
+
+class RememberClaudeSessionError(RuntimeError):
+    pass
+
+
+def utc_now() -> str:
+    return datetime.now(UTC).isoformat(timespec="seconds").replace("+00:00", "Z")
+
+
+def truncate_text(value: str, limit: int = MAX_OUTPUT_CHARS) -> str:
+    text = value.strip()
+    if len(text) <= limit:
+        return text
+    suffix = "\n...[truncated]"
+    return text[: max(0, limit - len(suffix))] + suffix
+
+
+def clean_label(value: str | None, default: str) -> str:
+    label = (value or default).strip()
+    return label or default
+
+
+def claude_bin() -> str:
+    return os.environ.get("DOBBY_CLAUDE_BIN", "claude")
+
+
+def run_remember_turn(
+    *,
+    session_id: str,
+    workspace_root: Path,
+    instruction: str,
+    timeout_seconds: float,
+) -> dict[str, Any]:
+    cmd = [
+        claude_bin(),
+        "-p",
+        "--resume",
+        session_id,
+        "--permission-mode",
+        "bypassPermissions",
+        "--output-format",
+        "text",
+        instruction,
+    ]
+    try:
+        result = subprocess.run(
+            cmd,
+            cwd=str(workspace_root),
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            timeout=timeout_seconds,
+        )
+    except subprocess.TimeoutExpired as exc:
+        raise RememberClaudeSessionError(f"claude remember turn timed out after {exc.timeout}s") from exc
+    except OSError as exc:
+        raise RememberClaudeSessionError(f"failed to start claude: {exc}") from exc
+
+    if result.returncode != 0:
+        output = "\n".join(part for part in [result.stderr, result.stdout] if part.strip())
+        raise RememberClaudeSessionError(
+            truncate_text(output or f"claude exited {result.returncode}")
+        )
+
+    reply = result.stdout.strip()
+    return {
+        "sessionId": session_id,
+        "workspaceRoot": str(workspace_root),
+        "turnStatus": "completed",
+        "reply": truncate_text(re.sub(r"\s+", " ", reply), 1000) if reply else "",
+    }
+
+
+def envelope(command: str, status: str, data: dict[str, Any] | None, error: dict[str, Any] | None, started: float) -> dict[str, Any]:
+    return {
+        "schema_version": SCHEMA_VERSION,
+        "command": command,
+        "status": status,
+        "data": data,
+        "error": error,
+        "meta": {
+            "request_id": str(uuid.uuid4()),
+            "duration_ms": int((time.time() - started) * 1000),
+            "timestamp_utc": utc_now(),
+        },
+    }
+
+
+def print_json(value: dict[str, Any]) -> None:
+    print(json.dumps(value, ensure_ascii=False, sort_keys=True))
+
+
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(
+        description="Remember useful Dobby session memory from an ending Claude Code session."
+    )
+    parser.add_argument("--session-id", required=True)
+    parser.add_argument("--workspace-root", required=True)
+    parser.add_argument("--trigger", default="manual")
+    parser.add_argument(
+        "--remember-timeout-seconds", type=float, default=DEFAULT_REMEMBER_TIMEOUT_SECONDS
+    )
+    parser.add_argument(
+        "--print-instruction",
+        action="store_true",
+        help="Print the final-turn instruction without resuming the session.",
+    )
+    parser.add_argument("--json", action="store_true", help="Emit JSON envelope; default behavior.")
+    parser.add_argument("--plain", action="store_true", help="Emit compact plain text for operator inspection.")
+    parser.add_argument("--no-input", action="store_true", help="Accepted for non-interactive callers; this command never prompts.")
+    return parser.parse_args()
+
+
+def main() -> int:
+    started = time.time()
+    args = parse_args()
+    try:
+        if args.remember_timeout_seconds <= 0:
+            raise RememberClaudeSessionError("--remember-timeout-seconds must be positive")
+        workspace_root = Path(args.workspace_root).expanduser().resolve()
+        if not workspace_root.is_dir():
+            raise RememberClaudeSessionError(f"workspace root is not a directory: {workspace_root}")
+        trigger = clean_label(args.trigger, "manual")
+        instruction = build_instruction(
+            workspace_root=workspace_root,
+            thread_id=args.session_id,
+            trigger=trigger,
+            runtime="claude",
+        )
+        if args.print_instruction:
+            data: dict[str, Any] = {"instruction": instruction}
+        else:
+            data = run_remember_turn(
+                session_id=args.session_id,
+                workspace_root=workspace_root,
+                instruction=instruction,
+                timeout_seconds=args.remember_timeout_seconds,
+            )
+            data["trigger"] = trigger
+    except (RememberClaudeSessionError, RememberPromptError) as exc:
+        result = envelope(
+            COMMAND,
+            "error",
+            None,
+            {
+                "code": "E_REMEMBER_CLAUDE_SESSION",
+                "message": str(exc),
+                "retryable": True,
+                "hint": "Check the claude CLI, the source session id, and the Dobby memory prompt.",
+            },
+            started,
+        )
+        print_json(result)
+        return 5
+    except Exception as exc:  # pragma: no cover
+        result = envelope(
+            COMMAND,
+            "error",
+            None,
+            {
+                "code": exc.__class__.__name__,
+                "message": str(exc),
+                "retryable": True,
+                "hint": "Rerun with --print-instruction or inspect claude CLI output.",
+            },
+            started,
+        )
+        print_json(result)
+        return 4
+
+    result = envelope(COMMAND, "ok", data, None, started)
+    if args.plain:
+        if args.print_instruction:
+            print(data["instruction"])
+        else:
+            print(f"ok remembered id={data['sessionId']}")
+    else:
+        print_json(result)
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

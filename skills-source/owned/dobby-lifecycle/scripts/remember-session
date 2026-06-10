@@ -22,6 +22,11 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
+SCRIPT_DIR = Path(__file__).resolve().parent
+sys.path.insert(0, str(SCRIPT_DIR))
+
+from remember_lib import RememberPromptError, build_instruction  # noqa: E402
+
 SCHEMA_VERSION = "1.0"
 COMMAND = "remember-session"
 DEFAULT_TIMEOUT_SECONDS = 60.0
@@ -336,57 +341,8 @@ def resolve_workspace_root(client: AppServerClient, thread_id: str) -> tuple[str
     return cwd, repo_root_for_cwd(cwd)
 
 
-def prompt_template_path() -> Path:
-    return Path(__file__).resolve().parents[1] / "prompts" / "remember-session.md"
-
-
-def shell_quote(value: Path | str) -> str:
-    return "'" + str(value).replace("'", "'\"'\"'") + "'"
-
-
-def render_prompt_template(template: str, values: dict[str, str]) -> str:
-    placeholders = set(re.findall(r"{{\s*([A-Za-z0-9_]+)\s*}}", template))
-    expected = set(values)
-    unknown = sorted(placeholders - expected)
-    missing = sorted(expected - placeholders)
-    if unknown:
-        raise RememberSessionError(f"remember-session prompt has unknown placeholder(s): {', '.join(unknown)}")
-    if missing:
-        raise RememberSessionError(f"remember-session prompt is missing placeholder(s): {', '.join(missing)}")
-
-    def replace(match: re.Match[str]) -> str:
-        key = match.group(1)
-        return values[key]
-
-    rendered = re.sub(r"{{\s*([A-Za-z0-9_]+)\s*}}", replace, template)
-    if "{{" in rendered or "}}" in rendered:
-        raise RememberSessionError("remember-session prompt rendered with leftover placeholder braces")
-    return rendered
-
-
-def build_instruction(
-    *,
-    workspace_root: Path,
-    thread_id: str,
-    trigger: str,
-) -> str:
-    session_memory_cli = Path.home() / "GitHub/agents/skills-source/owned/dobby-lifecycle/scripts/session-memory"
-    body_map_path = Path.home() / "GitHub/agents/skills-source/owned/dobby-workspace/references/body-map.md"
-    template_path = prompt_template_path()
-    try:
-        template = template_path.read_text(encoding="utf-8")
-    except OSError as exc:
-        raise RememberSessionError(f"failed to read remember-session prompt template: {template_path}: {exc}") from exc
-    values = {
-        "workspace_root_json": json.dumps(str(workspace_root), ensure_ascii=False),
-        "thread_id_json": json.dumps(thread_id, ensure_ascii=False),
-        "trigger_json": json.dumps(trigger, ensure_ascii=False),
-        "body_map_path": str(body_map_path),
-        "body_map_path_json": json.dumps(str(body_map_path), ensure_ascii=False),
-        "session_memory_cli_json": json.dumps(str(session_memory_cli), ensure_ascii=False),
-        "session_memory_cli_shell": shell_quote(session_memory_cli),
-    }
-    return render_prompt_template(template, values)
+# Prompt rendering is shared with the Claude runner via remember_lib so the
+# two runtimes cannot drift; this runner always renders with runtime="codex".
 
 
 def remember_session(
@@ -496,7 +452,7 @@ def main() -> int:
                 timeout_seconds=args.timeout_seconds,
                 remember_timeout_seconds=remember_timeout,
             )
-    except RememberSessionError as exc:
+    except (RememberSessionError, RememberPromptError) as exc:
         result = envelope(
             command,
             "error",

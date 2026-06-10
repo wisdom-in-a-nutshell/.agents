@@ -91,6 +91,7 @@ def build_parser() -> argparse.ArgumentParser:
     write.add_argument("--workspace-root", default=".")
     write.add_argument("--trigger")
     write.add_argument("--thread-id")
+    write.add_argument("--runtime", choices=["codex", "claude"], help="Source runtime that owned the session.")
     write.add_argument("--created-at")
     write.add_argument("--title")
     write.add_argument("--summary")
@@ -123,15 +124,16 @@ def command_schema() -> dict[str, Any]:
             "summary",
             "workspaceChanges",
         ],
-        "optional": [],
+        "optional": ["runtime"],
         "record": {
             "schemaVersion": 2,
             "createdAt": "ISO-8601 timestamp with timezone",
-            "threadId": "Codex thread id string, or null when unavailable",
+            "threadId": "source session id (Codex thread id or Claude session id), or null when unavailable",
             "trigger": "why consolidation happened, e.g. codexclaw-idle-expiry, codexclaw-chat-end, stale-cleanup, manual, migration",
             "title": f"short dashboard/index label, at most {120} characters",
             "summary": "Markdown continuity index: what matters from the thread, not a transcript recap",
             "workspaceChanges": "Markdown/plain-English visibility note about durable workspace changes made during consolidation, excluding this session-memory file",
+            "runtime": "optional source runtime: codex or claude; absent on records written before runtime tagging",
         },
     }
 
@@ -148,6 +150,7 @@ def command_write(args: argparse.Namespace) -> dict[str, Any]:
             summary=str(raw.get("summary") or ""),
             workspace_changes=str(raw.get("workspaceChanges") or ""),
             created_at=raw.get("createdAt") if isinstance(raw.get("createdAt"), str) else None,
+            runtime=raw.get("runtime"),
         )
     else:
         record = make_record(
@@ -157,6 +160,7 @@ def command_write(args: argparse.Namespace) -> dict[str, Any]:
             summary=args.summary or "",
             workspace_changes=args.workspace_changes or "",
             created_at=args.created_at,
+            runtime=args.runtime,
         )
     path = write_record(Path(args.workspace_root).expanduser().resolve(), record)
     return {"path": str(path), "record": record}
