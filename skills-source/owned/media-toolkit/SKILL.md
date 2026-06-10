@@ -35,6 +35,12 @@ Use this skill when the goal is to run media processing from either a local file
 
 `upload` is a first-class subcommand. It uses the shared local `upload-media` tool underneath and returns structured upload metadata, including the uploaded URL.
 
+Direct WIN API calls require bearer auth. The toolkit reads the backend token from
+`~/.secrets/aipodcasting/env` by default, or from `AIPODCASTING_WIN_API_KEY_FILE` when that
+file path is overridden. Runtime environment fallbacks (`WIN_API_KEY`, `AIP_API_KEY`, or the first
+value in `WIN_API_KEYS`/`AIP_API_KEYS`) are supported for deployed contexts. Do not pass secrets on
+command lines.
+
 3. Prefer one input locator:
 - `--file $HOME/media/video.mp4`
 - `--url https://...`

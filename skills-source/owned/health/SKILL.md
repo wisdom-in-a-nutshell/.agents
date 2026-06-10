@@ -14,6 +14,8 @@ Important boundary:
 - The skill pulls from a normalized health snapshot API.
 - Upstream systems own provider auth, token refresh, and normalization.
 - The skill only fetches the normalized snapshot JSON and writes the local sink.
+- The snapshot fetch uses the WIN backend bearer token from `~/.secrets/aipodcasting/env`
+  by default, or `AIPODCASTING_WIN_API_KEY_FILE` when overridden.
 - The skill is portable across repos; by default it writes to `memory/areas/health/` under the current repo root.
 - The query tooling in this skill exists mainly for Dobby, not as a user-facing product surface.
 

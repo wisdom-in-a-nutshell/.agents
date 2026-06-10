@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import json
 import mimetypes
+import os
 import socket
 import sys
 from pathlib import Path
@@ -17,6 +18,7 @@ from urllib import request as urlrequest
 FIXED_API_BASE_URL = "https://app.aipodcast.ing"
 UPLOAD_API_PATH = "/api/core/upload/generate-presigned-url"
 DEFAULT_UPLOAD_FOLDER = "permanent"
+DEFAULT_API_KEY_FILE = Path.home() / ".secrets/aipodcasting/env"
 
 
 class UploadHelperError(Exception):
@@ -40,6 +42,65 @@ def build_url(base_url: str, path: str) -> str:
   return f"{base_url.rstrip('/')}{path}"
 
 
+def _strip_shell_quotes(value: str) -> str:
+  stripped = value.strip()
+  if len(stripped) >= 2 and stripped[0] == stripped[-1] and stripped[0] in ("'", '"'):
+    return stripped[1:-1]
+  return stripped
+
+
+def _read_secret_file(path: Path, names: tuple[str, ...]) -> str:
+  try:
+    content = path.read_text(encoding="utf-8")
+  except FileNotFoundError:
+    return ""
+  except OSError:
+    return ""
+
+  for raw_line in content.splitlines():
+    line = raw_line.strip()
+    if not line or line.startswith("#"):
+      continue
+    if line.startswith("export "):
+      line = line[len("export ") :].strip()
+    name, separator, value = line.partition("=")
+    if separator == "=" and name.strip() in names:
+      return _strip_shell_quotes(value)
+
+  return content.strip()
+
+
+def get_aip_frontend_api_key() -> str:
+  api_key_file = Path(
+    os.getenv("AIPODCASTING_API_KEY_FILE", str(DEFAULT_API_KEY_FILE))
+  ).expanduser()
+  file_key = _read_secret_file(
+    api_key_file,
+    ("AIPODCASTING_API_KEY", "AIPODCASTING_API_KEYS"),
+  )
+  if file_key:
+    return file_key
+
+  env_key = os.getenv("AIPODCASTING_API_KEY", "").strip()
+  if env_key:
+    return env_key
+
+  env_keys = os.getenv("AIPODCASTING_API_KEYS", "")
+  for key in env_keys.split(","):
+    stripped = key.strip()
+    if stripped:
+      return stripped
+
+  return ""
+
+
+def build_aip_auth_headers() -> dict[str, str]:
+  api_key = get_aip_frontend_api_key()
+  if not api_key:
+    return {}
+  return {"Authorization": f"Bearer {api_key}"}
+
+
 def parse_response_body(raw_bytes: bytes) -> Any:
   text = raw_bytes.decode("utf-8", errors="replace")
   if not text.strip():
@@ -58,6 +119,7 @@ def request_json(
   payload: dict[str, Any] | None = None,
 ) -> Any:
   headers = {"Accept": "application/json"}
+  headers.update(build_aip_auth_headers())
   body: bytes | None = None
 
   if payload is not None:

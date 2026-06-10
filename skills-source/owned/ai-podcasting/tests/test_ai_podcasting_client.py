@@ -1,5 +1,7 @@
 import importlib.util
+import os
 import sys
+import tempfile
 from pathlib import Path
 from types import SimpleNamespace
 import unittest
@@ -34,6 +36,26 @@ class ResolveOutputModeTests(unittest.TestCase):
     args = SimpleNamespace(json=False, human=False, plain=False)
 
     self.assertEqual(client.resolve_output_mode(args), "json")
+
+
+class AuthHeaderTests(unittest.TestCase):
+  def test_build_aip_auth_headers_reads_secret_file(self) -> None:
+    with tempfile.TemporaryDirectory() as tmpdir:
+      secret_path = Path(tmpdir) / "api-key"
+      secret_path.write_text("frontend-secret\n", encoding="utf-8")
+
+      with mock.patch.dict(os.environ, {"AIPODCASTING_API_KEY_FILE": str(secret_path)}, clear=True):
+        self.assertEqual(
+          client.build_aip_auth_headers(),
+          {"Authorization": "Bearer frontend-secret"},
+        )
+
+  def test_build_aip_auth_headers_uses_env_fallback(self) -> None:
+    with mock.patch.dict(os.environ, {"AIPODCASTING_API_KEY": "frontend-env-secret"}, clear=True):
+      self.assertEqual(
+        client.build_aip_auth_headers(),
+        {"Authorization": "Bearer frontend-env-secret"},
+      )
 
 
 class NormalizeEpisodeItemTests(unittest.TestCase):

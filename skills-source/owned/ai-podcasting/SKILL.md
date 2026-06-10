@@ -22,6 +22,11 @@ Run the main CLI at `scripts/ai_podcasting_client.py` for episode operations:
 
 This skill calls the AIP frontend API routes at `https://app.aipodcast.ing/api/...`, which proxy the
 upstream episode APIs. Do not automate the browser UI for these flows.
+The frontend API requires bearer auth. The scripts read the token from
+`~/.secrets/aipodcasting/env` by default, or from `AIPODCASTING_API_KEY_FILE` when that file
+path is overridden. Environment fallbacks (`AIPODCASTING_API_KEY` or the first value in
+`AIPODCASTING_API_KEYS`) are supported for deployed/runtime contexts, but do not pass secrets on
+command lines.
 
 Use `scripts/aip_local_upload_helper.py` only when the user gives a local file path for a file-like
 field. The helper uploads the file and returns a public URL for the main CLI to use. Keep this
@@ -87,6 +92,7 @@ python3 scripts/aip_local_upload_helper.py \
 
 - Fixed endpoint: `https://app.aipodcast.ing`
 - Fixed show: `TCR`
+- Auth: bearer token from `~/.secrets/aipodcasting/env` or `AIPODCASTING_API_KEY_FILE`
 - The CLI does not accept base-url overrides or env-based base URL changes.
 - The CLI does not accept show selection; all submit/list operations are locked to `TCR`.
 - JSON is the default output contract. Use `--plain` or `--human` only for operator inspection.

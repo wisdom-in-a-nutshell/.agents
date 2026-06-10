@@ -1,9 +1,10 @@
 from __future__ import annotations
 
 import importlib.util
-import json
 import contextlib
 import io
+import json
+import os
 from pathlib import Path
 from typing import Any
 from unittest.mock import patch
@@ -11,6 +12,7 @@ from unittest.mock import patch
 from tests.control_plane.support import REPO_ROOT, TempDirTestCase, write_text
 
 SCRIPT_PATH = REPO_ROOT / "skills-source/owned/media-toolkit/scripts/media_toolkit.py"
+API_PATH = REPO_ROOT / "skills-source/owned/media-toolkit/scripts/media_toolkit_lib/api.py"
 
 
 def load_client_module() -> Any:
@@ -20,6 +22,21 @@ def load_client_module() -> Any:
     )
     if spec is None or spec.loader is None:
         raise AssertionError("Unable to load media toolkit skill client.")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def load_api_module() -> Any:
+    scripts_dir = SCRIPT_PATH.parent
+    if str(scripts_dir) not in os.sys.path:
+        os.sys.path.insert(0, str(scripts_dir))
+    spec = importlib.util.spec_from_file_location(
+        "media_toolkit_skill_api",
+        API_PATH,
+    )
+    if spec is None or spec.loader is None:
+        raise AssertionError("Unable to load media toolkit API client.")
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     return module
@@ -105,6 +122,26 @@ class MediaToolkitTranscriptionTests(TempDirTestCase):
         self.assertIn("--speaker-identification-context", help_text)
         self.assertIn("--force-speaker-identification", help_text)
 
+    def test_api_client_sends_backend_bearer_token(self) -> None:
+        module = load_api_module()
+        session = _FakeSession({"job_id": "TRANSCRIPTION_ARTIFACTS_test"})
+
+        with patch.dict(os.environ, {"WIN_API_KEY": "backend-secret"}, clear=True):
+            client = module.MediaToolkitApiClient(
+                api_base_url="https://backend.example",
+                request_timeout_seconds=10,
+                poll_interval_seconds=1,
+                poll_timeout_seconds=10,
+                session=session,
+            )
+            payload = client.submit_job("/media/transcribe/artifacts", {"media_url": "url"})
+
+        self.assertEqual(payload["job_id"], "TRANSCRIPTION_ARTIFACTS_test")
+        self.assertEqual(
+            session.requests[0]["headers"],
+            {"Authorization": "Bearer backend-secret"},
+        )
+
 
 class _FakeApiClient:
     def __init__(self) -> None:
@@ -139,3 +176,23 @@ class _FakeApiClient:
         if url != "https://storage.example/cache/transcript.txt":
             raise AssertionError(f"Unexpected transcript URL: {url}")
         return "Hello world"
+
+
+class _FakeResponse:
+    def __init__(self, payload: dict[str, Any], status_code: int = 200) -> None:
+        self._payload = payload
+        self.status_code = status_code
+        self.text = json.dumps(payload)
+
+    def json(self) -> dict[str, Any]:
+        return self._payload
+
+
+class _FakeSession:
+    def __init__(self, payload: dict[str, Any]) -> None:
+        self.payload = payload
+        self.requests: list[dict[str, Any]] = []
+
+    def request(self, **kwargs: Any) -> _FakeResponse:
+        self.requests.append(kwargs)
+        return _FakeResponse(self.payload)

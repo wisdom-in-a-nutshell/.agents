@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import os
 import time
+from pathlib import Path
 from typing import Any, Callable, Optional
 
 import requests
@@ -11,6 +13,61 @@ from media_toolkit_lib.errors import CliError
 
 TERMINAL_JOB_STATUSES = {"completed", "failed", "canceled"}
 DEFAULT_PROGRESS_HEARTBEAT_SECONDS = 60.0
+DEFAULT_API_KEY_FILE = Path.home() / ".secrets/aipodcasting/env"
+
+
+def _strip_shell_quotes(value: str) -> str:
+    stripped = value.strip()
+    if len(stripped) >= 2 and stripped[0] == stripped[-1] and stripped[0] in ("'", '"'):
+        return stripped[1:-1]
+    return stripped
+
+
+def _read_secret_file(path: Path, names: tuple[str, ...]) -> str:
+    try:
+        content = path.read_text(encoding="utf-8")
+    except FileNotFoundError:
+        return ""
+    except OSError:
+        return ""
+
+    for raw_line in content.splitlines():
+        line = raw_line.strip()
+        if not line or line.startswith("#"):
+            continue
+        if line.startswith("export "):
+            line = line[len("export ") :].strip()
+        name, separator, value = line.partition("=")
+        if separator == "=" and name.strip() in names:
+            return _strip_shell_quotes(value)
+
+    return content.strip()
+
+
+def get_backend_api_key() -> str:
+    """Read the WIN backend API key from local secret file or environment."""
+    api_key_file = Path(
+        os.getenv("AIPODCASTING_WIN_API_KEY_FILE", str(DEFAULT_API_KEY_FILE))
+    ).expanduser()
+    file_key = _read_secret_file(
+        api_key_file,
+        ("WIN_API_KEY", "AIP_API_KEY", "WIN_API_KEYS", "AIP_API_KEYS"),
+    )
+    if file_key:
+        return file_key
+
+    for env_var in ("WIN_API_KEY", "AIP_API_KEY"):
+        key = os.getenv(env_var, "").strip()
+        if key:
+            return key
+
+    for env_var in ("WIN_API_KEYS", "AIP_API_KEYS"):
+        for key in os.getenv(env_var, "").split(","):
+            stripped = key.strip()
+            if stripped:
+                return stripped
+
+    return ""
 
 
 class MediaToolkitApiClient:
@@ -191,10 +248,15 @@ class MediaToolkitApiClient:
         json_body: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         url = f"{self.api_base_url}{path}"
+        headers: dict[str, str] = {}
+        api_key = get_backend_api_key()
+        if api_key:
+            headers["Authorization"] = f"Bearer {api_key}"
         try:
             response = self.session.request(
                 method=method,
                 url=url,
+                headers=headers,
                 json=json_body,
                 timeout=self.request_timeout_seconds,
             )

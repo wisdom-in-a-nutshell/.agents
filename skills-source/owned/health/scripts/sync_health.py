@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 from datetime import datetime
 import json
+import os
 from pathlib import Path
 import sys
 from typing import Any
@@ -16,6 +17,7 @@ DEFAULT_HEALTH_SNAPSHOT_API_URL = (
     "https://aipodcasting-hzbxdueeg4eeatgh.eastus-01.azurewebsites.net"
     "/personal/health/withings-snapshot"
 )
+DEFAULT_API_KEY_FILE = Path.home() / ".secrets/aipodcasting/env"
 
 
 class HealthSyncError(Exception):
@@ -56,13 +58,71 @@ def _parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
+def _strip_shell_quotes(value: str) -> str:
+    stripped = value.strip()
+    if len(stripped) >= 2 and stripped[0] == stripped[-1] and stripped[0] in ("'", '"'):
+        return stripped[1:-1]
+    return stripped
+
+
+def _read_secret_file(path: Path, names: tuple[str, ...]) -> str:
+    try:
+        content = path.read_text(encoding="utf-8")
+    except FileNotFoundError:
+        return ""
+    except OSError:
+        return ""
+
+    for raw_line in content.splitlines():
+        line = raw_line.strip()
+        if not line or line.startswith("#"):
+            continue
+        if line.startswith("export "):
+            line = line[len("export ") :].strip()
+        name, separator, value = line.partition("=")
+        if separator == "=" and name.strip() in names:
+            return _strip_shell_quotes(value)
+
+    return content.strip()
+
+
+def _get_backend_api_key() -> str:
+    api_key_file = Path(
+        os.getenv("AIPODCASTING_WIN_API_KEY_FILE", str(DEFAULT_API_KEY_FILE))
+    ).expanduser()
+    file_key = _read_secret_file(
+        api_key_file,
+        ("WIN_API_KEY", "AIP_API_KEY", "WIN_API_KEYS", "AIP_API_KEYS"),
+    )
+    if file_key:
+        return file_key
+
+    for env_var in ("WIN_API_KEY", "AIP_API_KEY"):
+        key = os.getenv(env_var, "").strip()
+        if key:
+            return key
+
+    for env_var in ("WIN_API_KEYS", "AIP_API_KEYS"):
+        for key in os.getenv(env_var, "").split(","):
+            stripped = key.strip()
+            if stripped:
+                return stripped
+
+    return ""
+
+
 def _fetch_snapshot(*, api_url: str, params: dict[str, Any]) -> dict[str, Any]:
     query_params = {key: value for key, value in params.items() if value is not None}
     url = api_url
     if query_params:
         url = f"{api_url}?{urlencode(query_params)}"
 
-    request = Request(url, headers={"Accept": "application/json"}, method="GET")
+    headers = {"Accept": "application/json"}
+    api_key = _get_backend_api_key()
+    if api_key:
+        headers["Authorization"] = f"Bearer {api_key}"
+
+    request = Request(url, headers=headers, method="GET")
     try:
         with urlopen(request, timeout=60.0) as response:
             payload = json.loads(response.read().decode("utf-8"))

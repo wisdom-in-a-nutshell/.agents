@@ -18,6 +18,7 @@ from urllib import parse as urlparse
 from urllib import request as urlrequest
 from aip_local_upload_helper import (
   UploadHelperError,
+  build_aip_auth_headers,
   is_public_http_url,
   resolve_upload_source_url,
   validate_upload_source_list,
@@ -210,6 +211,7 @@ def request_json(
   payload: dict[str, Any] | None = None,
 ) -> Any:
   headers = {"Accept": "application/json"}
+  headers.update(build_aip_auth_headers())
   body: bytes | None = None
 
   if payload is not None:
