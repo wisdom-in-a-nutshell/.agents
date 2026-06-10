@@ -29,8 +29,10 @@ path is overridden. Environment fallbacks (`AIPODCASTING_API_KEY` or the first v
 command lines.
 
 Use `scripts/aip_local_upload_helper.py` only when the user gives a local file path for a file-like
-field. The helper uploads the file and returns a public URL for the main CLI to use. Keep this
-implicit in chat unless the user asks.
+field and no source URL is available. For TCR main episode submissions, prefer a Descript web URL
+copied from Descript for the main source when one exists; do not export or upload an MP4 just to
+create a source link. The helper uploads the file and returns a public URL for the main CLI to use.
+Keep this implicit in chat unless the user asks.
 
 All script and reference paths in this skill are relative to the skill directory itself, not the
 repository root. Do not run `scripts/...` from the repo root unless you first `cd` into this skill
@@ -134,11 +136,16 @@ python3 scripts/aip_local_upload_helper.py \
    With `--include-raw`, each item also includes `raw_episode` containing the sanitized upstream
    payload.
 2. `submit-episode`:
-   Required: `--payload-file` with at least one main episode file link.
+   Required: `--payload-file` with at least one main episode source link.
    Show handling: always forced to `TCR` by the CLI.
-   The main file link may be either:
+   The main source link may be either:
    - a public HTTP/HTTPS URL
    - a local file path, which the helper uploads first
+   Prefer a Descript web URL in `files.main.raw` when a Descript project/composition/source is
+   available. The app accepts MP4 URLs and local MP4 paths, but the CLI will warn because those are
+   fallback inputs for TCR, not the preferred source. Do not treat
+   `https://web.descript.com/<project-id>/<composition-id>` as the only valid Descript shape; use
+   the Descript web URL the user or browser provides.
    TCR main episode submissions reject `.mp3` main-file inputs. Use the original recording,
    session, or video source link instead, such as Riverside, YouTube, or a direct non-MP3 media
    URL. This is not a Riverside-only allowlist.
@@ -180,7 +187,7 @@ When values are missing in chat context, follow this flow:
    Do not assume that "submit", "this episode", or similar phrasing means `submit-episode`.
    If the intent is ambiguous, ask exactly:
    "Do you want to:
-   1. submit a new main episode file
+   1. submit a new main episode source
    2. update intro/title/thumbnail assets for an existing episode
 
    Reply with 1 or 2."
@@ -188,7 +195,9 @@ When values are missing in chat context, follow this flow:
 3. For submit flow, ask for the missing required submit value, but in that same first reply also
    surface the common optional fields the user may want to set up front.
    Required submit value:
-   1. main episode file link as either a public HTTP/HTTPS URL or a local file path.
+   1. main episode source link as either a public HTTP/HTTPS URL or a local file path.
+   Prefer a Descript web URL for TCR when available. MP4 URLs and local MP4 paths are accepted but
+   should be described as fallback inputs, not the preferred source.
    Common optional submit values to mention in the same first prompt:
    1. title
    2. showNotes
@@ -200,8 +209,9 @@ When values are missing in chat context, follow this flow:
    8. needsGuestReview
    9. guests
    10. customNewsletterDraftUrl
-4. Use this default submit prompt shape when the file is missing:
-   "Send the main episode file as either a public HTTP/HTTPS URL or a local absolute file path.
+4. Use this default submit prompt shape when the source is missing:
+   "Send the main episode source as a Descript web URL if you have one. If not, send another
+   public HTTP/HTTPS source URL or a local absolute file path.
 
    You can also include any of these optional fields now if you want them set on creation:
    1. title

@@ -79,6 +79,14 @@ TCR_MAIN_MP3_HINT = (
   "YouTube, or a direct video file. MP3 links remain valid for intro/outro/supporting file fields "
   "when those fields expect audio."
 )
+TCR_MAIN_MP4_WARNING_CODE = "W_TCR_MAIN_MP4_SOURCE"
+TCR_MAIN_MP4_WARNING_MESSAGE = (
+  "TCR main source is an MP4. Prefer a Descript web URL in files.main.raw when one is available."
+)
+TCR_MAIN_MP4_WARNING_HINT = (
+  "Keep the MP4 only when no Descript source URL is available or the user explicitly asked for "
+  "this exact file."
+)
 
 
 class ClientError(Exception):
@@ -372,23 +380,23 @@ def validate_submit_payload(payload: dict[str, Any]) -> None:
     conflicting_fields = ", ".join(field for field, _ in candidate_sources)
     raise ClientError(
       code="E_VALIDATION",
-      message=f"submit-episode payload has conflicting main file values across {conflicting_fields}.",
+      message=f"submit-episode payload has conflicting main source values across {conflicting_fields}.",
       retryable=False,
-      hint="Provide one main episode file, or keep all aliases identical.",
+      hint="Provide one main episode source, or keep all aliases identical.",
       exit_code=2,
     )
 
   if not candidate_sources:
     raise ClientError(
       code="E_VALIDATION",
-      message="submit-episode payload requires a main episode file.",
+      message="submit-episode payload requires a main episode source.",
       retryable=False,
       hint="Use references/submit-episode.example.json as baseline.",
       exit_code=2,
     )
 
   main_source_value = candidate_sources[0][1]
-  validate_upload_source_list("submit-episode main file", [main_source_value])
+  validate_upload_source_list("submit-episode main source", [main_source_value])
   if looks_like_mp3_source(main_source_value):
     raise ClientError(
       code="E_VALIDATION",
@@ -409,6 +417,43 @@ def looks_like_mp3_source(value: str) -> bool:
   path = parsed.path if parsed.scheme else candidate
   path = path.split("?", 1)[0].split("#", 1)[0]
   return urlparse.unquote(path).lower().endswith(".mp3")
+
+
+def looks_like_mp4_source(value: str) -> bool:
+  """Return whether a public URL or local path appears to point at an MP4 file."""
+  candidate = value.strip()
+  if not candidate:
+    return False
+  parsed = urlparse.urlparse(candidate)
+  path = parsed.path if parsed.scheme else candidate
+  path = path.split("?", 1)[0].split("#", 1)[0]
+  return urlparse.unquote(path).lower().endswith(".mp4")
+
+
+def get_normalized_main_raw(payload: dict[str, Any]) -> str:
+  files = payload.get("files")
+  if (
+    isinstance(files, dict)
+    and isinstance(files.get("main"), dict)
+    and isinstance(files["main"].get("raw"), str)
+  ):
+    return files["main"]["raw"].strip()
+  return ""
+
+
+def build_submit_warnings(payload: dict[str, Any]) -> list[dict[str, str]]:
+  main_raw = get_normalized_main_raw(payload)
+  if not looks_like_mp4_source(main_raw):
+    return []
+
+  return [
+    {
+      "code": TCR_MAIN_MP4_WARNING_CODE,
+      "field": "files.main.raw",
+      "message": TCR_MAIN_MP4_WARNING_MESSAGE,
+      "hint": TCR_MAIN_MP4_WARNING_HINT,
+    }
+  ]
 
 
 def normalize_custom_newsletter_draft_url_aliases(payload: dict[str, Any]) -> None:
@@ -1401,6 +1446,7 @@ def run_submit_episode(args: argparse.Namespace) -> dict[str, Any]:
   validate_submit_payload(payload)
   payload, upload_records = normalize_submit_payload(payload, args.timeout_seconds, args.dry_run)
   payload["show"] = FIXED_SHOW
+  warnings = build_submit_warnings(payload)
 
   url = build_url(FIXED_API_BASE_URL, "/api/episodes/submit")
 
@@ -1408,6 +1454,7 @@ def run_submit_episode(args: argparse.Namespace) -> dict[str, Any]:
     return {
       "dry_run": True,
       "planned_uploads": upload_records,
+      "warnings": warnings,
       "request": {"method": "POST", "url": url, "payload": payload},
     }
 
@@ -1419,6 +1466,7 @@ def run_submit_episode(args: argparse.Namespace) -> dict[str, Any]:
 
   return {
     "source_id": source_id,
+    "warnings": warnings,
     "response": body,
   }
 
@@ -1517,6 +1565,10 @@ def print_human_success(command: str, data: dict[str, Any]) -> None:
       print(f"Completed {command}. source_id={source_id}")
     else:
       print(f"Completed {command}.")
+    for warning in data.get("warnings", []):
+      message = warning.get("message", "")
+      hint = warning.get("hint", "")
+      print(f"Warning: {message} {hint}".strip())
     return
 
   print(json.dumps(data, ensure_ascii=True))
@@ -1604,10 +1656,11 @@ def build_parser() -> argparse.ArgumentParser:
     "--payload-file",
     required=True,
     help=(
-      "Path to JSON payload file. Provide the main episode file as mainEpisodeFile for plain-English "
+      "Path to JSON payload file. Provide the main episode source as mainEpisodeFile for plain-English "
       "input, or as files.main.raw if you already have the backend payload shape. A top-level fileUrl "
-      "is also accepted as a compatibility alias. Main-file fields may be public URLs or local file "
-      "paths. Local file paths are uploaded first and replaced with public URLs."
+      "is also accepted as a compatibility alias. Prefer a Descript web URL for TCR when available. "
+      "Source fields may be public URLs or local file paths. Local file paths are uploaded first and "
+      "replaced with public URLs."
     ),
   )
   submit_parser.add_argument(

@@ -2,7 +2,7 @@
   "show": "TCR",
   "files": {
     "main": {
-      "raw": "https://example.com/path/to/main-episode-file.mp4",
+      "raw": "https://web.descript.com/tcr-main-source",
       "descript": "",
       "edited": ""
     },

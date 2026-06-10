@@ -1,4 +1,5 @@
 import importlib.util
+import json
 import os
 import sys
 import tempfile
@@ -410,8 +411,9 @@ class SubmitAndIntroDryRunTests(unittest.TestCase):
     self.assertEqual(data["request"]["payload"]["show"], "TCR")
     self.assertEqual(
       data["request"]["payload"]["files"]["main"]["raw"],
-      "https://example.com/path/to/main-episode-file.mp4",
+      "https://web.descript.com/tcr-main-source",
     )
+    self.assertEqual(data["warnings"], [])
     self.assertNotIn("mainEpisodeFile", data["request"]["payload"])
     self.assertEqual(
       len(data["request"]["payload"]["deliverables"]["thumbnails"]["options"]),
@@ -421,6 +423,39 @@ class SubmitAndIntroDryRunTests(unittest.TestCase):
       data["request"]["payload"]["customNewsletterDraftUrl"],
       "https://ghost.example.com/ghost/#/editor/post/submit123",
     )
+
+  def test_run_submit_episode_dry_run_warns_on_mp4_main_source(self) -> None:
+    with tempfile.TemporaryDirectory() as tmpdir:
+      payload_path = Path(tmpdir) / "submit-mp4.json"
+      payload_path.write_text(
+        json.dumps(
+          {
+            "show": "TCR",
+            "files": {
+              "main": {
+                "raw": "https://storage.aipodcast.ing/deliverables/exported-main.mp4",
+              }
+            },
+          }
+        ),
+        encoding="utf-8",
+      )
+      args = SimpleNamespace(
+        payload_file=str(payload_path),
+        dry_run=True,
+        timeout_seconds=30.0,
+      )
+
+      data = client.run_submit_episode(args)
+
+    self.assertTrue(data["dry_run"])
+    self.assertEqual(
+      data["request"]["payload"]["files"]["main"]["raw"],
+      "https://storage.aipodcast.ing/deliverables/exported-main.mp4",
+    )
+    self.assertEqual(len(data["warnings"]), 1)
+    self.assertEqual(data["warnings"][0]["code"], "W_TCR_MAIN_MP4_SOURCE")
+    self.assertEqual(data["warnings"][0]["field"], "files.main.raw")
 
   def test_run_update_intro_copy_dry_run_uses_expected_request_shape(self) -> None:
     args = SimpleNamespace(
