@@ -22,16 +22,16 @@ Run the main CLI at `scripts/ai_podcasting_client.py` for episode operations:
 
 This skill calls the AIP frontend API routes at `https://app.aipodcast.ing/api/...`, which proxy the
 upstream episode APIs. Do not automate the browser UI for these flows.
-The frontend API requires bearer auth. The scripts read the token from
-`~/.secrets/aipodcasting/env` by default, or from `AIPODCASTING_API_KEY_FILE` when that file
-path is overridden. Environment fallbacks (`AIPODCASTING_API_KEY` or the first value in
-`AIPODCASTING_API_KEYS`) are supported for deployed/runtime contexts, but do not pass secrets on
-command lines.
+The episode API now requires bearer-token auth for list, submit, and patch operations. The scripts
+read the token from `~/.secrets/aipodcasting/env` by default, or from
+`AIPODCASTING_API_KEY_FILE` when that file path is overridden. Environment fallbacks
+(`AIPODCASTING_API_KEY` or the first value in `AIPODCASTING_API_KEYS`) are supported for
+deployed/runtime contexts, but do not pass secrets on command lines.
 
 ## Auth Setup
 
 Never paste the actual API key into this skill, a payload JSON file, a command argument, or chat.
-Store it in the user's local environment before running the client.
+Adi shares the key out-of-band. Store it in the user's local environment before running the client.
 
 Recommended local setup:
 
@@ -60,6 +60,15 @@ Keep this implicit in chat unless the user asks.
 
 When a Descript project/composition/source URL exists, use that URL as the source. Do not export,
 upload, or submit an MP4 just to create a source file.
+
+The expected Descript web URL shape is:
+
+```text
+https://web.descript.com/<project-id>/<composition-id>
+```
+
+Copy the actual URL from Descript. Do not fabricate IDs, and do not require an exact path shape if
+Descript provides a slightly different `web.descript.com` source URL.
 
 Use these shapes:
 
