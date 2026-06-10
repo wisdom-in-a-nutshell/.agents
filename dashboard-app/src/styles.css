@@ -614,7 +614,7 @@ input:focus-visible {
 .cat-head { display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap; margin-bottom: 16px; }
 .cat-head h2 { font-family: var(--font-serif); font-weight: var(--weight-strong); font-size: var(--font-page); letter-spacing: -0.005em; margin: 0; color: var(--text); }
 .cat-filters { display: inline-flex; gap: 6px; }
-.cat-chip { display: inline-flex; align-items: center; gap: 6px; font: inherit; font-size: 12.5px; padding: 4px 11px; border-radius: 999px; border: 1px solid var(--line); background: var(--surface); color: var(--muted); cursor: pointer; transition: background 120ms, border-color 120ms, color 120ms; }
+.cat-chip { display: inline-flex; align-items: center; gap: 6px; font: inherit; font-size: 11.5px; padding: 4px 11px; border-radius: 999px; border: 1px solid var(--line); background: var(--surface); color: var(--muted); cursor: pointer; transition: background 120ms, border-color 120ms, color 120ms; }
 .cat-chip:hover { border-color: var(--faint); }
 .cat-chip strong { font-variant-numeric: tabular-nums; font-weight: 600; color: var(--faint); }
 /* "All" active is neutral; every scoped chip carries its meaning in colour —
@@ -948,9 +948,9 @@ body.sidebar-collapsed .nav-group + .nav-group { margin-top: 8px; }
 }
 .gc-src { text-decoration: none; flex: 0 0 auto; }
 .gc-src code {
-  font-family: var(--font-mono); font-size: 10.5px; color: var(--muted);
+  font-family: var(--font-mono); font-size: 11.5px; color: var(--muted);
   background: var(--bg); border: 1px solid var(--line-soft);
-  padding: 2px 7px; border-radius: 6px;
+  padding: 2px 7px; border-radius: 6px; overflow-wrap: anywhere;
 }
 .gc-src:hover code { color: var(--accent-ink); border-color: var(--accent-line); }
 .gc-rows { margin: 0; padding: 6px 0; }
