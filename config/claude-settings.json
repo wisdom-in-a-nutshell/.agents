@@ -10,6 +10,12 @@
     "loop": "off",
     "review": "off",
     "security-review": "off",
-    "init": "off"
+    "init": "off",
+    "code-review": "off",
+    "simplify": "off",
+    "verify": "off",
+    "run": "off",
+    "schedule": "off",
+    "update-config": "off"
   }
 }
