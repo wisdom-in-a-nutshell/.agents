@@ -143,9 +143,8 @@ python3 scripts/aip_local_upload_helper.py \
    - a local file path, which the helper uploads first
    Prefer a Descript web URL in `files.main.raw` when a Descript project/composition/source is
    available. The app accepts MP4 URLs and local MP4 paths, but the CLI will warn because those are
-   fallback inputs for TCR, not the preferred source. Do not treat
-   `https://web.descript.com/<project-id>/<composition-id>` as the only valid Descript shape; use
-   the Descript web URL the user or browser provides.
+   fallback inputs for TCR, not the preferred source. Do not require a specific Descript path
+   shape; use the Descript web URL the user or browser provides.
    TCR main episode submissions reject `.mp3` main-file inputs. Use the original recording,
    session, or video source link instead, such as Riverside, YouTube, or a direct non-MP3 media
    URL. This is not a Riverside-only allowlist.
