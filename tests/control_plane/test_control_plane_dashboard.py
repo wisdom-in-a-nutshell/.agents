@@ -4,7 +4,7 @@ import json
 import plistlib
 import sys
 
-from tests.control_plane.support import REPO_ROOT, TempDirTestCase, write_json, write_text, run_command
+from tests.control_plane.support import REPO_ROOT, TempDirTestCase, write_executable, write_json, write_text, run_command
 
 
 class ControlPlaneDashboardDataTests(TempDirTestCase):
@@ -243,6 +243,32 @@ class ControlPlaneDashboardDataTests(TempDirTestCase):
 
 
 class ControlPlaneDashboardLaunchAgentTests(TempDirTestCase):
+    def test_launchagent_installer_defaults_to_shared_python_shim(self) -> None:
+        home = self.temp_path / "home"
+        python_shim = home / ".local/bin/python3.13-shim"
+        resolver = home / "GitHub/scripts/setup/codex/resolve-preferred-homebrew-python.sh"
+        write_executable(python_shim, "#!/usr/bin/env bash\nexit 0\n")
+        write_executable(
+            resolver,
+            f"#!/usr/bin/env bash\nprintf '%s\\n' {str(python_shim)!r}\n",
+        )
+
+        result = run_command(
+            [
+                "bash",
+                str(REPO_ROOT / "scripts/install-control-plane-dashboard-launchagent.sh"),
+                "--dry-run",
+                "--label",
+                "com.test.agents-dashboard",
+                "--root",
+                str(REPO_ROOT),
+            ],
+            env={"HOME": str(home)},
+        )
+
+        payload = plistlib.loads(result.stdout.encode("utf-8"))
+        self.assertEqual(payload["ProgramArguments"][0], str(python_shim))
+
     def test_launchagent_installer_dry_run_renders_dashboard_service_plist(self) -> None:
         result = run_command(
             [

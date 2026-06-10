@@ -9,7 +9,7 @@ LABEL="com.${USER}.agents-control-plane-dashboard"
 ROOT_DIR="${AGENTS_CONTROL_PLANE_ROOT:-${HOME}/GitHub/agents}"
 HOST="127.0.0.1"
 PORT="8765"
-PYTHON_BIN="${PYTHON_BIN:-python3}"
+PYTHON_BIN="${PYTHON_BIN:-}"
 PLIST_PATH="${HOME}/Library/LaunchAgents/${LABEL}.plist"
 LOG_DIR="${HOME}/.local/state/agents-control-plane/log"
 OUT_LOG="${LOG_DIR}/control-plane-dashboard.out.log"
@@ -32,7 +32,7 @@ Options:
   --root <path>        agents control-plane repo root (default: ~/GitHub/agents)
   --host <host>        Local bind host (default: 127.0.0.1)
   --port <port>        Local dashboard port (default: 8765)
-  --python <path>      Python executable (default: python3)
+  --python <path>      Python executable (default: shared Homebrew Python)
   -h, --help           Show this help
 
 Examples:
@@ -49,6 +49,27 @@ die() {
 
 is_int() {
   [[ "${1:-}" =~ ^[0-9]+$ ]]
+}
+
+resolve_default_python_bin() {
+  local resolver="${HOME}/GitHub/scripts/setup/codex/resolve-preferred-homebrew-python.sh"
+  local resolved
+
+  if [[ -x "$resolver" ]]; then
+    resolved="$("$resolver" --output python-shim 2>/dev/null || true)"
+    if [[ -n "$resolved" && -x "$resolved" ]]; then
+      printf '%s\n' "$resolved"
+      return 0
+    fi
+  fi
+
+  resolved="$(command -v python3 || true)"
+  if [[ -n "$resolved" ]]; then
+    printf '%s\n' "$resolved"
+    return 0
+  fi
+
+  return 1
 }
 
 xml_escape() {
@@ -198,7 +219,12 @@ done
 [[ -n "$HOST" ]] || die "missing --host"
 is_int "$PORT" || die "invalid --port: $PORT"
 is_int "$LOG_LINES" || die "invalid --logs value: $LOG_LINES"
-command -v "$PYTHON_BIN" >/dev/null 2>&1 || [[ -x "$PYTHON_BIN" ]] || die "missing python executable: $PYTHON_BIN"
+if [[ -z "$PYTHON_BIN" ]]; then
+  PYTHON_BIN="$(resolve_default_python_bin)" || die "missing python executable: python3"
+elif [[ "$PYTHON_BIN" != /* ]]; then
+  PYTHON_BIN="$(command -v "$PYTHON_BIN" || true)"
+fi
+[[ -x "$PYTHON_BIN" ]] || die "missing python executable: $PYTHON_BIN"
 
 DOMAIN="gui/$(id -u)"
 

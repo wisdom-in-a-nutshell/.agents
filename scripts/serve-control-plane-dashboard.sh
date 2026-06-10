@@ -10,7 +10,7 @@ HTTPS_PORT_SET=0
 STATE_DIR="${ROOT_DIR}/tmp/control-plane-dashboard"
 PID_FILE="${STATE_DIR}/server.pid"
 LOG_FILE="${STATE_DIR}/server.log"
-PYTHON_BIN="${PYTHON_BIN:-python3}"
+PYTHON_BIN="${PYTHON_BIN:-}"
 TAILSCALE_BIN="${TAILSCALE_BIN:-tailscale}"
 
 usage() {
@@ -43,6 +43,27 @@ is_int() {
 
 require_command() {
   command -v "$1" >/dev/null 2>&1 || die "missing command: $1"
+}
+
+resolve_default_python_bin() {
+  local resolver="${HOME}/GitHub/scripts/setup/codex/resolve-preferred-homebrew-python.sh"
+  local resolved
+
+  if [[ -x "$resolver" ]]; then
+    resolved="$("$resolver" --output python-shim 2>/dev/null || true)"
+    if [[ -n "$resolved" && -x "$resolved" ]]; then
+      printf '%s\n' "$resolved"
+      return 0
+    fi
+  fi
+
+  resolved="$(command -v python3 || true)"
+  if [[ -n "$resolved" ]]; then
+    printf '%s\n' "$resolved"
+    return 0
+  fi
+
+  return 1
 }
 
 require_arg() {
@@ -215,7 +236,12 @@ done
 is_int "$PORT" || die "invalid --port: $PORT"
 is_int "$HTTPS_PORT" || die "invalid --https-port: $HTTPS_PORT"
 require_command curl
-require_command "$PYTHON_BIN"
+if [[ -z "$PYTHON_BIN" ]]; then
+  PYTHON_BIN="$(resolve_default_python_bin)" || die "missing command: python3"
+elif [[ "$PYTHON_BIN" != /* ]]; then
+  PYTHON_BIN="$(command -v "$PYTHON_BIN" || true)"
+fi
+[[ -x "$PYTHON_BIN" ]] || die "missing python executable: $PYTHON_BIN"
 
 case "$ACTION" in
   start)

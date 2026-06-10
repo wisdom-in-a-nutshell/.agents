@@ -82,7 +82,10 @@ LaunchAgent and keep Tailscale Serve pointed at the same port:
 ```
 
 The LaunchAgent keeps `http://127.0.0.1:8765/` running at login and
-restarts it if the process exits. Tailscale Serve owns the private tailnet URL:
+restarts it if the process exits. The installer renders the shared Homebrew
+Python shim from `~/GitHub/scripts/setup/codex/resolve-preferred-homebrew-python.sh`
+into the plist so launchd does not resolve bare `python3` through Apple's
+`/usr/bin/python3`. Tailscale Serve owns the private tailnet URL:
 
 ```text
 https://dobbys-mac-mini.tail7857da.ts.net:8765/
