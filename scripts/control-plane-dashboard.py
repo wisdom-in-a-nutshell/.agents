@@ -408,6 +408,13 @@ def build_global_config(
             ],
         ),
         _config_group(
+            "System prompt",
+            "scripts/sync-claude.py",
+            [
+                {"label": "includeGitInstructions", "value": "off (git via Stop hook)", "tone": "off"},
+            ],
+        ),
+        _config_group(
             "Bundled plugins",
             claude_src,
             plugin_rows or [{"label": "All bundled plugins enabled", "value": "—", "tone": "muted"}],
