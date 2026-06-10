@@ -376,12 +376,37 @@ class SubmitAndIntroDryRunTests(unittest.TestCase):
       client.validate_submit_payload(
         {
           "show": "TCR",
-          "mainEpisodeFile": "https://example.com/exported-audio.mp3?download=1",
+          "mainSourceUrl": "https://example.com/exported-audio.mp3?download=1",
         }
       )
 
     self.assertEqual(error_context.exception.code, "E_VALIDATION")
     self.assertIn("cannot be an MP3 link", error_context.exception.message)
+
+  def test_validate_submit_payload_rejects_legacy_source_fields(self) -> None:
+    for legacy_payload in (
+      {"show": "TCR", "mainEpisodeFile": "https://example.com/exported-main.mp4"},
+      {"show": "TCR", "files": {"main": {"raw": "https://example.com/exported-main.mp4"}}},
+    ):
+      with self.subTest(legacy_payload=legacy_payload):
+        with self.assertRaises(client.ClientError) as error_context:
+          client.validate_submit_payload(legacy_payload)
+
+        self.assertEqual(error_context.exception.code, "E_VALIDATION")
+        self.assertIn("mainSourceUrl", error_context.exception.message)
+
+  def test_validate_intro_copy_payload_rejects_legacy_source_fields(self) -> None:
+    for legacy_payload in (
+      {"recordingLink": "https://web.descript.com/01234567-89ab-4cde-8f01-23456789abcd"},
+      {"introFile": "https://web.descript.com/01234567-89ab-4cde-8f01-23456789abcd"},
+      {"files": {"intro": {"raw": "https://web.descript.com/01234567-89ab-4cde-8f01-23456789abcd"}}},
+    ):
+      with self.subTest(legacy_payload=legacy_payload):
+        with self.assertRaises(client.ClientError) as error_context:
+          client.validate_intro_copy_payload(legacy_payload)
+
+        self.assertEqual(error_context.exception.code, "E_VALIDATION")
+        self.assertIn("introSourceUrl", error_context.exception.message)
 
   def test_normalize_intro_copy_payload_maps_newsletter_draft_alias(self) -> None:
     payload, upload_records = client.normalize_intro_copy_payload(
@@ -414,7 +439,7 @@ class SubmitAndIntroDryRunTests(unittest.TestCase):
       "https://web.descript.com/01234567-89ab-4cde-8f01-23456789abcd",
     )
     self.assertEqual(data["warnings"], [])
-    self.assertNotIn("mainEpisodeFile", data["request"]["payload"])
+    self.assertNotIn("mainSourceUrl", data["request"]["payload"])
     self.assertEqual(
       len(data["request"]["payload"]["deliverables"]["thumbnails"]["options"]),
       2,
@@ -431,11 +456,7 @@ class SubmitAndIntroDryRunTests(unittest.TestCase):
         json.dumps(
           {
             "show": "TCR",
-            "files": {
-              "main": {
-                "raw": "https://storage.aipodcast.ing/deliverables/exported-main.mp4",
-              }
-            },
+            "mainSourceUrl": "https://storage.aipodcast.ing/deliverables/exported-main.mp4",
           }
         ),
         encoding="utf-8",
@@ -455,7 +476,7 @@ class SubmitAndIntroDryRunTests(unittest.TestCase):
     )
     self.assertEqual(len(data["warnings"]), 1)
     self.assertEqual(data["warnings"][0]["code"], "W_TCR_MAIN_MP4_SOURCE")
-    self.assertEqual(data["warnings"][0]["field"], "files.main.raw")
+    self.assertEqual(data["warnings"][0]["field"], "mainSourceUrl")
 
   def test_run_update_intro_copy_dry_run_uses_expected_request_shape(self) -> None:
     args = SimpleNamespace(
@@ -477,6 +498,11 @@ class SubmitAndIntroDryRunTests(unittest.TestCase):
       data["request"]["payload"]["title"],
       "Final publish-ready episode title",
     )
+    self.assertEqual(
+      data["request"]["payload"]["introFile"],
+      "https://web.descript.com/01234567-89ab-4cde-8f01-23456789abcd",
+    )
+    self.assertNotIn("introSourceUrl", data["request"]["payload"])
     self.assertEqual(
       data["request"]["payload"]["deliverables"]["thumbnails"]["video"]["url"],
       "https://example.com/path/to/video-thumbnail-16x9-primary.png",

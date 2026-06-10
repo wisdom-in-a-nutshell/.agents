@@ -706,9 +706,10 @@ def normalize_intro_copy_payload(
         episode_outro["edited"] = outro_music_link.strip()
 
   if isinstance(normalized.get("introFile"), str) and normalized["introFile"].strip():
+    intro_file_source_field = "introSourceUrl" if "introSourceUrl" in payload else "introFile"
     resolved_url, upload_record = resolve_upload_source_url(
       normalized["introFile"],
-      "introFile",
+      intro_file_source_field,
       timeout_seconds,
       dry_run,
     )
@@ -1653,11 +1654,9 @@ def build_parser() -> argparse.ArgumentParser:
     "--payload-file",
     required=True,
     help=(
-      "Path to JSON payload file. Provide the main episode source as mainEpisodeFile for plain-English "
-      "input, or as files.main.raw if you already have the backend payload shape. A top-level fileUrl "
-      "is also accepted as a compatibility alias. Prefer a Descript web URL for TCR when available. "
-      "Source fields may be public URLs or local file paths. Local file paths are uploaded first and "
-      "replaced with public URLs."
+      "Path to JSON payload file. Provide the main episode source as mainSourceUrl. "
+      "Prefer a Descript web URL for TCR when available. Source fields may be public URLs or local "
+      "file paths. Local file paths are uploaded first and replaced with public URLs."
     ),
   )
   submit_parser.add_argument(
@@ -1675,9 +1674,8 @@ def build_parser() -> argparse.ArgumentParser:
     "--payload-file",
     required=True,
     help=(
-      "Path to JSON payload file. Supports the current app intro payload directly, "
-      "or the user-facing convenience fields "
-      "(recordingLink/title/thumbnailText/videoThumbnails/audioThumbnailLink/outroMusicLink). "
+      "Path to JSON payload file. Use introSourceUrl for the intro source, plus fields like "
+      "title/thumbnailText/videoThumbnails/audioThumbnailLink/outroMusicLink. "
       "File-like fields may be public URLs or local file paths. "
       "Provide one or multiple video thumbnail URLs and the client will normalize them "
       "into the app's thumbnail shape."

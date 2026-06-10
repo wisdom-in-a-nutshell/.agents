@@ -65,24 +65,20 @@ Use these shapes:
 
 ```json
 {
-  "files": {
-    "main": {
-      "raw": "https://web.descript.com/01234567-89ab-4cde-8f01-23456789abcd"
-    }
-  }
+  "mainSourceUrl": "https://web.descript.com/01234567-89ab-4cde-8f01-23456789abcd"
 }
 ```
 
-For intro updates, use the Descript URL as `recordingLink` or `introFile`:
+For intro updates, use:
 
 ```json
 {
-  "recordingLink": "https://web.descript.com/01234567-89ab-4cde-8f01-23456789abcd"
+  "introSourceUrl": "https://web.descript.com/01234567-89ab-4cde-8f01-23456789abcd"
 }
 ```
 
-`recordingLink` is the friendly input name for the intro source; the client normalizes it to
-`introFile`, and the backend stores it as `files.intro.raw`.
+The client normalizes these source fields to the backend payload internally. Do not send `raw`,
+`recordingLink`, or `introFile` in agent payloads.
 
 MP4 URLs and local MP4 paths are fallback inputs only. If both a Descript URL and an MP4 are known,
 submit the Descript URL and omit the MP4.
@@ -189,21 +185,20 @@ python3 scripts/aip_local_upload_helper.py \
    With `--include-raw`, each item also includes `raw_episode` containing the sanitized upstream
    payload.
 2. `submit-episode`:
-   Required: `--payload-file` with at least one main episode source link.
+   Required: `--payload-file` with `mainSourceUrl`.
    Show handling: always forced to `TCR` by the CLI.
-   The main source link may be either:
+   `mainSourceUrl` may be either:
    - a public HTTP/HTTPS URL
    - a local file path, which the helper uploads first
-   Prefer a Descript web URL in `files.main.raw` when a Descript project/composition/source is
+   Prefer a Descript web URL in `mainSourceUrl` when a Descript project/composition/source is
    available. The app accepts MP4 URLs and local MP4 paths, but the CLI will warn because those are
    fallback inputs for TCR, not the preferred source. If both a Descript web URL and an exported
-   MP4 are known, put the Descript web URL in `files.main.raw` and omit the MP4. Do not require a
+   MP4 are known, put the Descript web URL in `mainSourceUrl` and omit the MP4. Do not require a
    specific Descript path shape; use the Descript web URL the user or browser provides.
    TCR main episode submissions reject `.mp3` main-source inputs. Use the original recording,
    session, or video source link instead, such as Riverside, YouTube, or a direct non-MP3 media
    URL. This is not a Riverside-only allowlist.
-   For plain-English payloads, the CLI accepts `mainEpisodeFile` and normalizes it to the backend
-   submit shape automatically.
+   The client normalizes `mainSourceUrl` to the backend submit shape automatically.
    `assetUrls` may also be public URLs or local file paths; local paths are uploaded first.
    Optional: any additional backend-supported episode fields. Use `customNewsletterDraftUrl` for
    a client-provided Ghost newsletter draft, preview, editor, or slug URL. The client preserves
@@ -215,12 +210,11 @@ python3 scripts/aip_local_upload_helper.py \
    The client supports the current app intro payload directly.
    For conversation-driven usage, prefer these user-facing fields:
    There are no required patch fields beyond `source_id`.
-   Common patch fields: `recordingLink`, `title`, `videoThumbnails`, `thumbnailText`,
+   Common patch fields: `introSourceUrl`, `title`, `videoThumbnails`, `thumbnailText`,
    `transcript`, `instructionsToEditor`, `customNewsletterDraftUrl`, `audioThumbnailLink`,
    `outroMusicLink`.
-   For TCR intro source updates, prefer a Descript web URL in `recordingLink`/`introFile` when one
-   exists. Do not export, upload, or submit an MP4 for the intro source when a Descript URL is
-   available.
+   For TCR intro source updates, prefer a Descript web URL in `introSourceUrl` when one exists. Do
+   not export, upload, or submit an MP4 for the intro source when a Descript URL is available.
    `customNewsletterDraftUrl` stores a client-provided Ghost newsletter draft link under episode
    submission metadata. It does not publish or replace the generated newsletter by itself.
    `videoThumbnails` may be either:
@@ -229,7 +223,8 @@ python3 scripts/aip_local_upload_helper.py \
    The client normalizes `videoThumbnails` into the app's thumbnail shape:
    - `deliverables.thumbnails.video.url` = first thumbnail URL
    - `deliverables.thumbnails.video.variants` = ordered list of all provided thumbnail URLs
-   The client also accepts the full current app payload if the agent already has it.
+   The client also accepts the full current app payload for non-source fields if the agent already
+   has it, but source updates must still use `introSourceUrl`.
    Local paths are allowed for file-like fields. The helper uploads them and the client uses the
    returned public URLs.
 
@@ -304,7 +299,7 @@ When values are missing in chat context, follow this flow:
    Provide any fields you want to update.
 
    Common fields:
-   1. recordingLink (prefer a Descript web URL for TCR intro source updates)
+   1. introSourceUrl (prefer a Descript web URL for TCR intro source updates)
    2. title
    3. videoThumbnails (give one URL or multiple URLs)
    4. thumbnailText
@@ -321,7 +316,7 @@ When values are missing in chat context, follow this flow:
     It is an internal preview/debug tool, not a normal client-facing step.
 13. For `customNewsletterDraftUrl`, provide a public HTTP/HTTPS Ghost draft, preview, editor, or
    slug URL. It is not a local file upload field.
-14. For file-type fields (`recordingLink`, `videoThumbnails`, `audioThumbnailLink`, `outroMusicLink`, submit main file link, and submit `assetUrls` entries):
+14. For file-type fields (`mainSourceUrl`, `introSourceUrl`, `videoThumbnails`, `audioThumbnailLink`, `outroMusicLink`, and submit `assetUrls` entries):
    - The client accepts either public HTTP/HTTPS URLs or local file paths.
    - If the user provides a local file path, run `scripts/aip_local_upload_helper.py` first and use its returned public URL.
    - Do not pass unresolved local filesystem paths to the episode API payload.
