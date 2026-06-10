@@ -5,11 +5,11 @@
     "anthropic-skills@inline": false
   },
   "skillOverrides": {
-    "fewer-permission-prompts": "name-only",
-    "keybindings-help": "name-only",
-    "loop": "name-only",
-    "review": "name-only",
-    "security-review": "name-only",
+    "fewer-permission-prompts": "off",
+    "keybindings-help": "off",
+    "loop": "off",
+    "review": "off",
+    "security-review": "off",
     "init": "off"
   }
 }
