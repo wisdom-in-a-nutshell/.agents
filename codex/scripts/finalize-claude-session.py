@@ -157,6 +157,30 @@ def transcript_cwd(path: Path) -> str | None:
     return cwd
 
 
+def transcript_has_dialogue(path: Path) -> bool:
+    """True when the transcript holds real user/assistant turns.
+
+    Stub transcripts (queue-operations and hook attachments only — e.g. a
+    session id that was superseded before the first turn) have a cwd but no
+    conversation, and `claude --resume` rejects them with "No conversation
+    found". Treat them like empty transcripts: nothing to remember.
+    """
+    try:
+        with path.open(encoding="utf-8", errors="ignore") as handle:
+            for line in handle:
+                if '"type":"user"' not in line and '"type":"assistant"' not in line:
+                    continue
+                try:
+                    data = json.loads(line)
+                except json.JSONDecodeError:
+                    continue
+                if isinstance(data, dict) and data.get("type") in ("user", "assistant"):
+                    return True
+    except OSError:
+        return False
+    return False
+
+
 def pid_is_alive(pid: int) -> bool:
     try:
         os.kill(pid, 0)
@@ -314,9 +338,9 @@ def finalize_session(
     base["transcript_path"] = str(transcript)
 
     cwd = transcript_cwd(transcript)
-    if not cwd:
-        # Empty or cwd-less transcripts are aborted sessions with nothing to
-        # remember. Mark them finalized so scans stop retrying them forever.
+    if not cwd or not transcript_has_dialogue(transcript):
+        # Empty, cwd-less, or dialogue-less stub transcripts are sessions with
+        # nothing to remember. Mark them finalized so scans stop retrying them.
         if not dry_run:
             with FinalizedState(state_path()) as state:
                 state.mark(

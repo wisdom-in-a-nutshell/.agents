@@ -5,7 +5,10 @@ SKILL_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 python3 -m py_compile \
   "$SKILL_DIR/scripts/session_memory_lib.py" \
   "$SKILL_DIR/scripts/remember_lib.py" \
+  "$SKILL_DIR/scripts/claude_lib.py" \
+  "$SKILL_DIR/scripts/transcript_lib.py" \
   "$SKILL_DIR/scripts/session-memory" \
+  "$SKILL_DIR/scripts/session-transcript" \
   "$SKILL_DIR/scripts/validate" \
   "$SKILL_DIR/scripts/remember-session" \
   "$SKILL_DIR/scripts/remember-claude-session" \
@@ -40,6 +43,7 @@ write_output="$("$session_cli" write \
   --workspace-root "$repo" \
   --trigger test \
   --thread-id thread-test \
+  --runtime codex \
   --title "Test memory" \
   --summary "Carry this forward." \
   --workspace-changes "No durable workspace changes besides this session-memory record." \
@@ -49,26 +53,32 @@ import json, sys
 print(json.loads(sys.argv[1])["data"]["path"])
 PY
 )"
-if [[ ! -f "$session_path" || "${session_path##*.}" != "json" ]]; then
-  echo "session-memory write should create a JSON record" >&2
+if [[ ! -d "$session_path" || ! -f "$session_path/meta.json" || ! -f "$session_path/summary.md" ]]; then
+  echo "session-memory write should create a session folder with meta.json + summary.md" >&2
   exit 1
 fi
 "$session_cli" validate "$session_path" --no-input >/dev/null
-"$SKILL_DIR/scripts/validate" --workspace-root "$repo" "$session_path" --no-input >/dev/null
+"$SKILL_DIR/scripts/validate" --workspace-root "$repo" "$session_path/meta.json" "$session_path/summary.md" --no-input >/dev/null
 
 bad_session_name="$repo/memory/sessions/2026/05/bad.json"
 mkdir -p "$(dirname "$bad_session_name")"
-cp "$session_path" "$bad_session_name"
+cp "$session_path/meta.json" "$bad_session_name"
 if "$SKILL_DIR/scripts/validate" --workspace-root "$repo" "$bad_session_name" --no-input >/dev/null 2>&1; then
-  echo "lifecycle validate should reject session-memory JSON filenames that boot cannot discover" >&2
+  echo "lifecycle validate should reject session paths boot cannot discover" >&2
   exit 1
 fi
 rm -f "$bad_session_name"
+
+if "$session_cli" write --workspace-root "$repo" --trigger test --thread-id t --title "No runtime" --summary "x" --workspace-changes "none recorded" --no-input >/dev/null 2>&1; then
+  echo "session-memory write should require a runtime" >&2
+  exit 1
+fi
 
 stdin_write_output="$(cat <<'JSON' | "$session_cli" write --workspace-root "$repo" --stdin-json --no-input
 {
   "trigger": "test",
   "threadId": "thread-test",
+  "runtime": "codex",
   "title": "File audit",
   "summary": "Carry this file audit forward.",
   "workspaceChanges": "Updated `memory/areas/builder/log.jsonl` because future context needs the concrete fact."
@@ -96,17 +106,8 @@ if ! grep -q "Carry this forward" <<<"$boot_output"; then
   exit 1
 fi
 
-if "$session_cli" write --workspace-root "$repo" --trigger test --title "Missing summary" --workspace-changes "No durable workspace changes besides this session-memory record." --no-input >/dev/null; then
+if "$session_cli" write --workspace-root "$repo" --trigger test --runtime codex --title "Missing summary" --workspace-changes "No durable workspace changes besides this session-memory record." --no-input >/dev/null; then
   echo "session-memory write should reject empty summary" >&2
-  exit 1
-fi
-
-bad_record="$tmp_dir/bad-session-record.json"
-cat >"$bad_record" <<'JSON'
-{"schemaVersion":2,"createdAt":"2026-05-25T01:02:03+02:00","threadId":"thread-test","trigger":"test","title":"Ok","summary":"ok","workspaceChanges":"none","surfaceKey":"legacy"}
-JSON
-if "$session_cli" validate "$bad_record" --no-input >/dev/null; then
-  echo "session-memory validate should reject unsupported schema keys" >&2
   exit 1
 fi
 
@@ -116,32 +117,47 @@ runtime_write_output="$("$session_cli" write \
   --thread-id session-claude-test \
   --runtime claude \
   --title "Claude session memory" \
-  --summary "Runtime-tagged card." \
+  --summary "Runtime-tagged record." \
   --workspace-changes "No durable workspace changes besides this session-memory record." \
   --no-input)"
-python3 - "$runtime_write_output" <<'PY'
+runtime_session_path="$(python3 - "$runtime_write_output" <<'PY'
 import json, sys
 data = json.loads(sys.argv[1])["data"]
 assert data["record"]["runtime"] == "claude", data
+print(data["path"])
 PY
+)"
 
-bad_runtime_record="$tmp_dir/bad-runtime-record.json"
-cat >"$bad_runtime_record" <<'JSON'
-{"schemaVersion":2,"createdAt":"2026-05-25T01:02:03+02:00","threadId":"thread-test","trigger":"test","title":"Ok","summary":"ok","workspaceChanges":"none","runtime":"gemini"}
-JSON
-if "$session_cli" validate "$bad_runtime_record" --no-input >/dev/null; then
+bad_folder="$repo/memory/sessions/2026/05/25-040506"
+mkdir -p "$bad_folder"
+cp "$runtime_session_path/summary.md" "$bad_folder/summary.md"
+python3 - "$runtime_session_path/meta.json" "$bad_folder/meta.json" <<'PY'
+import json, sys
+meta = json.loads(open(sys.argv[1]).read())
+meta["runtime"] = "gemini"
+open(sys.argv[2], "w").write(json.dumps(meta))
+PY
+if "$session_cli" validate "$bad_folder" --no-input >/dev/null; then
   echo "session-memory validate should reject unknown runtime values" >&2
   exit 1
 fi
-
-bad_workspace_changes_record="$tmp_dir/bad-workspace-changes-record.json"
-cat >"$bad_workspace_changes_record" <<'JSON'
-{"schemaVersion":2,"createdAt":"2026-05-25T01:02:03+02:00","threadId":"thread-test","trigger":"test","title":"Ok","summary":"ok","workspaceChanges":""}
-JSON
-if "$session_cli" validate "$bad_workspace_changes_record" --no-input >/dev/null; then
-  echo "session-memory validate should reject empty workspaceChanges" >&2
+python3 - "$runtime_session_path/meta.json" "$bad_folder/meta.json" <<'PY'
+import json, sys
+meta = json.loads(open(sys.argv[1]).read())
+meta["surfaceKey"] = "legacy"
+open(sys.argv[2], "w").write(json.dumps(meta))
+PY
+if "$session_cli" validate "$bad_folder" --no-input >/dev/null; then
+  echo "session-memory validate should reject unsupported schema keys" >&2
   exit 1
 fi
+cp "$runtime_session_path/meta.json" "$bad_folder/meta.json"
+printf '# Ok\n\nbody without the required section\n' >"$bad_folder/summary.md"
+if "$session_cli" validate "$bad_folder" --no-input >/dev/null; then
+  echo "session-memory validate should reject summary.md without a workspace-changes section" >&2
+  exit 1
+fi
+rm -rf "$bad_folder"
 
 mkdir -p "$repo/memory/sessions/2026/05"
 cat >"$repo/memory/sessions/2026/05/25-010203.md" <<'MD'
@@ -150,14 +166,30 @@ cat >"$repo/memory/sessions/2026/05/25-010203.md" <<'MD'
 - Keep this migrated.
 MD
 "$session_cli" migrate-md --workspace-root "$repo" --apply --delete-source --no-input >/dev/null
-if [[ ! -f "$repo/memory/sessions/2026/05/25-010203.json" ]]; then
-  echo "session-memory migrate-md should create a JSON record" >&2
+if [[ ! -f "$repo/memory/sessions/2026/05/25-010203/meta.json" ]]; then
+  echo "session-memory migrate-md should create a session folder" >&2
   exit 1
 fi
 if [[ -f "$repo/memory/sessions/2026/05/25-010203.md" ]]; then
   echo "session-memory migrate-md --delete-source should remove Markdown source" >&2
   exit 1
 fi
+
+flat_card="$repo/memory/sessions/2026/05/26-090000.json"
+cat >"$flat_card" <<'JSON'
+{"schemaVersion":2,"createdAt":"2026-05-26T09:00:00+02:00","threadId":"flat-thread","trigger":"test","title":"Flat card","summary":"Legacy v2 card.","workspaceChanges":"No durable workspace changes besides this session-memory record."}
+JSON
+"$session_cli" migrate-flat --workspace-root "$repo" --apply --no-input >/dev/null
+if [[ -f "$flat_card" || ! -f "$repo/memory/sessions/2026/05/26-090000/meta.json" ]]; then
+  echo "session-memory migrate-flat should convert flat cards into folders" >&2
+  exit 1
+fi
+python3 - "$repo/memory/sessions/2026/05/26-090000/meta.json" <<'PY'
+import json, sys
+meta = json.loads(open(sys.argv[1]).read())
+assert meta["schemaVersion"] == 3, meta
+assert meta["runtime"] == "codex", meta
+PY
 
 payload="$tmp_dir/finalize-payload.json"
 remember_log="$tmp_dir/remember-argv.json"
@@ -178,7 +210,19 @@ cat >"$payload" <<JSON
 }
 JSON
 
-hook_output="$(cd "$repo" && REMEMBER_LOG="$remember_log" DOBBY_REMEMBER_SESSION_BIN="$fake_remember" "$SKILL_DIR/scripts/hooks/finalize-codex-thread" <"$payload")"
+transcript_log="$tmp_dir/transcript-argv.json"
+fake_transcript="$tmp_dir/session-transcript"
+cat >"$fake_transcript" <<PY
+#!/usr/bin/env python3
+import json, os, pathlib, sys
+pathlib.Path(os.environ["TRANSCRIPT_LOG"]).write_text(json.dumps(sys.argv[1:]))
+print(json.dumps({"schema_version": "1.0", "command": "session-transcript capture", "status": "ok", "data": {}, "error": None, "meta": {}}))
+PY
+chmod +x "$fake_transcript"
+
+hook_output="$(cd "$repo" && REMEMBER_LOG="$remember_log" TRANSCRIPT_LOG="$transcript_log" \
+  DOBBY_REMEMBER_SESSION_BIN="$fake_remember" DOBBY_SESSION_TRANSCRIPT_BIN="$fake_transcript" \
+  "$SKILL_DIR/scripts/hooks/finalize-codex-thread" <"$payload")"
 if [[ -z "$hook_output" ]]; then
   echo "finalize-codex-thread hook should emit remember-session output" >&2
   exit 1
@@ -202,6 +246,11 @@ if grep -q -- "--source" <<<"$remember_argv" || grep -q -- "--reason" <<<"$remem
 fi
 if grep -Eq -- "--workspace-root|--timeout-seconds|--remember-timeout-seconds" <<<"$remember_argv"; then
   echo "finalize-codex-thread hook should only forward thread id and trigger to remember-session" >&2
+  exit 1
+fi
+transcript_argv="$(cat "$transcript_log")"
+if ! grep -q "capture" <<<"$transcript_argv" || ! grep -q "thread-test" <<<"$transcript_argv"; then
+  echo "finalize-codex-thread hook should run session-transcript capture for the source thread" >&2
   exit 1
 fi
 
@@ -333,7 +382,9 @@ cat >"$claude_payload" <<JSON
   "reason": "stale-cleanup"
 }
 JSON
+claude_transcript_log="$tmp_dir/claude-transcript-argv.json"
 claude_hook_output="$(cd "$repo" && CLAUDE_ARGV_LOG="$claude_argv_log" DOBBY_CLAUDE_BIN="$fake_claude" \
+  TRANSCRIPT_LOG="$claude_transcript_log" DOBBY_SESSION_TRANSCRIPT_BIN="$fake_transcript" \
   "$SKILL_DIR/scripts/hooks/finalize-claude-session" <"$claude_payload")"
 if ! grep -q '"command": "remember-claude-session"' <<<"$claude_hook_output"; then
   echo "finalize-claude-session hook should run remember-claude-session" >&2
@@ -346,6 +397,11 @@ if ! grep -q -- "--resume" <<<"$claude_argv" || ! grep -q "claude-session-test" 
 fi
 if ! grep -q -- "-p" <<<"$claude_argv"; then
   echo "remember-claude-session should run claude headless with -p" >&2
+  exit 1
+fi
+claude_transcript_argv="$(cat "$claude_transcript_log")"
+if ! grep -q "capture" <<<"$claude_transcript_argv" || ! grep -q "claude-session-test" <<<"$claude_transcript_argv"; then
+  echo "finalize-claude-session hook should run session-transcript capture for the session" >&2
   exit 1
 fi
 
@@ -367,4 +423,81 @@ assert str(pathlib.Path(data["threadCwd"]).resolve()) == repo
 assert str(pathlib.Path(data["workspaceRoot"]).resolve()) == repo
 assert data["trigger"] == "codexclaw-daily-rollover"
 assert data["turnStatus"] == "completed"
+PY
+
+# --- session-transcript: normalize raw transcripts and capture them into session folders ---
+transcript_cli="$SKILL_DIR/scripts/session-transcript"
+
+fake_claude_projects="$tmp_dir/claude-projects/-tmp-repo"
+mkdir -p "$fake_claude_projects"
+cat >"$fake_claude_projects/claude-raw-test.jsonl" <<'JSONL'
+{"type":"user","sessionId":"claude-raw-test","cwd":"/tmp/repo","timestamp":"2026-06-10T10:00:00.000Z","message":{"role":"user","content":"Hello, can you check the tests?"}}
+{"type":"assistant","sessionId":"claude-raw-test","cwd":"/tmp/repo","timestamp":"2026-06-10T10:00:05.000Z","message":{"id":"msg_1","model":"claude-test-1","role":"assistant","usage":{"input_tokens":100,"cache_read_input_tokens":900,"output_tokens":50},"content":[{"type":"text","text":"Sure, checking now."},{"type":"tool_use","id":"tu_1","name":"Bash","input":{}}]}}
+{"type":"user","sessionId":"claude-raw-test","cwd":"/tmp/repo","timestamp":"2026-06-10T10:00:09.000Z","message":{"role":"user","content":[{"type":"tool_result","tool_use_id":"tu_1","is_error":true,"content":"command not found: pytest"}]}}
+{"type":"assistant","sessionId":"claude-raw-test","cwd":"/tmp/repo","timestamp":"2026-06-10T10:00:10.000Z","message":{"id":"msg_2","model":"claude-test-1","role":"assistant","usage":{"input_tokens":120,"cache_read_input_tokens":900,"output_tokens":30},"content":[{"type":"text","text":"Tests are green."}]}}
+JSONL
+
+claude_dialogue="$(CLAUDE_PROJECTS_DIR="$tmp_dir/claude-projects" "$transcript_cli" render \
+  --raw "$fake_claude_projects/claude-raw-test.jsonl" --runtime claude --plain --no-input)"
+for needle in "runtime: claude" "normalizer: v" "## User" "## Agent" "Hello, can you check the tests?" "Tests are green." "tools: Bash" "tool error: Bash"; do
+  if ! grep -q "$needle" <<<"$claude_dialogue"; then
+    echo "claude dialogue render missing: $needle" >&2
+    exit 1
+  fi
+done
+
+fake_codex_sessions="$tmp_dir/codex-sessions/2026/06/10"
+mkdir -p "$fake_codex_sessions"
+cat >"$fake_codex_sessions/rollout-2026-06-10T10-00-00-codex-raw-test.jsonl" <<'JSONL'
+{"timestamp":"2026-06-10T10:00:00.000Z","type":"session_meta","payload":{"id":"codex-raw-test","cwd":"/tmp/repo"}}
+{"timestamp":"2026-06-10T10:00:01.000Z","type":"turn_context","payload":{"cwd":"/tmp/repo","model":"gpt-test"}}
+{"timestamp":"2026-06-10T10:00:02.000Z","type":"event_msg","payload":{"type":"user_message","message":"Please rename the helper."}}
+{"timestamp":"2026-06-10T10:00:03.000Z","type":"response_item","payload":{"type":"function_call","name":"exec_command","arguments":"{}","call_id":"c1"}}
+{"timestamp":"2026-06-10T10:00:04.000Z","type":"response_item","payload":{"type":"message","role":"assistant","content":[{"type":"output_text","text":"Renamed and verified."}]}}
+{"timestamp":"2026-06-10T10:00:05.000Z","type":"event_msg","payload":{"type":"token_count","info":{"total_token_usage":{"total_tokens":12345,"output_tokens":678}}}}
+JSONL
+
+codex_dialogue="$(CODEX_SESSIONS_DIR="$tmp_dir/codex-sessions" "$transcript_cli" render \
+  --raw "$fake_codex_sessions/rollout-2026-06-10T10-00-00-codex-raw-test.jsonl" --runtime codex --plain --no-input)"
+for needle in "runtime: codex" "model: gpt-test" "Please rename the helper." "Renamed and verified." "tools: exec_command" "cumulative ~12,345"; do
+  if ! grep -q "$needle" <<<"$codex_dialogue"; then
+    echo "codex dialogue render missing: $needle" >&2
+    exit 1
+  fi
+done
+
+capture_write_output="$("$session_cli" write \
+  --workspace-root "$repo" \
+  --trigger test \
+  --thread-id claude-raw-test \
+  --runtime claude \
+  --title "Capture test" \
+  --summary "Session whose transcript we capture." \
+  --workspace-changes "No durable workspace changes besides this session-memory record." \
+  --no-input)"
+capture_session_path="$(python3 - "$capture_write_output" <<'PY'
+import json, sys
+print(json.loads(sys.argv[1])["data"]["path"])
+PY
+)"
+CLAUDE_PROJECTS_DIR="$tmp_dir/claude-projects" "$transcript_cli" capture \
+  --workspace-root "$repo" --thread-id claude-raw-test --no-input >/dev/null
+if [[ ! -f "$capture_session_path/raw.jsonl" || ! -f "$capture_session_path/dialogue.md" ]]; then
+  echo "session-transcript capture should write raw.jsonl + dialogue.md into the session folder" >&2
+  exit 1
+fi
+python3 - "$capture_session_path/meta.json" <<'PY'
+import json, sys
+meta = json.loads(open(sys.argv[1]).read())
+assert meta.get("cwd") == "/tmp/repo", meta
+PY
+
+backfill_output="$(CLAUDE_PROJECTS_DIR="$tmp_dir/claude-projects" CODEX_SESSIONS_DIR="$tmp_dir/codex-sessions" \
+  CODEX_ARCHIVED_SESSIONS_DIR="$tmp_dir/codex-archived" "$transcript_cli" backfill --workspace-root "$repo" --apply --no-input)"
+python3 - "$backfill_output" <<'PY'
+import json, sys
+data = json.loads(sys.argv[1])["data"]
+assert data["apply"] is True, data
+# the capture-test folder is already complete; others have no matching raw
+assert data["alreadyComplete"] >= 1, data
 PY

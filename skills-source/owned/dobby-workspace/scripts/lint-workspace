@@ -565,26 +565,31 @@ def check_session_memory_files() -> None:
     sessions = ROOT / "memory" / "sessions"
     if not sessions.exists():
         return
-    session_record_re = re.compile(r"^memory/sessions/\d{4}/\d{2}/\d{2}-\d{6}(?:-\d+)?\.json$")
+    session_file_re = re.compile(
+        r"^memory/sessions/\d{4}/\d{2}/\d{2}-\d{6}(?:-\d+)?/"
+        r"(meta\.json|summary\.md|dialogue\.md|raw\.jsonl)$"
+    )
     for path in sorted(p for p in sessions.rglob("*") if p.is_file()):
         if path.name in {".gitkeep", ".DS_Store"}:
             continue
-        if path.suffix != ".json":
+        rel = str(path.relative_to(ROOT))
+        if not session_file_re.match(rel):
             add_error(
                 path,
-                "Session continuity should use JSON records under "
-                "memory/sessions/YYYY/MM/DD-HHMMSS.json, not loose Markdown "
-                "or other ad-hoc files.",
+                "Session continuity lives in session folders: "
+                "memory/sessions/YYYY/MM/DD-HHMMSS[-N]/ holding meta.json, "
+                "summary.md, dialogue.md, and raw.jsonl only — no flat or "
+                "ad-hoc files, so boot loading can discover them.",
             )
             continue
-        rel = str(path.relative_to(ROOT))
-        if not session_record_re.match(rel):
-            add_error(
-                path,
-                "Session continuity JSON records must be named "
-                "memory/sessions/YYYY/MM/DD-HHMMSS.json or DD-HHMMSS-N.json "
-                "so boot loading can discover them.",
-            )
+        folder = path.parent
+        for required in ("meta.json", "summary.md"):
+            if not (folder / required).is_file():
+                add_error(
+                    folder / required,
+                    f"Session folder {folder.name} is missing {required}; "
+                    "meta.json + summary.md are the required record pair.",
+                )
 
 
 def check_journal_daily_files() -> None:

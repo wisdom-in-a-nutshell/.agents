@@ -32,7 +32,7 @@ cat >"$workspace/dobby/constitution.json" <<JSON
 JSON
 
 cat >"$workspace/dobby/growth.jsonl" <<JSONL
-{"schemaVersion":1,"kind":"behavioral-correction","id":"growth-test","createdAt":"2026-05-29T08:00:00+02:00","title":"Test","body":"Test","status":"open","source":{"type":"test","ref":"tests/run.sh"}}
+{"schemaVersion":1,"kind":"behavioral-correction","id":"growth-test","createdAt":"2026-05-29T08:00:00+02:00","title":"Test","body":"Test","status":"open","source":{"type":"review","ref":"tests/run.sh"}}
 JSONL
 
 cat >"$workspace/memory/profile.json" <<JSON
@@ -51,7 +51,7 @@ cat >"$workspace/memory/areas/test/canon.json" <<JSON
 {"schemaVersion": 1, "kind": "memory-area-canon", "areaId": "test", "updatedAt": "2026-05-29T08:00:00+02:00", "sections": {"test": {"title": "Test", "body": "Test", "sensitivity": "personal"}}}
 JSON
 cat >"$workspace/memory/areas/test/log.jsonl" <<JSONL
-{"schemaVersion":1,"kind":"test","id":"test-log","createdAt":"2026-05-29T08:00:00+02:00","title":"Test","body":"Test","source":{"type":"test","ref":"tests/run.sh"},"sensitivity":"personal"}
+{"schemaVersion":1,"kind":"test","id":"test-log","createdAt":"2026-05-29T08:00:00+02:00","title":"Test","body":"Test","source":{"type":"review","ref":"tests/run.sh"},"sensitivity":"personal"}
 JSONL
 
 ln -s "$SKILL_DIR" "$workspace/.agents/skills/dobby-workspace"
@@ -60,7 +60,7 @@ ln -s "$SKILL_DIR/../journal-checkin" "$workspace/.agents/skills/journal-checkin
 ln -s "$SKILL_DIR/../dobby-shelf" "$workspace/.agents/skills/dobby-shelf"
 
 cat >"$workspace/state/shelf.json" <<JSON
-{"schemaVersion": 1, "revision": 1, "updatedAt": "2026-05-29T08:00:00.000Z", "items": []}
+{"schemaVersion": 2, "revision": 1, "timezone": "Europe/Berlin", "updatedAt": "2026-05-29T08:00:00.000Z", "items": []}
 JSON
 
 cat >"$workspace/journal/daily/2026-05-29/morning.json" <<JSON
@@ -70,7 +70,6 @@ cat >"$workspace/journal/daily/2026-05-29/morning.json" <<JSON
   "kind": "morning",
   "tz": "Europe/Berlin",
   "captured_at": "2026-05-29T08:00:00+02:00",
-  "source": "test",
   "sleep": {"score_10": 7},
   "energy": {"score_10": 6},
   "mood": {"score_10": 7},
@@ -79,17 +78,25 @@ cat >"$workspace/journal/daily/2026-05-29/morning.json" <<JSON
 }
 JSON
 
-cat >"$workspace/memory/sessions/2026/05/29-080000.json" <<JSON
+mkdir -p "$workspace/memory/sessions/2026/05/29-080000"
+cat >"$workspace/memory/sessions/2026/05/29-080000/meta.json" <<JSON
 {
-  "schemaVersion": 2,
+  "schemaVersion": 3,
   "createdAt": "2026-05-29T08:00:00+02:00",
   "threadId": "test-thread",
-  "trigger": "test",
-  "title": "Test session",
-  "summary": "Carry this forward.",
-  "workspaceChanges": "No durable workspace changes were recorded besides this session-memory record."
+  "runtime": "codex",
+  "trigger": "test"
 }
 JSON
+cat >"$workspace/memory/sessions/2026/05/29-080000/summary.md" <<'MD'
+# Test session
+
+Carry this forward.
+
+## Workspace changes
+
+No durable workspace changes were recorded besides this session-memory record.
+MD
 
 "$SKILL_DIR/scripts/lint-workspace" --workspace-root "$workspace"
 

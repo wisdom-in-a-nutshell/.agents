@@ -70,8 +70,8 @@ What boot context should include:
 
 Operational limits:
 
-- filename format: `memory/sessions/YYYY/MM/DD-HHMMSS.json` with numeric suffixes
-  on collision
+- folder format: `memory/sessions/YYYY/MM/DD-HHMMSS/` with numeric suffixes on
+  collision
 - shared body-map boot cap: 12000 chars
 - boot context: last 3 records plus records from the last 7 days, capped at 10
 - Shelf boot context: `dobby-shelf snapshot --mode boot --plain`
@@ -80,37 +80,33 @@ Operational limits:
 
 ## Session memory
 
-Session continuity lives in `memory/sessions/YYYY/MM/DD-HHMMSS.json`, not in
-`memory/now.json`.
+Session continuity lives in `memory/sessions/YYYY/MM/DD-HHMMSS/` folders, not in
+`memory/now.json`. Each finalized session is one folder (schema v3):
 
-The JSON contract is intentionally minimal and code-backed by:
+- `meta.json` — machine facts: `schemaVersion`, `createdAt`, `threadId`,
+  `runtime` (`codex`/`claude`, required), `trigger`, optional `cwd`.
+- `summary.md` — the prose record: `# <title>`, the Markdown continuity index,
+  then a final `## Workspace changes` section.
+- `raw.jsonl` — the untouched runtime transcript, copied at finalize time
+  (source of truth; runtimes delete their own copies).
+- `dialogue.md` — normalized human↔agent transcript rendered from `raw.jsonl`
+  by `session-transcript` (header carries the normalizer version; re-render
+  any time from raw).
+
+`raw.jsonl`/`dialogue.md` may be absent on sessions whose raw transcript was
+already deleted before capture existed. The contract is code-backed by:
 
 ```bash
 $HOME/GitHub/agents/skills-source/owned/dobby-lifecycle/scripts/session-memory schema
 ```
 
-V2 records are continuity index cards:
-
-```json
-{
-  "schemaVersion": 2,
-  "createdAt": "2026-05-26T09:31:00+02:00",
-  "threadId": "019e...",
-  "trigger": "codexclaw-idle-expiry",
-  "title": "Short dashboard label",
-  "summary": "Markdown continuity index: what matters from the thread, not a transcript recap.",
-  "workspaceChanges": "Plain-English Markdown note about durable workspace changes made during consolidation, excluding this session-memory file."
-}
-```
-
 `title` is for dashboard scanning. `summary` is the curated continuity index
 loaded at boot. `threadId` points back to the original transcript when deeper
-retrieval is needed (a Codex thread id or a Claude session id). The optional
-`runtime` field (`codex`/`claude`) records which harness owned the session;
-records written before runtime tagging omit it. `workspaceChanges` is for
-visibility into durable writes made during finalization; if none happened, say
-so plainly. Durable decisions still get promoted to `now.json`, area canon, or
-`dobby/constitution.json` or `memory/profile.json` as appropriate.
+retrieval is needed (a Codex thread id or a Claude session id).
+`workspaceChanges` is for visibility into durable writes made during
+finalization; if none happened, say so plainly. Durable decisions still get
+promoted to `now.json`, area canon, or `dobby/constitution.json` or
+`memory/profile.json` as appropriate.
 
 Current trigger vocabulary:
 
@@ -127,6 +123,7 @@ $HOME/GitHub/agents/skills-source/owned/dobby-lifecycle/scripts/session-memory w
   --workspace-root /path/to/dobby-workspace \
   --trigger manual \
   --thread-id <codex-thread-id> \
+  --runtime codex \
   --title "Short dashboard label" \
   --summary "Curated continuity index." \
   --workspace-changes "No durable workspace changes besides this session-memory record." \
@@ -201,9 +198,14 @@ not inline in the Python runner. The runner performs its own
 `thread/read(thread_id)`, derives the repo root from the thread cwd, renders the
 prompt with strict placeholders, and starts the final turn with that cwd. It
 does not infer trigger semantics from label prefixes. The final turn may call
-`session-memory` to write `memory/sessions/YYYY/MM/DD-HHMMSS.json`; it may also
-make clearly routed durable updates when the body map says so. The repo hook
-does not archive; the global finalizer owns archive after the hook succeeds.
+`session-memory` to write the `memory/sessions/YYYY/MM/DD-HHMMSS/` folder; it
+may also make clearly routed durable updates when the body map says so. After
+the remember turn succeeds, the hook runs `session-transcript capture` to copy
+the raw runtime transcript into the session folder (`raw.jsonl`) and render the
+normalized `dialogue.md` — best-effort: a capture failure warns but never fails
+the finalization. The repo hook does not archive; the global finalizer owns
+archive after the hook succeeds (the transcript locator also searches
+`~/.codex/archived_sessions/`, so capture works on both sides of the archive).
 
 Do not put Dobby memory synthesis directly in the shared `~/GitHub/agents` dispatcher.
 The dispatcher routes lifecycle events; this skill owns Dobby-specific behavior.
@@ -228,7 +230,10 @@ Differences from the Codex flow, by construction:
   which runs `remember-claude-session`. That runner resumes the ending session
   headless (`claude -p --resume <id> --permission-mode bypassPermissions`) and
   runs the SAME versioned remember-session prompt (rendered via the shared
-  `remember_lib.py` with `runtime: "claude"`), so the card is runtime-tagged.
+  `remember_lib.py` with `runtime: "claude"`), so the record is runtime-tagged.
+  The hook then runs the same `session-transcript capture` step as the Codex
+  twin (Claude raw transcripts are deleted by the runtime after ~30 days, so
+  this copy is what makes the dialogue durable).
 - There is no archive step. Instead the primitive records the session id in
   `~/.local/state/claude-control-plane/finalized-claude-sessions.json` so no
   session is ever finalized twice. Claude Desktop sidebar tidying remains the

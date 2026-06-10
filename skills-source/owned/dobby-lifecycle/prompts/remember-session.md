@@ -42,7 +42,7 @@ Avoid generic topic summaries, transcript-like detail, noisy implementation chat
 
 Default to session memory. Promote outside session memory only when clear:
 
-- `memory/sessions/YYYY/MM/DD-HHMMSS.json` — default continuity index card for this ending thread.
+- `memory/sessions/YYYY/MM/DD-HHMMSS/` — default continuity record for this ending thread (a folder: `meta.json` + `summary.md`, written for you by the session-memory client; the finalizer adds `raw.jsonl` + `dialogue.md` afterwards).
 - `state/shelf.json` via the Shelf client — personal actionable open loops, purchases, habits, waiting items, or commitments from Adi.
 - project tracker under `projects/<project>/tasks.md` — Dobby/system/project work state, decisions, resume points, and open implementation questions.
 - `memory/now.json` — this week’s active orientation only; do not use it as a generic session summary.
@@ -65,7 +65,7 @@ cat <<'JSON' | {{session_memory_cli_shell}} write --stdin-json --no-input
   "trigger": {{trigger_json}},
   "title": "Short dashboard/index label",
   "summary": "Curated Markdown continuity index: what matters from this thread, not a transcript recap.",
-  "workspaceChanges": "Plain-English Markdown note about durable workspace changes made during consolidation, excluding this session-memory file. If none: No durable workspace changes besides this session-memory record."
+  "workspaceChanges": "Plain-English Markdown note about durable workspace changes made during consolidation, excluding this session-memory record. If none: No durable workspace changes besides this session-memory record."
 }
 JSON
 ```

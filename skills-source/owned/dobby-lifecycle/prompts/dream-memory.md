@@ -18,10 +18,12 @@ This run is **proposal-only**. You must not modify any memory, Shelf, project, j
 
 ## Core task
 
-1. Read `{{body_map_path}}` for the workspace routing contract, then read the inputs manifest and work through the listed inputs: session cards in the window, journal days, `memory/now.json`, `state/shelf.json`, active project trackers, and the area manifests. Open area canon/log files only when a session card, journal entry, or candidate proposal points at them.
-2. Across these episodes, find what per-session capture cannot see: repeated themes that deserve an area-log fact or canon update, `now.json` items whose forcing function has passed, duplicate or near-duplicate session cards, commitments that never landed on the Shelf, project trackers that drifted from reality, and behavioral lessons Dobby itself should learn.
-3. Produce candidates — each one small, evidenced, and routable. Quality over quantity: a handful of precise candidates beats an exhaustive sweep.
-4. Write the two run artifacts described below into the run directory. Nothing else, nowhere else.
+1. Read `{{body_map_path}}` for the workspace routing contract, then read the inputs manifest and work through the listed inputs: session folders in the window, journal days, `memory/now.json`, `state/shelf.json`, active project trackers, and the area manifests. Open area canon/log files only when a session, journal entry, or candidate proposal points at them.
+2. Each session folder under `memory/sessions/YYYY/MM/DD-HHMMSS/` holds `summary.md` (the continuity index — read this for every session in the window), `dialogue.md` (the normalized human↔agent transcript), `meta.json`, and `raw.jsonl`. Use summaries as the index and dialogues as evidence: open `dialogue.md` selectively where a summary hints at friction, corrections, decisions, or repeated themes — that is where the signal the summary writer missed lives. Reading every dialogue will not fit; choose deliberately.
+3. The dialogues also let you audit the pipeline itself: turns where Adi repeats or corrects himself, tool errors, interrupted turns, oversized context loads, or a missing tool/skill are all valid `dobby_growth` or `stale_or_conflict` material.
+4. Across these episodes, find what per-session capture cannot see: repeated themes that deserve an area-log fact or canon update, `now.json` items whose forcing function has passed, duplicate or near-duplicate session records, commitments that never landed on the Shelf, project trackers that drifted from reality, and behavioral lessons Dobby itself should learn.
+5. Produce candidates — each one small, evidenced, and routable. Quality over quantity: a handful of precise candidates beats an exhaustive sweep.
+6. Write the two run artifacts described below into the run directory. Nothing else, nowhere else.
 
 ## Candidate categories
 
@@ -44,7 +46,7 @@ This run is **proposal-only**. You must not modify any memory, Shelf, project, j
   "target": "memory/areas/health/log.jsonl",
   "change": "Append: 2026-06-09 — ...",
   "why": "Concrete dated fact repeated across two sessions, not yet captured.",
-  "evidence": ["memory/sessions/2026/06/09-115700.json"],
+  "evidence": ["memory/sessions/2026/06/09-115700/dialogue.md"],
   "risk": "low",
   "action": "propose"
 }
