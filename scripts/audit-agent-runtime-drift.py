@@ -398,11 +398,104 @@ def audit_required_codex_plugins(agents_repo: Path, home: Path) -> dict[str, Any
     )
 
 
+def audit_claude_session_archiver(
+    agents_repo: Path,
+    home: Path,
+    *,
+    timeout_sec: int = 60,
+    support_dir: Path | None = None,
+    handshake_glob: str | None = None,
+) -> dict[str, Any]:
+    """Exercise the Claude session archiver schema guard via a safe dry-run.
+
+    The archiver fails fast (no writes) when Claude Desktop's session metadata shape
+    changes. Surfacing that here means the daily health check / Slack notification path
+    flags the drift so the archiver can be updated, instead of silently no-op'ing.
+    """
+    name = "claude_session_archiver"
+    base = support_dir if support_dir is not None else (home / "Library/Application Support/Claude")
+    sessions_present = (base / "claude-code-sessions").is_dir() or (base / "local-agent-mode-sessions").is_dir()
+    if not sessions_present:
+        return check_result(name, "skipped", "Claude Desktop session store not found on this machine")
+
+    script = agents_repo / "codex" / "scripts" / "archive-stale-claude-sessions.py"
+    if not script.is_file() or not os.access(script, os.X_OK):
+        return check_result(
+            name,
+            "error",
+            f"missing executable: {script}",
+            hint="Restore codex/scripts/archive-stale-claude-sessions.py before the archiver can run.",
+            error_code="E_MISSING_CLAUDE_ARCHIVER",
+        )
+
+    cmd = [str(script), "--dry-run", "--no-input", "--json", "--support-dir", str(base)]
+    if handshake_glob is not None:
+        cmd += ["--handshake-glob", handshake_glob]
+    try:
+        completed = subprocess.run(
+            cmd, capture_output=True, text=True, timeout=timeout_sec, check=False
+        )
+    except subprocess.TimeoutExpired:
+        return check_result(
+            name,
+            "error",
+            f"claude session archiver dry-run timed out after {timeout_sec}s",
+            error_code="E_CLAUDE_ARCHIVER_TIMEOUT",
+            hint="Run ~/GitHub/agents/codex/scripts/archive-stale-claude-sessions.py --plain and inspect.",
+        )
+
+    try:
+        payload = json.loads(completed.stdout)
+    except json.JSONDecodeError:
+        return check_result(
+            name,
+            "error",
+            "claude session archiver emitted non-JSON output",
+            details={"output_tail": tail_text("\n".join([completed.stdout, completed.stderr]))},
+            error_code="E_CLAUDE_ARCHIVER_OUTPUT",
+            hint="Run the archiver manually; its output envelope changed unexpectedly.",
+        )
+
+    error = payload.get("error") or {}
+    if completed.returncode == 0 and payload.get("status") == "ok":
+        data = payload.get("data", {})
+        return check_result(
+            name,
+            "ok",
+            f"claude session archiver dry-run healthy (scanned={data.get('scanned')})",
+            details={"scanned": data.get("scanned"), "archivable": data.get("archived_count")},
+        )
+
+    if error.get("code") == "E_SCHEMA":
+        return check_result(
+            name,
+            "error",
+            f"Claude session metadata schema changed: {error.get('message')}",
+            details={"output_tail": tail_text(completed.stdout)},
+            error_code="E_CLAUDE_SESSION_SCHEMA_DRIFT",
+            hint=(
+                "Claude Desktop changed its session metadata shape. Update "
+                "codex/scripts/archive-stale-claude-sessions.py (REQUIRED_SESSION_KEYS / load_session) "
+                "to match, then re-run."
+            ),
+        )
+
+    return check_result(
+        name,
+        "error",
+        f"claude session archiver dry-run failed: {error.get('message') or completed.returncode}",
+        details={"exit_code": completed.returncode, "output_tail": tail_text(completed.stdout or completed.stderr)},
+        error_code=error.get("code") or "E_CLAUDE_ARCHIVER_FAILED",
+        hint="Run ~/GitHub/agents/codex/scripts/archive-stale-claude-sessions.py --plain and fix the first failure.",
+    )
+
+
 def run_runtime_drift_checks(args: argparse.Namespace, agents_repo: Path, home: Path) -> list[dict[str, Any]]:
     return [
         run_control_plane_check(agents_repo, args.timeout_sec, skip=args.skip_control_plane_check),
         audit_codex_plugins(agents_repo, home),
         audit_required_codex_plugins(agents_repo, home),
+        audit_claude_session_archiver(agents_repo, home, timeout_sec=args.timeout_sec),
     ]
 
 
