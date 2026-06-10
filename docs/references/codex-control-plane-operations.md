@@ -259,6 +259,7 @@ Verification expectations:
   - running sessions are detected via the live handshake files under `~/.claude/sessions/` (matching each handshake `sessionId` to the metadata `cliSessionId`)
   - defaults to dry-run; `--apply` backs up each changed file under `~/.local/state/claude-control-plane/` before writing, behind a machine-local lock
   - does not quit or reopen Claude Desktop; archived sessions leave the active list on the next app restart
+  - if Claude Desktop ever changes its session metadata shape the archiver fails fast with `E_SCHEMA` and writes nothing; the `claude_session_archiver` check in [`audit-agent-runtime-drift.py`](/Users/dobby/GitHub/agents/scripts/audit-agent-runtime-drift.py) surfaces that drift so the `~/GitHub/scripts` `ops/health-check.sh` run notifies Slack and the archiver can be updated
 - [`install-archive-stale-claude-sessions-launchagent.sh`](/Users/dobby/GitHub/agents/codex/scripts/install-archive-stale-claude-sessions-launchagent.sh)
   - renders `~/Library/LaunchAgents/com.<user>.claude-session-archiver.plist`
   - schedules [`archive-stale-claude-sessions.py`](/Users/dobby/GitHub/agents/codex/scripts/archive-stale-claude-sessions.py) every hour by default with a 24-hour stale threshold
