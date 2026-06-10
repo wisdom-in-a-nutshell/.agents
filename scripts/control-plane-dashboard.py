@@ -300,7 +300,6 @@ def _scalar_value(value: Any) -> str:
 
 def build_global_config(
     root: Path,
-    skills_registry: dict[str, Any],
     plugins_registry: dict[str, Any],
     mcp_registry: dict[str, Any],
     repo_bootstrap: dict[str, Any],
@@ -317,12 +316,10 @@ def build_global_config(
     guidance_src = REGISTRY_SOURCES["global_guidance"]
     none_row = [{"label": "(none)", "value": "—", "tone": "muted"}]
 
-    global_skills = sorted(
-        str(s.get("skill"))
-        for s in skills_registry.get("managed_skills", [])
-        if isinstance(s, dict) and s.get("scope") == "global"
-    )
-    global_skill_rows = [{"label": s, "value": "global"} for s in global_skills] or none_row
+    # Note: the global-skills enumeration is intentionally NOT shown here. It is
+    # identical for both runtimes and already has a dedicated home (the Skills
+    # catalog, filterable by Global), so listing it on each config page would just
+    # duplicate that inventory. Config pages show runtime-distinctive global state.
 
     # ---------------- Codex ----------------
     codex_cfg: dict[str, Any] = {}
@@ -380,7 +377,6 @@ def build_global_config(
             [{"label": m, "value": "global"} for m in mcp_global]
             or [{"label": "None", "value": "no global MCP presets", "tone": "muted"}],
         ),
-        _config_group("Global skills", REGISTRY_SOURCES["skills"], list(global_skill_rows)),
     ]
 
     # ---------------- Claude ----------------
@@ -421,7 +417,6 @@ def build_global_config(
             claude_src,
             override_rows or [{"label": "All bundled skills visible", "value": "—", "tone": "muted"}],
         ),
-        _config_group("Global skills", REGISTRY_SOURCES["skills"], list(global_skill_rows)),
         _config_group(
             "Guidance",
             guidance_src,
@@ -816,7 +811,7 @@ def build_control_plane_data(root: Path) -> dict[str, Any]:
         "counts": counts,
         "capabilities": build_capability_board(counts),
         "global_config": build_global_config(
-            root, skills_registry, plugins_registry, mcp_registry, repo_bootstrap, warnings
+            root, plugins_registry, mcp_registry, repo_bootstrap, warnings
         ),
         "warnings": warnings,
         "items": items,

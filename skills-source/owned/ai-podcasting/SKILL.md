@@ -28,11 +28,64 @@ path is overridden. Environment fallbacks (`AIPODCASTING_API_KEY` or the first v
 `AIPODCASTING_API_KEYS`) are supported for deployed/runtime contexts, but do not pass secrets on
 command lines.
 
+## Auth Setup
+
+Never paste the actual API key into this skill, a payload JSON file, a command argument, or chat.
+Store it in the user's local environment before running the client.
+
+Recommended local setup:
+
+```bash
+mkdir -p ~/.secrets/aipodcasting
+printf 'AIPODCASTING_API_KEY=<key-from-Adi>\n' > ~/.secrets/aipodcasting/env
+chmod 600 ~/.secrets/aipodcasting/env
+```
+
+Alternative for one shell session:
+
+```bash
+export AIPODCASTING_API_KEY=<key-from-Adi>
+```
+
+If the secret file lives somewhere else, set `AIPODCASTING_API_KEY_FILE` to that absolute path.
+For direct raw API usage, send the same key as `Authorization: Bearer <key-from-Adi>`.
+
 Use `scripts/aip_local_upload_helper.py` only when the user gives a local file path for a file-like
 field and no source URL is available. For TCR main episode submissions, prefer a Descript web URL
 copied from Descript for the main source when one exists; do not export or upload an MP4 just to
 create a source link. The helper uploads the file and returns a public URL for the main CLI to use.
 Keep this implicit in chat unless the user asks.
+
+## Media Source Rule For TCR
+
+When a Descript project/composition/source URL exists, use that URL as the source. Do not export,
+upload, or submit an MP4 just to create a source file.
+
+Use these shapes:
+
+```json
+{
+  "files": {
+    "main": {
+      "raw": "https://web.descript.com/01234567-89ab-4cde-8f01-23456789abcd"
+    }
+  }
+}
+```
+
+For intro updates, use the Descript URL as `recordingLink` or `introFile`:
+
+```json
+{
+  "recordingLink": "https://web.descript.com/01234567-89ab-4cde-8f01-23456789abcd"
+}
+```
+
+`recordingLink` is the friendly input name for the intro source; the client normalizes it to
+`introFile`, and the backend stores it as `files.intro.raw`.
+
+MP4 URLs and local MP4 paths are fallback inputs only. If both a Descript URL and an MP4 are known,
+submit the Descript URL and omit the MP4.
 
 All script and reference paths in this skill are relative to the skill directory itself, not the
 repository root. Do not run `scripts/...` from the repo root unless you first `cd` into this skill
@@ -143,8 +196,9 @@ python3 scripts/aip_local_upload_helper.py \
    - a local file path, which the helper uploads first
    Prefer a Descript web URL in `files.main.raw` when a Descript project/composition/source is
    available. The app accepts MP4 URLs and local MP4 paths, but the CLI will warn because those are
-   fallback inputs for TCR, not the preferred source. Do not require a specific Descript path
-   shape; use the Descript web URL the user or browser provides.
+   fallback inputs for TCR, not the preferred source. If both a Descript web URL and an exported
+   MP4 are known, put the Descript web URL in `files.main.raw` and omit the MP4. Do not require a
+   specific Descript path shape; use the Descript web URL the user or browser provides.
    TCR main episode submissions reject `.mp3` main-source inputs. Use the original recording,
    session, or video source link instead, such as Riverside, YouTube, or a direct non-MP3 media
    URL. This is not a Riverside-only allowlist.
@@ -164,6 +218,9 @@ python3 scripts/aip_local_upload_helper.py \
    Common patch fields: `recordingLink`, `title`, `videoThumbnails`, `thumbnailText`,
    `transcript`, `instructionsToEditor`, `customNewsletterDraftUrl`, `audioThumbnailLink`,
    `outroMusicLink`.
+   For TCR intro source updates, prefer a Descript web URL in `recordingLink`/`introFile` when one
+   exists. Do not export, upload, or submit an MP4 for the intro source when a Descript URL is
+   available.
    `customNewsletterDraftUrl` stores a client-provided Ghost newsletter draft link under episode
    submission metadata. It does not publish or replace the generated newsletter by itself.
    `videoThumbnails` may be either:
@@ -196,7 +253,8 @@ When values are missing in chat context, follow this flow:
    Required submit value:
    1. main episode source link as either a public HTTP/HTTPS URL or a local file path.
    Prefer a Descript web URL for TCR when available. MP4 URLs and local MP4 paths are accepted but
-   should be described as fallback inputs, not the preferred source.
+   should be described as fallback inputs, not the preferred source. Do not export, upload, or
+   submit an MP4 when a Descript web URL is available.
    Common optional submit values to mention in the same first prompt:
    1. title
    2. showNotes
@@ -246,7 +304,7 @@ When values are missing in chat context, follow this flow:
    Provide any fields you want to update.
 
    Common fields:
-   1. recordingLink
+   1. recordingLink (prefer a Descript web URL for TCR intro source updates)
    2. title
    3. videoThumbnails (give one URL or multiple URLs)
    4. thumbnailText

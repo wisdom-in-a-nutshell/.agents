@@ -411,7 +411,7 @@ class SubmitAndIntroDryRunTests(unittest.TestCase):
     self.assertEqual(data["request"]["payload"]["show"], "TCR")
     self.assertEqual(
       data["request"]["payload"]["files"]["main"]["raw"],
-      "https://web.descript.com/tcr-main-source",
+      "https://web.descript.com/01234567-89ab-4cde-8f01-23456789abcd",
     )
     self.assertEqual(data["warnings"], [])
     self.assertNotIn("mainEpisodeFile", data["request"]["payload"])
