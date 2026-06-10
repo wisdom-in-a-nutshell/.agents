@@ -43,6 +43,38 @@
           "autoPort": false
         }
       ]
+    },
+    {
+      "repo": "adi",
+      "servers": [
+        {
+          "name": "Dobby Dashboard",
+          "host": "127.0.0.1",
+          "runtimeExecutable": "/bin/bash",
+          "runtimeArgs": [
+            "-lc",
+            "cd /Users/dobby/GitHub/dobby-dashboard && DOBBY_DASHBOARD_WORKSPACE_ROOT=/Users/dobby/GitHub/adi npm run dev -- --host 127.0.0.1 --port 5174 --strictPort"
+          ],
+          "port": 5174,
+          "autoPort": false
+        }
+      ]
+    },
+    {
+      "repo": "angie",
+      "servers": [
+        {
+          "name": "Dobby Dashboard",
+          "host": "127.0.0.1",
+          "runtimeExecutable": "/bin/bash",
+          "runtimeArgs": [
+            "-lc",
+            "cd /Users/dobby/GitHub/dobby-dashboard && DOBBY_DASHBOARD_WORKSPACE_ROOT=/Users/dobby/GitHub/angie npm run dev -- --host 127.0.0.1 --port 5175 --strictPort"
+          ],
+          "port": 5175,
+          "autoPort": false
+        }
+      ]
     }
   ],
   "unmanaged_repo_local_dev_servers": []
