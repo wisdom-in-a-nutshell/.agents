@@ -32,7 +32,7 @@ HTML_TAG_RE = re.compile(r"<[^>]+>")
 WHITESPACE_RE = re.compile(r"\s+")
 PUBLICATION_STATE_VALUES = ("all", "published", "unpublished")
 INTRO_COPY_FIELDS = {
-  "recordingLink",
+  "introSourceUrl",
   "transcript",
   "instructionsToEditor",
   "title",
@@ -48,7 +48,7 @@ INTRO_COPY_FIELDS = {
 }
 
 INTRO_COPY_FIELD_MAP = {
-  "recordingLink": "introFile",
+  "introSourceUrl": "introFile",
   "transcript": "introTranscript",
   "instructionsToEditor": "editorInstructions",
   "title": "title",
@@ -61,10 +61,6 @@ INTRO_COPY_FIELD_MAP = {
   "customNewsletterDraftUrl": "customNewsletterDraftUrl",
   "newsletterDraftUrl": "customNewsletterDraftUrl",
   "ghostNewsletterDraftUrl": "customNewsletterDraftUrl",
-  # Backward-compatible aliases
-  "introFile": "introFile",
-  "introTranscript": "introTranscript",
-  "editorInstructions": "editorInstructions",
 }
 CUSTOM_NEWSLETTER_DRAFT_URL_FIELDS = (
   "customNewsletterDraftUrl",
@@ -81,7 +77,7 @@ TCR_MAIN_MP3_HINT = (
 )
 TCR_MAIN_MP4_WARNING_CODE = "W_TCR_MAIN_MP4_SOURCE"
 TCR_MAIN_MP4_WARNING_MESSAGE = (
-  "TCR main source is an MP4. Prefer a Descript web URL in files.main.raw when one is available."
+  "TCR main source is an MP4. Prefer a Descript web URL in mainSourceUrl when one is available."
 )
 TCR_MAIN_MP4_WARNING_HINT = (
   "Keep the MP4 only when no Descript source URL is available or the user explicitly asked for "
@@ -352,51 +348,44 @@ def validate_submit_payload(payload: dict[str, Any]) -> None:
       exit_code=2,
     )
 
-  main_episode_file = payload.get("mainEpisodeFile")
-  file_url = payload.get("fileUrl")
+  main_source_url = payload.get("mainSourceUrl")
+  legacy_source_fields = [
+    field
+    for field in ("mainEpisodeSource", "mainEpisodeFile", "fileUrl")
+    if field in payload
+  ]
   files = payload.get("files")
-  has_main_raw = (
+  has_legacy_main_raw = (
     isinstance(files, dict)
     and isinstance(files.get("main"), dict)
     and isinstance(files["main"].get("raw"), str)
     and bool(files["main"]["raw"].strip())
   )
-  has_main_episode_file = isinstance(main_episode_file, str) and bool(main_episode_file.strip())
-  has_file_url = isinstance(file_url, str) and bool(file_url.strip())
-
-  normalized_main_episode_file = str(main_episode_file).strip() if has_main_episode_file else ""
-  normalized_file_url = str(file_url).strip() if has_file_url else ""
-  normalized_main_raw = str(files["main"]["raw"]).strip() if has_main_raw else ""
-  candidate_sources: list[tuple[str, str]] = []
-  if has_main_episode_file:
-    candidate_sources.append(("mainEpisodeFile", normalized_main_episode_file))
-  if has_file_url:
-    candidate_sources.append(("fileUrl", normalized_file_url))
-  if has_main_raw:
-    candidate_sources.append(("files.main.raw", normalized_main_raw))
-
-  unique_source_values = {value for _, value in candidate_sources}
-  if len(unique_source_values) > 1:
-    conflicting_fields = ", ".join(field for field, _ in candidate_sources)
+  if has_legacy_main_raw:
+    legacy_source_fields.append("files.main.raw")
+  if legacy_source_fields:
     raise ClientError(
       code="E_VALIDATION",
-      message=f"submit-episode payload has conflicting main source values across {conflicting_fields}.",
+      message=(
+        "submit-episode source fields must use mainSourceUrl, not "
+        f"{', '.join(legacy_source_fields)}."
+      ),
       retryable=False,
-      hint="Provide one main episode source, or keep all aliases identical.",
+      hint="Set mainSourceUrl to the Descript web URL or fallback source URL.",
       exit_code=2,
     )
 
-  if not candidate_sources:
+  if not isinstance(main_source_url, str) or not main_source_url.strip():
     raise ClientError(
       code="E_VALIDATION",
-      message="submit-episode payload requires a main episode source.",
+      message="submit-episode payload requires mainSourceUrl.",
       retryable=False,
       hint="Use references/submit-episode.example.json as baseline.",
       exit_code=2,
     )
 
-  main_source_value = candidate_sources[0][1]
-  validate_upload_source_list("submit-episode main source", [main_source_value])
+  main_source_value = main_source_url.strip()
+  validate_upload_source_list("mainSourceUrl", [main_source_value])
   if looks_like_mp3_source(main_source_value):
     raise ClientError(
       code="E_VALIDATION",
@@ -449,7 +438,7 @@ def build_submit_warnings(payload: dict[str, Any]) -> list[dict[str, str]]:
   return [
     {
       "code": TCR_MAIN_MP4_WARNING_CODE,
-      "field": "files.main.raw",
+      "field": "mainSourceUrl",
       "message": TCR_MAIN_MP4_WARNING_MESSAGE,
       "hint": TCR_MAIN_MP4_WARNING_HINT,
     }
@@ -524,9 +513,33 @@ def validate_intro_copy_payload(payload: dict[str, Any]) -> None:
       exit_code=2,
     )
 
-  recording_link = payload.get("recordingLink", payload.get("introFile"))
-  if isinstance(recording_link, str) and recording_link.strip():
-    validate_upload_source_list("recordingLink", [recording_link.strip()])
+  legacy_intro_source_fields = [
+    field for field in ("introSource", "recordingLink", "introFile") if field in payload
+  ]
+  files = payload.get("files")
+  has_legacy_intro_raw = (
+    isinstance(files, dict)
+    and isinstance(files.get("intro"), dict)
+    and isinstance(files["intro"].get("raw"), str)
+    and bool(files["intro"]["raw"].strip())
+  )
+  if has_legacy_intro_raw:
+    legacy_intro_source_fields.append("files.intro.raw")
+  if legacy_intro_source_fields:
+    raise ClientError(
+      code="E_VALIDATION",
+      message=(
+        "update-intro-copy source fields must use introSourceUrl, not "
+        f"{', '.join(legacy_intro_source_fields)}."
+      ),
+      retryable=False,
+      hint="Set introSourceUrl to the Descript web URL or fallback intro source URL.",
+      exit_code=2,
+    )
+
+  intro_source_url = payload.get("introSourceUrl")
+  if isinstance(intro_source_url, str) and intro_source_url.strip():
+    validate_upload_source_list("introSourceUrl", [intro_source_url.strip()])
 
   title = payload.get("title")
   if "title" in payload and (not isinstance(title, str) or not title.strip()):
@@ -600,24 +613,9 @@ def normalize_submit_payload(
   main_file_value = ""
   main_file_field = ""
 
-  files = normalized.get("files")
-  if (
-    isinstance(files, dict)
-    and isinstance(files.get("main"), dict)
-    and isinstance(files["main"].get("raw"), str)
-    and files["main"]["raw"].strip()
-  ):
-    main_file_value = files["main"]["raw"].strip()
-    main_file_field = "files.main.raw"
-  elif (
-    isinstance(normalized.get("mainEpisodeFile"), str)
-    and normalized["mainEpisodeFile"].strip()
-  ):
-    main_file_value = normalized["mainEpisodeFile"].strip()
-    main_file_field = "mainEpisodeFile"
-  elif isinstance(normalized.get("fileUrl"), str) and normalized["fileUrl"].strip():
-    main_file_value = normalized["fileUrl"].strip()
-    main_file_field = "fileUrl"
+  if isinstance(normalized.get("mainSourceUrl"), str) and normalized["mainSourceUrl"].strip():
+    main_file_value = normalized["mainSourceUrl"].strip()
+    main_file_field = "mainSourceUrl"
 
   if main_file_value:
     resolved_main_file, upload_record = resolve_upload_source_url(
@@ -634,8 +632,7 @@ def normalize_submit_payload(
     if upload_record:
       upload_records.append(upload_record)
 
-  normalized.pop("fileUrl", None)
-  normalized.pop("mainEpisodeFile", None)
+  normalized.pop("mainSourceUrl", None)
 
   asset_urls = normalized.get("assetUrls")
   if isinstance(asset_urls, list):
