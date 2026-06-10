@@ -41,7 +41,7 @@ This run is **proposal-only**. You must not modify any memory, Shelf, project, j
 
 ```json
 {
-  "id": "area-log-health-{{window_to_json}}-001",
+  "id": "area-log-health-2026-06-09-001",
   "category": "area_log",
   "target": "memory/areas/health/log.jsonl",
   "change": "Append: 2026-06-09 — ...",
