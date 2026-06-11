@@ -10,7 +10,7 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
-WORKSPACE_MARKERS = ("dobby/constitution.json", "memory", "journal")
+WORKSPACE_MARKERS = ("dobby/constitution.md", "memory", "journal")
 
 
 class WorkspaceError(RuntimeError):
@@ -28,7 +28,7 @@ def find_workspace(start: Path | None = None) -> Path:
         if not is_workspace(path):
             raise WorkspaceError(
                 f"DOBBY_WORKSPACE does not look like a Dobby workspace: {path}. "
-                "Expected dobby/constitution.json, memory/, and journal/."
+                "Expected dobby/constitution.md, memory/, and journal/."
             )
         return path
 
@@ -39,7 +39,7 @@ def find_workspace(start: Path | None = None) -> Path:
             return candidate
 
     raise WorkspaceError(
-        "Could not find a Dobby workspace. Run from a repo containing dobby/constitution.json, "
+        "Could not find a Dobby workspace. Run from a repo containing dobby/constitution.md, "
         "memory/, and journal/, or set DOBBY_WORKSPACE=/path/to/workspace."
     )
 

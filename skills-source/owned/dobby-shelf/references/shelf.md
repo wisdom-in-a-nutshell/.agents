@@ -7,7 +7,7 @@ purchases, and recurring habits.
 
 Not Shelf:
 
-- durable identity, values, preferences, or patterns → memory / `memory/profile.json` or `dobby/constitution.json`
+- durable identity, values, preferences, or patterns → memory / `memory/profile.md` or `dobby/constitution.md`
 - dated reflection or raw capture → journal
 - calendar event with a start/end time → calendar
 - work assigned to Dobby/agents → Symphony

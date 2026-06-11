@@ -6,7 +6,16 @@ FAIL_COUNT=0
 TMP_WS=$(mktemp -d)
 trap 'rm -rf "$TMP_WS"' EXIT
 mkdir -p "$TMP_WS/state" "$TMP_WS/memory" "$TMP_WS/journal" "$TMP_WS/dobby"
-printf '{"schemaVersion":1,"kind":"dobby-constitution","updatedAt":"2026-05-31T00:00:00+02:00","groups":{}}\n' > "$TMP_WS/dobby/constitution.json"
+cat > "$TMP_WS/dobby/constitution.md" <<'MD'
+---
+schemaVersion: 2
+kind: dobby-constitution
+updatedAt: 2026-05-31T00:00:00+02:00
+sensitivity: personal
+---
+
+# Test constitution
+MD
 TODAY="$(TZ=Europe/Berlin date +%F)"
 TOMORROW="$(python3 - <<'PY'
 from datetime import date, timedelta

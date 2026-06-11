@@ -44,10 +44,12 @@ run_dobby calendar search Birthday --from 2026-01-01 --to 2026-12-31
 if [[ "$CAPTURED_EXIT" -eq 0 ]]; then
     assert_envelope_ok "calendar.search" "$CAPTURED_STDOUT"
     assert_jq_truthy "events array" '(.data.events | type) == "array"' "$CAPTURED_STDOUT"
+elif [[ "$CAPTURED_EXIT" -eq 1 ]]; then
+    assert_envelope_error "calendar.search not found" "E_NOT_FOUND" "$CAPTURED_STDOUT"
 elif [[ "$CAPTURED_EXIT" -eq 3 ]]; then
     assert_envelope_error "calendar.search auth" "E_AUTH" "$CAPTURED_STDOUT"
 else
-    _fail "search exit is success or auth failure" "expected 0 or 3; got $CAPTURED_EXIT"
+    _fail "search exit is success, not-found, or auth failure" "expected 0, 1, or 3; got $CAPTURED_EXIT"
     assert_envelope_shape "calendar.search" "$CAPTURED_STDOUT"
 fi
 assert_jq_eq "command=calendar.search" '.command' "calendar.search" "$CAPTURED_STDOUT"
