@@ -12,7 +12,13 @@
           "name": "Preview",
           "host": "127.0.0.1",
           "runtimeExecutable": "pnpm",
-          "runtimeArgs": ["dev", "--host", "{host}", "--port", "{port}"],
+          "runtimeArgs": [
+            "dev",
+            "--host",
+            "{host}",
+            "--port",
+            "{port}"
+          ],
           "port": 4321,
           "autoPort": false
         }
@@ -25,21 +31,14 @@
           "name": "Preview",
           "host": "127.0.0.1",
           "runtimeExecutable": "pnpm",
-          "runtimeArgs": ["dev", "--host", "{host}", "--port", "{port}"],
+          "runtimeArgs": [
+            "dev",
+            "--host",
+            "{host}",
+            "--port",
+            "{port}"
+          ],
           "port": 4322,
-          "autoPort": false
-        }
-      ]
-    },
-    {
-      "repo": "dobby-dashboard",
-      "servers": [
-        {
-          "name": "Preview",
-          "host": "127.0.0.1",
-          "runtimeExecutable": "npm",
-          "runtimeArgs": ["run", "dev", "--", "--host", "{host}", "--port", "{port}", "--strictPort"],
-          "port": 5173,
           "autoPort": false
         }
       ]
@@ -53,7 +52,7 @@
           "runtimeExecutable": "/bin/bash",
           "runtimeArgs": [
             "-lc",
-            "cd /Users/dobby/GitHub/dobby-dashboard && DOBBY_DASHBOARD_WORKSPACE_ROOT=/Users/dobby/GitHub/adi npm run dev -- --host {host} --port {port} --strictPort"
+            "cd /Users/dobby/GitHub/adi/dashboard && npm run dev -- --host {host} --port {port} --strictPort"
           ],
           "port": 5174,
           "autoPort": false
@@ -69,7 +68,7 @@
           "runtimeExecutable": "/bin/bash",
           "runtimeArgs": [
             "-lc",
-            "cd /Users/dobby/GitHub/dobby-dashboard && DOBBY_DASHBOARD_WORKSPACE_ROOT=/Users/dobby/GitHub/angie npm run dev -- --host {host} --port {port} --strictPort"
+            "cd /Users/dobby/GitHub/angie/dashboard && npm run dev -- --host {host} --port {port} --strictPort"
           ],
           "port": 5175,
           "autoPort": false
