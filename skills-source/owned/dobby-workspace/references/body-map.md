@@ -97,7 +97,10 @@ workspace linter.
 
 - `dobby/constitution.json` is one path-addressable JSON file for Dobby behavior.
 - `memory/profile.json` is one path-addressable JSON file for person context.
-- `memory/now.json` is the short active weekly/current-orientation layer.
+- `memory/now.json` is the short active weekly/current-orientation layer: this
+  week's deltas, blockers, and open decisions, pointing to profile/canon for the
+  full story instead of restating it. All content lives in `body` (no `sections`
+  mirror — the two copies used to drift).
 - Area canon files hold durable domain understanding: `memory/areas/<area>/canon.json`.
 - Area logs are append-only JSONL dated facts/events: `memory/areas/<area>/log.jsonl`.
 - Area metadata and non-text assets are indexed through `memory/areas/<area>/area.json`.

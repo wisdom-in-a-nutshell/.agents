@@ -485,17 +485,20 @@ def check_core_schema_files() -> None:
     )
     now = load_json_object(ROOT / "memory" / "now.json", "current orientation")
     if now is not None:
-        require_keys(ROOT / "memory" / "now.json", now, {"schemaVersion", "kind", "updatedAt", "title", "body", "sections"}, "current orientation")
+        # `body` is the single source of content. A `sections` mirror used to be
+        # required alongside it, but the two copies drifted; since 2026-06-11
+        # `sections` is forbidden so the orientation cannot fork.
+        require_keys(ROOT / "memory" / "now.json", now, {"schemaVersion", "kind", "updatedAt", "title", "body"}, "current orientation")
         if now.get("schemaVersion") != 1 or now.get("kind") != "current-orientation":
             add_error(ROOT / "memory" / "now.json", "current orientation should use schemaVersion 1 and kind 'current-orientation'.")
         check_iso_timestamp(ROOT / "memory" / "now.json", now.get("updatedAt"), "current orientation updatedAt")
         require_string(ROOT / "memory" / "now.json", now, "title", "current orientation")
         require_string(ROOT / "memory" / "now.json", now, "body", "current orientation", allow_empty=True)
-        if not isinstance(now.get("sections"), dict):
-            add_error(ROOT / "memory" / "now.json", "current orientation key `sections` should be an object.")
-        else:
-            for section_key, section in now["sections"].items():
-                check_section_object(ROOT / "memory" / "now.json", section_key, section, "current orientation")
+        if "sections" in now:
+            add_error(
+                ROOT / "memory" / "now.json",
+                "current orientation should keep all content in `body`; a `sections` mirror duplicates it and drifts.",
+            )
     check_jsonl(ROOT / "dobby" / "growth.jsonl", "Dobby growth log", row_kind="growth")
 
 
