@@ -56,7 +56,7 @@ def remember_claude_session_bin() -> Path:
     return Path(
         os.environ.get(
             "DOBBY_REMEMBER_CLAUDE_SESSION_BIN",
-            str(Path.home() / "GitHub/agents/skills-source/owned/dobby-lifecycle/scripts/remember-claude-session"),
+            str(Path.home() / "GitHub/agents/skills-source/owned/dobby-workspace/scripts/remember-claude-session"),
         )
     ).expanduser()
 
@@ -65,7 +65,7 @@ def session_transcript_bin() -> Path:
     return Path(
         os.environ.get(
             "DOBBY_SESSION_TRANSCRIPT_BIN",
-            str(Path.home() / "GitHub/agents/skills-source/owned/dobby-lifecycle/scripts/session-transcript"),
+            str(Path.home() / "GitHub/agents/skills-source/owned/dobby-workspace/scripts/session-transcript"),
         )
     ).expanduser()
 

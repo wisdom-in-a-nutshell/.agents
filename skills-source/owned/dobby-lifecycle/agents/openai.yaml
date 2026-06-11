@@ -1,4 +1,0 @@
-interface:
-  display_name: "Dobby Lifecycle"
-  short_description: "Operate Dobby hooks and context flow"
-  default_prompt: "Use $dobby-lifecycle to inspect or change Dobby lifecycle hooks, boot context, remember-session behavior, or explicit thread finalization."

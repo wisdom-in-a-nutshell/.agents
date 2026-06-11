@@ -100,7 +100,7 @@ Session continuity lives in `memory/sessions/YYYY/MM/DD-HHMMSS/` folders, not in
 already deleted before capture existed. The contract is code-backed by:
 
 ```bash
-$HOME/GitHub/agents/skills-source/owned/dobby-lifecycle/scripts/session-memory schema
+$HOME/GitHub/agents/skills-source/owned/dobby-workspace/scripts/session-memory schema
 ```
 
 `title` is for dashboard scanning. `summary` is the curated continuity index
@@ -122,7 +122,7 @@ Current trigger vocabulary:
 Use the client instead of hand-writing records:
 
 ```bash
-$HOME/GitHub/agents/skills-source/owned/dobby-lifecycle/scripts/session-memory write \
+$HOME/GitHub/agents/skills-source/owned/dobby-workspace/scripts/session-memory write \
   --workspace-root /path/to/dobby-workspace \
   --trigger manual \
   --thread-id <codex-thread-id> \
@@ -181,14 +181,14 @@ duplicate finalization turns.
 In Dobby workspaces the repo wrapper delegates to:
 
 ```bash
-$HOME/GitHub/agents/skills-source/owned/dobby-lifecycle/scripts/hooks/finalize-codex-thread
+$HOME/GitHub/agents/skills-source/owned/dobby-workspace/scripts/hooks/finalize-codex-thread
 ```
 
 That hook runs the Dobby memory-preservation behavior with the
 source thread id and finalization trigger:
 
 ```bash
-$HOME/GitHub/agents/skills-source/owned/dobby-lifecycle/scripts/remember-session \
+$HOME/GitHub/agents/skills-source/owned/dobby-workspace/scripts/remember-session \
   --thread-id <codex-thread-id> \
   --trigger manual \
   --no-input
@@ -196,7 +196,7 @@ $HOME/GitHub/agents/skills-source/owned/dobby-lifecycle/scripts/remember-session
 
 `remember-session` starts one final same-thread Codex turn and asks the agent to
 carry forward only useful memory. The agent-facing instruction lives in
-[`prompts/remember-session.md`](/Users/dobby/GitHub/agents/skills-source/owned/dobby-lifecycle/prompts/remember-session.md),
+[`prompts/remember-session.md`](/Users/dobby/GitHub/agents/skills-source/owned/dobby-workspace/prompts/remember-session.md),
 not inline in the Python runner. The runner performs its own
 `thread/read(thread_id)`, derives the repo root from the thread cwd, renders the
 prompt with strict placeholders, and starts the final turn with that cwd. It
@@ -298,7 +298,7 @@ under `memory/dreams/<run-id>/` (run id `YYYY-MM-DD-HHMM`, flat — dreams arriv
 - `inputs.manifest.json` + `events.jsonl` — runner-written audit trail
 
 ```bash
-$HOME/GitHub/agents/skills-source/owned/dobby-lifecycle/scripts/dream-memory \
+$HOME/GitHub/agents/skills-source/owned/dobby-workspace/scripts/dream-memory \
   --workspace-root /path/to/dobby-workspace --days 7 --no-input
 ```
 

@@ -55,7 +55,7 @@ def build_instruction(
     trigger: str,
     runtime: str = "codex",
 ) -> str:
-    session_memory_cli = Path.home() / "GitHub/agents/skills-source/owned/dobby-lifecycle/scripts/session-memory"
+    session_memory_cli = Path.home() / "GitHub/agents/skills-source/owned/dobby-workspace/scripts/session-memory"
     body_map_path = Path.home() / "GitHub/agents/skills-source/owned/dobby-workspace/references/body-map.md"
     template_path = prompt_template_path()
     try:
