@@ -105,9 +105,11 @@ workspace linter.
 - Area logs are append-only JSONL dated facts/events: `memory/areas/<area>/log.jsonl`.
 - Area metadata and non-text assets are indexed through `memory/areas/<area>/area.json`.
 - Session memory records are continuity index cards, not canon by default.
-  V2 records use `title`, Markdown `summary`, `threadId`, `trigger`, and
-  Markdown/plain-English `workspaceChanges`; the `summary` field is the boot
-  surface and `threadId` points back to the source transcript when needed.
+  V4 records pair `meta.json` (machine facts: `createdAt`, `threadId`,
+  `runtime`, `trigger`, `cwd`, and the required one-line `tldr`) with
+  `summary.md` (`# title`, body, final `## Workspace changes`). Boot shows
+  full summaries for the newest sessions and `tldr` lines for the rest;
+  `threadId` points back to the source transcript when needed.
 - Personal open loops never live in memory; they live in Shelf.
 - Raw reflections live in journal first and only become memory after synthesis.
 - Daily journal storage is JSON-only: structured check-ins use `morning.json`
