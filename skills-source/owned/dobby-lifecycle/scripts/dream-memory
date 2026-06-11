@@ -5,7 +5,7 @@ The runner gathers a deterministic inputs manifest for the review window,
 renders the versioned prompt in `prompts/dream-memory.md`, runs one headless
 Claude turn in the workspace, and validates the run bundle the agent writes:
 
-    <workspace>/projects/dobby-continuity-dreaming/runs/<run-id>/
+    <workspace>/memory/dreams/<run-id>/
       run.json              machine envelope with every candidate
       report.md             human proposal memo Adi reviews
       inputs.manifest.json  what the dream was allowed to read (runner-written)
@@ -48,7 +48,7 @@ COMMAND = "dream-memory"
 RUN_SCHEMA_VERSION = 1
 DEFAULT_WINDOW_DAYS = 7
 DEFAULT_TIMEOUT_SECONDS = 1800.0
-DEFAULT_RUN_ROOT = "projects/dobby-continuity-dreaming/runs"
+DEFAULT_RUN_ROOT = "memory/dreams"
 MAX_OUTPUT_CHARS = 12_000
 
 EXIT_GENERIC = 1
@@ -384,7 +384,7 @@ def main() -> int:
             raise DreamMemoryError(f"workspace root is not a directory: {workspace_root}")
 
         now = now_local()
-        run_id = f"{now:%Y-%m-%d-%H%M}-dream-memory"
+        run_id = f"{now:%Y-%m-%d-%H%M}"
         window_to = now.date().isoformat()
         window_from = (now - timedelta(days=args.days)).date().isoformat()
         run_dir = workspace_root / args.run_root / run_id

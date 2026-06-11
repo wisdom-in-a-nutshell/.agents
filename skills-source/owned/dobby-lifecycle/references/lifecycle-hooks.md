@@ -285,7 +285,8 @@ It gathers a deterministic inputs manifest for a review window (session folders,
 journal days, `memory/now.json`, `state/shelf.json`, active project trackers,
 area manifests), renders the versioned `prompts/dream-memory.md`, runs one
 headless Claude turn in the workspace, and validates the run bundle written
-under `projects/dobby-continuity-dreaming/runs/<run-id>/`:
+under `memory/dreams/<run-id>/` (run id `YYYY-MM-DD-HHMM`, flat — dreams arrive
+~once per night, so no year/month sharding):
 
 - `report.md` — the human proposal memo Adi reviews (also rendered on the
   dashboard Dreams page)

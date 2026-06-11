@@ -92,7 +92,7 @@ LOCAL_TOP_LEVEL_IGNORES = {
 SECOND_LEVEL = {
     "memory": {
         "files": {"now.json", "profile.json"},
-        "dirs": {"areas", "sessions"},
+        "dirs": {"areas", "sessions", "dreams"},
     },
     "journal": {
         "files": set(),

@@ -53,6 +53,7 @@ directly by Codex as `model_instructions_file`. Person-specific context lives in
 | Area-specific dated fact/event | `memory/areas/<area>/log.jsonl` |
 | Area metadata, assets, data dirs | `memory/areas/<area>/area.json` |
 | Session memory record | `memory/sessions/YYYY/MM/DD-HHMMSS/` — `meta.json` + `summary.md`, plus captured `raw.jsonl` + `dialogue.md` |
+| Dream run (overnight consolidation, proposal-only) | `memory/dreams/<YYYY-MM-DD-HHMM>/` — `run.json` + `report.md` + `inputs.manifest.json` + `events.jsonl` |
 | Reflection / check-in / raw capture | `journal/daily/YYYY-MM-DD/{morning,night,general}.json` |
 | Monthly synthesis / templates | `journal/monthly/**/*.json`, `journal/templates/**/*.json` |
 | Personal actionable open loop | `state/shelf.json` via `dobby-shelf` |
@@ -70,7 +71,7 @@ to the canonical home instead of duplicating.
 
 - `conversation`: Adi directly corrected or taught Dobby.
 - `review`: an agent inferred the lesson during cleanup, audit, or consolidation.
-- `dream`: future background reflection, only when that loop exists.
+- `dream`: background reflection from a `memory/dreams/` run, applied after review.
 
 ## Validation contract
 

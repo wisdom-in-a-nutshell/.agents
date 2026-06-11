@@ -40,7 +40,7 @@ from session_memory_lib import build_recent_session_entries  # noqa: E402
 
 PER_CALL_TIMEOUT_SEC = 4
 BODY_MAP_MAX_CHARS = 12000
-DREAM_RUNS_REL = Path("projects/dobby-continuity-dreaming/runs")
+DREAM_RUNS_REL = Path("memory/dreams")
 DREAM_MAX_AGE_DAYS = 7
 DREAM_SECTION_MAX_CHARS = 2200
 
