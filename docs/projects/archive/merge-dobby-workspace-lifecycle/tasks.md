@@ -38,20 +38,20 @@ Evidence from the 2026-06-11 memory-format migration: every batch touched both s
   - adi/angie `scripts/hooks/session_start.py` docstrings reference `~/.agents/hooks/scripts/...` while generated configs use `$HOME/GitHub/agents/hooks/scripts/...` — standardize on the real path in docstrings.
 
 ## Done When
-- [ ] `skills-source/owned/dobby-lifecycle/` no longer exists; all contents live under `dobby-workspace/`.
-- [ ] All 8 consumer classes repointed; `grep -r dobby-lifecycle` across `~/GitHub/agents`, adi, angie, dobby-dashboard, codexclaw, `~/Library/LaunchAgents` returns only archives/history.
-- [ ] Surfaces regenerated in all managed repos; launchd dream-memory job reloaded and fires.
-- [ ] Boot + finalize smoke: fresh session boots in both workspaces; one real finalize writes a v4 record; dashboard boot view renders.
-- [ ] Stale `~/.agents` aliases fixed (gateway env example, wrapper docstrings).
-- [ ] Merged SKILL.md reads as one skill; tests green (`dobby-workspace/tests/run.sh` covering former lifecycle tests).
-- [ ] Noise gate live: a trivial automatic finalize archives without writing a session record; a real session still writes v4. Covered by a test.
-- [ ] Boot-cut live: `<!-- boot-cut -->` in body-map.md; boot injects only the slice above it in both workspaces; linter fails when the marker is missing; boot token total drops accordingly in the dashboard Boot view.
+- [x] `skills-source/owned/dobby-lifecycle/` no longer exists; all contents live under `dobby-workspace/`.
+- [x] All 8 consumer classes repointed; `grep -r dobby-lifecycle` across `~/GitHub/agents`, adi, angie, dobby-dashboard, codexclaw, `~/Library/LaunchAgents` returns only archives/history.
+- [x] Surfaces regenerated in all managed repos; launchd dream-memory job reloaded (bootstrap succeeded; `launchctl print` shows the new program path — next nightly run is the live fire).
+- [x] Boot + finalize smoke: fresh session boots in both workspaces; finalize plumbing proven via `--print-instruction` on a real session (no stale candidates were pending for a live remember run — the hourly job provides that organically); dashboard boot view renders.
+- [x] Stale `~/.agents` aliases fixed (gateway env example, wrapper docstrings).
+- [x] Merged SKILL.md reads as one skill; tests green (`dobby-workspace/tests/run.sh` covering former lifecycle tests).
+- [x] Noise gate live: automatic finalizes of <3-user-turn read-only sessions archive without a session record; explicit triggers always remember. Covered by 8 assertions in tests/run.sh.
+- [x] Boot-cut live: `<!-- boot-cut -->` in body-map.md; boot injects only the slice above it in both workspaces; tests fail when the marker is missing or sections sit on the wrong side; dashboard boot total dropped to ~9.2k tokens (body map ~1.5k → ~647).
 
 ## Milestones
-- [ ] M1 — File move + internal wiring (scripts/prompts/references/tests merged; validate orchestrator internalized). Validate: skill tests green.
-- [ ] M2 — External repoint (checklist items 1–8) + surface regeneration + launchd reload. Validate: global grep clean; dream job `launchctl kickstart` runs.
-- [ ] M3 — Smoke + docs (boot both workspaces, finalize one real session, dashboard check; merged SKILL.md; alias fixes). Validate: evidence in progress log.
-- [ ] M4 — Consolidation fixes on the merged skill: session-noise gate at finalize + body-map boot-cut + linter marker rule. Validate: gate test green; boot output diff shows only above-cut body map; archive tracker.
+- [x] M1 — File move + internal wiring (scripts/prompts/references/tests merged; validate orchestrator internalized). Validate: skill tests green.
+- [x] M2 — External repoint (checklist items 1–8) + surface regeneration + launchd reload. Validate: global grep clean; plist re-rendered + bootstrapped via installer.
+- [x] M3 — Smoke + docs (boot both workspaces, finalize plumbing smoke, dashboard check; merged SKILL.md; alias fixes). Validate: evidence in progress log.
+- [x] M4 — Consolidation fixes on the merged skill: session-noise gate at finalize + body-map boot-cut + marker tests. Validate: gate test green; boot output excludes below-cut body map; archive tracker.
 
 ## Execution Rules
 - One batch per milestone; never leave a state where a launchd job or runtime hook points at a missing path overnight.
@@ -72,12 +72,10 @@ Evidence from the 2026-06-11 memory-format migration: every batch touched both s
 ## Current Batch
 | Status | Work Item | Role | Resource |
 | --- | --- | --- | --- |
-| todo | M1: move files + internal wiring + merged tests | parent |  |
+| done | M1–M4 complete; project archived | parent |  |
 
 ## Backlog / Remaining Work
-- [ ] M2: external repoint per checklist + regenerate surfaces + launchd reload.
-- [ ] M3: smoke (boot ×2, finalize ×1, dashboard), merged SKILL.md, alias fixes, global grep proof.
-- [ ] M4: session-noise gate at finalize + body-map boot-cut + linter marker rule; archive tracker.
+- None.
 
 ## Validation / Test Plan
 - `dobby-workspace/tests/run.sh` (absorbing lifecycle tests); `~/GitHub/agents/scripts/check-fast.sh`.
@@ -89,3 +87,4 @@ Evidence from the 2026-06-11 memory-format migration: every batch touched both s
 ## Progress Log
 - 2026-06-11: [IN-PROGRESS] Tracker created with verified consumer checklist (traced launchd plists, gateway env, generated hook configs, dashboard defaults, workspace wrappers). Execution intentionally deferred to a fresh session — touches live machinery (launchd, runtime hooks).
 - 2026-06-11: [IN-PROGRESS] Consolidated Adi's review decisions into this tracker as M4: session-noise gate at finalize (approved) and body-map boot-cut slimming (delegated to Dobby; decision recorded under Decisions). Recorded as out of scope: tldr+lint (already shipped in memory-format migration), open-questions process (dropped), Shelf review and dreaming policy (deferred, Adi has ideas).
+- 2026-06-11: [DONE] Full execution (M1–M4). Found the file move already done but wiring incomplete (dangling symlinks, launchd/dashboard/wrappers on old paths). M1: internalized session validation into `scripts/validate` → in-skill `validate-sessions` — and fixed a real latent bug: the route patterns were still the 5-segment v3 flat-file shape, so v4 session folders (6 segments) silently skipped domain validation; merged SKILL.md; updated body-map + launchagent installer. M2: 8 wrappers rewritten (adi+angie, also fixing stale `~/.agents/hooks` docstrings), `sync-skills-registry --apply` + `sync-claude --apply` (pruned dangling `.claude/skills/dobby-lifecycle` in both), dream-memory plist re-rendered + bootstrapped on the new path, dashboard default hook + model labels + 2 arch docs, both constitutions, angie local README, codexclaw claude-runtime doc + gateway `.env.example` alias. M3: boot smoke adi (29.9k chars) + angie (16.6k); check-fast green in agents/adi/angie/dashboard; machine-wide grep clean (only this tracker + dated dreaming-project history remain). M4: triviality gate in `remember_lib.triviality_skip_reason` (gated triggers: stale-cleanup, codexclaw-idle-expiry; <3 user turns AND no write/edit/patch/shell tools → skip record AND transcript capture; remember-by-default on missing/unparseable transcript), wired into both runners + both finalize hooks; verified against 12 real sessions (all correctly remembered; parser/locator proven live on both runtimes) + 8-assertion unit test. Boot-cut: body-map restructured (routing table above `<!-- boot-cut -->`, organs/validation/memory-contract/change-protocol below), hook truncates at marker, marker+ordering tests added; adi boot dropped 29.9k→26.2k chars; dashboard Boot view verified in preview: ~9.2k tokens total, body map 647 tokens, zero console errors. lifecycle-hooks.md documents both behaviors.

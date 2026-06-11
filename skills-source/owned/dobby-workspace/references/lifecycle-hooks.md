@@ -60,7 +60,10 @@ The hook reads the shared `dobby-workspace` body map and `now.md`, walks
 What boot context should include:
 
 1. `dobby/constitution.md` or `memory/profile.md` / identity context through the runtime system-prompt mechanism.
-2. Shared `dobby-workspace/references/body-map.md` as the common Dobby body map.
+2. Shared `dobby-workspace/references/body-map.md` up to its `<!-- boot-cut -->`
+   marker (core idea + routing table boot; organ purposes, validation
+   architecture, memory contract, and change protocol stay below the cut as
+   on-demand reference).
 3. `memory/now.md`.
 4. Recent session-memory summaries: last 3 plus records from the last 7 days,
    capped at 10.
@@ -118,6 +121,14 @@ Current trigger vocabulary:
 - `stale-cleanup` — global `~/GitHub/agents` stale Codex thread finalizer archived an old thread.
 - `manual` — direct/manual finalization or repair from a Dobby workspace.
 - `migration` — legacy imported session records only; do not use for new writes.
+
+Triviality gate (`remember_lib.triviality_skip_reason`): on the automatic
+triggers (`stale-cleanup`, `codexclaw-idle-expiry`), a session with fewer than
+3 user turns and no workspace-mutating tool calls (write/edit/patch/shell)
+archives without a memory record — the remember turn and transcript capture
+are skipped. Explicit triggers (`manual`, `codexclaw-chat-end`) always
+remember. When the raw transcript cannot be located or parsed, remembering is
+the safe default.
 
 Use the client instead of hand-writing records:
 
