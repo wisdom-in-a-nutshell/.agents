@@ -27,7 +27,7 @@ Load `references/body-map.md` when you need the shared semantic map that should
 be bootstrapped into Dobby sessions.
 
 Do not create repo-local structure maps. The shared body map is the structure
-source; repo-specific durable truth belongs in `dobby/constitution.json`, `memory/`, or the
+source; repo-specific durable truth belongs in `dobby/constitution.md`, `memory/`, or the
 relevant operational skill.
 
 ## Linter

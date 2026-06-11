@@ -1,19 +1,18 @@
 #!/usr/bin/env python3
 """Dobby session-memory helpers.
 
-This module owns the agent-native session-memory v3 contract used by Dobby
+This module owns the agent-native session-memory v4 contract used by Dobby
 workspaces. Each session is a folder under memory/sessions/YYYY/MM/DD-HHMMSS/:
 
 - meta.json     machine facts (schemaVersion, createdAt, threadId, runtime,
-                trigger, optional cwd)
+                trigger, cwd, tldr)
 - summary.md    human/agent-readable continuity index (# title, summary body,
                 "## Workspace changes" section)
 - raw.jsonl     untouched runtime transcript, copied at finalize time
 - dialogue.md   normalized human<->agent transcript rendered from raw.jsonl
 
 meta.json and summary.md are written by this module. raw.jsonl and dialogue.md
-are owned by transcript_lib / session-transcript and may be absent (the session
-predates transcript capture or the raw transcript was already deleted).
+are owned by transcript_lib / session-transcript and may be absent.
 """
 
 from __future__ import annotations
@@ -26,15 +25,17 @@ from pathlib import Path
 from typing import Any
 from zoneinfo import ZoneInfo
 
-SCHEMA_VERSION = 3
+SCHEMA_VERSION = 4
 RUNTIMES = ("codex", "claude")
 LOCAL_TIMEZONE = "Europe/Berlin"
 RECENT_SESSION_DAYS = 7
 RECENT_SESSION_MIN_COUNT = 3
 RECENT_SESSION_MAX_COUNT = 10
-RECENT_SESSION_RECORD_MAX_CHARS = 2500
-RECENT_SESSIONS_BLOCK_MAX_CHARS = 12000
+RECENT_SESSION_FULL_COUNT = 3
+RECENT_SESSION_FULL_ENTRY_MAX_CHARS = 2000
+RECENT_SESSIONS_BLOCK_MAX_CHARS = 8000
 TITLE_MAX_CHARS = 120
+TLDR_MAX_CHARS = 240
 
 META_FILENAME = "meta.json"
 SUMMARY_FILENAME = "summary.md"
@@ -42,7 +43,7 @@ DIALOGUE_FILENAME = "dialogue.md"
 RAW_FILENAME = "raw.jsonl"
 WORKSPACE_CHANGES_HEADING = "## Workspace changes"
 
-META_KEYS = ("schemaVersion", "createdAt", "threadId", "runtime", "trigger", "cwd")
+META_KEYS = ("schemaVersion", "createdAt", "threadId", "runtime", "trigger", "cwd", "tldr")
 
 
 class SessionMemoryError(ValueError):
@@ -54,7 +55,9 @@ class SessionMemoryEntry:
     stamp: datetime
     path: Path
     label: str
-    content: str
+    title: str
+    summary: str
+    tldr: str
     kind: str
 
 
@@ -155,6 +158,45 @@ def clean_cwd(value: Any) -> str | None:
     return value.strip()
 
 
+def truncate_text(content: str, limit: int, label: str = "content") -> str:
+    content = content.strip()
+    if len(content) <= limit:
+        return content
+    suffix = f"\n...[{label} truncated]"
+    return content[: max(0, limit - len(suffix))].rstrip() + suffix
+
+
+def truncate_single_line(content: str, limit: int) -> str:
+    text = re.sub(r"\s+", " ", content).strip()
+    if len(text) <= limit:
+        return text
+    return text[: max(0, limit - 1)].rstrip() + "…"
+
+
+def first_meaningful_line(content: str) -> str:
+    for raw_line in content.splitlines():
+        line = raw_line.strip()
+        if not line:
+            continue
+        if line.startswith("#"):
+            continue
+        cleaned = re.sub(r"^[-*]\s+", "", line).strip()
+        if cleaned:
+            return cleaned
+    return "Legacy session memory"
+
+
+def clean_tldr(value: Any, *, summary: str) -> str:
+    if isinstance(value, str) and value.strip():
+        source = value
+    else:
+        source = first_meaningful_line(summary)
+    text = truncate_single_line(source, TLDR_MAX_CHARS)
+    if not text:
+        raise SessionMemoryError("tldr is required")
+    return text
+
+
 def make_record(
     *,
     trigger: str,
@@ -165,20 +207,21 @@ def make_record(
     runtime: str,
     created_at: str | None = None,
     cwd: str | None = None,
+    tldr: str | None = None,
 ) -> dict[str, Any]:
+    cleaned_summary = clean_text(summary, "summary")
     record: dict[str, Any] = {
         "schemaVersion": SCHEMA_VERSION,
         "createdAt": created_at or iso_now_local(),
         "threadId": clean_thread_id(thread_id),
         "runtime": clean_runtime(runtime),
         "trigger": clean_text(trigger, "trigger"),
+        "cwd": clean_cwd(cwd),
+        "tldr": clean_tldr(tldr, summary=cleaned_summary),
         "title": clean_text(title, "title", max_chars=TITLE_MAX_CHARS),
-        "summary": clean_text(summary, "summary"),
+        "summary": cleaned_summary,
         "workspaceChanges": clean_text(workspace_changes, "workspaceChanges"),
     }
-    cleaned_cwd = clean_cwd(cwd)
-    if cleaned_cwd is not None:
-        record["cwd"] = cleaned_cwd
     parse_created_at(str(record["createdAt"]))
     return record
 
@@ -190,7 +233,18 @@ def validate_record(data: Any) -> dict[str, Any]:
     extra_keys = sorted(set(data) - allowed_keys)
     if extra_keys:
         raise SessionMemoryError(f"unsupported key(s): {', '.join(extra_keys)}")
-    for key in ["schemaVersion", "createdAt", "threadId", "runtime", "trigger", "title", "summary", "workspaceChanges"]:
+    for key in [
+        "schemaVersion",
+        "createdAt",
+        "threadId",
+        "runtime",
+        "trigger",
+        "cwd",
+        "tldr",
+        "title",
+        "summary",
+        "workspaceChanges",
+    ]:
         if key not in data:
             raise SessionMemoryError(f"{key} is required")
     if data.get("schemaVersion") != SCHEMA_VERSION:
@@ -203,37 +257,33 @@ def validate_record(data: Any) -> dict[str, Any]:
     out["threadId"] = clean_thread_id(data.get("threadId"))
     out["runtime"] = clean_runtime(data.get("runtime"))
     out["trigger"] = clean_text(data.get("trigger"), "trigger")
+    out["cwd"] = clean_cwd(data.get("cwd"))
     out["title"] = clean_text(data.get("title"), "title", max_chars=TITLE_MAX_CHARS)
     out["summary"] = clean_text(data.get("summary"), "summary")
     out["workspaceChanges"] = clean_text(data.get("workspaceChanges"), "workspaceChanges")
-    cleaned_cwd = clean_cwd(data.get("cwd"))
-    if cleaned_cwd is None:
-        out.pop("cwd", None)
-    else:
-        out["cwd"] = cleaned_cwd
+    out["tldr"] = clean_tldr(data.get("tldr"), summary=out["summary"])
     return out
 
 
 def upgrade_flat_record(data: Any) -> dict[str, Any]:
-    """Upgrade a flat v2 card (single JSON file) to a v3 record.
-
-    v2 records without a runtime tag predate runtime tagging and were always
-    written from Codex threads, so absence maps to "codex".
-    """
+    """Upgrade a flat v2/v3 card to the v4 record shape for migration commands."""
     if not isinstance(data, dict):
         raise SessionMemoryError("record must be a JSON object")
-    if data.get("schemaVersion") not in (2, SCHEMA_VERSION):
+    if data.get("schemaVersion") not in (2, 3, SCHEMA_VERSION):
         raise SessionMemoryError(f"cannot upgrade schemaVersion {data.get('schemaVersion')!r}")
     upgraded = dict(data)
     upgraded["schemaVersion"] = SCHEMA_VERSION
     upgraded.setdefault("runtime", "codex")
+    upgraded.setdefault("cwd", None)
+    if "tldr" not in upgraded:
+        upgraded["tldr"] = first_meaningful_line(str(upgraded.get("summary") or ""))
     return validate_record(upgraded)
 
 
 def split_record(record: dict[str, Any]) -> tuple[dict[str, Any], str]:
     """Split a validated record into (meta dict, summary.md text)."""
     record = validate_record(record)
-    meta = {key: record[key] for key in META_KEYS if key in record}
+    meta = {key: record.get(key) for key in META_KEYS}
     summary_md = "\n".join(
         [
             f"# {record['title']}",
@@ -250,6 +300,8 @@ def split_record(record: dict[str, Any]) -> tuple[dict[str, Any], str]:
 
 
 def parse_summary_md(text: str, *, source: str = "summary.md") -> dict[str, str]:
+    if text.startswith("\ufeff"):
+        raise SessionMemoryError(f"{source} must not start with a BOM")
     lines = text.replace("\r\n", "\n").split("\n")
     title: str | None = None
     title_idx = -1
@@ -263,15 +315,27 @@ def parse_summary_md(text: str, *, source: str = "summary.md") -> dict[str, str]
         break
     if title is None:
         raise SessionMemoryError(f"{source} must start with a '# <title>' heading")
+    if not (1 <= len(title) <= TITLE_MAX_CHARS):
+        raise SessionMemoryError(f"{source} title must be 1-{TITLE_MAX_CHARS} chars")
     heading_idx = -1
+    in_fence = False
     for idx in range(len(lines) - 1, title_idx, -1):
-        if lines[idx].strip() == WORKSPACE_CHANGES_HEADING:
+        line = lines[idx]
+        # Reverse fence tracking is not reliable; instead require exact final
+        # heading text. Session summaries should not end inside a code fence.
+        if line.strip().startswith("```"):
+            in_fence = not in_fence
+        if not in_fence and line.strip() == WORKSPACE_CHANGES_HEADING:
             heading_idx = idx
             break
     if heading_idx < 0:
         raise SessionMemoryError(f"{source} must contain a '{WORKSPACE_CHANGES_HEADING}' section")
     summary = "\n".join(lines[title_idx + 1 : heading_idx]).strip()
     workspace_changes = "\n".join(lines[heading_idx + 1 :]).strip()
+    if not summary:
+        raise SessionMemoryError(f"{source} summary body is required")
+    if not workspace_changes:
+        raise SessionMemoryError(f"{source} workspace changes body is required")
     return {"title": title, "summary": summary, "workspaceChanges": workspace_changes}
 
 
@@ -318,8 +382,10 @@ def _atomic_write_text(path: Path, content: str) -> None:
 def write_record_files(session_dir: Path, record: dict[str, Any]) -> dict[str, Path]:
     meta, summary_md = split_record(record)
     session_dir.mkdir(parents=True, exist_ok=True)
-    _atomic_write_text(session_dir / META_FILENAME, json.dumps(meta, indent=2, ensure_ascii=False) + "\n")
+    # Summary first, meta last. Selection requires meta.json, so a crash mid-write
+    # never creates a half-readable record.
     _atomic_write_text(session_dir / SUMMARY_FILENAME, summary_md)
+    _atomic_write_text(session_dir / META_FILENAME, json.dumps(meta, indent=2, ensure_ascii=False) + "\n")
     return {"meta": session_dir / META_FILENAME, "summary": session_dir / SUMMARY_FILENAME}
 
 
@@ -336,41 +402,6 @@ def update_meta(session_dir: Path, updates: dict[str, Any]) -> dict[str, Any]:
     merged = validate_record({**record, **updates})
     write_record_files(session_dir, merged)
     return merged
-
-
-def truncate_text(content: str, limit: int, label: str = "content") -> str:
-    content = content.strip()
-    if len(content) <= limit:
-        return content
-    suffix = f"\n...[{label} truncated]"
-    return content[: max(0, limit - len(suffix))].rstrip() + suffix
-
-
-def render_json_summary(record: dict[str, Any]) -> str:
-    runtime = record.get("runtime") or "codex"
-    lines = [
-        f"# {record['title']}",
-        f"trigger={record['trigger']} runtime={runtime} threadId={record.get('threadId') or 'null'}",
-        "",
-        str(record["summary"]).strip(),
-        "",
-        "Workspace changes:",
-        str(record["workspaceChanges"]).strip(),
-    ]
-    return "\n".join(lines).strip()
-
-
-def first_meaningful_line(content: str) -> str:
-    for raw_line in content.splitlines():
-        line = raw_line.strip()
-        if not line:
-            continue
-        if line.startswith("#"):
-            continue
-        cleaned = re.sub(r"^[-*]\s+", "", line).strip()
-        if cleaned:
-            return cleaned
-    return "Legacy session memory"
 
 
 def title_from_text(content: str) -> str:
@@ -438,6 +469,8 @@ def record_from_legacy_md(path: Path) -> dict[str, Any]:
         summary=summary,
         workspace_changes="No separate workspace-change note existed in the legacy record.",
         created_at=stamp.isoformat(timespec="seconds"),
+        cwd=None,
+        tldr=first_meaningful_line(summary),
     )
 
 
@@ -462,13 +495,15 @@ def collect_session_entries(sessions_dir: Path) -> list[SessionMemoryEntry]:
             record = read_record(path)
         except SessionMemoryError:
             continue
-        label = stamp.strftime("%Y-%m-%d %H:%M:%S %Z")
+        label = f"{stamp:%d-%H:%M} local — {record['title']}"
         entries.append(
             SessionMemoryEntry(
                 stamp=stamp,
                 path=path,
                 label=label,
-                content=render_json_summary(record),
+                title=str(record["title"]),
+                summary=str(record["summary"]),
+                tldr=str(record["tldr"]),
                 kind="folder",
             )
         )
@@ -484,28 +519,60 @@ def select_recent_entries(entries: list[SessionMemoryEntry]) -> list[SessionMemo
     selected = [entry for entry in entries if entry.path in selected_paths]
     if len(selected) > RECENT_SESSION_MAX_COUNT:
         selected = selected[-RECENT_SESSION_MAX_COUNT:]
-    return selected
+    return list(reversed(selected))  # newest first for rendering and cap behavior
+
+
+def render_full_entry(entry: SessionMemoryEntry) -> str:
+    return truncate_text(entry.summary, RECENT_SESSION_FULL_ENTRY_MAX_CHARS, "session memory")
+
+
+def render_brief_lines(entries: list[SessionMemoryEntry]) -> str:
+    return "\n".join(f"- {entry.stamp:%m-%d %H:%M} — {entry.tldr}" for entry in entries).strip()
+
+
+def blocks_length(fulls: list[SessionMemoryEntry], briefs: list[SessionMemoryEntry]) -> int:
+    total = 0
+    for entry in fulls:
+        total += len(f"## {entry.label}\n{render_full_entry(entry)}\n\n")
+    if briefs:
+        total += len(f"## earlier this week\n{render_brief_lines(briefs)}\n")
+    return total
 
 
 def build_recent_session_entries(sessions_dir: Path) -> list[dict[str, Any]]:
     selected = select_recent_entries(collect_session_entries(sessions_dir))
+    if not selected:
+        return []
+    fulls = selected[:RECENT_SESSION_FULL_COUNT]
+    briefs = selected[RECENT_SESSION_FULL_COUNT:]
+
+    # Degrade gracefully until the block fits. Drop oldest briefs first, then
+    # degrade oldest full entries. Never touch selected[0]: newest stays full.
+    while blocks_length(fulls, briefs) > RECENT_SESSIONS_BLOCK_MAX_CHARS:
+        if briefs:
+            briefs = briefs[:-1]
+            continue
+        if len(fulls) > 1:
+            degraded = fulls[-1]
+            fulls = fulls[:-1]
+            briefs = [degraded, *briefs]
+            continue
+        # Last resort: truncate the newest full within the remaining block cap.
+        break
+
     out: list[dict[str, Any]] = []
-    total_chars = 0
-    for entry in selected:
-        content = truncate_text(entry.content, RECENT_SESSION_RECORD_MAX_CHARS, "session memory")
-        block = f"## {entry.label}\n{content}\n"
-        if total_chars + len(block) > RECENT_SESSIONS_BLOCK_MAX_CHARS:
-            remaining = RECENT_SESSIONS_BLOCK_MAX_CHARS - total_chars
-            if remaining <= 80:
-                break
-            content = truncate_text(content, max(0, remaining - len(f"## {entry.label}\n")), "session memory")
+    for entry in fulls:
+        content = render_full_entry(entry)
+        if len(out) == 0 and len(content) > RECENT_SESSIONS_BLOCK_MAX_CHARS:
+            content = truncate_text(content, RECENT_SESSIONS_BLOCK_MAX_CHARS - len(f"## {entry.label}\n"), "session memory")
+        out.append({"label": entry.label, "content": content, "path": entry.path, "kind": entry.kind})
+    if briefs:
         out.append(
             {
-                "label": entry.label,
-                "content": content,
-                "path": entry.path,
-                "kind": entry.kind,
+                "label": "earlier this week",
+                "content": render_brief_lines(briefs),
+                "path": briefs[0].path,
+                "kind": "briefs",
             }
         )
-        total_chars += len(block)
     return out

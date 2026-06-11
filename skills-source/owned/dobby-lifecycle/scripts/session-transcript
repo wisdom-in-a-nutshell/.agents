@@ -161,7 +161,7 @@ def capture_session(
         dialogue = parse_raw_transcript(raw_target, runtime)
         dialogue_target.write_text(render_dialogue_md(dialogue), encoding="utf-8")
         rendered = True
-        if dialogue.cwd and not record.get("cwd"):
+        if dialogue.cwd and record.get("cwd") != dialogue.cwd:
             update_meta(session_dir, {"cwd": dialogue.cwd})
     return {
         "sessionDir": str(session_dir),

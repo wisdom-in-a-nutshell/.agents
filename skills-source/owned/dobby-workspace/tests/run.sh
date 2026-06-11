@@ -2,7 +2,7 @@
 # Fast checks for the shared Dobby workspace shape linter.
 set -euo pipefail
 SKILL_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-python3 -m py_compile "$SKILL_DIR/scripts/lint-workspace" "$SKILL_DIR/scripts/validate"
+python3 -m py_compile "$SKILL_DIR/scripts/frontmatter.py" "$SKILL_DIR/scripts/lint-workspace" "$SKILL_DIR/scripts/validate"
 
 workspace="$(mktemp -d)"
 trap 'rm -rf "$workspace"' EXIT
@@ -26,30 +26,100 @@ touch \
   "$workspace/scripts/check-full.sh" \
   "$workspace/scripts/lint-workspace.py"
 
+cat >"$workspace/dobby/constitution.md" <<'MD'
+---
+schemaVersion: 2
+kind: dobby-constitution
+updatedAt: 2026-05-29T08:00:00+02:00
+sensitivity: personal
+---
+# Dobby Constitution
 
-cat >"$workspace/dobby/constitution.json" <<JSON
-{"schemaVersion": 1, "kind": "dobby-constitution", "updatedAt": "2026-05-29T08:00:00+02:00", "groups": {"identity": {"title": "Identity", "sections": {"identity": {"title": "Identity", "level": 2, "body": "Test"}}}, "operating": {"title": "Operating", "sections": {}}, "boundaries": {"title": "Boundaries", "sections": {}}, "memory_policy": {"title": "Memory policy", "sections": {}}, "self_evolution": {"title": "Self evolution", "sections": {}}}, "migratedFrom": "test"}
-JSON
+## Identity and mission
+
+### Identity
+Test.
+
+## Operating contract
+
+### Contract
+Test.
+
+## Permissions and boundaries
+
+### Boundary
+Test.
+
+## Memory and continuity
+
+### Memory
+Test.
+
+## Self-evolution
+
+### Evolution
+Test.
+MD
 
 cat >"$workspace/dobby/growth.jsonl" <<JSONL
 {"schemaVersion":1,"kind":"behavioral-correction","id":"growth-test","createdAt":"2026-05-29T08:00:00+02:00","title":"Test","body":"Test","status":"open","source":{"type":"review","ref":"tests/run.sh"}}
 JSONL
 
-cat >"$workspace/memory/profile.json" <<JSON
-{"schemaVersion": 1, "kind": "person-profile", "updatedAt": "2026-05-29T08:00:00+02:00", "person": {"id": "test", "displayName": "Test"}, "groups": {"identity": {"title": "Identity", "sections": {"identity": {"title": "Identity", "level": 2, "body": "Test", "sensitivity": "personal"}}}, "preferences": {"title": "Preferences", "sections": {}}, "values": {"title": "Values", "sections": {}}, "patterns": {"title": "Patterns", "sections": {}}, "life_context": {"title": "Life context", "sections": {}}}, "migratedFrom": "test"}
-JSON
+cat >"$workspace/memory/profile.md" <<'MD'
+---
+schemaVersion: 2
+kind: person-profile
+updatedAt: 2026-05-29T08:00:00+02:00
+sensitivity: personal
+personId: test
+personDisplayName: Test
+---
+# Test Profile
 
-cat >"$workspace/memory/now.json" <<JSON
-{"schemaVersion": 1, "kind": "current-orientation", "updatedAt": "2026-05-29T08:00:00+02:00", "title": "Current orientation", "body": "Test", "sections": {"this_week": {"title": "This week", "level": 2, "body": "Test"}}, "migratedFrom": "test"}
-JSON
+## Identity
+
+### Identity
+Test.
+
+## Preferences
+
+## Values
+
+## Patterns
+
+## Life context
+MD
+
+cat >"$workspace/memory/now.md" <<'MD'
+---
+schemaVersion: 2
+kind: current-orientation
+updatedAt: 2026-05-29T08:00:00+02:00
+sensitivity: personal
+---
+# Current orientation
+
+## This week
+Test.
+MD
 
 mkdir -p "$workspace/memory/areas/test"
 cat >"$workspace/memory/areas/test/area.json" <<JSON
-{"schemaVersion": 1, "kind": "memory-area", "id": "test", "title": "Test", "description": "Test area.", "sensitivity": "personal", "updatedAt": "2026-05-29T08:00:00+02:00", "canonicalFiles": {"canon": "canon.json", "log": "log.jsonl"}, "dashboard": {"visible": true, "defaultView": "canon"}, "assets": [], "dataDirs": []}
+{"schemaVersion": 1, "kind": "memory-area", "id": "test", "title": "Test", "description": "Test area.", "sensitivity": "personal", "updatedAt": "2026-05-29T08:00:00+02:00", "canonicalFiles": {"canon": "canon.md", "log": "log.jsonl"}, "dashboard": {"visible": true, "defaultView": "canon"}, "assets": [], "dataDirs": []}
 JSON
-cat >"$workspace/memory/areas/test/canon.json" <<JSON
-{"schemaVersion": 1, "kind": "memory-area-canon", "areaId": "test", "updatedAt": "2026-05-29T08:00:00+02:00", "sections": {"test": {"title": "Test", "body": "Test", "sensitivity": "personal"}}}
-JSON
+cat >"$workspace/memory/areas/test/canon.md" <<'MD'
+---
+schemaVersion: 2
+kind: memory-area-canon
+updatedAt: 2026-05-29T08:00:00+02:00
+sensitivity: personal
+areaId: test
+---
+# Test canon
+
+## Test
+Test.
+MD
 cat >"$workspace/memory/areas/test/log.jsonl" <<JSONL
 {"schemaVersion":1,"kind":"test","id":"test-log","createdAt":"2026-05-29T08:00:00+02:00","title":"Test","body":"Test","source":{"type":"review","ref":"tests/run.sh"},"sensitivity":"personal"}
 JSONL
@@ -79,15 +149,6 @@ cat >"$workspace/journal/daily/2026-05-29/morning.json" <<JSON
 JSON
 
 mkdir -p "$workspace/memory/sessions/2026/05/29-080000"
-cat >"$workspace/memory/sessions/2026/05/29-080000/meta.json" <<JSON
-{
-  "schemaVersion": 3,
-  "createdAt": "2026-05-29T08:00:00+02:00",
-  "threadId": "test-thread",
-  "runtime": "codex",
-  "trigger": "test"
-}
-JSON
 cat >"$workspace/memory/sessions/2026/05/29-080000/summary.md" <<'MD'
 # Test session
 
@@ -97,6 +158,17 @@ Carry this forward.
 
 No durable workspace changes were recorded besides this session-memory record.
 MD
+cat >"$workspace/memory/sessions/2026/05/29-080000/meta.json" <<JSON
+{
+  "schemaVersion": 4,
+  "createdAt": "2026-05-29T08:00:00+02:00",
+  "threadId": "test-thread",
+  "runtime": "codex",
+  "trigger": "test",
+  "cwd": "$workspace",
+  "tldr": "Carry this forward."
+}
+JSON
 
 "$SKILL_DIR/scripts/lint-workspace" --workspace-root "$workspace"
 

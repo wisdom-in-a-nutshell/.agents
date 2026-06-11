@@ -77,7 +77,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Read, write, and validate Dobby session memory records.")
     sub = parser.add_subparsers(dest="subcommand", required=True)
 
-    schema = sub.add_parser("schema", help="Print the session-memory v3 schema summary.")
+    schema = sub.add_parser("schema", help="Print the session-memory v4 schema summary.")
     add_common(schema)
 
     validate = sub.add_parser("validate", help="Validate one session folder (or a file inside it).")
@@ -98,6 +98,7 @@ def build_parser() -> argparse.ArgumentParser:
     write.add_argument("--title")
     write.add_argument("--summary")
     write.add_argument("--workspace-changes")
+    write.add_argument("--tldr")
     write.add_argument("--stdin-json", action="store_true", help="Read record fields from stdin JSON.")
     add_common(write)
 
@@ -112,7 +113,7 @@ def build_parser() -> argparse.ArgumentParser:
     add_common(migrate)
 
     migrate_flat = sub.add_parser(
-        "migrate-flat", help="Migrate flat v2 *.json cards to v3 session folders."
+        "migrate-flat", help="Migrate flat v2/v3 *.json cards to v4 session folders."
     )
     migrate_flat.add_argument("--workspace-root", default=".")
     migrate_flat.add_argument("--apply", action="store_true")
@@ -126,7 +127,7 @@ def command_schema() -> dict[str, Any]:
         "schemaVersion": SCHEMA_VERSION,
         "layout": {
             "folder": "memory/sessions/YYYY/MM/DD-HHMMSS/",
-            "meta.json": "machine facts: schemaVersion, createdAt, threadId, runtime, trigger, optional cwd",
+            "meta.json": "machine facts: schemaVersion, createdAt, threadId, runtime, trigger, cwd, tldr",
             "summary.md": "# <title>, summary body, then a '## Workspace changes' section",
             "raw.jsonl": "untouched runtime transcript copied at finalize time (may be absent)",
             "dialogue.md": "normalized human<->agent transcript rendered from raw.jsonl (may be absent)",
@@ -140,15 +141,18 @@ def command_schema() -> dict[str, Any]:
             "title",
             "summary",
             "workspaceChanges",
+            "tldr",
+            "cwd",
         ],
-        "optional": ["cwd"],
+        "optional": [],
         "record": {
             "schemaVersion": SCHEMA_VERSION,
             "createdAt": "ISO-8601 timestamp with timezone",
             "threadId": "source session id (Codex thread id or Claude session id), or null when unavailable",
             "runtime": "source runtime that owned the session: codex or claude",
             "trigger": "why consolidation happened, e.g. codexclaw-idle-expiry, codexclaw-chat-end, stale-cleanup, manual, migration",
-            "cwd": "optional working directory the session ran in",
+            "cwd": "working directory the session ran in, or null when unavailable",
+            "tldr": "1-2 sentence continuity gist, single line, at most 240 chars",
             "title": f"short dashboard/index label, at most {120} characters",
             "summary": "Markdown continuity index: what matters from the thread, not a transcript recap",
             "workspaceChanges": "Markdown/plain-English visibility note about durable workspace changes made during consolidation, excluding this session-memory folder",
@@ -170,6 +174,7 @@ def command_write(args: argparse.Namespace) -> dict[str, Any]:
             created_at=raw.get("createdAt") if isinstance(raw.get("createdAt"), str) else None,
             runtime=raw.get("runtime"),
             cwd=raw.get("cwd"),
+            tldr=raw.get("tldr") if isinstance(raw.get("tldr"), str) else None,
         )
     else:
         record = make_record(
@@ -180,7 +185,8 @@ def command_write(args: argparse.Namespace) -> dict[str, Any]:
             workspace_changes=args.workspace_changes or "",
             created_at=args.created_at,
             runtime=args.runtime,
-            cwd=args.session_cwd,
+            cwd=args.session_cwd or str(Path(args.workspace_root).expanduser().resolve()),
+            tldr=args.tldr,
         )
     path = write_record(Path(args.workspace_root).expanduser().resolve(), record)
     return {"path": str(path), "record": record}

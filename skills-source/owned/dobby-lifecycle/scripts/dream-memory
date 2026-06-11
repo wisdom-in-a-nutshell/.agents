@@ -52,7 +52,7 @@ DEFAULT_TIMEOUT_SECONDS = 1800.0
 DEFAULT_RUN_ROOT = "memory/dreams"
 MAX_OUTPUT_CHARS = 12_000
 # The hard floor: paths the dream must never touch, watchdog-enforced.
-FLOOR_PATHS = ("dobby/constitution.json", "memory/profile.json")
+FLOOR_PATHS = ("dobby/constitution.md", "memory/profile.md")
 CANDIDATE_ACTIONS = ("applied", "needs_adi", "noop")
 
 EXIT_GENERIC = 1
@@ -170,7 +170,7 @@ def gather_areas(workspace_root: Path) -> list[dict[str, Any]]:
             {
                 "id": area_dir.name,
                 "area": rel(workspace_root, area_dir / "area.json"),
-                "canon": rel(workspace_root, area_dir / "canon.json"),
+                "canon": rel(workspace_root, area_dir / "canon.md"),
                 "log": rel(workspace_root, log_path),
                 "logCount": log_count,
             }
@@ -190,7 +190,7 @@ def build_manifest(workspace_root: Path, *, run_id: str, window_from: str, windo
         "window": {"from": window_from, "to": window_to, "days": days},
         "sessions": sessions,
         "journalDays": journal,
-        "now": "memory/now.json" if (workspace_root / "memory/now.json").is_file() else None,
+        "now": "memory/now.md" if (workspace_root / "memory/now.md").is_file() else None,
         "shelf": "state/shelf.json" if (workspace_root / "state/shelf.json").is_file() else None,
         "projectTrackers": projects,
         "areas": areas,

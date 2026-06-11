@@ -9,26 +9,26 @@ active improvement trackers.
 Dobby wakes through a schema-backed nervous system:
 
 ```text
-dobby/constitution.json
+dobby/constitution.md
 + shared body map
-+ memory/profile.json
-+ memory/now.json
++ memory/profile.md
++ memory/now.md
 + recent session-memory summaries
 + Shelf
 + calendar
 + memory/areas manifest
 ```
 
-`dobby/constitution.json` is the prompt/instruction contract and may be loaded
+`dobby/constitution.md` is the prompt/instruction contract and may be loaded
 directly by Codex as `model_instructions_file`. Person-specific context lives in
-`memory/profile.json` and is loaded by lifecycle boot context.
+`memory/profile.md` and is loaded by lifecycle boot context.
 
 ## Organs
 
 | Organ | Purpose |
 |---|---|
-| `dobby/constitution.json` | Dobby identity, mission, operating principles, boundaries, and memory/write-back policy. |
-| `memory/profile.json` | Durable person-specific profile/context for the workspace. |
+| `dobby/constitution.md` | Dobby identity, mission, operating principles, boundaries, and memory/write-back policy. |
+| `memory/profile.md` | Durable person-specific profile/context for the workspace. |
 | `memory/` | Dobby's understanding: current orientation, area canon/logs, session memory. |
 | `journal/` | Dated lived history: reflections, check-ins, raw captures, monthly synthesis. |
 | `state/` | Live machine-readable state, usually Shelf. |
@@ -45,11 +45,11 @@ directly by Codex as `model_instructions_file`. Person-specific context lives in
 
 | Content | Canonical home |
 |---|---|
-| Dobby behavior / constitution / boundaries | `dobby/constitution.json` |
-| Durable person profile / preferences / values / patterns | `memory/profile.json` |
+| Dobby behavior / constitution / boundaries | `dobby/constitution.md` |
+| Durable person profile / preferences / values / patterns | `memory/profile.md` |
 | Shared workspace body meaning | `dobby-workspace` skill |
-| This week's active orientation | `memory/now.json` |
-| Area-specific durable understanding | `memory/areas/<area>/canon.json` |
+| This week's active orientation | `memory/now.md` |
+| Area-specific durable understanding | `memory/areas/<area>/canon.md` |
 | Area-specific dated fact/event | `memory/areas/<area>/log.jsonl` |
 | Area metadata, assets, data dirs | `memory/areas/<area>/area.json` |
 | Session memory record | `memory/sessions/YYYY/MM/DD-HHMMSS/` — `meta.json` + `summary.md`, plus captured `raw.jsonl` + `dialogue.md` |
@@ -89,19 +89,19 @@ repo scripts/check-fast.sh
 
 `dobby-workspace` owns orchestration and body shape. Domain schemas stay with
 the skills that write the data where possible. Cross-cutting workspace schemas
-such as `dobby/constitution.json`, `memory/profile.json`, `memory/now.json`,
+such as `dobby/constitution.md`, `memory/profile.md`, `memory/now.md`,
 area metadata/canon/logs, and `dobby/growth.jsonl` are enforced by the shared
 workspace linter.
 
 ## Memory contract
 
-- `dobby/constitution.json` is one path-addressable JSON file for Dobby behavior.
-- `memory/profile.json` is one path-addressable JSON file for person context.
-- `memory/now.json` is the short active weekly/current-orientation layer: this
+- `dobby/constitution.md` is one path-addressable markdown+frontmatter file for Dobby behavior.
+- `memory/profile.md` is one path-addressable markdown+frontmatter file for person context.
+- `memory/now.md` is the short active weekly/current-orientation layer: this
   week's deltas, blockers, and open decisions, pointing to profile/canon for the
   full story instead of restating it. All content lives in `body` (no `sections`
   mirror — the two copies used to drift).
-- Area canon files hold durable domain understanding: `memory/areas/<area>/canon.json`.
+- Area canon files hold durable domain understanding: `memory/areas/<area>/canon.md`.
 - Area logs are append-only JSONL dated facts/events: `memory/areas/<area>/log.jsonl`.
 - Area metadata and non-text assets are indexed through `memory/areas/<area>/area.json`.
 - Session memory records are continuity index cards, not canon by default.

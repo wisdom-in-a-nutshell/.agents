@@ -16,7 +16,7 @@ SCRIPT_DIR = Path(__file__).resolve().parent
 LINT_WORKSPACE = SCRIPT_DIR / "lint-workspace"
 
 ROUTES: tuple[tuple[str, str, tuple[tuple[str, ...], ...]], ...] = (
-    ("dobby-lifecycle", "lifecycle", (("memory", "sessions", "*", "*", "*.json"),)),
+    ("dobby-lifecycle", "lifecycle", (("memory", "sessions", "*", "*", "*.json"), ("memory", "sessions", "*", "*", "*.md"))),
     ("journal-checkin", "journal", (("journal", "daily", "*", "*.json"),)),
     ("dobby-shelf", "shelf", (("state", "shelf.json"),)),
 )

@@ -16,7 +16,7 @@ a caller decides a thread should preserve useful memory before archive.
 Use this skill for:
 
 - `SessionStart`, `UserPromptSubmit`, and `FinalizeCodexThread` behavior.
-- Boot context assembly: shared `dobby-workspace` body map, `memory/now.json`, recent session-memory summaries, Shelf snapshot, calendar snapshot, area manifest.
+- Boot context assembly: shared `dobby-workspace` body map, `memory/now.md`, recent session-memory summaries, Shelf snapshot, calendar snapshot, area manifest.
 - Codex App Server same-thread remember-session flow before archive.
 - Hook payload normalization, temporary hook records where active, worker logs, and lifecycle debugging.
 - Questions like “why did Dobby not load context?”, “why did session memory not write?”, or “change what loads at boot.”

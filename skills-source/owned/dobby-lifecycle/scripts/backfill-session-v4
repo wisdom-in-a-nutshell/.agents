@@ -1,0 +1,90 @@
+#!/usr/bin/env python3
+"""Backfill Dobby session folders to the v4 meta.json contract.
+
+This is a one-time migration tool, not a runtime compatibility path. It reads
+existing session folders, derives `tldr` from summary.md, writes v4 meta.json,
+and leaves summary/dialogue/raw files in place.
+"""
+
+from __future__ import annotations
+
+import argparse
+import json
+import sys
+from pathlib import Path
+
+SCRIPT_DIR = Path(__file__).resolve().parent
+sys.path.insert(0, str(SCRIPT_DIR))
+
+from session_memory_lib import (  # noqa: E402
+    SCHEMA_VERSION,
+    SessionMemoryError,
+    clean_tldr,
+    iter_session_dirs,
+    parse_summary_md,
+    read_meta,
+    validate_record,
+    write_record_files,
+)
+
+
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description="Backfill session-memory meta.json files to v4.")
+    parser.add_argument("--workspace-root", action="append", required=True, help="Workspace root to migrate. Can be repeated.")
+    parser.add_argument("--apply", action="store_true", help="Write changes. Without this, dry-run only.")
+    parser.add_argument("--json", action="store_true", help="Emit JSON output.")
+    parser.add_argument("--no-input", action="store_true", help="Accepted for non-interactive callers.")
+    return parser.parse_args()
+
+
+def migrate_workspace(root: Path, *, apply: bool) -> dict:
+    sessions_dir = root / "memory" / "sessions"
+    changed = []
+    valid = 0
+    errors = []
+    for session_dir in iter_session_dirs(sessions_dir):
+        try:
+            meta = read_meta(session_dir)
+            summary_text = (session_dir / "summary.md").read_text(encoding="utf-8")
+            parts = parse_summary_md(summary_text, source=str(session_dir / "summary.md"))
+            if meta.get("schemaVersion") == SCHEMA_VERSION and isinstance(meta.get("tldr"), str):
+                validate_record({**meta, **parts})
+                valid += 1
+                continue
+            if meta.get("schemaVersion") not in (3, SCHEMA_VERSION):
+                raise SessionMemoryError(f"cannot migrate schemaVersion {meta.get('schemaVersion')!r}")
+            next_meta = {
+                "schemaVersion": SCHEMA_VERSION,
+                "createdAt": meta.get("createdAt"),
+                "threadId": meta.get("threadId"),
+                "runtime": meta.get("runtime"),
+                "trigger": meta.get("trigger"),
+                "cwd": meta.get("cwd") if "cwd" in meta else str(root),
+                "tldr": clean_tldr(meta.get("tldr"), summary=parts["summary"]),
+            }
+            record = validate_record({**next_meta, **parts})
+            changed.append(str(session_dir.relative_to(root)))
+            if apply:
+                write_record_files(session_dir, record)
+        except (OSError, SessionMemoryError) as exc:
+            errors.append({"path": str(session_dir), "error": str(exc)})
+    return {"workspaceRoot": str(root), "apply": apply, "changed": changed, "changedCount": len(changed), "alreadyValid": valid, "errors": errors}
+
+
+def main() -> int:
+    args = parse_args()
+    results = [migrate_workspace(Path(raw).expanduser().resolve(), apply=args.apply) for raw in args.workspace_root]
+    status = "ok" if not any(result["errors"] for result in results) else "error"
+    payload = {"status": status, "schemaVersion": SCHEMA_VERSION, "results": results}
+    if args.json:
+        print(json.dumps(payload, indent=2, ensure_ascii=False))
+    else:
+        for result in results:
+            print(f"{result['workspaceRoot']}: changed={result['changedCount']} alreadyValid={result['alreadyValid']} errors={len(result['errors'])} apply={result['apply']}")
+            for error in result["errors"][:20]:
+                print(f"  ERROR {error['path']}: {error['error']}", file=sys.stderr)
+    return 0 if status == "ok" else 1
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

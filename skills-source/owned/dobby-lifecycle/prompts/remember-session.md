@@ -45,10 +45,10 @@ Default to session memory. Promote outside session memory only when clear:
 - `memory/sessions/YYYY/MM/DD-HHMMSS/` — default continuity record for this ending thread (a folder: `meta.json` + `summary.md`, written for you by the session-memory client; the finalizer adds `raw.jsonl` + `dialogue.md` afterwards).
 - `state/shelf.json` via the Shelf client — personal actionable open loops, purchases, habits, waiting items, or commitments from Adi.
 - project tracker under `projects/<project>/tasks.md` — Dobby/system/project work state, decisions, resume points, and open implementation questions.
-- `memory/now.json` — this week’s active orientation only; do not use it as a generic session summary.
+- `memory/now.md` — this week’s active orientation only; do not use it as a generic session summary.
 - `memory/areas/<area>/log.jsonl` — concrete dated area facts/events.
-- `memory/areas/<area>/canon.json` — durable area understanding after the fact is stable enough.
-- `dobby/constitution.json` or `memory/profile.json` — rare durable identity, value, boundary, or support-pattern changes. Use only when the session clearly establishes a stable truth or an explicit instruction about how Dobby should serve Adi.
+- `memory/areas/<area>/canon.md` — durable area understanding after the fact is stable enough.
+- `dobby/constitution.md` or `memory/profile.md` — rare durable identity, value, boundary, or support-pattern changes. Use only when the session clearly establishes a stable truth or an explicit instruction about how Dobby should serve Adi.
 - shared `dobby-workspace` body map / linter — only when the session explicitly changed workspace shape or routing rules. Do not invent a new location just because routing feels imperfect.
 
 Before any non-session-memory write, read the target file first and avoid duplicating existing content. If routing is unclear, preserve the candidate in session memory instead of scattering it.
@@ -64,6 +64,7 @@ cat <<'JSON' | {{session_memory_cli_shell}} write --stdin-json --no-input
   "runtime": {{runtime_json}},
   "trigger": {{trigger_json}},
   "title": "Short dashboard/index label",
+  "tldr": "One to two plain sentences of continuity gist for boot and dashboard lists.",
   "summary": "Curated Markdown continuity index: what matters from this thread, not a transcript recap.",
   "workspaceChanges": "Plain-English Markdown note about durable workspace changes made during consolidation, excluding this session-memory record. If none: No durable workspace changes besides this session-memory record."
 }
@@ -79,6 +80,11 @@ Quality bar for `title`:
 - Short enough for a dashboard row.
 - Name the memory, not the trigger.
 - Prefer concrete labels like `Morning check-in captured`, `Dashboard schema cleanup`, or `Co-founder boundary clarified`.
+
+Quality bar for `tldr`:
+
+- One to two plain sentences, max 240 characters, single line.
+- Say what happened and what carries forward. A week later, this should answer: do I need to open this session?
 
 Quality bar for `summary`:
 

@@ -8,6 +8,7 @@ python3 -m py_compile \
   "$SKILL_DIR/scripts/claude_lib.py" \
   "$SKILL_DIR/scripts/transcript_lib.py" \
   "$SKILL_DIR/scripts/session-memory" \
+  "$SKILL_DIR/scripts/backfill-session-v4" \
   "$SKILL_DIR/scripts/session-transcript" \
   "$SKILL_DIR/scripts/dream-memory" \
   "$SKILL_DIR/scripts/validate" \
@@ -37,6 +38,10 @@ if ! grep -q '"schemaVersion"' <<<"$schema_output"; then
 fi
 if ! grep -q '"workspaceChanges"' <<<"$schema_output"; then
   echo "session-memory schema should describe the workspace-changes visibility field" >&2
+  exit 1
+fi
+if ! grep -q '"tldr"' <<<"$schema_output"; then
+  echo "session-memory schema should describe the v4 tldr field" >&2
   exit 1
 fi
 
@@ -188,8 +193,10 @@ fi
 python3 - "$repo/memory/sessions/2026/05/26-090000/meta.json" <<'PY'
 import json, sys
 meta = json.loads(open(sys.argv[1]).read())
-assert meta["schemaVersion"] == 3, meta
+assert meta["schemaVersion"] == 4, meta
 assert meta["runtime"] == "codex", meta
+assert meta["tldr"], meta
+assert "cwd" in meta, meta
 PY
 
 payload="$tmp_dir/finalize-payload.json"
@@ -347,6 +354,10 @@ if ! grep -q "schema source of truth" <<<"$instruction_output"; then
 fi
 if ! grep -q "workspaceChanges" <<<"$instruction_output"; then
   echo "remember-session prompt should document the workspace-changes visibility field" >&2
+  exit 1
+fi
+if ! grep -q "tldr" <<<"$instruction_output"; then
+  echo "remember-session prompt should document the v4 tldr field" >&2
   exit 1
 fi
 claude_instruction_output="$("$SKILL_DIR/scripts/remember-claude-session" \

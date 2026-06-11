@@ -26,14 +26,14 @@ Short version:
   `remember-session`, which starts one final same-thread Codex turn using the
   versioned prompt at `prompts/remember-session.md`. That turn uses the
   `session-memory` client for session continuity and decides whether anything
-  should also be written under `memory/now.json`, an area canon/log, `dobby/constitution.json` or `memory/profile.json`, Shelf,
+  should also be written under `memory/now.md`, an area canon/log, `dobby/constitution.md` or `memory/profile.md`, Shelf,
   or a project tracker by reading the shared `dobby-workspace` body map.
 - **Archive is conditional.** If the repo hook, remember-session turn, or
   archive request fails, the source thread is left unarchived so stale cleanup
   can retry later.
 - **`memory/sessions` is the bridge.** End-of-thread JSON summaries become part
   of the next boot context.
-- **`memory/now.json`, area canon/log, `dobby/constitution.json`, and `memory/profile.json` are promotion targets only.** They
+- **`memory/now.md`, area canon/log, `dobby/constitution.md`, and `memory/profile.md` are promotion targets only.** They
   should be updated when something durable changes, not for every session.
 
 ## Finalization boundary rule
@@ -52,16 +52,16 @@ to the command that uses it.
 
 Boot context is delivered by the repo's `SessionStart` hook
 (`scripts/hooks/session_start.py`), which delegates to the skill-bundled hook.
-The hook reads the shared `dobby-workspace` body map and `now.json`, walks
+The hook reads the shared `dobby-workspace` body map and `now.md`, walks
 `memory/areas/`, reads recent session-memory JSON, calls `dobby-shelf snapshot
 --mode boot --plain` for the curated Shelf decision surface, and calls the
 `dobby-calendar` skill CLI for upcoming events.
 
 What boot context should include:
 
-1. `dobby/constitution.json` or `memory/profile.json` / identity context through the runtime system-prompt mechanism.
+1. `dobby/constitution.md` or `memory/profile.md` / identity context through the runtime system-prompt mechanism.
 2. Shared `dobby-workspace/references/body-map.md` as the common Dobby body map.
-3. `memory/now.json`.
+3. `memory/now.md`.
 4. Recent session-memory summaries: last 3 plus records from the last 7 days,
    capped at 10.
 5. Last dream: newest complete dream-memory run within 7 days — run id, window,
@@ -84,7 +84,7 @@ Operational limits:
 ## Session memory
 
 Session continuity lives in `memory/sessions/YYYY/MM/DD-HHMMSS/` folders, not in
-`memory/now.json`. Each finalized session is one folder (schema v3):
+`memory/now.md`. Each finalized session is one folder (schema v4):
 
 - `meta.json` — machine facts: `schemaVersion`, `createdAt`, `threadId`,
   `runtime` (`codex`/`claude`, required), `trigger`, optional `cwd`.
@@ -108,8 +108,8 @@ loaded at boot. `threadId` points back to the original transcript when deeper
 retrieval is needed (a Codex thread id or a Claude session id).
 `workspaceChanges` is for visibility into durable writes made during
 finalization; if none happened, say so plainly. Durable decisions still get
-promoted to `now.json`, area canon, or `dobby/constitution.json` or
-`memory/profile.json` as appropriate.
+promoted to `now.md`, area canon, or `dobby/constitution.md` or
+`memory/profile.md` as appropriate.
 
 Current trigger vocabulary:
 
@@ -282,7 +282,7 @@ Intentional non-goals for Dobby workspaces:
 
 `scripts/dream-memory` is the dreaming counterpart to per-session remembering.
 It gathers a deterministic inputs manifest for a review window (session folders,
-journal days, `memory/now.json`, `state/shelf.json`, active project trackers,
+journal days, `memory/now.md`, `state/shelf.json`, active project trackers,
 area manifests), renders the versioned `prompts/dream-memory.md`, runs one
 headless Claude turn in the workspace, and validates the run bundle written
 under `memory/dreams/<run-id>/` (run id `YYYY-MM-DD-HHMM`, flat — dreams arrive
@@ -305,7 +305,7 @@ $HOME/GitHub/agents/skills-source/owned/dobby-lifecycle/scripts/dream-memory \
 The dream applies its own changes, one git commit per candidate
 (`dream(<run-id>): <candidate-id> — ...`), so rolling back one change is one
 `git revert` of the sha in its candidate. A hard floor stays watchdog-enforced
-by the runner: edits to `dobby/constitution.json` / `memory/profile.json` and
+by the runner: edits to `dobby/constitution.md` / `memory/profile.md` and
 any file deletion are reported as violations in events + envelope (the floor
 items become `needs_adi` candidates instead, approved conversationally — any
 session can apply or revert on Adi's word). Shelf adds go through the
