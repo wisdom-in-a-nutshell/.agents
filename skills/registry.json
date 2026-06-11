@@ -180,19 +180,6 @@
       "upstream_ref": "-"
     },
     {
-      "skill": "dobby-mail",
-      "origin": "owned",
-      "scope": "repo",
-      "repos": [
-        "adi",
-        "angie",
-        "codexclaw",
-        "agents"
-      ],
-      "source_path": "skills-source/owned/dobby-mail",
-      "upstream_ref": "-"
-    },
-    {
       "skill": "modal-function-sync",
       "origin": "owned",
       "scope": "repo",

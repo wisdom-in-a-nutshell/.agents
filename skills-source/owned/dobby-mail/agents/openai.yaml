@@ -1,5 +1,0 @@
-interface:
-  display_name: "Dobby Mail"
-  short_description: "Gmail-only mail reads, cache-backed history polling, and safe draft-first writes"
-  brand_color: "#2563EB"
-  default_prompt: "Use $dobby-mail to search/read my Gmail, inspect the local Gmail cache, poll Gmail history, and create safe unsent drafts when needed."
