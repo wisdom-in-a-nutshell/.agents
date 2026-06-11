@@ -70,6 +70,20 @@ def session_transcript_bin() -> Path:
     ).expanduser()
 
 
+def runner_reported_skip(stdout: str) -> bool:
+    """True when the remember runner's JSON envelope says the triviality gate
+    skipped the memory record — there is no session folder to capture into."""
+    lines = [line for line in stdout.strip().splitlines() if line.strip()]
+    if not lines:
+        return False
+    try:
+        obj = json.loads(lines[-1])
+    except ValueError:
+        return False
+    data = obj.get("data") if isinstance(obj, dict) else None
+    return isinstance(data, dict) and data.get("skipped") is True
+
+
 def capture_session_transcript(root: Path, session_id: str) -> None:
     """Copy raw.jsonl + render dialogue.md into the session folder the remember
     turn just wrote. Best-effort: memory preservation already succeeded, so a
@@ -157,7 +171,8 @@ def run_remember_claude_session(payload: dict[str, Any]) -> int:
         print(truncate_text(result.stderr), file=sys.stderr)
     if result.stdout.strip():
         print(truncate_text(result.stdout))
-    capture_session_transcript(root, session_id)
+    if not runner_reported_skip(result.stdout):
+        capture_session_transcript(root, session_id)
     return 0
 
 

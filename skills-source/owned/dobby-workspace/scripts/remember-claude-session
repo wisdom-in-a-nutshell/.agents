@@ -26,7 +26,7 @@ SCRIPT_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(SCRIPT_DIR))
 
 from claude_lib import claude_bin  # noqa: E402
-from remember_lib import RememberPromptError, build_instruction  # noqa: E402
+from remember_lib import RememberPromptError, build_instruction, triviality_skip_reason  # noqa: E402
 
 SCHEMA_VERSION = "1.0"
 COMMAND = "remember-claude-session"
@@ -155,6 +155,11 @@ def main() -> int:
         if not workspace_root.is_dir():
             raise RememberClaudeSessionError(f"workspace root is not a directory: {workspace_root}")
         trigger = clean_label(args.trigger, "manual")
+        skip_reason = None
+        if not args.print_instruction:
+            skip_reason = triviality_skip_reason(
+                runtime="claude", session_id=args.session_id, trigger=trigger
+            )
         instruction = build_instruction(
             workspace_root=workspace_root,
             thread_id=args.session_id,
@@ -163,6 +168,13 @@ def main() -> int:
         )
         if args.print_instruction:
             data: dict[str, Any] = {"instruction": instruction}
+        elif skip_reason:
+            data = {
+                "sessionId": args.session_id,
+                "skipped": True,
+                "reason": skip_reason,
+                "trigger": trigger,
+            }
         else:
             data = run_remember_turn(
                 session_id=args.session_id,
@@ -206,6 +218,8 @@ def main() -> int:
     if args.plain:
         if args.print_instruction:
             print(data["instruction"])
+        elif data.get("skipped"):
+            print(f"ok skipped id={data['sessionId']} ({data['reason']})")
         else:
             print(f"ok remembered id={data['sessionId']}")
     else:

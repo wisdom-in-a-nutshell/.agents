@@ -23,24 +23,6 @@ dobby/constitution.md
 directly by Codex as `model_instructions_file`. Person-specific context lives in
 `memory/profile.md` and is loaded by lifecycle boot context.
 
-## Organs
-
-| Organ | Purpose |
-|---|---|
-| `dobby/constitution.md` | Dobby identity, mission, operating principles, boundaries, and memory/write-back policy. |
-| `memory/profile.md` | Durable person-specific profile/context for the workspace. |
-| `memory/` | Dobby's understanding: current orientation, area canon/logs, session memory. |
-| `journal/` | Dated lived history: reflections, check-ins, raw captures, monthly synthesis. |
-| `state/` | Live machine-readable state, usually Shelf. |
-| `dobby/` | Dobby's operating contract and sharpening notes. |
-| `projects/` | Active Dobby/app/system improvement trackers. |
-| `scripts/` | Repo-local checks, lifecycle wrappers, and local helpers. |
-| `.agents/skills/` | Repo-local links to operational skills. |
-| `.claude/` | Claude/Claude Code repo-local runtime or skill links; not Dobby memory. |
-| `.codex/` | Runtime/tooling configuration. |
-| `.antigravitycli/` | Local Antigravity CLI experiment/runtime state; not Dobby memory. |
-| `tmp/` | Disposable scratch and hook logs. |
-
 ## Routing table
 
 | Content | Canonical home |
@@ -67,6 +49,30 @@ directly by Codex as `model_instructions_file`. Person-specific context lives in
 One fact should have one canonical home. If another place needs awareness, point
 to the canonical home instead of duplicating.
 
+Below the cut is reference, read on demand: organ purposes, validation
+architecture, the memory contract, and the change protocol. Full file:
+`dobby-workspace/references/body-map.md`.
+
+<!-- boot-cut -->
+
+## Organs
+
+| Organ | Purpose |
+|---|---|
+| `dobby/constitution.md` | Dobby identity, mission, operating principles, boundaries, and memory/write-back policy. |
+| `memory/profile.md` | Durable person-specific profile/context for the workspace. |
+| `memory/` | Dobby's understanding: current orientation, area canon/logs, session memory. |
+| `journal/` | Dated lived history: reflections, check-ins, raw captures, monthly synthesis. |
+| `state/` | Live machine-readable state, usually Shelf. |
+| `dobby/` | Dobby's operating contract and sharpening notes. |
+| `projects/` | Active Dobby/app/system improvement trackers. |
+| `scripts/` | Repo-local checks, lifecycle wrappers, and local helpers. |
+| `.agents/skills/` | Repo-local links to operational skills. |
+| `.claude/` | Claude/Claude Code repo-local runtime or skill links; not Dobby memory. |
+| `.codex/` | Runtime/tooling configuration. |
+| `.antigravitycli/` | Local Antigravity CLI experiment/runtime state; not Dobby memory. |
+| `tmp/` | Disposable scratch and hook logs. |
+
 `dobby/growth.jsonl` source types stay intentionally small:
 
 - `conversation`: Adi directly corrected or taught Dobby.
@@ -82,7 +88,7 @@ long prompt prose.
 repo scripts/check-fast.sh
   -> dobby-workspace/scripts/validate
        -> dobby-workspace/scripts/lint-workspace
-       -> dobby-lifecycle/scripts/validate
+       -> dobby-workspace/scripts/validate-sessions
        -> journal-checkin/scripts/validate
        -> dobby-shelf/scripts/validate
 ```
@@ -122,4 +128,5 @@ When a workspace shape change is intentional:
 1. Confirm the desired body change with the relevant human or an existing
    explicit project tracker decision.
 2. Update this shared body map and `scripts/lint-workspace` together.
-3. Keep lifecycle behavior in `dobby-lifecycle`, not here.
+3. Lifecycle behavior (boot, finalize, dreaming) lives in this skill's scripts
+   and `references/lifecycle-hooks.md`, not in this map.

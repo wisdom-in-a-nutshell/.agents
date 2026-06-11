@@ -75,3 +75,44 @@ def build_instruction(
         "session_memory_cli_shell": shell_quote(session_memory_cli),
     }
     return render_prompt_template(template, values)
+
+
+# ---------------------------------------------------------------------------
+# Triviality gate
+# ---------------------------------------------------------------------------
+
+# Automatic finalizes of tiny read-only sessions archive without a memory
+# record; explicit finalizes (manual, chat-end) always remember.
+AUTO_FINALIZE_TRIGGERS = frozenset({"stale-cleanup", "codexclaw-idle-expiry"})
+TRIVIAL_MAX_USER_TURNS = 2
+_MUTATING_TOOL_HINTS = ("write", "edit", "patch", "shell", "bash", "exec")
+
+
+def triviality_skip_reason(*, runtime: str, session_id: str, trigger: str) -> str | None:
+    """Reason to skip the remember turn, or None to remember.
+
+    Gated triggers only. When the raw transcript cannot be located or parsed,
+    remembering is the safe default.
+    """
+    if trigger not in AUTO_FINALIZE_TRIGGERS:
+        return None
+    try:
+        import transcript_lib
+
+        raw_path = transcript_lib.find_raw_transcript(runtime, session_id)
+        if raw_path is None:
+            return None
+        dialogue = transcript_lib.parse_raw_transcript(raw_path, runtime)
+    except Exception:
+        return None
+    user_turns = sum(1 for section in dialogue.sections if section.role == "user")
+    if user_turns > TRIVIAL_MAX_USER_TURNS:
+        return None
+    for name in dialogue.tool_counts:
+        lowered = name.lower()
+        if any(hint in lowered for hint in _MUTATING_TOOL_HINTS):
+            return None
+    return (
+        f"trivial session ({user_turns} user turn(s), no workspace-mutating tools); "
+        f"trigger {trigger} archives without a memory record"
+    )

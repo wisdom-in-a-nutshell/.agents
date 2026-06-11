@@ -25,7 +25,7 @@ from typing import Any
 SCRIPT_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(SCRIPT_DIR))
 
-from remember_lib import RememberPromptError, build_instruction  # noqa: E402
+from remember_lib import RememberPromptError, build_instruction, triviality_skip_reason  # noqa: E402
 
 SCHEMA_VERSION = "1.0"
 COMMAND = "remember-session"
@@ -353,6 +353,14 @@ def remember_session(
     remember_timeout_seconds: float,
 ) -> dict[str, Any]:
     trigger = clean_label(trigger, "manual")
+    skip_reason = triviality_skip_reason(runtime="codex", session_id=thread_id, trigger=trigger)
+    if skip_reason:
+        return {
+            "threadId": thread_id,
+            "skipped": True,
+            "reason": skip_reason,
+            "trigger": trigger,
+        }
     with AppServerClient(timeout_seconds) as client:
         thread_cwd, workspace_root = resolve_workspace_root(client, thread_id)
         thread_resume(client, thread_id)
@@ -487,6 +495,8 @@ def main() -> int:
     if args.plain:
         if args.print_instruction:
             print(data["instruction"])
+        elif data.get("skipped"):
+            print(f"ok skipped id={data['threadId']} ({data['reason']})")
         else:
             print(f"ok remembered id={data['threadId']} turn={data.get('turnId') or 'unknown'}")
     else:

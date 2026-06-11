@@ -14,9 +14,15 @@ from pathlib import Path
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 LINT_WORKSPACE = SCRIPT_DIR / "lint-workspace"
+VALIDATE_SESSIONS = SCRIPT_DIR / "validate-sessions"
 
-ROUTES: tuple[tuple[str, str, tuple[tuple[str, ...], ...]], ...] = (
-    ("dobby-lifecycle", "lifecycle", (("memory", "sessions", "*", "*", "*.json"), ("memory", "sessions", "*", "*", "*.md"))),
+# skill=None routes to an in-skill validator (sessions are owned by this skill).
+ROUTES: tuple[tuple[str | None, str, tuple[tuple[str, ...], ...]], ...] = (
+    (None, "sessions", (
+        ("memory", "sessions", "*", "*", "*", "*.json"),
+        ("memory", "sessions", "*", "*", "*", "*.md"),
+        ("memory", "sessions", "*", "*", "*", "*.jsonl"),
+    )),
     ("journal-checkin", "journal", (("journal", "daily", "*", "*.json"),)),
     ("dobby-shelf", "shelf", (("state", "shelf.json"),)),
 )
@@ -165,7 +171,9 @@ def run_domain_validators(root: Path, rel_paths: list[str]) -> None:
         matched = sorted(rel for rel in rel_paths if route_matches(rel, patterns))
         if not matched:
             continue
-        validator = skill_validator(root, skill)
+        validator = VALIDATE_SESSIONS if skill is None else skill_validator(root, skill)
+        if not validator.is_file():
+            fail(f"missing validator for {label}: {validator}")
         input_text = "".join(f"{rel}\n" for rel in matched)
         run(
             [str(validator), "--workspace-root", str(root), "--scope", "paths", "--paths-from-stdin", "--no-input"],

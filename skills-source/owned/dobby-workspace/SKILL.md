@@ -1,11 +1,13 @@
 ---
 name: dobby-workspace
-description: "Operate the shared Dobby workspace body map and shape lint across personal Dobby workspaces. Use when changing body routing, workspace folder contracts, repo shape linting, or when boot context should load the common Dobby workspace map."
+description: "Run a Dobby workspace — its shape and its rhythms. Use when changing body routing, workspace folder contracts, shape linting, lifecycle hooks (boot/per-turn/finalize), session memory, or overnight dreaming across personal Dobby workspaces."
 ---
 
 # Dobby Workspace
 
-This skill owns the shared Dobby workspace body contract.
+This skill owns the shared Dobby workspace body contract and its lifecycle:
+the shape of a workspace, and the hooks that boot it, remember sessions, and
+dream over it.
 
 Use it for:
 
@@ -13,13 +15,20 @@ Use it for:
 - deciding where Dobby memory belongs
 - updating workspace shape rules shared across `adi`, `angie`, or future Dobby homes
 - running or editing the workspace shape linter
+- lifecycle hook runtime behavior: session boot, per-turn context, finalize plumbing
+- session-memory records (write, validate, backfill) and the dream-memory job
 
 Do not use this skill for:
 
-- lifecycle hook runtime behavior, boot loading, and finalization plumbing → use `dobby-lifecycle`
 - Shelf operations → use `dobby-shelf`
 - journal/check-in writes → use `journal-checkin`
 - health data → use `health`
+
+## Lifecycle hooks
+
+Load `references/lifecycle-hooks.md` for the hook contracts (session-start,
+user-prompt-submit, finalize-codex-thread, finalize-claude-session) and how
+workspaces wire thin wrappers to them.
 
 ## Common map
 
@@ -66,6 +75,6 @@ Current domain owners:
 
 | Files | Owner |
 |---|---|
-| `memory/sessions/YYYY/MM/DD-HHMMSS[-N]/{meta.json,summary.md,dialogue.md,raw.jsonl}` | `dobby-lifecycle/scripts/validate` |
+| `memory/sessions/YYYY/MM/DD-HHMMSS[-N]/{meta.json,summary.md,dialogue.md,raw.jsonl}` | `dobby-workspace/scripts/validate-sessions` (in-skill) |
 | `journal/daily/*/morning.json`, `journal/daily/*/night.json`, `journal/daily/*/general.json` | `journal-checkin/scripts/validate` |
 | `state/shelf.json` | `dobby-shelf/scripts/validate` |

@@ -423,12 +423,19 @@ def print_recent_sessions(entries: list[dict]) -> None:
         print(str(entry["content"]).strip())
 
 
+BODY_MAP_BOOT_CUT = "<!-- boot-cut -->"
+
+
 def print_workspace_body_map() -> None:
     content = read_memory_file(
         DOBBY_WORKSPACE_SKILL_DIR / "references" / "body-map.md"
     ).strip()
     if not content:
         return
+    # Boot injects only the slice above the cut (core idea + routing table);
+    # the rest of the file is on-demand reference.
+    if BODY_MAP_BOOT_CUT in content:
+        content = content.split(BODY_MAP_BOOT_CUT, 1)[0].rstrip()
     section("workspace body map")
     print(
         truncate_text(
