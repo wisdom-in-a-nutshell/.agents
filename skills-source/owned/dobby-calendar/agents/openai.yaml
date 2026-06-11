@@ -1,4 +1,0 @@
-interface:
-  display_name: "Dobby Calendar"
-  short_description: "Read, search, and write calendar events through Dobby"
-  default_prompt: "Use $dobby-calendar to inspect, search, schedule, or debug calendar operations."

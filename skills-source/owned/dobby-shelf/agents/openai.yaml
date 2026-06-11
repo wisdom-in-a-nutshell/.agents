@@ -1,4 +1,0 @@
-interface:
-  display_name: "Dobby Shelf"
-  short_description: "Manage personal open loops in Dobby Shelf"
-  default_prompt: "Use $dobby-shelf to add, review, defer, complete, or drop personal Shelf items."

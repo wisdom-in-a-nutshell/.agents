@@ -180,39 +180,6 @@
       "upstream_ref": "-"
     },
     {
-      "skill": "journal-checkin",
-      "origin": "owned",
-      "scope": "repo",
-      "repos": [
-        "adi",
-        "angie"
-      ],
-      "source_path": "skills-source/owned/journal-checkin",
-      "upstream_ref": "-"
-    },
-    {
-      "skill": "dobby-shelf",
-      "origin": "owned",
-      "scope": "repo",
-      "repos": [
-        "adi",
-        "angie"
-      ],
-      "source_path": "skills-source/owned/dobby-shelf",
-      "upstream_ref": "-"
-    },
-    {
-      "skill": "dobby-calendar",
-      "origin": "owned",
-      "scope": "repo",
-      "repos": [
-        "adi",
-        "angie"
-      ],
-      "source_path": "skills-source/owned/dobby-calendar",
-      "upstream_ref": "-"
-    },
-    {
       "skill": "dobby-mail",
       "origin": "owned",
       "scope": "repo",
@@ -261,17 +228,6 @@
       "scope": "global",
       "repos": [],
       "source_path": "skills-source/owned/imagegen",
-      "upstream_ref": "-"
-    },
-    {
-      "skill": "health",
-      "origin": "owned",
-      "scope": "repo",
-      "repos": [
-        "adi",
-        "angie"
-      ],
-      "source_path": "skills-source/owned/health",
       "upstream_ref": "-"
     },
     {

@@ -1,1 +1,0 @@
-"""Dobby calendar subsystem."""
