@@ -299,7 +299,7 @@ class ClaudeSyncTests(TempDirTestCase):
                                 "name": "Preview",
                                 "host": "127.0.0.1",
                                 "runtimeExecutable": "pnpm",
-                                "runtimeArgs": ["dev", "--host", "127.0.0.1", "--port", "3000"],
+                                "runtimeArgs": ["dev", "--host", "{host}", "--port", "{port}"],
                                 "port": 3000,
                                 "autoPort": False,
                             }
@@ -478,6 +478,53 @@ class ClaudeSyncTests(TempDirTestCase):
             )
 
             self.assertNotEqual(0, result.returncode)
+
+    def test_dev_server_rejects_hardcoded_port_literal(self) -> None:
+        root = self.temp_path / "agents"
+        registry = self._write_registry(root, [])
+        github_root = self.temp_path / "GitHub"
+        init_git_repo(github_root / "repo-a")
+        claude_home = self.temp_path / "claude"
+        dev_servers = write_json(
+            root / "dev-servers/registry.json",
+            {
+                "managed_dev_servers": [
+                    {
+                        "repo": "repo-a",
+                        "servers": [
+                            {
+                                "name": "dev",
+                                "runtimeExecutable": "pnpm",
+                                "runtimeArgs": ["dev", "--port", "3000"],
+                                "port": 3000,
+                            }
+                        ],
+                    }
+                ]
+            },
+        )
+
+        result = run_command(
+            [
+                str(REPO_ROOT / "scripts/sync-claude.py"),
+                "--apply",
+                "--claude-home",
+                str(claude_home),
+                "--github-root",
+                str(github_root),
+                "--dev-servers-registry",
+                str(dev_servers),
+                "--skip-skills",
+                "--skip-global-context",
+                "--skip-settings",
+                "--skip-launcher",
+                str(registry),
+            ],
+            check=False,
+        )
+
+        self.assertNotEqual(0, result.returncode)
+        self.assertIn("hardcodes port 3000", result.stderr)
 
     def test_apply_seeds_workspace_trust_for_managed_repos(self) -> None:
         root = init_git_repo(self.temp_path / "agents")

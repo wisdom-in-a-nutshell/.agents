@@ -934,11 +934,25 @@ def load_dev_servers(registry_file: Path) -> list[dict[str, Any]]:
             if port in seen_ports:
                 raise ValueError(f"{label}[{sidx}] port {port} duplicates {seen_ports[port]}")
             seen_ports[port] = f"{repo}/{name}"
+            # The `port`/`host` fields are the single source of truth. The dev command
+            # must reference them through {port}/{host} placeholders instead of hardcoding
+            # the literal, so the wrapper's reuse check and the server's actual bind can
+            # never drift apart. Reject a hardcoded port literal to keep that guarantee.
+            port_token = str(port)
+            for arg in args_raw:
+                if port_token in arg and "{port}" not in arg:
+                    raise ValueError(
+                        f"{label}[{sidx}] hardcodes port {port} in runtimeArgs; "
+                        "use the {port} placeholder so the port stays single-source"
+                    )
+            runtime_args = [
+                arg.replace("{port}", port_token).replace("{host}", host) for arg in args_raw
+            ]
             config: dict[str, Any] = {
                 "name": name,
                 "host": host,
                 "runtimeExecutable": runtime,
-                "runtimeArgs": list(args_raw),
+                "runtimeArgs": runtime_args,
                 "port": port,
                 "autoPort": False,
             }

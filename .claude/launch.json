@@ -15,7 +15,11 @@
         "scripts/control-plane-dashboard.py",
         "serve",
         "--root",
-        "."
+        ".",
+        "--host",
+        "127.0.0.1",
+        "--port",
+        "8765"
       ],
       "port": 8765,
       "autoPort": false
