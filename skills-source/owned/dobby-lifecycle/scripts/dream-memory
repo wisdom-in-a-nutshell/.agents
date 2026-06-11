@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Run Dobby's dreaming pass: cross-session consolidation, proposal-only.
+"""Run Dobby's dreaming pass: cross-session consolidation, self-applying.
 
 The runner gathers a deterministic inputs manifest for the review window,
 renders the versioned prompt in `prompts/dream-memory.md`, runs one headless
@@ -7,13 +7,14 @@ Claude turn in the workspace, and validates the run bundle the agent writes:
 
     <workspace>/memory/dreams/<run-id>/
       run.json              machine envelope with every candidate
-      report.md             human proposal memo Adi reviews
+      report.md             executive summary Adi reads after the fact
       inputs.manifest.json  what the dream was allowed to read (runner-written)
       events.jsonl          runner lifecycle events (runner-written)
 
-v0 is proposal-only: the dreaming agent must not write outside the run dir.
-The runner watches the git state around the turn and reports any out-of-bounds
-changes as warnings instead of silently trusting the prompt.
+The dream applies its changes itself, one git commit per candidate, so any
+single change rolls back with one `git revert` of the sha recorded in the
+candidate. A hard floor stays runner-enforced as a watchdog: edits to
+constitution/profile and any file deletion are reported as violations.
 """
 
 from __future__ import annotations
@@ -50,6 +51,9 @@ DEFAULT_WINDOW_DAYS = 7
 DEFAULT_TIMEOUT_SECONDS = 1800.0
 DEFAULT_RUN_ROOT = "memory/dreams"
 MAX_OUTPUT_CHARS = 12_000
+# The hard floor: paths the dream must never touch, watchdog-enforced.
+FLOOR_PATHS = ("dobby/constitution.json", "memory/profile.json")
+CANDIDATE_ACTIONS = ("applied", "needs_adi", "noop")
 
 EXIT_GENERIC = 1
 EXIT_USAGE = 2
@@ -273,6 +277,23 @@ def committed_paths_since(workspace_root: Path, sha: str) -> set[str]:
     return {line.strip() for line in result.stdout.splitlines() if line.strip()}
 
 
+def deleted_paths_since(workspace_root: Path, sha: str) -> set[str]:
+    try:
+        result = subprocess.run(
+            ["git", "diff", "--name-only", "--diff-filter=D", f"{sha}..HEAD"],
+            cwd=workspace_root,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            timeout=30,
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        return set()
+    if result.returncode != 0:
+        return set()
+    return {line.strip() for line in result.stdout.splitlines() if line.strip()}
+
+
 def run_dream_turn(*, workspace_root: Path, instruction: str, timeout_seconds: float) -> str:
     cmd = [
         claude_bin(),
@@ -326,21 +347,38 @@ def validate_bundle(run_dir: Path, run_id: str) -> dict[str, Any]:
                 problems.append("run.json candidates should be a list")
             else:
                 by_category: dict[str, int] = {}
+                by_action: dict[str, int] = {}
                 for candidate in candidates:
                     if not isinstance(candidate, dict):
                         problems.append("run.json candidates should hold objects")
                         break
                     category = str(candidate.get("category") or "unknown")
                     by_category[category] = by_category.get(category, 0) + 1
+                    action = str(candidate.get("action") or "")
+                    if action not in CANDIDATE_ACTIONS:
+                        problems.append(
+                            f"candidate {candidate.get('id', '?')} action should be one of {CANDIDATE_ACTIONS}"
+                        )
+                        continue
+                    by_action[action] = by_action.get(action, 0) + 1
+                    if action == "applied":
+                        commit = candidate.get("commit")
+                        if not isinstance(commit, str) or len(commit.strip()) < 7:
+                            problems.append(
+                                f"applied candidate {candidate.get('id', '?')} should record its commit sha"
+                            )
                 counts = {
                     "candidates": len(candidates),
+                    "applied": by_action.get("applied", 0),
+                    "needsAdi": by_action.get("needs_adi", 0),
+                    "noop": by_action.get("noop", 0),
                     "byCategory": by_category,
                 }
     return {"valid": not problems, "problems": problems, "counts": counts}
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Run Dobby's proposal-only dreaming pass over recent workspace activity.")
+    parser = argparse.ArgumentParser(description="Run Dobby's self-applying dreaming pass over recent workspace activity.")
     parser.add_argument("--workspace-root", default=".")
     parser.add_argument("--days", type=int, default=DEFAULT_WINDOW_DAYS)
     parser.add_argument("--run-root", default=DEFAULT_RUN_ROOT, help="Run-bundle root, relative to the workspace.")
@@ -436,17 +474,17 @@ def main() -> int:
         validation = validate_bundle(run_dir, run_id)
         events.emit("bundle_validated", valid=validation["valid"], problems=validation["problems"])
 
-        run_root_rel = str(Path(args.run_root))
-        out_of_bounds: list[str] = []
         head_after, dirty_after = git_snapshot(workspace_root)
         changed: set[str] = set(dirty_after - dirty_before)
+        deletions: list[str] = []
         if head_before and head_after and head_before != head_after:
             changed |= committed_paths_since(workspace_root, head_before)
-        out_of_bounds = sorted(
-            path for path in changed if not path.startswith(run_root_rel)
-        )
-        if out_of_bounds:
-            events.emit("out_of_bounds_changes", paths=out_of_bounds)
+            deletions = sorted(deleted_paths_since(workspace_root, head_before))
+        floor_hits = sorted(path for path in changed if path in FLOOR_PATHS)
+        violations = {"floor": floor_hits, "deletions": deletions}
+        events.emit("workspace_changes", paths=sorted(changed))
+        if floor_hits or deletions:
+            events.emit("floor_violations", **violations)
 
         data = {
             "runId": run_id,
@@ -454,10 +492,16 @@ def main() -> int:
             "window": {"from": window_from, "to": window_to, "days": args.days},
             "manifestCounts": manifest["counts"],
             "validation": validation,
-            "outOfBounds": out_of_bounds,
+            "changedPaths": sorted(changed),
+            "violations": violations,
             "reply": truncate_text(reply, 1000),
         }
-        events.emit("run_finished", valid=validation["valid"], outOfBounds=len(out_of_bounds))
+        events.emit(
+            "run_finished",
+            valid=validation["valid"],
+            changed=len(changed),
+            violations=len(floor_hits) + len(deletions),
+        )
     except (DreamMemoryError, RememberPromptError) as exc:
         result = envelope(
             "error",
@@ -499,9 +543,10 @@ def main() -> int:
     result = envelope(status, data, error, started)
     if args.plain:
         counts = validation.get("counts") or {}
+        violation_count = len(violations["floor"]) + len(violations["deletions"])
         print(
-            f"{status} runId={run_id} candidates={counts.get('candidates', '?')} "
-            f"outOfBounds={len(out_of_bounds)} dir={run_dir}"
+            f"{status} runId={run_id} applied={counts.get('applied', '?')} "
+            f"needsAdi={counts.get('needsAdi', '?')} violations={violation_count} dir={run_dir}"
         )
     else:
         print_json(result)

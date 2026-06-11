@@ -503,11 +503,11 @@ assert data["apply"] is True, data
 assert data["alreadyComplete"] >= 1, data
 PY
 
-# --- dream-memory: proposal-only dreaming runner ---
+# --- dream-memory: self-applying dreaming runner ---
 dream_cli="$SKILL_DIR/scripts/dream-memory"
 
 dream_instruction="$("$dream_cli" --workspace-root "$repo" --print-instruction --plain --no-input)"
-for needle in "proposal-only" "dialogue.md" "report.md" "run.json" "noop"; do
+for needle in "self-applying within bounds" "hard floor" "needs_adi" "git revert" "dialogue.md" "report.md" "run.json" "noop"; do
   if ! grep -q "$needle" <<<"$dream_instruction"; then
     echo "dream-memory instruction missing: $needle" >&2
     exit 1
@@ -532,8 +532,12 @@ run_id = run_dir.name
     "runId": run_id,
     "window": {"from": "x", "to": "y", "days": 7},
     "status": "ok",
-    "counts": {"candidates": 1, "noop": 1, "flags": 0, "byCategory": {"noop": 1}},
-    "candidates": [{"id": "noop-1", "category": "noop", "why": "test"}],
+    "counts": {"candidates": 3, "applied": 1, "needsAdi": 1, "noop": 1, "byCategory": {"area_log": 1, "soul": 1, "noop": 1}},
+    "candidates": [
+        {"id": "log-1", "category": "area_log", "action": "applied", "commit": "abc1234def", "why": "test"},
+        {"id": "soul-1", "category": "soul", "action": "needs_adi", "why": "floor"},
+        {"id": "noop-1", "category": "noop", "action": "noop", "why": "test"},
+    ],
 }))
 print("dream written")
 PY
@@ -551,7 +555,10 @@ assert (run_dir / "run.json").is_file()
 assert (run_dir / "inputs.manifest.json").is_file()
 assert (run_dir / "events.jsonl").is_file()
 assert data["validation"]["valid"] is True, data["validation"]
-assert data["validation"]["counts"]["candidates"] == 1
+assert data["validation"]["counts"]["candidates"] == 3
+assert data["validation"]["counts"]["applied"] == 1
+assert data["validation"]["counts"]["needsAdi"] == 1
+assert data["violations"] == {"floor": [], "deletions": []}, data["violations"]
 manifest = json.loads((run_dir / "inputs.manifest.json").read_text())
 assert manifest["counts"]["sessions"] >= 1, manifest["counts"]
 PY

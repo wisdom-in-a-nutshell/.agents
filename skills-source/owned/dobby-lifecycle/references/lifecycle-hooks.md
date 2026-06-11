@@ -65,8 +65,8 @@ What boot context should include:
 4. Recent session-memory summaries: last 3 plus records from the last 7 days,
    capped at 10.
 5. Last dream: newest complete dream-memory run within 7 days — run id, window,
-   candidate counts, and the report's "Next actions" (capped at 2200 chars,
-   explicitly marked proposal-only).
+   applied/needs-Adi counts, and the report's "Next actions" (capped at 2200
+   chars; changes are self-applied within bounds, one revertible commit each).
 6. Shelf snapshot.
 7. Calendar snapshot for the next 2 days.
 8. Area manifest.
@@ -278,7 +278,7 @@ Intentional non-goals for Dobby workspaces:
 - no pre-compact memory preservation
 - no sidecar consolidation thread
 
-## Dream-memory (cross-session consolidation, proposal-only)
+## Dream-memory (cross-session consolidation, self-applying)
 
 `scripts/dream-memory` is the dreaming counterpart to per-session remembering.
 It gathers a deterministic inputs manifest for a review window (session folders,
@@ -288,11 +288,13 @@ headless Claude turn in the workspace, and validates the run bundle written
 under `memory/dreams/<run-id>/` (run id `YYYY-MM-DD-HHMM`, flat — dreams arrive
 ~once per night, so no year/month sharding):
 
-- `report.md` — the human proposal memo Adi reviews (also rendered on the
-  dashboard Dreams page)
+- `report.md` — leads with an executive summary (`## What I changed`) Adi
+  reads after the fact, then `## Needs you` for the floor/uncertain items
+  (also rendered on the dashboard Dreams page)
 - `run.json` — machine envelope with every candidate (categories: now,
   area_log, area_canon, soul, shelf, project, dobby_growth, stale_or_conflict,
-  noop)
+  noop; action: applied | needs_adi | noop, applied candidates record their
+  commit sha — the rollback handle)
 - `inputs.manifest.json` + `events.jsonl` — runner-written audit trail
 
 ```bash
@@ -300,10 +302,16 @@ $HOME/GitHub/agents/skills-source/owned/dobby-lifecycle/scripts/dream-memory \
   --workspace-root /path/to/dobby-workspace --days 7 --no-input
 ```
 
-v0 is proposal-only: the dreaming turn must not write outside the run dir. The
-runner watches git around the turn and reports out-of-bounds paths as warnings —
-expect noise from concurrent automation (e.g. health sync) being auto-committed
-mid-run, not from the dreamer itself. The prompt tells the dreamer to read
+The dream applies its own changes, one git commit per candidate
+(`dream(<run-id>): <candidate-id> — ...`), so rolling back one change is one
+`git revert` of the sha in its candidate. A hard floor stays watchdog-enforced
+by the runner: edits to `dobby/constitution.json` / `memory/profile.json` and
+any file deletion are reported as violations in events + envelope (the floor
+items become `needs_adi` candidates instead, approved conversationally — any
+session can apply or revert on Adi's word). Shelf adds go through the
+`dobby-shelf` CLI, never raw `state/shelf.json` edits. Expect benign
+`workspace_changes` noise from concurrent automation (e.g. health sync)
+committing mid-run. The prompt tells the dreamer to read
 session `summary.md` files as the index and open `dialogue.md` selectively as
 evidence, including pipeline-audit signal (tool errors, interrupted turns,
 repeated corrections).

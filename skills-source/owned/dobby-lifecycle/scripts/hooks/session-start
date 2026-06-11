@@ -425,29 +425,28 @@ def print_last_dream(dream: dict | None) -> None:
         return
     run = dream["run"]
     counts = run.get("counts") if isinstance(run.get("counts"), dict) else {}
-    by_category = counts.get("byCategory") if isinstance(counts.get("byCategory"), dict) else {}
-    proposals = sum(
-        int(value)
-        for key, value in by_category.items()
-        if key not in ("noop", "stale_or_conflict") and isinstance(value, int)
-    )
     window = run.get("window") if isinstance(run.get("window"), dict) else {}
     candidates_list = run.get("candidates")
-    total = (
-        len(candidates_list)
-        if isinstance(candidates_list, list) and candidates_list
-        else counts.get("candidates", "?")
-    )
+    if isinstance(candidates_list, list) and candidates_list:
+        actions_by = [str(c.get("action", "")) for c in candidates_list if isinstance(c, dict)]
+        applied = sum(1 for a in actions_by if a == "applied")
+        needs_adi = sum(1 for a in actions_by if a in ("needs_adi", "propose"))
+    else:
+        applied = counts.get("applied", 0) if isinstance(counts.get("applied"), int) else 0
+        needs_adi = counts.get("needsAdi", 0) if isinstance(counts.get("needsAdi"), int) else 0
+    if applied:
+        verdict = f"{applied} changes applied (one commit each, revertible) · {needs_adi} need Adi"
+    else:
+        verdict = f"{needs_adi} proposals pending Adi's review"
     lines = [
-        f"run: {dream['id']} · window {window.get('from', '?')} → {window.get('to', '?')} · "
-        f"{total} candidates ({proposals} proposals, pending Adi's review)"
+        f"run: {dream['id']} · window {window.get('from', '?')} → {window.get('to', '?')} · {verdict}"
     ]
     actions = dream_next_actions(dream["report"])
     if actions:
         lines.append("next actions proposed:")
         lines.extend(f"{idx}. {action}" for idx, action in enumerate(actions, 1))
     lines.append(f"full report: {DREAM_RUNS_REL / dream['id'] / 'report.md'}")
-    section("last dream (proposal-only; apply nothing without Adi)")
+    section("last dream (self-applied within bounds; commits sit in run.json — revert on Adi's word)")
     print(truncate_text("\n".join(lines), DREAM_SECTION_MAX_CHARS, "last dream"))
 
 
