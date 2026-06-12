@@ -12,7 +12,7 @@ Ultra-fast, fully themeable, zero DOM dependencies. Built for the AI era.
 [![Node.js Version](https://img.shields.io/badge/node-%3E%3D14-brightgreen)](https://nodejs.org/)
 [![GitHub stars](https://img.shields.io/github/stars/imxv/Pretty-mermaid-skills?style=social)](https://github.com/imxv/Pretty-mermaid-skills)
 
-**English** ｜ [中文](README_CN.md)
+**English** ｜ [中文](overview.zh.md)
 
 </div>
 

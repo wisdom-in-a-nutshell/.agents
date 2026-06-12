@@ -26,7 +26,7 @@ This file is machine-wide baseline guidance. Keep it generic and avoid portfolio
 - Do not assume nested `AGENTS.md` files load dynamically as you navigate later in a session; they apply when Codex starts in that subtree.
 - When a new repeatable pattern belongs to one repo, update that repo's local guidance or docs instead of expanding this global file.
 - Put durable knowledge in repo docs rather than relying on prompt-only memory.
-- Do not convert agent guidance into `README.md` by default. Use `README.md` only when a repo explicitly wants a human-facing landing page.
+- In private/agent-native repos, do not create `README.md` as an operational doc. Use `AGENTS.md` for agent routing and `docs/architecture/` or `docs/references/` for durable detail. Keep `README.md` only for an explicit public/human landing page.
 - When a change clearly introduces durable behavior, architecture boundaries, or operational workflow that future work will rely on, update the relevant repo docs in the same change.
 - When choosing where docs belong inside a repo, prefer the repo's own guidance when it exists. Otherwise use `docs/architecture/` for system shape, `docs/references/` for durable facts, and project tracking docs only for active execution state. If placement is still unclear, make the best-fit update and call it out briefly.
 

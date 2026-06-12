@@ -51,7 +51,7 @@ Follow repo-local guidance first.
 9. **Close out**
    - Summarize validation evidence and residual risks.
    - Include a short delegation retrospective when subagents were used.
-   - Review and finalize `<project-root>/<project>/learnings/README.md` before archive for long-running or tooling-heavy projects.
+   - Review and finalize `<project-root>/<project>/learnings.md` before archive for long-running or tooling-heavy projects.
 
 ## Core Rules
 
@@ -66,4 +66,4 @@ Follow repo-local guidance first.
 - Use `references/tasks-template.md` when creating or normalizing `tasks.md`.
 - Use `references/tracker-operating-rules.md` for `Current Batch`, checkpoint, backlog, and closeout rules.
 - Use `references/subagent-conventions.md` for delegation strategy, role split, split patterns, and anti-patterns.
-- Use `references/learnings-template.md` when bootstrapping `<project-root>/<project>/learnings/README.md`.
+- Use `references/learnings-template.md` when bootstrapping `<project-root>/<project>/learnings.md`.

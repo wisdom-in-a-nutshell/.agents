@@ -11,7 +11,7 @@ Use this skill for repo-local career materials. Keep the workflow shared, but ke
 
 The skill auto-detects the career root in this order based on existing files: `memory/areas/career/`, then `memory/areas/builder/career/`. Use `--career-root <path>` when a repo intentionally has multiple career areas. Expect this layout under the selected career root unless the repo clearly documents a different one:
 
-- `<career-root>/README.md`
+- `<career-root>/overview.md`
 - `<career-root>/profile.md`
 - `<career-root>/tailoring-guide.md`
 - `<career-root>/job-tracker/`

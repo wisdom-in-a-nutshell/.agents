@@ -85,5 +85,5 @@ Archive without asking when all of the following are true:
 - Use `resources/` for durable working artifacts such as notes, logs, external research summaries, snapshots, or helper outputs.
 - Keep `resources/` flat by default and use topic-based filenames.
 - Do not name files after agent mechanics such as `subagent-batch-01.md`.
-- Use `learnings/README.md` for project-specific retrospective notes about what would have made the run easier, faster, or more reliable.
-- For long-running or tooling-heavy projects, add a backlog task to review and finalize `learnings/README.md` before archive.
+- Use `learnings.md` for project-specific retrospective notes about what would have made the run easier, faster, or more reliable.
+- For long-running or tooling-heavy projects, add a backlog task to review and finalize `learnings.md` before archive.

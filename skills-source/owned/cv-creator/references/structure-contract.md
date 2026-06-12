@@ -4,7 +4,7 @@
 
 ```text
 <career-root>/
-  README.md
+  overview.md
   profile.md
   tailoring-guide.md
   job-tracker/
