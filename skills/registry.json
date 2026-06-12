@@ -30,8 +30,10 @@
     {
       "skill": "symphony",
       "origin": "owned",
-      "scope": "global",
-      "repos": [],
+      "scope": "repo",
+      "repos": [
+        "symphony"
+      ],
       "source_path": "skills-source/owned/symphony",
       "upstream_ref": "-"
     },
