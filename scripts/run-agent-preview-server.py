@@ -3,10 +3,14 @@ from __future__ import annotations
 
 import argparse
 import os
+import re
+import signal
 import socket
 import subprocess
 import sys
+import time
 from collections.abc import Sequence
+from pathlib import Path
 
 
 def is_port_listening(host: str, port: int) -> bool:
@@ -15,6 +19,65 @@ def is_port_listening(host: str, port: int) -> bool:
             return True
     except OSError:
         return False
+
+
+def listener_pids(port: int) -> list[int]:
+    proc = subprocess.run(
+        ["lsof", "-nP", f"-iTCP:{port}", "-sTCP:LISTEN", "-Fp"],
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.DEVNULL,
+    )
+    pids: list[int] = []
+    for line in proc.stdout.splitlines():
+        if line.startswith("p") and line[1:].isdigit():
+            pids.append(int(line[1:]))
+    return sorted(set(pids))
+
+
+def cwd_for_pid(pid: int) -> Path | None:
+    proc = subprocess.run(
+        ["lsof", "-a", "-p", str(pid), "-d", "cwd", "-Fn"],
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.DEVNULL,
+    )
+    for line in proc.stdout.splitlines():
+        if line.startswith("n/"):
+            return Path(line[1:])
+    return None
+
+
+def expected_dir(command: list[str]) -> Path | None:
+    """Best-effort `cd <path>` target parsed from the wrapped command string."""
+    for token in command:
+        match = re.search(r"(?:^|&&|;)\s*cd\s+([^\s&;]+)", token)
+        if match:
+            return Path(match.group(1)).expanduser()
+    return None
+
+
+def terminate(pid: int, grace_seconds: float = 5.0) -> bool:
+    try:
+        os.kill(pid, signal.SIGTERM)
+    except ProcessLookupError:
+        return True
+    except PermissionError:
+        return False
+    deadline = time.time() + grace_seconds
+    while time.time() < deadline:
+        try:
+            os.kill(pid, 0)
+        except ProcessLookupError:
+            return True
+        time.sleep(0.2)
+    try:
+        os.kill(pid, signal.SIGKILL)
+    except ProcessLookupError:
+        return True
+    except PermissionError:
+        return False
+    return True
 
 
 def parse_args(argv: Sequence[str]) -> argparse.Namespace:
@@ -38,11 +101,52 @@ def parse_args(argv: Sequence[str]) -> argparse.Namespace:
     return args
 
 
+def reclaim_or_classify(args: argparse.Namespace) -> str:
+    """Decide what to do with a busy port: 'free', 'reuse', or exit with a message.
+
+    A listener whose working directory no longer exists is a stale orphan
+    (e.g. a dev server that outlived its checkout): kill it and take the port.
+    A live listener in the wrong directory is NOT reused silently — a preview
+    pointing at the wrong app is worse than an error.
+    """
+    if not is_port_listening(args.host, args.port):
+        return "free"
+
+    pids = listener_pids(args.port)
+    want = expected_dir(args.command)
+    reclaimed = False
+    for pid in pids:
+        cwd = cwd_for_pid(pid)
+        if cwd is not None and not cwd.exists():
+            print(
+                f"Reclaiming port {args.port}: stale listener pid={pid} "
+                f"(working directory deleted: {cwd})"
+            )
+            if not terminate(pid):
+                raise SystemExit(f"ERROR: could not terminate stale listener pid={pid}")
+            reclaimed = True
+            continue
+        if want is not None and cwd is not None and cwd.exists():
+            try:
+                cwd.resolve().relative_to(want.resolve())
+            except ValueError:
+                raise SystemExit(
+                    f"ERROR: port {args.port} is held by pid={pid} running in {cwd}, "
+                    f"but this preview expects a server from {want}. Refusing to reuse "
+                    f"a mismatched server; stop pid={pid} or fix the launch config."
+                )
+
+    if reclaimed:
+        time.sleep(0.5)
+    return "free" if not is_port_listening(args.host, args.port) else "reuse"
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     args = parse_args(sys.argv[1:] if argv is None else argv)
     url = f"http://{args.host}:{args.port}/"
 
-    if is_port_listening(args.host, args.port):
+    state = reclaim_or_classify(args)
+    if state == "reuse":
         print(f"Agent preview already running: {url}")
         print("Reusing the existing local server; no new process started.")
         return 0
