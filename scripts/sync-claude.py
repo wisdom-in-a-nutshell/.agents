@@ -98,6 +98,13 @@ CLAUDE_SETTINGS_OVERLAY_KEYS = ("enabledPlugins", "skillOverrides")
 # (https://code.claude.com/docs/en/settings.md): hide or collapse a bundled skill
 # without editing its SKILL.md. Does not apply to plugin skills.
 VALID_SKILL_OVERRIDE_VALUES = {"on", "name-only", "user-invocable-only", "off"}
+# Managed per-repo settings keys from config/claude-settings.json repoSettings
+# (repo name -> settings), written into <repo>/.claude/settings.json next to
+# the managed hooks block. Value is the required JSON type. Keys a repo does
+# not declare are preserved untouched, mirroring the global overlay semantics
+# (e.g. autoMemoryEnabled false for Dobby workspaces, whose memory lives in the
+# workspace itself rather than in Claude's per-project auto-memory).
+CLAUDE_REPO_SETTINGS_KEYS: dict[str, type] = {"autoMemoryEnabled": bool}
 
 
 def rel_link(dst: Path, src: Path) -> str:
@@ -544,6 +551,29 @@ def load_claude_settings_overlay(overlay_file: Path) -> dict[str, dict[str, Any]
                 )
         overlay["skillOverrides"] = dict(overrides)
 
+    repo_settings = data.get("repoSettings")
+    if repo_settings is not None:
+        if not isinstance(repo_settings, dict):
+            raise ValueError(f"{label}: repoSettings must be an object")
+        validated: dict[str, Any] = {}
+        for repo_name, repo_keys in repo_settings.items():
+            if not isinstance(repo_keys, dict):
+                raise ValueError(f"{label}: repoSettings[{repo_name!r}] must be an object")
+            for key, value in repo_keys.items():
+                expected = CLAUDE_REPO_SETTINGS_KEYS.get(key)
+                if expected is None:
+                    raise ValueError(
+                        f"{label}: repoSettings[{repo_name!r}][{key!r}] is not a managed key "
+                        f"(allowed: {sorted(CLAUDE_REPO_SETTINGS_KEYS)})"
+                    )
+                if not isinstance(value, expected):
+                    raise ValueError(
+                        f"{label}: repoSettings[{repo_name!r}][{key!r}] must be "
+                        f"{expected.__name__} (got {type(value).__name__})"
+                    )
+            validated[repo_name] = dict(repo_keys)
+        overlay["repoSettings"] = validated
+
     return overlay
 
 
@@ -679,6 +709,7 @@ def render_repo_hook_settings(
     repo_root: Path,
     hooks_registry: dict[str, Any],
     apply: bool,
+    repo_settings: dict[str, Any] | None = None,
 ) -> None:
     """Merge rendered Claude hooks into ``<repo>/.claude/settings.json``.
 
@@ -686,6 +717,10 @@ def render_repo_hook_settings(
     inside the project settings the Claude Agent SDK loads when run with
     ``cwd = repo`` and ``settingSources`` including ``project`` (the mobile-gateway
     Claude runtime, and interactive Claude Code in that repo).
+
+    ``repo_settings`` is the overlay's ``repoSettings`` mapping; the entry for
+    this repo's name (validated managed keys only) is written alongside the
+    hooks so per-repo Claude behavior stays reproducible from the control plane.
     """
     rendered = render_claude_hooks(hooks_registry, repo_name=repo_root.name).get(
         "hooks", {}
@@ -729,10 +764,13 @@ def render_repo_hook_settings(
     else:
         desired.pop("hooks", None)
 
+    for key, value in ((repo_settings or {}).get(repo_root.name) or {}).items():
+        desired[key] = value
+
     if desired == data:
         print(f"UNCHANGED {settings_file}")
         return
-    print(f"SYNC {settings_file} (claude hooks)")
+    print(f"SYNC {settings_file} (claude hooks, settings)")
     if not apply:
         return
     settings_file.parent.mkdir(parents=True, exist_ok=True)
@@ -746,6 +784,7 @@ def render_repo_hooks(
     github_root: Path,
     repo_filters: set[Path],
     apply: bool,
+    repo_settings: dict[str, Any] | None = None,
 ) -> None:
     if not hooks_registry_file.is_file():
         print(
@@ -755,7 +794,11 @@ def render_repo_hooks(
         return
     hooks_registry = load_hooks_registry(hooks_registry_file)
     home = Path.home()
-    for repo in claude_hook_repos(hooks_registry):
+    # Union of hook-managed repos and repoSettings repos, so a managed settings
+    # key still renders for a repo that has no managed hooks.
+    repos = list(claude_hook_repos(hooks_registry))
+    repos.extend(name for name in sorted(repo_settings or {}) if name not in repos)
+    for repo in repos:
         repo_root = resolve_repo_root(repo, github_root, home)
         actual_repo = repo_git_root(repo_root)
         if actual_repo is None:
@@ -767,7 +810,7 @@ def render_repo_hooks(
             continue
         if repo_filters and actual_repo not in repo_filters:
             continue
-        render_repo_hook_settings(actual_repo, hooks_registry, apply)
+        render_repo_hook_settings(actual_repo, hooks_registry, apply, repo_settings)
 
 
 def render_workspace_trust(claude_json_file: Path, trusted: list[str], apply: bool) -> None:
@@ -1117,9 +1160,9 @@ def run_sync(args: argparse.Namespace) -> None:
     trusted = trusted_workspaces(root_dir, github_root, extra_trusted_workspaces)
     if not args.skip_global_context:
         render_global_context(global_context_source, global_context_target, args.apply)
+    overlay_file = absolute_path(Path(args.claude_settings_overlay).expanduser()).resolve()
+    overlay = load_claude_settings_overlay(overlay_file)
     if not args.skip_settings:
-        overlay_file = absolute_path(Path(args.claude_settings_overlay).expanduser()).resolve()
-        overlay = load_claude_settings_overlay(overlay_file)
         render_settings(
             claude_home / "settings.json",
             trusted,
@@ -1131,7 +1174,13 @@ def run_sync(args: argparse.Namespace) -> None:
         hooks_registry_file = absolute_path(
             Path(args.hooks_registry).expanduser()
         ).resolve()
-        render_repo_hooks(hooks_registry_file, github_root, repo_filters, args.apply)
+        render_repo_hooks(
+            hooks_registry_file,
+            github_root,
+            repo_filters,
+            args.apply,
+            overlay.get("repoSettings", {}),
+        )
     if not args.skip_repo_guidance:
         repo_registry_file = absolute_path(Path(args.repo_registry).expanduser()).resolve()
         render_repo_claude_guidance_files(
@@ -1200,7 +1249,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--claude-settings-overlay",
         default=str(DEFAULT_CLAUDE_SETTINGS_OVERLAY),
-        help="Managed overlay JSON of global Claude settings (enabledPlugins, skillOverrides) merged into ~/.claude/settings.json.",
+        help="Managed overlay JSON of Claude settings: global keys (enabledPlugins, skillOverrides) merged into ~/.claude/settings.json, plus repoSettings merged into <repo>/.claude/settings.json.",
     )
     parser.add_argument("--skip-launcher", action="store_true", help="Do not render Claude launcher.")
     parser.add_argument("--skip-skills", action="store_true", help="Do not render Claude skill links.")

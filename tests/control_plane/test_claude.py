@@ -662,6 +662,106 @@ class ClaudeSyncTests(TempDirTestCase):
         # Unrelated existing keys are untouched.
         self.assertEqual("test-model", settings["model"])
 
+    def test_apply_renders_repo_settings_into_repo_claude_settings(self) -> None:
+        root = self.temp_path / "agents"
+        registry = self._write_registry(root, [])
+        claude_home = self.temp_path / "claude"
+        github_root = self.temp_path / "GitHub"
+        repo_a = init_git_repo(github_root / "repo-a")
+        repo_b = init_git_repo(github_root / "repo-b")
+        # repo-a already carries an unmanaged key that must survive the merge.
+        write_json(
+            repo_a / ".claude/settings.json",
+            {"permissions": {"defaultMode": "acceptEdits"}},
+        )
+        hooks_registry = write_json(
+            root / "hooks/registry.json",
+            {
+                "version": 1,
+                "managed_hooks": [
+                    {
+                        "id": "repo-session-start",
+                        "event": "SessionStart",
+                        "command": "python3 hook.py --runtime {runtime}",
+                        "enabled": True,
+                        "scope": "repo",
+                        "repos": ["repo-a"],
+                        "runtimes": ["claude"],
+                        "matchers": {"claude": "startup"},
+                        "timeout": 5,
+                    }
+                ],
+            },
+        )
+        overlay = write_json(
+            root / "config/claude-settings.json",
+            {
+                "version": 1,
+                # repo-b has managed settings but no managed hooks: it must
+                # still be visited and rendered.
+                "repoSettings": {
+                    "repo-a": {"autoMemoryEnabled": False},
+                    "repo-b": {"autoMemoryEnabled": False},
+                },
+            },
+        )
+
+        run_command(
+            [
+                str(REPO_ROOT / "scripts/sync-claude.py"),
+                "--apply",
+                "--claude-home",
+                str(claude_home),
+                "--github-root",
+                str(github_root),
+                "--hooks-registry",
+                str(hooks_registry),
+                "--claude-settings-overlay",
+                str(overlay),
+                *self._isolated_targets(root),
+                str(registry),
+            ]
+        )
+
+        settings_a = json.loads(
+            (repo_a / ".claude/settings.json").read_text(encoding="utf-8")
+        )
+        self.assertEqual(False, settings_a["autoMemoryEnabled"])
+        # The managed hook block and the pre-existing unmanaged key coexist.
+        self.assertIn("SessionStart", settings_a["hooks"])
+        self.assertEqual({"defaultMode": "acceptEdits"}, settings_a["permissions"])
+        settings_b = json.loads(
+            (repo_b / ".claude/settings.json").read_text(encoding="utf-8")
+        )
+        self.assertEqual(False, settings_b["autoMemoryEnabled"])
+        self.assertNotIn("hooks", settings_b)
+
+    def test_unmanaged_repo_settings_key_fails(self) -> None:
+        root = self.temp_path / "agents"
+        registry = self._write_registry(root, [])
+        claude_home = self.temp_path / "claude"
+        overlay = write_json(
+            root / "config/claude-settings.json",
+            {"version": 1, "repoSettings": {"repo-a": {"model": "haiku"}}},
+        )
+
+        result = run_command(
+            [
+                str(REPO_ROOT / "scripts/sync-claude.py"),
+                "--apply",
+                "--claude-home",
+                str(claude_home),
+                "--claude-settings-overlay",
+                str(overlay),
+                *self._isolated_targets(root),
+                str(registry),
+            ],
+            check=False,
+        )
+
+        self.assertNotEqual(0, result.returncode)
+        self.assertIn("repoSettings", result.stderr)
+
     def test_invalid_skill_override_value_fails(self) -> None:
         root = self.temp_path / "agents"
         registry = self._write_registry(root, [])
