@@ -161,6 +161,19 @@
       "upstream_ref": "-"
     },
     {
+      "skill": "dobby-system",
+      "origin": "owned",
+      "scope": "repo",
+      "repos": [
+        "adi",
+        "angie",
+        "dobby-engine",
+        "codexclaw"
+      ],
+      "source_path": "skills-source/owned/dobby-system",
+      "upstream_ref": "-"
+    },
+    {
       "skill": "client-interface-guidelines",
       "origin": "owned",
       "scope": "global",
