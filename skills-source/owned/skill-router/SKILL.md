@@ -81,7 +81,7 @@ Defaults:
 
 1. Scaffold skill:
 ```bash
-python3 ~/GitHub/agents/skills-source/external/skill-creator/scripts/init_skill.py <skill-name> --path ~/GitHub/agents/skills-source/owned
+python3 ~/GitHub/agents/skills-source/owned/skill-creator/scripts/init_skill.py <skill-name> --path ~/GitHub/agents/skills-source/owned
 ```
 2. Ensure `SKILL.md` + `agents/openai.yaml` are correct.
 3. Add entry to `~/GitHub/agents/skills/registry.json`:

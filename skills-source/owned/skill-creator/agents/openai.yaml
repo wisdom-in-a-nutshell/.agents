@@ -1,0 +1,4 @@
+interface:
+  display_name: "Skill Creator"
+  short_description: "Create and distribute owned agent skills"
+  default_prompt: "Use $skill-creator to create or update an owned skill and distribute it through the local agents registry."

@@ -1,13 +1,12 @@
 ---
 name: skill-creator
-description: Guide for creating effective skills. This skill should be used when users want to create a new skill (or update an existing skill) that extends Codex's capabilities with specialized knowledge, workflows, or tool integrations.
-metadata:
-  short-description: Create or update a skill
+description: Create, update, adopt, and distribute agent skills. Use when Codex needs to create a new skill, improve an existing skill, move an external skill into owned maintenance, add scripts/references/assets, generate agents/openai.yaml metadata, validate a skill, or register and distribute a skill through the local `/Users/dobby/GitHub/agents` skill registry and bootstrap workflow.
 ---
 
 # Skill Creator
 
-This skill provides guidance for creating effective skills.
+This skill provides guidance for creating effective skills and, in this
+environment, distributing them through the local `agents` control plane.
 
 ## About Skills
 
@@ -221,7 +220,8 @@ Skill creation involves these steps:
 3. Initialize the skill (run init_skill.py)
 4. Edit the skill (implement resources and write SKILL.md)
 5. Validate the skill (run quick_validate.py)
-6. Iterate based on real usage
+6. Register and distribute the skill when working in `/Users/dobby/GitHub/agents`
+7. Iterate based on real usage
 
 Follow these steps in order, skipping only if there is a clear reason why they are not applicable.
 
@@ -314,6 +314,35 @@ scripts/generate_openai_yaml.py <path/to/skill-folder> --interface key=value
 
 Only include other optional interface fields when the user explicitly provides them. For full field descriptions and examples, see references/openai_yaml.md.
 
+#### Local agents repo default
+
+When working in `/Users/dobby/GitHub/agents`, create new custom skills under:
+
+```bash
+/Users/dobby/GitHub/agents/skills-source/owned/<skill-name>
+```
+
+Use `skills-source/external/` only for an intentional upstream import that is
+still meant to track upstream. If an imported skill has become local
+infrastructure or has drifted from upstream, adopt it:
+
+```bash
+git mv skills-source/external/<skill-name> skills-source/owned/<skill-name>
+```
+
+Then update `skills/registry.json` so the entry uses:
+
+```json
+{
+  "skill": "<skill-name>",
+  "origin": "owned",
+  "scope": "repo",
+  "repos": ["target-repo"],
+  "source_path": "skills-source/owned/<skill-name>",
+  "upstream_ref": "-"
+}
+```
+
 ### Step 4: Edit the Skill
 
 When editing the (newly-generated or existing) skill, remember that the skill is being created for another instance of Codex to use. Include information that would be beneficial and non-obvious to Codex. Consider what procedural knowledge, domain-specific details, or reusable assets would help another Codex instance execute these tasks more effectively.
@@ -356,7 +385,40 @@ scripts/quick_validate.py <path/to/skill-folder>
 
 The validation script checks YAML frontmatter format, required fields, and naming rules. If validation fails, fix the reported issues and run the command again.
 
-### Step 6: Iterate
+### Step 6: Register and Distribute in the Local Agents Repo
+
+This section applies when the skill lives in `/Users/dobby/GitHub/agents`.
+
+1. Edit `/Users/dobby/GitHub/agents/skills/registry.json`.
+2. Choose scope deliberately:
+   - `global`: available machine-wide; use sparingly for broadly reusable skills.
+   - `repo`: linked only into the named repos in `repos`.
+   - `dormant`: stored in the registry but not distributed.
+3. Keep `source_path` pointed at the canonical source folder. Do not edit
+   generated `.agents/skills/*` or `.claude/skills/*` destinations directly.
+4. Apply the registry:
+
+```bash
+cd /Users/dobby/GitHub/agents
+./scripts/bootstrap-machine-agent-control-planes.sh --apply
+```
+
+The bootstrap renders symlinks into the requested repos and updates managed
+Codex/Claude control-plane surfaces.
+
+5. Validate:
+
+```bash
+cd /Users/dobby/GitHub/agents
+./scripts/check-fast.sh
+```
+
+If the bootstrap creates tracked repo-local skill links, stage those generated
+links in the target repos together with the canonical skill source and registry
+change. Do not stage unrelated session-memory or work-in-progress files merely
+because lifecycle hooks touched them.
+
+### Step 7: Iterate
 
 After testing the skill, users may request improvements. Often this happens right after using the skill, with fresh context of how the skill performed.
 
