@@ -52,7 +52,7 @@
           "runtimeExecutable": "/bin/bash",
           "runtimeArgs": [
             "-lc",
-            "cd /Users/dobby/GitHub/adi/dashboard && npm run dev -- --host {host} --port {port} --strictPort"
+            "cd /Users/dobby/GitHub/dobby-engine/dashboard && DOBBY_DASHBOARD_WORKSPACE_ROOT=/Users/dobby/GitHub/adi npm run dev -- --host {host} --port {port} --strictPort"
           ],
           "port": 5174,
           "autoPort": false
@@ -68,7 +68,7 @@
           "runtimeExecutable": "/bin/bash",
           "runtimeArgs": [
             "-lc",
-            "cd /Users/dobby/GitHub/angie/dashboard && npm run dev -- --host {host} --port {port} --strictPort"
+            "cd /Users/dobby/GitHub/dobby-engine/dashboard && DOBBY_DASHBOARD_WORKSPACE_ROOT=/Users/dobby/GitHub/angie npm run dev -- --host {host} --port {port} --strictPort"
           ],
           "port": 5175,
           "autoPort": false
