@@ -23,6 +23,8 @@ Additional `docs/` folders are allowed when useful (for example `docs/decisions`
 - Purpose: design intent and system shape.
 - Include: boundaries, dependency rules, layering, data flow, major tradeoffs.
 - Question answered: "How is this system supposed to be built?"
+- Default shape: short plain-English overview, one simple Mermaid `flowchart TD`, main parts, main flow, key tradeoffs or constraints, and links to deeper references.
+- Keep architecture docs visual-first and high-level. If one diagram gets crowded, split it into Level 1 / Level 2 / Level 3 views instead of forcing every detail into one figure.
 
 ### `docs/references/`
 - Purpose: durable lookup facts for implementation.
@@ -57,6 +59,30 @@ Put these in `docs/references/`:
 - API field contract or DTO shape summary
 - cache invalidation rules and dependency signatures
 - third-party integration constraints, limits, or command snippets
+
+## Architecture doc authoring
+
+Use this default structure unless the repo already has a strong local pattern:
+
+1. Title
+2. Short overview
+3. Mermaid diagram
+4. Main parts
+5. Main flow
+6. Tradeoffs or important constraints
+7. Links to deeper references
+
+For Mermaid diagrams:
+
+- Prefer `flowchart TD` for quick scanning.
+- Keep node count modest.
+- Show the main path first.
+- Group related nodes only when grouping improves understanding.
+- Keep container labels passive; arrows should connect real components, not block titles.
+- Use consistent zone color only when it improves scanability, and never rely on color alone.
+- Verify the rendered diagram when the target renderer is available.
+
+If a person cannot understand the diagram in a few seconds, it is too detailed. Split overview, ownership zones, and key runtime paths into separate small diagrams when needed.
 
 ### `docs/projects/<project>/tasks.md`
 - Purpose: active plan, progress, and resume point.

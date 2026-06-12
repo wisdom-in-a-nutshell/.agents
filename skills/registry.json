@@ -20,14 +20,6 @@
       "upstream_ref": "-"
     },
     {
-      "skill": "architecture-docs",
-      "origin": "owned",
-      "scope": "global",
-      "repos": [],
-      "source_path": "skills-source/owned/architecture-docs",
-      "upstream_ref": "-"
-    },
-    {
       "skill": "find-skills",
       "origin": "external",
       "scope": "global",
