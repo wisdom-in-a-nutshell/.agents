@@ -60,6 +60,22 @@
       ]
     },
     {
+      "repo": "dobby-engine",
+      "servers": [
+        {
+          "name": "Dobby Dashboard",
+          "host": "127.0.0.1",
+          "runtimeExecutable": "/bin/bash",
+          "runtimeArgs": [
+            "-lc",
+            "cd /Users/dobby/GitHub/dobby-engine/dashboard && DOBBY_DASHBOARD_WORKSPACE_ROOT=/Users/dobby/GitHub/adi npm run dev -- --host {host} --port {port} --strictPort"
+          ],
+          "port": 5176,
+          "autoPort": false
+        }
+      ]
+    },
+    {
       "repo": "angie",
       "servers": [
         {
