@@ -284,6 +284,78 @@ def base_item(
     }
 
 
+def append_managed_skill_items(
+    *,
+    root: Path,
+    skills_registry: dict[str, Any],
+    registry_key: str,
+    skills: list[dict[str, Any]],
+    warnings: list[dict[str, Any]],
+) -> None:
+    entries = skills_registry.get(registry_key, [])
+    if not isinstance(entries, list):
+        warnings.append(
+            {
+                "severity": "error",
+                "code": "invalid_skills_shape",
+                "message": f"skills/registry.json {registry_key} must be a list.",
+                "source": REGISTRY_SOURCES["skills"],
+            }
+        )
+        return
+
+    for entry in entries:
+        if not isinstance(entry, dict):
+            continue
+        name = str(entry.get("skill", "")).strip()
+        if not name:
+            continue
+        scope = str(entry.get("scope", "unknown")).strip() or "unknown"
+        source_path = str(entry.get("source_path", "")).strip()
+        repos_for_entry = clean_list(entry.get("repos"))
+        if scope == "repo" and not repos_for_entry:
+            warnings.append(
+                {
+                    "severity": "warning",
+                    "code": "repo_scope_without_repos",
+                    "message": f"Skill {name} is repo-scoped but has no repos.",
+                    "source": REGISTRY_SOURCES["skills"],
+                }
+            )
+        if source_path and not (root / source_path).exists():
+            warnings.append(
+                {
+                    "severity": "warning",
+                    "code": "missing_skill_source",
+                    "message": f"Skill {name} source path does not exist: {source_path}",
+                    "source": REGISTRY_SOURCES["skills"],
+                }
+            )
+        details = {
+            "origin": entry.get("origin"),
+            "source_path": source_path,
+            "upstream_ref": entry.get("upstream_ref"),
+        }
+        title = None
+        if registry_key == "managed_plugin_skills":
+            source_plugin = str(entry.get("source_plugin", "")).strip()
+            details["source_plugin"] = source_plugin
+            if source_plugin:
+                title = f"{source_plugin}:{name}"
+        skills.append(
+            base_item(
+                kind="skill",
+                name=name,
+                title=title,
+                scope=scope,
+                status="dormant" if scope == "dormant" else "active",
+                source=REGISTRY_SOURCES["skills"],
+                repos=repos_for_entry,
+                details=details,
+            )
+        )
+
+
 def _config_group(title: str, source: str, rows: list[dict[str, Any]]) -> dict[str, Any]:
     return {"title": title, "source": source, "rows": rows}
 
@@ -524,47 +596,13 @@ def build_control_plane_data(root: Path) -> dict[str, Any]:
         repo_lookup[repo_key(name)] = repo
 
     skills: list[dict[str, Any]] = []
-    for entry in skills_registry.get("managed_skills", []):
-        if not isinstance(entry, dict):
-            continue
-        name = str(entry.get("skill", "")).strip()
-        if not name:
-            continue
-        scope = str(entry.get("scope", "unknown")).strip() or "unknown"
-        source_path = str(entry.get("source_path", "")).strip()
-        repos_for_entry = clean_list(entry.get("repos"))
-        if scope == "repo" and not repos_for_entry:
-            warnings.append(
-                {
-                    "severity": "warning",
-                    "code": "repo_scope_without_repos",
-                    "message": f"Skill {name} is repo-scoped but has no repos.",
-                    "source": REGISTRY_SOURCES["skills"],
-                }
-            )
-        if source_path and not (root / source_path).exists():
-            warnings.append(
-                {
-                    "severity": "warning",
-                    "code": "missing_skill_source",
-                    "message": f"Skill {name} source path does not exist: {source_path}",
-                    "source": REGISTRY_SOURCES["skills"],
-                }
-            )
-        skills.append(
-            base_item(
-                kind="skill",
-                name=name,
-                scope=scope,
-                status="dormant" if scope == "dormant" else "active",
-                source=REGISTRY_SOURCES["skills"],
-                repos=repos_for_entry,
-                details={
-                    "origin": entry.get("origin"),
-                    "source_path": source_path,
-                    "upstream_ref": entry.get("upstream_ref"),
-                },
-            )
+    for registry_key in ("managed_skills", "managed_plugin_skills"):
+        append_managed_skill_items(
+            root=root,
+            skills_registry=skills_registry,
+            registry_key=registry_key,
+            skills=skills,
+            warnings=warnings,
         )
 
     for entry in skills_registry.get("unmanaged_repo_local_skills", []):

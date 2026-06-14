@@ -4,21 +4,25 @@ Canonical source of truth: [`skills/registry.json`](/Users/dobby/GitHub/agents/s
 
 ## 1) What Lives Where
 
-- Real skill files (the files you edit) live in `skills-source/...`.
+- Real standalone skill files (the files you edit) live in `skills-source/...`.
+- Plugin-derived skill files stay under `plugins-source/...` and are linked only through explicit `managed_plugin_skills` entries.
 - Runtime discovery paths are symlinks, not real copies.
 - The registry tells sync scripts what to link and where.
 
 ```mermaid
 flowchart LR
     A[skills/registry.json] --> B[Real skill folder in skills-source/...]
-    B --> C[Global symlink: ~/.agents/skills/{skill}]
-    B --> D[Repo symlink: ~/GitHub/{repo}/.agents/skills/{skill}]
-    A --> E[Dashboard API summary]
+    A --> C[Plugin skill folder in plugins-source/...]
+    B --> D[Global symlink: ~/.agents/skills/{skill}]
+    B --> E[Repo symlink: ~/GitHub/{repo}/.agents/skills/{skill}]
+    C --> E
+    A --> F[Dashboard API summary]
 ```
 
-## 2) Two Entry Types
+## 2) Entry Types
 
 - `managed_skills`: actively synced by this repo (links are created/updated).
+- `managed_plugin_skills`: plugin-bundled skills that are explicitly linked like managed skills without enabling the whole native plugin.
 - `unmanaged_repo_local_skills`: tracked for visibility only (no managed links created here).
   - If the target repo exists locally, the repo must actually contain `.agents/skills/<skill>/SKILL.md`.
   - Registry sync fails early for stale repo-local entries instead of letting them leak into dashboard data or downstream runtime warnings.
@@ -26,9 +30,11 @@ flowchart LR
 ```mermaid
 flowchart LR
     A[skills/registry.json] --> B[managed_skills]
-    A --> C[unmanaged_repo_local_skills]
-    B --> D[Sync creates/updates links]
-    C --> E[Record only]
+    A --> C[managed_plugin_skills]
+    A --> D[unmanaged_repo_local_skills]
+    B --> E[Sync creates/updates links]
+    C --> E
+    D --> F[Record only]
 ```
 
 ## 3) Normal Workflow
@@ -67,5 +73,6 @@ flowchart LR
   - Entries can be repo names under `~/GitHub` or explicit repo roots such as `~/GitHub/agents`.
   - Sync skips missing repo checkouts silently on the current machine. Existing non-git folders still warn because they may be broken placeholders. Sync must not create placeholder folders under `~/GitHub` just because a repo is listed in the registry.
   - Dormant skills keep their source tracked but must use an empty `repos` list and are not linked into any runtime.
-- `source_path`: real source folder under `skills-source/...`.
+- `source_path`: real source folder under `skills-source/...` or, for `managed_plugin_skills`, under `plugins-source/...`.
 - `upstream_ref`: upstream source for external skills.
+- `source_plugin`: for `managed_plugin_skills`, the native plugin whose bundled skill source is being linked.

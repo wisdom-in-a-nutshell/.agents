@@ -17,6 +17,10 @@ class ControlPlaneDashboardDataTests(TempDirTestCase):
         codexclaw.mkdir(parents=True)
         write_text(root / "skills-source/owned/global-helper/SKILL.md", "# global-helper\n")
         write_text(root / "skills-source/owned/repo-helper/SKILL.md", "# repo-helper\n")
+        write_text(
+            root / "plugins-source/external/build-ios-apps/skills/ios-debugger-agent/SKILL.md",
+            "# ios-debugger-agent\n",
+        )
         write_json(
             root / "skills/registry.json",
             {
@@ -37,6 +41,17 @@ class ControlPlaneDashboardDataTests(TempDirTestCase):
                         "source_path": "skills-source/owned/repo-helper",
                         "upstream_ref": "-",
                     },
+                ],
+                "managed_plugin_skills": [
+                    {
+                        "skill": "ios-debugger-agent",
+                        "origin": "external",
+                        "scope": "repo",
+                        "repos": ["codexclaw"],
+                        "source_path": "plugins-source/external/build-ios-apps/skills/ios-debugger-agent",
+                        "upstream_ref": "openai-curated/build-ios-apps@0.1.2",
+                        "source_plugin": "build-ios-apps",
+                    }
                 ],
                 "unmanaged_repo_local_skills": [
                     {
@@ -151,17 +166,24 @@ class ControlPlaneDashboardDataTests(TempDirTestCase):
         self.assertIn("request_id", payload["meta"])
 
         data = payload["data"]
-        self.assertEqual(data["counts"]["skills"], 3)
+        self.assertEqual(data["counts"]["skills"], 4)
         self.assertEqual(data["counts"]["plugins"], 2)
         self.assertEqual(data["counts"]["mcp"], 2)
         self.assertEqual(data["counts"]["repos"], 2)
         self.assertEqual(data["counts"]["hooks"], 1)
         self.assertEqual(data["counts"]["warnings"], 0)
         self.assertEqual(data["groups"]["repos"][0]["details"]["skill_count"], 3)
+        self.assertEqual(data["groups"]["repos"][1]["details"]["skill_count"], 2)
         self.assertEqual(data["groups"]["repos"][0]["details"]["mcp_count"], 2)
         self.assertEqual(data["groups"]["repos"][1]["details"]["plugin_count"], 2)
         self.assertTrue(data["groups"]["repos"][0]["details"]["exists"])
         self.assertTrue(any(item["name"] == "openaiDeveloperDocs" for item in data["groups"]["mcp"]))
+        plugin_skill = [
+            item for item in data["groups"]["skills"] if item["name"] == "ios-debugger-agent"
+        ][0]
+        self.assertEqual(plugin_skill["repos"], ["codexclaw"])
+        self.assertEqual(plugin_skill["title"], "build-ios-apps:ios-debugger-agent")
+        self.assertEqual(plugin_skill["details"]["source_plugin"], "build-ios-apps")
 
     def test_data_warns_for_missing_managed_repo_path(self) -> None:
         self.write_minimal_control_plane()
@@ -220,7 +242,7 @@ class ControlPlaneDashboardDataTests(TempDirTestCase):
         )
 
         self.assertTrue(result.stdout.startswith("ok items="))
-        self.assertIn("skills=3", result.stdout)
+        self.assertIn("skills=4", result.stdout)
         self.assertEqual(result.stderr, "")
 
     def test_missing_root_uses_json_error_contract(self) -> None:
