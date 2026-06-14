@@ -388,5 +388,105 @@
       "skill": "blog-posting"
     }
   ],
-  "managed_plugin_skills": []
+  "managed_plugin_skills": [
+    {
+      "skill": "ios-app-intents",
+      "origin": "external",
+      "scope": "repo",
+      "repos": [
+        "codexclaw"
+      ],
+      "source_path": "plugins-source/external/build-ios-apps/skills/ios-app-intents",
+      "upstream_ref": "openai-curated/build-ios-apps@0.1.2",
+      "source_plugin": "build-ios-apps"
+    },
+    {
+      "skill": "ios-debugger-agent",
+      "origin": "external",
+      "scope": "repo",
+      "repos": [
+        "codexclaw"
+      ],
+      "source_path": "plugins-source/external/build-ios-apps/skills/ios-debugger-agent",
+      "upstream_ref": "openai-curated/build-ios-apps@0.1.2",
+      "source_plugin": "build-ios-apps"
+    },
+    {
+      "skill": "ios-ettrace-performance",
+      "origin": "external",
+      "scope": "repo",
+      "repos": [
+        "codexclaw"
+      ],
+      "source_path": "plugins-source/external/build-ios-apps/skills/ios-ettrace-performance",
+      "upstream_ref": "openai-curated/build-ios-apps@0.1.2",
+      "source_plugin": "build-ios-apps"
+    },
+    {
+      "skill": "ios-memgraph-leaks",
+      "origin": "external",
+      "scope": "repo",
+      "repos": [
+        "codexclaw"
+      ],
+      "source_path": "plugins-source/external/build-ios-apps/skills/ios-memgraph-leaks",
+      "upstream_ref": "openai-curated/build-ios-apps@0.1.2",
+      "source_plugin": "build-ios-apps"
+    },
+    {
+      "skill": "ios-simulator-browser",
+      "origin": "external",
+      "scope": "repo",
+      "repos": [
+        "codexclaw"
+      ],
+      "source_path": "plugins-source/external/build-ios-apps/skills/ios-simulator-browser",
+      "upstream_ref": "openai-curated/build-ios-apps@0.1.2",
+      "source_plugin": "build-ios-apps"
+    },
+    {
+      "skill": "swiftui-liquid-glass",
+      "origin": "external",
+      "scope": "repo",
+      "repos": [
+        "codexclaw"
+      ],
+      "source_path": "plugins-source/external/build-ios-apps/skills/swiftui-liquid-glass",
+      "upstream_ref": "openai-curated/build-ios-apps@0.1.2",
+      "source_plugin": "build-ios-apps"
+    },
+    {
+      "skill": "swiftui-performance-audit",
+      "origin": "external",
+      "scope": "repo",
+      "repos": [
+        "codexclaw"
+      ],
+      "source_path": "plugins-source/external/build-ios-apps/skills/swiftui-performance-audit",
+      "upstream_ref": "openai-curated/build-ios-apps@0.1.2",
+      "source_plugin": "build-ios-apps"
+    },
+    {
+      "skill": "swiftui-ui-patterns",
+      "origin": "external",
+      "scope": "repo",
+      "repos": [
+        "codexclaw"
+      ],
+      "source_path": "plugins-source/external/build-ios-apps/skills/swiftui-ui-patterns",
+      "upstream_ref": "openai-curated/build-ios-apps@0.1.2",
+      "source_plugin": "build-ios-apps"
+    },
+    {
+      "skill": "swiftui-view-refactor",
+      "origin": "external",
+      "scope": "repo",
+      "repos": [
+        "codexclaw"
+      ],
+      "source_path": "plugins-source/external/build-ios-apps/skills/swiftui-view-refactor",
+      "upstream_ref": "openai-curated/build-ios-apps@0.1.2",
+      "source_plugin": "build-ios-apps"
+    }
+  ]
 }

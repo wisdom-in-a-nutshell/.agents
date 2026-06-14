@@ -29,7 +29,7 @@ A managed plugin entry means:
 - dormant entries are tracked but not rendered
 - the plugin remains a plugin, even when its package contains skills, MCP, apps, assets, or helper binaries
 
-This registry does not project plugin contents into the skill or MCP registries. If a capability should become standalone, add it directly to `skills/registry.json` or `mcp/config/presets.json`.
+This registry does not automatically project plugin contents into the skill or MCP registries. If a capability should become standalone, add it explicitly to `skills/registry.json` or `mcp/config/presets.json`. Plugin-bundled skills that should be available without enabling the native plugin belong under `skills/registry.json` `managed_plugin_skills`, scoped to the repo that needs them.
 
 Native Codex plugin enablement is treated as global/user-level for now. The current OpenAI Codex config schema describes `plugins` as user-level plugin config, and local testing has not shown reliable native plugin skill injection from repo-local `.codex/config.toml`. Do not try to make native plugin UX repo-specific through bootstrap. If a plugin should be used only occasionally, leave it unmanaged and enable it manually in Codex Desktop when needed.
 
@@ -37,7 +37,7 @@ For `openai-bundled` plugins, keep the registry name aligned with the plugin man
 
 For non-bundled plugins, `scripts/bootstrap-machine-agent-control-planes.sh --apply` runs `scripts/sync-codex-plugin-installs.py --apply` before rendering Codex config. This lets the registry remain declarative: adding an enabled global plugin entry is enough for machine bootstrap to install the package.
 
-Repo-specific native plugin UX is not currently a supported bootstrap target. If a plugin-bundled MCP must be available reliably for one repo, promote that MCP into `mcp/config/presets.json` and assign it through `codex/config/repo-bootstrap.json`.
+Repo-specific native plugin UX is not currently a supported bootstrap target. A local spike with Codex CLI 0.139.0 showed that trusted repo `.codex/config.toml` layers load, but repo-local `[plugins."<plugin>"].enabled` does not control plugin skill injection: user-level plugin enabled state wins. If a plugin-bundled skill or MCP must be available reliably for one repo, link the skill through `managed_plugin_skills` or promote the MCP into `mcp/config/presets.json` and assign it through `codex/config/repo-bootstrap.json`.
 
 ## Normal Workflow
 
