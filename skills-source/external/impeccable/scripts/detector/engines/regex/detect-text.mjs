@@ -23,6 +23,18 @@ function stripHtmlToText(html) {
     .replace(/\s+/g, ' ');
 }
 
+const PAGE_ANALYZER_EXTS = new Set(['.html', '.htm', '.astro', '.vue', '.svelte']);
+
+function extFromFilePath(filePath) {
+  return filePath ? (filePath.match(/\.\w+$/)?.[0] || '').toLowerCase() : '';
+}
+
+function shouldRunPageAnalyzers(content, filePath) {
+  if (!isFullPage(content)) return false;
+  const ext = extFromFilePath(filePath);
+  return !ext || PAGE_ANALYZER_EXTS.has(ext);
+}
+
 function isNeutralBorderColor(str) {
   const m = str.match(/solid\s+(#[0-9a-f]{3,8}|rgba?\([^)]+\)|\w+)/i);
   if (!m) return false;
@@ -422,7 +434,7 @@ const TEXT_CONTENT_ANALYZER_IDS = [
 
 function runTextContentAnalyzers(content, filePath, options = {}) {
   const profile = options?.profile;
-  if (!isFullPage(content)) return [];
+  if (!shouldRunPageAnalyzers(content, filePath)) return [];
   // The 4 text-content analyzers are at indices 3-6 in REGEX_ANALYZERS.
   const findings = [];
   for (let i = 0; i < TEXT_CONTENT_ANALYZER_IDS.length; i++) {
@@ -442,7 +454,7 @@ function detectText(content, filePath, options = {}) {
   const profile = options?.profile;
   const findings = [];
   const lines = content.split('\n');
-  const ext = filePath ? (filePath.match(/\.\w+$/)?.[0] || '').toLowerCase() : '';
+  const ext = extFromFilePath(filePath);
 
   // Run regex matchers on the full file content (catches Tailwind classes, inline styles)
   // Enable block context for CSS files where related properties span multiple lines
@@ -498,7 +510,7 @@ function detectText(content, filePath, options = {}) {
   }
 
   // Page-level analyzers only run on full pages
-  if (isFullPage(content)) {
+  if (shouldRunPageAnalyzers(content, filePath)) {
     const analyzerIds = [
       'single-font',
       'flat-type-hierarchy',

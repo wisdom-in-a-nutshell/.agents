@@ -287,7 +287,7 @@
   }
 
   function shouldShowHighlightTagTooltip() {
-    // Configure/edit carry the tag in the bar selection pill — keep only the outline.
+    // Configure/edit carry the tag in the bar selection pill, so keep only the outline.
     return state !== 'CONFIGURING' && state !== 'EDITING';
   }
 
@@ -1148,7 +1148,7 @@
     syncPageChatFocus('update-bar-content');
   }
 
-  // Configure row — the floating bar surface IS the input; modifier pills sit left of the field.
+  // Configure row: the floating bar surface IS the input; modifier pills sit left of the field.
 
   const CONFIGURE_BAR_H = '36px';
   // Compact selection pill + 7px inset balances vertical centering in the 36px bar.
@@ -1519,7 +1519,7 @@
 
   function buildConfigureCountControl({ controlsLocked, onClick }) {
     const count = el('button', configureInlineControlStyle({
-      fontFamily: MONO, fontWeight: '600', letterSpacing: '-0.02em',
+      fontFamily: MONO, fontWeight: '600', letterSpacing: '0',
     }));
     count.textContent = '\u00D7' + selectedCount;
     count.disabled = controlsLocked;
@@ -5065,6 +5065,157 @@
     }
   }
 
+  async function loadSvelteComponentVariantSource(manifest, variantNum) {
+    const dir = String(manifest?.componentDir || '').replace(/^\/+/, '');
+    if (!dir || !variantNum) return '';
+    const sourcePath = dir + '/v' + variantNum + '.svelte';
+    const url = 'http://localhost:' + PORT + '/source?token=' + TOKEN + '&path=' + encodeURIComponent(sourcePath);
+    try {
+      const res = await fetch(url);
+      if (!res.ok) return '';
+      return await res.text();
+    } catch {
+      return '';
+    }
+  }
+
+  function extractSvelteComponentStyle(source) {
+    const match = String(source || '').match(/<style\b[^>]*>([\s\S]*?)<\/style\s*>/i);
+    return match ? match[1].trim() : '';
+  }
+
+  async function applySvelteComponentVariantStyle(variantNum) {
+    if (!svelteComponentSession || !variantNum) return;
+    const { manifest, sessionId } = svelteComponentSession;
+    const source = await loadSvelteComponentVariantSource(manifest, variantNum);
+    const css = extractSvelteComponentStyle(source);
+    removeSvelteComponentVariantStyle(svelteComponentSession);
+    if (!css) return;
+    const scopedCss = scopeCssToSveltePreview(css, sessionId);
+    if (!scopedCss) return;
+    const style = document.createElement('style');
+    style.dataset.impeccableSvelteComponentStyle = sessionId;
+    style.dataset.impeccableVariant = String(variantNum);
+    style.textContent = scopedCss;
+    document.head.appendChild(style);
+    svelteComponentSession.styleEl = style;
+  }
+
+  function removeSvelteComponentVariantStyle(session = svelteComponentSession) {
+    const style = session?.styleEl;
+    if (style?.parentNode) style.parentNode.removeChild(style);
+    if (session) session.styleEl = null;
+  }
+
+  function scopeCssToSveltePreview(css, sessionId) {
+    const prefix = '[data-impeccable-variants="' + String(sessionId).replace(/"/g, '\\"') + '"] ';
+    return scopeCssBlock(String(css || ''), prefix).trim();
+  }
+
+  function scopeCssBlock(css, prefix) {
+    let out = '';
+    let i = 0;
+    while (i < css.length) {
+      const open = css.indexOf('{', i);
+      if (open === -1) {
+        out += css.slice(i);
+        break;
+      }
+      const semi = css.indexOf(';', i);
+      if (semi !== -1 && semi < open) {
+        out += css.slice(i, semi + 1);
+        i = semi + 1;
+        continue;
+      }
+      const prelude = css.slice(i, open).trim();
+      const close = findMatchingCssBrace(css, open);
+      if (close === -1) {
+        out += css.slice(i);
+        break;
+      }
+      const body = css.slice(open + 1, close);
+      if (shouldScopeNestedCssAtRule(prelude)) {
+        out += prelude + ' {\n' + scopeCssBlock(body, prefix) + '\n}';
+      } else if (prelude.startsWith('@')) {
+        out += prelude + ' {' + body + '}';
+      } else {
+        out += prefixCssSelectors(prelude, prefix) + ' {' + body + '}';
+      }
+      i = close + 1;
+    }
+    return out;
+  }
+
+  function shouldScopeNestedCssAtRule(prelude) {
+    return /^@(media|supports|container|layer)\b/i.test(prelude || '');
+  }
+
+  function findMatchingCssBrace(css, openIndex) {
+    let depth = 0;
+    let quote = '';
+    for (let i = openIndex; i < css.length; i++) {
+      const ch = css[i];
+      const prev = css[i - 1];
+      if (quote) {
+        if (ch === quote && prev !== '\\') quote = '';
+        continue;
+      }
+      if (ch === '"' || ch === "'") {
+        quote = ch;
+      } else if (ch === '{') {
+        depth++;
+      } else if (ch === '}') {
+        depth--;
+        if (depth === 0) return i;
+      }
+    }
+    return -1;
+  }
+
+  function prefixCssSelectors(prelude, prefix) {
+    return splitCssSelectorList(prelude)
+      .map((selector) => {
+        const s = unwrapSvelteGlobalSelector(selector.trim());
+        if (!s) return '';
+        if (s.startsWith(prefix.trim())) return s;
+        if (s.startsWith(':host')) return s.replace(/^:host\b/, prefix.trim());
+        return prefix + s;
+      })
+      .filter(Boolean)
+      .join(', ');
+  }
+
+  function splitCssSelectorList(selectorList) {
+    const selectors = [];
+    let start = 0;
+    let depth = 0;
+    let quote = '';
+    for (let i = 0; i < selectorList.length; i++) {
+      const ch = selectorList[i];
+      const prev = selectorList[i - 1];
+      if (quote) {
+        if (ch === quote && prev !== '\\') quote = '';
+        continue;
+      }
+      if (ch === '"' || ch === "'") {
+        quote = ch;
+      } else if (ch === '(' || ch === '[') {
+        depth++;
+      } else if ((ch === ')' || ch === ']') && depth > 0) {
+        depth--;
+      } else if (ch === ',' && depth === 0) {
+        selectors.push(selectorList.slice(start, i));
+        start = i + 1;
+      }
+    }
+    selectors.push(selectorList.slice(start));
+    return selectors;
+  }
+
+  function unwrapSvelteGlobalSelector(selector) {
+    return selector.replace(/:global\(([^()]*)\)/g, '$1');
+  }
+
   function buildSveltePropValuesFromLiveElement(liveEl, manifest) {
     const contract = manifest?.propContract || [];
     const values = {};
@@ -5101,6 +5252,7 @@
       });
       svelteComponentSession.mountedVariant = variantNum;
       svelteComponentSession.runtime = runtime;
+      await applySvelteComponentVariantStyle(variantNum);
       if (state === 'CYCLING') syncCyclingControls();
       const nextAnchor = getMountedSvelteComponentAnchor(svelteComponentSession);
       if (nextAnchor) {
@@ -5134,6 +5286,7 @@
   function teardownSvelteComponentSession(restoreOriginal) {
     if (!svelteComponentSession) return;
     const { wrapperEl, detachedOriginal, runtime, mountedInstance } = svelteComponentSession;
+    removeSvelteComponentVariantStyle(svelteComponentSession);
     if (mountedInstance && runtime?.unmount) {
       try { runtime.unmount(mountedInstance); } catch { /* non-fatal */ }
     }
@@ -5173,6 +5326,7 @@
     if (mountedInstance && runtime?.unmount) {
       try { runtime.unmount(mountedInstance); } catch { /* non-fatal */ }
     }
+    removeSvelteComponentVariantStyle(svelteComponentSession);
     wrapperEl.parentElement.replaceChild(committed, wrapperEl);
     svelteComponentSession = null;
     svelteRuntimePromise = null;
@@ -8843,7 +8997,7 @@ void main() {
       cursor: 'pointer',
       flexShrink: '0',
       width: PAGE_CHAT_COLLAPSED_W,
-      transition: 'width 0.18s ease, border-color 0.15s ease',
+      transition: 'border-color 0.15s ease',
     });
     pageChatEl.id = PREFIX + '-page-chat';
     pageChatEl.dataset.expanded = 'false';
