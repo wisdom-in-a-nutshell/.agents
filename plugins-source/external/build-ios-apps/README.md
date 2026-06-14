@@ -5,6 +5,7 @@ This plugin packages iOS and Swift workflows in `plugins/build-ios-apps`.
 It currently includes these skills:
 
 - `ios-debugger-agent`
+- `ios-simulator-browser`
 - `ios-ettrace-performance`
 - `ios-memgraph-leaks`
 - `ios-app-intents`
@@ -22,6 +23,7 @@ It currently includes these skills:
 - capturing symbolicated ETTrace simulator profiles for focused app flows
 - capturing and comparing iOS memgraphs to root-cause leaks
 - debugging iOS apps on simulators with XcodeBuildMCP-backed flows
+- mirroring Simulator in the browser and hot-reloading package-backed SwiftUI previews
 - restructuring large SwiftUI views toward smaller, more stable compositions
 
 ## Plugin Structure
@@ -35,6 +37,10 @@ with this shape:
 - `.codex-plugin/plugin.json`
   - required plugin manifest
   - defines plugin metadata and points Codex at the plugin contents
+
+- `.mcp.json`
+  - plugin-local MCP config
+  - wires in XcodeBuildMCP for simulator build/run/debug workflows
 
 - `agents/`
   - plugin-level agent metadata
