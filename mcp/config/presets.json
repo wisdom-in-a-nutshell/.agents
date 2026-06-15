@@ -23,6 +23,10 @@
       "env": {
         "XCODEBUILDMCP_ENABLED_WORKFLOWS": "simulator,ui-automation,debugging,logging"
       }
+    },
+    "figma": {
+      "transport": "http",
+      "url": "http://127.0.0.1:3845/mcp"
     }
   },
   "global_presets": [],

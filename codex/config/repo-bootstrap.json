@@ -32,7 +32,10 @@
     },
     {
       "path": "~/GitHub/aipodcasting",
-      "codex_trust": false
+      "codex_trust": false,
+      "mcp_presets": [
+        "figma"
+      ]
     },
     {
       "path": "~/GitHub/aipodcasting-website"
