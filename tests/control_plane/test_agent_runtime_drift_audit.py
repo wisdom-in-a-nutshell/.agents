@@ -132,6 +132,7 @@ class AgentRuntimeDriftAuditTests(TempDirTestCase):
         self._write_live_codex_config(home)
         self._write_required_plugins(home)
         self._write_plugin(home, "openai-primary-runtime", "documents")
+        self._write_plugin(home, "openai-primary-runtime", "pdf")
         self._write_plugin(home, "openai-primary-runtime", "presentations")
         self._write_plugin(home, "openai-primary-runtime", "spreadsheets")
 

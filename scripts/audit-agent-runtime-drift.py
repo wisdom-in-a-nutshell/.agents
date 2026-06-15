@@ -22,6 +22,7 @@ SCHEMA_VERSION = "1.0"
 COMMAND = "audit-agent-runtime-drift"
 APP_MANAGED_PLUGIN_IDS = {
     "documents@openai-primary-runtime",
+    "pdf@openai-primary-runtime",
     "presentations@openai-primary-runtime",
     "spreadsheets@openai-primary-runtime",
 }
