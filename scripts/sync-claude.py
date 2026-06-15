@@ -915,7 +915,19 @@ def _shell_command(parts: list[str]) -> str:
     return " ".join(shlex.quote(part) for part in parts)
 
 
-def preview_command_parts(server: dict[str, Any], preview_runner: Path) -> list[str]:
+def expand_dev_server_runtime_value(value: str, github_root: Path, repo_root: Path) -> str:
+    return (
+        value.replace("{github_root}", str(github_root))
+        .replace("{repo_root}", str(repo_root))
+    )
+
+
+def preview_command_parts(
+    server: dict[str, Any],
+    preview_runner: Path,
+    github_root: Path,
+    repo_root: Path,
+) -> list[str]:
     return [
         "python3",
         str(preview_runner),
@@ -924,16 +936,21 @@ def preview_command_parts(server: dict[str, Any], preview_runner: Path) -> list[
         "--port",
         str(server["port"]),
         "--",
-        server["runtimeExecutable"],
-        *server["runtimeArgs"],
+        expand_dev_server_runtime_value(server["runtimeExecutable"], github_root, repo_root),
+        *[
+            expand_dev_server_runtime_value(arg, github_root, repo_root)
+            for arg in server["runtimeArgs"]
+        ],
     ]
 
 
 def render_claude_preview_config(
     server: dict[str, Any],
     preview_runner: Path,
+    github_root: Path,
+    repo_root: Path,
 ) -> dict[str, Any]:
-    command_parts = preview_command_parts(server, preview_runner)
+    command_parts = preview_command_parts(server, preview_runner, github_root, repo_root)
     return {
         "name": server["name"],
         "runtimeExecutable": command_parts[0],
@@ -1054,7 +1071,7 @@ def render_launch_configs(
         desired = {
             "version": LAUNCH_CONFIG_VERSION,
             "configurations": [
-                render_claude_preview_config(server, preview_runner)
+                render_claude_preview_config(server, preview_runner, github_root, actual_repo)
                 for server in entry["servers"]
             ],
         }
@@ -1062,10 +1079,17 @@ def render_launch_configs(
         render_launch_config(target, desired, apply)
 
 
-def codex_environment_text(entry: dict[str, Any], preview_runner: Path) -> str:
+def codex_environment_text(
+    entry: dict[str, Any],
+    preview_runner: Path,
+    github_root: Path,
+    repo_root: Path,
+) -> str:
     actions: list[str] = []
     for server in entry["servers"]:
-        command = _shell_command(preview_command_parts(server, preview_runner))
+        command = _shell_command(
+            preview_command_parts(server, preview_runner, github_root, repo_root)
+        )
         actions.append(
             "\n".join(
                 [
@@ -1126,7 +1150,7 @@ def render_codex_environment_configs(
         target = actual_repo / ".codex" / "environments" / "environment.toml"
         render_codex_environment_config(
             target,
-            codex_environment_text(entry, preview_runner),
+            codex_environment_text(entry, preview_runner, github_root, actual_repo),
             apply,
         )
 
