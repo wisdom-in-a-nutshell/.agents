@@ -13,7 +13,7 @@ Personal agent, Codex, and repo-local lifecycle hook control plane.
 
 - `skills/registry.json` is the canonical skill registry.
 - `plugins/registry.json` is the canonical plugin registry.
-- `mcp/config/presets.json` is the canonical shared MCP registry.
+- `mcp/config/presets.json` is the canonical shared MCP registry. Per-repo assignment is the `mcp_presets` field in `codex/config/repo-bootstrap.json`; one assignment renders to both clients — Codex (`.codex/config.toml` `[mcp_servers.*]`) and Claude (per-repo `.mcp.json` at the repo root, the only project-scoped MCP file Claude Code reads). It is opt-in per repo: a repo gets `.mcp.json` only if it has `mcp_presets`.
 - `hooks/registry.json` is the canonical Codex lifecycle hook registry.
 - `dev-servers/registry.json` is the canonical agent-preview server registry. The shared client sync renders per-repo `.claude/launch.json` and `.codex/environments/environment.toml` from it. It is opt-in per repo: a repo gets a launch surface only if listed. Keep public Cloudflare/LaunchAgent service ports in `~/GitHub/scripts`, not this preview registry.
 - `codex/` holds canonical personal Codex control-plane inputs.
@@ -90,9 +90,10 @@ Detailed operations live in:
 - Do not hand-edit generated repo-local `.codex/config.toml` files in managed repos; update `codex/config/repo-bootstrap.json` and re-run the sync scripts.
 - Do not hand-edit generated repo-local `.codex/hooks.json` files in managed repos; update `hooks/registry.json` and re-run the sync scripts.
 - Do not hand-edit generated repo-local `.claude/launch.json` or `.codex/environments/environment.toml` files in managed repos; update `dev-servers/registry.json` and re-run `scripts/sync-claude.sh`.
+- Do not hand-edit generated repo-local `.mcp.json` files in managed repos; that surface is rendered from `mcp/config/presets.json` plus the repo's `mcp_presets` in `codex/config/repo-bootstrap.json`. Update those registries and re-run the shared bootstrap/check.
 - When a new OpenAI-bundled Codex skill appears locally, classify it in `codex/config/bundled-skills-policy.json` as either `allowed` or `disabled`; do not leave it as untracked local runtime drift.
 - When changing shared bootstrap inputs such as `mcp/config/presets.json`, `codex/config/repo-bootstrap.json`, or repo MCP assignment, prefer `./scripts/bootstrap-machine-agent-control-planes.sh --apply --repo <repo>` so Codex runtime and repo-local Codex hook state are re-rendered together. Use component-only scripts only for intentional single-surface troubleshooting.
-- If `mcp/config/presets.json` changes, run Codex control-plane validation in the same change.
+- If `mcp/config/presets.json` or a repo's `mcp_presets` assignment changes, run Codex control-plane validation and the Claude sync/check (`scripts/sync-claude.sh`) in the same change, since the assignment now renders to both clients. Note: the Codex repo-config sync's `--repo` filter matches an exact path (`--repo ~/GitHub/<repo>`), not a bare repo name, so verify both `.codex/config.toml` and `.mcp.json` actually re-rendered for the target repo.
 - If `hooks/registry.json`, `hooks/scripts/*`, `hooks/git/*`, or `scripts/sync-managed-git-hooks.sh` changes, run shared bootstrap/check plus `./scripts/test-control-plane.sh` in the same change.
 - If `codex/config/global.config.toml` or `codex/config/repo-bootstrap.json` changes, run the Codex control-plane validation script in the same change.
 - Do not hand-edit `enabledPlugins` or `skillOverrides` in the global `~/.claude/settings.json`; that state is rendered from `config/claude-settings.json`. Update the overlay, then rerun the shared bootstrap/check (`./scripts/sync-claude.sh --apply` or the bootstrap wrapper). To disable an Anthropic-bundled Claude plugin set its `enabledPlugins` entry to `false`; to hide a bundled Claude skill from model context set its `skillOverrides` entry to `name-only` (still typable) or `off`.

@@ -421,6 +421,132 @@ class ClaudeSyncTests(TempDirTestCase):
         self.assertFalse((repo_b / ".claude/launch.json").exists())
         self.assertFalse((repo_b / ".codex/environments/environment.toml").exists())
 
+    def _run_mcp_sync(
+        self,
+        *,
+        root: Path,
+        registry: Path,
+        github_root: Path,
+        claude_home: Path,
+        mcp_presets: Path,
+        repo_registry: Path,
+        repo: str | None = None,
+    ) -> None:
+        cmd = [
+            str(REPO_ROOT / "scripts/sync-claude.py"),
+            "--apply",
+            "--claude-home",
+            str(claude_home),
+            "--github-root",
+            str(github_root),
+            "--mcp-presets-registry",
+            str(mcp_presets),
+            "--repo-registry",
+            str(repo_registry),
+            "--skip-skills",
+            "--skip-global-context",
+            "--skip-settings",
+            "--skip-launcher",
+            "--skip-launch-configs",
+            "--skip-codex-environments",
+            "--skip-repo-hooks",
+            "--skip-repo-guidance",
+            "--skip-workspace-trust",
+        ]
+        if repo is not None:
+            cmd.extend(["--repo", repo])
+        cmd.append(str(registry))
+        run_command(cmd)
+
+    def test_apply_renders_repo_mcp_config_from_presets(self) -> None:
+        root = self.temp_path / "agents"
+        registry = self._write_registry(root, [])
+        github_root = self.temp_path / "GitHub"
+        repo_a = init_git_repo(github_root / "repo-a")
+        claude_home = self.temp_path / "claude"
+        mcp_presets = write_json(
+            root / "mcp/config/presets.json",
+            {
+                "presets": {
+                    "figma": {"transport": "http", "url": "http://127.0.0.1:3845/mcp"},
+                    "toolbox": {
+                        "transport": "stdio",
+                        "command": "npx",
+                        "args": ["-y", "toolbox"],
+                        "env": {"TB": "1"},
+                    },
+                },
+                "global_presets": [],
+                "plugin_presets": {},
+                "plugin_global_presets": [],
+            },
+        )
+        repo_registry = write_json(
+            root / "codex/config/repo-bootstrap.json",
+            {
+                "defaults": {},
+                "repos": [{"path": "repo-a", "mcp_presets": ["figma", "toolbox"]}],
+            },
+        )
+
+        self._run_mcp_sync(
+            root=root,
+            registry=registry,
+            github_root=github_root,
+            claude_home=claude_home,
+            mcp_presets=mcp_presets,
+            repo_registry=repo_registry,
+            repo="repo-a",
+        )
+
+        mcp = json.loads((repo_a / ".mcp.json").read_text(encoding="utf-8"))
+        # http transport maps to Claude's type/url shape; stdio carries command/args/env.
+        self.assertEqual(
+            {"type": "http", "url": "http://127.0.0.1:3845/mcp"},
+            mcp["mcpServers"]["figma"],
+        )
+        self.assertEqual(
+            {"type": "stdio", "command": "npx", "args": ["-y", "toolbox"], "env": {"TB": "1"}},
+            mcp["mcpServers"]["toolbox"],
+        )
+
+    def test_mcp_config_is_opt_in_per_repo(self) -> None:
+        root = self.temp_path / "agents"
+        registry = self._write_registry(root, [])
+        github_root = self.temp_path / "GitHub"
+        repo_a = init_git_repo(github_root / "repo-a")
+        repo_b = init_git_repo(github_root / "repo-b")
+        claude_home = self.temp_path / "claude"
+        mcp_presets = write_json(
+            root / "mcp/config/presets.json",
+            {
+                "presets": {"figma": {"transport": "http", "url": "http://127.0.0.1:3845/mcp"}},
+                "global_presets": [],
+                "plugin_presets": {},
+                "plugin_global_presets": [],
+            },
+        )
+        repo_registry = write_json(
+            root / "codex/config/repo-bootstrap.json",
+            {
+                "defaults": {},
+                "repos": [{"path": "repo-a", "mcp_presets": ["figma"]}, {"path": "repo-b"}],
+            },
+        )
+
+        self._run_mcp_sync(
+            root=root,
+            registry=registry,
+            github_root=github_root,
+            claude_home=claude_home,
+            mcp_presets=mcp_presets,
+            repo_registry=repo_registry,
+        )
+
+        # Assigned repo gets a .mcp.json; a repo with no mcp_presets is never touched.
+        self.assertTrue((repo_a / ".mcp.json").is_file())
+        self.assertFalse((repo_b / ".mcp.json").exists())
+
     def test_dev_server_rejects_multiple_or_auto_port_previews(self) -> None:
         root = self.temp_path / "agents"
         registry = self._write_registry(root, [])
