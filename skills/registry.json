@@ -376,6 +376,16 @@
       "repos": [],
       "source_path": "skills-source/external/uikit-app-modernization",
       "upstream_ref": "local-import"
+    },
+    {
+      "skill": "figma-use",
+      "origin": "external",
+      "scope": "repo",
+      "repos": [
+        "aipodcasting"
+      ],
+      "source_path": "skills-source/external/figma-use",
+      "upstream_ref": "figma/mcp-server-guide:skills/figma-use@main"
     }
   ],
   "unmanaged_repo_local_skills": [
