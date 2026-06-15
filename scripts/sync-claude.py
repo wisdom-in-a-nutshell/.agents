@@ -915,10 +915,30 @@ def _shell_command(parts: list[str]) -> str:
     return " ".join(shlex.quote(part) for part in parts)
 
 
+def shell_home_path(path: Path) -> str:
+    try:
+        rel = path.resolve().relative_to(Path.home().resolve())
+    except ValueError:
+        return str(path)
+    return "${HOME}/" + rel.as_posix()
+
+
+def shell_quote_command_part(part: str) -> str:
+    if part.startswith("${HOME}/"):
+        return '"' + part.replace('"', '\\"') + '"'
+    return shlex.quote(part)
+
+
+def shell_command_preserving_home(parts: list[str]) -> str:
+    return " ".join(shell_quote_command_part(part) for part in parts)
+
+
 def expand_dev_server_runtime_value(value: str, github_root: Path, repo_root: Path) -> str:
+    github_root_value = shell_home_path(github_root)
+    repo_root_value = shell_home_path(repo_root)
     return (
-        value.replace("{github_root}", str(github_root))
-        .replace("{repo_root}", str(repo_root))
+        value.replace("{github_root}", github_root_value)
+        .replace("{repo_root}", repo_root_value)
     )
 
 
@@ -928,9 +948,9 @@ def preview_command_parts(
     github_root: Path,
     repo_root: Path,
 ) -> list[str]:
-    return [
+    wrapped = [
         "python3",
-        str(preview_runner),
+        shell_home_path(preview_runner),
         "--host",
         server["host"],
         "--port",
@@ -942,6 +962,7 @@ def preview_command_parts(
             for arg in server["runtimeArgs"]
         ],
     ]
+    return ["/bin/bash", "-lc", shell_command_preserving_home(wrapped)]
 
 
 def render_claude_preview_config(
