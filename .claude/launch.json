@@ -5,7 +5,7 @@
       "name": "Control Plane Dashboard",
       "runtimeExecutable": "python3",
       "runtimeArgs": [
-        "/Users/angelicablancogarcia/GitHub/agents/scripts/run-agent-preview-server.py",
+        "/Users/adi/GitHub/agents/scripts/run-agent-preview-server.py",
         "--host",
         "127.0.0.1",
         "--port",
