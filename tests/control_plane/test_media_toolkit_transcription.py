@@ -6,6 +6,7 @@ import io
 import json
 import os
 import tempfile
+import types
 from pathlib import Path
 from typing import Any
 from unittest.mock import patch
@@ -32,6 +33,11 @@ def load_api_module() -> Any:
     scripts_dir = SCRIPT_PATH.parent
     if str(scripts_dir) not in os.sys.path:
         os.sys.path.insert(0, str(scripts_dir))
+    fake_requests = types.SimpleNamespace(
+        RequestException=Exception,
+        Session=object,
+        Timeout=TimeoutError,
+    )
     spec = importlib.util.spec_from_file_location(
         "media_toolkit_skill_api",
         API_PATH,
@@ -39,7 +45,8 @@ def load_api_module() -> Any:
     if spec is None or spec.loader is None:
         raise AssertionError("Unable to load media toolkit API client.")
     module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
+    with patch.dict(os.sys.modules, {"requests": fake_requests}):
+        spec.loader.exec_module(module)
     return module
 
 

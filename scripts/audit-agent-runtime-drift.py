@@ -432,6 +432,13 @@ def audit_claude_session_archiver(
     cmd = [str(script), "--dry-run", "--no-input", "--json", "--support-dir", str(base)]
     if handshake_glob is not None:
         cmd += ["--handshake-glob", handshake_glob]
+    if support_dir is not None:
+        cmd += [
+            "--lock",
+            str(base.parent / "archive-stale-claude-sessions.lock"),
+            "--backup-root",
+            str(base.parent / "archive-stale-claude-sessions-backups"),
+        ]
     try:
         completed = subprocess.run(
             cmd, capture_output=True, text=True, timeout=timeout_sec, check=False
