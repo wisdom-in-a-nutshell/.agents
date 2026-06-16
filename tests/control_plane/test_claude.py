@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+import shlex
 import tomllib
 from pathlib import Path
 
@@ -336,21 +337,15 @@ class ClaudeSyncTests(TempDirTestCase):
         self.assertEqual(1, len(launch["configurations"]))
         config = launch["configurations"][0]
         self.assertEqual("Preview", config["name"])
-        self.assertEqual("python3", config["runtimeExecutable"])
+        preview_command = (
+            f"python3 {preview_runner} --host 127.0.0.1 --port 3000 -- "
+            "pnpm dev --host 127.0.0.1 --port 3000"
+        )
+        self.assertEqual("/bin/bash", config["runtimeExecutable"])
         self.assertEqual(
             [
-                str(preview_runner),
-                "--host",
-                "127.0.0.1",
-                "--port",
-                "3000",
-                "--",
-                "pnpm",
-                "dev",
-                "--host",
-                "127.0.0.1",
-                "--port",
-                "3000",
+                "-lc",
+                preview_command,
             ],
             config["runtimeArgs"],
         )
@@ -364,7 +359,7 @@ class ClaudeSyncTests(TempDirTestCase):
         self.assertEqual("Preview", codex_env["actions"][0]["name"])
         self.assertEqual("run", codex_env["actions"][0]["icon"])
         self.assertEqual(
-            f"python3 {preview_runner} --host 127.0.0.1 --port 3000 -- pnpm dev --host 127.0.0.1 --port 3000",
+            f"/bin/bash -lc {shlex.quote(preview_command)}",
             codex_env["actions"][0]["command"],
         )
 
