@@ -40,10 +40,8 @@
     {
       "skill": "pretty-mermaid",
       "origin": "owned",
-      "scope": "repo",
-      "repos": [
-        "adi"
-      ],
+      "scope": "dormant",
+      "repos": [],
       "source_path": "skills-source/owned/pretty-mermaid",
       "upstream_ref": "-"
     },
@@ -102,7 +100,7 @@
       "scope": "repo",
       "repos": [
         "adi",
-        "aipodcasting-website-astro",
+        "aipodcasting-website",
         "blog-personal"
       ],
       "source_path": "skills-source/owned/aip-company",
@@ -128,6 +126,14 @@
         "win"
       ],
       "source_path": "skills-source/owned/azure-webapp-config",
+      "upstream_ref": "-"
+    },
+    {
+      "skill": "azure-webapp-deploy",
+      "origin": "owned",
+      "scope": "dormant",
+      "repos": [],
+      "source_path": "skills-source/owned/azure-webapp-deploy",
       "upstream_ref": "-"
     },
     {
@@ -267,6 +273,14 @@
         "adithyan-ai-videos"
       ],
       "source_path": "skills-source/owned/fal-seedance",
+      "upstream_ref": "-"
+    },
+    {
+      "skill": "whiyh-gpt-hill-climb",
+      "origin": "owned",
+      "scope": "dormant",
+      "repos": [],
+      "source_path": "skills-source/owned/whiyh-gpt-hill-climb",
       "upstream_ref": "-"
     },
     {

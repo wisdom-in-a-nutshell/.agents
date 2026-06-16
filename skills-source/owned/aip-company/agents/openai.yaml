@@ -1,4 +1,4 @@
 interface:
   display_name: "AIP Company"
   short_description: "Canonical AI Podcasting company, client, and business context."
-  default_prompt: "Use the canonical AIP company skill to ground this work. Read only the needed references, keep company truth consistent, and update the skill first if the source of truth changes."
+  default_prompt: "Use $aip-company to ground this work in canonical AIP company context, reading only the needed references and keeping company truth consistent."

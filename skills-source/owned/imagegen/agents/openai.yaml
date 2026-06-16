@@ -3,4 +3,4 @@ interface:
   short_description: "Generate and edit images with AI"
   icon_small: "./assets/imagegen-small.svg"
   icon_large: "./assets/imagegen.png"
-  default_prompt: "Handle this as an AI image generation/editing task using the skill workflow: check `styles/` for a relevant visual family, structure prompts clearly, keep a project-local worklog for non-trivial work, inspect outputs yourself, iterate privately when useful, and return the strongest final output with the final prompt and selected output paths. Do not use `scripts/postprocess_image.py` by default; only use it if the user explicitly asks for deterministic post-processing after AI generation/editing."
+  default_prompt: "Use $imagegen for this AI image generation or editing task: check relevant styles, structure prompts clearly, inspect outputs, iterate privately when useful, and return the strongest final output."

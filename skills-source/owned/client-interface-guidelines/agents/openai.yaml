@@ -1,4 +1,4 @@
 interface:
   display_name: "Client Interface Guidelines"
   short_description: "Design agent-first CLI/client interfaces."
-  default_prompt: "Use the client-interface-guidelines skill to design or review this AI-agent-first CLI/client tool. Enforce a stable machine contract, structured errors, deterministic output, robust exit codes, non-interactive behavior, and secure secret handling."
+  default_prompt: "Use $client-interface-guidelines to design or review this agent-first CLI/client tool with stable JSON, structured errors, deterministic output, robust exit codes, non-interactive behavior, and secure secret handling."

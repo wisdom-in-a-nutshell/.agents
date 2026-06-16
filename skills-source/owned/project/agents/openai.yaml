@@ -1,4 +1,4 @@
 interface:
   display_name: "Project"
   short_description: "Create, resume, and drive long-running project trackers."
-  default_prompt: "Create or resume the repo's project tracker, refresh the current batch, decide whether the batch benefits from subagents, execute it, validate progress, and keep the tracker and resources current."
+  default_prompt: "Use $project to create or resume the repo project tracker, refresh the current batch, execute work, validate progress, and keep tracker resources current."
