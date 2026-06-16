@@ -51,6 +51,14 @@
       "scope": "global",
       "repos": [],
       "category": "Productivity"
+    },
+    {
+      "plugin": "google-drive",
+      "marketplace": "openai-curated-remote",
+      "enabled": true,
+      "scope": "global",
+      "repos": [],
+      "category": "Productivity"
     }
   ],
   "unmanaged_repo_local_plugins": []
