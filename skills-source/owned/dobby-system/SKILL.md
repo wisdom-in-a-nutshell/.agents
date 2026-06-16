@@ -1,6 +1,6 @@
 ---
 name: dobby-system
-description: Shared orientation for the Dobby multi-repo system and person-workspace anatomy. Use when Codex is working in or across `/Users/dobby/GitHub/adi`, `/Users/dobby/GitHub/angie`, `/Users/dobby/GitHub/dobby-engine`, `/Users/dobby/GitHub/codexclaw`, or `/Users/dobby/GitHub/agents` and needs to understand repo ownership, Adi/Angie workspace folders, memory/body-map routing, source-material placement, identity/workspace boundaries, the shared engine model, dashboard/gateway flow, hooks/control-plane responsibilities, or where a Dobby-related change belongs.
+description: Shared orientation for the Dobby multi-repo system and person-workspace anatomy. Use when Codex is working in or across `/Users/dobby/GitHub/adi`, `/Users/dobby/GitHub/angie`, `/Users/dobby/GitHub/dobby-engine`, `/Users/dobby/GitHub/codexclaw`, `/Users/dobby/GitHub/agents`, or `/Users/dobby/GitHub/scripts` and needs to understand repo ownership, Adi/Angie workspace folders, memory/body-map routing, source-material placement, identity/workspace boundaries, the shared engine model, dashboard/gateway flow, hooks/control-plane responsibilities, machine scheduler boundaries, or where a Dobby-related change belongs.
 ---
 
 # Dobby System
@@ -20,6 +20,7 @@ This skill is the canonical cross-repo orientation layer for Dobby. Future agent
 | `/Users/dobby/GitHub/dobby-engine` | Shared Dobby CLI, Python engine, dashboard source, engine contracts, default prompts/docs, tests | Person-specific identity, memory, journals, private state |
 | `/Users/dobby/GitHub/codexclaw` | Product shell: iOS app, mobile gateway, assistant runtime integration, user-facing app contracts | Dobby identity data, core Dobby engine logic unless through documented CLI/API boundary |
 | `/Users/dobby/GitHub/agents` | Agent control plane: shared skills, Codex/Claude config, hooks, MCP/plugin registries, skill distribution | Dobby product behavior, Dobby personal data, engine runtime behavior |
+| `/Users/dobby/GitHub/scripts` | Machine ops: bootstrap, launchd wiring, scheduler profiles, recurring machine wrappers, machine-local materializers | Dobby domain behavior, person memory/data, dashboard/API implementation, agent control-plane policy |
 
 ## Core Model
 
@@ -28,6 +29,7 @@ This skill is the canonical cross-repo orientation layer for Dobby. Future agent
 - The shared engine must remain workspace-agnostic. Runtime person data comes from `DOBBY_WORKSPACE` or workspace marker discovery, not from hardcoded Adi/Angie paths.
 - `codexclaw` should treat Dobby as a workspace-backed service boundary. It should call the workspace/engine contract, not read private memory files ad hoc.
 - `agents` distributes capabilities and lifecycle hooks. Put shared Dobby orientation here as this skill; do not turn `agents` into the Dobby architecture doc home.
+- `scripts` may schedule Dobby work on a specific machine, but only as a thin machine wrapper around the owning repo entrypoint. Live launchd plists under `~/Library/LaunchAgents/` are machine-local runtime state; tracked installers/runners live in `scripts`.
 
 ## Workspace Anatomy
 
@@ -80,7 +82,8 @@ For social archives, corpora, imported documents, and other source material:
 2. If it changes Adi's or Angie's constitution, memory, journal, Shelf state, or person-specific prompt behavior, change only that person's workspace repo.
 3. If it changes the phone app, mobile gateway, assistant runtime selection, or product-facing behavior, change `codexclaw`.
 4. If it changes which skills/tools/hooks/configs agents receive, change `agents`.
-5. If more than one repo is touched, keep each repo's change scoped to its ownership layer and validate each repo separately.
+5. If it changes machine bootstrap, launchd scheduling, scheduler profiles, or a thin machine-local wrapper around a Dobby command, change `scripts`; keep the real Dobby behavior in `dobby-engine` or the person workspace.
+6. If more than one repo is touched, keep each repo's change scoped to its ownership layer and validate each repo separately.
 
 ## Documentation Boundary
 
@@ -110,6 +113,7 @@ cd /Users/dobby/GitHub/angie && scripts/check-fast.sh
 cd /Users/dobby/GitHub/dobby-engine && scripts/check-fast.sh
 cd /Users/dobby/GitHub/codexclaw && scripts/check-fast.sh
 cd /Users/dobby/GitHub/agents && scripts/check-fast.sh
+cd /Users/dobby/GitHub/scripts && ops/check-fast.sh
 ```
 
 For cross-repo work, run checks for every touched repo. If changing shared engine behavior, also smoke at least one real workspace path when relevant.
