@@ -1,6 +1,6 @@
 ---
 name: dobby-system
-description: Shared orientation for the Dobby multi-repo system. Use when Codex is working in or across `/Users/dobby/GitHub/adi`, `/Users/dobby/GitHub/angie`, `/Users/dobby/GitHub/dobby-engine`, `/Users/dobby/GitHub/codexclaw`, or `/Users/dobby/GitHub/agents` and needs to understand repo ownership, identity/workspace boundaries, the shared engine model, dashboard/gateway flow, hooks/control-plane responsibilities, or where a Dobby-related change belongs.
+description: Shared orientation for the Dobby multi-repo system and person-workspace anatomy. Use when Codex is working in or across `/Users/dobby/GitHub/adi`, `/Users/dobby/GitHub/angie`, `/Users/dobby/GitHub/dobby-engine`, `/Users/dobby/GitHub/codexclaw`, or `/Users/dobby/GitHub/agents` and needs to understand repo ownership, Adi/Angie workspace folders, memory/body-map routing, source-material placement, identity/workspace boundaries, the shared engine model, dashboard/gateway flow, hooks/control-plane responsibilities, or where a Dobby-related change belongs.
 ---
 
 # Dobby System
@@ -26,6 +26,51 @@ Use this skill to orient before changing the Dobby system across repos. Keep the
 - The shared engine must remain workspace-agnostic. Runtime person data comes from `DOBBY_WORKSPACE` or workspace marker discovery, not from hardcoded Adi/Angie paths.
 - `codexclaw` should treat Dobby as a workspace-backed service boundary. It should call the workspace/engine contract, not read private memory files ad hoc.
 - `agents` distributes capabilities and lifecycle hooks. Put shared Dobby orientation here as this skill; do not turn `agents` into the Dobby architecture doc home.
+
+## Workspace Anatomy
+
+Use this skill as the entry point, then read the current workspace's
+`docs/body-map.md` for exact routing before changing workspace shape or deciding
+where person data belongs. Do not duplicate body-map detail here.
+
+Adi and Angie workspaces share the same organ layout:
+
+```text
+bin/ dobby/ docs/ journal/ memory/ projects/ scripts/ state/ tmp/
+```
+
+Inside a person workspace:
+
+- `bin/dobby` is the only Dobby CLI entry point; it pins the workspace and calls
+  the shared engine.
+- `dobby/constitution.md` is Dobby behavior and boundaries.
+- `memory/profile.md` is durable person context; `memory/now.md` is current
+  orientation.
+- `memory/areas/<area>/canon.md` is the one durable area layer.
+- `memory/areas/<area>/area.json` indexes area metadata, data dirs, and assets.
+- `memory/sessions/` and `memory/dreams/` are continuity records.
+- `journal/` holds raw reflections/check-ins; `state/` holds live state such as
+  Shelf; `projects/` holds active work trackers; `tmp/` is disposable scratch.
+
+Before writing Dobby memory, check the shared write contract at
+`/Users/dobby/GitHub/dobby-engine/docs/agent-write-recipes.md`. Use
+`./bin/dobby` for CLI-owned writes such as journal, Shelf, sessions, dreams,
+calendar, and mail. Direct file writes are for documented shapes such as area
+canon, `area.json`, and source-material JSON.
+
+For social archives, corpora, imported documents, and other source material:
+
+- Keep raw exports as inputs/backups or repo-local temp/source assets, not as
+  canon.
+- Store normalized supporting captures under the relevant person's workspace,
+  usually `memory/areas/<area>/<dataDir>/...` as source-material JSON when the
+  area declares that data dir.
+- Put durable conclusions in `canon.md`; put personal open loops in Shelf; put
+  raw reflection in `journal/`.
+- Keep person-private data out of `dobby-engine`, `agents`, `codexclaw`, and
+  public/content repos such as `blog-personal`. Those repos may be sources, not
+  homes for private corpus data.
+- Area `log.jsonl` files are retired; do not create them.
 
 ## Choosing Where a Change Belongs
 
