@@ -1,4 +1,4 @@
 interface:
   display_name: "Skill Router"
-  short_description: "Route skill placement in .agents: owned, external, or repo-local."
-  default_prompt: "Apply .agents AGENTS.md policy, choose placement, update registry/source paths, and run sync/check when registry changes."
+  short_description: "Deprecated; use Skill Creator"
+  default_prompt: "Use $skill-creator for skill placement, creation, registry updates, bootstrap, and checks."
