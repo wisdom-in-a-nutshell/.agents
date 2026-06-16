@@ -48,8 +48,11 @@ Follow repo-local guidance first.
    - Record delegated outcomes, decisions, blockers, resource files, and progress while the details are fresh.
 8. **Persist until a real stop condition**
    - Continue until all scoped work is complete, a true blocker needs human input, or a repo-safety decision requires the user.
-9. **Close out**
-   - Summarize validation evidence and residual risks.
+9. **Close out and archive**
+   - Treat archive as the default final action once `Done When` is satisfied, remaining work is complete or explicitly descoped, validation is acceptable, and no material blocker remains.
+   - Move the tracker to the repo's archive path before the final response; do not leave a completed tracker active as a `ready-to-archive` or `done but still active` placeholder.
+   - Ask before archiving only when completion is materially uncertain or closure depends on product judgment rather than implementation execution.
+   - Summarize validation evidence, residual risks, and the archived tracker path in the final response. If you did not archive, state the concrete blocker.
    - Include a short delegation retrospective when subagents were used.
    - Review and finalize `<project-root>/<project>/learnings.md` before archive for long-running or tooling-heavy projects.
 
@@ -60,6 +63,7 @@ Follow repo-local guidance first.
 - Keep shared-boundary decisions in the parent thread.
 - Use subagents only for bounded independent work; collapse back local when integration, validation orchestration, or runtime/device smoke work becomes dominant.
 - Keep durable state in the repo, not only in chat.
+- Do not stop with a completed project still in the active tracker folder; archive it or state the blocker.
 
 ## Resources
 

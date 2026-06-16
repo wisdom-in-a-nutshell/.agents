@@ -29,6 +29,7 @@ This file is machine-wide baseline guidance. Keep it generic and avoid portfolio
 - In private/agent-native repos, do not create `README.md` as an operational doc. Use `AGENTS.md` for agent routing and `docs/architecture/` or `docs/references/` for durable detail. Keep `README.md` only for an explicit public/human landing page.
 - When a change clearly introduces durable behavior, architecture boundaries, or operational workflow that future work will rely on, update the relevant repo docs in the same change.
 - When choosing where docs belong inside a repo, prefer the repo's own guidance when it exists. Otherwise use `docs/architecture/` for system shape, `docs/references/` for durable facts, and project tracking docs only for active execution state. If placement is still unclear, make the best-fit update and call it out briefly.
+- When a tracker-backed project is complete, archive the tracker in the repo's archive path before final handoff, or explicitly state the blocker. Do not leave completed projects in the active tracker folder.
 
 ## Subagent Defaults
 - Use your best judgment on when subagents are helpful.

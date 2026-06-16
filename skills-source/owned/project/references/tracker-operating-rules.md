@@ -72,6 +72,7 @@ Keep blockers first-class:
 - Unless repo guidance says otherwise, archive by moving the tracker from the active tracker path to the repo's archive path, e.g. `projects/archive/<project>/tasks.md` or `docs/projects/archive/<project>/tasks.md`.
 - If the archive folder does not exist, create it during closeout.
 - Do not introduce a `ready-to-archive` holding state by default.
+- Before the final response for completed scoped work, either move the tracker to the archive path or explicitly record why archive is blocked.
 
 Archive without asking when all of the following are true:
 
@@ -79,6 +80,8 @@ Archive without asking when all of the following are true:
 - remaining milestones/tasks are complete or explicitly descoped
 - validation has passed, or any residual failure is documented as out of scope and non-blocking
 - `Open Questions / Blockers` has no unresolved item that would change the deliverable if answered differently
+
+Final response requirement: mention the archive path when archived; if not archived, name the blocker so the next agent does not silently leave stale active projects behind.
 
 ## `resources/` And `learnings/`
 

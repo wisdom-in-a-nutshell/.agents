@@ -9,6 +9,8 @@ description: Shared orientation for the Dobby multi-repo system and person-works
 
 Use this skill to orient before changing the Dobby system across repos. Keep the mental model centralized: each repo owns one layer, and cross-repo work should change the owning layer directly instead of scattering duplicate rules.
 
+This skill is the canonical cross-repo orientation layer for Dobby. Future agents touching any Dobby-system repo should check it first, and should consider whether their change updates the shared mental model here before finishing.
+
 ## Repo Ownership Map
 
 | Repo | Owns | Does not own |
@@ -80,6 +82,15 @@ For social archives, corpora, imported documents, and other source material:
 4. If it changes which skills/tools/hooks/configs agents receive, change `agents`.
 5. If more than one repo is touched, keep each repo's change scoped to its ownership layer and validate each repo separately.
 
+## Documentation Boundary
+
+Because Dobby is intentionally multi-repo and agent-native, documentation has two layers:
+
+- This skill owns cross-repo orientation: repo ownership, privacy boundaries, shared engine/workspace model, routing rules, and rules that future agents must know before deciding where a change belongs.
+- The owning repo owns implementation detail: command contracts, schemas, env vars, tests, local workflows, and feature-specific architecture docs. Put those in that repo's `AGENTS.md`, `docs/architecture/`, or `docs/references/` according to the repo's guidance.
+
+Do not duplicate repo-specific contracts into this skill. Do not bury cross-repo Dobby rules only inside one repo. When a Dobby change affects more than one repo, or changes how agents should reason about ownership/routing, update this skill in the same change or explicitly record why it did not need an update.
+
 ## Operational Rules
 
 - Prefer workspace-local `./bin/dobby` for Dobby operations from `adi` or `angie`; do not call engine internals from a workspace unless debugging the engine boundary.
@@ -87,7 +98,7 @@ For social archives, corpora, imported documents, and other source material:
 - Do not merge Adi and Angie workspaces into one repo or one branch history. Separate repos are the privacy and writer-boundary.
 - Do not recreate duplicate engine code in workspaces. Shared code belongs in `dobby-engine`.
 - Do not add README surfaces for this system. Use `AGENTS.md` for repo-local routing, this skill for cross-repo orientation, and repo docs for durable contracts.
-- When a boundary changes, update the owning repo's `AGENTS.md` or docs in the same change. Update this skill only if the cross-repo ownership map or operating model changes.
+- When a boundary changes, update the owning repo's `AGENTS.md` or docs in the same change, and check whether this skill's cross-repo orientation also changed. Update this skill for ownership, routing, privacy, or operating-model changes; leave feature-level contracts in the owning repo.
 
 ## Validation Expectations
 
