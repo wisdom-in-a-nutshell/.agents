@@ -29,6 +29,11 @@ Every skill has a required `SKILL.md`:
 
 - Frontmatter contains exactly `name` and `description`.
 - `description` is the trigger surface. Put all "when to use" information there.
+- Write descriptions in third person, with concrete trigger terms and no
+  first-person or second-person phrasing.
+- Keep `name` under 64 characters and use only lowercase letters, digits, and
+  hyphens. Avoid reserved platform terms such as `anthropic` and `claude`.
+- Keep `description` under 1024 characters and avoid XML tags.
 - The body contains instructions loaded only after the skill triggers.
 
 Recommended optional resource folders:
@@ -86,10 +91,56 @@ cloud-deploy/
 ## Skill Content Workflow
 
 1. Understand concrete user prompts that should trigger the skill.
-2. Identify reusable scripts, references, and assets from those examples.
-3. Scaffold new managed skills with `scripts/init_skill.py`.
-4. Write or edit resources before finalizing `SKILL.md`.
-5. Validate the skill folder.
-6. Forward-test complex or fragile skills against realistic prompts when useful.
-7. Iterate from observed failures and convert repeatable fixes into durable
+2. For substantial or fragile skills, define 2-3 realistic evaluation prompts
+   and expected behaviors before writing extensive instructions.
+3. Identify reusable scripts, references, and assets from those examples.
+4. Scaffold new managed skills with `scripts/init_skill.py`.
+5. Write or edit resources before finalizing `SKILL.md`.
+6. Validate the skill folder.
+7. Forward-test complex or fragile skills against realistic prompts when useful.
+8. Iterate from observed failures and convert repeatable fixes into durable
    instructions or helpers.
+
+## Evaluation and Iteration
+
+Use evaluation-first development when a skill is broad, fragile, or expensive to
+debug after the fact:
+
+1. Run or reason through representative tasks without the skill and identify the
+   gap the skill should close.
+2. Write 2-3 realistic prompts with expected behavior. Include files or fixtures
+   when the task depends on them.
+3. Write the smallest useful instructions and resources.
+4. Test with a fresh agent context when practical, then revise from observed
+   behavior rather than guesses.
+
+Watch how agents navigate the skill:
+
+- If a referenced file is never opened, make the link more explicit or remove
+  the file.
+- If a referenced file is always opened, consider moving its essential guidance
+  into `SKILL.md`.
+- If the agent explores files in an unexpected order, improve the main
+  navigation and file names.
+
+## Content Guidelines
+
+- Avoid time-sensitive branching in the main workflow. Put deprecated history in
+  a clearly marked old-patterns section only when needed.
+- Use consistent terminology throughout a skill.
+- Provide concrete input/output examples when output quality depends on style.
+- Give one recommended default path with an escape hatch instead of listing many
+  equivalent options.
+- For MCP-dependent skills, name tools with their server-qualified names and
+  document required repo MCP presets.
+
+## Script Guidelines
+
+- Prefer executable scripts for deterministic operations and validation.
+- Make instructions clear about whether to run a script or read it as reference.
+- Handle common error cases inside scripts instead of punting vague failures back
+  to the agent.
+- Use self-explanatory constants or brief comments for non-obvious values.
+- Create verifiable intermediate outputs for complex or destructive operations:
+  plan, validate, execute, verify.
+- List required packages and verify they are available in the target runtime.

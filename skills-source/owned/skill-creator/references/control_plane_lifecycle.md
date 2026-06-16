@@ -3,6 +3,18 @@
 Use this reference for exact paths, registry entries, and commands in
 `/Users/dobby/GitHub/agents`.
 
+## Contents
+
+- Paths
+- Managed owned registry entry
+- Managed external registry entry
+- Bootstrap shortcut
+- Repo-local skill
+- Promote repo-local to managed owned
+- Adopt external to owned
+- Sync and check
+- Safety
+
 ## Paths
 
 - Control-plane repo: `/Users/dobby/GitHub/agents`

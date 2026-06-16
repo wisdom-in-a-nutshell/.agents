@@ -1,6 +1,6 @@
 ---
 name: skill-creator
-description: Create, update, route, adopt, promote, import, validate, register, and distribute agent skills through the `/Users/dobby/GitHub/agents` control-plane repo. Use when Codex needs to decide whether a skill belongs in `owned`, `external`, `repo-local`, or `dormant`; scaffold or edit SKILL.md/resources; generate agents/openai.yaml; update `skills/registry.json`; refresh upstream skills; or run bootstrap/check so skill runtime links stay reproducible.
+description: Creates, updates, routes, adopts, promotes, imports, validates, registers, and distributes agent skills through the `/Users/dobby/GitHub/agents` control-plane repo. Use when Codex needs to decide whether a skill belongs in `owned`, `external`, `repo-local`, or `dormant`; scaffold or edit SKILL.md/resources; generate agents/openai.yaml; update `skills/registry.json`; refresh upstream skills; or run bootstrap/check so skill runtime links stay reproducible.
 ---
 
 # Skill Creator
@@ -54,15 +54,17 @@ Choose placement before creating or editing files:
 1. Understand the intended use with concrete examples. Skip only when the usage
    pattern is already clear from the request or existing skill.
 2. Route placement using the decision rules above.
-3. Plan reusable resources: scripts for deterministic/repeated operations,
+3. For substantial or fragile skills, define 2-3 realistic evaluation prompts
+   before writing extensive instructions.
+4. Plan reusable resources: scripts for deterministic/repeated operations,
    references for context that should load only when needed, and assets for
    output files/templates.
-4. Create or edit the canonical skill source.
-5. Generate or update `agents/openai.yaml`.
-6. Validate the skill folder.
-7. Update registry/distribution when the skill is managed by this repo.
-8. Run the required bootstrap/check commands.
-9. Iterate from real use and update durable instructions when the skill exposes
+5. Create or edit the canonical skill source.
+6. Generate or update `agents/openai.yaml`.
+7. Validate the skill folder.
+8. Update registry/distribution when the skill is managed by this repo.
+9. Run the required bootstrap/check commands.
+10. Iterate from real use and update durable instructions when the skill exposes
    a repeatable gap.
 
 ## Creating Managed Owned Skills
@@ -157,6 +159,10 @@ Validate a single skill:
 ```bash
 python3 /Users/dobby/GitHub/agents/skills-source/owned/skill-creator/scripts/quick_validate.py /path/to/skill-folder
 ```
+
+The bundled Python scripts require `PyYAML` for YAML parsing. If `import yaml`
+fails, install or repair the local Python dependency before changing the script
+behavior.
 
 Regenerate OpenAI UI metadata:
 
