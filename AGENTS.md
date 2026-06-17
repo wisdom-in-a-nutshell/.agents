@@ -14,7 +14,7 @@ Personal agent, Codex, and repo-local lifecycle hook control plane.
 For any control-plane, skill, hook, or repo-bootstrap change that affects Dobby
 ownership, engine/workspace boundaries, dashboard/gateway flow, or more than one
 Dobby repo, check
-`/Users/dobby/GitHub/agents/skills-source/owned/dobby-system/SKILL.md` first.
+`~/GitHub/agents/skills-source/owned/dobby-system/SKILL.md` first.
 Keep cross-repo Dobby orientation in that skill; keep agent control-plane
 contracts in this repo's docs.
 

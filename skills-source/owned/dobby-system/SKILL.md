@@ -1,6 +1,6 @@
 ---
 name: dobby-system
-description: Shared orientation for the Dobby multi-repo system and person-workspace anatomy. Use when Codex is working in or across `/Users/dobby/GitHub/adi`, `/Users/dobby/GitHub/angie`, `/Users/dobby/GitHub/dobby-engine`, `/Users/dobby/GitHub/codexclaw`, `/Users/dobby/GitHub/agents`, or `/Users/dobby/GitHub/scripts` and needs to understand repo ownership, Adi/Angie workspace folders, memory/body-map routing, source-material placement, identity/workspace boundaries, the shared engine model, dashboard/gateway flow, hooks/control-plane responsibilities, machine scheduler boundaries, or where a Dobby-related change belongs.
+description: Shared orientation for the Dobby multi-repo system and person-workspace anatomy. Use when Codex is working in or across `~/GitHub/adi`, `~/GitHub/angie`, `~/GitHub/dobby-engine`, `~/GitHub/codexclaw`, `~/GitHub/agents`, or `~/GitHub/scripts` and needs to understand repo ownership, Adi/Angie workspace folders, memory/body-map routing, source-material placement, identity/workspace boundaries, the shared engine model, dashboard/gateway flow, hooks/control-plane responsibilities, machine scheduler boundaries, or where a Dobby-related change belongs.
 ---
 
 # Dobby System
@@ -15,12 +15,12 @@ This skill is the canonical cross-repo orientation layer for Dobby. Future agent
 
 | Repo | Owns | Does not own |
 |---|---|---|
-| `/Users/dobby/GitHub/adi` | Adi's identity/data workspace: constitution, memory, journal, Shelf state, person prompts, workspace hooks, `./bin/dobby` shim | Shared engine implementation, Angie's private data |
-| `/Users/dobby/GitHub/angie` | Angie's identity/data workspace: constitution, memory, journal, Shelf state, person prompts, workspace hooks, `./bin/dobby` shim | Shared engine implementation, Adi's private data |
-| `/Users/dobby/GitHub/dobby-engine` | Shared Dobby CLI, Python engine, dashboard source, engine contracts, default prompts/docs, tests | Person-specific identity, memory, journals, private state |
-| `/Users/dobby/GitHub/codexclaw` | Product shell: iOS app, mobile gateway, assistant runtime integration, user-facing app contracts | Dobby identity data, core Dobby engine logic unless through documented CLI/API boundary |
-| `/Users/dobby/GitHub/agents` | Agent control plane: shared skills, Codex/Claude config, hooks, MCP/plugin registries, skill distribution | Dobby product behavior, Dobby personal data, engine runtime behavior |
-| `/Users/dobby/GitHub/scripts` | Machine ops: bootstrap, launchd wiring, scheduler profiles, recurring machine wrappers, machine-local materializers | Dobby domain behavior, person memory/data, dashboard/API implementation, agent control-plane policy |
+| `~/GitHub/adi` | Adi's identity/data workspace: constitution, memory, journal, Shelf state, person prompts, workspace hooks, `./bin/dobby` shim | Shared engine implementation, Angie's private data |
+| `~/GitHub/angie` | Angie's identity/data workspace: constitution, memory, journal, Shelf state, person prompts, workspace hooks, `./bin/dobby` shim | Shared engine implementation, Adi's private data |
+| `~/GitHub/dobby-engine` | Shared Dobby CLI, Python engine, dashboard source, engine contracts, default prompts/docs, tests | Person-specific identity, memory, journals, private state |
+| `~/GitHub/codexclaw` | Product shell: iOS app, mobile gateway, assistant runtime integration, user-facing app contracts | Dobby identity data, core Dobby engine logic unless through documented CLI/API boundary |
+| `~/GitHub/agents` | Agent control plane: shared skills, Codex/Claude config, hooks, MCP/plugin registries, skill distribution | Dobby product behavior, Dobby personal data, engine runtime behavior |
+| `~/GitHub/scripts` | Machine ops: bootstrap, launchd wiring, scheduler profiles, recurring machine wrappers, machine-local materializers | Dobby domain behavior, person memory/data, dashboard/API implementation, agent control-plane policy |
 
 ## Core Model
 
@@ -57,7 +57,7 @@ Inside a person workspace:
   Shelf; `projects/` holds active work trackers; `tmp/` is disposable scratch.
 
 Before writing Dobby memory, check the shared write contract at
-`/Users/dobby/GitHub/dobby-engine/docs/agent-write-recipes.md`. Use
+`~/GitHub/dobby-engine/docs/agent-write-recipes.md`. Use
 `./bin/dobby` for CLI-owned writes such as journal, Shelf, sessions, dreams,
 calendar, and mail. Direct file writes are for documented shapes such as area
 canon, `area.json`, and source-material JSON.
@@ -108,12 +108,12 @@ Do not duplicate repo-specific contracts into this skill. Do not bury cross-repo
 Run the owner repo's fast check before finishing:
 
 ```bash
-cd /Users/dobby/GitHub/adi && scripts/check-fast.sh
-cd /Users/dobby/GitHub/angie && scripts/check-fast.sh
-cd /Users/dobby/GitHub/dobby-engine && scripts/check-fast.sh
-cd /Users/dobby/GitHub/codexclaw && scripts/check-fast.sh
-cd /Users/dobby/GitHub/agents && scripts/check-fast.sh
-cd /Users/dobby/GitHub/scripts && ops/check-fast.sh
+cd ~/GitHub/adi && scripts/check-fast.sh
+cd ~/GitHub/angie && scripts/check-fast.sh
+cd ~/GitHub/dobby-engine && scripts/check-fast.sh
+cd ~/GitHub/codexclaw && scripts/check-fast.sh
+cd ~/GitHub/agents && scripts/check-fast.sh
+cd ~/GitHub/scripts && ops/check-fast.sh
 ```
 
 For cross-repo work, run checks for every touched repo. If changing shared engine behavior, also smoke at least one real workspace path when relevant.
