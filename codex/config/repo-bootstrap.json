@@ -70,6 +70,9 @@
       "path": "~/GitHub/focus"
     },
     {
+      "path": "~/GitHub/futureoflife-podcast"
+    },
+    {
       "path": "~/GitHub/litellm"
     },
     {
@@ -96,6 +99,9 @@
       "mcp_presets": [
         "openaiDeveloperDocs"
       ]
+    },
+    {
+      "path": "~/GitHub/thoughtforms-life"
     },
     {
       "path": "~/GitHub/win"
