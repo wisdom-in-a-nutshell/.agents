@@ -44,6 +44,44 @@
       ]
     },
     {
+      "repo": "thoughtforms-life",
+      "servers": [
+        {
+          "name": "Preview",
+          "host": "127.0.0.1",
+          "runtimeExecutable": "pnpm",
+          "runtimeArgs": [
+            "dev",
+            "--host",
+            "{host}",
+            "--port",
+            "{port}"
+          ],
+          "port": 4330,
+          "autoPort": false
+        }
+      ]
+    },
+    {
+      "repo": "futureoflife-podcast",
+      "servers": [
+        {
+          "name": "Preview",
+          "host": "127.0.0.1",
+          "runtimeExecutable": "pnpm",
+          "runtimeArgs": [
+            "dev",
+            "--host",
+            "{host}",
+            "--port",
+            "{port}"
+          ],
+          "port": 4331,
+          "autoPort": false
+        }
+      ]
+    },
+    {
       "repo": "adi",
       "servers": [
         {
