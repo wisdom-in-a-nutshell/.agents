@@ -313,14 +313,8 @@
     {
       "skill": "impeccable",
       "origin": "external",
-      "scope": "repo",
-      "repos": [
-        "adithyan-ai-videos",
-        "aipodcasting",
-        "agents",
-        "adi",
-        "angie"
-      ],
+      "scope": "global",
+      "repos": [],
       "source_path": "skills-source/external/impeccable",
       "upstream_ref": "pbakaus/impeccable:.agents/skills/impeccable@main"
     },
