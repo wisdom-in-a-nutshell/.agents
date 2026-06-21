@@ -17,8 +17,13 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 SCHEMA_VERSION = "1.0"
-TOOL_VERSION = "0.2.0"
+TOOL_VERSION = "0.3.0"
 REVIEW_TMP_ROOT = Path("/tmp/cv-review")
+# Tailored per-company packets are disposable build artifacts, NOT durable
+# career memory. They live under the repo's gitignored tmp/ so they are never
+# committed and get thrown away when the application is sent. The durable source
+# of truth stays in the career root: base/ templates, profile.md, tailoring-guide.md.
+TAILORED_SUBPATH = Path("tmp") / "cv" / "tailored"
 COMPANY_SLUG_RE = re.compile(r"^[A-Za-z0-9._-]+$")
 CAREER_ROOT_CANDIDATES = (
     Path("memory/areas/career"),
@@ -169,15 +174,25 @@ def latex_root_for(repo_root: Path, career_root_override: str | None = None) -> 
     return career_root_for(repo_root, career_root_override) / "cv" / "latex"
 
 
+def tailored_root_for(repo_root: Path) -> Path:
+    """Disposable home for per-company tailored packets.
+
+    Tailored resumes/cover letters are throwaway renderings of durable career
+    canon, not memory worth tracking. They live under the repo's gitignored
+    tmp/ so drafts never get committed and clear out when the work is done.
+    """
+    return repo_root / TAILORED_SUBPATH
+
+
 def source_for(
     repo_root: Path,
     kind: str,
     company: str | None,
     career_root_override: str | None = None,
 ) -> Path:
-    latex_root = latex_root_for(repo_root, career_root_override)
     if company:
-        return latex_root / "tailored" / company / f"{kind}.tex"
+        return tailored_root_for(repo_root) / company / f"{kind}.tex"
+    latex_root = latex_root_for(repo_root, career_root_override)
     return latex_root / "base" / f"{kind}.tex"
 
 
@@ -188,8 +203,7 @@ def job_description_for(
 ) -> Path | None:
     if not company:
         return None
-    latex_root = latex_root_for(repo_root, career_root_override)
-    return latex_root / "tailored" / company / "job-description.md"
+    return tailored_root_for(repo_root) / company / "job-description.md"
 
 
 def review_dir_for(repo_root: Path, company: str | None, kind: str) -> Path:
@@ -428,13 +442,18 @@ def run_review(repo_root: Path, kind: str, company: str | None, plain: bool, car
     return 0
 
 
-def run_clean(plain: bool) -> int:
+def run_clean(repo_root: Path | None, plain: bool) -> int:
     t0 = time.monotonic()
     command = "cv.clean"
     removed = []
     if REVIEW_TMP_ROOT.exists():
         shutil.rmtree(REVIEW_TMP_ROOT)
         removed.append(str(REVIEW_TMP_ROOT))
+    if repo_root:
+        tailored_root = tailored_root_for(repo_root)
+        if tailored_root.exists():
+            shutil.rmtree(tailored_root)
+            removed.append(str(tailored_root))
     data = {
         "message": f"Cleaned {len(removed)} path(s)." if removed else "Nothing to clean.",
         "removed": removed,
@@ -517,7 +536,7 @@ def main(argv=None) -> int:
         return run_build(repo_root, args.kind, args.company, args.plain, args.career_root)
     if args.command == "review":
         return run_review(repo_root, args.kind, args.company, args.plain, args.career_root)
-    return run_clean(args.plain)
+    return run_clean(repo_root, args.plain)
 
 
 if __name__ == "__main__":

@@ -9,7 +9,12 @@ Use this skill for repo-local career materials. Keep the workflow shared, but ke
 
 ## Repo contract
 
-The skill auto-detects the career root in this order based on existing files: `memory/areas/career/`, then `memory/areas/builder/career/`. Use `--career-root <path>` when a repo intentionally has multiple career areas. Expect this layout under the selected career root unless the repo clearly documents a different one:
+Durable career memory and disposable tailored packets are kept in two different places on purpose:
+
+- **Durable (tracked, committed):** the career root holds the source of truth — base templates, profile facts, and tailoring rules. The skill auto-detects the career root in this order based on existing files: `memory/areas/career/`, then `memory/areas/builder/career/`. Use `--career-root <path>` when a repo intentionally has multiple career areas.
+- **Disposable (gitignored, throwaway):** per-company tailored packets are renderings of that canon for one application, not memory. The CLI writes them under the repo's `tmp/` so they are never committed and clear out when the application is sent. Do not move tailored packets back into the tracked career root.
+
+Expect this layout unless the repo clearly documents a different one:
 
 - `<career-root>/overview.md`
 - `<career-root>/profile.md`
@@ -18,11 +23,11 @@ The skill auto-detects the career root in this order based on existing files: `m
 - `<career-root>/cv/latex/.gitignore`
 - `<career-root>/cv/latex/base/resume.tex`
 - `<career-root>/cv/latex/base/cover-letter.tex`
-- `<career-root>/cv/latex/tailored/<company>/job-description.md`
-- `<career-root>/cv/latex/tailored/<company>/resume.tex`
-- `<career-root>/cv/latex/tailored/<company>/cover-letter.tex`
+- `<repo-root>/tmp/cv/tailored/<company>/job-description.md` *(disposable)*
+- `<repo-root>/tmp/cv/tailored/<company>/resume.tex` *(disposable)*
+- `<repo-root>/tmp/cv/tailored/<company>/cover-letter.tex` *(disposable)*
 
-If the contract is missing, create the minimal structure first instead of improvising files in random places.
+The CLI resolves these paths for you — call `cv.py init/build/review --company <slug>` and let it place files. `cv.py clean` removes the disposable `tmp/cv/` tree (and the render temp) when the work is done. If the durable contract (base templates, profile, tailoring guide) is missing, create that minimal structure first instead of improvising files in random places.
 
 Read `references/structure-contract.md` when you need the exact folder expectations or migration pattern.
 
@@ -32,11 +37,11 @@ Read `references/template-patterns.md` when you need to understand or modify the
 
 1. Read `<career-root>/profile.md` first for source-of-truth career facts.
 2. Read `<career-root>/tailoring-guide.md` if tailoring or summary changes are needed. Pay particular attention to the "Competitor awareness" section, which governs how to handle product-level references to the target company's rivals (e.g. do not send an Anthropic application full of Codex name-drops).
-3. If `<career-root>/cv/latex/tailored/<company>/job-description.md` already exists, read that first when reviewing or continuing a tailored packet.
-4. If the tailored JD snapshot does not exist yet, read the relevant JD from `<career-root>/job-tracker/` or the user-provided source, then store a frozen copy beside the tailored files as `cv/latex/tailored/<company>/job-description.md` so later review is self-contained.
-5. When starting a new tailored packet, initialize it with `cv.py init --company <slug>` instead of manually copying files.
+3. If a tailored packet is already in progress, read its `tmp/cv/tailored/<company>/job-description.md` first when reviewing or continuing it.
+4. If the tailored JD snapshot does not exist yet, read the relevant JD from `<career-root>/job-tracker/` or the user-provided source, then store a frozen copy beside the tailored files as `tmp/cv/tailored/<company>/job-description.md` so later review is self-contained.
+5. When starting a new tailored packet, initialize it with `cv.py init --company <slug>` instead of manually copying files. The CLI writes it into the disposable `tmp/cv/tailored/<company>/`.
 6. Keep the base LaTeX files in `cv/latex/base/` clean and generic.
-7. Put company-specific versions in `cv/latex/tailored/<company>/`.
+7. Tailored, company-specific versions live in the disposable `tmp/cv/tailored/<company>/`; never commit them into the tracked career root. Run `cv.py clean` when the application is sent.
 8. Never invent experience, skills, tools, certifications, customers, or outcomes.
 9. Compile and visually review before calling the output done.
 10. Before committing the final PDF, run a competitor-awareness grep against the target's rival products and companies. See the "Competitor awareness" section of `<career-root>/tailoring-guide.md` for the current map and the audit checklist.
@@ -68,8 +73,8 @@ JSON is the default contract. Use `--plain` only for quick operator inspection. 
 - Prefer emphasis shifts over content expansion. Reword and reorder before adding new claims.
 - Trim the Skills lines per category so each fits on one visual line. Wrapping reads as keyword stuffing.
 - The Relevant Public Work section is OPTIONAL and role-dependent. Keep it for roles that explicitly value public teaching, community contribution, technical writing, developer advocacy, or forward-deployed engineering. Remove it for formal corporate or non-public-facing roles.
-- Save tailored versions under `tailored/<company>/` rather than overwriting the base.
-- Store the exact role snapshot as `tailored/<company>/job-description.md` in the same folder as the tailored resume and cover letter.
+- Save tailored versions under the disposable `tmp/cv/tailored/<company>/` rather than overwriting the base. Never commit them into the tracked career root.
+- Store the exact role snapshot as `tmp/cv/tailored/<company>/job-description.md` in the same folder as the tailored resume and cover letter.
 - The colocated JD snapshot is the audit artifact for that tailored packet. `job-tracker/` can still hold broader search notes, intake, or discovery links, but the reviewer should not have to leave the tailored folder to see what the resume was tailored against.
 - Keep cover letters alongside the tailored resume for the same company.
 - If the user has only raw notes, normalize them into `profile.md` before heavy tailoring.
@@ -111,7 +116,7 @@ identified.
 
 When multiple tailored packs are ready for submission, run a cross-pack audit before the human clicks submit. This catches mistakes that per-pack review misses (wrong company name leaked from a copy-paste, competitor name-drops that slipped through, contact info drift).
 
-### Audit checklist (grep across all `tailored/*/resume.tex` and `tailored/*/cover-letter.tex`)
+### Audit checklist (grep across all `tmp/cv/tailored/*/resume.tex` and `tmp/cv/tailored/*/cover-letter.tex`)
 
 1. **Wrong company name**: does each file reference only its own target company? A Cresta cover letter must not say "Synthesia."
 2. **Competitor name-drops in prose**: grep for product-level rival names. Flag any occurrence NOT inside a literal quoted blog title or URL slug. The competitor map lives in `<career-root>/tailoring-guide.md` "Competitor awareness" section. The examples below are AI-market defaults; extend or replace them for non-AI career tracks:
@@ -133,21 +138,23 @@ When multiple tailored packs are ready for submission, run a cross-pack audit be
 ### How to run
 
 ```bash
+# Disposable tailored packets live under the repo's tmp/ (run from repo root)
+TAILORED=tmp/cv/tailored
+
 # Competitor names (adjust per target)
-CAREER_ROOT=memory/areas/career  # or memory/areas/builder/career
-grep -rn "Codex\|ChatGPT\|GPT-4\|GPT-5\|OpenAI\|Anthropic\|Cursor\|Devin\|Windsurf\|Poolside\|Deepgram\|Speechmatics\|AssemblyAI\|Whisper" "$CAREER_ROOT"/cv/latex/tailored/*/resume.tex "$CAREER_ROOT"/cv/latex/tailored/*/cover-letter.tex
+grep -rn "Codex\|ChatGPT\|GPT-4\|GPT-5\|OpenAI\|Anthropic\|Cursor\|Devin\|Windsurf\|Poolside\|Deepgram\|Speechmatics\|AssemblyAI\|Whisper" "$TAILORED"/*/resume.tex "$TAILORED"/*/cover-letter.tex
 
 # Em-dashes
-grep -rn "textemdash\|—\|–" "$CAREER_ROOT"/cv/latex/tailored/*/resume.tex "$CAREER_ROOT"/cv/latex/tailored/*/cover-letter.tex | grep -v "^%"
+grep -rn "textemdash\|—\|–" "$TAILORED"/*/resume.tex "$TAILORED"/*/cover-letter.tex | grep -v "^%"
 
 # AI-smell
-grep -rni "delve\|underscore\|pivotal\|realm\|illuminate\|facilitate\|shed light\|bolster\|differentiate\|streamline" "$CAREER_ROOT"/cv/latex/tailored/*/resume.tex "$CAREER_ROOT"/cv/latex/tailored/*/cover-letter.tex
+grep -rni "delve\|underscore\|pivotal\|realm\|illuminate\|facilitate\|shed light\|bolster\|differentiate\|streamline" "$TAILORED"/*/resume.tex "$TAILORED"/*/cover-letter.tex
 
 # Sign-off
-grep -rn "Sincerely\|Best regards\|Warm regards\|Kind regards" "$CAREER_ROOT"/cv/latex/tailored/*/cover-letter.tex
+grep -rn "Sincerely\|Best regards\|Warm regards\|Kind regards" "$TAILORED"/*/cover-letter.tex
 
 # Page count
-for f in "$CAREER_ROOT"/cv/latex/tailored/*/resume.pdf; do echo "$f: $(pdfinfo "$f" 2>/dev/null | grep Pages)"; done
+for f in "$TAILORED"/*/resume.pdf; do echo "$f: $(pdfinfo "$f" 2>/dev/null | grep Pages)"; done
 ```
 
 ### Report format
@@ -172,8 +179,7 @@ The `mistral-fde` resume was tailored in the first wave before the competitor-aw
 
 ## Output hygiene
 
-Track source `.tex`, tailored `job-description.md`, and notes files.
-Ignore generated PDFs and LaTeX build artifacts via `<career-root>/cv/latex/.gitignore`.
+Track only the durable `base/` `.tex` templates, `profile.md`, `tailoring-guide.md`, and `job-tracker/` notes. Ignore generated PDFs and LaTeX build artifacts via `<career-root>/cv/latex/.gitignore`. Tailored per-company packets are disposable and live under the repo's gitignored `tmp/cv/` — never commit them; run `cv.py clean` when the application is sent.
 
 ## Submitting applications via browser
 

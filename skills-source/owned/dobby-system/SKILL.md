@@ -1,6 +1,6 @@
 ---
 name: dobby-system
-description: Shared orientation for the Dobby multi-repo system and person-workspace anatomy. Use when Codex is working in or across `~/GitHub/adi`, `~/GitHub/angie`, `~/GitHub/dobby-engine`, `~/GitHub/codexclaw`, `~/GitHub/agents`, or `~/GitHub/scripts` and needs to understand repo ownership, Adi/Angie workspace folders, memory/body-map routing, source-material placement, identity/workspace boundaries, the shared engine model, dashboard/gateway flow, hooks/control-plane responsibilities, machine scheduler boundaries, or where a Dobby-related change belongs.
+description: Shared orientation for the Dobby multi-repo system and person-workspace anatomy. Use when Codex is working in or across `~/GitHub/adi`, `~/GitHub/angie`, `~/GitHub/dobby-engine`, `~/GitHub/documents`, `~/GitHub/codexclaw`, `~/GitHub/agents`, or `~/GitHub/scripts` and needs to understand repo ownership, Adi/Angie workspace folders, memory/body-map routing, source-material placement, identity/workspace boundaries, the shared engine model, dashboard/gateway flow, hooks/control-plane responsibilities, machine scheduler boundaries, document-corpus boundaries, or where a Dobby-related change belongs.
 ---
 
 # Dobby System
@@ -18,6 +18,7 @@ This skill is the canonical cross-repo orientation layer for Dobby. Future agent
 | `~/GitHub/adi` | Adi's identity/data workspace: constitution, memory, journal, Shelf state, person prompts, workspace hooks, `./bin/dobby` shim | Shared engine implementation, Angie's private data |
 | `~/GitHub/angie` | Angie's identity/data workspace: constitution, memory, journal, Shelf state, person prompts, workspace hooks, `./bin/dobby` shim | Shared engine implementation, Adi's private data |
 | `~/GitHub/dobby-engine` | Shared Dobby CLI, Python engine, dashboard source, engine contracts, default prompts/docs, tests | Person-specific identity, memory, journals, private state |
+| `~/GitHub/documents` | Canonical local document tooling: inventory, extraction, review, import/cleanup scripts, catalog/search CLI, and JSON/SQLite metadata contracts for `/Volumes/DobbyData/Documents` | Shared Dobby engine behavior, person memory/canon, workspace identity, raw document files in git |
 | `~/GitHub/codexclaw` | Product shell: iOS app, mobile gateway, assistant runtime integration, user-facing app contracts | Dobby identity data, core Dobby engine logic unless through documented CLI/API boundary |
 | `~/GitHub/agents` | Agent control plane: shared skills, Codex/Claude config, hooks, MCP/plugin registries, skill distribution | Dobby product behavior, Dobby personal data, engine runtime behavior |
 | `~/GitHub/scripts` | Machine ops: bootstrap, launchd wiring, scheduler profiles, recurring machine wrappers, machine-local materializers | Dobby domain behavior, person memory/data, dashboard/API implementation, agent control-plane policy |
@@ -27,6 +28,11 @@ This skill is the canonical cross-repo orientation layer for Dobby. Future agent
 - Folder identity matters. An agent opened in `adi` is operating as Adi's Dobby workspace; an agent opened in `angie` is operating as Angie's Dobby workspace.
 - Workspace repos are thin. They hold identity/data and call the shared engine through workspace-local `./bin/dobby`.
 - The shared engine must remain workspace-agnostic. Runtime person data comes from `DOBBY_WORKSPACE` or workspace marker discovery, not from hardcoded Adi/Angie paths.
+- Document search is a domain bridge, not engine-owned data. `dobby-engine`
+  exposes read-only `dobby documents ...` commands; the separate `documents`
+  repo owns catalog/search implementation. Each personal workspace must opt into
+  a document root such as `DOBBY_DOCUMENTS_DATA_ROOT`; the shared engine should
+  not guess a person's corpus from a machine-wide default.
 - `codexclaw` should treat Dobby as a workspace-backed service boundary. It should call the workspace/engine contract, not read private memory files ad hoc.
 - `agents` distributes capabilities and lifecycle hooks. Put shared Dobby orientation here as this skill; do not turn `agents` into the Dobby architecture doc home.
 - `scripts` may schedule Dobby work on a specific machine, but only as a thin machine wrapper around the owning repo entrypoint. Live launchd plists under `~/Library/LaunchAgents/` are machine-local runtime state; tracked installers/runners live in `scripts`.
@@ -79,11 +85,12 @@ For social archives, corpora, imported documents, and other source material:
 ## Choosing Where a Change Belongs
 
 1. If it changes Dobby commands, hooks, validation, memory processing, dashboard code, or shared behavior for both people, change `dobby-engine`.
-2. If it changes Adi's or Angie's constitution, memory, journal, Shelf state, or person-specific prompt behavior, change only that person's workspace repo.
-3. If it changes the phone app, mobile gateway, assistant runtime selection, or product-facing behavior, change `codexclaw`.
-4. If it changes which skills/tools/hooks/configs agents receive, change `agents`.
-5. If it changes machine bootstrap, launchd scheduling, scheduler profiles, or a thin machine-local wrapper around a Dobby command, change `scripts`; keep the real Dobby behavior in `dobby-engine` or the person workspace.
-6. If more than one repo is touched, keep each repo's change scoped to its ownership layer and validate each repo separately.
+2. If it changes document inventory, extraction, canonical import/cleanup, document search-index construction, or the `documents` CLI contract consumed by Dobby, change `documents`.
+3. If it changes Adi's or Angie's constitution, memory, journal, Shelf state, person-specific prompt behavior, or workspace-specific document-root opt-in, change only that person's workspace repo.
+4. If it changes the phone app, mobile gateway, assistant runtime selection, or product-facing behavior, change `codexclaw`.
+5. If it changes which skills/tools/hooks/configs agents receive, change `agents`.
+6. If it changes machine bootstrap, launchd scheduling, scheduler profiles, or a thin machine-local wrapper around a Dobby command, change `scripts`; keep the real Dobby behavior in `dobby-engine` or the person workspace.
+7. If more than one repo is touched, keep each repo's change scoped to its ownership layer and validate each repo separately.
 
 ## Documentation Boundary
 
