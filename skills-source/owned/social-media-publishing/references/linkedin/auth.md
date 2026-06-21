@@ -60,11 +60,14 @@ This is intentionally not Key Vault-backed because it is mutable runtime session
 1. Go to the LinkedIn Developer Portal and create an app.
 2. Under the app's Auth settings, add this redirect URL exactly:
    - `http://127.0.0.1:8765/callback`
-3. Under Products, add:
+3. Under Products, add for the basic personal publishing flow:
    - `Share on LinkedIn`
 4. If you want the script to resolve your user identifier through OIDC as part of the same flow, also add:
    - `Sign In with LinkedIn using OpenID Connect`
-5. Store the Client ID and Client Secret in Key Vault under the `linkedin--...` family, then sync machine secrets
+5. Only for company pages, analytics/read-back expansion, or a vetted product workflow, add/request:
+   - `Community Management API`
+   - then read `community-management.md` before changing `LINKEDIN_SCOPE` or CLI defaults
+6. Store the Client ID and Client Secret in Key Vault under the `linkedin--...` family, then sync machine secrets
 
 ## Authorize locally
 

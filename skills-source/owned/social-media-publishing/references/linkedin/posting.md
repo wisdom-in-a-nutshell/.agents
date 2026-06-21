@@ -21,7 +21,7 @@ This is the simplest useful local workflow for day-to-day LinkedIn posting:
 
 It assumes auth is already in place.
 
-It does not yet cover company pages or multi-user auth.
+It does not yet cover company pages or multi-user auth. If a task involves company pages, Community Management API access, analytics, or permission/read-back expansion, read `community-management.md`.
 
 ## Why this shape
 
@@ -285,7 +285,7 @@ If auth stops working, re-run the setup in `references/linkedin/auth.md`.
 
 ## Current permission caveat
 
-With the current LinkedIn app used in this workspace, posting works, but read-back endpoints may still return `403 ACCESS_DENIED`.
+With the current LinkedIn app used in this workspace, posting works, but read-back endpoints may still return `403 ACCESS_DENIED`. If Community Management API access has been provisioned or scopes change, read `community-management.md` before changing CLI defaults.
 
 That means:
 - `post`, `post-image`, `post-video`, `post-images`, and likely `comment` are the most reliable day-to-day commands

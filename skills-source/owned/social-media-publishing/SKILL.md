@@ -69,6 +69,9 @@ Read first:
 - `references/linkedin/posting.md`
 - `references/linkedin/copy.md`
 
+If LinkedIn app product access changes, company pages are involved, or analytics/read-back is needed:
+- `references/linkedin/community-management.md`
+
 Only if setup or re-auth is needed:
 - `references/linkedin/auth.md`
 
@@ -226,6 +229,7 @@ python3 ~/GitHub/agents/skills-source/owned/social-media-publishing/scripts/x/cl
 - `scripts/linkedin/cli.py`: local LinkedIn posting CLI.
 - `references/linkedin/posting.md`: LinkedIn posting setup and usage.
 - `references/linkedin/copy.md`: LinkedIn copy defaults and reusable post baselines.
+- `references/linkedin/community-management.md`: Community Management API access, tiers, and next upgrade path.
 - `scripts/x/cli.py`: local X posting CLI.
 - `references/x/posting.md`: X posting setup and usage.
 - `references/x/copy.md`: X copy defaults.

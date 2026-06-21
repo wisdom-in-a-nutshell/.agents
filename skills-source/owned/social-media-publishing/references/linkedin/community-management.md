@@ -1,0 +1,71 @@
+# LinkedIn Community Management API
+
+Use this when LinkedIn app/product access changes, when company pages are involved, or when normal LinkedIn publishing needs analytics/read-back beyond simple posting.
+
+## What this access is for
+
+LinkedIn Community Management is the vetted Marketing API product for managing brand/community presence. It is broader than the self-serve personal posting flow.
+
+Useful capabilities, subject to app tier and OAuth scopes:
+- Company/Page management: organization lookup, page/admin access checks, organization posts, comments, reactions, and moderation-style engagement.
+- Page analytics: follower, page, share/post, social action, and video analytics.
+- Member/profile publishing and analytics: post/comment/reaction management and post statistics for authorized members.
+- Employee advocacy: organization social action notifications and people typeahead for mentions.
+
+Official docs to check before implementation because versioning and permission names move:
+- Overview: https://learn.microsoft.com/en-us/linkedin/marketing/community-management/community-management-overview?view=li-lms-2026-06
+- Migration / access tiers / permissions: https://learn.microsoft.com/en-us/linkedin/marketing/community-management/community-management-api-migration-guide?view=li-lms-2026-06
+- Product page: https://developer.linkedin.com/product-catalog/marketing/community-management-api
+
+## Development tier reality
+
+Development Tier is useful for proving the integration, not for a production tool.
+
+Current documented constraints:
+- 500 API calls per app per 24 hours.
+- 100 API calls per app member per 24 hours.
+- no `BATCH_GET` calls.
+- Social Actions webhooks/push notifications disabled.
+- Standard Tier requires a working implementation plus a short screencast demonstrating the approved use cases.
+
+Do not build a heavy analytics crawler or multi-user product against Development Tier. Build the smallest proof path first.
+
+## How this relates to the local LinkedIn CLI
+
+The current `scripts/linkedin/cli.py` is personal-account-first. It mainly uses:
+- `openid profile w_member_social`
+- local OAuth
+- member author URN from OIDC userinfo
+- Posts/UGC/image/video endpoints for publishing as Adi
+
+Community Management access does not automatically make the existing token more capable. To use the new product, verify the app in the LinkedIn Developer Portal, then re-authorize with the required product scopes for the exact operation.
+
+Likely next scopes to test, depending on use case and current docs:
+- `r_organization_social_feed` / `w_organization_social_feed` for organization social actions.
+- `rw_organization_admin` for organization admin/access lookup.
+- member feed/social scopes for member analytics or social actions when approved.
+
+Treat scope names as live-doc facts: check the current Microsoft Learn page before changing the CLI defaults.
+
+## Best next increment for Adi's workflow
+
+Do not jump straight to a full scheduler or agency tool.
+
+Smallest useful upgrade:
+1. Add a non-mutating `linkedin capabilities` or enhanced `status` probe that reports which Community Management scopes/products work for the current token.
+2. Add read-only post/page analytics for Adi's own recent posts if the approved product actually permits it.
+3. Only then consider company-page posting for AIP or any new company page.
+
+Why this is useful:
+- turns LinkedIn from fire-and-forget posting into measurable publishing;
+- may fix or replace brittle read-back/comment permission gaps;
+- enables company-page workflows if Adi later wants an AIP/new-company brand presence;
+- provides evidence for a Standard Tier screencast if a real product use emerges.
+
+## Guardrails
+
+- Keep it explicit-user-action-first. Do not add auto-like/comment/follow automation or engagement spam.
+- Store app credentials only through the normal secret lane described in `auth.md`.
+- Keep user OAuth tokens machine-local/runtime-local; do not commit tokens.
+- Keep app-specific facts such as app IDs and verified company pages out of this reusable skill unless they are needed for a local private reference.
+- Standard Tier requires a demonstrated product use. If there is no near-term product, preserve the access and avoid overbuilding.
