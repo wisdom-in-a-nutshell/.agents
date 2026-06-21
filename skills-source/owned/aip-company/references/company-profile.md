@@ -169,7 +169,7 @@ What would our customers do if AIP didn't exist?
 
 **Key Clients:** Balaji Srinivasan, Nathan Labenz (3rd most popular AI show globally), Gus Docker, Jackson Stieger, Michael Levin, NonZero Podcast.
 
-**Growth:** Bootstrapped since February 2024. All client acquisition through referrals and inbound.
+**Growth:** Bootstrapped since 2023 (founded ~July 2023, registered 2023-11-03 in Estonia). All client acquisition through referrals and inbound.
 
 ---
 
