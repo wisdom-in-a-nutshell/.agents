@@ -32,7 +32,7 @@ Do not build a heavy analytics crawler or multi-user product against Development
 
 ## How this relates to the local LinkedIn CLI
 
-The current `scripts/linkedin/cli.py` is Community Management-first for Adi's approved AIP Comments app. It uses:
+The current `scripts/linkedin/cli.py` is Community Management-first for Adi's approved AI Podcasting app. It uses:
 - generated machine-local app config from the `linkedin--...` Key Vault family
 - local OAuth with Community Management scopes
 - member author URN from OIDC `/userinfo` when available, falling back to `/v2/me` with `r_basicprofile`
