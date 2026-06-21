@@ -32,13 +32,16 @@ Do not build a heavy analytics crawler or multi-user product against Development
 
 ## How this relates to the local LinkedIn CLI
 
-The current `scripts/linkedin/cli.py` is personal-account-first. It mainly uses:
-- `openid profile w_member_social`
-- local OAuth
-- member author URN from OIDC userinfo
+The current `scripts/linkedin/cli.py` is Community Management-first for Adi's approved AIP Comments app. It uses:
+- generated machine-local app config from the `linkedin--...` Key Vault family
+- local OAuth with Community Management scopes
+- member author URN from OIDC `/userinfo` when available, falling back to `/v2/me` with `r_basicprofile`
 - Posts/UGC/image/video endpoints for publishing as Adi
+- Community Management comments, organization ACLs, and member analytics probes
 
-Community Management access does not automatically make the existing token more capable. To use the new product, verify the app in the LinkedIn Developer Portal, then re-authorize with the required product scopes for the exact operation.
+The approved Community Management app can publish member posts and read member analytics, but it does **not** include restricted `r_member_social`. LinkedIn requires that restricted scope for listing member-authored posts through `posts?q=author`, so `community-status` reports `member_posts_read` as an expected skip unless that scope is separately granted.
+
+Community Management access does not automatically make an old token more capable. After changing app credentials or scopes, move the old token aside and re-authorize with the approved app.
 
 The CLI now exposes Community Management plumbing:
 
@@ -52,10 +55,10 @@ python3 ~/GitHub/agents/skills-source/owned/social-media-publishing/scripts/link
 ```
 
 Bundled scope presets:
-- `basic`: `openid profile w_member_social`
-- `community-member`: personal posting/social-feed write plus member profile/post analytics scopes.
+- `basic`: legacy self-serve personal posting scope. Use only if Adi explicitly restores that app path.
+- `community-member`: `r_basicprofile`, personal posting/social-feed write, and member profile/post analytics scopes.
 - `community-organization`: organization/page admin, social, follower, and organization social-feed scopes.
-- `community`: the combined Community Management preset.
+- `community`: the combined Community Management preset and the normal current setup.
 
 Treat scope names as live-doc facts: check the current Microsoft Learn page before changing the CLI defaults.
 
@@ -65,14 +68,14 @@ Do not jump straight to a full scheduler or agency tool.
 
 Current useful path:
 1. Re-authorize with `authorize --scope-preset community`.
-2. Run `community-status` and inspect which probes pass.
+2. Run `community-status` and inspect which probes pass or are expected skips.
 3. Use `member-post-analytics` / `member-video-analytics` for measurable publishing.
 4. Use `organization-acls` before any company-page workflow.
 5. Only then consider company-page posting for AIP or any new company page.
 
 Why this is useful:
 - turns LinkedIn from fire-and-forget posting into measurable publishing;
-- may fix or replace brittle read-back/comment permission gaps;
+- replaces brittle posting analytics/comment checks with explicit Community Management probes;
 - enables company-page workflows if Adi later wants an AIP/new-company brand presence;
 - provides evidence for a Standard Tier screencast if a real product use emerges.
 

@@ -24,10 +24,10 @@ from typing import Any, Callable
 SCHEMA_VERSION = "1.0"
 DEFAULT_ENV_PATH = Path.home() / ".secrets/linkedin/env"
 DEFAULT_TOKENS_PATH = Path.home() / ".secrets/linkedin/posting.tokens.json"
-LEGACY_TOKENS_PATH = Path.home() / ".secrets/linkedin/personal-posting.tokens.json"
 AUTH_URL = "https://www.linkedin.com/oauth/v2/authorization"
 TOKEN_URL = "https://www.linkedin.com/oauth/v2/accessToken"
 USERINFO_URL = "https://api.linkedin.com/v2/userinfo"
+PROFILE_ME_URL = "https://api.linkedin.com/v2/me"
 UGC_POSTS_URL = "https://api.linkedin.com/v2/ugcPosts"
 REST_POSTS_URL = "https://api.linkedin.com/rest/posts"
 REST_VIDEOS_URL = "https://api.linkedin.com/rest/videos"
@@ -39,20 +39,28 @@ V2_SOCIAL_ACTIONS_URL = "https://api.linkedin.com/v2/socialActions"
 MEMBER_POST_ANALYTICS_URL = "https://api.linkedin.com/rest/memberCreatorPostAnalytics"
 MEMBER_VIDEO_ANALYTICS_URL = "https://api.linkedin.com/rest/memberCreatorVideoAnalytics"
 ORGANIZATION_ACLS_URL = "https://api.linkedin.com/rest/organizationAcls"
-DEFAULT_SCOPE = "openid profile w_member_social"
+DEFAULT_SCOPE = (
+    "r_basicprofile w_member_social w_member_social_feed "
+    "r_member_profileAnalytics r_member_postAnalytics r_1st_connections_size "
+    "r_organization_followers r_organization_social r_organization_social_feed "
+    "rw_organization_admin w_organization_social w_organization_social_feed"
+)
+RESTRICTED_MEMBER_POST_READ_SCOPE = "r_member_social"
+MEMBER_POST_READ_RESTRICTED_NOTE = (
+    "LinkedIn requires restricted r_member_social to retrieve member-authored posts. "
+    "The approved Community Management app can publish member posts and read member analytics, "
+    "but cannot list member posts unless that restricted scope is separately granted."
+)
 COMMUNITY_SCOPE_PRESETS: dict[str, tuple[str, ...]] = {
     "basic": ("openid", "profile", "w_member_social"),
     "community-member": (
-        "openid",
-        "profile",
+        "r_basicprofile",
         "w_member_social",
         "w_member_social_feed",
         "r_member_profileAnalytics",
         "r_member_postAnalytics",
     ),
     "community-organization": (
-        "openid",
-        "profile",
         "w_member_social",
         "w_member_social_feed",
         "r_1st_connections_size",
@@ -87,7 +95,7 @@ MEMBER_POST_ANALYTICS_METRICS = (
     "PROFILE_VIEW_FROM_CONTENT",
 )
 MEMBER_VIDEO_ANALYTICS_METRICS = ("VIDEO_PLAY", "VIDEO_VIEWER", "VIDEO_WATCH_TIME")
-DEFAULT_REDIRECT_URI = "http://127.0.0.1:8765/callback"
+DEFAULT_REDIRECT_URI = "http://127.0.0.1:18965/callback"
 DEFAULT_LINKEDIN_VERSION = "202603"
 DEFAULT_REQUEST_TIMEOUT_SECONDS = 30.0
 DEFAULT_VIDEO_POLL_INTERVAL_SECONDS = 2.0
@@ -151,10 +159,6 @@ def parse_env_file(path: Path) -> dict[str, str]:
 
 
 def resolve_tokens_path(path: Path) -> Path:
-    if path.exists():
-        return path
-    if path == DEFAULT_TOKENS_PATH and LEGACY_TOKENS_PATH.exists():
-        return LEGACY_TOKENS_PATH
     return path
 
 
@@ -408,6 +412,43 @@ def get_userinfo(config: Config, access_token: str) -> dict[str, Any]:
     return json.loads(response_body.decode("utf-8"))
 
 
+def get_current_member_profile(config: Config, access_token: str) -> dict[str, Any]:
+    _, _, response_body = http_request(
+        "GET",
+        PROFILE_ME_URL,
+        headers={
+            "Authorization": f"Bearer {access_token}",
+            "X-Restli-Protocol-Version": "2.0.0",
+        },
+        timeout_seconds=config.request_timeout_seconds,
+    )
+    return json.loads(response_body.decode("utf-8"))
+
+
+def member_identity_from_profile(profile: dict[str, Any]) -> dict[str, Any]:
+    member_id = profile.get("sub") or profile.get("id")
+    first_name = profile.get("localizedFirstName") or ""
+    last_name = profile.get("localizedLastName") or ""
+    name = profile.get("name") or " ".join(part for part in [first_name, last_name] if part).strip() or None
+    return {
+        "member_sub": member_id,
+        "author_urn": f"urn:li:person:{member_id}" if member_id else None,
+        "member_profile": profile,
+        "name": name,
+    }
+
+
+def resolve_member_identity(config: Config, access_token: str) -> dict[str, Any]:
+    try:
+        return member_identity_from_profile(get_userinfo(config, access_token))
+    except CliError as exc:
+        if exc.code not in {"E_AUTH", "E_PERMISSION", "E_INVALID_INPUT", "E_GENERIC"}:
+            raise
+    profile = get_current_member_profile(config, access_token)
+    profile.setdefault("source", "v2_me")
+    return member_identity_from_profile(profile)
+
+
 def ensure_access_token(config: Config, tokens: dict[str, Any]) -> dict[str, Any]:
     if token_still_valid(tokens):
         return tokens
@@ -420,10 +461,10 @@ def ensure_member_context(config: Config, tokens: dict[str, Any]) -> dict[str, A
     tokens = ensure_access_token(config, tokens)
     if tokens.get("member_sub"):
         return tokens
-    userinfo = get_userinfo(config, tokens["access_token"])
-    tokens["member_sub"] = userinfo.get("sub")
-    tokens["author_urn"] = f"urn:li:person:{userinfo.get('sub')}" if userinfo.get("sub") else None
-    tokens["member_profile"] = userinfo
+    identity = resolve_member_identity(config, tokens["access_token"])
+    tokens["member_sub"] = identity.get("member_sub")
+    tokens["author_urn"] = identity.get("author_urn")
+    tokens["member_profile"] = identity.get("member_profile")
     save_tokens(config.tokens_path, tokens)
     return tokens
 
@@ -448,6 +489,20 @@ def normalize_scope_tokens(scope: str | None) -> list[str]:
 
 def render_scope(scope_tokens: list[str] | tuple[str, ...]) -> str:
     return " ".join(dict.fromkeys(scope_tokens))
+
+
+def token_has_scope(tokens: dict[str, Any], scope: str) -> bool:
+    return scope in set(normalize_scope_tokens(tokens.get("scope") or tokens.get("requested_scope")))
+
+
+def skipped_member_posts_read_probe() -> dict[str, Any]:
+    return {
+        "probed": False,
+        "allowed": None,
+        "reason": "missing_restricted_r_member_social",
+        "required_scope": RESTRICTED_MEMBER_POST_READ_SCOPE,
+        "note": MEMBER_POST_READ_RESTRICTED_NOTE,
+    }
 
 
 def requested_authorize_scope(config: Config, args: argparse.Namespace) -> tuple[str, str]:
@@ -486,6 +541,11 @@ def build_community_scope_report(configured_scope: str | None, token_scope: str 
             ),
             "member_social_feed_write": scope_coverage(
                 ("w_member_social_feed",),
+                configured_scope,
+                token_scope,
+            ),
+            "member_posts_read_restricted": scope_coverage(
+                (RESTRICTED_MEMBER_POST_READ_SCOPE,),
                 configured_scope,
                 token_scope,
             ),
@@ -1332,16 +1392,16 @@ def command_authorize(args: argparse.Namespace) -> dict[str, Any]:
         token_payload["refresh_token_expires_at"] = time.time() + float(token_payload["refresh_token_expires_in"])
     token_payload["requested_scope"] = scope
     token_payload["requested_scope_source"] = scope_source
-    userinfo = get_userinfo(config, token_payload["access_token"])
-    token_payload["member_sub"] = userinfo.get("sub")
-    token_payload["author_urn"] = f"urn:li:person:{userinfo.get('sub')}" if userinfo.get("sub") else None
-    token_payload["member_profile"] = userinfo
+    identity = resolve_member_identity(config, token_payload["access_token"])
+    token_payload["member_sub"] = identity.get("member_sub")
+    token_payload["author_urn"] = identity.get("author_urn")
+    token_payload["member_profile"] = identity.get("member_profile")
     save_tokens(config.tokens_path, token_payload)
     return {
         "authorize_url": url,
         "tokens_file": str(config.tokens_path),
-        "name": userinfo.get("name"),
-        "sub": userinfo.get("sub"),
+        "name": identity.get("name"),
+        "sub": identity.get("member_sub"),
         "author_urn": token_payload.get("author_urn"),
         "requested_scope": scope,
         "requested_scope_source": scope_source,
@@ -1352,12 +1412,12 @@ def command_authorize(args: argparse.Namespace) -> dict[str, Any]:
 def command_whoami(args: argparse.Namespace) -> dict[str, Any]:
     config = build_config(args)
     tokens = ensure_member_context(config, load_tokens(config.tokens_path))
-    userinfo = get_userinfo(config, tokens["access_token"])
+    identity = resolve_member_identity(config, tokens["access_token"])
     return {
-        "name": userinfo.get("name"),
-        "sub": userinfo.get("sub"),
+        "name": identity.get("name"),
+        "sub": identity.get("member_sub"),
         "author_urn": build_author_urn(tokens),
-        "profile": userinfo,
+        "profile": identity.get("member_profile"),
     }
 
 
@@ -1370,7 +1430,6 @@ def command_status(args: argparse.Namespace) -> dict[str, Any]:
             "env_file_exists": config.env_path.exists(),
             "tokens_file": str(config.tokens_path),
             "tokens_file_exists": config.tokens_path.exists(),
-            "using_legacy_tokens_file": config.tokens_path == LEGACY_TOKENS_PATH,
         },
         "auth": {
             "has_client_id": bool(config.client_id),
@@ -1456,12 +1515,12 @@ def command_status(args: argparse.Namespace) -> dict[str, Any]:
 
     try:
         tokens = ensure_member_context(config, tokens)
-        userinfo = get_userinfo(config, tokens["access_token"])
+        identity = resolve_member_identity(config, tokens["access_token"])
         data["identity"] = {
-            "name": userinfo.get("name"),
-            "sub": userinfo.get("sub"),
+            "name": identity.get("name"),
+            "sub": identity.get("member_sub"),
             "author_urn": build_author_urn(tokens),
-            "source": "live_userinfo",
+            "source": (identity.get("member_profile") or {}).get("source") or "live_identity",
         }
         data["capabilities"]["can_post"] = True
     except CliError as exc:
@@ -1475,6 +1534,11 @@ def command_status(args: argparse.Namespace) -> dict[str, Any]:
 
     if args.no_probe_read:
         data["notes"].append("Read-back probe skipped.")
+        return data
+
+    if not token_has_scope(tokens, RESTRICTED_MEMBER_POST_READ_SCOPE):
+        data["capabilities"]["read_back"].update(skipped_member_posts_read_probe())
+        data["notes"].append(MEMBER_POST_READ_RESTRICTED_NOTE)
         return data
 
     data["capabilities"]["read_back"]["probed"] = True
@@ -1923,6 +1987,14 @@ def command_get_post(args: argparse.Namespace) -> dict[str, Any]:
 def command_list_posts(args: argparse.Namespace) -> dict[str, Any]:
     config = build_config(args)
     tokens = ensure_member_context(config, load_tokens(config.tokens_path))
+    if not token_has_scope(tokens, RESTRICTED_MEMBER_POST_READ_SCOPE):
+        raise CliError(
+            "This LinkedIn token cannot list member-authored posts.",
+            code="E_PERMISSION",
+            exit_code=3,
+            hint=MEMBER_POST_READ_RESTRICTED_NOTE,
+            details={"required_scope": RESTRICTED_MEMBER_POST_READ_SCOPE},
+        )
     author_urn = build_author_urn(tokens)
     query = urllib.parse.urlencode(
         {
@@ -2185,22 +2257,25 @@ def command_community_status(args: argparse.Namespace) -> dict[str, Any]:
         return data
 
     author_urn = build_author_urn(tokens)
-    post_query = urllib.parse.urlencode({"author": author_urn, "q": "author", "count": 1, "sortBy": "LAST_MODIFIED"})
-    data["probes"]["member_posts_read"] = probe_command(
-        "member_posts_read",
-        lambda: {
-            "endpoint": "posts?q=author",
-            "count": len(
-                get_rest_json(
-                    config,
-                    tokens["access_token"],
-                    f"{REST_POSTS_URL}?{post_query}",
-                    version=config.linkedin_version,
-                    extra_headers={"X-RestLi-Method": "FINDER"},
-                ).get("elements", [])
-            ),
-        },
-    )
+    if token_has_scope(tokens, RESTRICTED_MEMBER_POST_READ_SCOPE):
+        post_query = urllib.parse.urlencode({"author": author_urn, "q": "author", "count": 1, "sortBy": "LAST_MODIFIED"})
+        data["probes"]["member_posts_read"] = probe_command(
+            "member_posts_read",
+            lambda: {
+                "endpoint": "posts?q=author",
+                "count": len(
+                    get_rest_json(
+                        config,
+                        tokens["access_token"],
+                        f"{REST_POSTS_URL}?{post_query}",
+                        version=config.linkedin_version,
+                        extra_headers={"X-RestLi-Method": "FINDER"},
+                    ).get("elements", [])
+                ),
+            },
+        )
+    else:
+        data["probes"]["member_posts_read"] = skipped_member_posts_read_probe()
     data["probes"]["member_post_analytics"] = probe_command(
         "member_post_analytics",
         lambda: {
@@ -2236,7 +2311,7 @@ def command_community_status(args: argparse.Namespace) -> dict[str, Any]:
         },
     )
 
-    if any(not probe.get("allowed") for probe in data["probes"].values()):
+    if any(probe.get("allowed") is False for probe in data["probes"].values()):
         data["next_actions"].append("Run authorize --scope-preset community after the app credentials point at the approved Community Management app.")
     return data
 

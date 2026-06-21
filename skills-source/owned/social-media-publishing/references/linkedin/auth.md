@@ -21,18 +21,17 @@ Store them under:
 - `~/.secrets/linkedin/env`
 - `~/.secrets/linkedin/posting.tokens.json`
 
-If an older setup still has `~/.secrets/linkedin/personal-posting.tokens.json`, the CLI falls back to it automatically.
-
 Generated env file after machine-secret sync:
 
 ```bash
 LINKEDIN_CLIENT_ID=...
 LINKEDIN_CLIENT_SECRET=...
-LINKEDIN_APP_ID=...       # optional, non-secret developer portal app id for inspection
-LINKEDIN_SCOPE=...        # optional; defaults to the basic personal posting scope
+LINKEDIN_APP_ID=...
+LINKEDIN_REDIRECT_URI=...
+LINKEDIN_SCOPE=...
 ```
 
-The script defaults the redirect URI and scope, so those do not need to be stored as secrets.
+The generated config is Community Management-first. Keep app id, redirect URI, and scope in the machine-secret mapping too so a future sync cannot silently drop the approved app context.
 
 ## App credentials vs user OAuth
 
@@ -61,15 +60,17 @@ This is intentionally not Key Vault-backed because it is mutable runtime session
 
 1. Go to the LinkedIn Developer Portal and create an app.
 2. Under the app's Auth settings, add this redirect URL exactly:
-   - `http://127.0.0.1:8765/callback`
-3. Under Products, add for the basic personal publishing flow:
-   - `Share on LinkedIn`
-4. If you want the script to resolve your user identifier through OIDC as part of the same flow, also add:
-   - `Sign In with LinkedIn using OpenID Connect`
-5. Only for company pages, analytics/read-back expansion, or a vetted product workflow, add/request:
+   - `http://127.0.0.1:18965/callback`
+   - This uses a high, LinkedIn-specific callback port to avoid the local dashboard/service ports tracked in `~/GitHub/agents` and `~/GitHub/scripts`, such as `8765` (agent dashboard), `8766` (Adi Dobby dashboard), and `8767` (Angie Dobby dashboard).
+3. Under Products, use the approved current app with:
    - `Community Management API`
-   - then read `community-management.md` before changing `LINKEDIN_SCOPE` or CLI defaults
-6. Store the Client ID and Client Secret in Key Vault under the `linkedin--...` family, then sync machine secrets
+4. Store the app config in Key Vault under the `linkedin--...` family, then sync machine secrets:
+   - `linkedin--client-id`
+   - `linkedin--client-secret`
+   - `linkedin--app-id`
+   - `linkedin--redirect-uri`
+   - `linkedin--scope`
+5. Do not keep a second LinkedIn app or legacy token fallback in the local tooling unless Adi explicitly asks to restore it.
 
 ## Authorize locally
 
@@ -81,7 +82,7 @@ What it does:
 - opens the LinkedIn OAuth consent flow
 - listens on the local callback URL
 - exchanges the auth code for a token
-- calls the LinkedIn userinfo endpoint
+- resolves Adi's member URN through OIDC `/userinfo` when available, otherwise through LinkedIn `/v2/me` with `r_basicprofile`
 - stores the token JSON locally
 
 For the approved Community Management app, prefer:
