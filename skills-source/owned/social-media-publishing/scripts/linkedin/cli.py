@@ -36,7 +36,57 @@ INITIALIZE_VIDEO_UPLOAD_URL = f"{REST_VIDEOS_URL}?action=initializeUpload"
 FINALIZE_VIDEO_UPLOAD_URL = f"{REST_VIDEOS_URL}?action=finalizeUpload"
 SOCIAL_ACTIONS_URL = "https://api.linkedin.com/rest/socialActions"
 V2_SOCIAL_ACTIONS_URL = "https://api.linkedin.com/v2/socialActions"
+MEMBER_POST_ANALYTICS_URL = "https://api.linkedin.com/rest/memberCreatorPostAnalytics"
+MEMBER_VIDEO_ANALYTICS_URL = "https://api.linkedin.com/rest/memberCreatorVideoAnalytics"
+ORGANIZATION_ACLS_URL = "https://api.linkedin.com/rest/organizationAcls"
 DEFAULT_SCOPE = "openid profile w_member_social"
+COMMUNITY_SCOPE_PRESETS: dict[str, tuple[str, ...]] = {
+    "basic": ("openid", "profile", "w_member_social"),
+    "community-member": (
+        "openid",
+        "profile",
+        "w_member_social",
+        "w_member_social_feed",
+        "r_member_profileAnalytics",
+        "r_member_postAnalytics",
+    ),
+    "community-organization": (
+        "openid",
+        "profile",
+        "w_member_social",
+        "w_member_social_feed",
+        "r_1st_connections_size",
+        "r_basicprofile",
+        "r_organization_followers",
+        "r_organization_social",
+        "r_organization_social_feed",
+        "rw_organization_admin",
+        "w_organization_social",
+        "w_organization_social_feed",
+    ),
+}
+COMMUNITY_SCOPE_PRESETS["community"] = tuple(
+    dict.fromkeys(
+        [
+            *COMMUNITY_SCOPE_PRESETS["community-member"],
+            *COMMUNITY_SCOPE_PRESETS["community-organization"],
+        ]
+    )
+)
+MEMBER_POST_ANALYTICS_METRICS = (
+    "IMPRESSION",
+    "MEMBERS_REACHED",
+    "RESHARE",
+    "REACTION",
+    "COMMENT",
+    "POST_SAVE",
+    "POST_SEND",
+    "LINK_CLICKS",
+    "PREMIUM_CTA_CLICKS",
+    "FOLLOWER_GAINED_FROM_CONTENT",
+    "PROFILE_VIEW_FROM_CONTENT",
+)
+MEMBER_VIDEO_ANALYTICS_METRICS = ("VIDEO_PLAY", "VIDEO_VIEWER", "VIDEO_WATCH_TIME")
 DEFAULT_REDIRECT_URI = "http://127.0.0.1:8765/callback"
 DEFAULT_LINKEDIN_VERSION = "202603"
 DEFAULT_REQUEST_TIMEOUT_SECONDS = 30.0
@@ -390,6 +440,69 @@ def build_author_urn(tokens: dict[str, Any]) -> str:
     return f"urn:li:person:{member_sub}"
 
 
+def normalize_scope_tokens(scope: str | None) -> list[str]:
+    if not scope:
+        return []
+    return sorted(dict.fromkeys(part.strip() for part in scope.replace(",", " ").split() if part.strip()))
+
+
+def render_scope(scope_tokens: list[str] | tuple[str, ...]) -> str:
+    return " ".join(dict.fromkeys(scope_tokens))
+
+
+def requested_authorize_scope(config: Config, args: argparse.Namespace) -> tuple[str, str]:
+    explicit_scope = getattr(args, "scope", None)
+    scope_preset = getattr(args, "scope_preset", None)
+    if explicit_scope:
+        return render_scope(normalize_scope_tokens(explicit_scope)), "explicit"
+    if scope_preset:
+        return render_scope(COMMUNITY_SCOPE_PRESETS[scope_preset]), f"preset:{scope_preset}"
+    return config.scope, "config"
+
+
+def scope_coverage(required_scopes: tuple[str, ...], configured_scope: str | None, token_scope: str | None) -> dict[str, Any]:
+    configured = set(normalize_scope_tokens(configured_scope))
+    token = set(normalize_scope_tokens(token_scope))
+    required = set(required_scopes)
+    return {
+        "required": sorted(required),
+        "configured_present": sorted(required & configured),
+        "token_present": sorted(required & token),
+        "missing_from_config": sorted(required - configured),
+        "missing_from_token": sorted(required - token) if token else sorted(required),
+    }
+
+
+def build_community_scope_report(configured_scope: str | None, token_scope: str | None) -> dict[str, Any]:
+    return {
+        "configured_scope_tokens": normalize_scope_tokens(configured_scope),
+        "token_scope_tokens": normalize_scope_tokens(token_scope),
+        "presets": {name: list(scopes) for name, scopes in sorted(COMMUNITY_SCOPE_PRESETS.items())},
+        "coverage": {
+            "member_analytics": scope_coverage(
+                ("r_member_profileAnalytics", "r_member_postAnalytics"),
+                configured_scope,
+                token_scope,
+            ),
+            "member_social_feed_write": scope_coverage(
+                ("w_member_social_feed",),
+                configured_scope,
+                token_scope,
+            ),
+            "organization_read": scope_coverage(
+                ("r_organization_followers", "r_organization_social", "r_organization_social_feed", "rw_organization_admin"),
+                configured_scope,
+                token_scope,
+            ),
+            "organization_write": scope_coverage(
+                ("w_organization_social", "w_organization_social_feed"),
+                configured_scope,
+                token_scope,
+            ),
+        },
+    }
+
+
 def make_post_payload(*, author: str, text: str, visibility: str, url: str | None, title: str | None, description: str | None) -> dict[str, Any]:
     share_content: dict[str, Any] = {
         "shareCommentary": {"text": text},
@@ -472,6 +585,13 @@ def get_rest_json(config: Config, access_token: str, url: str, *, version: str, 
         timeout_seconds=config.request_timeout_seconds,
     )
     return json.loads(body.decode("utf-8"))
+
+
+def restli_query(params: dict[str, Any]) -> str:
+    return urllib.parse.urlencode(
+        {key: value for key, value in params.items() if value is not None},
+        safe="%():,",
+    )
 
 
 def initialize_image_upload(config: Config, access_token: str, *, owner: str, version: str) -> tuple[str, str]:
@@ -983,6 +1103,97 @@ def summarize_post(post: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def summarize_comment(comment: dict[str, Any], *, include_raw: bool = False) -> dict[str, Any]:
+    summary: dict[str, Any] = {
+        "id": comment.get("id"),
+        "comment_urn": comment.get("commentUrn"),
+        "actor": comment.get("actor"),
+        "object": comment.get("object"),
+        "parent_comment": comment.get("parentComment"),
+        "created_at": to_iso_from_epoch_ms((comment.get("created") or {}).get("time")),
+        "last_modified_at": to_iso_from_epoch_ms((comment.get("lastModified") or {}).get("time")),
+        "text": (comment.get("message") or {}).get("text"),
+        "likes_total": (comment.get("likesSummary") or {}).get("totalLikes"),
+    }
+    if include_raw:
+        summary["raw"] = comment
+    return summary
+
+
+def extract_metric_type(value: Any) -> str | None:
+    if isinstance(value, str):
+        return value
+    if isinstance(value, dict) and value:
+        first = next(iter(value.values()))
+        return str(first) if first is not None else None
+    return None
+
+
+def summarize_analytics_element(element: dict[str, Any], *, include_raw: bool = False) -> dict[str, Any]:
+    summary: dict[str, Any] = {
+        "metric_type": extract_metric_type(element.get("metricType")),
+        "count": element.get("count"),
+        "target_entity": element.get("targetEntity"),
+        "date_range": element.get("dateRange"),
+    }
+    if include_raw:
+        summary["raw"] = element
+    return summary
+
+
+def summarize_organization_acl(acl: dict[str, Any], *, include_raw: bool = False) -> dict[str, Any]:
+    summary: dict[str, Any] = {
+        "organization": acl.get("organization"),
+        "role_assignee": acl.get("roleAssignee"),
+        "role": acl.get("role"),
+        "state": acl.get("state"),
+    }
+    if include_raw:
+        summary["raw"] = acl
+    return summary
+
+
+def restli_entity_param(urn: str) -> str:
+    if ":ugcPost:" in urn:
+        entity_type = "ugc"
+    elif ":share:" in urn:
+        entity_type = "share"
+    else:
+        raise CliError(
+            "Analytics entity must be a LinkedIn ugcPost or share URN.",
+            code="E_INVALID_INPUT",
+            exit_code=2,
+            hint="Pass a URN like urn:li:ugcPost:... or urn:li:share:...",
+        )
+    return f"({entity_type}:{urllib.parse.quote(urn, safe='')})"
+
+
+def parse_yyyy_mm_dd(value: str, *, label: str) -> tuple[int, int, int]:
+    try:
+        parsed = datetime.strptime(value, "%Y-%m-%d")
+    except ValueError as exc:
+        raise CliError(
+            f"{label} must be formatted as YYYY-MM-DD.",
+            code="E_INVALID_INPUT",
+            exit_code=2,
+            hint="Example: --start-date 2026-06-01 --end-date 2026-06-21",
+        ) from exc
+    return parsed.year, parsed.month, parsed.day
+
+
+def build_restli_date_range(start_date: str | None, end_date: str | None) -> str | None:
+    if not start_date and not end_date:
+        return None
+    parts: list[str] = []
+    if start_date:
+        year, month, day = parse_yyyy_mm_dd(start_date, label="--start-date")
+        parts.append(f"start:(day:{day},month:{month},year:{year})")
+    if end_date:
+        year, month, day = parse_yyyy_mm_dd(end_date, label="--end-date")
+        parts.append(f"end:(day:{day},month:{month},year:{year})")
+    return f"({','.join(parts)})"
+
+
 def make_lenient_config(args: argparse.Namespace) -> Config:
     env_path = Path(args.env_file).expanduser()
     env_values = parse_env_file(env_path)
@@ -1089,6 +1300,7 @@ def emit_error(args: argparse.Namespace, command: str, error: CliError, *, start
 
 def command_authorize(args: argparse.Namespace) -> dict[str, Any]:
     config = build_config(args)
+    scope, scope_source = requested_authorize_scope(config, args)
     state = secrets.token_urlsafe(24)
     params = urllib.parse.urlencode(
         {
@@ -1096,11 +1308,21 @@ def command_authorize(args: argparse.Namespace) -> dict[str, Any]:
             "client_id": config.client_id,
             "redirect_uri": config.redirect_uri,
             "state": state,
-            "scope": config.scope,
+            "scope": scope,
         }
     )
     url = f"{AUTH_URL}?{params}"
-    if not args.no_browser and not args.no_input:
+    if args.no_input:
+        raise CliError(
+            "LinkedIn OAuth authorization requires a browser callback and --no-input was set.",
+            code="E_INTERACTIVE_REQUIRED",
+            exit_code=2,
+            hint="Run authorize without --no-input, or use --no-browser and open the printed URL manually.",
+            details={"authorize_url": url, "requested_scope": scope, "requested_scope_source": scope_source},
+        )
+    if args.no_browser:
+        print(f"[linkedin] Open this authorization URL: {url}", file=sys.stderr, flush=True)
+    else:
         webbrowser.open(url)
     code = wait_for_callback(config.redirect_uri, state, args.timeout)
     token_payload = exchange_code(config, code)
@@ -1108,6 +1330,8 @@ def command_authorize(args: argparse.Namespace) -> dict[str, Any]:
     token_payload["access_token_expires_at"] = time.time() + float(token_payload.get("expires_in", 0))
     if "refresh_token_expires_in" in token_payload:
         token_payload["refresh_token_expires_at"] = time.time() + float(token_payload["refresh_token_expires_in"])
+    token_payload["requested_scope"] = scope
+    token_payload["requested_scope_source"] = scope_source
     userinfo = get_userinfo(config, token_payload["access_token"])
     token_payload["member_sub"] = userinfo.get("sub")
     token_payload["author_urn"] = f"urn:li:person:{userinfo.get('sub')}" if userinfo.get("sub") else None
@@ -1119,6 +1343,9 @@ def command_authorize(args: argparse.Namespace) -> dict[str, Any]:
         "name": userinfo.get("name"),
         "sub": userinfo.get("sub"),
         "author_urn": token_payload.get("author_urn"),
+        "requested_scope": scope,
+        "requested_scope_source": scope_source,
+        "granted_scope": token_payload.get("scope"),
     }
 
 
@@ -1148,6 +1375,7 @@ def command_status(args: argparse.Namespace) -> dict[str, Any]:
         "auth": {
             "has_client_id": bool(config.client_id),
             "has_client_secret": bool(config.client_secret),
+            "developer_app_id": env_values.get("LINKEDIN_APP_ID"),
             "redirect_uri": env_values.get("LINKEDIN_REDIRECT_URI") or DEFAULT_REDIRECT_URI,
             "scope": env_values.get("LINKEDIN_SCOPE") or DEFAULT_SCOPE,
             "linkedin_version": config.linkedin_version,
@@ -1164,8 +1392,14 @@ def command_status(args: argparse.Namespace) -> dict[str, Any]:
                 "post-video",
                 "post-images",
                 "comment",
+                "list-comments",
+                "get-comment",
                 "get-post",
                 "list-posts",
+                "community-status",
+                "organization-acls",
+                "member-post-analytics",
+                "member-video-analytics",
             ],
             "json_default": True,
             "plain_available": True,
@@ -1177,6 +1411,7 @@ def command_status(args: argparse.Namespace) -> dict[str, Any]:
                 "reason": "probe_not_run",
             },
         },
+        "community_management": build_community_scope_report(env_values.get("LINKEDIN_SCOPE") or DEFAULT_SCOPE, None),
         "notes": [],
     }
 
@@ -1197,7 +1432,14 @@ def command_status(args: argparse.Namespace) -> dict[str, Any]:
             "refresh_token_expires_at": to_iso_from_epoch_seconds(tokens.get("refresh_token_expires_at")),
             "has_refresh_token": bool(tokens.get("refresh_token")),
             "member_sub_cached": tokens.get("member_sub"),
+            "token_scope": tokens.get("scope") or tokens.get("requested_scope"),
+            "requested_scope": tokens.get("requested_scope"),
+            "requested_scope_source": tokens.get("requested_scope_source"),
         }
+    )
+    data["community_management"] = build_community_scope_report(
+        env_values.get("LINKEDIN_SCOPE") or DEFAULT_SCOPE,
+        tokens.get("scope") or tokens.get("requested_scope"),
     )
     if access_token_valid and tokens.get("member_sub"):
         data["capabilities"]["can_post"] = True
@@ -1707,6 +1949,298 @@ def command_list_posts(args: argparse.Namespace) -> dict[str, Any]:
     }
 
 
+def command_list_comments(args: argparse.Namespace) -> dict[str, Any]:
+    config = build_config(args)
+    tokens = ensure_member_context(config, load_tokens(config.tokens_path))
+    target_urn = args.parent_comment or args.post_urn
+    query = restli_query({"count": args.count, "start": args.start})
+    data = get_rest_json(
+        config,
+        tokens["access_token"],
+        f"{SOCIAL_ACTIONS_URL}/{encode_urn(target_urn)}/comments?{query}",
+        version=config.linkedin_version,
+    )
+    elements = data.get("elements") or []
+    return {
+        "post_urn": args.post_urn,
+        "target_urn": target_urn,
+        "count": len(elements),
+        "comments": [summarize_comment(comment, include_raw=args.include_raw) for comment in elements],
+        "paging": data.get("paging") or {},
+    }
+
+
+def command_get_comment(args: argparse.Namespace) -> dict[str, Any]:
+    config = build_config(args)
+    tokens = ensure_member_context(config, load_tokens(config.tokens_path))
+    data = get_rest_json(
+        config,
+        tokens["access_token"],
+        f"{SOCIAL_ACTIONS_URL}/{encode_urn(args.post_urn)}/comments/{urllib.parse.quote(args.comment_id, safe='')}",
+        version=config.linkedin_version,
+    )
+    return {"comment": summarize_comment(data, include_raw=args.include_raw)}
+
+
+def member_post_analytics_url(*, post_urn: str | None, metric: str, aggregation: str, start_date: str | None, end_date: str | None) -> str:
+    query: dict[str, Any] = {
+        "q": "entity" if post_urn else "me",
+        "queryType": metric,
+        "aggregation": aggregation,
+        "dateRange": build_restli_date_range(start_date, end_date),
+    }
+    if post_urn:
+        query["entity"] = restli_entity_param(post_urn)
+    return f"{MEMBER_POST_ANALYTICS_URL}?{restli_query(query)}"
+
+
+def command_member_post_analytics(args: argparse.Namespace) -> dict[str, Any]:
+    config = build_config(args)
+    tokens = ensure_member_context(config, load_tokens(config.tokens_path))
+    metrics = args.metric or ["IMPRESSION", "REACTION", "COMMENT", "RESHARE"]
+    results: list[dict[str, Any]] = []
+    for metric in metrics:
+        data = get_rest_json(
+            config,
+            tokens["access_token"],
+            member_post_analytics_url(
+                post_urn=args.post_urn,
+                metric=metric,
+                aggregation=args.aggregation,
+                start_date=args.start_date,
+                end_date=args.end_date,
+            ),
+            version=config.linkedin_version,
+        )
+        results.append(
+            {
+                "metric": metric,
+                "elements": [
+                    summarize_analytics_element(element, include_raw=args.include_raw)
+                    for element in data.get("elements", [])
+                ],
+                "paging": data.get("paging") or {},
+            }
+        )
+    return {
+        "finder": "entity" if args.post_urn else "me",
+        "post_urn": args.post_urn,
+        "aggregation": args.aggregation,
+        "date_range": build_restli_date_range(args.start_date, args.end_date),
+        "results": results,
+    }
+
+
+def member_video_analytics_url(*, post_urn: str, metric: str, aggregation: str, start_date: str | None, end_date: str | None) -> str:
+    query = {
+        "q": "entity",
+        "entity": restli_entity_param(post_urn),
+        "queryType": metric,
+        "aggregation": aggregation,
+        "dateRange": build_restli_date_range(start_date, end_date),
+    }
+    return f"{MEMBER_VIDEO_ANALYTICS_URL}?{restli_query(query)}"
+
+
+def command_member_video_analytics(args: argparse.Namespace) -> dict[str, Any]:
+    config = build_config(args)
+    tokens = ensure_member_context(config, load_tokens(config.tokens_path))
+    metrics = args.metric or list(MEMBER_VIDEO_ANALYTICS_METRICS)
+    results: list[dict[str, Any]] = []
+    for metric in metrics:
+        data = get_rest_json(
+            config,
+            tokens["access_token"],
+            member_video_analytics_url(
+                post_urn=args.post_urn,
+                metric=metric,
+                aggregation=args.aggregation,
+                start_date=args.start_date,
+                end_date=args.end_date,
+            ),
+            version=config.linkedin_version,
+        )
+        results.append(
+            {
+                "metric": metric,
+                "elements": [
+                    summarize_analytics_element(element, include_raw=args.include_raw)
+                    for element in data.get("elements", [])
+                ],
+                "paging": data.get("paging") or {},
+            }
+        )
+    return {
+        "finder": "entity",
+        "post_urn": args.post_urn,
+        "aggregation": args.aggregation,
+        "date_range": build_restli_date_range(args.start_date, args.end_date),
+        "results": results,
+    }
+
+
+def command_organization_acls(args: argparse.Namespace) -> dict[str, Any]:
+    config = build_config(args)
+    tokens = ensure_member_context(config, load_tokens(config.tokens_path))
+    query = restli_query(
+        {
+            "q": "roleAssignee",
+            "role": args.role,
+            "state": args.state,
+            "count": args.count,
+            "start": args.start,
+        }
+    )
+    data = get_rest_json(
+        config,
+        tokens["access_token"],
+        f"{ORGANIZATION_ACLS_URL}?{query}",
+        version=config.linkedin_version,
+    )
+    elements = data.get("elements") or []
+    return {
+        "count": len(elements),
+        "organization_acls": [
+            summarize_organization_acl(acl, include_raw=args.include_raw) for acl in elements
+        ],
+        "paging": data.get("paging") or {},
+    }
+
+
+def probe_command(label: str, callback: Callable[[], Any]) -> dict[str, Any]:
+    try:
+        summary = callback()
+        return {
+            "probed": True,
+            "allowed": True,
+            "reason": "ok",
+            "summary": summary,
+        }
+    except CliError as exc:
+        details = exc.details if isinstance(exc.details, dict) else {}
+        return {
+            "probed": True,
+            "allowed": False,
+            "reason": exc.code,
+            "message": str(exc),
+            "hint": exc.hint,
+            "http_status": details.get("status"),
+            "probe": label,
+        }
+
+
+def command_community_status(args: argparse.Namespace) -> dict[str, Any]:
+    config = make_lenient_config(args)
+    env_values = parse_env_file(config.env_path)
+    data: dict[str, Any] = {
+        "app": {
+            "developer_app_id": env_values.get("LINKEDIN_APP_ID"),
+            "development_tier_app_id": env_values.get("LINKEDIN_APP_ID"),
+            "known_tier": "development" if env_values.get("LINKEDIN_APP_ID") else None,
+        },
+        "auth": {
+            "has_client_id": bool(config.client_id),
+            "has_client_secret": bool(config.client_secret),
+            "tokens_file": str(config.tokens_path),
+            "tokens_file_exists": config.tokens_path.exists(),
+            "configured_scope": config.scope,
+            "linkedin_version": config.linkedin_version,
+        },
+        "community_management": build_community_scope_report(config.scope, None),
+        "probes": {},
+        "next_actions": [],
+    }
+    if not config.tokens_path.exists():
+        data["next_actions"].append("Run authorize --scope-preset community after confirming the LinkedIn app credentials for the approved app.")
+        return data
+
+    tokens = load_tokens(config.tokens_path)
+    token_scope = tokens.get("scope") or tokens.get("requested_scope")
+    data["auth"].update(
+        {
+            "authorized": True,
+            "access_token_valid_now": token_still_valid(tokens),
+            "access_token_expires_at": to_iso_from_epoch_seconds(tokens.get("access_token_expires_at")),
+            "token_scope": token_scope,
+            "requested_scope": tokens.get("requested_scope"),
+            "requested_scope_source": tokens.get("requested_scope_source"),
+        }
+    )
+    data["community_management"] = build_community_scope_report(config.scope, token_scope)
+
+    try:
+        tokens = ensure_member_context(config, tokens)
+        data["identity"] = {
+            "author_urn": build_author_urn(tokens),
+            "name": (tokens.get("member_profile") or {}).get("name"),
+            "sub": tokens.get("member_sub"),
+        }
+    except CliError as exc:
+        data["next_actions"].append(exc.hint or "Run authorize again with the needed Community Management scopes.")
+        data["auth"]["identity_error"] = {"code": exc.code, "message": str(exc)}
+        return data
+
+    if args.no_probe:
+        data["next_actions"].append("Re-run without --no-probe to test live Community Management read endpoints.")
+        return data
+
+    author_urn = build_author_urn(tokens)
+    post_query = urllib.parse.urlencode({"author": author_urn, "q": "author", "count": 1, "sortBy": "LAST_MODIFIED"})
+    data["probes"]["member_posts_read"] = probe_command(
+        "member_posts_read",
+        lambda: {
+            "endpoint": "posts?q=author",
+            "count": len(
+                get_rest_json(
+                    config,
+                    tokens["access_token"],
+                    f"{REST_POSTS_URL}?{post_query}",
+                    version=config.linkedin_version,
+                    extra_headers={"X-RestLi-Method": "FINDER"},
+                ).get("elements", [])
+            ),
+        },
+    )
+    data["probes"]["member_post_analytics"] = probe_command(
+        "member_post_analytics",
+        lambda: {
+            "endpoint": "memberCreatorPostAnalytics?q=me",
+            "elements": len(
+                get_rest_json(
+                    config,
+                    tokens["access_token"],
+                    member_post_analytics_url(
+                        post_urn=None,
+                        metric="IMPRESSION",
+                        aggregation="TOTAL",
+                        start_date=None,
+                        end_date=None,
+                    ),
+                    version=config.linkedin_version,
+                ).get("elements", [])
+            ),
+        },
+    )
+    data["probes"]["organization_acls"] = probe_command(
+        "organization_acls",
+        lambda: {
+            "endpoint": "organizationAcls?q=roleAssignee",
+            "elements": len(
+                get_rest_json(
+                    config,
+                    tokens["access_token"],
+                    f"{ORGANIZATION_ACLS_URL}?{restli_query({'q': 'roleAssignee', 'state': 'APPROVED', 'count': 10})}",
+                    version=config.linkedin_version,
+                ).get("elements", [])
+            ),
+        },
+    )
+
+    if any(not probe.get("allowed") for probe in data["probes"].values()):
+        data["next_actions"].append("Run authorize --scope-preset community after the app credentials point at the approved Community Management app.")
+    return data
+
+
 def build_comment_routes(requested_route: str, selected_route: str) -> list[dict[str, str]]:
     routes: list[dict[str, str]] = []
     for route in ["v2_social_actions", "rest_social_actions"]:
@@ -1824,6 +2358,12 @@ def build_parser() -> argparse.ArgumentParser:
     authorize = subparsers.add_parser("authorize", help="Run the local OAuth authorize flow and save tokens.")
     authorize.add_argument("--timeout", type=int, default=180, help="Seconds to wait for the OAuth callback.")
     authorize.add_argument("--no-browser", action="store_true", help="Print the URL without opening a browser.")
+    authorize.add_argument("--scope", help="Override OAuth scope for this authorization run.")
+    authorize.add_argument(
+        "--scope-preset",
+        choices=sorted(COMMUNITY_SCOPE_PRESETS),
+        help="Use a bundled OAuth scope preset. Use community for the approved Community Management API app.",
+    )
     authorize.set_defaults(func=command_authorize, command_path="linkedin authorize")
 
     status = subparsers.add_parser("status", help="Inspect LinkedIn auth/runtime state for this machine and app.")
@@ -1832,6 +2372,10 @@ def build_parser() -> argparse.ArgumentParser:
 
     whoami = subparsers.add_parser("whoami", help="Show the LinkedIn profile tied to the current token.")
     whoami.set_defaults(func=command_whoami, command_path="linkedin whoami")
+
+    community_status = subparsers.add_parser("community-status", help="Inspect Community Management API scope coverage and non-mutating probes.")
+    community_status.add_argument("--no-probe", action="store_true", help="Skip live non-mutating Community Management probe calls.")
+    community_status.set_defaults(func=command_community_status, command_path="linkedin community-status")
 
     post = subparsers.add_parser("post", help="Publish a text or article/link share to LinkedIn.")
     post.add_argument("--text", help="Inline post text.")
@@ -1901,6 +2445,46 @@ def build_parser() -> argparse.ArgumentParser:
     list_posts.add_argument("--count", type=int, default=10, help="Maximum number of posts to return.")
     list_posts.add_argument("--sort-by", choices=["LAST_MODIFIED", "PUBLISHED_AT", "CREATED_AT"], default="LAST_MODIFIED")
     list_posts.set_defaults(func=command_list_posts, command_path="linkedin list-posts")
+
+    list_comments = subparsers.add_parser("list-comments", help="List comments on a LinkedIn post or parent comment through Community Management socialActions.")
+    list_comments.add_argument("--post-urn", required=True, help="Target post URN, for example urn:li:ugcPost:... or urn:li:share:...")
+    list_comments.add_argument("--parent-comment", help="Optional parent comment URN to list nested replies.")
+    list_comments.add_argument("--count", type=int, default=20, help="Maximum number of comments to return.")
+    list_comments.add_argument("--start", type=int, default=0, help="Pagination start offset.")
+    list_comments.add_argument("--include-raw", action="store_true", help="Include raw LinkedIn comment payloads.")
+    list_comments.set_defaults(func=command_list_comments, command_path="linkedin list-comments")
+
+    get_comment = subparsers.add_parser("get-comment", help="Fetch one LinkedIn comment by post URN and comment id.")
+    get_comment.add_argument("--post-urn", required=True, help="Target post URN, for example urn:li:ugcPost:... or urn:li:share:...")
+    get_comment.add_argument("--comment-id", required=True, help="LinkedIn comment id.")
+    get_comment.add_argument("--include-raw", action="store_true", help="Include raw LinkedIn comment payload.")
+    get_comment.set_defaults(func=command_get_comment, command_path="linkedin get-comment")
+
+    organization_acls = subparsers.add_parser("organization-acls", help="List organization/page roles visible to the authenticated member.")
+    organization_acls.add_argument("--role", help="Optional LinkedIn organization role filter, for example ADMINISTRATOR.")
+    organization_acls.add_argument("--state", default="APPROVED", help="Role state filter. Default: APPROVED.")
+    organization_acls.add_argument("--count", type=int, default=20, help="Maximum number of ACL rows to return.")
+    organization_acls.add_argument("--start", type=int, default=0, help="Pagination start offset.")
+    organization_acls.add_argument("--include-raw", action="store_true", help="Include raw LinkedIn organization ACL payloads.")
+    organization_acls.set_defaults(func=command_organization_acls, command_path="linkedin organization-acls")
+
+    member_post_analytics = subparsers.add_parser("member-post-analytics", help="Fetch authenticated member post analytics.")
+    member_post_analytics.add_argument("--post-urn", help="Optional post URN. If omitted, fetch aggregated authenticated-member analytics.")
+    member_post_analytics.add_argument("--metric", action="append", choices=MEMBER_POST_ANALYTICS_METRICS, help="Metric to fetch. Pass multiple times. Defaults to key public-content metrics.")
+    member_post_analytics.add_argument("--aggregation", choices=["TOTAL", "DAILY"], default="TOTAL")
+    member_post_analytics.add_argument("--start-date", help="Optional inclusive start date, YYYY-MM-DD.")
+    member_post_analytics.add_argument("--end-date", help="Optional exclusive end date, YYYY-MM-DD.")
+    member_post_analytics.add_argument("--include-raw", action="store_true", help="Include raw LinkedIn analytics payload elements.")
+    member_post_analytics.set_defaults(func=command_member_post_analytics, command_path="linkedin member-post-analytics")
+
+    member_video_analytics = subparsers.add_parser("member-video-analytics", help="Fetch authenticated member video-post analytics.")
+    member_video_analytics.add_argument("--post-urn", required=True, help="Video post URN, for example urn:li:ugcPost:... or urn:li:share:...")
+    member_video_analytics.add_argument("--metric", action="append", choices=MEMBER_VIDEO_ANALYTICS_METRICS, help="Video metric to fetch. Pass multiple times. Defaults to all video metrics.")
+    member_video_analytics.add_argument("--aggregation", choices=["TOTAL", "DAILY"], default="TOTAL")
+    member_video_analytics.add_argument("--start-date", help="Optional inclusive start date, YYYY-MM-DD.")
+    member_video_analytics.add_argument("--end-date", help="Optional exclusive end date, YYYY-MM-DD.")
+    member_video_analytics.add_argument("--include-raw", action="store_true", help="Include raw LinkedIn analytics payload elements.")
+    member_video_analytics.set_defaults(func=command_member_video_analytics, command_path="linkedin member-video-analytics")
 
     comment = subparsers.add_parser("comment", help="Create a comment on a LinkedIn post.")
     comment.add_argument("--post-urn", required=True, help="Target post URN to comment on.")

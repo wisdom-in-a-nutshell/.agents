@@ -77,6 +77,7 @@ Only if setup or re-auth is needed:
 
 Current supported flow:
 - local OAuth authorization
+- Community Management API scope presets and capability probes
 - runtime/auth inspection via `status`
 - identity check
 - text posts
@@ -85,6 +86,9 @@ Current supported flow:
 - single-video posts
 - multi-image posts
 - comments on posts
+- comment read-back
+- organization/page role lookup
+- member post and video analytics
 - machine-readable JSON output by default, plus optional `--plain` inspection mode
 - stderr-only progress for long-running video uploads via `--progress`
 
@@ -93,6 +97,8 @@ Core commands:
 ```bash
 python3 ~/GitHub/agents/skills-source/owned/social-media-publishing/scripts/linkedin/cli.py status
 python3 ~/GitHub/agents/skills-source/owned/social-media-publishing/scripts/linkedin/cli.py authorize
+python3 ~/GitHub/agents/skills-source/owned/social-media-publishing/scripts/linkedin/cli.py authorize --scope-preset community
+python3 ~/GitHub/agents/skills-source/owned/social-media-publishing/scripts/linkedin/cli.py community-status
 python3 ~/GitHub/agents/skills-source/owned/social-media-publishing/scripts/linkedin/cli.py whoami
 python3 ~/GitHub/agents/skills-source/owned/social-media-publishing/scripts/linkedin/cli.py post --text-file /abs/path/body.txt --url https://example.com/post --title "Post title" --description "Short description" --dry-run
 python3 ~/GitHub/agents/skills-source/owned/social-media-publishing/scripts/linkedin/cli.py post-image --text-file /abs/path/body.txt --image /abs/path/cover.jpg --dry-run
@@ -100,6 +106,10 @@ python3 ~/GitHub/agents/skills-source/owned/social-media-publishing/scripts/link
 python3 ~/GitHub/agents/skills-source/owned/social-media-publishing/scripts/linkedin/cli.py post-video --text-file /abs/path/body.txt --video-url https://example.com/video.mp4 --title "Public video title" --thumbnail /abs/path/thumbnail.png --dry-run
 python3 ~/GitHub/agents/skills-source/owned/social-media-publishing/scripts/linkedin/cli.py post-images --text-file /abs/path/body.txt --image /abs/path/slide-1.jpg --image /abs/path/slide-2.jpg --dry-run
 python3 ~/GitHub/agents/skills-source/owned/social-media-publishing/scripts/linkedin/cli.py comment --post-urn urn:li:ugcPost:... --text-file /abs/path/comment.txt --dry-run
+python3 ~/GitHub/agents/skills-source/owned/social-media-publishing/scripts/linkedin/cli.py list-comments --post-urn urn:li:ugcPost:...
+python3 ~/GitHub/agents/skills-source/owned/social-media-publishing/scripts/linkedin/cli.py organization-acls
+python3 ~/GitHub/agents/skills-source/owned/social-media-publishing/scripts/linkedin/cli.py member-post-analytics --post-urn urn:li:share:... --metric IMPRESSION
+python3 ~/GitHub/agents/skills-source/owned/social-media-publishing/scripts/linkedin/cli.py member-video-analytics --post-urn urn:li:ugcPost:... --metric VIDEO_PLAY
 python3 ~/GitHub/agents/skills-source/owned/social-media-publishing/scripts/linkedin/cli.py --json list-posts --count 5
 ```
 

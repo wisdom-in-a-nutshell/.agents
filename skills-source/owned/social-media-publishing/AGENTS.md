@@ -24,7 +24,7 @@ Use this skill for reusable publishing workflows that should travel across repos
 - YouTube upload flow -> `references/youtube/posting.md`
 - Instagram setup and dry-run flow -> `references/instagram/posting.md`
 - TikTok setup and dry-run flow -> `references/tiktok/posting.md`
-- For LinkedIn on a fresh boot, prefer `scripts/linkedin/cli.py status` before guessing what is configured or permitted.
+- For LinkedIn on a fresh boot, prefer `scripts/linkedin/cli.py status` before guessing what is configured or permitted; use `community-status` when Community Management scopes, analytics, comments read-back, or organization pages are involved.
 - For X on a fresh boot, prefer `scripts/x/cli.py status` before guessing what is configured or permitted.
 - For YouTube on a fresh boot, prefer `scripts/youtube/cli.py status` before guessing Modal/runtime configuration.
 - For Instagram on a fresh boot, prefer `scripts/instagram/cli.py status` before guessing Meta account/API configuration.

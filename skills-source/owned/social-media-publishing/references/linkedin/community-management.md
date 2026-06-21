@@ -40,10 +40,22 @@ The current `scripts/linkedin/cli.py` is personal-account-first. It mainly uses:
 
 Community Management access does not automatically make the existing token more capable. To use the new product, verify the app in the LinkedIn Developer Portal, then re-authorize with the required product scopes for the exact operation.
 
-Likely next scopes to test, depending on use case and current docs:
-- `r_organization_social_feed` / `w_organization_social_feed` for organization social actions.
-- `rw_organization_admin` for organization admin/access lookup.
-- member feed/social scopes for member analytics or social actions when approved.
+The CLI now exposes Community Management plumbing:
+
+```bash
+python3 ~/GitHub/agents/skills-source/owned/social-media-publishing/scripts/linkedin/cli.py authorize --scope-preset community
+python3 ~/GitHub/agents/skills-source/owned/social-media-publishing/scripts/linkedin/cli.py community-status
+python3 ~/GitHub/agents/skills-source/owned/social-media-publishing/scripts/linkedin/cli.py list-comments --post-urn urn:li:ugcPost:...
+python3 ~/GitHub/agents/skills-source/owned/social-media-publishing/scripts/linkedin/cli.py organization-acls
+python3 ~/GitHub/agents/skills-source/owned/social-media-publishing/scripts/linkedin/cli.py member-post-analytics --post-urn urn:li:share:... --metric IMPRESSION
+python3 ~/GitHub/agents/skills-source/owned/social-media-publishing/scripts/linkedin/cli.py member-video-analytics --post-urn urn:li:ugcPost:... --metric VIDEO_PLAY
+```
+
+Bundled scope presets:
+- `basic`: `openid profile w_member_social`
+- `community-member`: personal posting/social-feed write plus member profile/post analytics scopes.
+- `community-organization`: organization/page admin, social, follower, and organization social-feed scopes.
+- `community`: the combined Community Management preset.
 
 Treat scope names as live-doc facts: check the current Microsoft Learn page before changing the CLI defaults.
 
@@ -51,10 +63,12 @@ Treat scope names as live-doc facts: check the current Microsoft Learn page befo
 
 Do not jump straight to a full scheduler or agency tool.
 
-Smallest useful upgrade:
-1. Add a non-mutating `linkedin capabilities` or enhanced `status` probe that reports which Community Management scopes/products work for the current token.
-2. Add read-only post/page analytics for Adi's own recent posts if the approved product actually permits it.
-3. Only then consider company-page posting for AIP or any new company page.
+Current useful path:
+1. Re-authorize with `authorize --scope-preset community`.
+2. Run `community-status` and inspect which probes pass.
+3. Use `member-post-analytics` / `member-video-analytics` for measurable publishing.
+4. Use `organization-acls` before any company-page workflow.
+5. Only then consider company-page posting for AIP or any new company page.
 
 Why this is useful:
 - turns LinkedIn from fire-and-forget posting into measurable publishing;

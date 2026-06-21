@@ -17,6 +17,9 @@ This is the simplest useful local workflow for day-to-day LinkedIn posting:
 - single-video posts
 - multi-image organic posts for personal profile publishing
 - comments on posts
+- comment read-back
+- organization/page role lookup
+- member post and video analytics
 - machine-readable CLI output for agent use
 
 It assumes auth is already in place.
@@ -60,6 +63,8 @@ The LinkedIn CLI now follows a more agent-first contract:
 - `--no-input` disables browser auto-open and any interactive input assumptions
 - `--progress auto|off|plain` controls stderr-only progress for long-running commands such as video upload
 - non-zero exit codes are classified by failure type
+- `authorize --scope-preset community` requests the documented Community Management scope set
+- `community-status` reports configured/granted scopes plus non-mutating Community Management probes
 
 Default behavior is JSON. Use `--plain` only when you explicitly want a lighter inspection view.
 Global flags such as `--json`, `--plain`, and `--progress` should be passed before the subcommand.
@@ -75,6 +80,7 @@ What it surfaces:
 - whether the current token is present and still valid
 - which LinkedIn identity is connected
 - whether non-mutating read-back permissions appear to work for this app
+- configured vs granted Community Management scopes
 
 Stable exit code model:
 - `0` success
@@ -82,6 +88,30 @@ Stable exit code model:
 - `3` authentication or authorization failure
 - `4` network, dependency, or rate-limit failure
 - `5` timeout
+
+### Re-authorize with Community Management scopes
+
+After LinkedIn provisions Community Management API access for the app, re-authorize once:
+
+```bash
+python3 ~/GitHub/agents/skills-source/owned/social-media-publishing/scripts/linkedin/cli.py authorize --scope-preset community
+```
+
+This requests the Community Management scope preset without changing command semantics for normal posting. The saved token must include the new scopes before analytics, organization ACLs, or REST comment read-back can work.
+
+If browser auto-open is undesirable, pass `--no-browser`; the CLI prints the authorization URL to stderr and waits for the local callback. `--no-input` intentionally fails fast for `authorize` because OAuth consent cannot complete non-interactively.
+
+### Inspect Community Management capability state
+
+```bash
+python3 ~/GitHub/agents/skills-source/owned/social-media-publishing/scripts/linkedin/cli.py community-status
+```
+
+This reports:
+- configured app id and scope set
+- token/granted scope coverage
+- non-mutating probes for member post read-back, member post analytics, and organization ACLs
+- next action when the token still needs re-authorization
 
 ## Text format rule
 
@@ -230,6 +260,46 @@ Comment route behavior:
 
 Dry-run and live comment results include `requested_route`, `selected_route`, `routes`, `result.state`, and `next_action` so agents can see exactly which route was used or skipped.
 
+### List comments on a post
+
+```bash
+python3 ~/GitHub/agents/skills-source/owned/social-media-publishing/scripts/linkedin/cli.py list-comments \
+  --post-urn urn:li:ugcPost:1234567890 \
+  --count 20
+```
+
+This uses the Community Management REST `socialActions/{postUrn}/comments` read path. If it returns `403`, check `community-status` and re-authorize with the Community Management scope preset.
+
+### List organization/page roles
+
+```bash
+python3 ~/GitHub/agents/skills-source/owned/social-media-publishing/scripts/linkedin/cli.py organization-acls \
+  --role ADMINISTRATOR
+```
+
+Use this before any organization/page publishing work. It shows which LinkedIn organization URNs the authenticated member can administer.
+
+### Fetch member post analytics
+
+```bash
+python3 ~/GitHub/agents/skills-source/owned/social-media-publishing/scripts/linkedin/cli.py member-post-analytics \
+  --post-urn urn:li:share:1234567890 \
+  --metric IMPRESSION \
+  --metric REACTION \
+  --aggregation TOTAL
+```
+
+If `--post-urn` is omitted, the command requests aggregated analytics for the authenticated member.
+
+### Fetch member video analytics
+
+```bash
+python3 ~/GitHub/agents/skills-source/owned/social-media-publishing/scripts/linkedin/cli.py member-video-analytics \
+  --post-urn urn:li:ugcPost:1234567890 \
+  --metric VIDEO_PLAY \
+  --aggregation TOTAL
+```
+
 ### Fetch one post by URN
 
 ```bash
@@ -289,7 +359,8 @@ With the current LinkedIn app used in this workspace, posting works, but read-ba
 
 That means:
 - `post`, `post-image`, `post-video`, `post-images`, and likely `comment` are the most reliable day-to-day commands
-- `get-post` and `list-posts` may require additional LinkedIn access that this app does not currently have
+- `get-post`, `list-posts`, `list-comments`, `organization-acls`, `member-post-analytics`, and `member-video-analytics` require the token to be re-authorized with the approved Community Management scopes
+- personal member comment read-back can still be more restricted than organization/page comment read-back, depending on which scopes LinkedIn grants to the app
 
 Treat the read-back commands as best-effort until LinkedIn confirms the right product/scope path for this app.
 

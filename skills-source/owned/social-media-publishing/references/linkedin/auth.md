@@ -28,6 +28,8 @@ Generated env file after machine-secret sync:
 ```bash
 LINKEDIN_CLIENT_ID=...
 LINKEDIN_CLIENT_SECRET=...
+LINKEDIN_APP_ID=...       # optional, non-secret developer portal app id for inspection
+LINKEDIN_SCOPE=...        # optional; defaults to the basic personal posting scope
 ```
 
 The script defaults the redirect URI and scope, so those do not need to be stored as secrets.
@@ -81,6 +83,18 @@ What it does:
 - exchanges the auth code for a token
 - calls the LinkedIn userinfo endpoint
 - stores the token JSON locally
+
+For the approved Community Management app, prefer:
+
+```bash
+python3 ~/GitHub/agents/skills-source/owned/social-media-publishing/scripts/linkedin/cli.py authorize --scope-preset community
+```
+
+Then verify:
+
+```bash
+python3 ~/GitHub/agents/skills-source/owned/social-media-publishing/scripts/linkedin/cli.py community-status
+```
 
 ## Confirm identity
 
