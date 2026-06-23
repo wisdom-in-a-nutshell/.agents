@@ -25,6 +25,7 @@ APP_MANAGED_PLUGIN_IDS = {
     "pdf@openai-primary-runtime",
     "presentations@openai-primary-runtime",
     "spreadsheets@openai-primary-runtime",
+    "template-creator@openai-primary-runtime",
 }
 REVIEW_MARKETPLACE_PREFIXES = ("openai-",)
 

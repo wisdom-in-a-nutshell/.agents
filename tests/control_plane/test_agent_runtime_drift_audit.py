@@ -135,6 +135,7 @@ class AgentRuntimeDriftAuditTests(TempDirTestCase):
         self._write_plugin(home, "openai-primary-runtime", "pdf")
         self._write_plugin(home, "openai-primary-runtime", "presentations")
         self._write_plugin(home, "openai-primary-runtime", "spreadsheets")
+        self._write_plugin(home, "openai-primary-runtime", "template-creator")
 
         result = run_command(
             [
