@@ -59,6 +59,14 @@
       "scope": "global",
       "repos": [],
       "category": "Productivity"
+    },
+    {
+      "plugin": "build-macos-apps",
+      "marketplace": "openai-curated-remote",
+      "enabled": false,
+      "scope": "dormant",
+      "repos": [],
+      "category": "Developer Tools"
     }
   ],
   "unmanaged_repo_local_plugins": []
