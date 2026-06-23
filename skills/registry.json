@@ -355,16 +355,20 @@
     {
       "skill": "swiftui-specialist",
       "origin": "external",
-      "scope": "dormant",
-      "repos": [],
+      "scope": "repo",
+      "repos": [
+        "meeting-capture"
+      ],
       "source_path": "skills-source/external/swiftui-specialist",
       "upstream_ref": "local-import"
     },
     {
       "skill": "swiftui-whats-new-27",
       "origin": "external",
-      "scope": "dormant",
-      "repos": [],
+      "scope": "repo",
+      "repos": [
+        "meeting-capture"
+      ],
       "source_path": "skills-source/external/swiftui-whats-new-27",
       "upstream_ref": "local-import"
     },
