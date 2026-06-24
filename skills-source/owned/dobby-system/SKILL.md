@@ -107,6 +107,7 @@ Do not duplicate repo-specific contracts into this skill. Do not bury cross-repo
 - Do not copy personal data into `dobby-engine`, `codexclaw`, or `agents`.
 - Do not merge Adi and Angie workspaces into one repo or one branch history. Separate repos are the privacy and writer-boundary.
 - Do not recreate duplicate engine code in workspaces. Shared code belongs in `dobby-engine`.
+- For visible workspace artifacts, use the `dobby-artifacts` skill. Person-private artifact content belongs in the person workspace; shared artifact serving and dashboard behavior belong in `dobby-engine`.
 - Do not add README surfaces for this system. Use `AGENTS.md` for repo-local routing, this skill for cross-repo orientation, and repo docs for durable contracts.
 - When a boundary changes, update the owning repo's `AGENTS.md` or docs in the same change, and check whether this skill's cross-repo orientation also changed. Update this skill for ownership, routing, privacy, or operating-model changes; leave feature-level contracts in the owning repo.
 

@@ -1,0 +1,5 @@
+interface:
+  display_name: "Dobby Artifacts"
+  short_description: "Create reusable dashboard artifacts"
+  brand_color: "#5F8F68"
+  default_prompt: "Use $dobby-artifacts to promote this working surface into a Dobby dashboard artifact."
