@@ -40,6 +40,7 @@ For repo authors adding `scripts/hooks/*.py`, start with [`repo-lifecycle-hook-a
   - renders repo `.claude/CLAUDE.md` bridge files containing `@../AGENTS.md` when the repo has `AGENTS.md`
   - renders user settings and the managed `Stop` hook under `~/.claude/settings.json`
   - renders managed Claude Desktop SSH entries from `config/claude-settings.json` into `~/.claude/settings.json` `sshConfigs`
+  - pre-accepts Claude workspace trust in `~/.claude.json` for `~/GitHub`, every direct child folder under `~/GitHub`, discovered nested Git repos, and the agents control-plane repo
   - enables YOLO through Claude Code's native bypass mode
   - renders a `~/bin/claude` wrapper that starts sessions with `--dangerously-skip-permissions`
   - renders per-repo agent preview configs from `dev-servers/registry.json`, opt-in per repo:

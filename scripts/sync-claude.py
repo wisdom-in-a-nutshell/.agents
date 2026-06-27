@@ -306,6 +306,26 @@ def discover_git_repo_roots(root: Path) -> list[Path]:
     return sorted(repos, key=lambda path: str(path))
 
 
+def discover_github_workspace_roots(github_root: Path) -> list[Path]:
+    """Workspace paths Claude should trust under the local GitHub root.
+
+    Claude's trust prompt is keyed to the selected project path, not just Git
+    roots. Trust the GitHub root itself plus direct child directories so new or
+    non-git workspaces do not prompt, and keep recursive Git repo discovery for
+    nested repos.
+    """
+    if not github_root.is_dir():
+        return []
+    desired: set[Path] = {github_root.resolve()}
+    for child in github_root.iterdir():
+        if child.name in PRUNED_REPO_DIR_NAMES:
+            continue
+        if child.is_dir():
+            desired.add(child.resolve())
+    desired.update(discover_git_repo_roots(github_root))
+    return sorted(desired, key=lambda path: str(path))
+
+
 def repo_skill_dirs_for_prune(root_dir: Path, github_root: Path, repo_filters: set[Path]) -> set[Path]:
     dirs: set[Path] = set()
     if not repo_filters or root_dir.resolve() in repo_filters:
@@ -373,7 +393,7 @@ def trusted_workspaces(root_dir: Path, github_root: Path, extra: list[Path]) -> 
     control_plane_repo = git_root_for(root_dir)
     if control_plane_repo is not None:
         desired.add(control_plane_repo)
-    desired.update(discover_git_repo_roots(github_root))
+    desired.update(discover_github_workspace_roots(github_root))
     desired.update(path.resolve() for path in extra if path.exists())
     return [str(path) for path in sorted(desired, key=lambda item: str(item))]
 

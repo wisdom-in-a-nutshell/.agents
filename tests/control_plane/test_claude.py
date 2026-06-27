@@ -652,6 +652,8 @@ class ClaudeSyncTests(TempDirTestCase):
         registry = self._write_registry(root, [])
         github_root = self.temp_path / "GitHub"
         repo_a = init_git_repo(github_root / "repo-a")
+        non_git_workspace = github_root / "draft-workspace"
+        non_git_workspace.mkdir(parents=True)
         claude_home = self.temp_path / "claude"
         # ~/.claude.json is derived as <claude_home>/../.claude.json -> temp/.claude.json
         claude_json = self.temp_path / ".claude.json"
@@ -680,9 +682,12 @@ class ClaudeSyncTests(TempDirTestCase):
         # Unrelated top-level keys and existing project data are preserved.
         self.assertEqual(7, data["numStartups"])
         self.assertEqual(1.5, data["projects"]["/already/trusted"]["lastCost"])
-        # Managed workspaces (control-plane repo + discovered GitHub repos) are now trusted.
+        # Managed workspaces (control-plane repo + GitHub root + direct children
+        # + discovered GitHub repos) are now trusted.
+        self.assertTrue(data["projects"][str(github_root.resolve())]["hasTrustDialogAccepted"])
         self.assertTrue(data["projects"][str(repo_a.resolve())]["hasTrustDialogAccepted"])
         self.assertTrue(data["projects"][str(repo_a.resolve())]["hasCompletedProjectOnboarding"])
+        self.assertTrue(data["projects"][str(non_git_workspace.resolve())]["hasTrustDialogAccepted"])
         self.assertTrue(data["projects"][str(root.resolve())]["hasTrustDialogAccepted"])
 
     def test_workspace_trust_is_skipped_when_claude_json_missing(self) -> None:
@@ -709,6 +714,8 @@ class ClaudeSyncTests(TempDirTestCase):
         github_root = self.temp_path / "GitHub"
         repo_a = init_git_repo(github_root / "repo-a")
         repo_b = init_git_repo(github_root / "nested/repo-b")
+        non_git_workspace = github_root / "draft-workspace"
+        non_git_workspace.mkdir(parents=True)
         claude_home = self.temp_path / "claude"
         existing = self.temp_path / "existing"
         existing.mkdir()
@@ -731,6 +738,9 @@ class ClaudeSyncTests(TempDirTestCase):
         self.assertEqual(
             [
                 str(existing.resolve()),
+                str(github_root.resolve()),
+                str(non_git_workspace.resolve()),
+                str((github_root / "nested").resolve()),
                 str(repo_b.resolve()),
                 str(repo_a.resolve()),
                 str(root.resolve()),
