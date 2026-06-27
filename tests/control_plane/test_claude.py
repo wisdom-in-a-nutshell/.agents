@@ -38,6 +38,8 @@ class ClaudeSyncTests(TempDirTestCase):
             str(source),
             "--global-context-target",
             str(self.temp_path / "claude/CLAUDE.md"),
+            "--claude-desktop-config",
+            str(self.temp_path / "Claude/config.json"),
             "--launcher-target",
             str(self.temp_path / "bin/claude"),
             "--real-cli-path",
@@ -116,6 +118,10 @@ class ClaudeSyncTests(TempDirTestCase):
             'python3 "$HOME/GitHub/agents/hooks/scripts/claude_stop.py"',
             settings["hooks"]["Stop"][0]["hooks"][0]["command"],
         )
+        desktop_config = json.loads(
+            (self.temp_path / "Claude/config.json").read_text(encoding="utf-8")
+        )
+        self.assertEqual(False, desktop_config["preferences"]["chromeExtensionEnabled"])
 
         launcher = self.temp_path / "bin/claude"
         self.assertTrue(launcher.is_file())
@@ -773,10 +779,21 @@ class ClaudeSyncTests(TempDirTestCase):
                 ],
             },
         )
+        write_json(
+            self.temp_path / "Claude/config.json",
+            {
+                "locale": "en-US",
+                "preferences": {
+                    "chromeExtensionEnabled": True,
+                    "keepExistingPreference": True,
+                },
+            },
+        )
         overlay = write_json(
             root / "config/claude-settings.json",
             {
                 "version": 1,
+                "desktopPreferences": {"chromeExtensionEnabled": False},
                 "enabledPlugins": {"anthropic-skills@inline": False},
                 "skillOverrides": {"loop": "name-only", "review": "off"},
                 "sshConfigs": [
@@ -804,6 +821,12 @@ class ClaudeSyncTests(TempDirTestCase):
         )
 
         settings = json.loads((claude_home / "settings.json").read_text(encoding="utf-8"))
+        desktop_config = json.loads(
+            (self.temp_path / "Claude/config.json").read_text(encoding="utf-8")
+        )
+        self.assertEqual("en-US", desktop_config["locale"])
+        self.assertEqual(False, desktop_config["preferences"]["chromeExtensionEnabled"])
+        self.assertEqual(True, desktop_config["preferences"]["keepExistingPreference"])
         # Overlay disables the bundled plugin while preserving the manual entry.
         self.assertEqual(False, settings["enabledPlugins"]["anthropic-skills@inline"])
         self.assertEqual(True, settings["enabledPlugins"]["keep-me@inline"])
@@ -991,6 +1014,32 @@ class ClaudeSyncTests(TempDirTestCase):
 
         self.assertNotEqual(0, result.returncode)
         self.assertIn("sshConfigs", result.stderr)
+
+    def test_invalid_desktop_preference_fails(self) -> None:
+        root = self.temp_path / "agents"
+        registry = self._write_registry(root, [])
+        claude_home = self.temp_path / "claude"
+        overlay = write_json(
+            root / "config/claude-settings.json",
+            {"version": 1, "desktopPreferences": {"chromeExtensionEnabled": "yes"}},
+        )
+
+        result = run_command(
+            [
+                str(REPO_ROOT / "scripts/sync-claude.py"),
+                "--apply",
+                "--claude-home",
+                str(claude_home),
+                "--claude-settings-overlay",
+                str(overlay),
+                *self._isolated_targets(root),
+                str(registry),
+            ],
+            check=False,
+        )
+
+        self.assertNotEqual(0, result.returncode)
+        self.assertIn("desktopPreferences", result.stderr)
 
     def test_existing_global_context_symlink_target_is_not_resolved_for_write(self) -> None:
         root = self.temp_path / "agents"

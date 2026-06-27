@@ -31,6 +31,7 @@ DEFAULT_GITHUB_ROOT = Path.home() / "GitHub"
 DEFAULT_GLOBAL_CONTEXT_SOURCE = _AGENTS_ROOT / "config" / "global.agents.md"
 DEFAULT_GLOBAL_CONTEXT_TARGET = Path.home() / ".claude" / "CLAUDE.md"
 DEFAULT_CLAUDE_SETTINGS_OVERLAY = _AGENTS_ROOT / "config" / "claude-settings.json"
+DEFAULT_CLAUDE_DESKTOP_CONFIG = Path.home() / "Library/Application Support/Claude/config.json"
 DEFAULT_LAUNCHER_TARGET = Path.home() / "bin" / "claude"
 DEFAULT_REAL_CLI_PATH = Path("/opt/homebrew/bin/claude")
 DEFAULT_DEV_SERVERS_REGISTRY = _AGENTS_ROOT / "dev-servers" / "registry.json"
@@ -103,6 +104,7 @@ CLAUDE_SSH_CONFIG_OPTIONAL_KEYS = {
     *CLAUDE_SSH_CONFIG_OPTIONAL_STRING_KEYS,
     "sshPort",
 }
+CLAUDE_DESKTOP_PREFERENCE_KEYS: dict[str, type] = {"chromeExtensionEnabled": bool}
 # Allowed values for skillOverrides per the Claude Code settings schema
 # (https://code.claude.com/docs/en/settings.md): hide or collapse a bundled skill
 # without editing its SKILL.md. Does not apply to plugin skills.
@@ -602,6 +604,26 @@ def load_claude_settings_overlay(overlay_file: Path) -> dict[str, Any]:
             validated[repo_name] = dict(repo_keys)
         overlay["repoSettings"] = validated
 
+    desktop_preferences = data.get("desktopPreferences")
+    if desktop_preferences is not None:
+        if not isinstance(desktop_preferences, dict):
+            raise ValueError(f"{label}: desktopPreferences must be an object")
+        validated_preferences: dict[str, Any] = {}
+        for key, value in desktop_preferences.items():
+            expected = CLAUDE_DESKTOP_PREFERENCE_KEYS.get(key)
+            if expected is None:
+                raise ValueError(
+                    f"{label}: desktopPreferences[{key!r}] is not a managed key "
+                    f"(allowed: {sorted(CLAUDE_DESKTOP_PREFERENCE_KEYS)})"
+                )
+            if not isinstance(value, expected):
+                raise ValueError(
+                    f"{label}: desktopPreferences[{key!r}] must be "
+                    f"{expected.__name__} (got {type(value).__name__})"
+                )
+            validated_preferences[key] = value
+        overlay["desktopPreferences"] = validated_preferences
+
     ssh_configs = data.get("sshConfigs")
     if ssh_configs is not None:
         if not isinstance(ssh_configs, list):
@@ -771,6 +793,32 @@ def render_settings(
         return
     settings_file.parent.mkdir(parents=True, exist_ok=True)
     settings_file.write_text(json.dumps(desired, indent=2, sort_keys=False) + "\n", encoding="utf-8")
+
+
+def render_desktop_config(config_file: Path, overlay: dict[str, Any], apply: bool) -> None:
+    preferences_overlay = overlay.get("desktopPreferences")
+    if not preferences_overlay:
+        print(f"UNCHANGED {config_file} (desktop preferences)")
+        return
+
+    data = read_json_object(config_file)
+    desired = dict(data)
+    preferences = desired.get("preferences")
+    preferences = dict(preferences) if isinstance(preferences, dict) else {}
+    preferences.update(preferences_overlay)
+    desired["preferences"] = preferences
+
+    if desired == data:
+        print(f"UNCHANGED {config_file} (desktop preferences)")
+        return
+    print(f"SYNC {config_file} (desktop preferences)")
+    if not apply:
+        return
+    config_file.parent.mkdir(parents=True, exist_ok=True)
+    config_file.write_text(
+        json.dumps(desired, indent=2, sort_keys=False) + "\n",
+        encoding="utf-8",
+    )
 
 
 # Events whose Claude hooks are rendered per-repo from the shared hook registry.
@@ -1398,6 +1446,7 @@ def run_sync(args: argparse.Namespace) -> None:
     github_root = absolute_path(Path(args.github_root).expanduser()).resolve()
     global_context_source = absolute_path(Path(args.global_context_source).expanduser()).resolve()
     global_context_target = output_path(Path(args.global_context_target).expanduser())
+    claude_desktop_config = output_path(Path(args.claude_desktop_config).expanduser())
     launcher_target = output_path(Path(args.launcher_target).expanduser())
     real_cli_path = absolute_path(Path(args.real_cli_path).expanduser())
     preview_runner = absolute_path(Path(args.preview_runner).expanduser()).resolve()
@@ -1424,6 +1473,8 @@ def run_sync(args: argparse.Namespace) -> None:
         render_global_context(global_context_source, global_context_target, args.apply)
     overlay_file = absolute_path(Path(args.claude_settings_overlay).expanduser()).resolve()
     overlay = load_claude_settings_overlay(overlay_file)
+    if not args.skip_desktop_config:
+        render_desktop_config(claude_desktop_config, overlay, args.apply)
     if not args.skip_settings:
         render_settings(
             claude_home / "settings.json",
@@ -1511,17 +1562,19 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--repo", action="append", default=[], help="Limit repo-local Claude skill sync to an exact repo path or repo name.")
     parser.add_argument("--global-context-source", default=str(DEFAULT_GLOBAL_CONTEXT_SOURCE), help="Source markdown file for global CLAUDE.md.")
     parser.add_argument("--global-context-target", default=str(DEFAULT_GLOBAL_CONTEXT_TARGET), help="Claude global CLAUDE.md target.")
+    parser.add_argument("--claude-desktop-config", default=str(DEFAULT_CLAUDE_DESKTOP_CONFIG), help="Claude Desktop app config JSON target.")
     parser.add_argument("--launcher-target", default=str(DEFAULT_LAUNCHER_TARGET), help="Claude YOLO launcher target.")
     parser.add_argument("--real-cli-path", default=str(DEFAULT_REAL_CLI_PATH), help="Real Claude CLI binary path wrapped by launcher.")
     parser.add_argument("--skip-yolo", action="store_true", help="Do not render bypass-permission defaults.")
     parser.add_argument("--claude-json", default=None, help="Claude Code runtime config used to pre-accept workspace trust (defaults to <claude-home>/../.claude.json).")
     parser.add_argument("--skip-workspace-trust", action="store_true", help="Do not pre-accept the per-folder trust dialog for managed workspaces.")
     parser.add_argument("--skip-global-context", action="store_true", help="Do not render global CLAUDE.md.")
+    parser.add_argument("--skip-desktop-config", action="store_true", help="Do not render Claude Desktop app config preferences.")
     parser.add_argument("--skip-settings", action="store_true", help="Do not render Claude settings.")
     parser.add_argument(
         "--claude-settings-overlay",
         default=str(DEFAULT_CLAUDE_SETTINGS_OVERLAY),
-        help="Managed overlay JSON of Claude settings: global keys (enabledPlugins, skillOverrides) merged into ~/.claude/settings.json, plus repoSettings merged into <repo>/.claude/settings.json.",
+        help="Managed overlay JSON of Claude settings: global keys (enabledPlugins, skillOverrides, sshConfigs) merged into ~/.claude/settings.json, desktopPreferences merged into Claude Desktop config.json, plus repoSettings merged into <repo>/.claude/settings.json.",
     )
     parser.add_argument("--skip-launcher", action="store_true", help="Do not render Claude launcher.")
     parser.add_argument("--skip-skills", action="store_true", help="Do not render Claude skill links.")

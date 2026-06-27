@@ -40,6 +40,7 @@ For repo authors adding `scripts/hooks/*.py`, start with [`repo-lifecycle-hook-a
   - renders repo `.claude/CLAUDE.md` bridge files containing `@../AGENTS.md` when the repo has `AGENTS.md`
   - renders user settings and the managed `Stop` hook under `~/.claude/settings.json`
   - renders managed Claude Desktop SSH entries from `config/claude-settings.json` into `~/.claude/settings.json` `sshConfigs`
+  - renders selected Claude Desktop app preferences from `config/claude-settings.json` into `~/Library/Application Support/Claude/config.json`
   - pre-accepts Claude workspace trust in `~/.claude.json` for `~/GitHub`, every direct child folder under `~/GitHub`, discovered nested Git repos, and the agents control-plane repo
   - enables YOLO through Claude Code's native bypass mode
   - renders a `~/bin/claude` wrapper that starts sessions with `--dangerously-skip-permissions`
@@ -87,6 +88,19 @@ Codex Desktop does not use this Claude `sshConfigs` list. Codex remote
 connections are enabled by `codex/config/global.config.toml`
 `features.remote_connections = true` and discovered from the same managed
 OpenSSH host aliases in `~/.ssh/config`.
+
+## Desktop App Preferences
+
+Claude Desktop app preferences that need to be reproducible across machines are
+declared under `desktopPreferences` in `config/claude-settings.json` and merged
+into `~/Library/Application Support/Claude/config.json` by
+`scripts/sync-claude.sh`. Existing app config keys, including sign-in state and
+unmanaged preferences, are preserved.
+
+The managed `chromeExtensionEnabled: false` preference keeps the Claude in
+Chrome connector off by default. The connector does not spend tokens merely
+because the native messaging host exists, but keeping the toggle off avoids
+accidental browser-context use from Desktop.
 
 ## Runtime-Relevant Change Model
 
