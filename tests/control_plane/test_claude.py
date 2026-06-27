@@ -749,6 +749,18 @@ class ClaudeSyncTests(TempDirTestCase):
             {
                 "model": "test-model",
                 "enabledPlugins": {"keep-me@inline": True},
+                "sshConfigs": [
+                    {
+                        "id": "manual-vm",
+                        "name": "Manual VM",
+                        "sshHost": "user@manual.example.com",
+                    },
+                    {
+                        "id": "macmini",
+                        "name": "Old Mac mini",
+                        "sshHost": "old-host",
+                    },
+                ],
             },
         )
         overlay = write_json(
@@ -757,6 +769,14 @@ class ClaudeSyncTests(TempDirTestCase):
                 "version": 1,
                 "enabledPlugins": {"anthropic-skills@inline": False},
                 "skillOverrides": {"loop": "name-only", "review": "off"},
+                "sshConfigs": [
+                    {
+                        "id": "macmini",
+                        "name": "Mac mini",
+                        "sshHost": "macmini",
+                        "startDirectory": "~/GitHub",
+                    }
+                ],
             },
         )
 
@@ -780,6 +800,23 @@ class ClaudeSyncTests(TempDirTestCase):
         # Per-skill visibility overrides for bundled skills land verbatim.
         self.assertEqual("name-only", settings["skillOverrides"]["loop"])
         self.assertEqual("off", settings["skillOverrides"]["review"])
+        # Managed SSH configs repair matching ids while preserving manual entries.
+        self.assertEqual(
+            [
+                {
+                    "id": "manual-vm",
+                    "name": "Manual VM",
+                    "sshHost": "user@manual.example.com",
+                },
+                {
+                    "id": "macmini",
+                    "name": "Mac mini",
+                    "sshHost": "macmini",
+                    "startDirectory": "~/GitHub",
+                },
+            ],
+            settings["sshConfigs"],
+        )
         # Unrelated existing keys are untouched.
         self.assertEqual("test-model", settings["model"])
 
@@ -908,6 +945,42 @@ class ClaudeSyncTests(TempDirTestCase):
 
         self.assertNotEqual(0, result.returncode)
         self.assertIn("skillOverrides", result.stderr)
+
+    def test_invalid_ssh_config_fails(self) -> None:
+        root = self.temp_path / "agents"
+        registry = self._write_registry(root, [])
+        claude_home = self.temp_path / "claude"
+        overlay = write_json(
+            root / "config/claude-settings.json",
+            {
+                "version": 1,
+                "sshConfigs": [
+                    {
+                        "id": "macmini",
+                        "name": "Mac mini",
+                        "sshHost": "macmini",
+                        "sshPort": "22",
+                    }
+                ],
+            },
+        )
+
+        result = run_command(
+            [
+                str(REPO_ROOT / "scripts/sync-claude.py"),
+                "--apply",
+                "--claude-home",
+                str(claude_home),
+                "--claude-settings-overlay",
+                str(overlay),
+                *self._isolated_targets(root),
+                str(registry),
+            ],
+            check=False,
+        )
+
+        self.assertNotEqual(0, result.returncode)
+        self.assertIn("sshConfigs", result.stderr)
 
     def test_existing_global_context_symlink_target_is_not_resolved_for_write(self) -> None:
         root = self.temp_path / "agents"

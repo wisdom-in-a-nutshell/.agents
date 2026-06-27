@@ -39,6 +39,7 @@ For repo authors adding `scripts/hooks/*.py`, start with [`repo-lifecycle-hook-a
   - renders managed repo-scoped skill links under each target repo's `.claude/skills`
   - renders repo `.claude/CLAUDE.md` bridge files containing `@../AGENTS.md` when the repo has `AGENTS.md`
   - renders user settings and the managed `Stop` hook under `~/.claude/settings.json`
+  - renders managed Claude Desktop SSH entries from `config/claude-settings.json` into `~/.claude/settings.json` `sshConfigs`
   - enables YOLO through Claude Code's native bypass mode
   - renders a `~/bin/claude` wrapper that starts sessions with `--dangerously-skip-permissions`
   - renders per-repo agent preview configs from `dev-servers/registry.json`, opt-in per repo:
@@ -70,6 +71,21 @@ clients run the same generated command through
 `scripts/run-agent-preview-server.py`: if `127.0.0.1:<port>` is already
 listening, the runner prints that the preview is already running and exits
 successfully without spawning another server.
+
+## Desktop SSH Connections
+
+Claude Desktop reads preconfigured SSH targets from `~/.claude/settings.json`
+`sshConfigs`. The managed `macmini` entry is declared in
+`config/claude-settings.json` and rendered by `scripts/sync-claude.sh`; manual
+Claude SSH targets with other ids are preserved. The entry uses `sshHost:
+macmini`, so the actual address, user, key, and Tailscale transport stay owned
+by the scripts repo's `setup/reconcile-ssh-machine-hosts.sh` output in
+`~/.ssh/config`.
+
+Codex Desktop does not use this Claude `sshConfigs` list. Codex remote
+connections are enabled by `codex/config/global.config.toml`
+`features.remote_connections = true` and discovered from the same managed
+OpenSSH host aliases in `~/.ssh/config`.
 
 ## Runtime-Relevant Change Model
 

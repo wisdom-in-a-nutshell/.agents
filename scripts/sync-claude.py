@@ -94,7 +94,15 @@ YOLO_ACCEPTANCE_FLAGS = {
 # Managed dict-valued keys from config/claude-settings.json that are deep-merged
 # (overlay wins per key) into the global ~/.claude/settings.json. Keys not listed
 # here are ignored so the overlay can never clobber permissions/hooks/yolo state.
-CLAUDE_SETTINGS_OVERLAY_KEYS = ("enabledPlugins", "skillOverrides")
+CLAUDE_SETTINGS_DICT_OVERLAY_KEYS = ("enabledPlugins", "skillOverrides")
+CLAUDE_SETTINGS_LIST_BY_ID_OVERLAY_KEYS = ("sshConfigs",)
+CLAUDE_SSH_CONFIG_REQUIRED_STRING_KEYS = ("id", "name", "sshHost")
+CLAUDE_SSH_CONFIG_OPTIONAL_STRING_KEYS = ("sshIdentityFile", "startDirectory")
+CLAUDE_SSH_CONFIG_OPTIONAL_KEYS = {
+    *CLAUDE_SSH_CONFIG_REQUIRED_STRING_KEYS,
+    *CLAUDE_SSH_CONFIG_OPTIONAL_STRING_KEYS,
+    "sshPort",
+}
 # Allowed values for skillOverrides per the Claude Code settings schema
 # (https://code.claude.com/docs/en/settings.md): hide or collapse a bundled skill
 # without editing its SKILL.md. Does not apply to plugin skills.
@@ -514,19 +522,18 @@ def render_repo_claude_guidance_files(
         render_repo_claude_guidance(actual_repo, apply)
 
 
-def load_claude_settings_overlay(overlay_file: Path) -> dict[str, dict[str, Any]]:
+def load_claude_settings_overlay(overlay_file: Path) -> dict[str, Any]:
     """Load and validate the managed global Claude settings overlay.
 
-    Returns a mapping of overlay key -> dict (e.g. ``enabledPlugins``,
-    ``skillOverrides``). A missing file yields an empty overlay so the renderer
-    is a no-op when nothing is managed. Validation is strict and actionable so a
-    malformed overlay fails the bootstrap instead of silently shipping bad
-    settings.
+    Returns a mapping of overlay key -> validated value. A missing file yields an
+    empty overlay so the renderer is a no-op when nothing is managed. Validation
+    is strict and actionable so a malformed overlay fails the bootstrap instead
+    of silently shipping bad settings.
     """
     if not overlay_file.exists():
         return {}
     data = read_json_object(overlay_file)
-    overlay: dict[str, dict[str, Any]] = {}
+    overlay: dict[str, Any] = {}
     label = overlay_file
 
     enabled = data.get("enabledPlugins")
@@ -575,10 +582,77 @@ def load_claude_settings_overlay(overlay_file: Path) -> dict[str, dict[str, Any]
             validated[repo_name] = dict(repo_keys)
         overlay["repoSettings"] = validated
 
+    ssh_configs = data.get("sshConfigs")
+    if ssh_configs is not None:
+        if not isinstance(ssh_configs, list):
+            raise ValueError(f"{label}: sshConfigs must be an array")
+        validated_configs: list[dict[str, Any]] = []
+        seen_ids: set[str] = set()
+        for idx, item in enumerate(ssh_configs):
+            if not isinstance(item, dict):
+                raise ValueError(f"{label}: sshConfigs[{idx}] must be an object")
+            unknown = sorted(set(item) - CLAUDE_SSH_CONFIG_OPTIONAL_KEYS)
+            if unknown:
+                raise ValueError(f"{label}: sshConfigs[{idx}] has unmanaged key(s): {unknown}")
+            config: dict[str, Any] = {}
+            for key in CLAUDE_SSH_CONFIG_REQUIRED_STRING_KEYS:
+                value = item.get(key)
+                if not isinstance(value, str) or not value.strip():
+                    raise ValueError(f"{label}: sshConfigs[{idx}][{key!r}] must be a non-empty string")
+                config[key] = value.strip()
+            for key in CLAUDE_SSH_CONFIG_OPTIONAL_STRING_KEYS:
+                if key not in item:
+                    continue
+                value = item[key]
+                if not isinstance(value, str) or not value.strip():
+                    raise ValueError(f"{label}: sshConfigs[{idx}][{key!r}] must be a non-empty string")
+                config[key] = value.strip()
+            if "sshPort" in item:
+                value = item["sshPort"]
+                if isinstance(value, bool) or not isinstance(value, int) or value < 1 or value > 65535:
+                    raise ValueError(f"{label}: sshConfigs[{idx}]['sshPort'] must be an integer from 1 to 65535")
+                config["sshPort"] = value
+            config_id = config["id"]
+            if config_id in seen_ids:
+                raise ValueError(f"{label}: duplicate sshConfigs id: {config_id}")
+            seen_ids.add(config_id)
+            validated_configs.append(config)
+        overlay["sshConfigs"] = validated_configs
+
     return overlay
 
 
-def apply_settings_overlay(desired: dict[str, Any], overlay: dict[str, dict[str, Any]]) -> None:
+def merge_object_list_by_id(existing: Any, managed: list[dict[str, Any]]) -> list[Any]:
+    """Merge settings arrays where entries are keyed by an ``id`` field.
+
+    Existing user entries are preserved. If a managed entry shares an id with an
+    existing entry, the managed entry replaces it in place so bootstrap repairs
+    drift without reordering unrelated manual SSH connections.
+    """
+    managed_by_id = {entry["id"]: entry for entry in managed}
+    emitted_managed_ids: set[str] = set()
+    merged: list[Any] = []
+
+    if isinstance(existing, list):
+        for item in existing:
+            if isinstance(item, dict) and isinstance(item.get("id"), str):
+                item_id = item["id"]
+                if item_id in managed_by_id:
+                    merged.append(managed_by_id[item_id])
+                    emitted_managed_ids.add(item_id)
+                    continue
+            merged.append(item)
+
+    for item in managed:
+        item_id = item["id"]
+        if item_id not in emitted_managed_ids:
+            merged.append(item)
+            emitted_managed_ids.add(item_id)
+
+    return merged
+
+
+def apply_settings_overlay(desired: dict[str, Any], overlay: dict[str, Any]) -> None:
     """Deep-merge managed overlay dict-keys into ``desired`` settings in place.
 
     For each managed key the overlay declares, existing entries are preserved and
@@ -586,7 +660,7 @@ def apply_settings_overlay(desired: dict[str, Any], overlay: dict[str, dict[str,
     overlay while machines with extra manual entries keep them. Keys that merge to
     an empty object are not written, avoiding noise keys like ``skillOverrides: {}``.
     """
-    for key in CLAUDE_SETTINGS_OVERLAY_KEYS:
+    for key in CLAUDE_SETTINGS_DICT_OVERLAY_KEYS:
         managed = overlay.get(key)
         if not managed:
             continue
@@ -596,13 +670,19 @@ def apply_settings_overlay(desired: dict[str, Any], overlay: dict[str, dict[str,
         if existing:
             desired[key] = existing
 
+    for key in CLAUDE_SETTINGS_LIST_BY_ID_OVERLAY_KEYS:
+        managed = overlay.get(key)
+        if not managed:
+            continue
+        desired[key] = merge_object_list_by_id(desired.get(key), managed)
+
 
 def render_settings(
     settings_file: Path,
     trusted: list[str],
     apply: bool,
     skip_yolo: bool,
-    overlay: dict[str, dict[str, Any]] | None = None,
+    overlay: dict[str, Any] | None = None,
 ) -> None:
     data = read_json_object(settings_file)
     desired = dict(data)

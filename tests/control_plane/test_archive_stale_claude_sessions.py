@@ -201,3 +201,40 @@ class ArchiveStaleClaudeSessionsTests(TempDirTestCase):
 
         self.assertEqual(data["scanned"], 1)
         self.assertEqual(data["archived_count"], 1)
+
+    def test_nested_local_agent_handshake_is_ignored(self) -> None:
+        # Local-agent-mode sessions can contain nested Claude working copies with
+        # live process handshakes under `.claude/sessions`. Those files have a
+        # sessionId but are not sidebar metadata and do not carry archive fields.
+        handshake = (
+            self.support_dir
+            / "local-agent-mode-sessions"
+            / "workspace-1"
+            / "account-1"
+            / "local_agent"
+            / ".claude"
+            / "sessions"
+            / "123.json"
+        )
+        handshake.parent.mkdir(parents=True, exist_ok=True)
+        handshake.write_text(
+            json.dumps(
+                {
+                    "pid": 123,
+                    "sessionId": "cli-session",
+                    "cwd": "/tmp/claude-workspace",
+                    "startedAt": NOW_MS,
+                }
+            ),
+            encoding="utf-8",
+        )
+        self.write_session(
+            "local_agent",
+            last_activity_ms=NOW_MS - 48 * HOUR_MS,
+            group="local-agent-mode-sessions",
+        )
+
+        data = self.module.run(self.make_args(apply=False))
+
+        self.assertEqual(data["scanned"], 1)
+        self.assertEqual(data["archived_count"], 1)

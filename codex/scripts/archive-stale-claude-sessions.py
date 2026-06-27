@@ -263,7 +263,12 @@ def discover_sessions(support_dir: Path) -> list[SessionRef]:
         root = support_dir / dir_name
         if not root.is_dir():
             continue
-        for path in sorted(root.rglob("*.json")):
+        # Claude Desktop stores sidebar metadata as JSON files exactly two
+        # levels below each session-store root. Some local-agent-mode sessions
+        # also contain nested working copies with `.claude/sessions/*.json`
+        # process handshakes; those are not sidebar metadata and must not be
+        # schema-checked or archived.
+        for path in sorted(root.glob("*/*/*.json")):
             if not path.is_file():
                 continue
             ref = load_session(path)
