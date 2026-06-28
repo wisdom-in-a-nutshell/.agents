@@ -11,10 +11,11 @@ feels like one product made by one person with taste.
 
 **Canon & showroom:** the source of truth is the `~/GitHub/adi-design` repo
 (`system/styles.css` + `system/tokens/`), browsable live at
-`https://design.adithyan.io`. It is authored in the Claude Design project and
-exported into that repo. This skill carries a **vendored copy** of the identity +
-tokens so you can build Adi's UIs in any repo without cloning — when the canon's
-`VERSION` bumps, refresh `assets/tokens.css` from that repo's `system/styles.css`.
+`https://design.adithyan.io`. It is authored **directly in that repo** (no
+upstream tool, no export step). This skill carries a **vendored copy** of the
+identity + tokens so you can build Adi's UIs in any repo without cloning — when
+the canon's `VERSION` bumps, refresh `assets/tokens.css` from that repo's
+`system/styles.css`.
 
 ## Flow
 
@@ -42,8 +43,8 @@ tokens so you can build Adi's UIs in any repo without cloning — when the canon
   background with `--bg`.
 
 The `~/GitHub/adi-design` repo is the canon; this skill is a vendored extract of
-it. Authoring happens in the Claude Design project, which exports into that repo —
-see the note in `references/design-language.md`.
+it. Authoring happens **directly in that repo** — see the note in
+`references/design-language.md`.
 
 ## Scope — identity, craft, voice
 
@@ -87,8 +88,8 @@ Adi's apps, adi-design wins on look.**
 
 ## Evolving the language
 
-The aesthetic changes in the **canon**, not here: author it in the Claude Design
-project, export into `~/GitHub/adi-design`, bump `system/VERSION`. Then keep this
-skill in step — refresh `assets/tokens.css` from the repo's `system/styles.css`
-and update the rationale in `references/design-language.md` to match. Never edit a
-token value only in this vendored copy; the repo is the one source.
+The aesthetic changes in the **canon**, not here: edit it **directly** in
+`~/GitHub/adi-design` (`system/`), bump `system/VERSION`. Then keep this skill in
+step — refresh `assets/tokens.css` from the repo's `system/styles.css` and update
+the rationale in `references/design-language.md` to match. Never edit a token
+value only in this vendored copy; the repo is the one source.

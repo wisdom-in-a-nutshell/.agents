@@ -161,16 +161,16 @@ Don't:
   are Newsreader; surfaces are flat hairline; the old teal accent is gone. Keep
   the Python data engine as the single source of truth; the dashboard is UI only.
 
-## Canon, showroom, and Claude Design
+## Canon and showroom
 
 The **canon** is the `~/GitHub/adi-design` repo (`system/styles.css` +
 `system/tokens/`), rendered as a live showroom at `https://design.adithyan.io`
 (private, Cloudflare Access). Everything — this skill included — is downstream of
 it.
 
-**Claude Design (claude.ai/design)** is the *authoring studio*: iterate on the
-look there, then **export the project** and commit its canon into
-`~/GitHub/adi-design/system/` (see that repo's `docs/references/deploy-and-sync.md`).
-Decisions flow one way: Claude Design → repo → vendored copies (this skill, and
-each product). Bump `system/VERSION` on token changes, then refresh this skill's
-`assets/tokens.css` from the repo. Never fold a value only into this copy.
+The design system is authored **directly in that repo** — no upstream tool, no
+export step. Edit `system/`, the showroom reflects it, and bump `system/VERSION`
+on token changes (see that repo's `docs/references/deploy-and-sync.md`). Decisions
+flow one way: repo → vendored copies (this skill, and each product). Then refresh
+this skill's `assets/tokens.css` from the repo. Never fold a value only into this
+copy.
