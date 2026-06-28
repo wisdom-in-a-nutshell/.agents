@@ -206,7 +206,6 @@ check_cmd=(
   "$CHECK_CONTROL_PLANE_SCRIPT"
   --global-config "$GLOBAL_CONFIG"
   --global-hooks "$GLOBAL_HOOKS"
-  --github-root "$GITHUB_ROOT"
   "${REPO_ARGS[@]}"
 )
 log "+ ${check_cmd[*]}"

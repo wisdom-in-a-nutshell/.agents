@@ -7,27 +7,17 @@ ROOT_DIR="$(cd "$CONTROL_PLANE_DIR/.." && pwd)"
 
 APPLY=0
 SYNC_GLOBAL=1
-SYNC_XCODE=1
-SYNC_XCODE_PERMISSION_DEFAULTS=1
-XCODE_CONFIG_OVERRIDDEN=0
 GITHUB_ROOT="${HOME}/GitHub"
 GLOBAL_CONFIG="${HOME}/.codex/config.toml"
 GLOBAL_HOOKS="${HOME}/.codex/hooks.json"
 GLOBAL_AGENTS_DIR="${HOME}/.codex/agents"
 GLOBAL_AUTH="${HOME}/.codex/auth.json"
 GLOBAL_MCP_CREDENTIALS="${HOME}/.codex/.credentials.json"
-XCODE_CONFIG="${HOME}/Library/Developer/Xcode/CodingAssistant/codex/config.toml"
-XCODE_AGENTS_DIR="${HOME}/Library/Developer/Xcode/CodingAssistant/codex/agents"
-XCODE_RULES="${HOME}/Library/Developer/Xcode/CodingAssistant/codex/rules/xcode.rules"
-XCODE_AUTH="${HOME}/Library/Developer/Xcode/CodingAssistant/codex/auth.json"
-XCODE_MCP_CREDENTIALS="${HOME}/Library/Developer/Xcode/CodingAssistant/codex/.credentials.json"
 CANONICAL_DIR="${CONTROL_PLANE_DIR}/config"
 MCP_REGISTRY="${ROOT_DIR}/mcp/config/presets.json"
 PLUGIN_REGISTRY="${ROOT_DIR}/plugins/registry.json"
 HOOKS_REGISTRY="${ROOT_DIR}/hooks/registry.json"
 CANONICAL_GLOBAL_TEMPLATE="${CANONICAL_DIR}/global.config.toml"
-CANONICAL_XCODE_TEMPLATE="${CANONICAL_DIR}/xcode.config.toml"
-CANONICAL_XCODE_RULES_TEMPLATE="${CANONICAL_DIR}/xcode.rules"
 BUNDLED_SKILLS_POLICY="${CANONICAL_DIR}/bundled-skills-policy.json"
 
 usage() {
@@ -35,7 +25,7 @@ usage() {
 Usage: $(basename "$0") [options]
 
 Sync canonical Codex settings from the `~/GitHub/agents` control plane into
-the terminal + Xcode Codex runtimes without overwriting machine/session-specific fields.
+the terminal Codex runtime without overwriting machine-specific fields.
 
 Default mode is dry-run. Use --apply to write changes.
 
@@ -43,7 +33,6 @@ Options:
   --apply                    Apply changes in place (default: dry-run)
   --dry-run                  Show planned changes only (default)
   --global-only              Sync ~/.codex/config.toml only
-  --xcode-only               Sync Xcode Codex config/rules only
   --github-root <path>       Root path for workspace-write writable_roots
                              (default: ~/GitHub)
   --global-config <path>     Override global codex config target
@@ -51,17 +40,8 @@ Options:
   --global-auth <path>       Override global Codex auth source
   --global-mcp-credentials <path>
                              Override global Codex MCP OAuth credentials source
-  --xcode-config <path>      Override Xcode Codex config target
-  --xcode-rules <path>       Override Xcode Codex rules target
-  --xcode-auth <path>        Override Xcode Codex auth link target
-  --xcode-mcp-credentials <path>
-                             Override Xcode Codex MCP OAuth credentials link target
-  --skip-xcode-permission-defaults
-                             Do not seed Xcode's own no-prompt coding-assistant
-                             permission preference
   --canonical-dir <path>     Directory containing canonical templates:
-                             global.config.toml, xcode.config.toml,
-                             xcode.rules, *.config.toml profile files,
+                             global.config.toml, *.config.toml profile files,
                              and bundled-skills-policy.json
   --mcp-registry <path>      Shared MCP registry
                              (default: mcp/config/presets.json)
@@ -74,7 +54,6 @@ Options:
 Examples:
   ~/GitHub/agents/codex/scripts/sync-config.sh
   ~/GitHub/agents/codex/scripts/sync-config.sh --apply
-  ~/GitHub/agents/codex/scripts/sync-config.sh --apply --xcode-only
 USAGE
 }
 
@@ -108,12 +87,6 @@ while [[ $# -gt 0 ]]; do
       ;;
     --global-only)
       SYNC_GLOBAL=1
-      SYNC_XCODE=0
-      shift
-      ;;
-    --xcode-only)
-      SYNC_GLOBAL=0
-      SYNC_XCODE=1
       shift
       ;;
     --github-root)
@@ -136,32 +109,9 @@ while [[ $# -gt 0 ]]; do
       GLOBAL_MCP_CREDENTIALS="${2:-}"
       shift 2
       ;;
-    --xcode-config)
-      XCODE_CONFIG="${2:-}"
-      XCODE_CONFIG_OVERRIDDEN=1
-      shift 2
-      ;;
-    --xcode-rules)
-      XCODE_RULES="${2:-}"
-      shift 2
-      ;;
-    --xcode-auth)
-      XCODE_AUTH="${2:-}"
-      shift 2
-      ;;
-    --xcode-mcp-credentials)
-      XCODE_MCP_CREDENTIALS="${2:-}"
-      shift 2
-      ;;
-    --skip-xcode-permission-defaults)
-      SYNC_XCODE_PERMISSION_DEFAULTS=0
-      shift
-      ;;
     --canonical-dir)
       CANONICAL_DIR="${2:-}"
       CANONICAL_GLOBAL_TEMPLATE="${CANONICAL_DIR}/global.config.toml"
-      CANONICAL_XCODE_TEMPLATE="${CANONICAL_DIR}/xcode.config.toml"
-      CANONICAL_XCODE_RULES_TEMPLATE="${CANONICAL_DIR}/xcode.rules"
       BUNDLED_SKILLS_POLICY="${CANONICAL_DIR}/bundled-skills-policy.json"
       shift 2
       ;;
@@ -187,8 +137,8 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-if (( SYNC_GLOBAL == 0 && SYNC_XCODE == 0 )); then
-  die "Nothing selected. Use default/all, --global-only, or --xcode-only."
+if (( SYNC_GLOBAL == 0 )); then
+  die "Nothing selected. Use default/all or --global-only."
 fi
 
 if [[ "$GITHUB_ROOT" != /* ]]; then
@@ -613,26 +563,6 @@ render_global_config() {
   prune_stale_app_sections "$target_file" "$template_file"
   prune_stale_plugin_sections "$target_file" "$template_file" "$plugin_registry_file"
   prune_stale_model_provider_sections "$target_file" "$template_file"
-}
-
-render_xcode_config() {
-  local target_file="$1"
-  local template_file="$2"
-  local section key value
-
-  while IFS=$'\x1f' read -r section key value; do
-    [[ -n "$key" ]] || continue
-    if [[ -z "$section" ]]; then
-      upsert_top_level_key "$target_file" "$key" "$value"
-    else
-      upsert_section_key "$target_file" "$section" "$key" "$value"
-    fi
-  done < <(extract_toml_entries "$template_file")
-
-  # Preserve Xcode-owned MCP/session/tool blocks. Only prune the older managed
-  # feature name that would make validation fail after Codex renamed it.
-  remove_section_key "$target_file" "features" "codex_hooks"
-  upsert_section_key "$target_file" "sandbox_workspace_write" "writable_roots" "[$(quote_toml_string "$GITHUB_ROOT")]"
 }
 
 sanitize_machine_specific_entries() {
@@ -1198,34 +1128,6 @@ sync_sensitive_symlink() {
   fi
 }
 
-sync_xcode_permission_defaults() {
-  local domain="com.apple.dt.Xcode"
-
-  if (( SYNC_XCODE_PERMISSION_DEFAULTS == 0 )); then
-    log "SKIP Xcode permission defaults; disabled by flag."
-    return 0
-  fi
-
-  if (( XCODE_CONFIG_OVERRIDDEN == 1 )); then
-    log "SKIP Xcode permission defaults; --xcode-config override is in use."
-    return 0
-  fi
-
-  if ! command -v defaults >/dev/null 2>&1; then
-    log "SKIP Xcode permission defaults; macOS defaults command is unavailable."
-    return 0
-  fi
-
-  log "SYNC Xcode permission defaults (${domain})"
-  log "  IDEChatAgenticChatSkipPermissions = true"
-  log "  IDEChatHasBeenAlertedToPermissionSettings = true"
-
-  if (( APPLY == 1 )); then
-    defaults write "$domain" IDEChatAgenticChatSkipPermissions -bool true
-    defaults write "$domain" IDEChatHasBeenAlertedToPermissionSettings -bool true
-  fi
-}
-
 cleanup_agent_role_dir() {
   local label="$1"
   local target_dir="$2"
@@ -1283,41 +1185,6 @@ sync_global() {
   cleanup_agent_role_dir "Global Agent Roles" "$GLOBAL_AGENTS_DIR"
 }
 
-sync_xcode() {
-  local original="$XCODE_CONFIG"
-  local rendered="${TMP_DIR}/xcode.config.toml"
-  local rules_original="$XCODE_RULES"
-  local rules_rendered="${TMP_DIR}/xcode.rules"
-
-  require_readable_file "$CANONICAL_XCODE_TEMPLATE"
-  require_readable_file "$CANONICAL_XCODE_RULES_TEMPLATE"
-  ensure_parent_dir "$original"
-  ensure_parent_dir "$rules_original"
-  prepare_work_file "$original" "$rendered"
-  render_xcode_config "$rendered" "$CANONICAL_XCODE_TEMPLATE"
-  cp "$CANONICAL_XCODE_RULES_TEMPLATE" "$rules_rendered"
-
-  log ""
-  log "=== Xcode Codex Config (${original}) ==="
-  show_diff "$original" "$rendered"
-  log ""
-  log "=== Xcode Codex Rules (${rules_original}) ==="
-  show_diff "$rules_original" "$rules_rendered"
-  log ""
-  log "=== Xcode Codex Auth Links ==="
-  sync_sensitive_symlink "Xcode Codex auth" "$GLOBAL_AUTH" "$XCODE_AUTH"
-  sync_sensitive_symlink "Xcode Codex MCP OAuth credentials" "$GLOBAL_MCP_CREDENTIALS" "$XCODE_MCP_CREDENTIALS"
-  log ""
-  log "=== Xcode Coding Assistant Permission Defaults ==="
-  sync_xcode_permission_defaults
-
-  if (( APPLY == 1 )); then
-    install_rendered_file "$rendered" "$original"
-    install_rendered_file "$rules_rendered" "$rules_original"
-  fi
-
-}
-
 sync_profile_configs() {
   local target_dir
   local profile_template
@@ -1332,8 +1199,6 @@ sync_profile_configs() {
   for profile_template in "$CANONICAL_DIR"/*.config.toml; do
     profile_name="$(basename "$profile_template")"
     [[ "$profile_name" == "global.config.toml" ]] && continue
-    [[ "$profile_name" == "xcode.config.toml" ]] && continue
-
     require_readable_file "$profile_template"
     ensure_no_conflict_markers "$profile_template"
     target_file="${target_dir}/${profile_name}"
@@ -1508,9 +1373,6 @@ fi
 if (( SYNC_GLOBAL == 1 )); then
   sync_global
   sync_profile_configs
-fi
-if (( SYNC_XCODE == 1 )); then
-  sync_xcode
 fi
 if (( APPLY == 1 )); then
   ensure_enabled_openai_bundled_plugins

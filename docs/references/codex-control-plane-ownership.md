@@ -63,7 +63,6 @@ Use [Codex Control Plane](/Users/dobby/GitHub/agents/docs/architecture/codex-con
 - managed `config.toml` sections sourced from canonical files in `~/GitHub/agents`
 - global `hooks.json` from `hooks/registry.json`
 - any generated wrappers needed for hook or apply flows
-- Xcode Codex parity under `~/Library/Developer/Xcode/CodingAssistant/codex`: managed config/rules plus auth symlinks to `~/.codex/auth.json` and `~/.codex/.credentials.json` when those credential files exist
 
 ### Generate or Sync Into Repos
 

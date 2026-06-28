@@ -58,10 +58,7 @@
       "path": "~/GitHub/blog-personal"
     },
     {
-      "path": "~/GitHub/codexclaw",
-      "mcp_presets": [
-        "xcodebuildmcp"
-      ]
+      "path": "~/GitHub/codexclaw"
     },
     {
       "path": "~/GitHub/dobby-engine"

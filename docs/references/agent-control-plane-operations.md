@@ -39,7 +39,6 @@ For repo authors adding `scripts/hooks/*.py`, start with [`repo-lifecycle-hook-a
   - renders managed repo-scoped skill links under each target repo's `.claude/skills`
   - renders repo `.claude/CLAUDE.md` bridge files containing `@../AGENTS.md` when the repo has `AGENTS.md`
   - renders user settings and the managed `Stop` hook under `~/.claude/settings.json`
-  - renders Xcode Claude parity settings under `~/Library/Developer/Xcode/CodingAssistant/ClaudeAgentConfig/settings.json` while preserving Xcode-owned keys such as tool/MCP/session metadata
   - renders managed Claude Desktop SSH entries from `config/claude-settings.json` into `~/.claude/settings.json` `sshConfigs`
   - renders selected Claude Desktop app preferences from `config/claude-settings.json` into `~/Library/Application Support/Claude/config.json`
   - pre-accepts Claude workspace trust in `~/.claude.json` for `~/GitHub`, every direct child folder under `~/GitHub`, discovered nested Git repos, and the agents control-plane repo
