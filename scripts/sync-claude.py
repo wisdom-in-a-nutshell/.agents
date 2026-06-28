@@ -32,6 +32,7 @@ DEFAULT_GLOBAL_CONTEXT_SOURCE = _AGENTS_ROOT / "config" / "global.agents.md"
 DEFAULT_GLOBAL_CONTEXT_TARGET = Path.home() / ".claude" / "CLAUDE.md"
 DEFAULT_CLAUDE_SETTINGS_OVERLAY = _AGENTS_ROOT / "config" / "claude-settings.json"
 DEFAULT_CLAUDE_DESKTOP_CONFIG = Path.home() / "Library/Application Support/Claude/config.json"
+DEFAULT_XCODE_CLAUDE_SETTINGS_RELATIVE = Path("Library/Developer/Xcode/CodingAssistant/ClaudeAgentConfig/settings.json")
 DEFAULT_LAUNCHER_TARGET = Path.home() / "bin" / "claude"
 DEFAULT_REAL_CLI_PATH = Path("/opt/homebrew/bin/claude")
 DEFAULT_DEV_SERVERS_REGISTRY = _AGENTS_ROOT / "dev-servers" / "registry.json"
@@ -92,6 +93,10 @@ YOLO_ACCEPTANCE_FLAGS = {
     "skipWorkflowUsageWarning": True,
     "enableAllProjectMcpServers": True,
 }
+DEFAULT_CLAUDE_SCALAR_SETTINGS = {
+    "effortLevel": "high",
+}
+XCODE_CLAUDE_MIRRORED_SETTING_KEYS = ("model", "effortLevel", "tui")
 # Managed dict-valued keys from config/claude-settings.json that are deep-merged
 # (overlay wins per key) into the global ~/.claude/settings.json. Keys not listed
 # here are ignored so the overlay can never clobber permissions/hooks/yolo state.
@@ -719,16 +724,16 @@ def apply_settings_overlay(desired: dict[str, Any], overlay: dict[str, Any]) -> 
         desired[key] = merge_object_list_by_id(desired.get(key), managed)
 
 
-def render_settings(
-    settings_file: Path,
+def build_settings(
+    data: dict[str, Any],
     trusted: list[str],
-    apply: bool,
     skip_yolo: bool,
     overlay: dict[str, Any] | None = None,
-) -> None:
-    data = read_json_object(settings_file)
+) -> dict[str, Any]:
     desired = dict(data)
     desired.setdefault("$schema", "https://json.schemastore.org/claude-code-settings.json")
+    for key, value in DEFAULT_CLAUDE_SCALAR_SETTINGS.items():
+        desired.setdefault(key, value)
 
     permissions = desired.get("permissions")
     permissions = dict(permissions) if isinstance(permissions, dict) else {}
@@ -784,6 +789,18 @@ def render_settings(
     desired["hooks"] = hooks
 
     apply_settings_overlay(desired, overlay or {})
+    return desired
+
+
+def render_settings(
+    settings_file: Path,
+    trusted: list[str],
+    apply: bool,
+    skip_yolo: bool,
+    overlay: dict[str, Any] | None = None,
+) -> None:
+    data = read_json_object(settings_file)
+    desired = build_settings(data, trusted, skip_yolo, overlay)
 
     if desired == data:
         print(f"UNCHANGED {settings_file}")
@@ -793,6 +810,35 @@ def render_settings(
         return
     settings_file.parent.mkdir(parents=True, exist_ok=True)
     settings_file.write_text(json.dumps(desired, indent=2, sort_keys=False) + "\n", encoding="utf-8")
+
+
+def render_xcode_claude_settings(
+    settings_file: Path,
+    source_settings_file: Path,
+    trusted: list[str],
+    apply: bool,
+    skip_yolo: bool,
+    overlay: dict[str, Any] | None = None,
+) -> None:
+    data = read_json_object(settings_file)
+    source = read_json_object(source_settings_file)
+    base = dict(data)
+    for key in XCODE_CLAUDE_MIRRORED_SETTING_KEYS:
+        if key in source:
+            base[key] = source[key]
+
+    desired = build_settings(base, trusted, skip_yolo, overlay)
+    if desired == data:
+        print(f"UNCHANGED {settings_file}")
+        return
+    print(f"SYNC {settings_file} (Xcode Claude parity settings)")
+    if not apply:
+        return
+    settings_file.parent.mkdir(parents=True, exist_ok=True)
+    settings_file.write_text(
+        json.dumps(desired, indent=2, sort_keys=False) + "\n",
+        encoding="utf-8",
+    )
 
 
 def render_desktop_config(config_file: Path, overlay: dict[str, Any], apply: bool) -> None:
@@ -1447,6 +1493,10 @@ def run_sync(args: argparse.Namespace) -> None:
     global_context_source = absolute_path(Path(args.global_context_source).expanduser()).resolve()
     global_context_target = output_path(Path(args.global_context_target).expanduser())
     claude_desktop_config = output_path(Path(args.claude_desktop_config).expanduser())
+    if args.xcode_claude_settings:
+        xcode_claude_settings = output_path(Path(args.xcode_claude_settings).expanduser())
+    else:
+        xcode_claude_settings = output_path(claude_home.parent / DEFAULT_XCODE_CLAUDE_SETTINGS_RELATIVE)
     launcher_target = output_path(Path(args.launcher_target).expanduser())
     real_cli_path = absolute_path(Path(args.real_cli_path).expanduser())
     preview_runner = absolute_path(Path(args.preview_runner).expanduser()).resolve()
@@ -1483,6 +1533,15 @@ def run_sync(args: argparse.Namespace) -> None:
             args.skip_yolo,
             overlay,
         )
+        if not args.skip_xcode_claude_settings:
+            render_xcode_claude_settings(
+                xcode_claude_settings,
+                claude_home / "settings.json",
+                trusted,
+                args.apply,
+                args.skip_yolo,
+                overlay,
+            )
     if not args.skip_repo_hooks:
         hooks_registry_file = absolute_path(
             Path(args.hooks_registry).expanduser()
@@ -1571,6 +1630,16 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--skip-global-context", action="store_true", help="Do not render global CLAUDE.md.")
     parser.add_argument("--skip-desktop-config", action="store_true", help="Do not render Claude Desktop app config preferences.")
     parser.add_argument("--skip-settings", action="store_true", help="Do not render Claude settings.")
+    parser.add_argument(
+        "--xcode-claude-settings",
+        default=None,
+        help="Xcode ClaudeAgentConfig settings target (defaults beside --claude-home under Library/Developer/Xcode/CodingAssistant/ClaudeAgentConfig/settings.json).",
+    )
+    parser.add_argument(
+        "--skip-xcode-claude-settings",
+        action="store_true",
+        help="Do not render Xcode ClaudeAgentConfig settings parity.",
+    )
     parser.add_argument(
         "--claude-settings-overlay",
         default=str(DEFAULT_CLAUDE_SETTINGS_OVERLAY),

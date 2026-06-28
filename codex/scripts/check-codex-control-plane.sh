@@ -8,8 +8,12 @@ SYNC_REPO_CONFIGS_SCRIPT="${SCRIPT_DIR}/sync-repo-codex-configs.sh"
 
 GLOBAL_CONFIG="${HOME}/.codex/config.toml"
 GLOBAL_HOOKS="${HOME}/.codex/hooks.json"
+GLOBAL_AUTH="${HOME}/.codex/auth.json"
+GLOBAL_MCP_CREDENTIALS="${HOME}/.codex/.credentials.json"
 XCODE_CONFIG="${HOME}/Library/Developer/Xcode/CodingAssistant/codex/config.toml"
 XCODE_RULES="${HOME}/Library/Developer/Xcode/CodingAssistant/codex/rules/xcode.rules"
+XCODE_AUTH="${HOME}/Library/Developer/Xcode/CodingAssistant/codex/auth.json"
+XCODE_MCP_CREDENTIALS="${HOME}/Library/Developer/Xcode/CodingAssistant/codex/.credentials.json"
 CANONICAL_DIR="${CONTROL_PLANE_DIR}/config"
 REGISTRY_FILE="${CANONICAL_DIR}/repo-bootstrap.json"
 MCP_REGISTRY_FILE="${ROOT_DIR}/mcp/config/presets.json"
@@ -27,8 +31,14 @@ Options:
   --canonical-dir <path>      Override canonical codex/config directory
   --global-config <path>      Override runtime ~/.codex/config.toml path
   --global-hooks <path>       Override runtime ~/.codex/hooks.json path
+  --global-auth <path>        Override runtime ~/.codex/auth.json path
+  --global-mcp-credentials <path>
+                              Override runtime ~/.codex/.credentials.json path
   --xcode-config <path>       Override Xcode Codex config path
   --xcode-rules <path>        Override Xcode Codex rules path
+  --xcode-auth <path>         Override Xcode Codex auth link path
+  --xcode-mcp-credentials <path>
+                              Override Xcode Codex MCP OAuth credentials link path
   --registry <path>           Override repo bootstrap registry path
   --mcp-registry <path>       Override shared MCP registry path
   --hooks-registry <path>     Override shared hooks registry path
@@ -53,12 +63,28 @@ while [[ $# -gt 0 ]]; do
       GLOBAL_HOOKS="${2:-}"
       shift 2
       ;;
+    --global-auth)
+      GLOBAL_AUTH="${2:-}"
+      shift 2
+      ;;
+    --global-mcp-credentials)
+      GLOBAL_MCP_CREDENTIALS="${2:-}"
+      shift 2
+      ;;
     --xcode-config)
       XCODE_CONFIG="${2:-}"
       shift 2
       ;;
     --xcode-rules)
       XCODE_RULES="${2:-}"
+      shift 2
+      ;;
+    --xcode-auth)
+      XCODE_AUTH="${2:-}"
+      shift 2
+      ;;
+    --xcode-mcp-credentials)
+      XCODE_MCP_CREDENTIALS="${2:-}"
       shift 2
       ;;
     --registry)
@@ -102,7 +128,7 @@ for repo in "${REPO_FILTERS[@]}"; do
   REPO_ARGS+=(--repo "$repo")
 done
 
-PYTHONPATH="$ROOT_DIR" python3 - "$CANONICAL_DIR" "$GLOBAL_CONFIG" "$GLOBAL_HOOKS" "$XCODE_CONFIG" "$XCODE_RULES" "$REGISTRY_FILE" "$MCP_REGISTRY_FILE" "$HOOKS_REGISTRY_FILE" "$PLUGIN_REGISTRY_FILE" "${REPO_FILTERS[@]}" <<'PY'
+PYTHONPATH="$ROOT_DIR" python3 - "$CANONICAL_DIR" "$GLOBAL_CONFIG" "$GLOBAL_HOOKS" "$GLOBAL_AUTH" "$GLOBAL_MCP_CREDENTIALS" "$XCODE_CONFIG" "$XCODE_RULES" "$XCODE_AUTH" "$XCODE_MCP_CREDENTIALS" "$REGISTRY_FILE" "$MCP_REGISTRY_FILE" "$HOOKS_REGISTRY_FILE" "$PLUGIN_REGISTRY_FILE" "${REPO_FILTERS[@]}" <<'PY'
 from __future__ import annotations
 
 import json
@@ -467,16 +493,25 @@ def is_git_repo(path: Path) -> bool:
         return False
 
 
+def absolute_unresolved_path(raw: str) -> Path:
+    path = Path(raw).expanduser()
+    return path if path.is_absolute() else Path.cwd() / path
+
+
 canonical_dir = Path(sys.argv[1]).expanduser().resolve()
 global_config = Path(sys.argv[2]).expanduser().resolve()
 global_hooks = Path(sys.argv[3]).expanduser().resolve()
-xcode_config = Path(sys.argv[4]).expanduser().resolve()
-xcode_rules = Path(sys.argv[5]).expanduser().resolve()
-registry_path = Path(sys.argv[6]).expanduser().resolve()
-mcp_registry_path = Path(sys.argv[7]).expanduser().resolve()
-hooks_registry_path = Path(sys.argv[8]).expanduser().resolve()
-plugin_registry_path = Path(sys.argv[9]).expanduser().resolve()
-repo_filters = {str(Path(p).expanduser().resolve()) for p in sys.argv[10:] if p.strip()}
+global_auth = absolute_unresolved_path(sys.argv[4])
+global_mcp_credentials = absolute_unresolved_path(sys.argv[5])
+xcode_config = Path(sys.argv[6]).expanduser().resolve()
+xcode_rules = Path(sys.argv[7]).expanduser().resolve()
+xcode_auth = absolute_unresolved_path(sys.argv[8])
+xcode_mcp_credentials = absolute_unresolved_path(sys.argv[9])
+registry_path = Path(sys.argv[10]).expanduser().resolve()
+mcp_registry_path = Path(sys.argv[11]).expanduser().resolve()
+hooks_registry_path = Path(sys.argv[12]).expanduser().resolve()
+plugin_registry_path = Path(sys.argv[13]).expanduser().resolve()
+repo_filters = {str(Path(p).expanduser().resolve()) for p in sys.argv[14:] if p.strip()}
 
 root_dir = canonical_dir.parent.parent.resolve()
 sys.path.insert(0, str(root_dir))
@@ -662,6 +697,31 @@ def validate_xcode_runtime_config(config_path: Path, template_path: Path, rules_
         fail(f"failed reading Xcode Codex rules {rules_path}: {exc}")
 
 
+def validate_xcode_sensitive_link(source: Path, target: Path, label: str) -> None:
+    if not source.exists():
+        return
+    if not target.is_symlink():
+        fail(
+            f"Xcode Codex {label} is not linked to the normal Codex {label}: {target}. "
+            "Re-run codex/scripts/sync-config.sh --apply --xcode-only."
+        )
+    try:
+        if target.resolve() != source.resolve():
+            fail(
+                f"Xcode Codex {label} links to {target.resolve()}, expected {source.resolve()}: {target}. "
+                "Re-run codex/scripts/sync-config.sh --apply --xcode-only."
+            )
+    except OSError as exc:
+        fail(f"failed resolving Xcode Codex {label} link {target}: {exc}")
+
+
+def validate_xcode_auth_links() -> None:
+    if not xcode_config.exists():
+        return
+    validate_xcode_sensitive_link(global_auth, xcode_auth, "auth.json")
+    validate_xcode_sensitive_link(global_mcp_credentials, xcode_mcp_credentials, ".credentials.json")
+
+
 bundled_skills_policy = load_bundled_skills_policy(bundled_skills_policy_path)
 audit_installed_bundled_skills(bundled_skills_policy)
 codex_feature_statuses = load_codex_feature_statuses()
@@ -669,6 +729,7 @@ codex_feature_statuses = load_codex_feature_statuses()
 validate_no_agent_declarations(global_template)
 validate_feature_flags(global_template, codex_feature_statuses)
 validate_xcode_runtime_config(xcode_config, xcode_template, xcode_rules, xcode_rules_template)
+validate_xcode_auth_links()
 
 if global_config.exists():
     validate_no_agent_declarations(global_config)

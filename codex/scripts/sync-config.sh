@@ -12,9 +12,13 @@ GITHUB_ROOT="${HOME}/GitHub"
 GLOBAL_CONFIG="${HOME}/.codex/config.toml"
 GLOBAL_HOOKS="${HOME}/.codex/hooks.json"
 GLOBAL_AGENTS_DIR="${HOME}/.codex/agents"
+GLOBAL_AUTH="${HOME}/.codex/auth.json"
+GLOBAL_MCP_CREDENTIALS="${HOME}/.codex/.credentials.json"
 XCODE_CONFIG="${HOME}/Library/Developer/Xcode/CodingAssistant/codex/config.toml"
 XCODE_AGENTS_DIR="${HOME}/Library/Developer/Xcode/CodingAssistant/codex/agents"
 XCODE_RULES="${HOME}/Library/Developer/Xcode/CodingAssistant/codex/rules/xcode.rules"
+XCODE_AUTH="${HOME}/Library/Developer/Xcode/CodingAssistant/codex/auth.json"
+XCODE_MCP_CREDENTIALS="${HOME}/Library/Developer/Xcode/CodingAssistant/codex/.credentials.json"
 CANONICAL_DIR="${CONTROL_PLANE_DIR}/config"
 MCP_REGISTRY="${ROOT_DIR}/mcp/config/presets.json"
 PLUGIN_REGISTRY="${ROOT_DIR}/plugins/registry.json"
@@ -42,8 +46,14 @@ Options:
                              (default: ~/GitHub)
   --global-config <path>     Override global codex config target
   --global-hooks <path>      Override global codex hooks target
+  --global-auth <path>       Override global Codex auth source
+  --global-mcp-credentials <path>
+                             Override global Codex MCP OAuth credentials source
   --xcode-config <path>      Override Xcode Codex config target
   --xcode-rules <path>       Override Xcode Codex rules target
+  --xcode-auth <path>        Override Xcode Codex auth link target
+  --xcode-mcp-credentials <path>
+                             Override Xcode Codex MCP OAuth credentials link target
   --canonical-dir <path>     Directory containing canonical templates:
                              global.config.toml, xcode.config.toml,
                              xcode.rules, *.config.toml profile files,
@@ -113,12 +123,28 @@ while [[ $# -gt 0 ]]; do
       GLOBAL_HOOKS="${2:-}"
       shift 2
       ;;
+    --global-auth)
+      GLOBAL_AUTH="${2:-}"
+      shift 2
+      ;;
+    --global-mcp-credentials)
+      GLOBAL_MCP_CREDENTIALS="${2:-}"
+      shift 2
+      ;;
     --xcode-config)
       XCODE_CONFIG="${2:-}"
       shift 2
       ;;
     --xcode-rules)
       XCODE_RULES="${2:-}"
+      shift 2
+      ;;
+    --xcode-auth)
+      XCODE_AUTH="${2:-}"
+      shift 2
+      ;;
+    --xcode-mcp-credentials)
+      XCODE_MCP_CREDENTIALS="${2:-}"
       shift 2
       ;;
     --canonical-dir)
@@ -1116,6 +1142,51 @@ install_rendered_file() {
   log "Updated: $target"
 }
 
+resolved_path() {
+  python3 -c 'import os, sys; print(os.path.realpath(sys.argv[1]))' "$1"
+}
+
+sync_sensitive_symlink() {
+  local label="$1"
+  local source="$2"
+  local target="$3"
+  local source_resolved
+  local target_resolved
+
+  if [[ ! -e "$source" ]]; then
+    if [[ -L "$source" ]]; then
+      log "WARNING: skipping ${label}; source symlink is broken: $source"
+    else
+      log "SKIP ${label}; source missing: $source"
+    fi
+    return 0
+  fi
+  if [[ ! -f "$source" ]]; then
+    die "${label} source is not a file: $source"
+  fi
+
+  source_resolved="$(resolved_path "$source")"
+  if [[ -L "$target" ]]; then
+    target_resolved="$(resolved_path "$target")"
+    if [[ "$target_resolved" == "$source_resolved" ]]; then
+      log "UNCHANGED ${target} -> ${source}"
+      return 0
+    fi
+    log "WARNING: skipping ${label}; ${target} links to ${target_resolved}, expected ${source_resolved}"
+    return 0
+  fi
+  if [[ -e "$target" ]]; then
+    log "WARNING: skipping ${label}; existing non-symlink credential file: $target"
+    return 0
+  fi
+
+  log "SYNC ${target} -> ${source}"
+  if (( APPLY == 1 )); then
+    ensure_parent_dir "$target"
+    ln -s "$source" "$target"
+  fi
+}
+
 cleanup_agent_role_dir() {
   local label="$1"
   local target_dir="$2"
@@ -1193,6 +1264,10 @@ sync_xcode() {
   log ""
   log "=== Xcode Codex Rules (${rules_original}) ==="
   show_diff "$rules_original" "$rules_rendered"
+  log ""
+  log "=== Xcode Codex Auth Links ==="
+  sync_sensitive_symlink "Xcode Codex auth" "$GLOBAL_AUTH" "$XCODE_AUTH"
+  sync_sensitive_symlink "Xcode Codex MCP OAuth credentials" "$GLOBAL_MCP_CREDENTIALS" "$XCODE_MCP_CREDENTIALS"
 
   if (( APPLY == 1 )); then
     install_rendered_file "$rendered" "$original"

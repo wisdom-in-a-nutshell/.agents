@@ -182,6 +182,12 @@ class CodexControlPlaneCheckTests(TempDirTestCase):
         root, home, _adi = self._make_codex_repo_fixture()
         xcode_config = home / "Library/Developer/Xcode/CodingAssistant/codex/config.toml"
         xcode_rules = home / "Library/Developer/Xcode/CodingAssistant/codex/rules/xcode.rules"
+        global_auth = home / ".codex/auth.json"
+        global_mcp_credentials = home / ".codex/.credentials.json"
+        xcode_auth = xcode_config.parent / "auth.json"
+        xcode_mcp_credentials = xcode_config.parent / ".credentials.json"
+        write_text(global_auth, '{"auth_mode":"chatgpt"}\n')
+        write_text(global_mcp_credentials, '{"mcp":"oauth"}\n')
         write_text(
             xcode_config,
             "\n".join(
@@ -240,6 +246,37 @@ class CodexControlPlaneCheckTests(TempDirTestCase):
             (root / "codex/config/xcode.rules").read_text(encoding="utf-8"),
             xcode_rules.read_text(encoding="utf-8"),
         )
+        self.assertTrue(xcode_auth.is_symlink())
+        self.assertTrue(xcode_mcp_credentials.is_symlink())
+        self.assertEqual(global_auth.resolve(), xcode_auth.resolve())
+        self.assertEqual(global_mcp_credentials.resolve(), xcode_mcp_credentials.resolve())
+
+    def test_check_script_fails_when_xcode_auth_link_is_missing(self) -> None:
+        root, home, adi = self._make_codex_repo_fixture()
+        self._render_repo_configs(root, home)
+        xcode_config = home / "Library/Developer/Xcode/CodingAssistant/codex/config.toml"
+        xcode_rules = home / "Library/Developer/Xcode/CodingAssistant/codex/rules/xcode.rules"
+        write_text(
+            xcode_config,
+            (root / "codex/config/xcode.config.toml").read_text(encoding="utf-8"),
+        )
+        write_text(xcode_rules, (root / "codex/config/xcode.rules").read_text(encoding="utf-8"))
+        write_text(home / ".codex/auth.json", '{"auth_mode":"chatgpt"}\n')
+
+        result = run_command(
+            [
+                *self._check_command(root, home, adi),
+                "--xcode-config",
+                str(xcode_config),
+                "--xcode-rules",
+                str(xcode_rules),
+            ],
+            env={"HOME": str(home)},
+            check=False,
+        )
+
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("Xcode Codex auth.json is not linked", result.stderr)
 
     def test_check_script_fails_when_xcode_config_drifted_from_template(self) -> None:
         root, home, adi = self._make_codex_repo_fixture()

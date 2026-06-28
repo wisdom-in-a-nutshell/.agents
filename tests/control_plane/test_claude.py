@@ -100,6 +100,7 @@ class ClaudeSyncTests(TempDirTestCase):
 
         settings = json.loads((claude_home / "settings.json").read_text(encoding="utf-8"))
         self.assertEqual("test-model", settings["model"])
+        self.assertEqual("high", settings["effortLevel"])
         self.assertEqual("bypassPermissions", settings["permissions"]["defaultMode"])
         self.assertEqual(True, settings["permissions"]["skipDangerousModePermissionPrompt"])
         self.assertIn("Bash", settings["permissions"]["allow"])
@@ -118,6 +119,17 @@ class ClaudeSyncTests(TempDirTestCase):
             'python3 "$HOME/GitHub/agents/hooks/scripts/claude_stop.py"',
             settings["hooks"]["Stop"][0]["hooks"][0]["command"],
         )
+        xcode_settings = json.loads(
+            (
+                claude_home.parent
+                / "Library/Developer/Xcode/CodingAssistant/ClaudeAgentConfig/settings.json"
+            ).read_text(encoding="utf-8")
+        )
+        self.assertEqual("test-model", xcode_settings["model"])
+        self.assertEqual("high", xcode_settings["effortLevel"])
+        self.assertEqual("bypassPermissions", xcode_settings["permissions"]["defaultMode"])
+        self.assertEqual(True, xcode_settings["skipDangerousModePermissionPrompt"])
+        self.assertIn("Stop", xcode_settings["hooks"])
         desktop_config = json.loads(
             (self.temp_path / "Claude/config.json").read_text(encoding="utf-8")
         )
@@ -200,6 +212,60 @@ class ClaudeSyncTests(TempDirTestCase):
             'python3 "$HOME/GitHub/agents/hooks/scripts/claude_stop.py"',
             settings["hooks"]["Stop"][1]["hooks"][0]["command"],
         )
+
+    def test_apply_renders_xcode_claude_settings_without_clobbering_xcode_owned_keys(self) -> None:
+        root = self.temp_path / "agents"
+        registry = self._write_registry(root, [])
+        claude_home = self.temp_path / "claude"
+        xcode_settings_file = (
+            claude_home.parent
+            / "Library/Developer/Xcode/CodingAssistant/ClaudeAgentConfig/settings.json"
+        )
+        write_json(
+            claude_home / "settings.json",
+            {
+                "model": "global-model",
+                "effortLevel": "medium",
+                "tui": {"theme": "dark"},
+            },
+        )
+        write_json(
+            xcode_settings_file,
+            {
+                "model": "old-xcode-model",
+                "xcodeOwned": {"docs": True},
+                "mcpServers": {"xcode-tools": {"command": "xcrun"}},
+                "hooks": {
+                    "PreToolUse": [
+                        {"hooks": [{"type": "command", "command": "custom-xcode-hook"}]}
+                    ]
+                },
+            },
+        )
+
+        run_command(
+            [
+                str(REPO_ROOT / "scripts/sync-claude.py"),
+                "--apply",
+                "--claude-home",
+                str(claude_home),
+                *self._isolated_targets(root),
+                str(registry),
+            ]
+        )
+
+        xcode_settings = json.loads(xcode_settings_file.read_text(encoding="utf-8"))
+        self.assertEqual("global-model", xcode_settings["model"])
+        self.assertEqual("medium", xcode_settings["effortLevel"])
+        self.assertEqual({"theme": "dark"}, xcode_settings["tui"])
+        self.assertEqual({"docs": True}, xcode_settings["xcodeOwned"])
+        self.assertEqual({"xcode-tools": {"command": "xcrun"}}, xcode_settings["mcpServers"])
+        self.assertEqual(
+            [{"hooks": [{"type": "command", "command": "custom-xcode-hook"}]}],
+            xcode_settings["hooks"]["PreToolUse"],
+        )
+        self.assertIn("Stop", xcode_settings["hooks"])
+        self.assertEqual("bypassPermissions", xcode_settings["permissions"]["defaultMode"])
 
     def test_apply_renders_repo_scoped_skills_into_repo_claude_skills(self) -> None:
         root = self.temp_path / "agents"
