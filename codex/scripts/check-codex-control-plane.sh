@@ -20,6 +20,7 @@ MCP_REGISTRY_FILE="${ROOT_DIR}/mcp/config/presets.json"
 HOOKS_REGISTRY_FILE="${ROOT_DIR}/hooks/registry.json"
 PLUGIN_REGISTRY_FILE="${ROOT_DIR}/plugins/registry.json"
 REPO_FILTERS=()
+GITHUB_ROOT="${HOME}/GitHub"
 
 usage() {
   cat <<USAGE
@@ -44,6 +45,8 @@ Options:
   --hooks-registry <path>     Override shared hooks registry path
   --plugin-registry <path>    Override native Codex plugin registry path
   --repo <path>               Limit repo-local validation to one repo path (repeatable)
+  --github-root <path>        Expected root path for workspace-write writable_roots
+                              (default: ~/GitHub)
   -h, --help                  Show this help
 USAGE
 }
@@ -107,6 +110,10 @@ while [[ $# -gt 0 ]]; do
       REPO_FILTERS+=("${2:-}")
       shift 2
       ;;
+    --github-root)
+      GITHUB_ROOT="${2:-}"
+      shift 2
+      ;;
     -h|--help)
       usage
       exit 0
@@ -118,6 +125,11 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
+if [[ "$GITHUB_ROOT" != /* ]]; then
+  echo "ERROR: --github-root must be an absolute path" >&2
+  exit 1
+fi
+
 [[ -x "$SYNC_REPO_CONFIGS_SCRIPT" ]] || {
   echo "ERROR: Missing executable: $SYNC_REPO_CONFIGS_SCRIPT" >&2
   exit 1
@@ -128,7 +140,7 @@ for repo in "${REPO_FILTERS[@]}"; do
   REPO_ARGS+=(--repo "$repo")
 done
 
-PYTHONPATH="$ROOT_DIR" python3 - "$CANONICAL_DIR" "$GLOBAL_CONFIG" "$GLOBAL_HOOKS" "$GLOBAL_AUTH" "$GLOBAL_MCP_CREDENTIALS" "$XCODE_CONFIG" "$XCODE_RULES" "$XCODE_AUTH" "$XCODE_MCP_CREDENTIALS" "$REGISTRY_FILE" "$MCP_REGISTRY_FILE" "$HOOKS_REGISTRY_FILE" "$PLUGIN_REGISTRY_FILE" "${REPO_FILTERS[@]}" <<'PY'
+PYTHONPATH="$ROOT_DIR" python3 - "$CANONICAL_DIR" "$GLOBAL_CONFIG" "$GLOBAL_HOOKS" "$GLOBAL_AUTH" "$GLOBAL_MCP_CREDENTIALS" "$XCODE_CONFIG" "$XCODE_RULES" "$XCODE_AUTH" "$XCODE_MCP_CREDENTIALS" "$REGISTRY_FILE" "$MCP_REGISTRY_FILE" "$HOOKS_REGISTRY_FILE" "$PLUGIN_REGISTRY_FILE" "$GITHUB_ROOT" "${REPO_FILTERS[@]}" <<'PY'
 from __future__ import annotations
 
 import json
@@ -511,7 +523,8 @@ registry_path = Path(sys.argv[10]).expanduser().resolve()
 mcp_registry_path = Path(sys.argv[11]).expanduser().resolve()
 hooks_registry_path = Path(sys.argv[12]).expanduser().resolve()
 plugin_registry_path = Path(sys.argv[13]).expanduser().resolve()
-repo_filters = {str(Path(p).expanduser().resolve()) for p in sys.argv[14:] if p.strip()}
+github_root = absolute_unresolved_path(sys.argv[14])
+repo_filters = {str(Path(p).expanduser().resolve()) for p in sys.argv[15:] if p.strip()}
 
 root_dir = canonical_dir.parent.parent.resolve()
 sys.path.insert(0, str(root_dir))
@@ -674,6 +687,8 @@ def validate_xcode_runtime_config(config_path: Path, template_path: Path, rules_
     validate_feature_flags(config_path, codex_feature_statuses)
 
     for path, expected in iter_leaf_values(template_data):
+        if path == ("sandbox_workspace_write", "writable_roots"):
+            expected = [str(github_root)]
         actual = get_path_value(config_data, path)
         if actual != expected:
             fail(

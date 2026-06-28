@@ -8,6 +8,8 @@ ROOT_DIR="$(cd "$CONTROL_PLANE_DIR/.." && pwd)"
 APPLY=0
 SYNC_GLOBAL=1
 SYNC_XCODE=1
+SYNC_XCODE_PERMISSION_DEFAULTS=1
+XCODE_CONFIG_OVERRIDDEN=0
 GITHUB_ROOT="${HOME}/GitHub"
 GLOBAL_CONFIG="${HOME}/.codex/config.toml"
 GLOBAL_HOOKS="${HOME}/.codex/hooks.json"
@@ -54,6 +56,9 @@ Options:
   --xcode-auth <path>        Override Xcode Codex auth link target
   --xcode-mcp-credentials <path>
                              Override Xcode Codex MCP OAuth credentials link target
+  --skip-xcode-permission-defaults
+                             Do not seed Xcode's own no-prompt coding-assistant
+                             permission preference
   --canonical-dir <path>     Directory containing canonical templates:
                              global.config.toml, xcode.config.toml,
                              xcode.rules, *.config.toml profile files,
@@ -133,6 +138,7 @@ while [[ $# -gt 0 ]]; do
       ;;
     --xcode-config)
       XCODE_CONFIG="${2:-}"
+      XCODE_CONFIG_OVERRIDDEN=1
       shift 2
       ;;
     --xcode-rules)
@@ -146,6 +152,10 @@ while [[ $# -gt 0 ]]; do
     --xcode-mcp-credentials)
       XCODE_MCP_CREDENTIALS="${2:-}"
       shift 2
+      ;;
+    --skip-xcode-permission-defaults)
+      SYNC_XCODE_PERMISSION_DEFAULTS=0
+      shift
       ;;
     --canonical-dir)
       CANONICAL_DIR="${2:-}"
@@ -622,6 +632,7 @@ render_xcode_config() {
   # Preserve Xcode-owned MCP/session/tool blocks. Only prune the older managed
   # feature name that would make validation fail after Codex renamed it.
   remove_section_key "$target_file" "features" "codex_hooks"
+  upsert_section_key "$target_file" "sandbox_workspace_write" "writable_roots" "[$(quote_toml_string "$GITHUB_ROOT")]"
 }
 
 sanitize_machine_specific_entries() {
@@ -1187,6 +1198,34 @@ sync_sensitive_symlink() {
   fi
 }
 
+sync_xcode_permission_defaults() {
+  local domain="com.apple.dt.Xcode"
+
+  if (( SYNC_XCODE_PERMISSION_DEFAULTS == 0 )); then
+    log "SKIP Xcode permission defaults; disabled by flag."
+    return 0
+  fi
+
+  if (( XCODE_CONFIG_OVERRIDDEN == 1 )); then
+    log "SKIP Xcode permission defaults; --xcode-config override is in use."
+    return 0
+  fi
+
+  if ! command -v defaults >/dev/null 2>&1; then
+    log "SKIP Xcode permission defaults; macOS defaults command is unavailable."
+    return 0
+  fi
+
+  log "SYNC Xcode permission defaults (${domain})"
+  log "  IDEChatAgenticChatSkipPermissions = true"
+  log "  IDEChatHasBeenAlertedToPermissionSettings = true"
+
+  if (( APPLY == 1 )); then
+    defaults write "$domain" IDEChatAgenticChatSkipPermissions -bool true
+    defaults write "$domain" IDEChatHasBeenAlertedToPermissionSettings -bool true
+  fi
+}
+
 cleanup_agent_role_dir() {
   local label="$1"
   local target_dir="$2"
@@ -1268,6 +1307,9 @@ sync_xcode() {
   log "=== Xcode Codex Auth Links ==="
   sync_sensitive_symlink "Xcode Codex auth" "$GLOBAL_AUTH" "$XCODE_AUTH"
   sync_sensitive_symlink "Xcode Codex MCP OAuth credentials" "$GLOBAL_MCP_CREDENTIALS" "$XCODE_MCP_CREDENTIALS"
+  log ""
+  log "=== Xcode Coding Assistant Permission Defaults ==="
+  sync_xcode_permission_defaults
 
   if (( APPLY == 1 )); then
     install_rendered_file "$rendered" "$original"

@@ -28,4 +28,4 @@ home = true
 exclude_slash_tmp = false
 exclude_tmpdir_env_var = false
 network_access = true
-writable_roots = ["/Users/dobby/GitHub"]
+writable_roots = []

@@ -235,6 +235,7 @@ class CodexControlPlaneCheckTests(TempDirTestCase):
         self.assertIn('model = "gpt-5.5"', rendered)
         self.assertIn('approval_policy = "never"', rendered)
         self.assertIn('sandbox_mode = "danger-full-access"', rendered)
+        self.assertIn(f'writable_roots = ["{home}/GitHub"]', rendered)
         self.assertIn('model_reasoning_effort = "high"', rendered)
         self.assertIn('plan_mode_reasoning_effort = "high"', rendered)
         self.assertIn("Use Xcode's own docs and build tools.", rendered)
@@ -258,7 +259,9 @@ class CodexControlPlaneCheckTests(TempDirTestCase):
         xcode_rules = home / "Library/Developer/Xcode/CodingAssistant/codex/rules/xcode.rules"
         write_text(
             xcode_config,
-            (root / "codex/config/xcode.config.toml").read_text(encoding="utf-8"),
+            (root / "codex/config/xcode.config.toml")
+            .read_text(encoding="utf-8")
+            .replace("writable_roots = []", f'writable_roots = ["{home}/GitHub"]'),
         )
         write_text(xcode_rules, (root / "codex/config/xcode.rules").read_text(encoding="utf-8"))
         write_text(home / ".codex/auth.json", '{"auth_mode":"chatgpt"}\n')
@@ -285,10 +288,10 @@ class CodexControlPlaneCheckTests(TempDirTestCase):
         xcode_rules = home / "Library/Developer/Xcode/CodingAssistant/codex/rules/xcode.rules"
         write_text(
             xcode_config,
-            (root / "codex/config/xcode.config.toml").read_text(encoding="utf-8").replace(
-                'model = "gpt-5.5"',
-                'model = "gpt-5.3"',
-            ),
+            (root / "codex/config/xcode.config.toml")
+            .read_text(encoding="utf-8")
+            .replace("writable_roots = []", f'writable_roots = ["{home}/GitHub"]')
+            .replace('model = "gpt-5.5"', 'model = "gpt-5.3"'),
         )
         write_text(xcode_rules, (root / "codex/config/xcode.rules").read_text(encoding="utf-8"))
 

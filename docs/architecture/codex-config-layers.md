@@ -57,6 +57,7 @@ flowchart TD
 
 - `codex/scripts/sync-config.sh` writes the managed baseline into `~/.codex/config.toml`.
 - It also renders Xcode Codex parity into `~/Library/Developer/Xcode/CodingAssistant/codex/config.toml` and `rules/xcode.rules`, preserving Xcode-owned MCP/session/tool blocks.
+- It seeds Xcode's own coding-assistant no-prompt permission default so Xcode conversations match terminal Codex's `approval_policy = "never"` stance.
 - When normal Codex file-based credentials exist, it links Xcode Codex `auth.json` and `.credentials.json` back to `~/.codex/auth.json` and `~/.codex/.credentials.json` instead of copying secrets.
 - It preserves machine-specific and runtime-specific state that should not live in git.
 - It renders global-scope native Codex plugin entries from `plugins/registry.json`.

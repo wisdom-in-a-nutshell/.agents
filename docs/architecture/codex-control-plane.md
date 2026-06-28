@@ -40,6 +40,7 @@ flowchart TD
 - `~/.codex/AGENTS.md`: symlink or rendered link to `config/global.agents.md`.
 - `~/.codex/config.toml` and `~/.codex/hooks.json`: live global Codex runtime config.
 - `~/Library/Developer/Xcode/CodingAssistant/codex/config.toml`, `rules/xcode.rules`, `auth.json`, and `.credentials.json`: Xcode Codex parity surface, with auth files linked to the normal `~/.codex` credential files when present.
+- `com.apple.dt.Xcode` `IDEChatAgenticChatSkipPermissions`: managed Xcode coding-assistant permission default for no-prompt Codex runs.
 - repo `.codex/config.toml` and `.codex/hooks.json`: generated repo-local Codex behavior.
 - repo `.agents/skills/<skill>`: Codex repo-scope skill symlinks.
 - `~/.claude/CLAUDE.md`: global Claude Code guidance linked to `config/global.agents.md`.
