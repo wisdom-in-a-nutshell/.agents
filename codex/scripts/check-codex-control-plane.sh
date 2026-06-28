@@ -8,6 +8,8 @@ SYNC_REPO_CONFIGS_SCRIPT="${SCRIPT_DIR}/sync-repo-codex-configs.sh"
 
 GLOBAL_CONFIG="${HOME}/.codex/config.toml"
 GLOBAL_HOOKS="${HOME}/.codex/hooks.json"
+XCODE_CONFIG="${HOME}/Library/Developer/Xcode/CodingAssistant/codex/config.toml"
+XCODE_RULES="${HOME}/Library/Developer/Xcode/CodingAssistant/codex/rules/xcode.rules"
 CANONICAL_DIR="${CONTROL_PLANE_DIR}/config"
 REGISTRY_FILE="${CANONICAL_DIR}/repo-bootstrap.json"
 MCP_REGISTRY_FILE="${ROOT_DIR}/mcp/config/presets.json"
@@ -25,6 +27,8 @@ Options:
   --canonical-dir <path>      Override canonical codex/config directory
   --global-config <path>      Override runtime ~/.codex/config.toml path
   --global-hooks <path>       Override runtime ~/.codex/hooks.json path
+  --xcode-config <path>       Override Xcode Codex config path
+  --xcode-rules <path>        Override Xcode Codex rules path
   --registry <path>           Override repo bootstrap registry path
   --mcp-registry <path>       Override shared MCP registry path
   --hooks-registry <path>     Override shared hooks registry path
@@ -47,6 +51,14 @@ while [[ $# -gt 0 ]]; do
       ;;
     --global-hooks)
       GLOBAL_HOOKS="${2:-}"
+      shift 2
+      ;;
+    --xcode-config)
+      XCODE_CONFIG="${2:-}"
+      shift 2
+      ;;
+    --xcode-rules)
+      XCODE_RULES="${2:-}"
       shift 2
       ;;
     --registry)
@@ -90,7 +102,7 @@ for repo in "${REPO_FILTERS[@]}"; do
   REPO_ARGS+=(--repo "$repo")
 done
 
-PYTHONPATH="$ROOT_DIR" python3 - "$CANONICAL_DIR" "$GLOBAL_CONFIG" "$GLOBAL_HOOKS" "$REGISTRY_FILE" "$MCP_REGISTRY_FILE" "$HOOKS_REGISTRY_FILE" "$PLUGIN_REGISTRY_FILE" "${REPO_FILTERS[@]}" <<'PY'
+PYTHONPATH="$ROOT_DIR" python3 - "$CANONICAL_DIR" "$GLOBAL_CONFIG" "$GLOBAL_HOOKS" "$XCODE_CONFIG" "$XCODE_RULES" "$REGISTRY_FILE" "$MCP_REGISTRY_FILE" "$HOOKS_REGISTRY_FILE" "$PLUGIN_REGISTRY_FILE" "${REPO_FILTERS[@]}" <<'PY'
 from __future__ import annotations
 
 import json
@@ -458,11 +470,13 @@ def is_git_repo(path: Path) -> bool:
 canonical_dir = Path(sys.argv[1]).expanduser().resolve()
 global_config = Path(sys.argv[2]).expanduser().resolve()
 global_hooks = Path(sys.argv[3]).expanduser().resolve()
-registry_path = Path(sys.argv[4]).expanduser().resolve()
-mcp_registry_path = Path(sys.argv[5]).expanduser().resolve()
-hooks_registry_path = Path(sys.argv[6]).expanduser().resolve()
-plugin_registry_path = Path(sys.argv[7]).expanduser().resolve()
-repo_filters = {str(Path(p).expanduser().resolve()) for p in sys.argv[8:] if p.strip()}
+xcode_config = Path(sys.argv[4]).expanduser().resolve()
+xcode_rules = Path(sys.argv[5]).expanduser().resolve()
+registry_path = Path(sys.argv[6]).expanduser().resolve()
+mcp_registry_path = Path(sys.argv[7]).expanduser().resolve()
+hooks_registry_path = Path(sys.argv[8]).expanduser().resolve()
+plugin_registry_path = Path(sys.argv[9]).expanduser().resolve()
+repo_filters = {str(Path(p).expanduser().resolve()) for p in sys.argv[10:] if p.strip()}
 
 root_dir = canonical_dir.parent.parent.resolve()
 sys.path.insert(0, str(root_dir))
@@ -471,6 +485,8 @@ from hooks.control_plane import load_hooks_registry, render_codex_hooks
 from plugins.derived import validate_plugin_registry
 
 global_template = canonical_dir / "global.config.toml"
+xcode_template = canonical_dir / "xcode.config.toml"
+xcode_rules_template = canonical_dir / "xcode.rules"
 bundled_skills_policy_path = canonical_dir / "bundled-skills-policy.json"
 
 
@@ -582,12 +598,77 @@ def validate_disabled_skill_entries(config_path: Path, policy: dict[str, dict[st
         )
 
 
+def iter_leaf_values(data: object, prefix: tuple[str, ...] = ()) -> list[tuple[tuple[str, ...], object]]:
+    if isinstance(data, dict):
+        values: list[tuple[tuple[str, ...], object]] = []
+        for key, value in sorted(data.items()):
+            if not isinstance(key, str):
+                continue
+            values.extend(iter_leaf_values(value, (*prefix, key)))
+        return values
+    return [(prefix, data)]
+
+
+def get_path_value(data: dict, path: tuple[str, ...]) -> object:
+    current: object = data
+    for key in path:
+        if not isinstance(current, dict) or key not in current:
+            return None
+        current = current[key]
+    return current
+
+
+def dotted_path(path: tuple[str, ...]) -> str:
+    return ".".join(path)
+
+
+def validate_xcode_runtime_config(config_path: Path, template_path: Path, rules_path: Path, rules_template_path: Path) -> None:
+    if not template_path.is_file():
+        fail(f"missing Xcode Codex template file: {template_path}")
+    if not rules_template_path.is_file():
+        fail(f"missing Xcode Codex rules template file: {rules_template_path}")
+    validate_no_agent_declarations(template_path)
+    validate_feature_flags(template_path, codex_feature_statuses)
+
+    if not config_path.exists():
+        return
+
+    config_data = load_toml(config_path)
+    template_data = load_toml(template_path)
+    validate_no_agent_declarations(config_path)
+    validate_feature_flags(config_path, codex_feature_statuses)
+
+    for path, expected in iter_leaf_values(template_data):
+        actual = get_path_value(config_data, path)
+        if actual != expected:
+            fail(
+                f"Xcode Codex config drift at {dotted_path(path)} in {config_path}: "
+                f"expected {expected!r}, got {actual!r}. "
+                "Re-run codex/scripts/sync-config.sh --apply --xcode-only."
+            )
+
+    if not rules_path.is_file():
+        fail(
+            f"Xcode Codex rules file is missing: {rules_path}. "
+            "Re-run codex/scripts/sync-config.sh --apply --xcode-only."
+        )
+    try:
+        if rules_path.read_text(encoding="utf-8") != rules_template_path.read_text(encoding="utf-8"):
+            fail(
+                f"Xcode Codex rules are out of sync: {rules_path}. "
+                "Re-run codex/scripts/sync-config.sh --apply --xcode-only."
+            )
+    except Exception as exc:
+        fail(f"failed reading Xcode Codex rules {rules_path}: {exc}")
+
+
 bundled_skills_policy = load_bundled_skills_policy(bundled_skills_policy_path)
 audit_installed_bundled_skills(bundled_skills_policy)
 codex_feature_statuses = load_codex_feature_statuses()
 
 validate_no_agent_declarations(global_template)
 validate_feature_flags(global_template, codex_feature_statuses)
+validate_xcode_runtime_config(xcode_config, xcode_template, xcode_rules, xcode_rules_template)
 
 if global_config.exists():
     validate_no_agent_declarations(global_config)
@@ -699,6 +780,8 @@ if global_config.exists():
 global_config_dir = global_config.parent
 for profile_template in sorted(canonical_dir.glob("*.config.toml")):
     if profile_template.name == "global.config.toml":
+        continue
+    if profile_template.name == "xcode.config.toml":
         continue
     profile_runtime = global_config_dir / profile_template.name
     if not profile_runtime.is_file():

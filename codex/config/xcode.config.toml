@@ -1,0 +1,31 @@
+# Canonical portable baseline keys for:
+# ~/Library/Developer/Xcode/CodingAssistant/codex/config.toml
+#
+# Keep Xcode/session-specific MCP values, projects, transcripts, caches, and
+# generated assistant state out of this file.
+
+cli_auth_credentials_store = "file"
+mcp_oauth_credentials_store = "file"
+model = "gpt-5.5"
+model_reasoning_effort = "high"
+plan_mode_reasoning_effort = "high"
+approval_policy = "never"
+sandbox_mode = "danger-full-access"
+web_search = "live"
+personality = "pragmatic"
+suppress_unstable_features_warning = true
+
+[features]
+goals = true
+memories = false
+apps = false
+external_migration = false
+
+[notice.external_config_migration_prompts]
+home = true
+
+[sandbox_workspace_write]
+exclude_slash_tmp = false
+exclude_tmpdir_env_var = false
+network_access = true
+writable_roots = ["/Users/dobby/GitHub"]

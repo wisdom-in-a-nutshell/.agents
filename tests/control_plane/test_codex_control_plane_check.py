@@ -178,6 +178,99 @@ class CodexControlPlaneCheckTests(TempDirTestCase):
         self.assertIn('-model = "gpt-5.3"', result.stderr)
         self.assertIn('+model = "gpt-5.5"', result.stderr)
 
+    def test_sync_config_xcode_only_preserves_xcode_owned_blocks(self) -> None:
+        root, home, _adi = self._make_codex_repo_fixture()
+        xcode_config = home / "Library/Developer/Xcode/CodingAssistant/codex/config.toml"
+        xcode_rules = home / "Library/Developer/Xcode/CodingAssistant/codex/rules/xcode.rules"
+        write_text(
+            xcode_config,
+            "\n".join(
+                [
+                    'model = "old-model"',
+                    'developer_instructions = """',
+                    "Use Xcode's own docs and build tools.",
+                    '"""',
+                    "",
+                    "[mcp_servers.xcode-tools]",
+                    'args = ["mcpbridge"]',
+                    'command = "xcrun"',
+                    "enabled = true",
+                    "",
+                    "[mcp_servers.xcode-tools.env]",
+                    'MCP_XCODE_PID = "123"',
+                    'MCP_XCODE_SESSION_ID = "session-123"',
+                    "",
+                    "[features]",
+                    "codex_hooks = true",
+                    "",
+                    "[apps.xcode-owned]",
+                    "enabled = true",
+                    "",
+                ]
+            ),
+        )
+
+        run_command(
+            [
+                str(REPO_ROOT / "codex/scripts/sync-config.sh"),
+                "--apply",
+                "--xcode-only",
+                "--canonical-dir",
+                str(root / "codex/config"),
+                "--xcode-config",
+                str(xcode_config),
+                "--xcode-rules",
+                str(xcode_rules),
+            ],
+            env={"HOME": str(home)},
+        )
+
+        rendered = xcode_config.read_text(encoding="utf-8")
+        self.assertIn('model = "gpt-5.5"', rendered)
+        self.assertIn('approval_policy = "never"', rendered)
+        self.assertIn('sandbox_mode = "danger-full-access"', rendered)
+        self.assertIn('model_reasoning_effort = "high"', rendered)
+        self.assertIn('plan_mode_reasoning_effort = "high"', rendered)
+        self.assertIn("Use Xcode's own docs and build tools.", rendered)
+        self.assertIn("[mcp_servers.xcode-tools]", rendered)
+        self.assertIn('MCP_XCODE_SESSION_ID = "session-123"', rendered)
+        self.assertIn("[apps.xcode-owned]", rendered)
+        self.assertNotIn("codex_hooks", rendered)
+        self.assertEqual(
+            (root / "codex/config/xcode.rules").read_text(encoding="utf-8"),
+            xcode_rules.read_text(encoding="utf-8"),
+        )
+
+    def test_check_script_fails_when_xcode_config_drifted_from_template(self) -> None:
+        root, home, adi = self._make_codex_repo_fixture()
+        self._render_repo_configs(root, home)
+        xcode_config = home / "Library/Developer/Xcode/CodingAssistant/codex/config.toml"
+        xcode_rules = home / "Library/Developer/Xcode/CodingAssistant/codex/rules/xcode.rules"
+        write_text(
+            xcode_config,
+            (root / "codex/config/xcode.config.toml").read_text(encoding="utf-8").replace(
+                'model = "gpt-5.5"',
+                'model = "gpt-5.3"',
+            ),
+        )
+        write_text(xcode_rules, (root / "codex/config/xcode.rules").read_text(encoding="utf-8"))
+
+        result = run_command(
+            [
+                *self._check_command(root, home, adi),
+                "--xcode-config",
+                str(xcode_config),
+                "--xcode-rules",
+                str(xcode_rules),
+            ],
+            env={"HOME": str(home)},
+            check=False,
+        )
+
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("Xcode Codex config drift", result.stderr)
+        self.assertIn("model", result.stderr)
+
     def test_check_script_fails_for_unclassified_bundled_codex_skill(self) -> None:
         root, home, adi = self._make_codex_repo_fixture()
         write_text(

@@ -99,6 +99,8 @@ def make_control_plane_root(base_dir: Path) -> Path:
         "codex/config/bundled-skills-policy.json",
         "config/global.agents.md",
         "codex/config/global.config.toml",
+        "codex/config/xcode.config.toml",
+        "codex/config/xcode.rules",
         "hooks/__init__.py",
         "hooks/control_plane.py",
         "hooks/registry.json",
