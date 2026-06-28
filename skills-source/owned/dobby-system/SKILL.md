@@ -34,6 +34,14 @@ This skill is the canonical cross-repo orientation layer for Dobby. Future agent
   a document root such as `DOBBY_DOCUMENTS_DATA_ROOT`; the shared engine should
   not guess a person's corpus from a machine-wide default.
 - `codexclaw` should treat Dobby as a workspace-backed service boundary. It should call the workspace/engine contract, not read private memory files ad hoc.
+- Health storage is engine-owned but local and person-bound. The combined SQLite
+  DB lives on the internal SSD at
+  `~/Library/Application Support/Dobby/health/health.sqlite`; `dobby-engine`
+  owns schema, migrations, sync/import, and queries. `person_id` separates Adi
+  and Angie rows. `codexclaw` and other products must consume health through
+  workspace-bound Dobby commands or gateway responses, never by reading health
+  JSON files or SQLite directly. JSON health files in workspaces are import,
+  audit, or backup material only.
 - `agents` distributes capabilities and lifecycle hooks. Put shared Dobby orientation here as this skill; do not turn `agents` into the Dobby architecture doc home.
 - `scripts` may schedule Dobby work on a specific machine, but only as a thin machine wrapper around the owning repo entrypoint. Live launchd plists under `~/Library/LaunchAgents/` are machine-local runtime state; tracked installers/runners live in `scripts`.
 
