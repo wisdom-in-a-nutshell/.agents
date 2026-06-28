@@ -9,13 +9,20 @@ A calm reading room: clean off-white, sage accent, serif for reading, flat
 hairline surfaces, restrained motion. The goal is that every one of Adi's apps
 feels like one product made by one person with taste.
 
+**Canon & showroom:** the source of truth is the `~/GitHub/adi-design` repo
+(`system/styles.css` + `system/tokens/`), browsable live at
+`https://design.adithyan.io`. It is authored in the Claude Design project and
+exported into that repo. This skill carries a **vendored copy** of the identity +
+tokens so you can build Adi's UIs in any repo without cloning — when the canon's
+`VERSION` bumps, refresh `assets/tokens.css` from that repo's `system/styles.css`.
+
 ## Flow
 
 1. Read `references/design-language.md` — the aesthetic, the rules, the
    do's/don'ts, and the per-product notes. This is the part that keeps work
    recognizably Adi's.
-2. Use `assets/tokens.css` as the source of truth for values. Reference tokens
-   (`var(--accent)`, `--space-lg`), never raw hex/oklch literals.
+2. Use `assets/tokens.css` (a vendored copy of the canon) for values. Reference
+   tokens (`var(--accent)`, `--space-lg`), never raw hex/oklch literals.
 3. Wire the tokens into the target the way that stack consumes them (below).
 4. Apply, then check against the hard rules — especially: **no warm-cream
    background**, one accent (sage), cards never over ~16px radius, no
@@ -34,8 +41,9 @@ feels like one product made by one person with taste.
   font to Newsreader for reading + Inter for UI, and replace any cream
   background with `--bg`.
 
-This skill is canon. Tools like claude.ai/design are sketchpads to explore in,
-then bring changes back here — see the note in `references/design-language.md`.
+The `~/GitHub/adi-design` repo is the canon; this skill is a vendored extract of
+it. Authoring happens in the Claude Design project, which exports into that repo —
+see the note in `references/design-language.md`.
 
 ## Scope — identity, craft, voice
 
@@ -79,7 +87,8 @@ Adi's apps, adi-design wins on look.**
 
 ## Evolving the language
 
-When the aesthetic changes, change it in **two places together**: the value in
-`assets/tokens.css` and the rationale in `references/design-language.md`. Keep
-dobby-dashboard (the reference implementation) in step. Full token extraction
-from dobby can deepen over time; the current set is the shared core.
+The aesthetic changes in the **canon**, not here: author it in the Claude Design
+project, export into `~/GitHub/adi-design`, bump `system/VERSION`. Then keep this
+skill in step — refresh `assets/tokens.css` from the repo's `system/styles.css`
+and update the rationale in `references/design-language.md` to match. Never edit a
+token value only in this vendored copy; the repo is the one source.
