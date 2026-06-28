@@ -37,6 +37,14 @@
       "category": "Developer Tools"
     },
     {
+      "plugin": "build-ios-apps",
+      "marketplace": "openai-curated-remote",
+      "enabled": false,
+      "scope": "dormant",
+      "repos": [],
+      "category": "Developer Tools"
+    },
+    {
       "plugin": "gmail",
       "marketplace": "openai-curated",
       "enabled": false,
