@@ -1,4 +1,0 @@
-interface:
-  display_name: "AIP Company"
-  short_description: "Canonical AI Podcasting company, client, and business context."
-  default_prompt: "Use $aip-company to ground this work in canonical AIP company context, reading only the needed references and keeping company truth consistent."
