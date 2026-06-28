@@ -535,6 +535,10 @@ class ClaudeSyncTests(TempDirTestCase):
                 "repos": [{"path": "repo-a", "mcp_presets": ["figma"]}, {"path": "repo-b"}],
             },
         )
+        write_json(
+            repo_b / ".mcp.json",
+            {"mcpServers": {"stale": {"type": "stdio", "command": "old-tool"}}},
+        )
 
         self._run_mcp_sync(
             root=root,
@@ -545,7 +549,7 @@ class ClaudeSyncTests(TempDirTestCase):
             repo_registry=repo_registry,
         )
 
-        # Assigned repo gets a .mcp.json; a repo with no mcp_presets is never touched.
+        # Assigned repo gets a .mcp.json; a managed repo with no mcp_presets drops stale output.
         self.assertTrue((repo_a / ".mcp.json").is_file())
         self.assertFalse((repo_b / ".mcp.json").exists())
 

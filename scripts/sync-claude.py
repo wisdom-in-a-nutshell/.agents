@@ -1362,7 +1362,8 @@ def load_mcp_presets(registry_file: Path) -> dict[str, Any]:
 def load_repo_mcp_assignments(repo_registry_file: Path) -> list[dict[str, Any]]:
     """Per-repo MCP preset assignments from the shared repo-bootstrap registry.
     This reuses the same `mcp_presets` field Codex renders, so a single registry
-    assignment feeds both clients. Repos with no assignment are skipped."""
+    assignment feeds both clients. Repos with no assignment remove stale generated
+    project MCP config."""
     data = read_json_object(repo_registry_file)
     repos_raw = data.get("repos", [])
     if not isinstance(repos_raw, list):
@@ -1375,8 +1376,6 @@ def load_repo_mcp_assignments(repo_registry_file: Path) -> list[dict[str, Any]]:
         if not isinstance(presets_raw, list):
             raise ValueError(f"repos[{idx}].mcp_presets must be an array")
         presets = [str(name).strip() for name in presets_raw if str(name).strip()]
-        if not presets:
-            continue
         path = ensure_str(item.get("path"), "path", "repos", idx)
         assignments.append({"repo": path, "presets": presets})
     return assignments
@@ -1423,6 +1422,14 @@ def render_mcp_config(target: Path, desired: dict[str, Any], apply: bool) -> Non
     target.write_text(json.dumps(desired, indent=2, sort_keys=False) + "\n", encoding="utf-8")
 
 
+def remove_mcp_config(target: Path, apply: bool) -> None:
+    if not target.exists() and not target.is_symlink():
+        return
+    print(f"REMOVE {target} (project MCP servers)")
+    if apply:
+        target.unlink()
+
+
 def render_mcp_configs(
     assignments: list[dict[str, Any]],
     presets: dict[str, Any],
@@ -1450,8 +1457,11 @@ def render_mcp_configs(
                     f"repo {assignment['repo']} references unknown mcp preset `{name}`"
                 )
             servers[name] = mcp_server_from_preset(name, preset)
-        desired = {"mcpServers": servers}
         target = actual_repo / ".mcp.json"
+        if not servers:
+            remove_mcp_config(target, apply)
+            continue
+        desired = {"mcpServers": servers}
         render_mcp_config(target, desired, apply)
 
 
