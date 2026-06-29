@@ -16,10 +16,11 @@ description: Write or edit external-facing content in Adi's voice. Use when draf
 4. If the current repo has relevant examples of Adi's writing, inspect a small representative sample and adapt to them.
 5. Match the format and keep the writing direct, human, and specific.
 6. Preserve the real point; do not sand it down into bland professionalism.
-7. If you delegate writing work, keep the delegation narrow: first drafts, rewrites, summaries, and tone-sensitive passes are good handoff candidates.
-8. Do not treat a delegated writing helper like a dumb typist. It should be able to read the relevant skill references, inspect local examples, and pull the context it needs.
-9. Only pass the key framing it would not reliably infer on its own: the exact task, target format, constraints, audience, and anything important to preserve or avoid.
-10. Keep fact-checking, source verification, and final editorial judgment with the parent agent unless the task is explicitly pure writing.
+7. When Adi asks to shorten a title while keeping it "the same", preserve the original wording and structure as much as possible; cut or compress only what is necessary to satisfy the character limit.
+8. If you delegate writing work, keep the delegation narrow: first drafts, rewrites, summaries, and tone-sensitive passes are good handoff candidates.
+9. Do not treat a delegated writing helper like a dumb typist. It should be able to read the relevant skill references, inspect local examples, and pull the context it needs.
+10. Only pass the key framing it would not reliably infer on its own: the exact task, target format, constraints, audience, and anything important to preserve or avoid.
+11. Keep fact-checking, source verification, and final editorial judgment with the parent agent unless the task is explicitly pure writing.
 
 ## Rules
 - Lead with the point.
