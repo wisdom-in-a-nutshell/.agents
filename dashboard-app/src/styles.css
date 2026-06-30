@@ -961,11 +961,12 @@ body.sidebar-collapsed .nav-group + .nav-group { margin-top: 8px; }
 .gc-row + .gc-row { border-top: 1px solid var(--line-soft); }
 .gc-row dt {
   font-family: var(--font-mono); font-size: var(--font-xxs); color: var(--muted);
-  word-break: break-word;
+  flex: 0 1 auto; min-width: max-content; word-break: break-word;
 }
 .gc-val {
   font-family: var(--font-sans); font-size: var(--font-xs); font-weight: var(--weight-label);
-  color: var(--text); text-align: right; flex: 0 0 auto;
+  color: var(--text); text-align: right; flex: 1 1 auto; min-width: 0;
+  overflow-wrap: break-word;
 }
 .gc-on { color: var(--accent-ink); }
 .gc-off { color: var(--rose-ink); }
