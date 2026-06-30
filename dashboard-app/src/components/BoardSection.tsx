@@ -53,6 +53,7 @@ function Board({ capabilities }: { capabilities: Capability[] }) {
 function RepoCoverage({ repos }: { repos: Item[] }) {
   const navigate = useNavigateRepo();
   return (
+    <div className="cp-repos-scroll">
     <table className="cp-repos">
       <thead>
         <tr>
@@ -88,6 +89,7 @@ function RepoCoverage({ repos }: { repos: Item[] }) {
         })}
       </tbody>
     </table>
+    </div>
   );
 }
 
