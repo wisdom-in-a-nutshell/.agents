@@ -28,7 +28,7 @@ function Board({ capabilities }: { capabilities: Capability[] }) {
         <div>Capability</div>
         <div>Codex</div>
         <div>Claude</div>
-        <div>Source</div>
+        <div className="cp-src-h">Source</div>
       </div>
       {capabilities.map((cap) => (
         <div className="cp-row" key={cap.key}>

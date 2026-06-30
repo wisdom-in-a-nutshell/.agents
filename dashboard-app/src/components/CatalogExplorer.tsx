@@ -167,6 +167,7 @@ export function CatalogExplorer({
         </span>
       </div>
 
+      <div className="cat-table-scroll">
       <table className="cat-table">
         <thead>
           <tr>
@@ -212,6 +213,7 @@ export function CatalogExplorer({
           ))}
         </tbody>
       </table>
+      </div>
       {items.length === 0 ? <p className="cat-empty">No {KIND_LABEL[kind].toLowerCase()} match this view.</p> : null}
     </div>
   );

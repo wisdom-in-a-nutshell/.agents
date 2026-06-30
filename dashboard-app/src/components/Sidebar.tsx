@@ -25,8 +25,8 @@ const NAV_GROUPS: Array<{ label: string; items: NavItem[] }> = [
   {
     label: 'Global config',
     items: [
-      { id: 'codex', label: 'Codex', short: 'C' },
-      { id: 'claude', label: 'Claude', short: 'C' },
+      { id: 'codex', label: 'Codex', short: 'Cx' },
+      { id: 'claude', label: 'Claude', short: 'Cl' },
     ],
   },
 ];
@@ -78,6 +78,7 @@ export function Sidebar({
                   key={item.id}
                   type="button"
                   className={`nav-button${section === item.id ? ' active' : ''}`}
+                  title={item.label}
                   onClick={() => onSelect(item.id)}
                 >
                   <span className="nav-label">{item.label}</span>
