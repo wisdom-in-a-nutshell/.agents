@@ -83,6 +83,12 @@ client runs the same generated command through
 listening, the runner prints that the preview is already running and exits
 successfully without spawning another server.
 
+Use `{repo_root}` when the preview should follow the active repo checkout. For
+Claude Code and Codex this expands to the canonical local checkout under
+`~/GitHub`; for the GitHub Copilot app it expands to
+`${COPILOT_WORKSPACE_PATH:-~/GitHub/<repo>}` inside `.github/github-app.yml`,
+so worktree sessions preview their own checkout.
+
 ## Desktop SSH Connections
 
 Claude Desktop reads preconfigured SSH targets from `~/.claude/settings.json`

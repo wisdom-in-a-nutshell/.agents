@@ -52,6 +52,7 @@ The current Copilot control plane is client-first:
   - contains only `scripts.run`, `server_ready_pattern`, and `auto_open_in_browser`
   - intentionally does not contain `instructions`, `.github/skills`, app hooks, or `auto_approve`; current app evidence shows `auto_approve` is app/session state, not a repo-config key
   - uses the shared `scripts/run-agent-preview-server.py` wrapper so a busy fixed port is reused or rejected consistently
+  - renders `{repo_root}` through `${COPILOT_WORKSPACE_PATH:-...}` so GitHub Copilot app worktree sessions preview the active worktree while ordinary local runs fall back to the canonical `~/GitHub/<repo>` checkout
 - `~/.copilot/copilot-instructions.md`
   - relative symlink to `config/global.agents.md`, the same canonical file rendered into `~/.claude/CLAUDE.md` and `~/.codex/AGENTS.md`
   - gives Copilot CLI and the Copilot app the same machine-wide baseline guidance the other two clients already had; previously this path was empty and Copilot got none of it
@@ -108,6 +109,8 @@ The GitHub Copilot macOS app uses the same `~/.copilot` directory for settings/l
 The check reports those app-bundled skill names as observed state. It does not move, delete, or symlink that directory.
 
 The app-specific repo config file is `.github/github-app.yml`. Public GitHub docs do not currently publish the full YAML schema; the managed renderer sticks to keys observed in the installed app parser and confirmed by the app UI: run scripts, server-ready pattern, and browser auto-open. GitHub cloud-agent environment setup remains separate (`.github/workflows/copilot-setup-steps.yml`) and is not managed here.
+
+For app worktree sessions, the app exposes `COPILOT_WORKSPACE_PATH` to lifecycle scripts. The renderer uses that variable for `{repo_root}` in `.github/github-app.yml` only; Claude Code and Codex still receive the stable checkout path. If a preview needs gitignored local files inside a Copilot app worktree, add a repo-owned `.worktreeinclude` file in that repo rather than teaching this control plane to copy secrets globally.
 
 ## App Autonomy Model (2026-07-01 finding)
 
