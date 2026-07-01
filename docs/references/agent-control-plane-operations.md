@@ -51,10 +51,11 @@ For repo authors adding `scripts/hooks/*.py`, start with [`repo-lifecycle-hook-a
   - wraps preview commands with `scripts/run-agent-preview-server.py`, which reuses an existing listener on the fixed preview port instead of starting a second server
 - `scripts/sync-copilot.sh`
   - renders managed GitHub Copilot CLI settings from `config/copilot-settings.json` into `~/.copilot/settings.json`
-  - merges trusted folders into `~/.copilot/config.json` while preserving Copilot-managed login/session keys
-  - renders `~/bin/copilot`, a terminal wrapper that defaults sessions to `--yolo --no-ask-user --effort high`
+  - renders managed trusted folders into `~/.copilot/config.json`, where Copilot CLI 1.0.67 stores `trustedFolders`, while preserving Copilot-managed login/session keys
+  - renders `~/.copilot/hooks/agents-control-plane.json` from `hooks/registry.json`
+  - renders `~/bin/copilot`, a terminal wrapper that defaults sessions to `--yolo --no-ask-user --effort high --mode autopilot --max-autopilot-continues 10`
   - leaves `.github/skills` and `~/.copilot/skills` empty by design; Copilot reuses `.agents/skills` and `~/.agents/skills`
-  - observes the macOS app-bundled skill directory at `~/Library/Application Support/com.github.githubapp/app-skills` but does not quarantine it
+  - allowlists the macOS app-bundled skill names observed under `~/Library/Application Support/com.github.githubapp/app-skills`
 - `scripts/sync-antigravity-spike.sh`
   - temporary manual-only Antigravity experiment
   - not called by `scripts/bootstrap-machine-agent-control-planes.sh`

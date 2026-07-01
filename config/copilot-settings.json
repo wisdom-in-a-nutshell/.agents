@@ -1,5 +1,5 @@
 {
-  "description": "Managed GitHub Copilot CLI/app-adjacent settings. sync-copilot.py merges the settings block into ~/.copilot/settings.json, merges trusted folders into ~/.copilot/config.json, and renders a ~/bin/copilot wrapper for terminal sessions. It intentionally does not copy managed skills into ~/.copilot/skills or .github/skills; Copilot reuses existing .agents/skills and ~/.agents/skills surfaces.",
+  "description": "Managed GitHub Copilot CLI/app-adjacent settings. sync-copilot.py merges settings into ~/.copilot/settings.json, renders trusted folders into ~/.copilot/config.json where the installed CLI stores them, renders ~/.copilot/hooks/agents-control-plane.json, and renders a ~/bin/copilot wrapper for terminal sessions. It intentionally does not copy managed skills into ~/.copilot/skills or .github/skills; Copilot reuses existing .agents/skills and ~/.agents/skills surfaces.",
   "settings": {
     "askUser": false,
     "banner": "never",

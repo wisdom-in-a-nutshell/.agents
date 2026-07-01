@@ -221,6 +221,23 @@ class HooksControlPlaneTests(TempDirTestCase):
             check=False,
         )
 
+        self.assertEqual(result.returncode, 0)
+        self.assertEqual(result.stderr, "")
+        expected_repo = repo.resolve()
+        output = json.loads(result.stdout)
+        self.assertEqual(
+            output,
+            {
+                "hookSpecificOutput": {
+                    "additionalContext": (
+                        f"repo={expected_repo}\nruntime=codex\ncwd={expected_repo}\nevent=SessionStart\n"
+                        f"schema=1.0\nrepo_root={expected_repo}\nraw_cwd={nested}\n"
+                    ),
+                    "hookEventName": "SessionStart",
+                }
+            },
+        )
+
     def test_session_start_renders_copilot_additional_context(self) -> None:
         repo = init_git_repo(self.temp_path / "repo")
         write_executable(
@@ -298,23 +315,6 @@ class HooksControlPlaneTests(TempDirTestCase):
         self.assertEqual(result.stdout, "")
         self.assertEqual(result.stderr, "")
         self.assertFalse(marker.exists())
-
-        self.assertEqual(result.returncode, 0)
-        self.assertEqual(result.stderr, "")
-        expected_repo = repo.resolve()
-        output = json.loads(result.stdout)
-        self.assertEqual(
-            output,
-            {
-                "hookSpecificOutput": {
-                    "additionalContext": (
-                        f"repo={expected_repo}\nruntime=codex\ncwd={expected_repo}\nevent=SessionStart\n"
-                        f"schema=1.0\nrepo_root={expected_repo}\nraw_cwd={nested}\n"
-                    ),
-                    "hookEventName": "SessionStart",
-                }
-            },
-        )
 
     def test_session_start_is_silent_when_repo_script_is_absent(self) -> None:
         repo = init_git_repo(self.temp_path / "repo")

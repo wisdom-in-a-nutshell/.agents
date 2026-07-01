@@ -542,7 +542,7 @@ def build_global_config(
                 {"label": "githubRoot", "value": _scalar_value(copilot_trust.get("githubRoot")), "tone": "on" if copilot_trust.get("githubRoot") else "off"},
                 {"label": "directChildren", "value": _scalar_value(copilot_trust.get("directChildren")), "tone": "on" if copilot_trust.get("directChildren") else "off"},
                 {"label": "extraFolders", "value": _scalar_value(copilot_trust.get("extraFolders"))},
-                {"label": "target", "value": "~/.copilot/settings.json"},
+                {"label": "target", "value": "~/.copilot/config.json"},
             ],
         ),
         _config_group(

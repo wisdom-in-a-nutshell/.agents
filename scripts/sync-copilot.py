@@ -171,23 +171,23 @@ def discover_trusted_folders(overlay: dict[str, Any], github_root: Path, home: P
     return result
 
 
-def merge_settings_trust(
-    existing_settings: dict[str, Any],
-    existing_user_config: dict[str, Any],
-    trusted_folders: list[str],
-) -> dict[str, Any]:
+def remove_settings_trust(existing_settings: dict[str, Any]) -> dict[str, Any]:
     desired = dict(existing_settings)
-    desired["trustedFolders"] = merge_trusted_folders(
-        existing_settings.get("trustedFolders", []),
-        existing_user_config.get("trustedFolders", []),
-        trusted_folders,
-    )
+    desired.pop("trustedFolders", None)
     return desired
 
 
-def merge_user_config(existing: dict[str, Any]) -> dict[str, Any]:
+def merge_user_config(
+    existing: dict[str, Any],
+    existing_settings: dict[str, Any],
+    trusted_folders: list[str],
+) -> dict[str, Any]:
     desired = dict(existing)
-    desired.pop("trustedFolders", None)
+    desired["trustedFolders"] = merge_trusted_folders(
+        existing.get("trustedFolders", []),
+        existing_settings.get("trustedFolders", []),
+        trusted_folders,
+    )
     return desired
 
 
@@ -327,14 +327,10 @@ def sync(
     user_config = read_json_object(user_config_file, allow_comments=True)
     trusted_folders = discover_trusted_folders(overlay, github_root, home)
     desired_settings = merge_settings(settings, overlay)
-    desired_settings = merge_settings_trust(
-        desired_settings,
-        user_config,
-        trusted_folders,
-    )
+    desired_settings = remove_settings_trust(desired_settings)
     write_json(settings_file, desired_settings, apply=apply)
 
-    desired_user_config = merge_user_config(user_config)
+    desired_user_config = merge_user_config(user_config, settings, trusted_folders)
     write_json(user_config_file, desired_user_config, apply=apply, header=CONFIG_HEADER)
 
     render_hooks_file(hooks_file, hooks_registry_file, overlay, apply=apply)
@@ -419,19 +415,19 @@ def check(
 
     home = settings_file.expanduser().resolve().parents[0].parent
     expected_trusted = set(discover_trusted_folders(overlay, github_root, home))
-    actual_trusted_raw = actual_settings.get("trustedFolders", [])
+    duplicate_settings_trust = sorted(
+        expected_trusted
+        & set(normalized_path_list(actual_settings.get("trustedFolders", [])))
+    )
+    if duplicate_settings_trust:
+        fail(f"managed Copilot trustedFolders still duplicated in {settings_file}: {duplicate_settings_trust[0]}")
+    actual_trusted_raw = user_config.get("trustedFolders", [])
     if not isinstance(actual_trusted_raw, list):
-        fail(f"trustedFolders must be an array in {settings_file}")
+        fail(f"trustedFolders must be an array in {user_config_file}")
     actual_trusted = {str(Path(path).expanduser().resolve()) for path in actual_trusted_raw if isinstance(path, str)}
     missing_trusted = sorted(expected_trusted - actual_trusted)
     if missing_trusted:
-        fail(f"Copilot settings trustedFolders missing {len(missing_trusted)} entries, first missing: {missing_trusted[0]}")
-    duplicate_config_trust = sorted(
-        expected_trusted
-        & set(normalized_path_list(user_config.get("trustedFolders", [])))
-    )
-    if duplicate_config_trust:
-        fail(f"managed Copilot trustedFolders still duplicated in {user_config_file}: {duplicate_config_trust[0]}")
+        fail(f"Copilot config trustedFolders missing {len(missing_trusted)} entries, first missing: {missing_trusted[0]}")
     if json_contains_forbidden(user_config.get("hooks", {}), forbidden):
         fail(f"forbidden Copilot hook command is still present in {user_config_file}")
 
