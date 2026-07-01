@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "description": "Canonical agent preview server definitions per repo. Rendered into each runtime's own format (Claude Code: .claude/launch.json; Codex: .codex/environments/environment.toml). Opt-in only: a repo gets a launch surface ONLY if it appears here. The `port` and `host` fields are the single source of truth; reference them inside runtimeArgs with the {port} and {host} placeholders rather than hardcoding the literals. Keep production/public Cloudflare services in the scripts repo inventory, not here.",
+  "description": "Canonical agent preview server definitions per repo. Rendered into each runtime's own format (Claude Code: .claude/launch.json; Codex: .codex/environments/environment.toml; GitHub Copilot app: .github/github-app.yml). Opt-in only: a repo gets a launch surface ONLY if it appears here. The `port` and `host` fields are the single source of truth; reference them inside runtimeArgs with the {port} and {host} placeholders rather than hardcoding the literals. Keep production/public Cloudflare services in the scripts repo inventory, not here.",
   "paths": {
     "github_root": "~/GitHub"
   },

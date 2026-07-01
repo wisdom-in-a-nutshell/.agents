@@ -73,6 +73,7 @@ Use [Codex Control Plane](/Users/dobby/GitHub/agents/docs/architecture/codex-con
 - repo `.claude/CLAUDE.md` import bridge with `@../AGENTS.md`
 - repo `.claude/launch.json` for repos listed in `dev-servers/registry.json`
 - repo `.codex/environments/environment.toml` for repos listed in `dev-servers/registry.json`
+- repo `.github/github-app.yml` for repos listed in `dev-servers/registry.json`
 
 Agent preview ports are canonical in `dev-servers/registry.json` and generated
 for both Claude Code and Codex. Public Cloudflare/LaunchAgent service ports stay

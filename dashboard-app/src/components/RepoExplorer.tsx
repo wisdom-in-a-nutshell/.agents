@@ -150,7 +150,7 @@ function RepoDetail({ data, repo }: { data: ControlPlaneData; repo: Item }) {
 
       <CapGroup
         title="Skills"
-        runtime="Codex + Claude"
+        runtime="Codex + Claude + Copilot"
         count={caps.globalSkills.length + caps.repoSkills.length}
       >
         <p className="re-base">
@@ -183,7 +183,7 @@ function RepoDetail({ data, repo }: { data: ControlPlaneData; repo: Item }) {
         <ScopedChips global={caps.globalHooks} local={caps.repoHooks} kind="hooks" empty="No hooks" />
       </CapGroup>
 
-      <CapGroup title="Agent Preview" runtime="Codex + Claude" count={devNames.length}>
+      <CapGroup title="Agent Preview" runtime="Codex + Claude + Copilot" count={devNames.length}>
         <Chips items={devNames} accent empty="No preview server. Add in dev-servers/registry.json" />
       </CapGroup>
     </div>

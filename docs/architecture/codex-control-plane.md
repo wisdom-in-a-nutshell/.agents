@@ -31,7 +31,7 @@ flowchart TD
 - `mcp/config/presets.json`: shared MCP preset definitions.
 - `hooks/registry.json` and `hooks/scripts/`: shared lifecycle hook definitions and dispatchers.
 - `codex/config/repo-bootstrap.json`: managed repo inventory and repo-local Codex behavior.
-- `dev-servers/registry.json`: opt-in repo agent-preview surface for Claude Code and Codex. It is for short-lived local dev previews only; public Cloudflare/LaunchAgent service ports stay in `~/GitHub/scripts`.
+- `dev-servers/registry.json`: opt-in repo agent-preview surface for Claude Code, Codex, and the GitHub Copilot app. It is for short-lived local dev previews only; public Cloudflare/LaunchAgent service ports stay in `~/GitHub/scripts`.
 - `dashboard/` and `dashboard-app/`: local read-only control-plane dashboard assets.
 
 ## Generated Runtime Surfaces
@@ -46,6 +46,7 @@ flowchart TD
 - repo `.claude/CLAUDE.md`: small bridge file with `@../AGENTS.md`, leaving room for Claude-specific instructions later.
 - repo `.claude/launch.json`: generated agent-preview launch configs for repos listed in `dev-servers/registry.json`.
 - repo `.codex/environments/environment.toml`: generated Codex action for the same agent-preview target.
+- repo `.github/github-app.yml`: generated GitHub Copilot app Run/browser-ready config for the same agent-preview target.
 
 ## Main Flow
 

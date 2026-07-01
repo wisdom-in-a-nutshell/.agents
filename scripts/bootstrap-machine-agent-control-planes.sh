@@ -141,6 +141,7 @@ sync_copilot_cmd=(
   "$SYNC_COPILOT_SCRIPT"
   "$MODE_FLAG"
   --github-root "$GITHUB_ROOT"
+  "${REPO_ARGS[@]}"
 )
 log "+ ${sync_copilot_cmd[*]}"
 "${sync_copilot_cmd[@]}"

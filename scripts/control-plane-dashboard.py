@@ -103,7 +103,7 @@ def build_capability_board(counts: dict[str, Any]) -> list[dict[str, Any]]:
             "source": "dev-servers/registry.json", "count": counts.get("dev_servers"),
             "codex": {"status": "stable", "note": ".codex/environments"},
             "claude": {"status": "stable", "note": ".claude/launch.json"},
-            "copilot": {"status": "na", "note": ""},
+            "copilot": {"status": "stable", "note": ".github/github-app.yml"},
         },
     ]
 

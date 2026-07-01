@@ -54,6 +54,7 @@ For repo authors adding `scripts/hooks/*.py`, start with [`repo-lifecycle-hook-a
   - renders managed trusted folders into `~/.copilot/config.json`, where Copilot CLI 1.0.67 stores `trustedFolders`, while preserving Copilot-managed login/session keys
   - renders `~/.copilot/hooks/agents-control-plane.json` from `hooks/registry.json`
   - renders `~/bin/copilot`, a terminal wrapper that defaults sessions to `--yolo --no-ask-user --effort high --mode autopilot --max-autopilot-continues 10`
+  - renders `.github/github-app.yml` for repos listed in `dev-servers/registry.json`, giving the GitHub Copilot app the same Run/browser-ready preview surface without adding app-specific instructions or skills
   - leaves `.github/skills` and `~/.copilot/skills` empty by design; Copilot reuses `.agents/skills` and `~/.agents/skills`
   - allowlists the macOS app-bundled skill names observed under `~/Library/Application Support/com.github.githubapp/app-skills`
 - `scripts/sync-antigravity-spike.sh`
@@ -76,8 +77,8 @@ services such as `adithyan.io` or `adi.adithyan.io`; those stay documented in
 `~/GitHub/scripts`.
 
 Each listed repo gets exactly one preview server. The renderer rejects
-`autoPort: true` so Claude Code and Codex cannot drift to different ports. Both
-clients run the same generated command through
+`autoPort: true` so Claude Code, Codex, and the GitHub Copilot app cannot drift to different ports. Each
+client runs the same generated command through
 `scripts/run-agent-preview-server.py`: if `127.0.0.1:<port>` is already
 listening, the runner prints that the preview is already running and exits
 successfully without spawning another server.

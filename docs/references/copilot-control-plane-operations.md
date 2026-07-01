@@ -6,7 +6,7 @@ Use this page for the GitHub Copilot client surface managed by `~/GitHub/agents`
 
 The current Copilot control plane is client-first:
 
-- Managed: terminal Copilot CLI settings, trusted folders, user-level hooks, and `~/bin/copilot`.
+- Managed: terminal Copilot CLI settings, trusted folders, user-level hooks, `~/bin/copilot`, and the GitHub Copilot app's per-repo preview config.
 - Observed: GitHub Copilot macOS app bundled skills under `~/Library/Application Support/com.github.githubapp/app-skills`.
 - Intentionally observed only: Copilot app bundled skill visibility. The app owns its bundled skill install surface.
 
@@ -20,6 +20,9 @@ The current Copilot control plane is client-first:
 - `hooks/registry.json`
   - Copilot-supported hooks render into `~/.copilot/hooks/agents-control-plane.json`
   - repo-scoped hooks render into the user hook file with a repo allowlist
+- `dev-servers/registry.json`
+  - GitHub Copilot app Run/browser-preview config renders into repo `.github/github-app.yml`
+  - Claude Code and Codex preview config render from the same registry through `scripts/sync-claude.sh`
 
 ## Runtime Outputs
 
@@ -41,6 +44,11 @@ The current Copilot control plane is client-first:
   - injects `--yolo --no-ask-user --effort high --mode autopilot --max-autopilot-continues 10` for normal sessions
   - does not inject defaults for management commands such as `copilot skill list`, `copilot mcp list`, `copilot login`, or `copilot version`
   - can be bypassed with `COPILOT_DISABLE_MANAGED_DEFAULTS=1`
+- repo `.github/github-app.yml`
+  - generated only for repos listed in `dev-servers/registry.json`
+  - contains only `scripts.run`, `server_ready_pattern`, and `auto_open_in_browser`
+  - intentionally does not contain `instructions`, `.github/skills`, app hooks, or `auto_approve`; current app evidence shows `auto_approve` is app/session state, not a repo-config key
+  - uses the shared `scripts/run-agent-preview-server.py` wrapper so a busy fixed port is reused or rejected consistently
 
 ## Skill Policy
 
@@ -90,3 +98,5 @@ The GitHub Copilot macOS app uses the same `~/.copilot` directory for settings/l
 ```
 
 The check reports those app-bundled skill names as observed state. It does not move, delete, or symlink that directory.
+
+The app-specific repo config file is `.github/github-app.yml`. Public GitHub docs do not currently publish the full YAML schema; the managed renderer sticks to keys observed in the installed app parser and confirmed by the app UI: run scripts, server-ready pattern, and browser auto-open. GitHub cloud-agent environment setup remains separate (`.github/workflows/copilot-setup-steps.yml`) and is not managed here.

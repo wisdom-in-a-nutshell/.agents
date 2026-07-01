@@ -93,6 +93,9 @@ copilot_cmd=(
   "$CHECK_COPILOT_SCRIPT"
   --check
 )
+if (( ${#REPO_ARGS[@]} > 0 )); then
+  copilot_cmd+=("${REPO_ARGS[@]}")
+fi
 log "+ ${copilot_cmd[*]}"
 "${copilot_cmd[@]}"
 
