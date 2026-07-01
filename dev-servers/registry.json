@@ -135,7 +135,7 @@
         {
           "name": "Control Plane Dashboard",
           "host": "127.0.0.1",
-          "runtimeExecutable": "python3",
+          "runtimeExecutable": "/opt/homebrew/opt/python@3.13/libexec/bin/python3",
           "runtimeArgs": [
             "scripts/control-plane-dashboard.py",
             "serve",
