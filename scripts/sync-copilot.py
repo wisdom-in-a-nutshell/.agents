@@ -231,6 +231,19 @@ def shell_home_path(path: Path) -> str:
     return "${HOME}/" + rel.as_posix()
 
 
+def shell_home_path_unbraced(path: Path) -> str:
+    try:
+        rel = path.resolve().relative_to(Path.home().resolve())
+    except ValueError:
+        return str(path)
+    return "$HOME/" + rel.as_posix()
+
+
+def copilot_workspace_repo_root(repo_root: Path) -> str:
+    fallback = shell_home_path_unbraced(repo_root)
+    return "${COPILOT_WORKSPACE_PATH:-" + fallback + "}"
+
+
 def shell_quote_command_part(part: str) -> str:
     if part.startswith("${HOME}/"):
         return '"' + part.replace('"', '\\"') + '"'
@@ -247,7 +260,7 @@ def shell_command(parts: list[str]) -> str:
 
 def expand_dev_server_runtime_value(value: str, github_root: Path, repo_root: Path) -> str:
     github_root_value = shell_home_path(github_root)
-    repo_root_value = shell_home_path(repo_root)
+    repo_root_value = copilot_workspace_repo_root(repo_root)
     return (
         value.replace("{github_root}", github_root_value)
         .replace("{repo_root}", repo_root_value)

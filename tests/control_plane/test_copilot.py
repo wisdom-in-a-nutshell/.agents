@@ -160,6 +160,72 @@ class CopilotSyncTests(TempDirTestCase):
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("GitHub Copilot app preview config is out of sync", result.stderr)
 
+    def test_github_app_preview_config_uses_workspace_path_for_repo_root(self) -> None:
+        home = self.temp_path / "home"
+        github_root = home / "GitHub"
+        repo_a = init_git_repo(github_root / "repo-a")
+        app_support = home / "Library/Application Support/com.github.githubapp"
+        real_cli = self.temp_path / "real-copilot"
+        preview_runner = home / "GitHub/agents/scripts/run-agent-preview-server.py"
+        dev_servers = write_json(
+            home / "GitHub/agents/dev-servers/registry.json",
+            {
+                "managed_dev_servers": [
+                    {
+                        "repo": "repo-a",
+                        "servers": [
+                            {
+                                "name": "Preview",
+                                "host": "127.0.0.1",
+                                "runtimeExecutable": "/bin/bash",
+                                "runtimeArgs": [
+                                    "-lc",
+                                    "cd {repo_root} && pnpm dev --host {host} --port {port}",
+                                ],
+                                "port": 3001,
+                                "autoPort": False,
+                            }
+                        ],
+                    }
+                ]
+            },
+        )
+        write_text(preview_runner, "#!/usr/bin/env python3\n")
+        write_text(real_cli, "#!/usr/bin/env bash\nprintf '{}\\n'\n")
+        real_cli.chmod(0o755)
+
+        run_command(
+            [
+                sys.executable,
+                str(REPO_ROOT / "scripts/sync-copilot.py"),
+                "--apply",
+                "--settings-file",
+                str(home / ".copilot/settings.json"),
+                "--user-config-file",
+                str(home / ".copilot/config.json"),
+                "--hooks-file",
+                str(home / ".copilot/hooks/agents-control-plane.json"),
+                "--launcher-target",
+                str(home / "bin/copilot"),
+                "--real-cli-path",
+                str(real_cli),
+                "--github-root",
+                str(github_root),
+                "--app-support-dir",
+                str(app_support),
+                "--dev-servers-registry",
+                str(dev_servers),
+                "--preview-runner",
+                str(preview_runner),
+                "--skip-global-instructions",
+            ],
+            env={"HOME": str(home)},
+        )
+
+        config = (repo_a / ".github/github-app.yml").read_text(encoding="utf-8")
+        self.assertIn("cd ${COPILOT_WORKSPACE_PATH:-$HOME/GitHub/repo-a}", config)
+        self.assertIn("pnpm dev --host 127.0.0.1 --port 3001", config)
+
     def test_check_rejects_direct_copilot_skill_copies(self) -> None:
         home = self.temp_path / "home"
         github_root = home / "GitHub"

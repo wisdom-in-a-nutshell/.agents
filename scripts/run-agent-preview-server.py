@@ -53,8 +53,21 @@ def expected_dir(command: list[str]) -> Path | None:
     for token in command:
         match = re.search(r"(?:^|&&|;)\s*cd\s+([^\s&;]+)", token)
         if match:
-            return Path(match.group(1)).expanduser()
+            return Path(expand_shell_path_token(match.group(1))).expanduser()
     return None
+
+
+def expand_shell_path_token(token: str) -> str:
+    token = token.strip("\"'")
+    home = os.environ.get("HOME", str(Path.home()))
+
+    match = re.match(r"^\$\{([A-Za-z_][A-Za-z0-9_]*):-([^}]*)\}(.*)$", token)
+    if match:
+        name, fallback, suffix = match.groups()
+        value = os.environ.get(name) or fallback
+        token = value + suffix
+
+    return token.replace("${HOME}", home).replace("$HOME", home)
 
 
 def terminate(pid: int, grace_seconds: float = 5.0) -> bool:
