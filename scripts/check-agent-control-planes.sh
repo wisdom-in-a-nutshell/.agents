@@ -14,7 +14,6 @@ CHECK_SKILLS_SCRIPT="${SCRIPT_DIR}/check-skills-registry.sh"
 CHECK_PLUGINS_SCRIPT="${SCRIPT_DIR}/check-plugins-registry.sh"
 CHECK_HYGIENE_SCRIPT="${SCRIPT_DIR}/check-repo-hygiene.sh"
 CHECK_COPILOT_SCRIPT="${SCRIPT_DIR}/sync-copilot.sh"
-CHECK_VSCODE_AGENT_DEFAULTS_SCRIPT="${SCRIPT_DIR}/sync-vscode-agent-defaults.sh"
 CHECK_GIT_HOOKS_SCRIPT="${SCRIPT_DIR}/sync-managed-git-hooks.sh"
 CHECK_CODEX_SCRIPT="${ROOT_DIR}/codex/scripts/check-codex-control-plane.sh"
 AUDIT_RUNTIME_DRIFT_SCRIPT="${SCRIPT_DIR}/audit-agent-runtime-drift.py"
@@ -66,7 +65,6 @@ done
 [[ -x "$CHECK_PLUGINS_SCRIPT" ]] || die "Missing executable: $CHECK_PLUGINS_SCRIPT"
 [[ -x "$CHECK_HYGIENE_SCRIPT" ]] || die "Missing executable: $CHECK_HYGIENE_SCRIPT"
 [[ -x "$CHECK_COPILOT_SCRIPT" ]] || die "Missing executable: $CHECK_COPILOT_SCRIPT"
-[[ -x "$CHECK_VSCODE_AGENT_DEFAULTS_SCRIPT" ]] || die "Missing executable: $CHECK_VSCODE_AGENT_DEFAULTS_SCRIPT"
 [[ -x "$CHECK_GIT_HOOKS_SCRIPT" ]] || die "Missing executable: $CHECK_GIT_HOOKS_SCRIPT"
 [[ -x "$CHECK_CODEX_SCRIPT" ]] || die "Missing executable: $CHECK_CODEX_SCRIPT"
 [[ -x "$AUDIT_RUNTIME_DRIFT_SCRIPT" ]] || die "Missing executable: $AUDIT_RUNTIME_DRIFT_SCRIPT"
@@ -100,13 +98,6 @@ if (( ${#REPO_ARGS[@]} > 0 )); then
 fi
 log "+ ${copilot_cmd[*]}"
 "${copilot_cmd[@]}"
-
-vscode_agent_defaults_cmd=(
-  "$CHECK_VSCODE_AGENT_DEFAULTS_SCRIPT"
-  --check
-)
-log "+ ${vscode_agent_defaults_cmd[*]}"
-"${vscode_agent_defaults_cmd[@]}"
 
 git_hooks_cmd=(
   "$CHECK_GIT_HOOKS_SCRIPT"

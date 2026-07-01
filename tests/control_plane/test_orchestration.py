@@ -35,6 +35,7 @@ class SharedBootstrapWrapperTests(TempDirTestCase):
         write_executable(root / "scripts/sync-codex-plugin-installs.py", STUB_SCRIPT)
         write_executable(root / "scripts/sync-claude.sh", STUB_SCRIPT)
         write_executable(root / "scripts/sync-copilot.sh", STUB_SCRIPT)
+        write_executable(root / "scripts/sync-vscode-agent-defaults.sh", STUB_SCRIPT)
         write_executable(root / "scripts/sync-managed-git-hooks.sh", STUB_SCRIPT)
         write_executable(root / "codex/scripts/bootstrap-machine-codex.sh", STUB_SCRIPT)
         return root, log_path
@@ -67,6 +68,7 @@ class SharedBootstrapWrapperTests(TempDirTestCase):
                 "sync-codex-plugin-installs.py|--apply --no-input",
                 f"sync-claude.sh|--apply --github-root {github_root} --repo {repo_a} --repo {repo_b}",
                 f"sync-copilot.sh|--apply --github-root {github_root} --repo {repo_a} --repo {repo_b}",
+                "sync-vscode-agent-defaults.sh|--apply",
                 f"sync-managed-git-hooks.sh|--apply --repo {repo_a} --repo {repo_b}",
                 f"bootstrap-machine-codex.sh|--apply --github-root {github_root} --repo {repo_a} --repo {repo_b}",
             ],

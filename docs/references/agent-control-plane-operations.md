@@ -17,6 +17,7 @@ For repo authors adding `scripts/hooks/*.py`, start with [`repo-lifecycle-hook-a
   - skips the temporary Antigravity spike surface by default
   - applies the Claude Code control-plane surface
   - applies the GitHub Copilot CLI control-plane surface
+  - applies the VS Code Chat/Agent extension defaults surface
   - applies the Codex runtime via `codex/scripts/bootstrap-machine-codex.sh`
 - `scripts/auto-apply-agent-control-planes.sh`
   - machine-facing post-sync reconcile entrypoint
@@ -58,6 +59,12 @@ For repo authors adding `scripts/hooks/*.py`, start with [`repo-lifecycle-hook-a
   - leaves `.github/skills` and `~/.copilot/skills` empty by design; Copilot reuses `.agents/skills` and `~/.agents/skills`
   - allowlists the macOS app-bundled skill names observed under `~/Library/Application Support/com.github.githubapp/app-skills`
   - tool surface scope: `--available-tools` (allowlist) / `--excluded-tools` (denylist) / `--disable-mcp-server` / `--disable-builtin-mcps` are real, tested CLI flags (not persisted `settings.json` keys or env vars) — add them to `launcher.defaultArgs` to trim the **terminal** `copilot` CLI's tool surface. They only affect processes launched through the managed `~/bin/copilot` wrapper. The **GitHub Copilot desktop app** spawns its own session process and injects an additional, larger tool set (canvas/widgets, session/project management, PR review helpers, workflows, cross-session messaging) that is not routed through `~/bin/copilot` and has no known file-based or env-var config surface today — there is currently no way to trim the desktop app's tool set from this control plane.
+- `scripts/sync-vscode-agent-defaults.sh`
+  - a distinct surface from `sync-copilot.sh`: that script manages the standalone terminal `copilot` CLI (`~/.copilot/*`); this one manages **VS Code's own Chat/Agent extension** defaults, from `config/vscode-agent-defaults.json`
+  - renders managed keys into `~/.vscode-server/data/User/globalStorage/agent-host-config.json` (the Copilot-CLI-in-VS-Code "agent host" runtime config), best-effort skipped when `~/.vscode-server` doesn't exist on the machine
+  - renders `chat.permissions.default` and `chat.defaultConfiguration` into the real, machine-local VS Code user `settings.json` (`~/Library/Application Support/Code/User/settings.json`), best-effort skipped when VS Code has never run locally on the machine; this is what makes a brand-new session in the VS Code Agents window / Chat view start on **Bypass Approvals + Autopilot** instead of silently falling back to VS Code's built-in "Default Approvals" + interactive mode
+  - `agent-host-config.json` is app-owned: the running VS Code extension host rewrites it during normal operation and can silently reset `globalAutoApproveEnabled` back to `false`. This is why the reconcile also runs unconditionally every 15 minutes from `~/GitHub/scripts/sync/git-auto-sync.sh` (`apply_vscode_agent_defaults_reconcile`, alongside the Codex/Copilot trust reconciles) rather than relying on a one-time apply — treat drift here as expected app behavior that self-heals, not a bug
+  - deliberately not part of `scripts/check-agent-control-planes.sh`'s strict validation gate, matching the existing precedent for the Codex/Copilot trust reconciles (which are also periodic-apply-only, not check-gated), since this file's drift is driven by the app itself rather than by a bug in this repo
 - `scripts/sync-antigravity-spike.sh`
   - temporary manual-only Antigravity experiment
   - not called by `scripts/bootstrap-machine-agent-control-planes.sh`
