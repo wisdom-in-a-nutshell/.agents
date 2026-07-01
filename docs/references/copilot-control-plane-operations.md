@@ -23,6 +23,9 @@ The current Copilot control plane is client-first:
 - `dev-servers/registry.json`
   - GitHub Copilot app Run/browser-preview config renders into repo `.github/github-app.yml`
   - Claude Code and Codex preview config render from the same registry through `scripts/sync-claude.sh`
+- `config/global.agents.md`
+  - the same canonical machine-wide guidance rendered into `~/.claude/CLAUDE.md` and `~/.codex/AGENTS.md`
+  - now also symlinked into `~/.copilot/copilot-instructions.md` by `scripts/sync-copilot.py`
 
 ## Runtime Outputs
 
@@ -49,6 +52,9 @@ The current Copilot control plane is client-first:
   - contains only `scripts.run`, `server_ready_pattern`, and `auto_open_in_browser`
   - intentionally does not contain `instructions`, `.github/skills`, app hooks, or `auto_approve`; current app evidence shows `auto_approve` is app/session state, not a repo-config key
   - uses the shared `scripts/run-agent-preview-server.py` wrapper so a busy fixed port is reused or rejected consistently
+- `~/.copilot/copilot-instructions.md`
+  - relative symlink to `config/global.agents.md`, the same canonical file rendered into `~/.claude/CLAUDE.md` and `~/.codex/AGENTS.md`
+  - gives Copilot CLI and the Copilot app the same machine-wide baseline guidance the other two clients already had; previously this path was empty and Copilot got none of it
 
 ## Skill Policy
 
@@ -67,6 +73,8 @@ The managed check fails if direct skill copies appear under:
 - any managed workspace repo `.github/skills/*/SKILL.md`
 
 This keeps Copilot from loading extra duplicate skill layers. The macOS app's bundled skill directory is observed and allowlisted by name; new app-bundled skills fail the check until reviewed and added to `config/copilot-settings.json` or disabled in app settings.
+
+**Known blind spot (2026-07-01):** the app's own Settings → Skills → "Built-in" list does not map 1:1 to `app-skills/` on disk. `customize-cloud-agent` appears in the in-app "Built-in" list but has no folder under `app-skills/` — it is compiled into the app binary. Conversely `impeccable` exists as a loose folder under `app-skills/` (and is what this check observes) but is not shown in the app's "Built-in" tab, likely deduped against a same-named personal skill surfaced under "On this device" instead. `expectedAppBundledSkills` now includes `customize-cloud-agent` for documentation, but the check can only ever see loose `app-skills/*/SKILL.md` folders — it has no visibility into skills the app bundles internally, and cannot detect new ones added that way. Toggling a "Built-in" skill on/off in the app's Settings UI is the only control for it; no file or setting was found that persists that toggle.
 
 ## Hooks
 

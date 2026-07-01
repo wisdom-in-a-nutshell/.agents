@@ -51,6 +51,7 @@ class CopilotSyncTests(TempDirTestCase):
                 str(github_root),
                 "--app-support-dir",
                 str(app_support),
+                "--skip-global-instructions",
             ],
             env={"HOME": str(home)},
         )
@@ -135,6 +136,7 @@ class CopilotSyncTests(TempDirTestCase):
             str(dev_servers),
             "--preview-runner",
             str(preview_runner),
+            "--skip-global-instructions",
         ]
 
         run_command([*base_args, "--apply"], env={"HOME": str(home)})
@@ -186,6 +188,7 @@ class CopilotSyncTests(TempDirTestCase):
             str(github_root),
             "--app-support-dir",
             str(app_support),
+            "--skip-global-instructions",
         ]
         run_command(apply_args, env={"HOME": str(home)})
         write_text(home / ".copilot/skills/noise/SKILL.md", "---\nname: noise\ndescription: no\n---\n")
@@ -210,6 +213,7 @@ class CopilotSyncTests(TempDirTestCase):
                 "--app-support-dir",
                 str(app_support),
                 "--skip-cli-probe",
+                "--skip-global-instructions",
             ],
             env={"HOME": str(home)},
             check=False,
@@ -246,6 +250,7 @@ class CopilotSyncTests(TempDirTestCase):
             str(github_root),
             "--app-support-dir",
             str(app_support),
+            "--skip-global-instructions",
         ]
         run_command(apply_args, env={"HOME": str(home)})
         write_text(app_support / "app-skills/noise/SKILL.md", "---\nname: noise\ndescription: no\n---\n")
@@ -270,6 +275,7 @@ class CopilotSyncTests(TempDirTestCase):
                 "--app-support-dir",
                 str(app_support),
                 "--skip-cli-probe",
+                "--skip-global-instructions",
             ],
             env={"HOME": str(home)},
             check=False,
@@ -277,3 +283,58 @@ class CopilotSyncTests(TempDirTestCase):
 
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("unexpected Copilot app bundled skills: noise", result.stderr)
+
+    def test_apply_renders_global_instructions_symlink(self) -> None:
+        home = self.temp_path / "home"
+        github_root = home / "GitHub"
+        app_support = home / "Library/Application Support/com.github.githubapp"
+        real_cli = self.temp_path / "real-copilot"
+        (github_root / "agents").mkdir(parents=True)
+        (home / ".agents").mkdir(parents=True)
+        write_text(real_cli, "#!/usr/bin/env bash\nprintf '{}\\n'\n")
+        real_cli.chmod(0o755)
+
+        canonical_source = self.temp_path / "canonical/global.agents.md"
+        write_text(canonical_source, "# Global Agent Guidance\n\nBe helpful.\n")
+        instructions_target = home / ".copilot/copilot-instructions.md"
+
+        base_args = [
+            sys.executable,
+            str(REPO_ROOT / "scripts/sync-copilot.py"),
+            "--settings-file",
+            str(home / ".copilot/settings.json"),
+            "--user-config-file",
+            str(home / ".copilot/config.json"),
+            "--hooks-file",
+            str(home / ".copilot/hooks/agents-control-plane.json"),
+            "--launcher-target",
+            str(home / "bin/copilot"),
+            "--real-cli-path",
+            str(real_cli),
+            "--github-root",
+            str(github_root),
+            "--app-support-dir",
+            str(app_support),
+            "--global-instructions-source",
+            str(canonical_source),
+            "--global-instructions-target",
+            str(instructions_target),
+        ]
+
+        run_command([*base_args, "--apply"], env={"HOME": str(home)})
+
+        self.assertTrue(instructions_target.is_symlink())
+        self.assertEqual(instructions_target.resolve(), canonical_source.resolve())
+        self.assertEqual(instructions_target.read_text(encoding="utf-8"), "# Global Agent Guidance\n\nBe helpful.\n")
+
+        run_command([*base_args, "--check", "--skip-cli-probe"], env={"HOME": str(home)})
+
+        instructions_target.unlink()
+        write_text(instructions_target, "not a symlink\n")
+        result = run_command(
+            [*base_args, "--check", "--skip-cli-probe"],
+            env={"HOME": str(home)},
+            check=False,
+        )
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("missing managed Copilot global instructions symlink", result.stderr)
