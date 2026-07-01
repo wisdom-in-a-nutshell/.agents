@@ -11,6 +11,7 @@ SYNC_SKILLS_SCRIPT="${SCRIPT_DIR}/sync-skills-registry.sh"
 SYNC_PLUGINS_SCRIPT="${SCRIPT_DIR}/sync-plugins-registry.sh"
 SYNC_CODEX_PLUGIN_INSTALLS_SCRIPT="${SCRIPT_DIR}/sync-codex-plugin-installs.py"
 SYNC_CLAUDE_SCRIPT="${SCRIPT_DIR}/sync-claude.sh"
+SYNC_COPILOT_SCRIPT="${SCRIPT_DIR}/sync-copilot.sh"
 SYNC_GIT_HOOKS_SCRIPT="${SCRIPT_DIR}/sync-managed-git-hooks.sh"
 CODEX_BOOTSTRAP_SCRIPT="${ROOT_DIR}/codex/scripts/bootstrap-machine-codex.sh"
 
@@ -89,6 +90,7 @@ fi
 [[ -x "$SYNC_PLUGINS_SCRIPT" ]] || die "Missing executable: $SYNC_PLUGINS_SCRIPT"
 [[ -x "$SYNC_CODEX_PLUGIN_INSTALLS_SCRIPT" ]] || die "Missing executable: $SYNC_CODEX_PLUGIN_INSTALLS_SCRIPT"
 [[ -x "$SYNC_CLAUDE_SCRIPT" ]] || die "Missing executable: $SYNC_CLAUDE_SCRIPT"
+[[ -x "$SYNC_COPILOT_SCRIPT" ]] || die "Missing executable: $SYNC_COPILOT_SCRIPT"
 [[ -x "$SYNC_GIT_HOOKS_SCRIPT" ]] || die "Missing executable: $SYNC_GIT_HOOKS_SCRIPT"
 [[ -x "$CODEX_BOOTSTRAP_SCRIPT" ]] || die "Missing executable: $CODEX_BOOTSTRAP_SCRIPT"
 REPO_ARGS=()
@@ -134,6 +136,14 @@ sync_claude_cmd=(
 )
 log "+ ${sync_claude_cmd[*]}"
 "${sync_claude_cmd[@]}"
+
+sync_copilot_cmd=(
+  "$SYNC_COPILOT_SCRIPT"
+  "$MODE_FLAG"
+  --github-root "$GITHUB_ROOT"
+)
+log "+ ${sync_copilot_cmd[*]}"
+"${sync_copilot_cmd[@]}"
 
 sync_git_hooks_cmd=(
   "$SYNC_GIT_HOOKS_SCRIPT"

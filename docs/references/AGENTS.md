@@ -11,6 +11,7 @@ Keep a reference doc only when it gives exact facts an agent needs to change or 
 ## Key References
 
 - [Agent Control-Plane Operations](/Users/dobby/GitHub/agents/docs/references/agent-control-plane-operations.md)
+- [Copilot Control Plane Operations](/Users/dobby/GitHub/agents/docs/references/copilot-control-plane-operations.md)
 - [Codex Control Plane Ownership](/Users/dobby/GitHub/agents/docs/references/codex-control-plane-ownership.md)
 - [Codex Control Plane Operations](/Users/dobby/GitHub/agents/docs/references/codex-control-plane-operations.md)
 - [Repo Lifecycle Hook Adapter](/Users/dobby/GitHub/agents/docs/references/repo-lifecycle-hook-adapter.md)

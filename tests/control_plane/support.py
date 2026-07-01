@@ -79,7 +79,10 @@ def copy_repo_files(relative_paths: list[str], destination_root: Path) -> list[P
 
 def init_git_repo(path: Path, *, with_initial_commit: bool = False) -> Path:
     path.mkdir(parents=True, exist_ok=True)
-    run_command(["git", "init", "-q", str(path)])
+    result = run_command(["git", "init", "-q", "--initial-branch=main", str(path)], check=False)
+    if result.returncode != 0:
+        run_command(["git", "init", "-q", str(path)])
+        run_command(["git", "-C", str(path), "symbolic-ref", "HEAD", "refs/heads/main"])
     run_command(["git", "-C", str(path), "config", "user.email", "tests@example.com"])
     run_command(["git", "-C", str(path), "config", "user.name", "Control Plane Tests"])
     if with_initial_commit:

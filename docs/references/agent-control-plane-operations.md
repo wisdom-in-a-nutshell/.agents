@@ -2,7 +2,7 @@
 
 Use this page for the machine-facing apply and validation entrypoints that live at the root of `~/GitHub/agents`.
 
-This repo manages shared agent surfaces for Codex, Claude Code, skills, plugins, MCP presets, lifecycle hooks, and the local dashboard. The temporary Antigravity spike script is tracked for manual experiments but is disabled in the shared machine bootstrap. `~/.agents` is no longer the source checkout; it is reserved for runtime surfaces such as Codex user-scope skills at `~/.agents/skills`.
+This repo manages shared agent surfaces for Codex, Claude Code, GitHub Copilot, skills, plugins, MCP presets, lifecycle hooks, and the local dashboard. The temporary Antigravity spike script is tracked for manual experiments but is disabled in the shared machine bootstrap. `~/.agents` is no longer the source checkout; it is reserved for runtime surfaces such as Codex and Copilot user-scope skills at `~/.agents/skills`.
 
 Sparse machines are normal. A repo listed in the shared registries but not cloned on the current machine is skipped silently by sync/check commands. Existing non-git folders at managed repo paths still warn because they may be broken placeholders that should be deleted or replaced with a real checkout.
 
@@ -16,6 +16,7 @@ For repo authors adding `scripts/hooks/*.py`, start with [`repo-lifecycle-hook-a
   - syncs managed repo local Git `core.hooksPath` to `~/GitHub/agents/hooks/git`
   - skips the temporary Antigravity spike surface by default
   - applies the Claude Code control-plane surface
+  - applies the GitHub Copilot CLI control-plane surface
   - applies the Codex runtime via `codex/scripts/bootstrap-machine-codex.sh`
 - `scripts/auto-apply-agent-control-planes.sh`
   - machine-facing post-sync reconcile entrypoint
@@ -26,7 +27,7 @@ For repo authors adding `scripts/hooks/*.py`, start with [`repo-lifecycle-hook-a
   - appends missing repos to `codex/config/repo-bootstrap.json` as minimal entries
   - leaves visualization to the local control-plane dashboard
 - `scripts/check-agent-control-planes.sh`
-  - validates hygiene, skills, plugins, managed Git hooks, Codex rendered state, and tests
+  - validates hygiene, skills, plugins, Copilot CLI state, managed Git hooks, Codex rendered state, and tests
 - `scripts/audit-agent-runtime-drift.py`
   - read-only machine-health audit entrypoint
   - checks local Codex runtime drift such as unclassified OpenAI plugins and required plugin availability
@@ -48,6 +49,12 @@ For repo authors adding `scripts/hooks/*.py`, start with [`repo-lifecycle-hook-a
     - Claude Code: `.claude/launch.json`
     - Codex: `.codex/environments/environment.toml`
   - wraps preview commands with `scripts/run-agent-preview-server.py`, which reuses an existing listener on the fixed preview port instead of starting a second server
+- `scripts/sync-copilot.sh`
+  - renders managed GitHub Copilot CLI settings from `config/copilot-settings.json` into `~/.copilot/settings.json`
+  - merges trusted folders into `~/.copilot/config.json` while preserving Copilot-managed login/session keys
+  - renders `~/bin/copilot`, a terminal wrapper that defaults sessions to `--yolo --no-ask-user --effort high`
+  - leaves `.github/skills` and `~/.copilot/skills` empty by design; Copilot reuses `.agents/skills` and `~/.agents/skills`
+  - observes the macOS app-bundled skill directory at `~/Library/Application Support/com.github.githubapp/app-skills` but does not quarantine it
 - `scripts/sync-antigravity-spike.sh`
   - temporary manual-only Antigravity experiment
   - not called by `scripts/bootstrap-machine-agent-control-planes.sh`
@@ -148,6 +155,8 @@ cd ~/GitHub/agents
 ./scripts/sync-managed-git-hooks.sh --apply
 ./scripts/sync-managed-git-hooks.sh --check
 ./scripts/sync-claude.sh --apply
+./scripts/sync-copilot.sh --apply
+./scripts/sync-copilot.sh --check
 ./scripts/switch-claude-provider.sh status
 ./scripts/switch-claude-provider.sh subscription --apply
 ./scripts/switch-claude-provider.sh aws --apply

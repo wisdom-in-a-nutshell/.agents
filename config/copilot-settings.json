@@ -1,0 +1,58 @@
+{
+  "description": "Managed GitHub Copilot CLI/app-adjacent settings. sync-copilot.py merges the settings block into ~/.copilot/settings.json, merges trusted folders into ~/.copilot/config.json, and renders a ~/bin/copilot wrapper for terminal sessions. It intentionally does not copy managed skills into ~/.copilot/skills or .github/skills; Copilot reuses existing .agents/skills and ~/.agents/skills surfaces.",
+  "settings": {
+    "askUser": false,
+    "banner": "never",
+    "beep": false,
+    "effortLevel": "high",
+    "notifications": false,
+    "showTipsOnStartup": false
+  },
+  "trust": {
+    "githubRoot": true,
+    "directChildren": true,
+    "extraFolders": [
+      "~/.agents",
+      "~/GitHub/agents"
+    ]
+  },
+  "launcher": {
+    "enabled": true,
+    "defaultArgs": [
+      "--yolo",
+      "--no-ask-user",
+      "--effort",
+      "high"
+    ],
+    "managementCommands": [
+      "completion",
+      "help",
+      "init",
+      "login",
+      "mcp",
+      "plugin",
+      "skill",
+      "update",
+      "version"
+    ]
+  },
+  "skills": {
+    "copilotSkillDirectoryPolicy": "empty",
+    "appSkillsPolicy": "observe",
+    "expectedAppBundledSkills": [
+      "af",
+      "agent-merge",
+      "agentfinder",
+      "create-canvas",
+      "impeccable",
+      "orchestrate"
+    ]
+  },
+  "hooks": {
+    "managedCopilotHooks": false,
+    "forbiddenCommandSubstrings": [
+      "herdr",
+      "herdr-agent-state.sh"
+    ]
+  }
+}
