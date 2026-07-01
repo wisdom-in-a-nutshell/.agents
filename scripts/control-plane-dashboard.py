@@ -33,11 +33,12 @@ REGISTRY_SOURCES = {
     "repos": "codex/config/repo-bootstrap.json",
     "dev_servers": "dev-servers/registry.json",
     "claude_settings": "config/claude-settings.json",
+    "copilot_settings": "config/copilot-settings.json",
     "codex_global": "codex/config/global.config.toml",
     "global_guidance": "config/global.agents.md",
 }
 
-RUNTIMES = ["codex", "claude"]
+RUNTIMES = ["codex", "claude", "copilot"]
 
 
 def build_capability_board(counts: dict[str, Any]) -> list[dict[str, Any]]:
@@ -54,6 +55,7 @@ def build_capability_board(counts: dict[str, Any]) -> list[dict[str, Any]]:
             "source": "config/global.agents.md", "count": None,
             "codex": {"status": "stable", "note": "~/.codex/AGENTS.md"},
             "claude": {"status": "stable", "note": "~/.claude/CLAUDE.md"},
+            "copilot": {"status": "stable", "note": "repo AGENTS.md"},
         },
         {
             "key": "skills", "name": "Skills",
@@ -61,13 +63,15 @@ def build_capability_board(counts: dict[str, Any]) -> list[dict[str, Any]]:
             "source": "skills/registry.json", "count": counts.get("skills"),
             "codex": {"status": "stable", "note": "~/.agents/skills + repo"},
             "claude": {"status": "stable", "note": "~/.claude/skills + repo"},
+            "copilot": {"status": "stable", "note": ".agents + ~/.agents"},
         },
         {
             "key": "mcp", "name": "Tools · MCP",
             "desc": "External endpoints the agent can call",
             "source": "mcp/config/presets.json", "count": counts.get("mcp"),
             "codex": {"status": "stable", "note": "rendered to config.toml"},
-            "claude": {"status": "planned", "note": "not yet control-plane wired"},
+            "claude": {"status": "stable", "note": "rendered to .mcp.json"},
+            "copilot": {"status": "stable", "note": "reads .mcp.json"},
         },
         {
             "key": "plugins", "name": "Plugins",
@@ -75,6 +79,7 @@ def build_capability_board(counts: dict[str, Any]) -> list[dict[str, Any]]:
             "source": "plugins/registry.json", "count": counts.get("plugins"),
             "codex": {"status": "stable", "note": "global · repo · dormant"},
             "claude": {"status": "na", "note": ""},
+            "copilot": {"status": "na", "note": ""},
         },
         {
             "key": "lifecycle", "name": "Lifecycle",
@@ -82,6 +87,7 @@ def build_capability_board(counts: dict[str, Any]) -> list[dict[str, Any]]:
             "source": "hooks/registry.json", "count": counts.get("hooks"),
             "codex": {"status": "stable", "note": "SessionStart · Prompt · Stop"},
             "claude": {"status": "stable", "note": "Stop (via settings.json)"},
+            "copilot": {"status": "planned", "note": "hooks supported; adapter next"},
         },
         {
             "key": "runtime", "name": "Runtime config",
@@ -89,6 +95,7 @@ def build_capability_board(counts: dict[str, Any]) -> list[dict[str, Any]]:
             "source": "codex/config/repo-bootstrap.json", "count": counts.get("repos"),
             "codex": {"status": "stable", "note": ".codex/config.toml"},
             "claude": {"status": "stable", "note": "~/.claude/settings.json"},
+            "copilot": {"status": "new", "note": "~/.copilot + launcher"},
         },
         {
             "key": "dev", "name": "Agent Preview",
@@ -96,6 +103,7 @@ def build_capability_board(counts: dict[str, Any]) -> list[dict[str, Any]]:
             "source": "dev-servers/registry.json", "count": counts.get("dev_servers"),
             "codex": {"status": "stable", "note": ".codex/environments"},
             "claude": {"status": "stable", "note": ".claude/launch.json"},
+            "copilot": {"status": "na", "note": ""},
         },
     ]
 
@@ -384,6 +392,7 @@ def build_global_config(
     Claude global state side by side.
     """
     claude_src = REGISTRY_SOURCES["claude_settings"]
+    copilot_src = REGISTRY_SOURCES["copilot_settings"]
     codex_src = REGISTRY_SOURCES["codex_global"]
     guidance_src = REGISTRY_SOURCES["global_guidance"]
     none_row = [{"label": "(none)", "value": "—", "tone": "muted"}]
@@ -506,7 +515,64 @@ def build_global_config(
         ),
     ]
 
-    return {"codex": codex_groups, "claude": claude_groups}
+    # ---------------- Copilot ----------------
+    copilot_settings = load_json(root / copilot_src, warnings)
+    copilot_scalar_settings = copilot_settings.get("settings")
+    copilot_scalar_settings = copilot_scalar_settings if isinstance(copilot_scalar_settings, dict) else {}
+    copilot_trust = copilot_settings.get("trust")
+    copilot_trust = copilot_trust if isinstance(copilot_trust, dict) else {}
+    copilot_launcher = copilot_settings.get("launcher")
+    copilot_launcher = copilot_launcher if isinstance(copilot_launcher, dict) else {}
+    copilot_skills = copilot_settings.get("skills")
+    copilot_skills = copilot_skills if isinstance(copilot_skills, dict) else {}
+    copilot_hooks = copilot_settings.get("hooks")
+    copilot_hooks = copilot_hooks if isinstance(copilot_hooks, dict) else {}
+
+    copilot_groups = [
+        _config_group(
+            "CLI settings",
+            copilot_src,
+            [{"label": k, "value": _scalar_value(v), "tone": "on" if v is True else "off" if v is False else ""} for k, v in copilot_scalar_settings.items()]
+            or none_row,
+        ),
+        _config_group(
+            "Trusted folders",
+            copilot_src,
+            [
+                {"label": "githubRoot", "value": _scalar_value(copilot_trust.get("githubRoot")), "tone": "on" if copilot_trust.get("githubRoot") else "off"},
+                {"label": "directChildren", "value": _scalar_value(copilot_trust.get("directChildren")), "tone": "on" if copilot_trust.get("directChildren") else "off"},
+                {"label": "extraFolders", "value": _scalar_value(copilot_trust.get("extraFolders"))},
+            ],
+        ),
+        _config_group(
+            "Terminal launcher",
+            copilot_src,
+            [
+                {"label": "enabled", "value": _scalar_value(copilot_launcher.get("enabled")), "tone": "on" if copilot_launcher.get("enabled") else "off"},
+                {"label": "defaultArgs", "value": _scalar_value(copilot_launcher.get("defaultArgs"))},
+                {"label": "managementCommands", "value": f"{len(clean_list(copilot_launcher.get('managementCommands')))} commands"},
+            ],
+        ),
+        _config_group(
+            "Skill policy",
+            copilot_src,
+            [
+                {"label": "copilotSkillDirectoryPolicy", "value": _scalar_value(copilot_skills.get("copilotSkillDirectoryPolicy"))},
+                {"label": "appSkillsPolicy", "value": _scalar_value(copilot_skills.get("appSkillsPolicy"))},
+                {"label": "expectedAppBundledSkills", "value": f"{len(clean_list(copilot_skills.get('expectedAppBundledSkills')))} observed"},
+            ],
+        ),
+        _config_group(
+            "Hooks",
+            copilot_src,
+            [
+                {"label": "managedCopilotHooks", "value": _scalar_value(copilot_hooks.get("managedCopilotHooks")), "tone": "on" if copilot_hooks.get("managedCopilotHooks") else "off"},
+                {"label": "forbiddenCommandSubstrings", "value": _scalar_value(copilot_hooks.get("forbiddenCommandSubstrings"))},
+            ],
+        ),
+    ]
+
+    return {"codex": codex_groups, "claude": claude_groups, "copilot": copilot_groups}
 
 
 def build_control_plane_data(root: Path) -> dict[str, Any]:

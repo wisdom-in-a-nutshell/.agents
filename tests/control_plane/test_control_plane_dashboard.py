@@ -142,6 +142,35 @@ class ControlPlaneDashboardDataTests(TempDirTestCase):
             },
         )
         write_json(root / "dev-servers/registry.json", {"repos": []})
+        write_json(
+            root / "config/copilot-settings.json",
+            {
+                "settings": {
+                    "askUser": False,
+                    "banner": "never",
+                    "effortLevel": "high",
+                },
+                "trust": {
+                    "githubRoot": True,
+                    "directChildren": True,
+                    "extraFolders": ["~/.agents", "~/GitHub/agents"],
+                },
+                "launcher": {
+                    "enabled": True,
+                    "defaultArgs": ["--yolo", "--no-ask-user", "--effort", "high"],
+                    "managementCommands": ["help", "skill", "mcp"],
+                },
+                "skills": {
+                    "copilotSkillDirectoryPolicy": "empty",
+                    "appSkillsPolicy": "observe",
+                    "expectedAppBundledSkills": ["impeccable"],
+                },
+                "hooks": {
+                    "managedCopilotHooks": False,
+                    "forbiddenCommandSubstrings": ["herdr"],
+                },
+            },
+        )
 
     def test_data_command_emits_agent_contract_and_normalized_groups(self) -> None:
         self.write_minimal_control_plane()
@@ -172,6 +201,7 @@ class ControlPlaneDashboardDataTests(TempDirTestCase):
         self.assertEqual(data["counts"]["repos"], 2)
         self.assertEqual(data["counts"]["hooks"], 1)
         self.assertEqual(data["counts"]["warnings"], 0)
+        self.assertEqual(data["runtimes"], ["codex", "claude", "copilot"])
         self.assertEqual(data["groups"]["repos"][0]["details"]["skill_count"], 3)
         self.assertEqual(data["groups"]["repos"][1]["details"]["skill_count"], 2)
         self.assertEqual(data["groups"]["repos"][0]["details"]["mcp_count"], 2)
@@ -184,6 +214,10 @@ class ControlPlaneDashboardDataTests(TempDirTestCase):
         self.assertEqual(plugin_skill["repos"], ["codexclaw"])
         self.assertEqual(plugin_skill["title"], "build-ios-apps:ios-debugger-agent")
         self.assertEqual(plugin_skill["details"]["source_plugin"], "build-ios-apps")
+        runtime_capability = [cap for cap in data["capabilities"] if cap["key"] == "runtime"][0]
+        self.assertEqual(runtime_capability["copilot"]["status"], "new")
+        self.assertIn("copilot", data["global_config"])
+        self.assertEqual(data["global_config"]["copilot"][0]["title"], "CLI settings")
 
     def test_data_warns_for_missing_managed_repo_path(self) -> None:
         self.write_minimal_control_plane()
