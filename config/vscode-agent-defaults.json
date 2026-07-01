@@ -21,7 +21,8 @@
       "chat.defaultConfiguration": {
         "approvals": "autoApprove",
         "mode": "autopilot"
-      }
+      },
+      "chat.tools.global.autoApprove": true
     }
   }
 }
