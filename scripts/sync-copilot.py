@@ -848,7 +848,8 @@ def main() -> int:
     }
     app_support_dir = output_path(Path(args.app_support_dir)).resolve()
     global_instructions_source = output_path(Path(args.global_instructions_source)).resolve()
-    global_instructions_target = output_path(Path(args.global_instructions_target)).resolve()
+    raw_global_instructions_target = output_path(Path(args.global_instructions_target))
+    global_instructions_target = raw_global_instructions_target.parent.resolve() / raw_global_instructions_target.name
 
     try:
         if args.check:
