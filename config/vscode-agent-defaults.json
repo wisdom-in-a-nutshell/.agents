@@ -1,0 +1,27 @@
+{
+  "description": "Managed VS Code Chat/Agent permission defaults. sync-vscode-agent-defaults.py merges these keys into the machine-local VS Code Copilot CLI agent-host config and the local VS Code user settings.json, so a fresh VS Code Chat/Agents-window session always starts fully autonomous (Bypass Approvals + Autopilot) instead of silently falling back to VS Code's built-in 'Default Approvals' + interactive mode. This is a distinct surface from config/copilot-settings.json, which manages the standalone terminal `copilot` CLI (~/.copilot/*) rather than VS Code's own Chat/Agent extension.",
+  "agentHostConfig": {
+    "path": "~/.vscode-server/data/User/globalStorage/agent-host-config.json",
+    "onlyIfParentExists": "~/.vscode-server",
+    "keys": {
+      "globalAutoApproveEnabled": true,
+      "autoReplyEnabled": false,
+      "terminalAutoApproveEnabled": true,
+      "terminalAutoApproveRules": {
+        "curl": true,
+        "/.*/": true
+      }
+    }
+  },
+  "vscodeUserSettings": {
+    "path": "~/Library/Application Support/Code/User/settings.json",
+    "onlyIfParentExists": "~/Library/Application Support/Code/User",
+    "keys": {
+      "chat.permissions.default": "autoApprove",
+      "chat.defaultConfiguration": {
+        "approvals": "autoApprove",
+        "mode": "autopilot"
+      }
+    }
+  }
+}

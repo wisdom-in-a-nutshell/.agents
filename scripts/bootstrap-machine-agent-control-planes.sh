@@ -12,6 +12,7 @@ SYNC_PLUGINS_SCRIPT="${SCRIPT_DIR}/sync-plugins-registry.sh"
 SYNC_CODEX_PLUGIN_INSTALLS_SCRIPT="${SCRIPT_DIR}/sync-codex-plugin-installs.py"
 SYNC_CLAUDE_SCRIPT="${SCRIPT_DIR}/sync-claude.sh"
 SYNC_COPILOT_SCRIPT="${SCRIPT_DIR}/sync-copilot.sh"
+SYNC_VSCODE_AGENT_DEFAULTS_SCRIPT="${SCRIPT_DIR}/sync-vscode-agent-defaults.sh"
 SYNC_GIT_HOOKS_SCRIPT="${SCRIPT_DIR}/sync-managed-git-hooks.sh"
 CODEX_BOOTSTRAP_SCRIPT="${ROOT_DIR}/codex/scripts/bootstrap-machine-codex.sh"
 
@@ -91,6 +92,7 @@ fi
 [[ -x "$SYNC_CODEX_PLUGIN_INSTALLS_SCRIPT" ]] || die "Missing executable: $SYNC_CODEX_PLUGIN_INSTALLS_SCRIPT"
 [[ -x "$SYNC_CLAUDE_SCRIPT" ]] || die "Missing executable: $SYNC_CLAUDE_SCRIPT"
 [[ -x "$SYNC_COPILOT_SCRIPT" ]] || die "Missing executable: $SYNC_COPILOT_SCRIPT"
+[[ -x "$SYNC_VSCODE_AGENT_DEFAULTS_SCRIPT" ]] || die "Missing executable: $SYNC_VSCODE_AGENT_DEFAULTS_SCRIPT"
 [[ -x "$SYNC_GIT_HOOKS_SCRIPT" ]] || die "Missing executable: $SYNC_GIT_HOOKS_SCRIPT"
 [[ -x "$CODEX_BOOTSTRAP_SCRIPT" ]] || die "Missing executable: $CODEX_BOOTSTRAP_SCRIPT"
 REPO_ARGS=()
@@ -145,6 +147,13 @@ sync_copilot_cmd=(
 )
 log "+ ${sync_copilot_cmd[*]}"
 "${sync_copilot_cmd[@]}"
+
+sync_vscode_agent_defaults_cmd=(
+  "$SYNC_VSCODE_AGENT_DEFAULTS_SCRIPT"
+  "${SYNC_ARGS[@]}"
+)
+log "+ ${sync_vscode_agent_defaults_cmd[*]}"
+"${sync_vscode_agent_defaults_cmd[@]}"
 
 sync_git_hooks_cmd=(
   "$SYNC_GIT_HOOKS_SCRIPT"
