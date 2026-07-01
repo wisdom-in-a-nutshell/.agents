@@ -23,6 +23,7 @@ const SECTIONS: SectionId[] = [
   'hooks',
   'codex',
   'claude',
+  'copilot',
 ];
 
 function initialSection(): SectionId {
@@ -110,7 +111,7 @@ export function App() {
                 />
               </NavProvider>
             </section>
-          ) : section === 'codex' || section === 'claude' ? (
+          ) : section === 'codex' || section === 'claude' || section === 'copilot' ? (
             <section className="content-region content-region-flush" aria-live="polite">
               <GlobalConfigSection data={data} runtime={section} />
             </section>

@@ -203,6 +203,8 @@ export function navCount(d: ControlPlaneData, section: SectionId): number {
       return d.global_config?.codex.length ?? 0;
     case 'claude':
       return d.global_config?.claude.length ?? 0;
+    case 'copilot':
+      return d.global_config?.copilot.length ?? 0;
   }
 }
 

@@ -8,7 +8,8 @@ export type SectionId =
   | 'mcp'
   | 'hooks'
   | 'codex'
-  | 'claude';
+  | 'claude'
+  | 'copilot';
 
 export type ConfigTone = '' | 'on' | 'off' | 'muted';
 
@@ -27,6 +28,7 @@ export interface ConfigGroup {
 export interface GlobalConfig {
   codex: ConfigGroup[];
   claude: ConfigGroup[];
+  copilot: ConfigGroup[];
 }
 
 export type ItemKind = 'skill' | 'plugin' | 'mcp' | 'hook' | 'repo' | 'dev_server' | 'warning';
@@ -126,6 +128,7 @@ export interface Capability {
   count: number | null;
   codex: RuntimeCell;
   claude: RuntimeCell;
+  copilot: RuntimeCell;
 }
 
 export interface ControlPlaneData {

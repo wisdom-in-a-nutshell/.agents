@@ -9,6 +9,10 @@ const RUNTIME_META = {
     title: 'Claude global config',
     hint: 'what every Claude Code session inherits — rendered to ~/.claude/settings.json',
   },
+  copilot: {
+    title: 'Copilot client config',
+    hint: 'what terminal Copilot sessions inherit — rendered to ~/.copilot plus ~/bin/copilot',
+  },
 } as const;
 
 export function GlobalConfigSection({
@@ -16,7 +20,7 @@ export function GlobalConfigSection({
   runtime,
 }: {
   data: ControlPlaneData;
-  runtime: 'codex' | 'claude';
+  runtime: 'codex' | 'claude' | 'copilot';
 }) {
   const meta = RUNTIME_META[runtime];
   const groups: ConfigGroup[] = data.global_config?.[runtime] ?? [];

@@ -28,6 +28,7 @@ function Board({ capabilities }: { capabilities: Capability[] }) {
         <div>Capability</div>
         <div>Codex</div>
         <div>Claude</div>
+        <div>Copilot</div>
         <div className="cp-src-h">Source</div>
       </div>
       {capabilities.map((cap) => (
@@ -41,6 +42,7 @@ function Board({ capabilities }: { capabilities: Capability[] }) {
           </div>
           <Cell cell={cap.codex} />
           <Cell cell={cap.claude} />
+          <Cell cell={cap.copilot} />
           <div className="cp-cell cp-src">
             <code>{cap.source}</code>
           </div>
