@@ -112,6 +112,34 @@ def merge_settings(existing: dict[str, Any], overlay: dict[str, Any]) -> dict[st
     return desired
 
 
+def normalized_path_list(raw: Any) -> list[str]:
+    if not isinstance(raw, list):
+        return []
+    result: list[str] = []
+    seen: set[str] = set()
+    for value in raw:
+        if not isinstance(value, str) or not value.strip():
+            continue
+        expanded = str(Path(value).expanduser().resolve())
+        if expanded in seen:
+            continue
+        seen.add(expanded)
+        result.append(expanded)
+    return result
+
+
+def merge_trusted_folders(*sources: Any) -> list[str]:
+    merged: list[str] = []
+    seen: set[str] = set()
+    for source in sources:
+        for expanded in normalized_path_list(source):
+            if expanded in seen:
+                continue
+            seen.add(expanded)
+            merged.append(expanded)
+    return merged
+
+
 def discover_trusted_folders(overlay: dict[str, Any], github_root: Path, home: Path) -> list[str]:
     trust = overlay.get("trust", {})
     trusted: list[Path] = []
@@ -143,22 +171,23 @@ def discover_trusted_folders(overlay: dict[str, Any], github_root: Path, home: P
     return result
 
 
-def merge_user_config(existing: dict[str, Any], trusted_folders: list[str]) -> dict[str, Any]:
+def merge_settings_trust(
+    existing_settings: dict[str, Any],
+    existing_user_config: dict[str, Any],
+    trusted_folders: list[str],
+) -> dict[str, Any]:
+    desired = dict(existing_settings)
+    desired["trustedFolders"] = merge_trusted_folders(
+        existing_settings.get("trustedFolders", []),
+        existing_user_config.get("trustedFolders", []),
+        trusted_folders,
+    )
+    return desired
+
+
+def merge_user_config(existing: dict[str, Any]) -> dict[str, Any]:
     desired = dict(existing)
-    current = desired.get("trustedFolders", [])
-    if not isinstance(current, list):
-        current = []
-    merged: list[str] = []
-    seen: set[str] = set()
-    for value in [*current, *trusted_folders]:
-        if not isinstance(value, str) or not value.strip():
-            continue
-        expanded = str(Path(value).expanduser().resolve())
-        if expanded in seen:
-            continue
-        seen.add(expanded)
-        merged.append(expanded)
-    desired["trustedFolders"] = merged
+    desired.pop("trustedFolders", None)
     return desired
 
 
