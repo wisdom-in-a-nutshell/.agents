@@ -22,7 +22,11 @@
       "--yolo",
       "--no-ask-user",
       "--effort",
-      "high"
+      "high",
+      "--mode",
+      "autopilot",
+      "--max-autopilot-continues",
+      "10"
     ],
     "managementCommands": [
       "completion",
@@ -38,7 +42,8 @@
   },
   "skills": {
     "copilotSkillDirectoryPolicy": "empty",
-    "appSkillsPolicy": "observe",
+    "projectGithubSkillDirectoryPolicy": "empty",
+    "appSkillsPolicy": "allow-known-only",
     "expectedAppBundledSkills": [
       "af",
       "agent-merge",
@@ -49,7 +54,8 @@
     ]
   },
   "hooks": {
-    "managedCopilotHooks": false,
+    "managedCopilotHooks": true,
+    "userHookFile": "~/.copilot/hooks/agents-control-plane.json",
     "forbiddenCommandSubstrings": [
       "herdr",
       "herdr-agent-state.sh"

@@ -283,10 +283,37 @@ def render_launcher(
     target.chmod(0o755)
 
 
+def render_hooks_file(
+    hooks_file: Path,
+    hooks_registry_file: Path,
+    overlay: dict[str, Any],
+    *,
+    apply: bool,
+) -> None:
+    hooks = overlay.get("hooks", {})
+    if not hooks.get("managedCopilotHooks", False):
+        print(f"SKIP {hooks_file} (managed Copilot hooks disabled)")
+        return
+    registry = load_hooks_registry(hooks_registry_file)
+    desired = render_copilot_hooks(registry)
+    rendered = render_json(desired)
+    existing = hooks_file.read_text(encoding="utf-8") if hooks_file.exists() else None
+    if existing == rendered:
+        print(f"UNCHANGED {hooks_file}")
+        return
+    print(f"SYNC {hooks_file} (managed Copilot hooks)")
+    if not apply:
+        return
+    hooks_file.parent.mkdir(parents=True, exist_ok=True)
+    hooks_file.write_text(rendered, encoding="utf-8")
+
+
 def sync(
     overlay_file: Path,
+    hooks_registry_file: Path,
     settings_file: Path,
     user_config_file: Path,
+    hooks_file: Path,
     launcher_target: Path,
     real_cli_path: Path,
     github_root: Path,
@@ -296,15 +323,21 @@ def sync(
     overlay = load_overlay(overlay_file)
     home = settings_file.expanduser().resolve().parents[0].parent
 
-    settings = read_json_object(settings_file)
+    settings = read_json_object(settings_file, allow_comments=True)
+    user_config = read_json_object(user_config_file, allow_comments=True)
+    trusted_folders = discover_trusted_folders(overlay, github_root, home)
     desired_settings = merge_settings(settings, overlay)
+    desired_settings = merge_settings_trust(
+        desired_settings,
+        user_config,
+        trusted_folders,
+    )
     write_json(settings_file, desired_settings, apply=apply)
 
-    trusted_folders = discover_trusted_folders(overlay, github_root, home)
-    user_config = read_json_object(user_config_file, allow_comments=True)
-    desired_user_config = merge_user_config(user_config, trusted_folders)
+    desired_user_config = merge_user_config(user_config)
     write_json(user_config_file, desired_user_config, apply=apply, header=CONFIG_HEADER)
 
+    render_hooks_file(hooks_file, hooks_registry_file, overlay, apply=apply)
     render_launcher(launcher_target, real_cli_path, overlay, apply=apply)
 
 
@@ -342,10 +375,27 @@ def app_skill_names(app_support_dir: Path) -> list[str]:
     return sorted(path.name for path in app_skills.iterdir() if (path / "SKILL.md").is_file())
 
 
+def direct_skill_copies(root: Path) -> list[Path]:
+    if not root.exists():
+        return []
+    return sorted(root.glob("*/SKILL.md"))
+
+
+def repo_github_skill_copies(github_root: Path) -> list[Path]:
+    if not github_root.is_dir():
+        return []
+    skill_files: list[Path] = []
+    for repo in sorted(path for path in github_root.iterdir() if path.is_dir()):
+        skill_files.extend(direct_skill_copies(repo / ".github/skills"))
+    return sorted(skill_files)
+
+
 def check(
     overlay_file: Path,
+    hooks_registry_file: Path,
     settings_file: Path,
     user_config_file: Path,
+    hooks_file: Path,
     launcher_target: Path,
     real_cli_path: Path,
     github_root: Path,
@@ -354,8 +404,9 @@ def check(
     skip_cli_probe: bool,
 ) -> None:
     overlay = load_overlay(overlay_file)
-    expected_settings = merge_settings(read_json_object(settings_file), overlay)
-    actual_settings = read_json_object(settings_file)
+    actual_settings = read_json_object(settings_file, allow_comments=True)
+    user_config = read_json_object(user_config_file, allow_comments=True)
+    expected_settings = merge_settings(actual_settings, overlay)
     for key, expected_value in overlay.get("settings", {}).items():
         if actual_settings.get(key) != expected_value:
             fail(f"Copilot setting drift: {settings_file} {key}={actual_settings.get(key)!r}, expected {expected_value!r}")
@@ -368,16 +419,28 @@ def check(
 
     home = settings_file.expanduser().resolve().parents[0].parent
     expected_trusted = set(discover_trusted_folders(overlay, github_root, home))
-    user_config = read_json_object(user_config_file, allow_comments=True)
-    actual_trusted_raw = user_config.get("trustedFolders", [])
+    actual_trusted_raw = actual_settings.get("trustedFolders", [])
     if not isinstance(actual_trusted_raw, list):
-        fail(f"trustedFolders must be an array in {user_config_file}")
+        fail(f"trustedFolders must be an array in {settings_file}")
     actual_trusted = {str(Path(path).expanduser().resolve()) for path in actual_trusted_raw if isinstance(path, str)}
     missing_trusted = sorted(expected_trusted - actual_trusted)
     if missing_trusted:
-        fail(f"Copilot trustedFolders missing {len(missing_trusted)} entries, first missing: {missing_trusted[0]}")
+        fail(f"Copilot settings trustedFolders missing {len(missing_trusted)} entries, first missing: {missing_trusted[0]}")
+    duplicate_config_trust = sorted(
+        expected_trusted
+        & set(normalized_path_list(user_config.get("trustedFolders", [])))
+    )
+    if duplicate_config_trust:
+        fail(f"managed Copilot trustedFolders still duplicated in {user_config_file}: {duplicate_config_trust[0]}")
     if json_contains_forbidden(user_config.get("hooks", {}), forbidden):
         fail(f"forbidden Copilot hook command is still present in {user_config_file}")
+
+    if overlay.get("hooks", {}).get("managedCopilotHooks", False):
+        expected_hooks = render_json(render_copilot_hooks(load_hooks_registry(hooks_registry_file)))
+        if not hooks_file.is_file():
+            fail(f"missing managed Copilot hooks file: {hooks_file}")
+        if hooks_file.read_text(encoding="utf-8") != expected_hooks:
+            fail(f"managed Copilot hooks file is out of sync: {hooks_file}")
 
     launcher = overlay.get("launcher", {})
     if launcher.get("enabled", True):
@@ -395,10 +458,13 @@ def check(
 
     copilot_skill_dir = settings_file.parent / "skills"
     if overlay.get("skills", {}).get("copilotSkillDirectoryPolicy") == "empty":
-        if copilot_skill_dir.exists():
-            skill_files = sorted(copilot_skill_dir.glob("*/SKILL.md"))
-            if skill_files:
-                fail(f"unexpected direct Copilot skill copies under {copilot_skill_dir}: {skill_files[0]}")
+        skill_files = direct_skill_copies(copilot_skill_dir)
+        if skill_files:
+            fail(f"unexpected direct Copilot skill copies under {copilot_skill_dir}: {skill_files[0]}")
+    if overlay.get("skills", {}).get("projectGithubSkillDirectoryPolicy") == "empty":
+        skill_files = repo_github_skill_copies(github_root)
+        if skill_files:
+            fail(f"unexpected project Copilot skill copies under .github/skills: {skill_files[0]}")
 
     if not real_cli_path.is_file() or not os.access(real_cli_path, os.X_OK):
         fail(f"missing executable Copilot CLI: {real_cli_path}")
@@ -415,6 +481,13 @@ def check(
             fail("Copilot CLI MCP list JSON must be an object")
 
     observed_app_skills = app_skill_names(app_support_dir)
+    if overlay.get("skills", {}).get("appSkillsPolicy") == "allow-known-only":
+        expected = overlay.get("skills", {}).get("expectedAppBundledSkills", [])
+        if not isinstance(expected, list) or not all(isinstance(item, str) for item in expected):
+            fail("skills.expectedAppBundledSkills must be an array of strings")
+        unexpected = sorted(set(observed_app_skills) - set(expected))
+        if unexpected:
+            fail(f"unexpected Copilot app bundled skills: {', '.join(unexpected)}")
     if observed_app_skills:
         print("OBSERVE Copilot app bundled skills: " + ", ".join(observed_app_skills))
     print("Copilot control plane OK")
@@ -430,8 +503,10 @@ def parse_args() -> argparse.Namespace:
     mode.add_argument("--check", action="store_true", help="Validate managed Copilot state.")
     mode.add_argument("--dry-run", action="store_true", help="Show managed writes without applying.")
     parser.add_argument("--settings-overlay", default=str(DEFAULT_SETTINGS_OVERLAY), help="Canonical Copilot settings overlay.")
+    parser.add_argument("--hooks-registry", default=str(DEFAULT_HOOKS_REGISTRY), help="Canonical lifecycle hooks registry.")
     parser.add_argument("--settings-file", default=str(DEFAULT_SETTINGS_FILE), help="Target ~/.copilot/settings.json.")
     parser.add_argument("--user-config-file", default=str(DEFAULT_USER_CONFIG_FILE), help="Target ~/.copilot/config.json.")
+    parser.add_argument("--hooks-file", default=str(DEFAULT_HOOKS_FILE), help="Target managed Copilot user hooks file.")
     parser.add_argument("--launcher-target", default=str(DEFAULT_LAUNCHER_TARGET), help="Managed terminal launcher target.")
     parser.add_argument("--real-cli-path", default=str(DEFAULT_REAL_CLI_PATH), help="Real Copilot CLI executable.")
     parser.add_argument("--github-root", default=str(DEFAULT_GITHUB_ROOT), help="GitHub workspace root to trust.")
@@ -443,8 +518,10 @@ def parse_args() -> argparse.Namespace:
 def main() -> int:
     args = parse_args()
     overlay_file = output_path(Path(args.settings_overlay))
+    hooks_registry_file = output_path(Path(args.hooks_registry))
     settings_file = output_path(Path(args.settings_file))
     user_config_file = output_path(Path(args.user_config_file))
+    hooks_file = output_path(Path(args.hooks_file))
     launcher_target = output_path(Path(args.launcher_target))
     real_cli_path = output_path(Path(args.real_cli_path))
     github_root = output_path(Path(args.github_root)).resolve()
@@ -454,8 +531,10 @@ def main() -> int:
         if args.check:
             check(
                 overlay_file,
+                hooks_registry_file,
                 settings_file,
                 user_config_file,
+                hooks_file,
                 launcher_target,
                 real_cli_path,
                 github_root,
@@ -465,8 +544,10 @@ def main() -> int:
         else:
             sync(
                 overlay_file,
+                hooks_registry_file,
                 settings_file,
                 user_config_file,
+                hooks_file,
                 launcher_target,
                 real_cli_path,
                 github_root,

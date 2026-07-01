@@ -12,6 +12,7 @@ from unittest.mock import patch
 from hooks.control_plane import (
     HookRegistryError,
     load_hooks_registry,
+    render_copilot_hooks,
     render_codex_hooks,
 )
 from tests.control_plane.support import (
@@ -69,6 +70,26 @@ class HooksControlPlaneTests(TempDirTestCase):
             set(render_codex_hooks(registry, repo_name="win")["hooks"].keys()),
             set(),
         )
+
+    def test_registry_renders_copilot_user_hooks_with_repo_filters(self) -> None:
+        registry = load_hooks_registry(REPO_ROOT / "hooks/registry.json")
+
+        copilot_hooks = render_copilot_hooks(registry)
+
+        self.assertEqual(
+            set(copilot_hooks["hooks"].keys()),
+            {"SessionStart", "UserPromptSubmit", "Stop"},
+        )
+        self.assertEqual(copilot_hooks["version"], 1)
+        session_command = copilot_hooks["hooks"]["SessionStart"][0]["bash"]
+        self.assertIn("--runtime copilot", session_command)
+        self.assertIn("--no-input", session_command)
+        self.assertIn("--repos adi,angie", session_command)
+        self.assertEqual(copilot_hooks["hooks"]["SessionStart"][0]["timeoutSec"], 5)
+        self.assertNotIn("matcher", copilot_hooks["hooks"]["SessionStart"][0])
+        stop_command = copilot_hooks["hooks"]["Stop"][0]["bash"]
+        self.assertIn("--runtime copilot", stop_command)
+        self.assertNotIn("--repos", stop_command)
 
     def test_registry_rejects_unsupported_runtime(self) -> None:
         registry_path = self.temp_path / "hooks/registry.json"
@@ -199,6 +220,84 @@ class HooksControlPlaneTests(TempDirTestCase):
             text=True,
             check=False,
         )
+
+    def test_session_start_renders_copilot_additional_context(self) -> None:
+        repo = init_git_repo(self.temp_path / "repo")
+        write_executable(
+            repo / "scripts/hooks/session_start.py",
+            "\n".join(
+                [
+                    "#!/usr/bin/env python3",
+                    "print('copilot context')",
+                    "",
+                ]
+            ),
+        )
+        payload = {
+            "cwd": str(repo),
+            "hook_event_name": "SessionStart",
+            "session_id": "session",
+        }
+
+        result = subprocess.run(
+            [
+                sys.executable,
+                str(REPO_ROOT / "hooks/scripts/session_start.py"),
+                "--runtime",
+                "copilot",
+                "--repos",
+                "repo",
+            ],
+            input=json.dumps(payload),
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+
+        self.assertEqual(result.returncode, 0)
+        self.assertEqual(result.stderr, "")
+        self.assertEqual(json.loads(result.stdout), {"additionalContext": "copilot context\n"})
+
+    def test_repo_filter_skips_unlisted_copilot_repo(self) -> None:
+        repo = init_git_repo(self.temp_path / "repo")
+        marker = repo / "tmp/session-start-ran.txt"
+        write_executable(
+            repo / "scripts/hooks/session_start.py",
+            "\n".join(
+                [
+                    "#!/usr/bin/env python3",
+                    "import pathlib",
+                    "pathlib.Path('tmp').mkdir(exist_ok=True)",
+                    "pathlib.Path('tmp/session-start-ran.txt').write_text('ran', encoding='utf-8')",
+                    "",
+                ]
+            ),
+        )
+        payload = {
+            "cwd": str(repo),
+            "hook_event_name": "SessionStart",
+            "session_id": "session",
+        }
+
+        result = subprocess.run(
+            [
+                sys.executable,
+                str(REPO_ROOT / "hooks/scripts/session_start.py"),
+                "--runtime",
+                "copilot",
+                "--repos",
+                "other-repo",
+            ],
+            input=json.dumps(payload),
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+
+        self.assertEqual(result.returncode, 0)
+        self.assertEqual(result.stdout, "")
+        self.assertEqual(result.stderr, "")
+        self.assertFalse(marker.exists())
 
         self.assertEqual(result.returncode, 0)
         self.assertEqual(result.stderr, "")

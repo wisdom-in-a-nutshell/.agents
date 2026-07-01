@@ -34,6 +34,8 @@ class CopilotSyncTests(TempDirTestCase):
                 str(home / ".copilot/settings.json"),
                 "--user-config-file",
                 str(home / ".copilot/config.json"),
+                "--hooks-file",
+                str(home / ".copilot/hooks/agents-control-plane.json"),
                 "--launcher-target",
                 str(home / "bin/copilot"),
                 "--real-cli-path",
@@ -50,12 +52,18 @@ class CopilotSyncTests(TempDirTestCase):
         self.assertEqual(settings["askUser"], False)
         self.assertEqual(settings["effortLevel"], "high")
         self.assertEqual(settings["banner"], "never")
+        self.assertIn(str(github_root.resolve()), settings["trustedFolders"])
+        self.assertIn(str(agents_repo.resolve()), settings["trustedFolders"])
+        self.assertIn(str((home / ".agents").resolve()), settings["trustedFolders"])
+        self.assertIn(str((home / "existing").resolve()), settings["trustedFolders"])
 
         config_text = (home / ".copilot/config.json").read_text(encoding="utf-8")
         config = json.loads("\n".join(line for line in config_text.splitlines() if not line.startswith("//")))
-        self.assertIn(str(github_root.resolve()), config["trustedFolders"])
-        self.assertIn(str(agents_repo.resolve()), config["trustedFolders"])
-        self.assertIn(str((home / ".agents").resolve()), config["trustedFolders"])
+        self.assertNotIn("trustedFolders", config)
+
+        hooks = json.loads((home / ".copilot/hooks/agents-control-plane.json").read_text(encoding="utf-8"))
+        self.assertEqual(set(hooks["hooks"]), {"SessionStart", "UserPromptSubmit", "Stop"})
+        self.assertIn("--runtime copilot", hooks["hooks"]["Stop"][0]["bash"])
 
         launcher = home / "bin/copilot"
         self.assertTrue(launcher.is_file())
@@ -63,6 +71,9 @@ class CopilotSyncTests(TempDirTestCase):
         launcher_text = launcher.read_text(encoding="utf-8")
         self.assertIn("--yolo", launcher_text)
         self.assertIn("--no-ask-user", launcher_text)
+        self.assertIn("--mode", launcher_text)
+        self.assertIn("autopilot", launcher_text)
+        self.assertIn("--max-autopilot-continues", launcher_text)
         self.assertIn(str(real_cli), launcher_text)
 
     def test_check_rejects_direct_copilot_skill_copies(self) -> None:
@@ -83,6 +94,8 @@ class CopilotSyncTests(TempDirTestCase):
             str(home / ".copilot/settings.json"),
             "--user-config-file",
             str(home / ".copilot/config.json"),
+            "--hooks-file",
+            str(home / ".copilot/hooks/agents-control-plane.json"),
             "--launcher-target",
             str(home / "bin/copilot"),
             "--real-cli-path",
@@ -104,6 +117,8 @@ class CopilotSyncTests(TempDirTestCase):
                 str(home / ".copilot/settings.json"),
                 "--user-config-file",
                 str(home / ".copilot/config.json"),
+                "--hooks-file",
+                str(home / ".copilot/hooks/agents-control-plane.json"),
                 "--launcher-target",
                 str(home / "bin/copilot"),
                 "--real-cli-path",
@@ -120,3 +135,63 @@ class CopilotSyncTests(TempDirTestCase):
 
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("unexpected direct Copilot skill copies", result.stderr)
+
+    def test_check_rejects_unexpected_app_bundled_skills(self) -> None:
+        home = self.temp_path / "home"
+        github_root = home / "GitHub"
+        app_support = home / "Library/Application Support/com.github.githubapp"
+        real_cli = self.temp_path / "real-copilot"
+        (github_root / "agents").mkdir(parents=True)
+        (home / ".agents").mkdir(parents=True)
+        write_text(real_cli, "#!/usr/bin/env bash\nprintf '{}\\n'\n")
+        real_cli.chmod(0o755)
+
+        apply_args = [
+            sys.executable,
+            str(REPO_ROOT / "scripts/sync-copilot.py"),
+            "--apply",
+            "--settings-file",
+            str(home / ".copilot/settings.json"),
+            "--user-config-file",
+            str(home / ".copilot/config.json"),
+            "--hooks-file",
+            str(home / ".copilot/hooks/agents-control-plane.json"),
+            "--launcher-target",
+            str(home / "bin/copilot"),
+            "--real-cli-path",
+            str(real_cli),
+            "--github-root",
+            str(github_root),
+            "--app-support-dir",
+            str(app_support),
+        ]
+        run_command(apply_args, env={"HOME": str(home)})
+        write_text(app_support / "app-skills/noise/SKILL.md", "---\nname: noise\ndescription: no\n---\n")
+
+        result = run_command(
+            [
+                sys.executable,
+                str(REPO_ROOT / "scripts/sync-copilot.py"),
+                "--check",
+                "--settings-file",
+                str(home / ".copilot/settings.json"),
+                "--user-config-file",
+                str(home / ".copilot/config.json"),
+                "--hooks-file",
+                str(home / ".copilot/hooks/agents-control-plane.json"),
+                "--launcher-target",
+                str(home / "bin/copilot"),
+                "--real-cli-path",
+                str(real_cli),
+                "--github-root",
+                str(github_root),
+                "--app-support-dir",
+                str(app_support),
+                "--skip-cli-probe",
+            ],
+            env={"HOME": str(home)},
+            check=False,
+        )
+
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("unexpected Copilot app bundled skills: noise", result.stderr)

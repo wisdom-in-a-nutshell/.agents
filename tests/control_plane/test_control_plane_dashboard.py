@@ -157,16 +157,27 @@ class ControlPlaneDashboardDataTests(TempDirTestCase):
                 },
                 "launcher": {
                     "enabled": True,
-                    "defaultArgs": ["--yolo", "--no-ask-user", "--effort", "high"],
+                    "defaultArgs": [
+                        "--yolo",
+                        "--no-ask-user",
+                        "--effort",
+                        "high",
+                        "--mode",
+                        "autopilot",
+                        "--max-autopilot-continues",
+                        "10",
+                    ],
                     "managementCommands": ["help", "skill", "mcp"],
                 },
                 "skills": {
                     "copilotSkillDirectoryPolicy": "empty",
-                    "appSkillsPolicy": "observe",
+                    "projectGithubSkillDirectoryPolicy": "empty",
+                    "appSkillsPolicy": "allow-known-only",
                     "expectedAppBundledSkills": ["impeccable"],
                 },
                 "hooks": {
-                    "managedCopilotHooks": False,
+                    "managedCopilotHooks": True,
+                    "userHookFile": "~/.copilot/hooks/agents-control-plane.json",
                     "forbiddenCommandSubstrings": ["herdr"],
                 },
             },
@@ -216,6 +227,8 @@ class ControlPlaneDashboardDataTests(TempDirTestCase):
         self.assertEqual(plugin_skill["details"]["source_plugin"], "build-ios-apps")
         runtime_capability = [cap for cap in data["capabilities"] if cap["key"] == "runtime"][0]
         self.assertEqual(runtime_capability["copilot"]["status"], "new")
+        lifecycle_capability = [cap for cap in data["capabilities"] if cap["key"] == "lifecycle"][0]
+        self.assertEqual(lifecycle_capability["copilot"]["status"], "stable")
         self.assertIn("copilot", data["global_config"])
         self.assertEqual(data["global_config"]["copilot"][0]["title"], "CLI settings")
 

@@ -87,7 +87,7 @@ def build_capability_board(counts: dict[str, Any]) -> list[dict[str, Any]]:
             "source": "hooks/registry.json", "count": counts.get("hooks"),
             "codex": {"status": "stable", "note": "SessionStart · Prompt · Stop"},
             "claude": {"status": "stable", "note": "Stop (via settings.json)"},
-            "copilot": {"status": "planned", "note": "hooks supported; adapter next"},
+            "copilot": {"status": "stable", "note": "user hooks + repo filter"},
         },
         {
             "key": "runtime", "name": "Runtime config",
@@ -542,6 +542,7 @@ def build_global_config(
                 {"label": "githubRoot", "value": _scalar_value(copilot_trust.get("githubRoot")), "tone": "on" if copilot_trust.get("githubRoot") else "off"},
                 {"label": "directChildren", "value": _scalar_value(copilot_trust.get("directChildren")), "tone": "on" if copilot_trust.get("directChildren") else "off"},
                 {"label": "extraFolders", "value": _scalar_value(copilot_trust.get("extraFolders"))},
+                {"label": "target", "value": "~/.copilot/settings.json"},
             ],
         ),
         _config_group(
@@ -567,6 +568,7 @@ def build_global_config(
             copilot_src,
             [
                 {"label": "managedCopilotHooks", "value": _scalar_value(copilot_hooks.get("managedCopilotHooks")), "tone": "on" if copilot_hooks.get("managedCopilotHooks") else "off"},
+                {"label": "userHookFile", "value": _scalar_value(copilot_hooks.get("userHookFile"))},
                 {"label": "forbiddenCommandSubstrings", "value": _scalar_value(copilot_hooks.get("forbiddenCommandSubstrings"))},
             ],
         ),
