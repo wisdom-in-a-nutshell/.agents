@@ -3,15 +3,15 @@ import type { ConfigGroup, ControlPlaneData } from '../types';
 const RUNTIME_META = {
   codex: {
     title: 'Codex global config',
-    hint: 'what every Codex session inherits — rendered to ~/.codex/config.toml',
+    hint: 'what every Codex session inherits, rendered to ~/.codex/config.toml',
   },
   claude: {
     title: 'Claude global config',
-    hint: 'what every Claude Code session inherits — rendered to ~/.claude/settings.json',
+    hint: 'what every Claude Code session inherits, rendered to ~/.claude/settings.json',
   },
   copilot: {
     title: 'Copilot client config',
-    hint: 'what terminal Copilot sessions inherit — rendered to ~/.copilot plus ~/bin/copilot',
+    hint: 'what terminal Copilot sessions inherit, rendered to ~/.copilot plus ~/bin/copilot',
   },
 } as const;
 

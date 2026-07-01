@@ -15,7 +15,8 @@
       ],
       "runtimes": [
         "codex",
-        "claude"
+        "claude",
+        "copilot"
       ],
       "scope": "repo",
       "timeout": 5
@@ -31,7 +32,8 @@
       ],
       "runtimes": [
         "codex",
-        "claude"
+        "claude",
+        "copilot"
       ],
       "scope": "repo",
       "timeout": 5
@@ -42,7 +44,8 @@
       "event": "Stop",
       "id": "global-stop",
       "runtimes": [
-        "codex"
+        "codex",
+        "copilot"
       ],
       "scope": "global",
       "timeout": 900

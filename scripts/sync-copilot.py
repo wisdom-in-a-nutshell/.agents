@@ -11,10 +11,17 @@ from typing import Any
 
 
 AGENTS_ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(AGENTS_ROOT))
+
+from hooks.control_plane import load_hooks_registry, render_copilot_hooks, render_json  # noqa: E402
+
+
 DEFAULT_SETTINGS_OVERLAY = AGENTS_ROOT / "config" / "copilot-settings.json"
+DEFAULT_HOOKS_REGISTRY = AGENTS_ROOT / "hooks/registry.json"
 DEFAULT_COPILOT_HOME = Path.home() / ".copilot"
 DEFAULT_SETTINGS_FILE = DEFAULT_COPILOT_HOME / "settings.json"
 DEFAULT_USER_CONFIG_FILE = DEFAULT_COPILOT_HOME / "config.json"
+DEFAULT_HOOKS_FILE = DEFAULT_COPILOT_HOME / "hooks/agents-control-plane.json"
 DEFAULT_LAUNCHER_TARGET = Path.home() / "bin" / "copilot"
 DEFAULT_REAL_CLI_PATH = Path("/opt/homebrew/bin/copilot")
 DEFAULT_GITHUB_ROOT = Path.home() / "GitHub"

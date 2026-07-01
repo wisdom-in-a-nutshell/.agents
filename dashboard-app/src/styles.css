@@ -696,7 +696,7 @@ input:focus-visible {
 .re-list-item.active { background: var(--accent-soft); color: var(--accent-ink); }
 .re-list-name { font-family: var(--font-sans); font-weight: 500; font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .re-list-meta { display: inline-flex; align-items: center; gap: 6px; font-size: 11.5px; color: var(--muted); font-variant-numeric: tabular-nums; flex-shrink: 0; }
-.re-list-meta.has-add { color: var(--scope-global-ink); }
+.re-list-meta.has-add { color: var(--scope-local-ink); }
 .re-list-item.active .re-list-meta { color: var(--accent-ink); }
 
 .re-detail { min-width: 0; }
@@ -913,7 +913,7 @@ body.sidebar-collapsed .nav-group + .nav-group { margin-top: 8px; }
 }
 .ov-repo:hover { background: var(--surface-soft); border-color: var(--faint); }
 .ov-repo-name { font-size: var(--font-sm); }
-.ov-repo-add { color: var(--scope-global-ink); font-size: var(--font-xxs); font-weight: 600; font-variant-numeric: tabular-nums; }
+.ov-repo-add { color: var(--scope-local-ink); font-size: var(--font-xxs); font-weight: 600; font-variant-numeric: tabular-nums; }
 .ov-baseonly { margin: 12px 0 0; color: var(--muted); font-size: var(--font-xs); }
 
 @media (max-width: 720px) {

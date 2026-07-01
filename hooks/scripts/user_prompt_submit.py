@@ -10,9 +10,10 @@ SPEC = RepoHookSpec(
     event="UserPromptSubmit",
     repo_script=Path("scripts/hooks/user_prompt_submit.py"),
     description="Shared UserPromptSubmit hook.",
-    valid_runtimes=frozenset({"codex", "claude"}),
+    valid_runtimes=frozenset({"codex", "claude", "copilot"}),
     label="user_prompt_submit",
     forward_stdout_as_context=True,
+    ignore_stdout_context_runtimes=frozenset({"copilot"}),
     ignore_mismatched_event_name=True,
 )
 

@@ -2,24 +2,26 @@ from __future__ import annotations
 
 import argparse
 import json
+import shlex
 import sys
 from pathlib import Path
 from typing import Any
 
 
-VALID_RUNTIMES = {"codex", "claude"}
+VALID_RUNTIMES = {"codex", "claude", "copilot"}
 VALID_SCOPES = {"global", "repo"}
 ALL_REPOS = "*"
 EVENT_RUNTIME_SUPPORT = {
-    # Codex and Claude share the lifecycle scripts (each takes --runtime <name>).
-    # Claude's Stop hook is wired separately (claude_stop.py via sync-claude), so
-    # Stop stays codex-only in this registry.
-    "SessionStart": {"codex", "claude"},
-    "UserPromptSubmit": {"codex", "claude"},
-    "Stop": {"codex"},
+    # Codex, Claude, and Copilot share lifecycle scripts (each takes
+    # --runtime <name>). Claude's Stop hook is wired separately
+    # (claude_stop.py via sync-claude), so Stop stays codex/copilot here.
+    "SessionStart": {"codex", "claude", "copilot"},
+    "UserPromptSubmit": {"codex", "claude", "copilot"},
+    "Stop": {"codex", "copilot"},
 }
 VALID_EVENTS = set(EVENT_RUNTIME_SUPPORT)
 EVENTS_WITH_MATCHERS = {"SessionStart"}
+COPILOT_EVENTS_WITH_MATCHERS = set()
 
 
 class HookRegistryError(RuntimeError):
@@ -247,6 +249,51 @@ def render_claude_hooks(
     return render_runtime_hooks(registry, "claude", repo_name=repo_name)
 
 
+def _managed_copilot_user_hooks(registry: dict[str, Any]) -> list[dict[str, Any]]:
+    hooks = registry.get("managed_hooks", [])
+    selected: list[dict[str, Any]] = []
+    for hook in hooks:
+        if not isinstance(hook, dict):
+            continue
+        if not hook.get("enabled", True):
+            continue
+        if "copilot" in hook.get("runtimes", []):
+            selected.append(hook)
+    return selected
+
+
+def _render_copilot_command(hook: dict[str, Any], *, runtime: str, event: str) -> str:
+    command = _render_command(str(hook["command"]), runtime=runtime, event=event)
+    command = f"{command} --no-input"
+    if hook.get("scope") == "repo":
+        repos = hook.get("repos", [])
+        if isinstance(repos, list):
+            repo_arg = ",".join(str(repo) for repo in repos)
+            command = f"{command} --repos {shlex.quote(repo_arg)}"
+    return command
+
+
+def render_copilot_hooks(registry: dict[str, Any]) -> dict[str, Any]:
+    events: dict[str, list[dict[str, Any]]] = {}
+    for hook in _managed_copilot_user_hooks(registry):
+        event = str(hook["event"])
+        handler: dict[str, Any] = {
+            "bash": _render_copilot_command(hook, runtime="copilot", event=event),
+            "timeoutSec": hook["timeout"],
+            "type": "command",
+        }
+        matchers = hook.get("matchers", {})
+        matcher = matchers.get("copilot") if isinstance(matchers, dict) else None
+        if (
+            event in COPILOT_EVENTS_WITH_MATCHERS
+            and isinstance(matcher, str)
+            and matcher.strip()
+        ):
+            handler["matcher"] = matcher
+        events.setdefault(event, []).append(handler)
+    return {"hooks": events, "version": 1}
+
+
 def _write_output(path: Path, data: dict[str, Any]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(render_json(data), encoding="utf-8")
@@ -271,6 +318,12 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     claude.add_argument("--output", required=True)
     claude.add_argument("--repo-name")
 
+    copilot = subparsers.add_parser(
+        "render-copilot", help="Render Copilot user-level hooks file"
+    )
+    copilot.add_argument("--registry", required=True)
+    copilot.add_argument("--output", required=True)
+
     return parser.parse_args(argv)
 
 
@@ -290,6 +343,12 @@ def main(argv: list[str] | None = None) -> int:
             _write_output(
                 Path(args.output).expanduser().resolve(),
                 render_claude_hooks(registry, repo_name=args.repo_name),
+            )
+            return 0
+        if args.command == "render-copilot":
+            _write_output(
+                Path(args.output).expanduser().resolve(),
+                render_copilot_hooks(registry),
             )
             return 0
     except HookRegistryError as exc:
