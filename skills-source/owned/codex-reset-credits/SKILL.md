@@ -16,10 +16,8 @@ When this skill is active, users can ask:
 Use $codex-reset-credits to tell me when my Codex resets expire.
 ```
 
-While the skill is dormant, it will not be linked into normal runtimes. To use
-it later, either activate it in `skills/registry.json` and rerun the control
-plane bootstrap, or explicitly point an agent at
-`/Users/dobby/GitHub/agents/skills-source/owned/codex-reset-credits/SKILL.md`.
+If this skill is not installed in the current runtime, point Codex at this skill
+folder in the repo and ask it to add the folder as a Codex skill.
 
 ## Workflow
 
@@ -37,20 +35,31 @@ documentation.
 
 ## Script Usage
 
+From the repository root, run:
+
 Default human-readable output:
 
 ```bash
-python3 /Users/dobby/GitHub/agents/skills-source/owned/codex-reset-credits/scripts/check_codex_reset_credits.py
+python3 skills-source/owned/codex-reset-credits/scripts/check_codex_reset_credits.py
 ```
 
 JSON output for programmatic follow-up:
 
 ```bash
-python3 /Users/dobby/GitHub/agents/skills-source/owned/codex-reset-credits/scripts/check_codex_reset_credits.py --json
+python3 skills-source/owned/codex-reset-credits/scripts/check_codex_reset_credits.py --json
 ```
 
 Use an explicit timezone when the user's location matters:
 
 ```bash
-python3 /Users/dobby/GitHub/agents/skills-source/owned/codex-reset-credits/scripts/check_codex_reset_credits.py --timezone America/Los_Angeles
+python3 skills-source/owned/codex-reset-credits/scripts/check_codex_reset_credits.py --timezone America/Los_Angeles
+```
+
+Example output:
+
+```text
+4 reset credits available
+Timezone shown: America/New_York
+
+Full reset: expires 11 July 2026, 21:44 EDT / 12 July 2026, 01:44 UTC
 ```
