@@ -125,7 +125,8 @@ def format_dt(value: str, timezone: dt.tzinfo) -> tuple[str, str]:
 
 def print_human(data: dict, timezone: dt.tzinfo) -> None:
     credits = data.get("credits") or []
-    available = data.get("available_count", len(credits))
+    raw_available = data.get("available_count")
+    available = raw_available if type(raw_available) is int else len(credits)
     plural = "" if available == 1 else "s"
     print(f"{available} reset credit{plural} available")
     print(f"Timezone shown: {timezone}")
@@ -141,9 +142,9 @@ def print_human(data: dict, timezone: dt.tzinfo) -> None:
             local = utc = "unknown"
         else:
             utc, local = format_dt(expires_at, timezone)
-        status = credit.get("status", "unknown")
-        title = credit.get("title", "Codex reset credit")
-        display_title = title.split(" (", 1)[0]
+        status = str(credit.get("status") or "unknown")
+        title = credit.get("title") or "Codex reset credit"
+        display_title = str(title).split(" (", 1)[0]
         status_suffix = "" if status == "available" else f" ({status})"
         print(f"{display_title}{status_suffix}: expires {local} / {utc}")
 
