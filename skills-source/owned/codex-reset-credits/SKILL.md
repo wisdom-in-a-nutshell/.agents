@@ -26,8 +26,8 @@ plane bootstrap, or explicitly point an agent at
 1. Run `scripts/check_codex_reset_credits.py`.
 2. Do not print or expose tokens, account IDs, credit IDs, or user IDs.
 3. Report the available count and expiration times.
-4. Include the timezone used in the answer. Prefer local timezone output, with
-   UTC when useful for exactness.
+4. Use friendly calendar dates in human answers, such as
+   `12 July 2026, 03:44 CEST`. Include UTC only when useful for exactness.
 5. If the endpoint fails, explain the failure compactly and do not paste auth
    file contents.
 

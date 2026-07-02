@@ -116,9 +116,10 @@ def redact_and_enrich(data: dict, timezone: dt.tzinfo) -> dict:
 
 def format_dt(value: str, timezone: dt.tzinfo) -> tuple[str, str]:
     timestamp = parse_timestamp(value)
+    local_timestamp = timestamp.astimezone(timezone)
     return (
-        timestamp.strftime("%Y-%m-%d %H:%M:%S UTC"),
-        timestamp.astimezone(timezone).strftime("%Y-%m-%d %H:%M:%S %Z"),
+        f"{timestamp.day} {timestamp.strftime('%B %Y')}, {timestamp.strftime('%H:%M')} UTC",
+        f"{local_timestamp.day} {local_timestamp.strftime('%B %Y')}, {local_timestamp.strftime('%H:%M %Z')}",
     )
 
 
@@ -140,7 +141,7 @@ def print_human(data: dict, timezone: dt.tzinfo) -> None:
             utc, local = format_dt(expires_at, timezone)
         status = credit.get("status", "unknown")
         title = credit.get("title", "Codex reset credit")
-        print(f"{index}. {title} | {status} | expires {local} ({utc})")
+        print(f"{index}. {title} | {status} | expires {local} / {utc}")
 
 
 def main() -> int:
