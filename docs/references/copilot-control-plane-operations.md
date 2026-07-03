@@ -36,6 +36,7 @@ The current Copilot control plane is client-first:
   - `askUser: false`
   - `effortLevel: high`
   - quiet banner/beep/tips/notification defaults
+  - `disabledSkills` disables noisy built-in/app-adjacent skills that are not useful for local terminal Copilot sessions (`af`, `agent-merge`, `agentfinder`, `create-canvas`, `customize-cloud-agent`, `orchestrate`)
   - no managed `trustedFolders` key; the installed CLI migrates trust to `config.json`
 - `~/.copilot/config.json`
   - Copilot-managed login/session keys are preserved
@@ -84,6 +85,8 @@ The managed check fails if direct skill copies appear under:
 - any managed workspace repo `.github/skills/*/SKILL.md`
 
 This keeps Copilot from loading extra duplicate skill layers. The macOS app's bundled skill directory is observed and allowlisted by name; new app-bundled skills fail the check until reviewed and added to `config/copilot-settings.json` or disabled in app settings.
+
+The managed settings overlay also writes `disabledSkills` for built-in or app-adjacent skills that are available but noisy for normal local terminal sessions. `copilot skill list --json` may still report disabled skills as available; the runtime proof is the session startup summary or a prompt probe. On 2026-07-03, a prompt-mode probe reported 14 loaded skills and confirmed `customize-cloud-agent` was not loaded after `disabledSkills` included it.
 
 **Known blind spot (2026-07-01):** the app's own Settings → Skills → "Built-in" list does not map 1:1 to `app-skills/` on disk. `customize-cloud-agent` appears in the in-app "Built-in" list but has no folder under `app-skills/` — it is compiled into the app binary. Conversely `impeccable` exists as a loose folder under `app-skills/` (and is what this check observes) but is not shown in the app's "Built-in" tab, likely deduped against a same-named personal skill surfaced under "On this device" instead. `expectedAppBundledSkills` now includes `customize-cloud-agent` for documentation, but the check can only ever see loose `app-skills/*/SKILL.md` folders — it has no visibility into skills the app bundles internally, and cannot detect new ones added that way. Toggling a "Built-in" skill on/off in the app's Settings UI is the only control for it; no file or setting was found that persists that toggle.
 

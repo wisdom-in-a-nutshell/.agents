@@ -4,6 +4,14 @@
     "askUser": false,
     "banner": "never",
     "beep": false,
+    "disabledSkills": [
+      "af",
+      "agent-merge",
+      "agentfinder",
+      "create-canvas",
+      "customize-cloud-agent",
+      "orchestrate"
+    ],
     "effortLevel": "high",
     "notifications": false,
     "showTipsOnStartup": false

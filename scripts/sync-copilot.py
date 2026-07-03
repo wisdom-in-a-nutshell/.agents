@@ -120,8 +120,10 @@ def merge_settings(existing: dict[str, Any], overlay: dict[str, Any]) -> dict[st
     for key, value in overlay.get("settings", {}).items():
         if isinstance(value, (str, bool, int, float)) or value is None:
             desired[key] = value
+        elif isinstance(value, list) and all(isinstance(item, str) for item in value):
+            desired[key] = value
         else:
-            raise CopilotSyncError(f"managed Copilot setting must be scalar: {key}")
+            raise CopilotSyncError(f"managed Copilot setting must be scalar or string array: {key}")
     return desired
 
 

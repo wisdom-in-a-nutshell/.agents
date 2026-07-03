@@ -60,6 +60,17 @@ class CopilotSyncTests(TempDirTestCase):
         self.assertEqual(settings["askUser"], False)
         self.assertEqual(settings["effortLevel"], "high")
         self.assertEqual(settings["banner"], "never")
+        self.assertEqual(
+            settings["disabledSkills"],
+            [
+                "af",
+                "agent-merge",
+                "agentfinder",
+                "create-canvas",
+                "customize-cloud-agent",
+                "orchestrate",
+            ],
+        )
         self.assertNotIn("trustedFolders", settings)
 
         config_text = (home / ".copilot/config.json").read_text(encoding="utf-8")
