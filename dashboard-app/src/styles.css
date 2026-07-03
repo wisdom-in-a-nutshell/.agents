@@ -638,7 +638,7 @@ input:focus-visible {
 .cat-hint { color: var(--muted); font-size: var(--font-xs); margin-left: auto; }
 
 .cat-table-scroll { max-width: 100%; overflow-x: auto; border-radius: var(--radius); }
-.cat-table { width: auto; min-width: 600px; border-collapse: collapse; border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; background: var(--surface); }
+.cat-table { width: auto; min-width: 680px; border-collapse: collapse; border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; background: var(--surface); }
 .cat-table td.cat-name { padding-right: 56px; }
 .cat-table th, .cat-table td { text-align: left; padding: 11px 16px; font-size: 13px; vertical-align: top; }
 .cat-table thead th { background: var(--surface-soft); font-size: 11.5px; letter-spacing: 0.04em; text-transform: uppercase; color: var(--muted); font-weight: var(--weight-label); }
@@ -656,6 +656,10 @@ input:focus-visible {
 .cat-state-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); flex: 0 0 auto; }
 .cat-state.disabled { color: var(--rose-ink); font-weight: var(--weight-label); }
 .cat-state.disabled .cat-state-dot { background: var(--rose); }
+.cat-invoke { display: inline-flex; align-items: center; gap: 6px; padding: 2px 8px; border: 1px solid var(--accent-line); border-radius: 999px; background: var(--accent-soft); color: var(--accent-ink); font-size: 11.5px; font-weight: var(--weight-label); white-space: nowrap; }
+.cat-invoke-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); flex: 0 0 auto; }
+.cat-invoke.explicit { border-color: var(--amber-line); background: var(--amber-soft); color: var(--amber-ink); }
+.cat-invoke.explicit .cat-invoke-dot { background: var(--amber); }
 .cat-table tr.is-disabled .cat-name-main,
 .cat-table tr.is-disabled .cat-sub { color: var(--faint); }
 .cat-none { color: var(--muted); }
@@ -671,6 +675,7 @@ input:focus-visible {
 @media (max-width: 760px) {
   .cat-src-h, .cat-src { display: none; }
   .cat-sub { display: none; }
+  .cat-invocation-h, .cat-invocation { display: none; }
 }
 .cp-foot { margin-top: 28px; color: var(--muted); font-size: 12px; }
 .cp-foot code { font-family: var(--font-mono); font-size: 11.5px; }

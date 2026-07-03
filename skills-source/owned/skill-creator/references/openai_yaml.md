@@ -13,6 +13,9 @@ interface:
   brand_color: "#3B82F6"
   default_prompt: "Optional surrounding prompt to use the skill with"
 
+policy:
+  allow_implicit_invocation: false
+
 dependencies:
   tools:
     - type: "mcp"
@@ -36,6 +39,9 @@ Top-level constraints:
 - `interface.icon_large`: Path to a larger logo asset (relative to skill dir). Default to `./assets/` and place icons in the skill's `assets/` folder.
 - `interface.brand_color`: Hex color used for UI accents (e.g., badges).
 - `interface.default_prompt`: Default prompt snippet inserted when invoking the skill.
+- `policy.allow_implicit_invocation`: Codex invocation policy. Defaults to `true`.
+  Set to `false` only when the skill should be explicit-only; `$skill-name`
+  invocation still works.
 - `dependencies.tools[].type`: Dependency category. Only `mcp` is supported for now.
 - `dependencies.tools[].value`: Identifier of the tool or dependency.
 - `dependencies.tools[].description`: Human-readable explanation of the dependency.

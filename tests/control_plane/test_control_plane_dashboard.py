@@ -16,6 +16,10 @@ class ControlPlaneDashboardDataTests(TempDirTestCase):
         adi.mkdir(parents=True)
         codexclaw.mkdir(parents=True)
         write_text(root / "skills-source/owned/global-helper/SKILL.md", "# global-helper\n")
+        write_text(
+            root / "skills-source/owned/global-helper/agents/openai.yaml",
+            "policy:\n  allow_implicit_invocation: false\n",
+        )
         write_text(root / "skills-source/owned/repo-helper/SKILL.md", "# repo-helper\n")
         write_text(
             root / "plugins-source/external/build-ios-apps/skills/ios-debugger-agent/SKILL.md",
@@ -225,6 +229,16 @@ class ControlPlaneDashboardDataTests(TempDirTestCase):
         self.assertEqual(plugin_skill["repos"], ["codexclaw"])
         self.assertEqual(plugin_skill["title"], "build-ios-apps:ios-debugger-agent")
         self.assertEqual(plugin_skill["details"]["source_plugin"], "build-ios-apps")
+        global_skill = [
+            item for item in data["groups"]["skills"] if item["name"] == "global-helper"
+        ][0]
+        repo_skill = [
+            item for item in data["groups"]["skills"] if item["name"] == "repo-helper"
+        ][0]
+        self.assertFalse(global_skill["details"]["codex_allow_implicit_invocation"])
+        self.assertEqual(global_skill["details"]["codex_invocation"], "explicit only")
+        self.assertTrue(repo_skill["details"]["codex_allow_implicit_invocation"])
+        self.assertEqual(repo_skill["details"]["codex_invocation"], "implicit + explicit")
         runtime_capability = [cap for cap in data["capabilities"] if cap["key"] == "runtime"][0]
         self.assertEqual(runtime_capability["copilot"]["status"], "new")
         lifecycle_capability = [cap for cap in data["capabilities"] if cap["key"] == "lifecycle"][0]

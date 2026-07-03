@@ -3,7 +3,7 @@
 OpenAI YAML Generator - Creates agents/openai.yaml for a skill folder.
 
 Usage:
-    generate_openai_yaml.py <skill_dir> [--name <skill_name>] [--interface key=value]
+    generate_openai_yaml.py <skill_dir> [--name <skill_name>] [--interface key=value] [--policy key=value]
 """
 
 import argparse
@@ -46,6 +46,10 @@ ALLOWED_INTERFACE_KEYS = {
     "icon_large",
     "brand_color",
     "default_prompt",
+}
+
+ALLOWED_POLICY_KEYS = {
+    "allow_implicit_invocation",
 }
 
 
@@ -152,9 +156,48 @@ def parse_interface_overrides(raw_overrides):
     return overrides, optional_order
 
 
-def write_openai_yaml(skill_dir, skill_name, raw_overrides):
+def parse_bool(value):
+    lowered = value.strip().lower()
+    if lowered in {"true", "yes", "on", "1"}:
+        return True
+    if lowered in {"false", "no", "off", "0"}:
+        return False
+    return None
+
+
+def parse_policy_overrides(raw_overrides):
+    overrides = {}
+    optional_order = []
+    for item in raw_overrides:
+        if "=" not in item:
+            print(f"[ERROR] Invalid policy override '{item}'. Use key=value.")
+            return None, None
+        key, value = item.split("=", 1)
+        key = key.strip()
+        value = value.strip()
+        if not key:
+            print(f"[ERROR] Invalid policy override '{item}'. Key is empty.")
+            return None, None
+        if key not in ALLOWED_POLICY_KEYS:
+            allowed = ", ".join(sorted(ALLOWED_POLICY_KEYS))
+            print(f"[ERROR] Unknown policy field '{key}'. Allowed: {allowed}")
+            return None, None
+        parsed = parse_bool(value)
+        if parsed is None:
+            print(f"[ERROR] Policy field '{key}' must be a boolean true/false value.")
+            return None, None
+        overrides[key] = parsed
+        if key not in optional_order:
+            optional_order.append(key)
+    return overrides, optional_order
+
+
+def write_openai_yaml(skill_dir, skill_name, raw_overrides, raw_policy_overrides=None):
     overrides, optional_order = parse_interface_overrides(raw_overrides)
     if overrides is None:
+        return None
+    policy_overrides, policy_order = parse_policy_overrides(raw_policy_overrides or [])
+    if policy_overrides is None:
         return None
 
     display_name = overrides.get("display_name") or format_display_name(skill_name)
@@ -178,10 +221,17 @@ def write_openai_yaml(skill_dir, skill_name, raw_overrides):
         if value is not None:
             interface_lines.append(f"  {key}: {yaml_quote(value)}")
 
+    output_lines = list(interface_lines)
+    if policy_order:
+        output_lines.append("policy:")
+        for key in policy_order:
+            value = "true" if policy_overrides[key] else "false"
+            output_lines.append(f"  {key}: {value}")
+
     agents_dir = Path(skill_dir) / "agents"
     agents_dir.mkdir(parents=True, exist_ok=True)
     output_path = agents_dir / "openai.yaml"
-    output_path.write_text("\n".join(interface_lines) + "\n")
+    output_path.write_text("\n".join(output_lines) + "\n")
     print(f"[OK] Created agents/openai.yaml")
     return output_path
 
@@ -201,6 +251,12 @@ def main():
         default=[],
         help="Interface override in key=value format (repeatable)",
     )
+    parser.add_argument(
+        "--policy",
+        action="append",
+        default=[],
+        help="Policy override in key=value format (repeatable)",
+    )
     args = parser.parse_args()
 
     skill_dir = Path(args.skill_dir).resolve()
@@ -215,7 +271,7 @@ def main():
     if not skill_name:
         sys.exit(1)
 
-    result = write_openai_yaml(skill_dir, skill_name, args.interface)
+    result = write_openai_yaml(skill_dir, skill_name, args.interface, args.policy)
     if result:
         sys.exit(0)
     sys.exit(1)

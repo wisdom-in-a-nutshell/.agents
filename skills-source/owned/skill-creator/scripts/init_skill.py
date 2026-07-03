@@ -298,7 +298,7 @@ def init_skill(skill_name, path, resources, include_examples, interface_override
 
     # Create agents/openai.yaml
     try:
-        result = write_openai_yaml(skill_dir, skill_name, interface_overrides)
+        result = write_openai_yaml(skill_dir, skill_name, interface_overrides, [])
         if not result:
             return None
     except Exception as e:

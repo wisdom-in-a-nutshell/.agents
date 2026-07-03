@@ -36,6 +36,9 @@ export type ItemKind = 'skill' | 'plugin' | 'mcp' | 'hook' | 'repo' | 'dev_serve
 export interface ItemDetails {
   origin?: string;
   source_path?: string;
+  openai_yaml_path?: string;
+  codex_allow_implicit_invocation?: boolean;
+  codex_invocation?: string;
   repo?: string;
   marketplace?: string;
   category?: string;

@@ -74,6 +74,16 @@ function PluginStatus({ item }: { item: Item }) {
   );
 }
 
+function SkillInvocation({ item }: { item: Item }) {
+  const allowImplicit = item.details.codex_allow_implicit_invocation !== false;
+  return (
+    <span className={`cat-invoke${allowImplicit ? '' : ' explicit'}`}>
+      <span className="cat-invoke-dot" aria-hidden="true" />
+      {allowImplicit ? 'Implicit + explicit' : 'Explicit only'}
+    </span>
+  );
+}
+
 export function CatalogExplorer({
   data,
   kind,
@@ -85,6 +95,7 @@ export function CatalogExplorer({
 }) {
   const totalRepos = data.counts.repos;
   const isPlugins = kind === 'plugins';
+  const isSkills = kind === 'skills';
   // Plugins default to the active set — disabled ones are one filter click away.
   const [filter, setFilter] = useState<string>(isPlugins ? 'enabled' : 'all');
 
@@ -173,6 +184,7 @@ export function CatalogExplorer({
           <tr>
             <th scope="col">Name</th>
             <th scope="col">{isPlugins ? 'Status' : 'Used by'}</th>
+            {isSkills ? <th className="cat-invocation-h" scope="col">Codex use</th> : null}
             <th className="cat-src-h" scope="col">Source</th>
           </tr>
         </thead>
@@ -199,6 +211,11 @@ export function CatalogExplorer({
               <td className="cat-used">
                 {isPlugins ? <PluginStatus item={item} /> : <UsedBy item={item} />}
               </td>
+              {isSkills ? (
+                <td className="cat-invocation">
+                  <SkillInvocation item={item} />
+                </td>
+              ) : null}
               <td className="cat-src">
                 <a
                   href={sourceHref(item)}

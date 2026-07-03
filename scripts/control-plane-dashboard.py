@@ -256,6 +256,77 @@ def relation_key(kind: str, name: str) -> str:
     return f"{kind}:{name}"
 
 
+def read_skill_openai_metadata(
+    root: Path,
+    source_path: str,
+    warnings: list[dict[str, Any]],
+) -> dict[str, Any]:
+    metadata: dict[str, Any] = {
+        "codex_allow_implicit_invocation": True,
+        "codex_invocation": "implicit + explicit",
+    }
+    if not source_path:
+        return metadata
+
+    openai_yaml = root / source_path / "agents" / "openai.yaml"
+    if not openai_yaml.is_file():
+        return metadata
+
+    metadata["openai_yaml_path"] = str(Path(source_path) / "agents" / "openai.yaml")
+    try:
+        import yaml  # type: ignore[import-untyped]
+
+        parsed = yaml.safe_load(openai_yaml.read_text(encoding="utf-8"))
+    except ImportError:
+        warnings.append(
+            {
+                "severity": "warning",
+                "code": "missing_yaml_dependency",
+                "message": f"Could not parse Codex skill metadata without PyYAML: {openai_yaml}",
+                "source": str(Path(source_path) / "agents" / "openai.yaml"),
+            }
+        )
+        return metadata
+    except (OSError, yaml.YAMLError) as exc:  # type: ignore[name-defined]
+        warnings.append(
+            {
+                "severity": "warning",
+                "code": "invalid_openai_yaml",
+                "message": f"Could not parse Codex skill metadata for {source_path}: {exc}",
+                "source": str(Path(source_path) / "agents" / "openai.yaml"),
+            }
+        )
+        return metadata
+
+    if not isinstance(parsed, dict):
+        return metadata
+
+    policy = parsed.get("policy")
+    if not isinstance(policy, dict):
+        return metadata
+
+    allow_implicit = policy.get("allow_implicit_invocation")
+    if allow_implicit is None:
+        return metadata
+    if not isinstance(allow_implicit, bool):
+        warnings.append(
+            {
+                "severity": "warning",
+                "code": "invalid_openai_yaml_policy",
+                "message": (
+                    f"Skill {source_path} policy.allow_implicit_invocation must be a boolean "
+                    f"when present."
+                ),
+                "source": str(Path(source_path) / "agents" / "openai.yaml"),
+            }
+        )
+        return metadata
+
+    metadata["codex_allow_implicit_invocation"] = allow_implicit
+    metadata["codex_invocation"] = "implicit + explicit" if allow_implicit else "explicit only"
+    return metadata
+
+
 def base_item(
     *,
     kind: str,
@@ -344,6 +415,7 @@ def append_managed_skill_items(
             "source_path": source_path,
             "upstream_ref": entry.get("upstream_ref"),
         }
+        details.update(read_skill_openai_metadata(root, source_path, warnings))
         title = None
         if registry_key == "managed_plugin_skills":
             source_plugin = str(entry.get("source_plugin", "")).strip()
