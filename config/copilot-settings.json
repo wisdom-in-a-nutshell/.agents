@@ -23,6 +23,8 @@
       "social-media-publishing"
     ],
     "effortLevel": "high",
+    "ide.autoConnect": false,
+    "ide.openDiffOnEdit": false,
     "notifications": false,
     "showTipsOnStartup": false
   },
