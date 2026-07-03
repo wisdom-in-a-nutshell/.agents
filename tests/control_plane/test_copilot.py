@@ -31,6 +31,7 @@ class CopilotSyncTests(TempDirTestCase):
             + json.dumps({"trustedFolders": [str(home / "existing")]}, indent=2)
             + "\n",
         )
+        write_json(home / ".copilot/settings.json", {"tabs.hide": ["agents"], "unmanagedSetting": "keep"})
 
         run_command(
             [
@@ -63,7 +64,9 @@ class CopilotSyncTests(TempDirTestCase):
         self.assertEqual(settings["ide.autoConnect"], False)
         self.assertEqual(settings["ide.openDiffOnEdit"], False)
         self.assertEqual(settings["memory"], False)
-        self.assertEqual(settings["tabs.hide"], ["issues", "pull-requests", "gists"])
+        self.assertEqual(settings["tabs"], {"hide": ["issues", "pull-requests", "gists"]})
+        self.assertNotIn("tabs.hide", settings)
+        self.assertEqual(settings["unmanagedSetting"], "keep")
         self.assertEqual(
             settings["disabledSkills"],
             [

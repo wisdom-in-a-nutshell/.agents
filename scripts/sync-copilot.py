@@ -100,6 +100,9 @@ def load_overlay(path: Path) -> dict[str, Any]:
     settings = data.get("settings", {})
     if not isinstance(settings, dict):
         raise CopilotSyncError("config/copilot-settings.json settings must be an object")
+    settings_prune = data.get("settingsPrune", [])
+    if not isinstance(settings_prune, list) or not all(isinstance(item, str) for item in settings_prune):
+        raise CopilotSyncError("config/copilot-settings.json settingsPrune must be an array of strings")
     trust = data.get("trust", {})
     if not isinstance(trust, dict):
         raise CopilotSyncError("config/copilot-settings.json trust must be an object")
@@ -115,15 +118,25 @@ def load_overlay(path: Path) -> dict[str, Any]:
     return data
 
 
+def supported_setting_value(value: Any) -> bool:
+    if isinstance(value, (str, bool, int, float)) or value is None:
+        return True
+    if isinstance(value, list):
+        return all(isinstance(item, str) for item in value)
+    if isinstance(value, dict):
+        return all(isinstance(key, str) and supported_setting_value(item) for key, item in value.items())
+    return False
+
+
 def merge_settings(existing: dict[str, Any], overlay: dict[str, Any]) -> dict[str, Any]:
     desired = dict(existing)
+    for key in overlay.get("settingsPrune", []):
+        desired.pop(key, None)
     for key, value in overlay.get("settings", {}).items():
-        if isinstance(value, (str, bool, int, float)) or value is None:
-            desired[key] = value
-        elif isinstance(value, list) and all(isinstance(item, str) for item in value):
+        if supported_setting_value(value):
             desired[key] = value
         else:
-            raise CopilotSyncError(f"managed Copilot setting must be scalar or string array: {key}")
+            raise CopilotSyncError(f"unsupported managed Copilot setting value: {key}")
     return desired
 
 

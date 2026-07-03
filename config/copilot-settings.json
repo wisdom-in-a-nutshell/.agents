@@ -28,12 +28,17 @@
     "memory": false,
     "notifications": false,
     "showTipsOnStartup": false,
-    "tabs.hide": [
-      "issues",
-      "pull-requests",
-      "gists"
-    ]
+    "tabs": {
+      "hide": [
+        "issues",
+        "pull-requests",
+        "gists"
+      ]
+    }
   },
+  "settingsPrune": [
+    "tabs.hide"
+  ],
   "trust": {
     "githubRoot": true,
     "directChildren": true,
