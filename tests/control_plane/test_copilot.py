@@ -77,6 +77,8 @@ class CopilotSyncTests(TempDirTestCase):
         self.assertTrue(launcher.is_file())
         self.assertTrue(launcher.stat().st_mode & 0o111)
         launcher_text = launcher.read_text(encoding="utf-8")
+        self.assertIn(".secrets/copilot-cli/env", launcher_text)
+        self.assertIn("source \"$secret_env\"", launcher_text)
         self.assertIn("--yolo", launcher_text)
         self.assertIn("--no-ask-user", launcher_text)
         self.assertIn("--mode", launcher_text)

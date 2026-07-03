@@ -468,6 +468,13 @@ if [[ ! -x "$real_cli" ]]; then
   exit 127
 fi
 
+secret_env="${{COPILOT_SECRET_ENV:-$HOME/.secrets/copilot-cli/env}}"
+if [[ -f "$secret_env" ]]; then
+  set -a
+  source "$secret_env"
+  set +a
+fi
+
 if [[ "${{COPILOT_DISABLE_MANAGED_DEFAULTS:-}}" == "1" ]]; then
   exec "$real_cli" "$@"
 fi

@@ -47,6 +47,7 @@ The current Copilot control plane is client-first:
   - repo-scoped hook commands include `--repos <repo-list>` and no-op outside those repos
 - `~/bin/copilot`
   - wraps the real CLI at `/opt/homebrew/bin/copilot`
+  - sources `~/.secrets/copilot-cli/env` when present so machines that cannot write the `copilot-cli` keychain item non-interactively can still provide `COPILOT_GITHUB_TOKEN` to the child CLI process
   - injects `--yolo --no-ask-user --effort high --mode autopilot --max-autopilot-continues 10` for normal sessions
   - does not inject defaults for management commands such as `copilot skill list`, `copilot mcp list`, `copilot login`, or `copilot version`
   - can be bypassed with `COPILOT_DISABLE_MANAGED_DEFAULTS=1`
