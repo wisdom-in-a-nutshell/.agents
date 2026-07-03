@@ -47,6 +47,19 @@ MANAGEMENT_COMMANDS = {
     "version",
 }
 
+BOOLEAN_SETTINGS = {
+    "askUser",
+    "beep",
+    "ide.autoConnect",
+    "ide.openDiffOnEdit",
+    "memory",
+    "notifications",
+    "showTipsOnStartup",
+}
+BANNER_VALUES = {"always", "never", "once"}
+EFFORT_LEVEL_VALUES = {"none", "low", "medium", "high", "xhigh", "max"}
+TAB_IDS = {"agents", "copilot", "gists", "issues", "pull-requests"}
+
 
 class CopilotSyncError(RuntimeError):
     pass
@@ -95,11 +108,61 @@ def read_json_object(path: Path, *, allow_comments: bool = False) -> dict[str, A
     return data
 
 
+def require_bool_setting(key: str, value: Any) -> None:
+    if not isinstance(value, bool):
+        raise CopilotSyncError(f"settings.{key} must be a boolean")
+
+
+def require_string_list(key: str, value: Any) -> list[str]:
+    if not isinstance(value, list) or not all(isinstance(item, str) for item in value):
+        raise CopilotSyncError(f"settings.{key} must be an array of strings")
+    return value
+
+
+def validate_tabs_setting(value: Any) -> None:
+    if not isinstance(value, dict):
+        raise CopilotSyncError("settings.tabs must be an object with hide/sort/enabled keys")
+    allowed_keys = {"enabled", "hide", "sort"}
+    unknown = sorted(set(value) - allowed_keys)
+    if unknown:
+        raise CopilotSyncError(f"settings.tabs has unknown keys: {', '.join(unknown)}")
+    if "enabled" in value and not isinstance(value["enabled"], bool):
+        raise CopilotSyncError("settings.tabs.enabled must be a boolean")
+    for key in ("hide", "sort"):
+        if key not in value:
+            continue
+        items = require_string_list(f"tabs.{key}", value[key])
+        unknown_tabs = sorted(set(items) - TAB_IDS)
+        if unknown_tabs:
+            raise CopilotSyncError(f"settings.tabs.{key} has unknown tab ids: {', '.join(unknown_tabs)}")
+        if key == "hide" and "copilot" in items:
+            raise CopilotSyncError("settings.tabs.hide must not include copilot because the Session tab cannot be hidden")
+
+
+def validate_managed_settings(settings: dict[str, Any]) -> None:
+    allowed = BOOLEAN_SETTINGS | {"banner", "disabledSkills", "effortLevel", "tabs"}
+    unknown = sorted(set(settings) - allowed)
+    if unknown:
+        raise CopilotSyncError(f"unsupported managed Copilot settings: {', '.join(unknown)}")
+    for key in BOOLEAN_SETTINGS:
+        if key in settings:
+            require_bool_setting(key, settings[key])
+    if "banner" in settings and settings["banner"] not in BANNER_VALUES:
+        raise CopilotSyncError(f"settings.banner must be one of: {', '.join(sorted(BANNER_VALUES))}")
+    if "effortLevel" in settings and settings["effortLevel"] not in EFFORT_LEVEL_VALUES:
+        raise CopilotSyncError(f"settings.effortLevel must be one of: {', '.join(sorted(EFFORT_LEVEL_VALUES))}")
+    if "disabledSkills" in settings:
+        require_string_list("disabledSkills", settings["disabledSkills"])
+    if "tabs" in settings:
+        validate_tabs_setting(settings["tabs"])
+
+
 def load_overlay(path: Path) -> dict[str, Any]:
     data = read_json_object(path)
     settings = data.get("settings", {})
     if not isinstance(settings, dict):
         raise CopilotSyncError("config/copilot-settings.json settings must be an object")
+    validate_managed_settings(settings)
     settings_prune = data.get("settingsPrune", [])
     if not isinstance(settings_prune, list) or not all(isinstance(item, str) for item in settings_prune):
         raise CopilotSyncError("config/copilot-settings.json settingsPrune must be an array of strings")

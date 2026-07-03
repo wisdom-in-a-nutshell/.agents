@@ -121,6 +121,37 @@ class CopilotSyncTests(TempDirTestCase):
         self.assertNotIn("openaiDeveloperDocs", launcher_text)
         self.assertIn(str(real_cli), launcher_text)
 
+    def test_rejects_flat_tabs_hide_setting(self) -> None:
+        home = self.temp_path / "home"
+        bad_overlay = write_json(
+            self.temp_path / "bad-copilot-settings.json",
+            {"settings": {"tabs.hide": ["issues"]}},
+        )
+
+        result = run_command(
+            [
+                sys.executable,
+                str(REPO_ROOT / "scripts/sync-copilot.py"),
+                "--dry-run",
+                "--settings-overlay",
+                str(bad_overlay),
+                "--settings-file",
+                str(home / ".copilot/settings.json"),
+                "--user-config-file",
+                str(home / ".copilot/config.json"),
+                "--hooks-file",
+                str(home / ".copilot/hooks/agents-control-plane.json"),
+                "--launcher-target",
+                str(home / "bin/copilot"),
+                "--skip-global-instructions",
+            ],
+            env={"HOME": str(home)},
+            check=False,
+        )
+
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("unsupported managed Copilot settings: tabs.hide", result.stderr)
+
     def test_apply_renders_github_app_preview_config(self) -> None:
         home = self.temp_path / "home"
         github_root = home / "GitHub"
