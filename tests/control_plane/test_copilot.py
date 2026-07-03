@@ -102,12 +102,16 @@ class CopilotSyncTests(TempDirTestCase):
         self.assertIn("source \"$secret_env\"", launcher_text)
         self.assertIn("--yolo", launcher_text)
         self.assertIn("--no-ask-user", launcher_text)
+        self.assertIn("--model", launcher_text)
+        self.assertIn("claude-sonnet-5", launcher_text)
+        self.assertIn("--effort", launcher_text)
+        self.assertIn("high", launcher_text)
         self.assertIn("--mode", launcher_text)
         self.assertIn("autopilot", launcher_text)
         self.assertIn("--max-autopilot-continues", launcher_text)
         self.assertIn("--disable-builtin-mcps", launcher_text)
-        self.assertIn("--disable-mcp-server", launcher_text)
-        self.assertIn("openaiDeveloperDocs", launcher_text)
+        self.assertNotIn("--disable-mcp-server", launcher_text)
+        self.assertNotIn("openaiDeveloperDocs", launcher_text)
         self.assertIn(str(real_cli), launcher_text)
 
     def test_apply_renders_github_app_preview_config(self) -> None:

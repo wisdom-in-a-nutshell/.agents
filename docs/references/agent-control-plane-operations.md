@@ -54,7 +54,7 @@ For repo authors adding `scripts/hooks/*.py`, start with [`repo-lifecycle-hook-a
   - renders managed GitHub Copilot CLI settings from `config/copilot-settings.json` into `~/.copilot/settings.json`
   - renders managed trusted folders into `~/.copilot/config.json`, where Copilot CLI 1.0.67 stores `trustedFolders`, while preserving Copilot-managed login/session keys
   - renders `~/.copilot/hooks/agents-control-plane.json` from `hooks/registry.json`
-  - renders `~/bin/copilot`, a terminal wrapper that defaults sessions to `--yolo --no-ask-user --effort high --mode autopilot --max-autopilot-continues 10`
+  - renders `~/bin/copilot`, a terminal wrapper that defaults sessions to `--yolo --no-ask-user --model claude-sonnet-5 --effort high --mode autopilot --max-autopilot-continues 10 --disable-builtin-mcps`
   - renders `.github/github-app.yml` for repos listed in `dev-servers/registry.json`, giving the GitHub Copilot app the same Run/browser-ready preview surface without adding app-specific instructions or skills
   - leaves `.github/skills` and `~/.copilot/skills` empty by design; Copilot reuses `.agents/skills` and `~/.agents/skills`
   - allowlists the macOS app-bundled skill names observed under `~/Library/Application Support/com.github.githubapp/app-skills`
