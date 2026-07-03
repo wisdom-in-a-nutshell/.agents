@@ -47,6 +47,7 @@ MANAGEMENT_COMMANDS = {
     "version",
 }
 
+TOP_LEVEL_KEYS = {"description", "hooks", "launcher", "settings", "settingsPrune", "skills", "trust"}
 BOOLEAN_SETTINGS = {
     "askUser",
     "beep",
@@ -59,6 +60,22 @@ BOOLEAN_SETTINGS = {
 BANNER_VALUES = {"always", "never", "once"}
 EFFORT_LEVEL_VALUES = {"none", "low", "medium", "high", "xhigh", "max"}
 TAB_IDS = {"agents", "copilot", "gists", "issues", "pull-requests"}
+LAUNCHER_KEYS = {"defaultArgs", "enabled", "managementCommands"}
+LAUNCHER_VALUE_FLAGS = {
+    "--available-tools",
+    "--disable-mcp-server",
+    "--effort",
+    "--excluded-tools",
+    "--max-autopilot-continues",
+    "--mode",
+    "--model",
+}
+LAUNCHER_BOOLEAN_FLAGS = {"--disable-builtin-mcps", "--no-ask-user", "--yolo"}
+MODE_VALUES = {"autopilot", "interactive", "plan"}
+MODEL_VALUES = {"claude-sonnet-5"}
+PRUNABLE_SETTINGS = {"tabs.hide"}
+SKILL_DIRECTORY_POLICIES = {"empty"}
+APP_SKILLS_POLICIES = {"allow-known-only"}
 
 
 class CopilotSyncError(RuntimeError):
@@ -157,8 +174,106 @@ def validate_managed_settings(settings: dict[str, Any]) -> None:
         validate_tabs_setting(settings["tabs"])
 
 
+def validate_settings_prune(settings_prune: list[str]) -> None:
+    unknown = sorted(set(settings_prune) - PRUNABLE_SETTINGS)
+    if unknown:
+        raise CopilotSyncError(f"settingsPrune has unsupported keys: {', '.join(unknown)}")
+
+
+def validate_trust(trust: dict[str, Any]) -> None:
+    allowed = {"directChildren", "extraFolders", "githubRoot"}
+    unknown = sorted(set(trust) - allowed)
+    if unknown:
+        raise CopilotSyncError(f"trust has unknown keys: {', '.join(unknown)}")
+    for key in ("directChildren", "githubRoot"):
+        if key in trust and not isinstance(trust[key], bool):
+            raise CopilotSyncError(f"trust.{key} must be a boolean")
+    if "extraFolders" in trust:
+        value = trust["extraFolders"]
+        if not isinstance(value, list) or not all(isinstance(item, str) and item.strip() for item in value):
+            raise CopilotSyncError("trust.extraFolders must be an array of non-empty strings")
+
+
+def validate_launcher_args(args: list[str]) -> None:
+    idx = 0
+    while idx < len(args):
+        flag = args[idx]
+        if flag in LAUNCHER_BOOLEAN_FLAGS:
+            idx += 1
+            continue
+        if flag not in LAUNCHER_VALUE_FLAGS:
+            raise CopilotSyncError(f"launcher.defaultArgs has unsupported flag: {flag}")
+        if idx + 1 >= len(args) or args[idx + 1].startswith("--"):
+            raise CopilotSyncError(f"launcher.defaultArgs flag requires a value: {flag}")
+        value = args[idx + 1]
+        if flag == "--effort" and value not in EFFORT_LEVEL_VALUES:
+            raise CopilotSyncError(f"launcher.defaultArgs --effort must be one of: {', '.join(sorted(EFFORT_LEVEL_VALUES))}")
+        if flag == "--mode" and value not in MODE_VALUES:
+            raise CopilotSyncError(f"launcher.defaultArgs --mode must be one of: {', '.join(sorted(MODE_VALUES))}")
+        if flag == "--model" and value not in MODEL_VALUES:
+            raise CopilotSyncError(f"launcher.defaultArgs --model must be one of: {', '.join(sorted(MODEL_VALUES))}")
+        if flag == "--max-autopilot-continues" and not value.isdigit():
+            raise CopilotSyncError("launcher.defaultArgs --max-autopilot-continues must be a positive integer")
+        idx += 2
+
+
+def validate_launcher(launcher: dict[str, Any]) -> None:
+    unknown = sorted(set(launcher) - LAUNCHER_KEYS)
+    if unknown:
+        raise CopilotSyncError(f"launcher has unknown keys: {', '.join(unknown)}")
+    if "enabled" in launcher and not isinstance(launcher["enabled"], bool):
+        raise CopilotSyncError("launcher.enabled must be a boolean")
+    default_args = launcher.get("defaultArgs", [])
+    if not isinstance(default_args, list) or not all(isinstance(item, str) and item for item in default_args):
+        raise CopilotSyncError("launcher.defaultArgs must be an array of non-empty strings")
+    validate_launcher_args(default_args)
+    management_commands = launcher.get("managementCommands", [])
+    if not isinstance(management_commands, list) or not all(isinstance(item, str) and item for item in management_commands):
+        raise CopilotSyncError("launcher.managementCommands must be an array of non-empty strings")
+    unknown_commands = sorted(set(management_commands) - MANAGEMENT_COMMANDS)
+    if unknown_commands:
+        raise CopilotSyncError(f"launcher.managementCommands has unknown commands: {', '.join(unknown_commands)}")
+
+
+def validate_skills(skills: dict[str, Any]) -> None:
+    allowed = {
+        "appSkillsPolicy",
+        "copilotSkillDirectoryPolicy",
+        "expectedAppBundledSkills",
+        "projectGithubSkillDirectoryPolicy",
+    }
+    unknown = sorted(set(skills) - allowed)
+    if unknown:
+        raise CopilotSyncError(f"skills has unknown keys: {', '.join(unknown)}")
+    for key in ("copilotSkillDirectoryPolicy", "projectGithubSkillDirectoryPolicy"):
+        if key in skills and skills[key] not in SKILL_DIRECTORY_POLICIES:
+            raise CopilotSyncError(f"skills.{key} must be one of: {', '.join(sorted(SKILL_DIRECTORY_POLICIES))}")
+    if "appSkillsPolicy" in skills and skills["appSkillsPolicy"] not in APP_SKILLS_POLICIES:
+        raise CopilotSyncError(f"skills.appSkillsPolicy must be one of: {', '.join(sorted(APP_SKILLS_POLICIES))}")
+    expected = skills.get("expectedAppBundledSkills", [])
+    if not isinstance(expected, list) or not all(isinstance(item, str) and item for item in expected):
+        raise CopilotSyncError("skills.expectedAppBundledSkills must be an array of non-empty strings")
+
+
+def validate_hooks_overlay(hooks: dict[str, Any]) -> None:
+    allowed = {"forbiddenCommandSubstrings", "managedCopilotHooks", "userHookFile"}
+    unknown = sorted(set(hooks) - allowed)
+    if unknown:
+        raise CopilotSyncError(f"hooks has unknown keys: {', '.join(unknown)}")
+    if "managedCopilotHooks" in hooks and not isinstance(hooks["managedCopilotHooks"], bool):
+        raise CopilotSyncError("hooks.managedCopilotHooks must be a boolean")
+    if "userHookFile" in hooks and not isinstance(hooks["userHookFile"], str):
+        raise CopilotSyncError("hooks.userHookFile must be a string")
+    forbidden = hooks.get("forbiddenCommandSubstrings", [])
+    if not isinstance(forbidden, list) or not all(isinstance(item, str) and item for item in forbidden):
+        raise CopilotSyncError("hooks.forbiddenCommandSubstrings must be an array of non-empty strings")
+
+
 def load_overlay(path: Path) -> dict[str, Any]:
     data = read_json_object(path)
+    unknown_top_level = sorted(set(data) - TOP_LEVEL_KEYS)
+    if unknown_top_level:
+        raise CopilotSyncError(f"config/copilot-settings.json has unknown top-level keys: {', '.join(unknown_top_level)}")
     settings = data.get("settings", {})
     if not isinstance(settings, dict):
         raise CopilotSyncError("config/copilot-settings.json settings must be an object")
@@ -166,18 +281,23 @@ def load_overlay(path: Path) -> dict[str, Any]:
     settings_prune = data.get("settingsPrune", [])
     if not isinstance(settings_prune, list) or not all(isinstance(item, str) for item in settings_prune):
         raise CopilotSyncError("config/copilot-settings.json settingsPrune must be an array of strings")
+    validate_settings_prune(settings_prune)
     trust = data.get("trust", {})
     if not isinstance(trust, dict):
         raise CopilotSyncError("config/copilot-settings.json trust must be an object")
+    validate_trust(trust)
     launcher = data.get("launcher", {})
     if not isinstance(launcher, dict):
         raise CopilotSyncError("config/copilot-settings.json launcher must be an object")
+    validate_launcher(launcher)
     skills = data.get("skills", {})
     if not isinstance(skills, dict):
         raise CopilotSyncError("config/copilot-settings.json skills must be an object")
+    validate_skills(skills)
     hooks = data.get("hooks", {})
     if not isinstance(hooks, dict):
         raise CopilotSyncError("config/copilot-settings.json hooks must be an object")
+    validate_hooks_overlay(hooks)
     return data
 
 

@@ -152,6 +152,74 @@ class CopilotSyncTests(TempDirTestCase):
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("unsupported managed Copilot settings: tabs.hide", result.stderr)
 
+    def test_rejects_invalid_overlay_shapes(self) -> None:
+        home = self.temp_path / "home"
+        cases = [
+            (
+                "top-level",
+                {"launcer": {}},
+                "unknown top-level keys: launcer",
+            ),
+            (
+                "settings-prune",
+                {"settingsPrune": ["unknown.flat.key"]},
+                "settingsPrune has unsupported keys: unknown.flat.key",
+            ),
+            (
+                "trust",
+                {"trust": {"directChildren": "yes"}},
+                "trust.directChildren must be a boolean",
+            ),
+            (
+                "launcher-flag",
+                {"launcher": {"defaultArgs": ["--surprise"]}},
+                "launcher.defaultArgs has unsupported flag: --surprise",
+            ),
+            (
+                "launcher-value",
+                {"launcher": {"defaultArgs": ["--mode", "party"]}},
+                "launcher.defaultArgs --mode must be one of",
+            ),
+            (
+                "skills",
+                {"skills": {"appSkillsPolicy": "anything"}},
+                "skills.appSkillsPolicy must be one of",
+            ),
+            (
+                "hooks",
+                {"hooks": {"managedCopilotHooks": "yes"}},
+                "hooks.managedCopilotHooks must be a boolean",
+            ),
+        ]
+
+        for name, overlay, error in cases:
+            with self.subTest(name=name):
+                bad_overlay = write_json(self.temp_path / f"bad-{name}.json", overlay)
+
+                result = run_command(
+                    [
+                        sys.executable,
+                        str(REPO_ROOT / "scripts/sync-copilot.py"),
+                        "--dry-run",
+                        "--settings-overlay",
+                        str(bad_overlay),
+                        "--settings-file",
+                        str(home / ".copilot/settings.json"),
+                        "--user-config-file",
+                        str(home / ".copilot/config.json"),
+                        "--hooks-file",
+                        str(home / ".copilot/hooks/agents-control-plane.json"),
+                        "--launcher-target",
+                        str(home / "bin/copilot"),
+                        "--skip-global-instructions",
+                    ],
+                    env={"HOME": str(home)},
+                    check=False,
+                )
+
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn(error, result.stderr)
+
     def test_apply_renders_github_app_preview_config(self) -> None:
         home = self.temp_path / "home"
         github_root = home / "GitHub"
