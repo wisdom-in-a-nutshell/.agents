@@ -35,6 +35,7 @@ class SharedBootstrapWrapperTests(TempDirTestCase):
         write_executable(root / "scripts/sync-codex-plugin-installs.py", STUB_SCRIPT)
         write_executable(root / "scripts/sync-claude.sh", STUB_SCRIPT)
         write_executable(root / "scripts/sync-copilot.sh", STUB_SCRIPT)
+        write_executable(root / "scripts/install-prune-stale-copilot-sessions-launchagent.sh", STUB_SCRIPT)
         write_executable(root / "scripts/sync-vscode-agent-defaults.sh", STUB_SCRIPT)
         write_executable(root / "scripts/sync-managed-git-hooks.sh", STUB_SCRIPT)
         write_executable(root / "codex/scripts/bootstrap-machine-codex.sh", STUB_SCRIPT)
@@ -45,6 +46,8 @@ class SharedBootstrapWrapperTests(TempDirTestCase):
         github_root = self.temp_path / "GitHub"
         repo_a = self.temp_path / "repo-a"
         repo_b = self.temp_path / "repo-b"
+        home = self.temp_path / "home"
+        (home / ".copilot/session-state").mkdir(parents=True)
 
         result = run_command(
             [
@@ -57,7 +60,7 @@ class SharedBootstrapWrapperTests(TempDirTestCase):
                 "--repo",
                 str(repo_b),
             ],
-            env={"LOG_FILE": str(log_path)},
+            env={"HOME": str(home), "LOG_FILE": str(log_path)},
         )
 
         self.assertIn("SKIP Antigravity spike sync (disabled)", result.stdout)
@@ -68,6 +71,7 @@ class SharedBootstrapWrapperTests(TempDirTestCase):
                 "sync-codex-plugin-installs.py|--apply --no-input",
                 f"sync-claude.sh|--apply --github-root {github_root} --repo {repo_a} --repo {repo_b}",
                 f"sync-copilot.sh|--apply --github-root {github_root} --repo {repo_a} --repo {repo_b}",
+                "install-prune-stale-copilot-sessions-launchagent.sh|--apply",
                 "sync-vscode-agent-defaults.sh|--apply",
                 f"sync-managed-git-hooks.sh|--apply --repo {repo_a} --repo {repo_b}",
                 f"bootstrap-machine-codex.sh|--apply --github-root {github_root} --repo {repo_a} --repo {repo_b}",

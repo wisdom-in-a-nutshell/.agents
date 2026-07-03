@@ -6,7 +6,7 @@ Use this page for the GitHub Copilot client surface managed by `~/GitHub/agents`
 
 The current Copilot control plane is client-first:
 
-- Managed: terminal Copilot CLI settings, trusted folders, user-level hooks, `~/bin/copilot`, and the GitHub Copilot app's per-repo preview config.
+- Managed: terminal Copilot CLI settings, trusted folders, user-level hooks, `~/bin/copilot`, local session cleanup, and the GitHub Copilot app's per-repo preview config.
 - Observed: GitHub Copilot macOS app bundled skills under `~/Library/Application Support/com.github.githubapp/app-skills`.
 - Intentionally observed only: Copilot app bundled skill visibility. The app owns its bundled skill install surface.
 
@@ -26,6 +26,9 @@ The current Copilot control plane is client-first:
 - `config/global.agents.md`
   - the same canonical machine-wide guidance rendered into `~/.claude/CLAUDE.md` and `~/.codex/AGENTS.md`
   - now also symlinked into `~/.copilot/copilot-instructions.md` by `scripts/sync-copilot.py`
+- `scripts/prune-stale-copilot-sessions.py`
+  - local-only cleanup for stale `~/.copilot/session-state/<session-id>` data plus matching `~/.copilot/session-store.db` rows
+  - mirrors GitHub's documented `/session prune --older-than DAYS` behavior for automation, because `/session prune` is an interactive slash command rather than a top-level non-interactive CLI subcommand
 
 ## Runtime Outputs
 
@@ -56,6 +59,12 @@ The current Copilot control plane is client-first:
 - `~/.copilot/copilot-instructions.md`
   - relative symlink to `config/global.agents.md`, the same canonical file rendered into `~/.claude/CLAUDE.md` and `~/.codex/AGENTS.md`
   - gives Copilot CLI and the Copilot app the same machine-wide baseline guidance the other two clients already had; previously this path was empty and Copilot got none of it
+- `~/Library/LaunchAgents/com.<user>.copilot-session-pruner.plist`
+  - installed when `~/.copilot/session-state` or `~/.copilot/session-store.db` exists
+  - runs hourly and prunes local Copilot sessions whose `updated_at` is older than 24 hours
+  - skips session directories that contain a live `inuse.<pid>.lock`
+  - writes backups under `~/.local/state/copilot-control-plane/prune-stale-copilot-sessions/backups`
+  - never deletes synced GitHub.com session data
 
 ## Skill Policy
 
@@ -94,6 +103,8 @@ Reasons:
 cd ~/GitHub/agents
 ./scripts/sync-copilot.sh --apply
 ./scripts/sync-copilot.sh --check
+./scripts/prune-stale-copilot-sessions.py --plain --older-than-hours 24
+./scripts/install-prune-stale-copilot-sessions-launchagent.sh --apply
 ./scripts/bootstrap-machine-agent-control-planes.sh --apply
 ./scripts/check-agent-control-planes.sh
 ```
@@ -111,6 +122,18 @@ The check reports those app-bundled skill names as observed state. It does not m
 The app-specific repo config file is `.github/github-app.yml`. Public GitHub docs do not currently publish the full YAML schema; the managed renderer sticks to keys observed in the installed app parser and confirmed by the app UI: run scripts, server-ready pattern, and browser auto-open. GitHub cloud-agent environment setup remains separate (`.github/workflows/copilot-setup-steps.yml`) and is not managed here.
 
 For app worktree sessions, the app exposes `COPILOT_WORKSPACE_PATH` to lifecycle scripts. The renderer uses that variable for `{repo_root}` in `.github/github-app.yml` only; Claude Code and Codex still receive the stable checkout path. If a preview needs gitignored local files inside a Copilot app worktree, add a repo-owned `.worktreeinclude` file in that repo rather than teaching this control plane to copy secrets globally.
+
+## Local Session Cleanup
+
+GitHub's current docs say Copilot CLI session files live under `~/.copilot/session-state/`, and structured session data lives in the local SQLite session store at `~/.copilot/session-store.db`. The documented cleanup command is the interactive slash command `/session prune --older-than DAYS`; GitHub states that `/session prune` affects local sessions only and does not delete synced GitHub.com data.
+
+The managed `copilot-session-pruner` LaunchAgent provides the same local-only policy for unattended machine cleanup. It uses the documented local store locations, prunes stale indexed sessions plus stale unindexed `session-state` directories, skips live `inuse.<pid>.lock` sessions, and backs up before applying. It intentionally does not mutate GitHub.com synced session history; remove synced sessions through GitHub's own UI when needed.
+
+Run a dry-run before changing the threshold:
+
+```bash
+~/GitHub/agents/scripts/prune-stale-copilot-sessions.py --plain --older-than-hours 24
+```
 
 ## App Autonomy Model (2026-07-01 finding)
 
