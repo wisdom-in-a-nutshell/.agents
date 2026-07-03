@@ -27,7 +27,13 @@
     "ide.openDiffOnEdit": false,
     "memory": false,
     "notifications": false,
-    "showTipsOnStartup": false
+    "showTipsOnStartup": false,
+    "tabs.hide": [
+      "agents",
+      "issues",
+      "pull-requests",
+      "gists"
+    ]
   },
   "trust": {
     "githubRoot": true,

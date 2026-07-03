@@ -63,6 +63,7 @@ class CopilotSyncTests(TempDirTestCase):
         self.assertEqual(settings["ide.autoConnect"], False)
         self.assertEqual(settings["ide.openDiffOnEdit"], False)
         self.assertEqual(settings["memory"], False)
+        self.assertEqual(settings["tabs.hide"], ["agents", "issues", "pull-requests", "gists"])
         self.assertEqual(
             settings["disabledSkills"],
             [
