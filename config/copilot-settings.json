@@ -39,15 +39,15 @@
     "defaultArgs": [
       "--yolo",
       "--no-ask-user",
+      "--model",
+      "claude-sonnet-5",
       "--effort",
       "high",
       "--mode",
       "autopilot",
       "--max-autopilot-continues",
       "10",
-      "--disable-builtin-mcps",
-      "--disable-mcp-server",
-      "openaiDeveloperDocs"
+      "--disable-builtin-mcps"
     ],
     "managementCommands": [
       "completion",
