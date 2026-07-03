@@ -62,6 +62,7 @@ class CopilotSyncTests(TempDirTestCase):
         self.assertEqual(settings["banner"], "never")
         self.assertEqual(settings["ide.autoConnect"], False)
         self.assertEqual(settings["ide.openDiffOnEdit"], False)
+        self.assertEqual(settings["memory"], False)
         self.assertEqual(
             settings["disabledSkills"],
             [
