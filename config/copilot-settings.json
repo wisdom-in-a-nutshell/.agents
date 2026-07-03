@@ -29,7 +29,6 @@
     "notifications": false,
     "showTipsOnStartup": false,
     "tabs.hide": [
-      "agents",
       "issues",
       "pull-requests",
       "gists"

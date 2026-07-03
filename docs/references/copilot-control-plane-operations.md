@@ -38,7 +38,7 @@ The current Copilot control plane is client-first:
   - quiet banner/beep/tips/notification defaults
   - `ide.autoConnect: false` and `ide.openDiffOnEdit: false` so terminal Copilot sessions do not auto-connect to IDE workspaces or open IDE diffs unless `/ide` is invoked manually
   - `memory: false` so Copilot does not use cross-session agentic memory by default
-  - `tabs.hide: ["agents", "issues", "pull-requests", "gists"]` so the terminal home tabs stay focused on the main session view
+  - `tabs.hide: ["issues", "pull-requests", "gists"]` so the terminal home tabs keep Agents visible while hiding unused GitHub issue/PR/gist views
   - `disabledSkills` disables noisy, rarely needed, UI-only, or Codex-App-Server-specific skills for local terminal Copilot sessions (`af`, `agent-merge`, `agentfinder`, `adi-design`, `codex-app-server`, `create-canvas`, `customize-cloud-agent`, `find-skills`, `imagegen`, `impeccable`, `media-toolkit`, `openai-docs`, `orchestrate`, `pdf`, `project`, `social-media-publishing`)
   - no managed `trustedFolders` key; the installed CLI migrates trust to `config.json`
 - `~/.copilot/config.json`
