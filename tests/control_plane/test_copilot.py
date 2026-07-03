@@ -68,7 +68,14 @@ class CopilotSyncTests(TempDirTestCase):
                 "agentfinder",
                 "create-canvas",
                 "customize-cloud-agent",
+                "find-skills",
+                "imagegen",
+                "media-toolkit",
+                "openai-docs",
                 "orchestrate",
+                "pdf",
+                "project",
+                "social-media-publishing",
             ],
         )
         self.assertNotIn("trustedFolders", settings)
@@ -95,6 +102,9 @@ class CopilotSyncTests(TempDirTestCase):
         self.assertIn("--mode", launcher_text)
         self.assertIn("autopilot", launcher_text)
         self.assertIn("--max-autopilot-continues", launcher_text)
+        self.assertIn("--disable-builtin-mcps", launcher_text)
+        self.assertIn("--disable-mcp-server", launcher_text)
+        self.assertIn("openaiDeveloperDocs", launcher_text)
         self.assertIn(str(real_cli), launcher_text)
 
     def test_apply_renders_github_app_preview_config(self) -> None:

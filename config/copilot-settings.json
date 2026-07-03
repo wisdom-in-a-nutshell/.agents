@@ -10,7 +10,14 @@
       "agentfinder",
       "create-canvas",
       "customize-cloud-agent",
-      "orchestrate"
+      "find-skills",
+      "imagegen",
+      "media-toolkit",
+      "openai-docs",
+      "orchestrate",
+      "pdf",
+      "project",
+      "social-media-publishing"
     ],
     "effortLevel": "high",
     "notifications": false,
@@ -34,7 +41,10 @@
       "--mode",
       "autopilot",
       "--max-autopilot-continues",
-      "10"
+      "10",
+      "--disable-builtin-mcps",
+      "--disable-mcp-server",
+      "openaiDeveloperDocs"
     ],
     "managementCommands": [
       "completion",
