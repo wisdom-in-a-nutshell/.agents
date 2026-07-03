@@ -36,7 +36,7 @@ The current Copilot control plane is client-first:
   - `askUser: false`
   - `effortLevel: high`
   - quiet banner/beep/tips/notification defaults
-  - `disabledSkills` disables noisy or rarely needed skills for local terminal Copilot sessions (`af`, `agent-merge`, `agentfinder`, `create-canvas`, `customize-cloud-agent`, `find-skills`, `imagegen`, `media-toolkit`, `openai-docs`, `orchestrate`, `pdf`, `project`, `social-media-publishing`)
+  - `disabledSkills` disables noisy, rarely needed, UI-only, or Codex-App-Server-specific skills for local terminal Copilot sessions (`af`, `agent-merge`, `agentfinder`, `adi-design`, `codex-app-server`, `create-canvas`, `customize-cloud-agent`, `find-skills`, `imagegen`, `impeccable`, `media-toolkit`, `openai-docs`, `orchestrate`, `pdf`, `project`, `social-media-publishing`)
   - no managed `trustedFolders` key; the installed CLI migrates trust to `config.json`
 - `~/.copilot/config.json`
   - Copilot-managed login/session keys are preserved
