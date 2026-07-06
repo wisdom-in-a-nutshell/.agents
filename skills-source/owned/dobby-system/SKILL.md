@@ -18,7 +18,7 @@ This skill is the canonical cross-repo orientation layer for Dobby. Future agent
 | `~/GitHub/adi` | Adi's identity/data workspace: constitution, memory, journal, legacy Shelf import/audit material, person prompts, workspace hooks, `./bin/dobby` shim | Shared engine implementation, Angie's private data |
 | `~/GitHub/angie` | Angie's identity/data workspace: constitution, memory, journal, legacy Shelf import/audit material, person prompts, workspace hooks, `./bin/dobby` shim | Shared engine implementation, Adi's private data |
 | `~/GitHub/dobby-engine` | Shared Dobby CLI, Python engine, dashboard source, engine contracts, default prompts/docs, tests | Person-specific identity, memory, journals, private state |
-| `~/GitHub/documents` | Canonical local document tooling: inventory, extraction, review, import/cleanup scripts, catalog/search CLI, and JSON/SQLite metadata contracts for `/Volumes/DobbyData/Documents` | Shared Dobby engine behavior, person memory/canon, workspace identity, raw document files in git |
+| `~/GitHub/documents` | Canonical local document tooling: inventory, copy-only ingest/import, extraction, review, cleanup scripts, catalog/search CLI, and JSON/SQLite metadata contracts for `/Volumes/DobbyData/Documents` | Shared Dobby engine behavior, person memory/canon, workspace identity, raw document files in git |
 | `~/GitHub/codexclaw` | Product shell: iOS app, mobile gateway, assistant runtime integration, user-facing app contracts | Dobby identity data, core Dobby engine logic unless through documented CLI/API boundary |
 | `~/GitHub/agents` | Agent control plane: shared skills, Codex/Claude config, hooks, MCP/plugin registries, skill distribution | Dobby product behavior, Dobby personal data, engine runtime behavior |
 | `~/GitHub/scripts` | Machine ops: bootstrap, launchd wiring, scheduler profiles, recurring machine wrappers, machine-local materializers | Dobby domain behavior, person memory/data, dashboard/API implementation, agent control-plane policy |
@@ -28,11 +28,12 @@ This skill is the canonical cross-repo orientation layer for Dobby. Future agent
 - Folder identity matters. An agent opened in `adi` is operating as Adi's Dobby workspace; an agent opened in `angie` is operating as Angie's Dobby workspace.
 - Workspace repos are thin. They hold identity/data and call the shared engine through workspace-local `./bin/dobby`.
 - The shared engine must remain workspace-agnostic. Runtime person data comes from `DOBBY_WORKSPACE` or workspace marker discovery, not from hardcoded Adi/Angie paths.
-- Document search is a domain bridge, not engine-owned data. `dobby-engine`
-  exposes read-only `dobby documents ...` commands; the separate `documents`
-  repo owns catalog/search implementation. Each personal workspace must opt into
-  a document root such as `DOBBY_DOCUMENTS_DATA_ROOT`; the shared engine should
-  not guess a person's corpus from a machine-wide default.
+- Document access is a domain bridge, not engine-owned data. `dobby-engine`
+  exposes `dobby documents status/search` plus the explicit copy-only
+  `dobby documents ingest` front door; the separate `documents` repo owns
+  catalog, import, and search-index implementation. Each personal workspace must
+  opt into a document root such as `DOBBY_DOCUMENTS_DATA_ROOT`; the shared engine
+  should not guess a person's corpus from a machine-wide default.
 - `codexclaw` should treat Dobby as a workspace-backed service boundary. It should call the workspace/engine contract, not read private memory files ad hoc.
 - Health storage is engine-owned but local and person-bound. The combined SQLite
   DB lives on the internal SSD at
@@ -102,7 +103,7 @@ For social archives, corpora, imported documents, and other source material:
 ## Choosing Where a Change Belongs
 
 1. If it changes Dobby commands, hooks, validation, memory processing, dashboard code, or shared behavior for both people, change `dobby-engine`.
-2. If it changes document inventory, extraction, canonical import/cleanup, document search-index construction, or the `documents` CLI contract consumed by Dobby, change `documents`.
+2. If it changes document inventory, copy-only ingest/import, extraction, canonical cleanup, document search-index construction, or the `documents` CLI contract consumed by Dobby, change `documents`.
 3. If it changes Adi's or Angie's constitution, memory, journal, legacy Shelf import/audit material, person-specific prompt behavior, or workspace-specific document-root opt-in, change only that person's workspace repo.
 4. If it changes the phone app, mobile gateway, assistant runtime selection, or product-facing behavior, change `codexclaw`.
 5. If it changes which skills/tools/hooks/configs agents receive, change `agents`.
