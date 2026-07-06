@@ -131,7 +131,7 @@
       "scope": "repo",
       "repos": [
         "adi",
-        "codexclaw"
+        "dobby-gateway"
       ],
       "source_path": "skills-source/owned/codex-agent-loop",
       "upstream_ref": "-"
@@ -141,9 +141,9 @@
       "origin": "owned",
       "scope": "repo",
       "repos": [
-        "agents",
         "adi",
-        "codexclaw",
+        "agents",
+        "dobby-gateway",
         "symphony"
       ],
       "source_path": "skills-source/owned/codex-app-server",
@@ -165,7 +165,8 @@
         "adi",
         "angie",
         "dobby-engine",
-        "codexclaw"
+        "dobby-gateway",
+        "dobby-ios"
       ],
       "source_path": "skills-source/owned/dobby-system",
       "upstream_ref": "-"
@@ -251,11 +252,12 @@
       "origin": "owned",
       "scope": "repo",
       "repos": [
-        "agents",
         "adi",
         "adithyan-ai-videos",
+        "agents",
         "angie",
-        "codexclaw",
+        "dobby-gateway",
+        "dobby-ios",
         "local-transcription",
         "scripts"
       ],
@@ -424,7 +426,7 @@
       "origin": "external",
       "scope": "repo",
       "repos": [
-        "codexclaw"
+        "dobby-ios"
       ],
       "source_path": "plugins-source/external/build-ios-apps/skills/ios-app-intents",
       "upstream_ref": "openai-curated/build-ios-apps@0.1.2",
@@ -435,7 +437,7 @@
       "origin": "external",
       "scope": "repo",
       "repos": [
-        "codexclaw"
+        "dobby-ios"
       ],
       "source_path": "plugins-source/external/build-ios-apps/skills/ios-debugger-agent",
       "upstream_ref": "openai-curated/build-ios-apps@0.1.2",
@@ -446,7 +448,7 @@
       "origin": "external",
       "scope": "repo",
       "repos": [
-        "codexclaw"
+        "dobby-ios"
       ],
       "source_path": "plugins-source/external/build-ios-apps/skills/ios-ettrace-performance",
       "upstream_ref": "openai-curated/build-ios-apps@0.1.2",
@@ -457,7 +459,7 @@
       "origin": "external",
       "scope": "repo",
       "repos": [
-        "codexclaw"
+        "dobby-ios"
       ],
       "source_path": "plugins-source/external/build-ios-apps/skills/ios-memgraph-leaks",
       "upstream_ref": "openai-curated/build-ios-apps@0.1.2",
@@ -468,7 +470,7 @@
       "origin": "external",
       "scope": "repo",
       "repos": [
-        "codexclaw"
+        "dobby-ios"
       ],
       "source_path": "plugins-source/external/build-ios-apps/skills/ios-simulator-browser",
       "upstream_ref": "openai-curated/build-ios-apps@0.1.2",
@@ -479,7 +481,7 @@
       "origin": "external",
       "scope": "repo",
       "repos": [
-        "codexclaw"
+        "dobby-ios"
       ],
       "source_path": "plugins-source/external/build-ios-apps/skills/swiftui-liquid-glass",
       "upstream_ref": "openai-curated/build-ios-apps@0.1.2",
@@ -490,7 +492,7 @@
       "origin": "external",
       "scope": "repo",
       "repos": [
-        "codexclaw"
+        "dobby-ios"
       ],
       "source_path": "plugins-source/external/build-ios-apps/skills/swiftui-performance-audit",
       "upstream_ref": "openai-curated/build-ios-apps@0.1.2",
@@ -501,7 +503,7 @@
       "origin": "external",
       "scope": "repo",
       "repos": [
-        "codexclaw"
+        "dobby-ios"
       ],
       "source_path": "plugins-source/external/build-ios-apps/skills/swiftui-ui-patterns",
       "upstream_ref": "openai-curated/build-ios-apps@0.1.2",
@@ -512,7 +514,7 @@
       "origin": "external",
       "scope": "repo",
       "repos": [
-        "codexclaw"
+        "dobby-ios"
       ],
       "source_path": "plugins-source/external/build-ios-apps/skills/swiftui-view-refactor",
       "upstream_ref": "openai-curated/build-ios-apps@0.1.2",

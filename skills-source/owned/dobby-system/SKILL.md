@@ -1,6 +1,6 @@
 ---
 name: dobby-system
-description: Shared orientation for the Dobby multi-repo system and person-workspace anatomy. Use when Codex is working in or across `~/GitHub/adi`, `~/GitHub/angie`, `~/GitHub/dobby-engine`, `~/GitHub/documents`, `~/GitHub/codexclaw`, `~/GitHub/agents`, or `~/GitHub/scripts` and needs to understand repo ownership, Adi/Angie workspace folders, memory/body-map routing, source-material placement, identity/workspace boundaries, the shared engine model, dashboard/gateway flow, hooks/control-plane responsibilities, machine scheduler boundaries, document-corpus boundaries, or where a Dobby-related change belongs.
+description: Shared orientation for the Dobby multi-repo system and person-workspace anatomy. Use when Codex is working in or across `~/GitHub/adi`, `~/GitHub/angie`, `~/GitHub/dobby-engine`, `~/GitHub/documents`, `~/GitHub/dobby-gateway`, `~/GitHub/dobby-ios`, `~/GitHub/agents`, or `~/GitHub/scripts` and needs to understand repo ownership, Adi/Angie workspace folders, memory/body-map routing, source-material placement, identity/workspace boundaries, the shared engine model, dashboard/gateway flow, hooks/control-plane responsibilities, machine scheduler boundaries, document-corpus boundaries, or where a Dobby-related change belongs.
 ---
 
 # Dobby System
@@ -19,7 +19,8 @@ This skill is the canonical cross-repo orientation layer for Dobby. Future agent
 | `~/GitHub/angie` | Angie's identity/data workspace: constitution, memory, journal, legacy Shelf import/audit material, person prompts, workspace hooks, `./bin/dobby` shim | Shared engine implementation, Adi's private data |
 | `~/GitHub/dobby-engine` | Shared Dobby CLI, Python engine, dashboard source, engine contracts, default prompts/docs, tests | Person-specific identity, memory, journals, private state |
 | `~/GitHub/documents` | Canonical local document tooling: inventory, copy-only ingest/import, extraction, review, cleanup scripts, catalog/search CLI, and JSON/SQLite metadata contracts for `/Volumes/DobbyData/Documents` | Shared Dobby engine behavior, person memory/canon, workspace identity, raw document files in git |
-| `~/GitHub/codexclaw` | Product shell: iOS app, mobile gateway, assistant runtime integration, user-facing app contracts | Dobby identity data, core Dobby engine logic unless through documented CLI/API boundary |
+| `~/GitHub/dobby-gateway` | Dobby's HTTP gateway/front door: mobile/web-facing gateway contracts, assistant runtime routing, bearer auth, launchd runtime, Cloudflare-facing service behavior, CLI/shared client contracts | iOS app implementation, Dobby identity data, core Dobby engine logic unless through documented CLI/API boundary |
+| `~/GitHub/dobby-ios` | Dobby iOS app, SwiftUI surfaces, iOS build/deploy/TestFlight scripts, iOS-only docs, and the app's local config examples | Gateway runtime implementation, shared Dobby engine logic, person-private workspace data |
 | `~/GitHub/agents` | Agent control plane: shared skills, Codex/Claude config, hooks, MCP/plugin registries, skill distribution | Dobby product behavior, Dobby personal data, engine runtime behavior |
 | `~/GitHub/scripts` | Machine ops: bootstrap, launchd wiring, scheduler profiles, recurring machine wrappers, machine-local materializers | Dobby domain behavior, person memory/data, dashboard/API implementation, agent control-plane policy |
 
@@ -34,12 +35,12 @@ This skill is the canonical cross-repo orientation layer for Dobby. Future agent
   catalog, import, and search-index implementation. Each personal workspace must
   opt into a document root such as `DOBBY_DOCUMENTS_DATA_ROOT`; the shared engine
   should not guess a person's corpus from a machine-wide default.
-- `codexclaw` should treat Dobby as a workspace-backed service boundary. It should call the workspace/engine contract, not read private memory files ad hoc.
+- `dobby-gateway` and client repos should treat Dobby as a workspace-backed service boundary. They should call the workspace/engine contract, not read private memory files ad hoc.
 - Health storage is engine-owned but local and person-bound. The combined SQLite
   DB lives on the internal SSD at
   `~/Library/Application Support/Dobby/health/health.sqlite`; `dobby-engine`
   owns schema, migrations, sync/import, and queries. `person_id` separates Adi
-  and Angie rows. `codexclaw` and other products must consume health through
+  and Angie rows. `dobby-gateway`, `dobby-ios`, and other products must consume health through
   workspace-bound Dobby commands or gateway responses, never by reading health
   JSON files or SQLite directly. JSON health files in workspaces are import,
   audit, or backup material only.
@@ -95,7 +96,7 @@ For social archives, corpora, imported documents, and other source material:
   area declares that data dir.
 - Put durable conclusions in `canon.md`; put personal open loops in Shelf; put
   raw reflection in `journal/`.
-- Keep person-private data out of `dobby-engine`, `agents`, `codexclaw`, and
+- Keep person-private data out of `dobby-engine`, `agents`, `dobby-gateway`, `dobby-ios`, and
   public/content repos such as `blog-personal`. Those repos may be sources, not
   homes for private corpus data.
 - Area `log.jsonl` files are retired; do not create them.
@@ -105,10 +106,11 @@ For social archives, corpora, imported documents, and other source material:
 1. If it changes Dobby commands, hooks, validation, memory processing, dashboard code, or shared behavior for both people, change `dobby-engine`.
 2. If it changes document inventory, copy-only ingest/import, extraction, canonical cleanup, document search-index construction, or the `documents` CLI contract consumed by Dobby, change `documents`.
 3. If it changes Adi's or Angie's constitution, memory, journal, legacy Shelf import/audit material, person-specific prompt behavior, or workspace-specific document-root opt-in, change only that person's workspace repo.
-4. If it changes the phone app, mobile gateway, assistant runtime selection, or product-facing behavior, change `codexclaw`.
-5. If it changes which skills/tools/hooks/configs agents receive, change `agents`.
-6. If it changes machine bootstrap, launchd scheduling, scheduler profiles, or a thin machine-local wrapper around a Dobby command, change `scripts`; keep the real Dobby behavior in `dobby-engine` or the person workspace.
-7. If more than one repo is touched, keep each repo's change scoped to its ownership layer and validate each repo separately.
+4. If it changes the mobile/web gateway, assistant runtime selection, gateway HTTP contracts, Cloudflare-facing local service behavior, or product routing in front of Dobby, change `dobby-gateway`.
+5. If it changes the iOS app, SwiftUI surfaces, iOS build/deploy/TestFlight scripts, or iOS-only docs, change `dobby-ios`.
+6. If it changes which skills/tools/hooks/configs agents receive, change `agents`.
+7. If it changes machine bootstrap, launchd scheduling, scheduler profiles, or a thin machine-local wrapper around a Dobby command, change `scripts`; keep the real Dobby behavior in `dobby-engine` or the person workspace.
+8. If more than one repo is touched, keep each repo's change scoped to its ownership layer and validate each repo separately.
 
 ## Documentation Boundary
 
@@ -122,7 +124,7 @@ Do not duplicate repo-specific contracts into this skill. Do not bury cross-repo
 ## Operational Rules
 
 - Prefer workspace-local `./bin/dobby` for Dobby operations from `adi` or `angie`; do not call engine internals from a workspace unless debugging the engine boundary.
-- Do not copy personal data into `dobby-engine`, `codexclaw`, or `agents`.
+- Do not copy personal data into `dobby-engine`, `dobby-gateway`, `dobby-ios`, or `agents`.
 - Do not merge Adi and Angie workspaces into one repo or one branch history. Separate repos are the privacy and writer-boundary.
 - Do not recreate duplicate engine code in workspaces. Shared code belongs in `dobby-engine`.
 - For visible workspace artifacts, use the `dobby-artifacts` skill. Person-private artifact content belongs in the person workspace; shared artifact serving and dashboard behavior belong in `dobby-engine`.
@@ -137,7 +139,8 @@ Run the owner repo's fast check before finishing:
 cd ~/GitHub/adi && scripts/check-fast.sh
 cd ~/GitHub/angie && scripts/check-fast.sh
 cd ~/GitHub/dobby-engine && scripts/check-fast.sh
-cd ~/GitHub/codexclaw && scripts/check-fast.sh
+cd ~/GitHub/dobby-gateway && scripts/check-fast.sh
+cd ~/GitHub/dobby-ios && scripts/check-ios-fast.sh
 cd ~/GitHub/agents && scripts/check-fast.sh
 cd ~/GitHub/scripts && ops/check-fast.sh
 ```

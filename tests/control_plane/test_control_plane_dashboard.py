@@ -12,9 +12,9 @@ class ControlPlaneDashboardDataTests(TempDirTestCase):
         root = self.temp_path
         github_root = root / "GitHub"
         adi = github_root / "adi"
-        codexclaw = github_root / "codexclaw"
+        dobby_ios = github_root / "dobby-ios"
         adi.mkdir(parents=True)
-        codexclaw.mkdir(parents=True)
+        dobby_ios.mkdir(parents=True)
         write_text(root / "skills-source/owned/global-helper/SKILL.md", "# global-helper\n")
         write_text(
             root / "skills-source/owned/global-helper/agents/openai.yaml",
@@ -51,7 +51,7 @@ class ControlPlaneDashboardDataTests(TempDirTestCase):
                         "skill": "ios-debugger-agent",
                         "origin": "external",
                         "scope": "repo",
-                        "repos": ["codexclaw"],
+                        "repos": ["dobby-ios"],
                         "source_path": "plugins-source/external/build-ios-apps/skills/ios-debugger-agent",
                         "upstream_ref": "openai-curated/build-ios-apps@0.1.2",
                         "source_plugin": "build-ios-apps",
@@ -83,7 +83,7 @@ class ControlPlaneDashboardDataTests(TempDirTestCase):
                         "marketplace": "openai-curated",
                         "enabled": True,
                         "scope": "repo",
-                        "repos": ["codexclaw"],
+                        "repos": ["dobby-ios"],
                         "category": "Coding",
                     },
                 ],
@@ -140,7 +140,7 @@ class ControlPlaneDashboardDataTests(TempDirTestCase):
                         "mcp_presets": ["cloudflare-docs"],
                     },
                     {
-                        "path": str(codexclaw),
+                        "path": str(dobby_ios),
                     },
                 ],
             },
@@ -226,7 +226,7 @@ class ControlPlaneDashboardDataTests(TempDirTestCase):
         plugin_skill = [
             item for item in data["groups"]["skills"] if item["name"] == "ios-debugger-agent"
         ][0]
-        self.assertEqual(plugin_skill["repos"], ["codexclaw"])
+        self.assertEqual(plugin_skill["repos"], ["dobby-ios"])
         self.assertEqual(plugin_skill["title"], "build-ios-apps:ios-debugger-agent")
         self.assertEqual(plugin_skill["details"]["source_plugin"], "build-ios-apps")
         global_skill = [

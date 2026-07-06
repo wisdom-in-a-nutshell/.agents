@@ -8,7 +8,8 @@ $HOME/GitHub/aipodcasting
 $HOME/GitHub/modal_functions
 $HOME/GitHub/adithyan-ai-videos
 $HOME/GitHub/blog-personal
-$HOME/GitHub/codexclaw
+/GitHub/dobby-gateway
+/GitHub/dobby-ios
 $HOME/GitHub/platform-ops
 $HOME/GitHub/litellm
 $HOME/GitHub/stadia-macos-controller
