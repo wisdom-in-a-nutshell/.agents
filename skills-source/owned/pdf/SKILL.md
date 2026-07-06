@@ -21,7 +21,8 @@ description: "Use when tasks involve reading, creating, or reviewing PDF files w
 
 ## Temp and output conventions
 - Use `tmp/pdfs/` for intermediate files; delete when done.
-- Write final artifacts under `output/pdf/` when working in this repo.
+- Write final artifacts under `output/pdf/` only when the current repo allows that path.
+- Repo-local guidance wins: in Dobby workspaces and other repos that forbid top-level `output/`, keep scratch under `tmp/pdfs/` and place the final PDF only in a user-requested external path or a repo-approved artifact location.
 - Keep filenames stable and descriptive.
 
 ## Environment
