@@ -65,14 +65,22 @@ def load_json_file(path: Path) -> dict[str, Any]:
     return data
 
 
-def merge_managed_keys(existing: dict[str, Any], managed: dict[str, Any]) -> tuple[dict[str, Any], list[str]]:
-    """Overlay managed top-level keys onto existing, reporting changed keys."""
+def merge_managed_keys(
+    existing: dict[str, Any],
+    managed: dict[str, Any],
+    remove: list[str] | None = None,
+) -> tuple[dict[str, Any], list[str]]:
+    """Overlay managed top-level keys onto existing (and drop removed keys), reporting changes."""
     desired = dict(existing)
     changed: list[str] = []
     for key, value in managed.items():
         if key not in desired or desired[key] != value:
             changed.append(key)
         desired[key] = value
+    for key in remove or []:
+        if key in desired:
+            del desired[key]
+            changed.append(f"-{key}")
     return desired, changed
 
 
@@ -82,6 +90,7 @@ def sync_target(
     path: Path,
     only_if_parent_exists: Path,
     managed_keys: dict[str, Any],
+    keys_remove: list[str] | None = None,
     apply: bool,
     check: bool,
 ) -> bool:
@@ -95,7 +104,7 @@ def sync_target(
     except (json.JSONDecodeError, SyncError) as exc:
         raise SyncError(f"failed to read {label} at {path}: {exc}") from exc
 
-    desired, changed = merge_managed_keys(existing, managed_keys)
+    desired, changed = merge_managed_keys(existing, managed_keys, keys_remove)
 
     if check:
         if changed:
@@ -142,6 +151,7 @@ def main(argv: list[str]) -> int:
             path=expand(agent_host["path"], home),
             only_if_parent_exists=expand(agent_host["onlyIfParentExists"], home),
             managed_keys=agent_host.get("keys", {}),
+            keys_remove=agent_host.get("keysRemove", []),
             apply=apply,
             check=check,
         )
@@ -153,6 +163,7 @@ def main(argv: list[str]) -> int:
             path=expand(user_settings["path"], home),
             only_if_parent_exists=expand(user_settings["onlyIfParentExists"], home),
             managed_keys=user_settings.get("keys", {}),
+            keys_remove=user_settings.get("keysRemove", []),
             apply=apply,
             check=check,
         )

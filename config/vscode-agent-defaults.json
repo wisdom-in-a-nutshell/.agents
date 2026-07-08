@@ -1,5 +1,5 @@
 {
-  "description": "Managed VS Code Chat/Agent permission defaults. sync-vscode-agent-defaults.py merges these keys into the machine-local VS Code Copilot CLI agent-host config and the local VS Code user settings.json, so a fresh VS Code Chat/Agents-window session always starts fully autonomous (Bypass Approvals + Autopilot) instead of silently falling back to VS Code's built-in 'Default Approvals' + interactive mode. This is a distinct surface from config/copilot-settings.json, which manages the standalone terminal `copilot` CLI (~/.copilot/*) rather than VS Code's own Chat/Agent extension.",
+  "description": "Managed VS Code Chat/Agent defaults. sync-vscode-agent-defaults.py merges these keys into the machine-local VS Code Copilot CLI agent-host config and the local VS Code user settings.json, so a fresh VS Code Chat/Agents-window session always starts fully autonomous (Bypass Approvals + Autopilot) and token-lean (built-in GitHub MCP off, cross-app MCP discovery off, no stale default agent). keysRemove entries are deleted from the target file when present. This is a distinct surface from config/copilot-settings.json, which manages the standalone terminal `copilot` CLI (~/.copilot/*) rather than VS Code's own Chat/Agent extension.",
   "agentHostConfig": {
     "path": "~/.vscode-server/data/User/globalStorage/agent-host-config.json",
     "onlyIfParentExists": "~/.vscode-server",
@@ -22,7 +22,17 @@
         "approvals": "autoApprove",
         "mode": "autopilot"
       },
-      "chat.tools.global.autoApprove": true
-    }
+      "chat.tools.global.autoApprove": true,
+      "github.copilot.chat.githubMcpServer.enabled": false,
+      "chat.mcp.discovery.enabled": {
+        "claude-desktop": false,
+        "windsurf": false,
+        "cursor-global": false,
+        "cursor-workspace": false
+      }
+    },
+    "keysRemove": [
+      "chat.defaultMode"
+    ]
   }
 }
