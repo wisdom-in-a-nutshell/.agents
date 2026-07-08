@@ -10,6 +10,7 @@ ROOT_BOOTSTRAP_SCRIPT=""
 SYNC_SKILLS_SCRIPT=""
 SYNC_PLUGINS_SCRIPT=""
 SYNC_COPILOT_SCRIPT=""
+SYNC_GROK_SCRIPT=""
 SYNC_GIT_HOOKS_SCRIPT=""
 CODEX_BOOTSTRAP_SCRIPT=""
 
@@ -87,6 +88,7 @@ ROOT_BOOTSTRAP_SCRIPT="${AGENTS_REPO}/scripts/bootstrap-machine-agent-control-pl
 SYNC_SKILLS_SCRIPT="${AGENTS_REPO}/scripts/sync-skills-registry.sh"
 SYNC_PLUGINS_SCRIPT="${AGENTS_REPO}/scripts/sync-plugins-registry.sh"
 SYNC_COPILOT_SCRIPT="${AGENTS_REPO}/scripts/sync-copilot.sh"
+SYNC_GROK_SCRIPT="${AGENTS_REPO}/scripts/sync-grok.sh"
 SYNC_GIT_HOOKS_SCRIPT="${AGENTS_REPO}/scripts/sync-managed-git-hooks.sh"
 CODEX_BOOTSTRAP_SCRIPT="${AGENTS_REPO}/codex/scripts/bootstrap-machine-codex.sh"
 
@@ -95,6 +97,7 @@ CODEX_BOOTSTRAP_SCRIPT="${AGENTS_REPO}/codex/scripts/bootstrap-machine-codex.sh"
 [[ -x "$SYNC_SKILLS_SCRIPT" ]] || die "Missing executable: $SYNC_SKILLS_SCRIPT"
 [[ -x "$SYNC_PLUGINS_SCRIPT" ]] || die "Missing executable: $SYNC_PLUGINS_SCRIPT"
 [[ -x "$SYNC_COPILOT_SCRIPT" ]] || die "Missing executable: $SYNC_COPILOT_SCRIPT"
+[[ -x "$SYNC_GROK_SCRIPT" ]] || die "Missing executable: $SYNC_GROK_SCRIPT"
 [[ -x "$SYNC_GIT_HOOKS_SCRIPT" ]] || die "Missing executable: $SYNC_GIT_HOOKS_SCRIPT"
 [[ -x "$CODEX_BOOTSTRAP_SCRIPT" ]] || die "Missing executable: $CODEX_BOOTSTRAP_SCRIPT"
 
@@ -166,6 +169,9 @@ for path in "${changed_paths[@]}"; do
       root_bootstrap_changed=1
       ;;
     scripts/sync-copilot.py|scripts/sync-copilot.sh)
+      root_bootstrap_changed=1
+      ;;
+    scripts/sync-grok.py|scripts/sync-grok.sh)
       root_bootstrap_changed=1
       ;;
   esac
