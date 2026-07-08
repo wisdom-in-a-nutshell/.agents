@@ -74,7 +74,10 @@
       "path": "~/GitHub/focus"
     },
     {
-      "path": "~/GitHub/frontier-lab-intelligence"
+      "path": "~/GitHub/frontier-lab-intelligence",
+      "mcp_presets": [
+        "playwright"
+      ]
     },
     {
       "path": "~/GitHub/futureoflife-podcast"
