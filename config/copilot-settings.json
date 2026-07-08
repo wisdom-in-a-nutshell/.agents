@@ -49,7 +49,9 @@
       "autopilot",
       "--max-autopilot-continues",
       "10",
-      "--disable-builtin-mcps"
+      "--disable-builtin-mcps",
+      "--excluded-tools",
+      "session_store_sql"
     ],
     "managementCommands": [
       "completion",
