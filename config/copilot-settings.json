@@ -48,7 +48,7 @@
       "--mode",
       "autopilot",
       "--max-autopilot-continues",
-      "10",
+      "100",
       "--disable-builtin-mcps",
       "--excluded-tools",
       "session_store_sql"
