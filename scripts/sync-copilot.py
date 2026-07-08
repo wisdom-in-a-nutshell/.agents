@@ -24,6 +24,7 @@ DEFAULT_PREVIEW_RUNNER = AGENTS_ROOT / "scripts/run-agent-preview-server.py"
 DEFAULT_COPILOT_HOME = Path.home() / ".copilot"
 DEFAULT_SETTINGS_FILE = DEFAULT_COPILOT_HOME / "settings.json"
 DEFAULT_USER_CONFIG_FILE = DEFAULT_COPILOT_HOME / "config.json"
+DEFAULT_MCP_CONFIG_FILE = DEFAULT_COPILOT_HOME / "mcp-config.json"
 DEFAULT_HOOKS_FILE = DEFAULT_COPILOT_HOME / "hooks/agents-control-plane.json"
 DEFAULT_LAUNCHER_TARGET = Path.home() / "bin" / "copilot"
 DEFAULT_REAL_CLI_PATH = Path("/opt/homebrew/bin/copilot")
@@ -47,7 +48,7 @@ MANAGEMENT_COMMANDS = {
     "version",
 }
 
-TOP_LEVEL_KEYS = {"description", "hooks", "launcher", "settings", "settingsPrune", "skills", "trust"}
+TOP_LEVEL_KEYS = {"description", "hooks", "launcher", "mcpServers", "settings", "settingsPrune", "skills", "trust"}
 BOOLEAN_SETTINGS = {
     "askUser",
     "beep",
@@ -76,6 +77,8 @@ MODEL_VALUES = {"claude-sonnet-5"}
 PRUNABLE_SETTINGS = {"tabs.hide"}
 SKILL_DIRECTORY_POLICIES = {"empty"}
 APP_SKILLS_POLICIES = {"allow-known-only"}
+MCP_SERVER_TYPES = {"local", "http", "sse"}
+MCP_SERVER_KEYS = {"args", "command", "env", "headers", "timeout", "tools", "type", "url"}
 
 
 class CopilotSyncError(RuntimeError):
@@ -269,6 +272,44 @@ def validate_hooks_overlay(hooks: dict[str, Any]) -> None:
         raise CopilotSyncError("hooks.forbiddenCommandSubstrings must be an array of non-empty strings")
 
 
+def validate_mcp_servers(mcp_servers: dict[str, Any]) -> None:
+    for name, entry in mcp_servers.items():
+        if not isinstance(name, str) or not name.strip():
+            raise CopilotSyncError(f"mcpServers has invalid server name: {name!r}")
+        if not isinstance(entry, dict):
+            raise CopilotSyncError(f"mcpServers.{name} must be an object")
+        unknown = sorted(set(entry) - MCP_SERVER_KEYS)
+        if unknown:
+            raise CopilotSyncError(f"mcpServers.{name} has unknown keys: {', '.join(unknown)}")
+        server_type = entry.get("type")
+        if server_type not in MCP_SERVER_TYPES:
+            raise CopilotSyncError(f"mcpServers.{name}.type must be one of: {', '.join(sorted(MCP_SERVER_TYPES))}")
+        if server_type == "local":
+            if not isinstance(entry.get("command"), str) or not entry["command"].strip():
+                raise CopilotSyncError(f"mcpServers.{name}.command must be a non-empty string for local servers")
+            args = entry.get("args", [])
+            if not isinstance(args, list) or not all(isinstance(item, str) for item in args):
+                raise CopilotSyncError(f"mcpServers.{name}.args must be an array of strings")
+            env = entry.get("env", {})
+            if not isinstance(env, dict) or not all(isinstance(k, str) and isinstance(v, str) for k, v in env.items()):
+                raise CopilotSyncError(f"mcpServers.{name}.env must be an object of string values")
+            if "url" in entry or "headers" in entry:
+                raise CopilotSyncError(f"mcpServers.{name} must not set url/headers for a local server")
+        else:
+            if not isinstance(entry.get("url"), str) or not entry["url"].strip():
+                raise CopilotSyncError(f"mcpServers.{name}.url must be a non-empty string for {server_type} servers")
+            headers = entry.get("headers", {})
+            if not isinstance(headers, dict) or not all(isinstance(k, str) and isinstance(v, str) for k, v in headers.items()):
+                raise CopilotSyncError(f"mcpServers.{name}.headers must be an object of string values")
+            if "command" in entry or "args" in entry or "env" in entry:
+                raise CopilotSyncError(f"mcpServers.{name} must not set command/args/env for a {server_type} server")
+        tools = entry.get("tools", ["*"])
+        if not isinstance(tools, list) or not all(isinstance(item, str) for item in tools):
+            raise CopilotSyncError(f"mcpServers.{name}.tools must be an array of strings")
+        if "timeout" in entry and not isinstance(entry["timeout"], int):
+            raise CopilotSyncError(f"mcpServers.{name}.timeout must be an integer")
+
+
 def load_overlay(path: Path) -> dict[str, Any]:
     data = read_json_object(path)
     unknown_top_level = sorted(set(data) - TOP_LEVEL_KEYS)
@@ -298,6 +339,10 @@ def load_overlay(path: Path) -> dict[str, Any]:
     if not isinstance(hooks, dict):
         raise CopilotSyncError("config/copilot-settings.json hooks must be an object")
     validate_hooks_overlay(hooks)
+    mcp_servers = data.get("mcpServers", {})
+    if not isinstance(mcp_servers, dict):
+        raise CopilotSyncError("config/copilot-settings.json mcpServers must be an object")
+    validate_mcp_servers(mcp_servers)
     return data
 
 
@@ -400,6 +445,27 @@ def merge_user_config(
         trusted_folders,
     )
     return desired
+
+
+def render_mcp_config(mcp_servers: dict[str, Any]) -> dict[str, Any]:
+    rendered: dict[str, Any] = {}
+    for name in sorted(mcp_servers):
+        entry = mcp_servers[name]
+        server_type = entry["type"]
+        out: dict[str, Any] = {"tools": entry.get("tools", ["*"]), "type": server_type}
+        if server_type == "local":
+            out["command"] = entry["command"]
+            out["args"] = entry.get("args", [])
+            if entry.get("env"):
+                out["env"] = entry["env"]
+        else:
+            out["url"] = entry["url"]
+            if entry.get("headers"):
+                out["headers"] = entry["headers"]
+        if "timeout" in entry:
+            out["timeout"] = entry["timeout"]
+        rendered[name] = out
+    return {"mcpServers": rendered}
 
 
 def write_json(path: Path, data: dict[str, Any], *, apply: bool, header: str = "") -> None:
@@ -798,6 +864,7 @@ def sync(
     dev_servers_registry: Path,
     settings_file: Path,
     user_config_file: Path,
+    mcp_config_file: Path,
     hooks_file: Path,
     launcher_target: Path,
     real_cli_path: Path,
@@ -823,6 +890,9 @@ def sync(
 
     desired_user_config = merge_user_config(user_config, settings, trusted_folders)
     write_json(user_config_file, desired_user_config, apply=apply, header=CONFIG_HEADER)
+
+    desired_mcp_config = render_mcp_config(overlay.get("mcpServers", {}))
+    write_json(mcp_config_file, desired_mcp_config, apply=apply, header=CONFIG_HEADER)
 
     render_hooks_file(hooks_file, hooks_registry_file, overlay, apply=apply)
     render_launcher(launcher_target, real_cli_path, overlay, apply=apply)
