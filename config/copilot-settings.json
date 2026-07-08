@@ -60,7 +60,11 @@
       "autopilot",
       "--max-autopilot-continues",
       "10",
-      "--disable-builtin-mcps"
+      "--disable-builtin-mcps",
+      "--excluded-tools",
+      "ide-get_diagnostics",
+      "--excluded-tools",
+      "ide-get_selection"
     ],
     "managementCommands": [
       "completion",
