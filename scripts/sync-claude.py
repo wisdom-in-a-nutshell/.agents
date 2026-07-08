@@ -474,6 +474,72 @@ def remove_hook_commands(hooks: dict[str, Any], event_name: str, commands: list[
         hooks.pop(event_name, None)
 
 
+UNWANTED_CLAUDE_HOOK_COMMAND_SUBSTRINGS = ("herdr", "herdr-agent-state.sh")
+
+
+def remove_hook_commands_containing(
+    hooks: dict[str, Any],
+    substrings: tuple[str, ...],
+) -> None:
+    lowered = tuple(item.lower() for item in substrings)
+    for event_name, current in list(hooks.items()):
+        if not isinstance(current, list):
+            continue
+        filtered_entries: list[Any] = []
+        for entry in current:
+            if not isinstance(entry, dict):
+                filtered_entries.append(entry)
+                continue
+            entry_hooks = entry.get("hooks")
+            if not isinstance(entry_hooks, list):
+                filtered_entries.append(entry)
+                continue
+            filtered_hooks = []
+            for hook in entry_hooks:
+                command = hook.get("command") if isinstance(hook, dict) else None
+                command_lower = command.lower() if isinstance(command, str) else ""
+                if command_lower and any(item in command_lower for item in lowered):
+                    continue
+                filtered_hooks.append(hook)
+            if filtered_hooks:
+                filtered_entries.append({**entry, "hooks": filtered_hooks})
+        if filtered_entries:
+            hooks[event_name] = filtered_entries
+        else:
+            hooks.pop(event_name, None)
+
+
+CLAUDE_LIFECYCLE_HOOK_EVENTS_WITHOUT_MATCHERS = {
+    "SessionStart",
+    "SessionEnd",
+    "Stop",
+    "UserPromptSubmit",
+}
+
+
+def prune_lifecycle_hook_matchers(hooks: dict[str, Any]) -> None:
+    """Remove redundant lifecycle matchers from preserved Claude hooks.
+
+    Grok reads Claude settings for compatibility and validates those hook files
+    even when Claude hook compatibility is disabled. A matcher on these
+    lifecycle events is either redundant or unsupported, so normalize the shape
+    at the Claude settings source instead of carrying a noisy runtime warning.
+    """
+    for event_name in CLAUDE_LIFECYCLE_HOOK_EVENTS_WITHOUT_MATCHERS:
+        current = hooks.get(event_name)
+        if not isinstance(current, list):
+            continue
+        normalized: list[Any] = []
+        changed = False
+        for entry in current:
+            if isinstance(entry, dict) and "matcher" in entry:
+                entry = {key: value for key, value in entry.items() if key != "matcher"}
+                changed = True
+            normalized.append(entry)
+        if changed:
+            hooks[event_name] = normalized
+
+
 def render_global_context(source: Path, target: Path, apply: bool) -> None:
     if not source.is_file():
         raise ValueError(f"global context source missing: {source}")
@@ -772,6 +838,8 @@ def build_settings(
     )
     remove_hook_commands(hooks, "PreToolUse", [legacy_pre_tool_command])
     remove_hook_commands(hooks, "PermissionRequest", [legacy_permission_command])
+    remove_hook_commands_containing(hooks, UNWANTED_CLAUDE_HOOK_COMMAND_SUBSTRINGS)
+    prune_lifecycle_hook_matchers(hooks)
     entries = {
         "Stop": {"hooks": [{"type": "command", "command": CLAUDE_STOP_COMMAND, "timeout": 900}]},
     }

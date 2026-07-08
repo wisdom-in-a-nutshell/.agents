@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import sys
+import tomllib
 
 from tests.control_plane.support import REPO_ROOT, TempDirTestCase, run_command, write_text
 
@@ -8,11 +9,20 @@ from tests.control_plane.support import REPO_ROOT, TempDirTestCase, run_command,
 class GrokSyncTests(TempDirTestCase):
     def test_apply_renders_managed_config(self) -> None:
         source = write_text(
-            self.temp_path / "grok-managed-config.toml",
+            self.temp_path / "grok-config.toml",
+            "[ui]\npermission_mode = \"always-approve\"\n\n"
             "[compat.claude]\nhooks = false\n",
         )
-        target = self.temp_path / "home/.grok/managed_config.toml"
-        write_text(target, "[compat.claude]\nhooks = true\n")
+        target = self.temp_path / "home/.grok/config.toml"
+        write_text(
+            target,
+            "[cli]\ninstaller = \"internal\"\n\n"
+            "[[marketplace.sources]]\n"
+            "name = \"xAI Official\"\n"
+            "git = \"https://github.com/xai-org/plugin-marketplace.git\"\n\n"
+            "[compat.claude]\n"
+            "hooks = true\n",
+        )
 
         run_command(
             [
@@ -27,15 +37,20 @@ class GrokSyncTests(TempDirTestCase):
             ]
         )
 
-        self.assertEqual(source.read_text(encoding="utf-8"), target.read_text(encoding="utf-8"))
+        data = tomllib.loads(target.read_text(encoding="utf-8"))
+        self.assertEqual("internal", data["cli"]["installer"])
+        self.assertEqual("xAI Official", data["marketplace"]["sources"][0]["name"])
+        self.assertEqual("always-approve", data["ui"]["permission_mode"])
+        self.assertEqual(False, data["compat"]["claude"]["hooks"])
 
     def test_check_detects_drift(self) -> None:
         source = write_text(
-            self.temp_path / "grok-managed-config.toml",
+            self.temp_path / "grok-config.toml",
+            "[ui]\npermission_mode = \"always-approve\"\n\n"
             "[compat.claude]\nhooks = false\n",
         )
         target = write_text(
-            self.temp_path / "home/.grok/managed_config.toml",
+            self.temp_path / "home/.grok/config.toml",
             "[compat.claude]\nhooks = true\n",
         )
 
@@ -58,10 +73,11 @@ class GrokSyncTests(TempDirTestCase):
 
     def test_skips_when_runtime_home_is_absent_and_grok_is_not_installed(self) -> None:
         source = write_text(
-            self.temp_path / "grok-managed-config.toml",
+            self.temp_path / "grok-config.toml",
+            "[ui]\npermission_mode = \"always-approve\"\n\n"
             "[compat.claude]\nhooks = false\n",
         )
-        target = self.temp_path / "home/.grok/managed_config.toml"
+        target = self.temp_path / "home/.grok/config.toml"
 
         result = run_command(
             [

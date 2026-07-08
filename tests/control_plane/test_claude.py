@@ -132,7 +132,7 @@ class ClaudeSyncTests(TempDirTestCase):
         self.assertIn("$HOME/.secrets/anthropic/env", launcher_text)
         self.assertIn(str(self.temp_path / "homebrew/bin/claude"), launcher_text)
 
-    def test_apply_prunes_managed_auto_allow_hooks_but_preserves_custom_hooks(self) -> None:
+    def test_apply_prunes_managed_and_unwanted_hooks_but_preserves_custom_hooks(self) -> None:
         root = self.temp_path / "agents"
         registry = self._write_registry(root, [])
         claude_home = self.temp_path / "claude"
@@ -149,12 +149,28 @@ class ClaudeSyncTests(TempDirTestCase):
             claude_home / "settings.json",
             {
                 "hooks": {
+                    "SessionStart": [
+                        {
+                            "matcher": "*",
+                            "hooks": [
+                                {"type": "command", "command": "custom-session-start"},
+                                {
+                                    "type": "command",
+                                    "command": "bash '~/.claude/hooks/herdr-agent-state.sh' session",
+                                },
+                            ],
+                        }
+                    ],
                     "Stop": [
                         {
                             "hooks": [
                                 {
                                     "type": "command",
                                     "command": "python3 ~/.agents/hooks/scripts/claude_stop.py",
+                                },
+                                {
+                                    "type": "command",
+                                    "command": "bash ~/.claude/hooks/HERDR-agent-state.sh session",
                                 },
                                 {"type": "command", "command": "custom-stop"},
                             ],
@@ -189,10 +205,16 @@ class ClaudeSyncTests(TempDirTestCase):
 
         settings = json.loads((claude_home / "settings.json").read_text(encoding="utf-8"))
         self.assertEqual(
+            [{"hooks": [{"type": "command", "command": "custom-session-start"}]}],
+            settings["hooks"]["SessionStart"],
+        )
+        self.assertEqual(
             [{"matcher": "*", "hooks": [{"type": "command", "command": "custom-pre-tool"}]}],
             settings["hooks"]["PreToolUse"],
         )
         self.assertNotIn("PermissionRequest", settings["hooks"])
+        serialized_hooks = json.dumps(settings["hooks"])
+        self.assertNotIn("herdr", serialized_hooks.lower())
         self.assertEqual(
             "custom-stop",
             settings["hooks"]["Stop"][0]["hooks"][0]["command"],
@@ -925,6 +947,7 @@ class ClaudeSyncTests(TempDirTestCase):
         self.assertEqual(False, settings_a["autoMemoryEnabled"])
         # The managed hook block and the pre-existing unmanaged key coexist.
         self.assertIn("SessionStart", settings_a["hooks"])
+        self.assertNotIn("matcher", settings_a["hooks"]["SessionStart"][0])
         self.assertEqual({"defaultMode": "acceptEdits"}, settings_a["permissions"])
         settings_b = json.loads(
             (repo_b / ".claude/settings.json").read_text(encoding="utf-8")

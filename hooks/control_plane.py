@@ -215,7 +215,16 @@ def _render_matcher_group(hook: dict[str, Any], runtime: str) -> dict[str, Any]:
     group: dict[str, Any] = {"hooks": [handler]}
     matchers = hook.get("matchers", {})
     matcher = matchers.get(runtime) if isinstance(matchers, dict) else None
-    if event in EVENTS_WITH_MATCHERS and isinstance(matcher, str) and matcher.strip():
+    # Grok reads Claude settings for compatibility and rejects matchers on
+    # lifecycle hooks. The Claude SessionStart matchers we render today cover
+    # the normal session-start sources, so omitting them keeps behavior close
+    # while avoiding noisy Grok compatibility warnings.
+    if (
+        runtime != "claude"
+        and event in EVENTS_WITH_MATCHERS
+        and isinstance(matcher, str)
+        and matcher.strip()
+    ):
         group["matcher"] = matcher
     return group
 

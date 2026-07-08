@@ -46,6 +46,7 @@ For repo authors adding `scripts/hooks/*.py`, start with [`repo-lifecycle-hook-a
   - renders selected Claude Desktop app preferences from `config/claude-settings.json` into `~/Library/Application Support/Claude/config.json`
   - pre-accepts Claude workspace trust in `~/.claude.json` for `~/GitHub`, every direct child folder under `~/GitHub`, discovered nested Git repos, and the agents control-plane repo
   - enables YOLO through Claude Code's native bypass mode
+  - prunes retired Herdr lifecycle hook commands from `~/.claude/settings.json` while preserving ordinary custom hooks
   - renders a `~/bin/claude` wrapper that starts sessions with `--dangerously-skip-permissions`
   - renders per-repo agent preview configs from `dev-servers/registry.json`, opt-in per repo:
     - Claude Code: `.claude/launch.json`
@@ -61,10 +62,10 @@ For repo authors adding `scripts/hooks/*.py`, start with [`repo-lifecycle-hook-a
   - allowlists the macOS app-bundled skill names observed under `~/Library/Application Support/com.github.githubapp/app-skills`
   - tool surface scope: `--available-tools` (allowlist) / `--excluded-tools` (denylist) / `--disable-mcp-server` / `--disable-builtin-mcps` are real, tested CLI flags (not persisted `settings.json` keys or env vars) — add them to `launcher.defaultArgs` to trim the **terminal** `copilot` CLI's tool surface. They only affect processes launched through the managed `~/bin/copilot` wrapper. The **GitHub Copilot desktop app** spawns its own session process and injects an additional, larger tool set (canvas/widgets, session/project management, PR review helpers, workflows, cross-session messaging) that is not routed through `~/bin/copilot` and has no known file-based or env-var config surface today — there is currently no way to trim the desktop app's tool set from this control plane.
 - `scripts/sync-grok.sh`
-  - renders `config/grok-managed-config.toml` to `~/.grok/managed_config.toml`
+  - merges `config/grok-config.toml` into `~/.grok/config.toml` while preserving unrelated user settings such as marketplace state and display preferences
   - skips quietly when Grok is not installed and `~/.grok` does not exist, so sparse machines do not get an unused Grok runtime home
-  - currently disables only `[compat.claude].hooks`, because Grok reads Claude hooks by default and the shared Claude settings can include Claude-only hook shapes. Claude/AGENTS instruction, skill, and MCP compatibility remain enabled.
-  - does not manage `~/.grok/config.toml`, `~/.grok/auth.json`, marketplace state, or user UI preferences
+  - currently manages `[ui].permission_mode = "always-approve"` and `[compat.claude].hooks = false`. Claude hook compatibility is disabled because Grok reads and can run Claude hooks by default. Claude/AGENTS instruction, skill, and MCP compatibility remain enabled.
+  - does not manage `~/.grok/auth.json`, marketplace state, secrets, or ordinary display preferences
 - `scripts/sync-vscode-agent-defaults.sh`
   - a distinct surface from `sync-copilot.sh`: that script manages the standalone terminal `copilot` CLI (`~/.copilot/*`); this one manages **VS Code's own Chat/Agent extension** defaults, from `config/vscode-agent-defaults.json`
   - renders managed keys into `~/.vscode-server/data/User/globalStorage/agent-host-config.json` (the Copilot-CLI-in-VS-Code "agent host" runtime config), best-effort skipped when `~/.vscode-server` doesn't exist on the machine

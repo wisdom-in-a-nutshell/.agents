@@ -1,0 +1,15 @@
+# Managed Grok Build config overlay merged into ~/.grok/config.toml.
+#
+# Keep this layer narrow: it should set machine-wide agent operating policy
+# without taking over display preferences or secrets in ~/.grok/config.toml.
+
+[ui]
+# Match the rest of Adi's high-trust local agent clients: new Grok sessions
+# start in always-approve / yolo mode instead of asking per tool call.
+permission_mode = "always-approve"
+
+[compat.claude]
+# Grok reads Claude Code hooks by default. The shared Claude settings currently
+# contain Claude-only lifecycle hook shapes, so disable only this compatibility
+# cell and keep Claude skills/rules/agents/MCP discovery available.
+hooks = false
