@@ -106,7 +106,8 @@ class CopilotSyncTests(TempDirTestCase):
         self.assertIn("autopilot", launcher_text)
         self.assertIn("--max-autopilot-continues", launcher_text)
         self.assertIn("--disable-builtin-mcps", launcher_text)
-        self.assertNotIn("--disable-mcp-server", launcher_text)
+        self.assertIn("--disable-mcp-server", launcher_text)
+        self.assertIn("ide", launcher_text)
         self.assertNotIn("openaiDeveloperDocs", launcher_text)
         self.assertIn(str(real_cli), launcher_text)
 

@@ -50,6 +50,8 @@
       "--max-autopilot-continues",
       "100",
       "--disable-builtin-mcps",
+      "--disable-mcp-server",
+      "ide",
       "--excluded-tools",
       "session_store_sql"
     ],
