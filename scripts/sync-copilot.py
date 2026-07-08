@@ -963,6 +963,7 @@ def check(
     dev_servers_registry: Path,
     settings_file: Path,
     user_config_file: Path,
+    mcp_config_file: Path,
     hooks_file: Path,
     launcher_target: Path,
     real_cli_path: Path,
@@ -984,6 +985,11 @@ def check(
     for key, expected_value in overlay.get("settings", {}).items():
         if actual_settings.get(key) != expected_value:
             fail(f"Copilot setting drift: {settings_file} {key}={actual_settings.get(key)!r}, expected {expected_value!r}")
+
+    expected_mcp_config = render_mcp_config(overlay.get("mcpServers", {}))
+    actual_mcp_config = read_json_object(mcp_config_file, allow_comments=True)
+    if actual_mcp_config != expected_mcp_config:
+        fail(f"Copilot MCP config is out of sync: {mcp_config_file}")
 
     forbidden = overlay.get("hooks", {}).get("forbiddenCommandSubstrings", [])
     if not isinstance(forbidden, list) or not all(isinstance(item, str) for item in forbidden):
@@ -1074,6 +1080,13 @@ def check(
         mcp = run_cli_json(real_cli_path, ["mcp", "list", "--json"])
         if not isinstance(mcp, dict):
             fail("Copilot CLI MCP list JSON must be an object")
+        live_servers = mcp.get("mcpServers", {})
+        if not isinstance(live_servers, dict):
+            fail("Copilot CLI MCP list JSON mcpServers must be an object")
+        for name in overlay.get("mcpServers", {}):
+            live_entry = live_servers.get(name)
+            if not isinstance(live_entry, dict) or live_entry.get("source") != "user":
+                fail(f"managed Copilot MCP server not loaded from user config: {name}")
 
     observed_app_skills = app_skill_names(app_support_dir)
     if overlay.get("skills", {}).get("appSkillsPolicy") == "allow-known-only":
