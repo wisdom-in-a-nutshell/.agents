@@ -15,6 +15,7 @@ The current Copilot control plane is client-first:
 - `config/copilot-settings.json`
   - scalar settings merged into `~/.copilot/settings.json`
   - trust policy rendered into `~/.copilot/config.json` `trustedFolders`
+  - `mcpServers` overlay rendered into the user-level `~/.copilot/mcp-config.json` (empty by default; no managed MCP servers are enabled today)
   - terminal launcher defaults rendered to `~/bin/copilot`
   - skill-noise policy for validation
 - `hooks/registry.json`
@@ -45,6 +46,10 @@ The current Copilot control plane is client-first:
   - Copilot-managed login/session keys are preserved
   - `trustedFolders` includes `~/GitHub`, direct child repos, `~/.agents`, and `~/GitHub/agents`
   - managed trust is kept out of `settings.json` so the CLI does not move it on every startup
+- `~/.copilot/mcp-config.json`
+  - fully rendered from `config/copilot-settings.json`'s `mcpServers` overlay (a name-keyed map of `local`/`http`/`sse` server definitions); an ad-hoc `copilot mcp add <name> ...` survives only until the next `sync-copilot.py --apply`, which replaces the whole file with the overlay's desired state
+  - empty by default (`{"mcpServers": {}}`) — no user-level MCP servers are managed today. Playwright MCP (`npx @playwright/mcp@latest`) was evaluated on 2026-07-08 and rejected for now: it exposes ~25-30 browser-automation tools and costs ~4k tokens of schema overhead per session versus ~800 tokens for a small server like `openaiDeveloperDocs`. Re-add it here (with a `--tools` allowlist) rather than through ad-hoc `copilot mcp add` if it's needed again.
+  - `--check` cross-validates the rendered file against a live `copilot mcp list --json` probe: every overlay-managed server name must appear with `"source": "user"`
 - `~/.copilot/hooks/agents-control-plane.json`
   - uses PascalCase event names so Copilot provides VS Code-compatible snake_case payloads
   - renders `SessionStart`, `UserPromptSubmit`, and `Stop` from the shared hook registry

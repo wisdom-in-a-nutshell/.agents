@@ -530,3 +530,132 @@ class CopilotSyncTests(TempDirTestCase):
         )
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("missing managed Copilot global instructions symlink", result.stderr)
+
+    def test_apply_renders_and_removes_mcp_servers_from_overlay(self) -> None:
+        home = self.temp_path / "home"
+        github_root = home / "GitHub"
+        app_support = home / "Library/Application Support/com.github.githubapp"
+        real_cli = self.temp_path / "real-copilot"
+        (github_root / "agents").mkdir(parents=True)
+        (home / ".agents").mkdir(parents=True)
+        write_text(real_cli, "#!/usr/bin/env bash\nprintf 'copilot stub\\n'\n")
+        real_cli.chmod(0o755)
+
+        overlay_file = self.temp_path / "copilot-settings.json"
+        mcp_config_file = home / ".copilot/mcp-config.json"
+
+        base_args = [
+            sys.executable,
+            str(REPO_ROOT / "scripts/sync-copilot.py"),
+            "--settings-overlay",
+            str(overlay_file),
+            "--settings-file",
+            str(home / ".copilot/settings.json"),
+            "--user-config-file",
+            str(home / ".copilot/config.json"),
+            "--mcp-config-file",
+            str(mcp_config_file),
+            "--hooks-file",
+            str(home / ".copilot/hooks/agents-control-plane.json"),
+            "--launcher-target",
+            str(home / "bin/copilot"),
+            "--real-cli-path",
+            str(real_cli),
+            "--github-root",
+            str(github_root),
+            "--app-support-dir",
+            str(app_support),
+            "--skip-global-instructions",
+        ]
+
+        write_json(
+            overlay_file,
+            {
+                "mcpServers": {
+                    "playwright": {
+                        "type": "local",
+                        "command": "npx",
+                        "args": ["-y", "@playwright/mcp@latest"],
+                        "tools": ["*"],
+                    }
+                }
+            },
+        )
+        run_command([*base_args, "--apply"], env={"HOME": str(home)})
+        rendered = json.loads(
+            "\n".join(line for line in mcp_config_file.read_text(encoding="utf-8").splitlines() if not line.startswith("//"))
+        )
+        self.assertEqual(
+            rendered,
+            {
+                "mcpServers": {
+                    "playwright": {
+                        "tools": ["*"],
+                        "type": "local",
+                        "command": "npx",
+                        "args": ["-y", "@playwright/mcp@latest"],
+                    }
+                }
+            },
+        )
+
+        # Removing the server from the overlay and re-syncing should remove it
+        # from the rendered file, since this is the fully managed surface.
+        write_json(overlay_file, {"mcpServers": {}})
+        run_command([*base_args, "--apply"], env={"HOME": str(home)})
+        rendered = json.loads(
+            "\n".join(line for line in mcp_config_file.read_text(encoding="utf-8").splitlines() if not line.startswith("//"))
+        )
+        self.assertEqual(rendered, {"mcpServers": {}})
+
+        run_command([*base_args, "--check", "--skip-cli-probe"], env={"HOME": str(home)})
+
+        write_json(mcp_config_file, {"mcpServers": {"stray": {"type": "local", "command": "npx", "args": []}}})
+        result = run_command(
+            [*base_args, "--check", "--skip-cli-probe"],
+            env={"HOME": str(home)},
+            check=False,
+        )
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("Copilot MCP config is out of sync", result.stderr)
+
+    def test_rejects_invalid_mcp_server_shapes(self) -> None:
+        home = self.temp_path / "home"
+        github_root = home / "GitHub"
+        app_support = home / "Library/Application Support/com.github.githubapp"
+        real_cli = self.temp_path / "real-copilot"
+        (github_root / "agents").mkdir(parents=True)
+        write_text(real_cli, "#!/usr/bin/env bash\nprintf 'copilot stub\\n'\n")
+        real_cli.chmod(0o755)
+
+        overlay_file = self.temp_path / "copilot-settings.json"
+        write_json(overlay_file, {"mcpServers": {"bad": {"type": "local"}}})
+
+        result = run_command(
+            [
+                sys.executable,
+                str(REPO_ROOT / "scripts/sync-copilot.py"),
+                "--apply",
+                "--settings-overlay",
+                str(overlay_file),
+                "--settings-file",
+                str(home / ".copilot/settings.json"),
+                "--user-config-file",
+                str(home / ".copilot/config.json"),
+                "--hooks-file",
+                str(home / ".copilot/hooks/agents-control-plane.json"),
+                "--launcher-target",
+                str(home / "bin/copilot"),
+                "--real-cli-path",
+                str(real_cli),
+                "--github-root",
+                str(github_root),
+                "--app-support-dir",
+                str(app_support),
+                "--skip-global-instructions",
+            ],
+            env={"HOME": str(home)},
+            check=False,
+        )
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("mcpServers.bad.command must be a non-empty string", result.stderr)

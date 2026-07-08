@@ -1116,6 +1116,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--preview-runner", default=str(DEFAULT_PREVIEW_RUNNER), help="Shared preview runner used by generated app run configs.")
     parser.add_argument("--settings-file", default=str(DEFAULT_SETTINGS_FILE), help="Target ~/.copilot/settings.json.")
     parser.add_argument("--user-config-file", default=str(DEFAULT_USER_CONFIG_FILE), help="Target ~/.copilot/config.json.")
+    parser.add_argument("--mcp-config-file", default=str(DEFAULT_MCP_CONFIG_FILE), help="Target ~/.copilot/mcp-config.json.")
     parser.add_argument("--hooks-file", default=str(DEFAULT_HOOKS_FILE), help="Target managed Copilot user hooks file.")
     parser.add_argument("--launcher-target", default=str(DEFAULT_LAUNCHER_TARGET), help="Managed terminal launcher target.")
     parser.add_argument("--real-cli-path", default=str(DEFAULT_REAL_CLI_PATH), help="Real Copilot CLI executable.")
@@ -1137,6 +1138,7 @@ def main() -> int:
     dev_servers_registry = output_path(Path(args.dev_servers_registry)).resolve()
     settings_file = output_path(Path(args.settings_file))
     user_config_file = output_path(Path(args.user_config_file))
+    mcp_config_file = output_path(Path(args.mcp_config_file))
     hooks_file = output_path(Path(args.hooks_file))
     launcher_target = output_path(Path(args.launcher_target))
     real_cli_path = output_path(Path(args.real_cli_path))
@@ -1160,6 +1162,7 @@ def main() -> int:
                 dev_servers_registry,
                 settings_file,
                 user_config_file,
+                mcp_config_file,
                 hooks_file,
                 launcher_target,
                 real_cli_path,
@@ -1180,6 +1183,7 @@ def main() -> int:
                 dev_servers_registry,
                 settings_file,
                 user_config_file,
+                mcp_config_file,
                 hooks_file,
                 launcher_target,
                 real_cli_path,
