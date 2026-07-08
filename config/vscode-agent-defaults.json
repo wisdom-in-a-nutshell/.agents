@@ -23,6 +23,7 @@
         "mode": "autopilot"
       },
       "chat.tools.global.autoApprove": true,
+      "chat.useAgentSkills": false,
       "github.copilot.chat.githubMcpServer.enabled": false,
       "chat.mcp.discovery.enabled": {
         "claude-desktop": false,
