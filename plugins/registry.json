@@ -29,6 +29,22 @@
       "category": "Productivity"
     },
     {
+      "plugin": "visualize",
+      "marketplace": "openai-bundled",
+      "enabled": false,
+      "scope": "global",
+      "repos": [],
+      "category": "Productivity"
+    },
+    {
+      "plugin": "openai-templates",
+      "marketplace": "openai-curated-remote",
+      "enabled": false,
+      "scope": "global",
+      "repos": [],
+      "category": "Productivity"
+    },
+    {
       "plugin": "build-ios-apps",
       "marketplace": "openai-curated",
       "enabled": false,

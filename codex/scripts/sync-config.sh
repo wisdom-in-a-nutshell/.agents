@@ -306,7 +306,7 @@ PY
 }
 
 extract_openai_bundled_marketplace_entries() {
-  local marketplace_path="${CODEX_BUNDLED_MARKETPLACE:-/Applications/Codex.app/Contents/Resources/plugins/openai-bundled}"
+  local marketplace_path="${CODEX_BUNDLED_MARKETPLACE:-/Applications/ChatGPT.app/Contents/Resources/plugins/openai-bundled}"
   printf 'marketplaces.openai-bundled\x1Fsource_type\x1F"local"\n'
   printf 'marketplaces.openai-bundled\x1Fsource\x1F%s\n' "$(quote_toml_string "$marketplace_path")"
 }
@@ -1248,7 +1248,7 @@ home = Path(sys.argv[2])
 bundle_marketplace = Path(
     os.environ.get(
         "CODEX_BUNDLED_MARKETPLACE",
-        "/Applications/Codex.app/Contents/Resources/plugins/openai-bundled",
+        "/Applications/ChatGPT.app/Contents/Resources/plugins/openai-bundled",
     )
 ).expanduser()
 runtime_cache = home / ".codex/plugins/cache/openai-bundled"

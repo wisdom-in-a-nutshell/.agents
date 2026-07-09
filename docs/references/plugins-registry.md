@@ -33,7 +33,7 @@ This registry does not automatically project plugin contents into the skill or M
 
 Native Codex plugin enablement is treated as global/user-level for now. The current OpenAI Codex config schema describes `plugins` as user-level plugin config, and local testing has not shown reliable native plugin skill injection from repo-local `.codex/config.toml`. Do not try to make native plugin UX repo-specific through bootstrap. If a plugin should be used only occasionally, leave it unmanaged and enable it manually in Codex Desktop when needed.
 
-For `openai-bundled` plugins, keep the registry name aligned with the plugin manifest in the Codex app bundle at `/Applications/Codex.app/Contents/Resources/plugins/openai-bundled/plugins/<plugin>`. Do not maintain an outside copy of bundled plugin source. `codex/scripts/sync-config.sh --apply` renders the config, seeds the runtime cache from the app bundle, and prunes bundled cache entries that are no longer enabled in `plugins/registry.json`.
+For `openai-bundled` plugins, keep the registry name aligned with the plugin manifest in the ChatGPT app bundle at `/Applications/ChatGPT.app/Contents/Resources/plugins/openai-bundled/plugins/<plugin>`. Do not maintain an outside copy of bundled plugin source. `codex/scripts/sync-config.sh --apply` renders the config, seeds the runtime cache from the app bundle, and prunes bundled cache entries that are no longer enabled in `plugins/registry.json`.
 
 For non-bundled plugins, `scripts/bootstrap-machine-agent-control-planes.sh --apply` runs `scripts/sync-codex-plugin-installs.py --apply` before rendering Codex config. This lets the registry remain declarative: adding an enabled global plugin entry is enough for machine bootstrap to install the package.
 

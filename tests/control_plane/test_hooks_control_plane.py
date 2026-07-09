@@ -506,9 +506,10 @@ class HooksControlPlaneTests(TempDirTestCase):
         )
 
         rendered_config = (home / ".codex/config.toml").read_text(encoding="utf-8")
-        self.assertIn('model = "gpt-5.5"', rendered_config)
+        self.assertIn('model = "gpt-5.6-sol"', rendered_config)
         self.assertIn('model_reasoning_effort = "high"', rendered_config)
         self.assertIn('plan_mode_reasoning_effort = "high"', rendered_config)
+        self.assertIn('service_tier = "fast"', rendered_config)
         self.assertIn("hooks = true", rendered_config)
         self.assertIn('[plugins."computer-use@openai-bundled"]', rendered_config)
         self.assertNotIn("build-ios-apps@openai-curated", rendered_config)
@@ -527,7 +528,7 @@ class HooksControlPlaneTests(TempDirTestCase):
     def test_codex_sync_config_uses_native_bundled_marketplace_and_caches_enabled_plugins(self) -> None:
         root = make_control_plane_root(self.temp_path)
         home = self.temp_path / "home"
-        bundled_marketplace = self.temp_path / "Codex.app/Contents/Resources/plugins/openai-bundled"
+        bundled_marketplace = self.temp_path / "ChatGPT.app/Contents/Resources/plugins/openai-bundled"
         stale_marketplace_mirror = home / ".codex/.tmp/bundled-marketplaces/openai-bundled"
         write_json(root / "mcp/config/presets.json", default_mcp_registry())
         write_json(

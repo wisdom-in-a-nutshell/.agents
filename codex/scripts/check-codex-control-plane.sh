@@ -367,7 +367,7 @@ def validate_global_plugin_runtime(
     bundled_marketplace = Path(
         os.environ.get(
             "CODEX_BUNDLED_MARKETPLACE",
-            "/Applications/Codex.app/Contents/Resources/plugins/openai-bundled",
+            "/Applications/ChatGPT.app/Contents/Resources/plugins/openai-bundled",
         )
     ).expanduser()
     if not bundled_marketplace.is_dir():
