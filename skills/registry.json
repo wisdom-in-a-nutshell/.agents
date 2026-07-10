@@ -207,7 +207,8 @@
       "origin": "external",
       "scope": "repo",
       "repos": [
-        "agents"
+        "agents",
+        "frontier-lab-intelligence"
       ],
       "source_path": "skills-source/external/openai-docs",
       "upstream_ref": "openai/skills:skills/.curated/openai-docs@main"
