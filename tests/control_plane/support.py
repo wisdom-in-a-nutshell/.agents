@@ -26,6 +26,7 @@ def run_command(
         args,
         cwd=str(cwd) if cwd else None,
         env=merged_env,
+        stdin=subprocess.DEVNULL,
         capture_output=True,
         text=True,
     )
