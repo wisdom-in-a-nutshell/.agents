@@ -765,6 +765,19 @@ def existing_ancestor(path: Path) -> Path | None:
     return candidate
 
 
+def filesystem_repo_root(ancestor: Path) -> Path | None:
+    candidate = ancestor
+    while True:
+        if (candidate / ".git").exists():
+            return candidate.resolve()
+        parent = candidate.parent
+        if parent == candidate:
+            break
+        candidate = parent
+    fallback = repo_root(str(ancestor))
+    return Path(fallback).resolve() if fallback else None
+
+
 def attributed_repo_path(path_text: str) -> tuple[str, str] | None:
     path = Path(path_text).expanduser()
     if not path.is_absolute():
@@ -772,10 +785,9 @@ def attributed_repo_path(path_text: str) -> tuple[str, str] | None:
     ancestor = existing_ancestor(path)
     if ancestor is None:
         return None
-    root_text = repo_root(str(ancestor))
-    if not root_text:
+    root = filesystem_repo_root(ancestor)
+    if root is None:
         return None
-    root = Path(root_text).resolve()
     # Resolve parent aliases such as macOS /var -> /private/var without following
     # a tracked file symlink out of the worktree.
     normalized_path = Path(os.path.realpath(path.parent)) / path.name
@@ -1014,7 +1026,7 @@ def process_codex_repositories(
         pending,
         repositories_from_paths(changes.touched_paths),
     )
-    primary_root = repo_root(cwd) if is_git_repo(cwd) else None
+    primary_root = repo_root(cwd)
     if primary_root:
         primary_root = str(Path(primary_root).resolve())
         if primary_root not in repositories:
