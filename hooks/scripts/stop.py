@@ -1001,24 +1001,25 @@ def process_codex_repositories(
     primary_root = repo_root(cwd) if is_git_repo(cwd) else None
     if primary_root:
         primary_root = str(Path(primary_root).resolve())
-        primary_changes, primary_status_ok = worktree_changed_paths(primary_root)
-        primary_unpushed = unpushed_head(primary_root)
-        if not primary_status_ok:
-            return maybe_continue(
-                payload,
-                state_failure_reason(primary_root, "could not inspect the primary repository status"),
-                cwd=primary_root,
-            )
-        if primary_changes or primary_unpushed:
-            primary = repositories.setdefault(
-                primary_root,
-                RepoFinalization(root=primary_root),
-            )
-            primary.paths.update(primary_changes)
-            if primary_unpushed and not primary.commit:
-                primary.commit = primary_unpushed
-            if primary.commit and not primary_changes:
-                primary.phase = "committed"
+        if primary_root not in repositories:
+            primary_changes, primary_status_ok = worktree_changed_paths(primary_root)
+            primary_unpushed = unpushed_head(primary_root)
+            if not primary_status_ok:
+                return maybe_continue(
+                    payload,
+                    state_failure_reason(primary_root, "could not inspect the primary repository status"),
+                    cwd=primary_root,
+                )
+            if primary_changes or primary_unpushed:
+                primary = repositories.setdefault(
+                    primary_root,
+                    RepoFinalization(root=primary_root),
+                )
+                primary.paths.update(primary_changes)
+                if primary_unpushed and not primary.commit:
+                    primary.commit = primary_unpushed
+                if primary.commit and not primary_changes:
+                    primary.phase = "committed"
     if not repositories:
         log("codex", f"skip no-attributed-files thread={thread_id}")
         save_codex_transaction(thread_id, {})
@@ -1059,9 +1060,10 @@ def process_codex_repositories(
                 failures.append(f"Repository {item.root}: could not inspect working-tree changes.")
                 continue
             item.paths.update(current_changes)
-            existing_unpushed = unpushed_head(item.root)
-            if existing_unpushed and not item.commit:
-                item.commit = existing_unpushed
+            if not current_changes and not item.commit:
+                existing_unpushed = unpushed_head(item.root)
+                if existing_unpushed:
+                    item.commit = existing_unpushed
             if item.phase == "committed" and current_changes:
                 # Preserve item.commit: it still needs to be pushed after the
                 # newly consolidated paths are checked and committed.
@@ -1090,18 +1092,6 @@ def process_codex_repositories(
         pending_items = [item for item in repositories.values() if item.phase == "pending"]
         staged_pending_items: list[RepoFinalization] = []
         for item in pending_items:
-            current_staged, staged_result = staged_paths(item.root)
-            if staged_result.returncode != 0:
-                failures.append(
-                    command_failure_reason(
-                        item.root,
-                        "inspect staged paths",
-                        ["git", "--literal-pathspecs", "diff", "--cached", "--name-only", "-z"],
-                        staged_result,
-                    )
-                )
-                continue
-            item.paths.update(current_staged)
             if not item.paths:
                 if item.commit:
                     item.phase = "committed"
