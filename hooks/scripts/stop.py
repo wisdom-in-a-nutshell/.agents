@@ -1091,7 +1091,11 @@ def process_codex_repositories(
             if not clear_stale_index_lock(item.root):
                 failures.append(f"Repository {item.root}: git index.lock appears active.")
                 continue
-            item.paths.update(current_changes)
+            # Attribution selects the repository. Git status is the source of
+            # truth for what can still be staged once the repository is locked.
+            # This drops stale or ignored untracked paths from earlier turns
+            # while preserving tracked deletions, renames, and unrelated edits.
+            item.paths = current_changes
             if item.phase == "committed" and current_changes:
                 # Preserve item.commit: it still needs to be pushed after the
                 # newly consolidated paths are checked and committed.

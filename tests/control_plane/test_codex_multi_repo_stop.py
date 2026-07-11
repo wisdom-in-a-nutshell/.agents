@@ -377,6 +377,96 @@ class CodexMultiRepoStopTests(TempDirTestCase):
         self.assertIsNone(output)
         self.assertEqual(pending, {})
 
+    def test_stale_missing_untracked_attribution_does_not_block_staging(self) -> None:
+        repo, remote = self.make_published_repo("repo")
+        changed = repo / "changed.txt"
+        stale = repo / "tmp/deleted-before-stop.txt"
+        changed.write_text("changed\n", encoding="utf-8")
+
+        with patch.dict(os.environ, {"HOME": str(self.temp_path / "home")}):
+            with patch.object(
+                stop,
+                "collect_codex_turn_changes",
+                return_value=self.changes([changed, stale]),
+            ):
+                output = stop.process_codex_repositories(
+                    str(repo),
+                    {"session_id": "thread", "hook_event_name": "Stop"},
+                )
+
+        self.assertIsNone(output)
+        self.assertEqual(
+            run_command(["git", "-C", str(remote), "show", "HEAD:changed.txt"]).stdout,
+            "changed\n",
+        )
+
+    def test_existing_ignored_untracked_attribution_does_not_block_staging(self) -> None:
+        repo, remote = self.make_published_repo("repo")
+        ignore_file = repo / ".gitignore"
+        ignore_file.write_text("tmp/\n", encoding="utf-8")
+        run_command(["git", "-C", str(repo), "add", ".gitignore"])
+        run_command(["git", "-C", str(repo), "commit", "-m", "ignore temp files"])
+        run_command(["git", "-C", str(repo), "push", "origin", "HEAD"])
+        changed = repo / "changed.txt"
+        ignored = repo / "tmp/ignored.txt"
+        ignored.parent.mkdir()
+        changed.write_text("changed\n", encoding="utf-8")
+        ignored.write_text("ignored\n", encoding="utf-8")
+
+        with patch.dict(os.environ, {"HOME": str(self.temp_path / "home")}):
+            with patch.object(
+                stop,
+                "collect_codex_turn_changes",
+                return_value=self.changes([changed, ignored]),
+            ):
+                output = stop.process_codex_repositories(
+                    str(repo),
+                    {"session_id": "thread", "hook_event_name": "Stop"},
+                )
+
+        self.assertIsNone(output)
+        self.assertEqual(
+            run_command(["git", "-C", str(remote), "show", "HEAD:changed.txt"]).stdout,
+            "changed\n",
+        )
+        self.assertNotEqual(
+            run_command(
+                ["git", "-C", str(remote), "cat-file", "-e", "HEAD:tmp/ignored.txt"],
+                check=False,
+            ).returncode,
+            0,
+        )
+
+    def test_stale_attribution_filter_preserves_tracked_deletion(self) -> None:
+        repo, remote = self.make_published_repo("repo")
+        deleted = repo / "delete-me.txt"
+        stale = repo / "tmp/deleted-before-stop.txt"
+        deleted.write_text("delete me\n", encoding="utf-8")
+        run_command(["git", "-C", str(repo), "add", "delete-me.txt"])
+        run_command(["git", "-C", str(repo), "commit", "-m", "seed deletion"])
+        run_command(["git", "-C", str(repo), "push", "origin", "HEAD"])
+        deleted.unlink()
+
+        with patch.dict(os.environ, {"HOME": str(self.temp_path / "home")}):
+            with patch.object(
+                stop,
+                "collect_codex_turn_changes",
+                return_value=self.changes([deleted, stale]),
+            ):
+                output = stop.process_codex_repositories(
+                    str(repo),
+                    {"session_id": "thread", "hook_event_name": "Stop"},
+                )
+
+        self.assertIsNone(output)
+        self.assertNotEqual(
+            run_command(
+                ["git", "-C", str(remote), "cat-file", "-e", "HEAD:delete-me.txt"],
+                check=False,
+            ).returncode,
+            0,
+        )
+
     def test_retries_a_committed_repository_after_partial_push_failure(self) -> None:
         first, _first_remote = self.make_published_repo("first")
         second, _second_remote = self.make_published_repo("second")
