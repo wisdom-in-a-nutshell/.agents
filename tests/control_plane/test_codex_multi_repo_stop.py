@@ -1,12 +1,16 @@
 from __future__ import annotations
 
 import os
+import subprocess
+import sys
+import time
 from types import SimpleNamespace
 from unittest.mock import patch
 
 from hooks.scripts import codex_turn_changes
 from hooks.scripts import stop
 from tests.control_plane.support import (
+    REPO_ROOT,
     TempDirTestCase,
     init_git_repo,
     run_command,
@@ -30,11 +34,10 @@ class FakeAppServerClient:
 
 
 class CodexTurnChangesTests(TempDirTestCase):
-    def test_collects_parent_subagent_and_active_competitor_paths(self) -> None:
+    def test_collects_parent_and_subagent_paths(self) -> None:
         root_path = str(self.temp_path / "root.txt")
         child_path = str(self.temp_path / "child.txt")
         moved_path = str(self.temp_path / "moved.txt")
-        competitor_path = str(self.temp_path / "competitor.txt")
         responses = {
             ("thread/read", "root"): {
                 "thread": {
@@ -121,23 +124,6 @@ class CodexTurnChangesTests(TempDirTestCase):
                     ],
                 }
             },
-            ("thread/read", "competitor"): {
-                "thread": {
-                    "id": "competitor",
-                    "turns": [
-                        {
-                            "id": "turn-competitor",
-                            "startedAt": 125,
-                            "items": [
-                                {
-                                    "type": "fileChange",
-                                    "changes": [{"path": competitor_path, "kind": {"type": "update"}}],
-                                }
-                            ],
-                        }
-                    ],
-                }
-            },
         }
 
         with patch.object(
@@ -153,11 +139,6 @@ class CodexTurnChangesTests(TempDirTestCase):
             set(result.touched_paths),
             {root_path, child_path, moved_path},
         )
-        self.assertEqual(len(result.active_competitors), 1)
-        self.assertEqual(
-            result.active_competitors[0].touched_paths,
-            (competitor_path,),
-        )
 
 
 class CodexMultiRepoStopTests(TempDirTestCase):
@@ -171,10 +152,9 @@ class CodexMultiRepoStopTests(TempDirTestCase):
         run_command(["git", "-C", str(repo), "push", "-u", "origin", "main"])
         return repo, remote
 
-    def changes(self, paths, competitors=()):  # noqa: ANN001, ANN201
+    def changes(self, paths):  # noqa: ANN001, ANN201
         return SimpleNamespace(
             touched_paths=tuple(str(path) for path in paths),
-            active_competitors=tuple(competitors),
             parent_thread_id="",
         )
 
@@ -212,8 +192,8 @@ class CodexMultiRepoStopTests(TempDirTestCase):
         )
         self.assertFalse(stop.codex_transaction_path("thread").exists())
 
-    def test_refuses_unattributed_pre_staged_file(self) -> None:
-        repo, _remote = self.make_published_repo("repo")
+    def test_consolidates_unattributed_pre_staged_file(self) -> None:
+        repo, remote = self.make_published_repo("repo")
         attributed = repo / "attributed.txt"
         unrelated = repo / "unrelated.txt"
         attributed.write_text("mine\n", encoding="utf-8")
@@ -232,11 +212,14 @@ class CodexMultiRepoStopTests(TempDirTestCase):
                         {"session_id": "thread", "hook_event_name": "Stop"},
                     )
 
-        self.assertEqual(output["decision"], "block")
-        self.assertIn("unrelated.txt", output["reason"])
+        self.assertIsNone(output)
         self.assertEqual(
             run_command(["git", "-C", str(repo), "rev-list", "--count", "HEAD"]).stdout.strip(),
-            "1",
+            "2",
+        )
+        self.assertEqual(
+            run_command(["git", "-C", str(remote), "show", "HEAD:unrelated.txt"]).stdout,
+            "other\n",
         )
 
     def test_preflights_every_repo_before_any_commit(self) -> None:
@@ -277,43 +260,10 @@ class CodexMultiRepoStopTests(TempDirTestCase):
             )
         self.assertEqual(set(pending), {str(first.resolve()), str(second.resolve())})
 
-    def test_blocks_an_exact_path_overlap_with_an_active_thread(self) -> None:
-        repo, _remote = self.make_published_repo("repo")
+    def test_stale_competitor_transaction_does_not_block_consolidation(self) -> None:
+        repo, remote = self.make_published_repo("repo")
         path = repo / "shared.txt"
         path.write_text("shared\n", encoding="utf-8")
-        competitor = SimpleNamespace(
-            thread_id="other-thread",
-            session_id="other-session",
-            cwd=str(repo),
-            touched_paths=(str(path),),
-        )
-
-        with patch.dict(os.environ, {"HOME": str(self.temp_path / "home")}):
-            with patch.object(
-                stop,
-                "collect_codex_turn_changes",
-                return_value=self.changes([path], [competitor]),
-            ):
-                with patch.object(stop, "avoid_stop_continuation", return_value=False):
-                    output = stop.process_codex_repositories(
-                        str(repo),
-                        {"session_id": "thread", "hook_event_name": "Stop"},
-                    )
-
-        self.assertEqual(output["decision"], "block")
-        self.assertIn("other-thread", output["reason"])
-        self.assertIn("shared.txt", output["reason"])
-
-    def test_blocks_overlap_held_by_active_competitor_transaction(self) -> None:
-        repo, _remote = self.make_published_repo("repo")
-        path = repo / "shared.txt"
-        path.write_text("shared\n", encoding="utf-8")
-        competitor = SimpleNamespace(
-            thread_id="other-thread",
-            session_id="other-session",
-            cwd=str(self.temp_path),
-            touched_paths=(),
-        )
         other_state = {
             str(repo.resolve()): stop.RepoFinalization(
                 root=str(repo.resolve()),
@@ -326,7 +276,7 @@ class CodexMultiRepoStopTests(TempDirTestCase):
             with patch.object(
                 stop,
                 "collect_codex_turn_changes",
-                return_value=self.changes([path], [competitor]),
+                return_value=self.changes([path]),
             ):
                 with patch.object(stop, "avoid_stop_continuation", return_value=False):
                     output = stop.process_codex_repositories(
@@ -334,9 +284,11 @@ class CodexMultiRepoStopTests(TempDirTestCase):
                         {"session_id": "thread", "hook_event_name": "Stop"},
                     )
 
-        self.assertEqual(output["decision"], "block")
-        self.assertIn("pending transaction", output["reason"])
-        self.assertIn("shared.txt", output["reason"])
+        self.assertIsNone(output)
+        self.assertEqual(
+            run_command(["git", "-C", str(remote), "show", "HEAD:shared.txt"]).stdout,
+            "shared\n",
+        )
 
     def test_subagent_stop_defers_to_parent_turn(self) -> None:
         repo, _remote = self.make_published_repo("repo")
@@ -394,6 +346,7 @@ class CodexMultiRepoStopTests(TempDirTestCase):
         push_results = [
             (success, ["git", "push", "origin", "HEAD"], "git push failed"),
             (failure, ["git", "push", "origin", "HEAD"], "git push failed"),
+            (success, ["git", "push", "origin", "HEAD"], "git push failed"),
             (success, ["git", "push", "origin", "HEAD"], "git push failed"),
         ]
         payload = {"session_id": "thread", "hook_event_name": "Stop"}
@@ -521,15 +474,182 @@ class CodexMultiRepoStopTests(TempDirTestCase):
             "pending\n",
         )
 
-    def test_commit_only_excludes_file_staged_by_precommit_hook(self) -> None:
+    def test_pushes_precommitted_primary_repo_without_attributed_files(self) -> None:
+        repo, remote = self.make_published_repo("repo")
+        path = repo / "already-committed.txt"
+        path.write_text("committed\n", encoding="utf-8")
+        run_command(["git", "-C", str(repo), "add", "already-committed.txt"])
+        run_command(["git", "-C", str(repo), "commit", "-m", "already committed"])
+
+        with patch.dict(os.environ, {"HOME": str(self.temp_path / "home")}):
+            with patch.object(
+                stop,
+                "collect_codex_turn_changes",
+                return_value=self.changes([]),
+            ):
+                output = stop.process_codex_repositories(
+                    str(repo),
+                    {"session_id": "thread", "hook_event_name": "Stop"},
+                )
+
+        self.assertIsNone(output)
+        self.assertEqual(
+            run_command(
+                ["git", "-C", str(remote), "show", "HEAD:already-committed.txt"]
+            ).stdout,
+            "committed\n",
+        )
+
+    def test_pushes_precommitted_primary_when_attribution_is_unavailable(self) -> None:
+        repo, remote = self.make_published_repo("repo")
+        path = repo / "fallback-commit.txt"
+        path.write_text("fallback\n", encoding="utf-8")
+        run_command(["git", "-C", str(repo), "add", "fallback-commit.txt"])
+        run_command(["git", "-C", str(repo), "commit", "-m", "fallback commit"])
+
+        with patch.dict(os.environ, {"HOME": str(self.temp_path / "home")}):
+            with patch.object(
+                stop,
+                "collect_codex_turn_changes",
+                side_effect=stop.CodexTurnChangesError("app server unavailable"),
+            ):
+                output = stop.process_codex_repositories(
+                    str(repo),
+                    {"session_id": "thread", "hook_event_name": "Stop"},
+                )
+
+        self.assertIsNone(output)
+        self.assertEqual(
+            run_command(["git", "-C", str(remote), "show", "HEAD:fallback-commit.txt"]).stdout,
+            "fallback\n",
+        )
+
+    def test_resumes_pending_push_when_attribution_is_unavailable(self) -> None:
+        repo, remote = self.make_published_repo("repo")
+        path = repo / "pending-without-server.txt"
+        path.write_text("pending\n", encoding="utf-8")
+        run_command(["git", "-C", str(repo), "add", "pending-without-server.txt"])
+        run_command(["git", "-C", str(repo), "commit", "-m", "pending without server"])
+        commit = run_command(["git", "-C", str(repo), "rev-parse", "HEAD"]).stdout.strip()
+        state = {
+            str(repo.resolve()): stop.RepoFinalization(
+                root=str(repo.resolve()),
+                paths={"pending-without-server.txt"},
+                phase="committed",
+                commit=commit,
+            )
+        }
+
+        with patch.dict(os.environ, {"HOME": str(self.temp_path / "home")}):
+            stop.save_codex_transaction("thread", state)
+            with patch.object(
+                stop,
+                "collect_codex_turn_changes",
+                side_effect=stop.CodexTurnChangesError("app server unavailable"),
+            ):
+                output = stop.process_codex_repositories(
+                    str(repo),
+                    {"session_id": "thread", "hook_event_name": "Stop"},
+                )
+            final_state = stop.load_codex_transaction("thread")
+
+        self.assertIsNone(output)
+        self.assertEqual(final_state, {})
+        self.assertEqual(
+            run_command(
+                ["git", "-C", str(remote), "show", "HEAD:pending-without-server.txt"]
+            ).stdout,
+            "pending\n",
+        )
+
+    def test_pushes_rewritten_equivalent_head_from_pending_transaction(self) -> None:
+        repo, remote = self.make_published_repo("repo")
+        path = repo / "rebased.txt"
+        path.write_text("preserved\n", encoding="utf-8")
+        run_command(["git", "-C", str(repo), "add", "rebased.txt"])
+        run_command(["git", "-C", str(repo), "commit", "-m", "pending commit"])
+        old_commit = run_command(["git", "-C", str(repo), "rev-parse", "HEAD"]).stdout.strip()
+        run_command(
+            ["git", "-C", str(repo), "commit", "--amend", "--no-edit"],
+            env={"GIT_COMMITTER_DATE": "2030-01-01T00:00:00Z"},
+        )
+        rewritten_commit = run_command(
+            ["git", "-C", str(repo), "rev-parse", "HEAD"]
+        ).stdout.strip()
+        self.assertNotEqual(old_commit, rewritten_commit)
+        state = {
+            str(repo.resolve()): stop.RepoFinalization(
+                root=str(repo.resolve()),
+                paths={"rebased.txt"},
+                phase="committed",
+                commit=old_commit,
+            )
+        }
+
+        with patch.dict(os.environ, {"HOME": str(self.temp_path / "home")}):
+            stop.save_codex_transaction("thread", state)
+            with patch.object(
+                stop,
+                "collect_codex_turn_changes",
+                return_value=self.changes([]),
+            ):
+                output = stop.process_codex_repositories(
+                    str(repo),
+                    {"session_id": "thread", "hook_event_name": "Stop"},
+                )
+
+        self.assertIsNone(output)
+        self.assertEqual(
+            run_command(["git", "-C", str(remote), "show", "HEAD:rebased.txt"]).stdout,
+            "preserved\n",
+        )
+
+    def test_restages_concurrent_changes_and_reruns_fast_check(self) -> None:
+        repo, remote = self.make_published_repo("repo")
+        attributed = repo / "attributed.txt"
+        attributed.write_text("mine\n", encoding="utf-8")
+        write_executable(
+            repo / "scripts/check-fast.sh",
+            "\n".join(
+                [
+                    "#!/usr/bin/env bash",
+                    "set -euo pipefail",
+                    "if [[ ! -f .git/concurrent-change-added ]]; then",
+                    "  touch .git/concurrent-change-added",
+                    "  printf 'concurrent\\n' > concurrent.txt",
+                    "fi",
+                    "",
+                ]
+            ),
+        )
+
+        with patch.dict(os.environ, {"HOME": str(self.temp_path / "home")}):
+            with patch.object(
+                stop,
+                "collect_codex_turn_changes",
+                return_value=self.changes([attributed, repo / "scripts/check-fast.sh"]),
+            ):
+                output = stop.process_codex_repositories(
+                    str(repo),
+                    {"session_id": "thread", "hook_event_name": "Stop"},
+                )
+
+        self.assertIsNone(output)
+        self.assertEqual(
+            run_command(["git", "-C", str(remote), "show", "HEAD:concurrent.txt"]).stdout,
+            "concurrent\n",
+        )
+
+    def test_consolidates_repo_changes_without_running_mutable_precommit_hook(self) -> None:
         repo, remote = self.make_published_repo("repo")
         attributed = repo / "attributed.txt"
         unrelated = repo / "unrelated.txt"
         attributed.write_text("mine\n", encoding="utf-8")
         unrelated.write_text("other\n", encoding="utf-8")
+        hook_marker = repo / ".git/precommit-ran"
         write_executable(
             repo / ".git/hooks/pre-commit",
-            "#!/usr/bin/env bash\ngit add unrelated.txt\n",
+            f"#!/usr/bin/env bash\ntouch {hook_marker}\n",
         )
 
         with patch.dict(os.environ, {"HOME": str(self.temp_path / "home")}):
@@ -548,15 +668,11 @@ class CodexMultiRepoStopTests(TempDirTestCase):
             run_command(["git", "-C", str(remote), "show", "HEAD:attributed.txt"]).stdout,
             "mine\n",
         )
-        remote_unrelated = run_command(
-            ["git", "-C", str(remote), "show", "HEAD:unrelated.txt"],
-            check=False,
+        self.assertEqual(
+            run_command(["git", "-C", str(remote), "show", "HEAD:unrelated.txt"]).stdout,
+            "other\n",
         )
-        self.assertNotEqual(remote_unrelated.returncode, 0)
-        self.assertIn(
-            "unrelated.txt",
-            run_command(["git", "-C", str(repo), "status", "--porcelain"]).stdout,
-        )
+        self.assertFalse(hook_marker.exists())
 
     def test_tracked_file_symlink_maps_to_its_repository_path(self) -> None:
         repo, _remote = self.make_published_repo("repo")
@@ -568,3 +684,77 @@ class CodexMultiRepoStopTests(TempDirTestCase):
         resolved = stop.attributed_repo_path(str(link))
 
         self.assertEqual(resolved, (str(repo.resolve()), "linked.txt"))
+
+    def test_consolidates_rename_delete_and_literal_pathspec_names(self) -> None:
+        repo, remote = self.make_published_repo("repo")
+        renamed_source = repo / "rename-source.txt"
+        deleted = repo / "delete-me.txt"
+        renamed_source.write_text("renamed\n", encoding="utf-8")
+        deleted.write_text("deleted\n", encoding="utf-8")
+        run_command(
+            ["git", "-C", str(repo), "add", "rename-source.txt", "delete-me.txt"]
+        )
+        run_command(["git", "-C", str(repo), "commit", "-m", "seed edge paths"])
+        run_command(["git", "-C", str(repo), "push", "origin", "HEAD"])
+        literal_name = repo / ":(literal)-renamed.txt"
+        renamed_source.rename(literal_name)
+        deleted.unlink()
+
+        with patch.dict(os.environ, {"HOME": str(self.temp_path / "home")}):
+            with patch.object(
+                stop,
+                "collect_codex_turn_changes",
+                return_value=self.changes([literal_name, deleted]),
+            ):
+                output = stop.process_codex_repositories(
+                    str(repo),
+                    {"session_id": "thread", "hook_event_name": "Stop"},
+                )
+
+        self.assertIsNone(output)
+        tree_paths = set(
+            run_command(
+                ["git", "-C", str(remote), "ls-tree", "--name-only", "HEAD"]
+            ).stdout.splitlines()
+        )
+        self.assertIn(":(literal)-renamed.txt", tree_paths)
+        self.assertNotIn("rename-source.txt", tree_paths)
+        self.assertNotIn("delete-me.txt", tree_paths)
+
+    def test_repository_lock_serializes_competing_stop_processes(self) -> None:
+        repo, _remote = self.make_published_repo("repo")
+        home = self.temp_path / "home"
+        holder = subprocess.Popen(
+            [
+                sys.executable,
+                "-c",
+                "\n".join(
+                    [
+                        "import time",
+                        "from hooks.scripts.stop import lock_codex_repositories",
+                        f"with lock_codex_repositories([{str(repo.resolve())!r}]):",
+                        "    print('locked', flush=True)",
+                        "    time.sleep(0.6)",
+                    ]
+                ),
+            ],
+            cwd=str(REPO_ROOT),
+            env={**os.environ, "HOME": str(home)},
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+        )
+        try:
+            assert holder.stdout is not None
+            self.assertEqual(holder.stdout.readline().strip(), "locked")
+            started = time.monotonic()
+            with patch.dict(os.environ, {"HOME": str(home)}):
+                with stop.lock_codex_repositories([str(repo.resolve())]):
+                    waited = time.monotonic() - started
+            self.assertGreaterEqual(waited, 0.35)
+        finally:
+            holder.wait(timeout=5)
+            if holder.stdout is not None:
+                holder.stdout.close()
+            if holder.stderr is not None:
+                holder.stderr.close()

@@ -126,15 +126,17 @@ Use [Codex Control Plane Ownership](/Users/dobby/GitHub/agents/docs/references/c
 - `~/.codex/config.toml` does not use Codex `notify`; global hook automation is rendered into `~/.codex/hooks.json`, and repo-assigned hooks are rendered into managed repo `.codex/hooks.json` from `hooks/registry.json`.
 - The global `Stop` hook owns the managed-repo git conveyor:
   - reads Codex App Server `fileChange` items for the parent turn and its same-session subagents
-  - maps those exact absolute paths to every Git worktree touched by the turn and stages only the attributed paths in each repository
+  - uses those exact absolute paths to identify affected Git worktrees, then consolidates all current staged and working-tree changes inside each affected repository
   - ignores subagent Stop events because the parent Stop owns the complete turn transaction
-  - checks active Codex tasks for exact-path overlap and uses deterministic per-repository file locks to prevent competing Stop hooks
-  - refuses unrelated pre-staged paths instead of accidentally including another task's work
-  - preflights every affected repo's `scripts/check-fast.sh` concurrently, revalidates the exact staged paths, then commits with hook-time index mutation disabled
+  - allows concurrent Codex tasks to edit the same repository or file and uses deterministic per-repository locks to serialize only stage/check/commit/push finalization
+  - adopts pre-staged work into the consolidated commit instead of dropping or indefinitely orphaning another task's changes
+  - preflights every affected repo's `scripts/check-fast.sh` concurrently and reruns checks when edits arrive during validation
+  - commits with mutable commit hooks disabled after the explicit fast-check and index-stability gates
   - persists partial commit/push progress so a later continuation can finish all repositories without losing already-created commits
+  - detects and pushes existing local commits even when the current turn has no new file changes in its primary repository
   - relies on managed repo local `core.hooksPath` pointing at `~/GitHub/agents/hooks/git`
   - returns aggregated hook feedback to the originating Codex task when any repository fails, so the same task can repair every affected repository
-  - fails closed when exact Codex turn attribution is unavailable and the current repository is dirty
+  - fails closed when cross-repository attribution is unavailable, while the primary repository retains the established current-repo fallback
   - queues an App Server follow-up turn for Azure-backed Codex threads because Azure Responses currently rejects some replayed local Codex item IDs used by built-in Stop-hook continuation; remove this workaround after upstream Codex fixes `openai/codex#20783`
   - tracked branches use an optimistic `commit -> push` path and only run `git pull --rebase` when push reports that the remote is ahead
   - brand-new branches without upstream tracking use an initial `git push -u <remote> HEAD`, so the hook can publish the branch before future tracked-branch pulls

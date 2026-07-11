@@ -119,16 +119,16 @@ flowchart TD
     C --> D["hooks/scripts/stop.py"]
     D --> E["read parent + subagent fileChange items"]
     E --> F["map exact paths to Git worktrees"]
-    F --> G{"active task overlaps a path?"}
-    G -->|"yes"| H["return feedback to the source task"]
-    G -->|"no"| I["lock all repositories in sorted order"]
-    I --> J["stage attributed paths only"]
-    J --> K["run every repo scripts/check-fast.sh in parallel"]
-    K --> L{"all checks passed?"}
-    L -->|"no"| H
-    L -->|"yes"| M["commit each repository"]
+    F --> G["lock all affected repositories in sorted order"]
+    G --> H["consolidate all staged + working-tree changes"]
+    H --> I["run every repo scripts/check-fast.sh in parallel"]
+    I --> J{"new edits arrived during checks?"}
+    J -->|"yes"| H
+    J -->|"no"| K{"all checks passed?"}
+    K -->|"no"| L["return aggregate feedback to the source task"]
+    K -->|"yes"| M["commit consolidated repository state"]
     M --> N["persist committed phases"]
-    N --> O["push each repository"]
+    N --> O["push every local commit"]
     O --> P{"remote ahead?"}
     P -->|"yes"| Q["git pull --rebase, then retry push"]
     P -->|"no"| R["remove completed transaction"]
@@ -141,4 +141,7 @@ explicit command. Codex stores incomplete multi-repository transactions under
 `~/.local/state/agents-control-plane/codex-stop-transactions/`, so a later Stop
 can finish pushing repositories already committed before another repository
 failed. Subagent Stop events defer to their parent; the parent Stop aggregates
-the complete same-session turn tree.
+the complete same-session turn tree. Concurrent Codex tasks may edit the same
+repository or file: the shared working tree is consolidated under the Git lock,
+and edits that arrive during checks are restaged and rechecked up to a bounded
+retry limit instead of being discarded.

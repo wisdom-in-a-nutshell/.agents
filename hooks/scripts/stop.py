@@ -17,6 +17,7 @@ import time
 from contextlib import contextmanager
 from datetime import datetime, timezone
 from pathlib import Path
+from types import SimpleNamespace
 from typing import Any, Iterator
 
 try:
@@ -43,7 +44,7 @@ AGENT_COMMIT_COMMAND_RE = re.compile(
     r"(?m)^(Command:\s+git commit -m Agent: )\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}Z$"
 )
 FEEDBACK_COOLDOWN_SEC = 20 * 60
-CODEX_REPO_LOCK_TIMEOUT_SEC = 2.0
+CODEX_REPO_LOCK_TIMEOUT_SEC = 30.0
 CODEX_CHECK_WORKERS = 4
 MAX_CODEX_ATTRIBUTED_PATHS = 2000
 MAX_CODEX_REPOSITORIES = 32
@@ -875,49 +876,27 @@ def staged_paths(root: str) -> tuple[set[str], subprocess.CompletedProcess[str]]
     return null_separated_paths(result), result
 
 
-def unstaged_attributed_paths(root: str, paths: set[str]) -> set[str]:
-    if not paths:
-        return set()
+def unstaged_paths(root: str) -> tuple[set[str], list[subprocess.CompletedProcess[str]]]:
     diff = run(
-        ["git", "--literal-pathspecs", "diff", "--name-only", "-z", "--", *sorted(paths)],
+        ["git", "diff", "--no-renames", "--name-only", "-z"],
         root,
         timeout=GIT_STATUS_TIMEOUT_SEC,
     )
     untracked = run(
-        [
-            "git",
-            "--literal-pathspecs",
-            "ls-files",
-            "--others",
-            "--exclude-standard",
-            "-z",
-            "--",
-            *sorted(paths),
-        ],
+        ["git", "ls-files", "--others", "--exclude-standard", "-z"],
         root,
         timeout=GIT_STATUS_TIMEOUT_SEC,
     )
-    if diff.returncode != 0 or untracked.returncode != 0:
-        return set(paths)
-    return null_separated_paths(diff) | null_separated_paths(untracked)
+    return null_separated_paths(diff) | null_separated_paths(untracked), [diff, untracked]
 
 
-def attributed_paths_changed(root: str, paths: set[str]) -> bool:
+def worktree_changed_paths(root: str) -> tuple[set[str], bool]:
     staged, staged_result = staged_paths(root)
-    if staged_result.returncode != 0:
-        return True
-    return bool((staged & paths) or unstaged_attributed_paths(root, paths))
-
-
-def commit_is_ancestor_of_head(root: str, commit: str) -> bool:
-    if not commit:
-        return False
-    result = run(
-        ["git", "merge-base", "--is-ancestor", commit, "HEAD"],
-        root,
-        timeout=GIT_STATUS_TIMEOUT_SEC,
+    unstaged, unstaged_results = unstaged_paths(root)
+    ok = staged_result.returncode == 0 and all(
+        result.returncode == 0 for result in unstaged_results
     )
-    return result.returncode == 0
+    return staged | unstaged, ok
 
 
 def codex_failure_reason(title: str, failures: list[str]) -> str:
@@ -941,6 +920,25 @@ def preflight_repo_check(item: RepoFinalization) -> tuple[str, subprocess.Comple
 def head_commit(root: str) -> str:
     result = run(["git", "rev-parse", "HEAD"], root, timeout=GIT_STATUS_TIMEOUT_SEC)
     return result.stdout.strip() if result.returncode == 0 else ""
+
+
+def unpushed_head(root: str) -> str:
+    head = head_commit(root)
+    if not head or not resolve_push_remote(root):
+        return ""
+    if not has_tracking_upstream(root):
+        return head
+    result = run(
+        ["git", "rev-list", "--count", "@{upstream}..HEAD"],
+        root,
+        timeout=GIT_STATUS_TIMEOUT_SEC,
+    )
+    if result.returncode != 0:
+        return ""
+    try:
+        return head if int(result.stdout.strip()) > 0 else ""
+    except ValueError:
+        return ""
 
 
 def push_committed_repo(
@@ -977,24 +975,17 @@ def process_codex_repositories(
     except (CodexTurnChangesError, RuntimeError) as exc:
         log("codex", f"turn-attribution-failed thread={thread_id} error={exc}")
         if "pending" in locals() and pending:
-            return maybe_continue(
-                payload,
-                codex_failure_reason(
-                    "I could not safely resume the pending multi-repository Codex transaction.",
-                    [str(exc)],
-                ),
-                cwd=cwd,
+            log(
+                "codex",
+                f"resume pending-without-attribution thread={thread_id} repos={len(pending)}",
             )
-        if not is_git_repo(cwd) or not has_changes(repo_root(cwd) or cwd):
-            return None
-        return maybe_continue(
-            payload,
-            codex_failure_reason(
-                "I could not identify the files changed by this Codex turn, so I did not stage the repository.",
-                [str(exc)],
-            ),
-            cwd=cwd,
-        )
+            changes = SimpleNamespace(
+                parent_thread_id="",
+                touched_paths=(),
+            )
+        else:
+            log("codex", f"fallback primary-repo-only thread={thread_id}")
+            return process_repo(cwd, payload, runtime="codex")
 
     if changes.parent_thread_id:
         log(
@@ -1007,6 +998,27 @@ def process_codex_repositories(
         pending,
         repositories_from_paths(changes.touched_paths),
     )
+    primary_root = repo_root(cwd) if is_git_repo(cwd) else None
+    if primary_root:
+        primary_root = str(Path(primary_root).resolve())
+        primary_changes, primary_status_ok = worktree_changed_paths(primary_root)
+        primary_unpushed = unpushed_head(primary_root)
+        if not primary_status_ok:
+            return maybe_continue(
+                payload,
+                state_failure_reason(primary_root, "could not inspect the primary repository status"),
+                cwd=primary_root,
+            )
+        if primary_changes or primary_unpushed:
+            primary = repositories.setdefault(
+                primary_root,
+                RepoFinalization(root=primary_root),
+            )
+            primary.paths.update(primary_changes)
+            if primary_unpushed and not primary.commit:
+                primary.commit = primary_unpushed
+            if primary.commit and not primary_changes:
+                primary.phase = "committed"
     if not repositories:
         log("codex", f"skip no-attributed-files thread={thread_id}")
         save_codex_transaction(thread_id, {})
@@ -1027,41 +1039,57 @@ def process_codex_repositories(
             cwd=cwd,
         )
 
-    conflicts = competitor_conflicts(repositories, changes.active_competitors)
-    conflicts.extend(
-        competitor_transaction_conflicts(repositories, changes.active_competitors)
-    )
-    if conflicts:
-        save_codex_transaction(thread_id, repositories)
-        return maybe_continue(
-            payload,
-            codex_failure_reason(
-                "I paused multi-repository finalization because another active Codex task overlaps this turn.",
-                conflicts,
-            ),
-            cwd=cwd,
-        )
-
     save_codex_transaction(thread_id, repositories)
     with lock_codex_repositories(list(repositories)):
         failures: list[str] = []
         for item in repositories.values():
-            if item.phase == "committed" and attributed_paths_changed(item.root, item.paths):
-                # Preserve item.commit: it still needs to be pushed after the
-                # newly changed attributed paths are checked and committed.
-                item.phase = "pending"
-        pending_items = [item for item in repositories.values() if item.phase == "pending"]
-        staged_pending_items: list[RepoFinalization] = []
-        for item in pending_items:
             if not is_git_repo(item.root):
                 failures.append(f"Repository {item.root}: no longer a Git worktree.")
                 continue
             if has_in_progress_ops(item.root):
-                failures.append(f"Repository {item.root}: a merge, rebase, cherry-pick, or revert is in progress.")
+                failures.append(
+                    f"Repository {item.root}: a merge, rebase, cherry-pick, or revert is in progress."
+                )
                 continue
             if not clear_stale_index_lock(item.root):
                 failures.append(f"Repository {item.root}: git index.lock appears active.")
                 continue
+            current_changes, status_ok = worktree_changed_paths(item.root)
+            if not status_ok:
+                failures.append(f"Repository {item.root}: could not inspect working-tree changes.")
+                continue
+            item.paths.update(current_changes)
+            existing_unpushed = unpushed_head(item.root)
+            if existing_unpushed and not item.commit:
+                item.commit = existing_unpushed
+            if item.phase == "committed" and current_changes:
+                # Preserve item.commit: it still needs to be pushed after the
+                # newly consolidated paths are checked and committed.
+                item.phase = "pending"
+        if failures:
+            save_codex_transaction(thread_id, repositories)
+            return maybe_continue(
+                payload,
+                codex_failure_reason("I could not inspect every affected repository.", failures),
+                cwd=cwd,
+            )
+        attributed_path_count = sum(len(item.paths) for item in repositories.values())
+        if attributed_path_count > MAX_CODEX_ATTRIBUTED_PATHS:
+            save_codex_transaction(thread_id, repositories)
+            return maybe_continue(
+                payload,
+                codex_failure_reason(
+                    "The consolidated Codex transaction is too large for safe automatic finalization.",
+                    [
+                        f"paths={attributed_path_count} "
+                        f"(limit {MAX_CODEX_ATTRIBUTED_PATHS})"
+                    ],
+                ),
+                cwd=cwd,
+            )
+        pending_items = [item for item in repositories.values() if item.phase == "pending"]
+        staged_pending_items: list[RepoFinalization] = []
+        for item in pending_items:
             current_staged, staged_result = staged_paths(item.root)
             if staged_result.returncode != 0:
                 failures.append(
@@ -1073,12 +1101,12 @@ def process_codex_repositories(
                     )
                 )
                 continue
-            unexpected_staged = current_staged - item.paths
-            if unexpected_staged:
-                failures.append(
-                    f"Repository {item.root}: refusing to include pre-staged files not attributed to this turn: "
-                    + ", ".join(sorted(unexpected_staged))
-                )
+            item.paths.update(current_staged)
+            if not item.paths:
+                if item.commit:
+                    item.phase = "committed"
+                else:
+                    repositories.pop(item.root, None)
                 continue
             add_cmd = ["git", "--literal-pathspecs", "add", "-A", "--", *sorted(item.paths)]
             add = run(add_cmd, item.root, timeout=GIT_ADD_TIMEOUT_SEC)
@@ -1114,51 +1142,103 @@ def process_codex_repositories(
         pending_items = staged_pending_items
         save_codex_transaction(thread_id, repositories)
 
-        check_failures: list[str] = []
-        with concurrent.futures.ThreadPoolExecutor(
-            max_workers=max(1, min(CODEX_CHECK_WORKERS, len(pending_items) or 1))
-        ) as executor:
-            for root, result in executor.map(preflight_repo_check, pending_items):
-                if result is not None and result.returncode != 0:
-                    check_failures.append(
-                        command_failure_reason(
-                            root,
-                            "scripts/check-fast.sh preflight",
-                            ["bash", "scripts/check-fast.sh"],
-                            result,
+        stable = False
+        for pass_index in range(MAX_CONSOLIDATION_PASSES):
+            check_failures: list[str] = []
+            with concurrent.futures.ThreadPoolExecutor(
+                max_workers=max(1, min(CODEX_CHECK_WORKERS, len(pending_items) or 1))
+            ) as executor:
+                for root, result in executor.map(preflight_repo_check, pending_items):
+                    if result is not None and result.returncode != 0:
+                        check_failures.append(
+                            command_failure_reason(
+                                root,
+                                "scripts/check-fast.sh preflight",
+                                ["bash", "scripts/check-fast.sh"],
+                                result,
+                            )
                         )
+            if check_failures:
+                save_codex_transaction(thread_id, repositories)
+                return maybe_continue(
+                    payload,
+                    codex_failure_reason("Fast checks failed in one or more repositories.", check_failures),
+                    cwd=cwd,
+                )
+
+            restage_failures: list[str] = []
+            changed_during_checks = False
+            for item in pending_items:
+                staged, staged_result = staged_paths(item.root)
+                unstaged, unstaged_results = unstaged_paths(item.root)
+                if staged_result.returncode != 0 or any(
+                    result.returncode != 0 for result in unstaged_results
+                ):
+                    restage_failures.append(
+                        f"Repository {item.root}: could not re-read changes after checks."
                     )
-        if check_failures:
+                    continue
+                additions = (staged | unstaged) - item.paths
+                if additions or unstaged:
+                    item.paths.update(staged | unstaged)
+                    changed_during_checks = True
+                    add_cmd = [
+                        "git",
+                        "--literal-pathspecs",
+                        "add",
+                        "-A",
+                        "--",
+                        *sorted(item.paths),
+                    ]
+                    add = run(add_cmd, item.root, timeout=GIT_ADD_TIMEOUT_SEC)
+                    if add.returncode != 0:
+                        restage_failures.append(
+                            command_failure_reason(
+                                item.root,
+                                "restage concurrent changes",
+                                add_cmd,
+                                add,
+                            )
+                        )
+            if restage_failures:
+                save_codex_transaction(thread_id, repositories)
+                return maybe_continue(
+                    payload,
+                    codex_failure_reason(
+                        "I could not consolidate files that changed during checks.",
+                        restage_failures,
+                    ),
+                    cwd=cwd,
+                )
+            if sum(len(item.paths) for item in repositories.values()) > MAX_CODEX_ATTRIBUTED_PATHS:
+                save_codex_transaction(thread_id, repositories)
+                return maybe_continue(
+                    payload,
+                    codex_failure_reason(
+                        "Concurrent changes made the consolidated transaction too large.",
+                        [f"path limit={MAX_CODEX_ATTRIBUTED_PATHS}"],
+                    ),
+                    cwd=cwd,
+                )
             save_codex_transaction(thread_id, repositories)
-            return maybe_continue(
-                payload,
-                codex_failure_reason("Fast checks failed in one or more repositories.", check_failures),
-                cwd=cwd,
+            if not changed_during_checks:
+                stable = True
+                break
+            log(
+                "codex",
+                f"restage concurrent-edits thread={thread_id} pass={pass_index + 1}",
             )
 
-        drift_failures: list[str] = []
-        for item in pending_items:
-            changed = unstaged_attributed_paths(item.root, item.paths)
-            staged, staged_result = staged_paths(item.root)
-            if staged_result.returncode != 0:
-                drift_failures.append(f"Repository {item.root}: could not re-read the staged paths.")
-                continue
-            unexpected_staged = staged - item.paths
-            if unexpected_staged:
-                drift_failures.append(
-                    f"Repository {item.root}: checks staged files outside this turn: "
-                    + ", ".join(sorted(unexpected_staged))
-                )
-            if changed:
-                drift_failures.append(
-                    f"Repository {item.root}: attributed files changed during checks and are not fully staged: "
-                    + ", ".join(sorted(changed))
-                )
-        if drift_failures:
-            save_codex_transaction(thread_id, repositories)
+        if not stable:
             return maybe_continue(
                 payload,
-                codex_failure_reason("Files changed while repository checks were running.", drift_failures),
+                codex_failure_reason(
+                    "Affected repositories kept changing while checks were running.",
+                    [
+                        f"Retried consolidation {MAX_CONSOLIDATION_PASSES} times without "
+                        "discarding any staged or working-tree changes."
+                    ],
+                ),
                 cwd=cwd,
             )
 
@@ -1172,19 +1252,32 @@ def process_codex_repositories(
                 repositories.pop(item.root, None)
                 save_codex_transaction(thread_id, repositories)
                 continue
-            commit_cmd = [
-                "git",
-                "--literal-pathspecs",
-                "commit",
-                "--no-verify",
-                "--only",
-                "-m",
-                message,
-                "--",
-                *sorted(item.paths),
-            ]
+            unexpected_staged = staged - item.paths
+            if unexpected_staged:
+                failures.append(
+                    f"Repository {item.root}: new staged files arrived after the final check: "
+                    + ", ".join(sorted(unexpected_staged))
+                    + ". Left them intact for the next consolidation pass."
+                )
+                break
+            final_unstaged, final_unstaged_results = unstaged_paths(item.root)
+            if final_unstaged or any(
+                result.returncode != 0 for result in final_unstaged_results
+            ):
+                failures.append(
+                    f"Repository {item.root}: new edits arrived after the final check; "
+                    "left them intact for the next consolidation pass."
+                )
+                break
+            commit_cmd = ["git", "commit", "--no-verify", "-m", message]
             commit = run(commit_cmd, item.root, timeout=GIT_COMMIT_TIMEOUT_SEC)
             if commit.returncode != 0:
+                non_actionable, label = is_non_actionable_failure(commit_cmd, commit)
+                if non_actionable and label == "nothing to commit":
+                    item.phase = "committed"
+                    item.commit = unpushed_head(item.root) or head_commit(item.root)
+                    save_codex_transaction(thread_id, repositories)
+                    continue
                 failures.append(
                     command_failure_reason(
                         item.root,
@@ -1209,12 +1302,15 @@ def process_codex_repositories(
             item = repositories[root]
             if item.phase != "committed":
                 continue
-            if not commit_is_ancestor_of_head(root, item.commit):
-                failures.append(
-                    f"Repository {root}: pending commit {item.commit or '<missing>'} "
-                    "is no longer an ancestor of HEAD; refusing to push rewritten history."
+            current_head = head_commit(root)
+            if item.commit != current_head:
+                log(
+                    "codex",
+                    f"adopt rewritten-head repo={root} pending={item.commit or '<missing>'} "
+                    f"current={current_head or '<missing>'}",
                 )
-                break
+                item.commit = current_head
+                save_codex_transaction(thread_id, repositories)
             push, command, failure_title = push_committed_repo(root)
             if push is None:
                 failures.append(f"Repository {root}: {failure_title}.")
@@ -1297,6 +1393,26 @@ def process_repo(cwd: str, payload: dict[str, Any], *, runtime: str) -> dict[str
     changed = has_changes(root)
     record_timing(timings, "status", started_at)
     if not changed:
+        if runtime == "codex":
+            pending_head = unpushed_head(root)
+            if pending_head:
+                push, command, failure_title = push_committed_repo(root)
+                if push is None:
+                    return finish(
+                        "warn_no_remote",
+                        warning(f"Local commits in {root} could not be pushed: {failure_title}."),
+                    )
+                if push.returncode != 0:
+                    return finish(
+                        "block_existing_commit_push",
+                        maybe_continue(
+                            payload,
+                            command_failure_reason(root, failure_title, command, push),
+                            cwd=root,
+                        ),
+                    )
+                log("codex", f"ok pushed-existing-commits repo={root} head={pending_head}")
+                return finish("pushed_existing_commits", None)
         log(runtime, f"skip clean repo={root}")
         return finish("clean", None)
 

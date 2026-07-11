@@ -95,10 +95,12 @@ All repo lifecycle hooks are Python. Do not add shell compatibility shims.
 - For Codex, it reads exact `fileChange` paths from the parent and same-session
   subagent turns, finalizes every affected repository as one persisted
   transaction, and routes aggregate failures back to the source task.
-- It stages attributed paths only, rejects unrelated staged paths, detects
-  overlap with other active Codex tasks, takes deterministic repository locks,
-  preflights all fast checks, revalidates the index, commits exact paths without
-  rerunning mutable commit hooks, then rebases and pushes.
+- It uses attributed paths to identify repositories, then consolidates all
+  staged and working-tree changes under deterministic repository locks.
+  Concurrent tasks may overlap; edits arriving during checks are restaged and
+  rechecked. Existing local commits are pushed even when no new commit is
+  needed. Explicit fast checks and index stability replace mutable commit-hook
+  execution before rebase/push.
 - Subagent Stop events do not finalize independently; their parent Stop owns the
   full turn tree. Copilot, Claude, and Antigravity keep the current-repository
   adapter behavior.
