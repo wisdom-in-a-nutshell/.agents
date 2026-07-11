@@ -2,6 +2,8 @@
 from __future__ import annotations
 
 import argparse
+import concurrent.futures
+import fcntl
 import hashlib
 import json
 import os
@@ -12,9 +14,18 @@ import subprocess
 import sys
 import tempfile
 import time
+from contextlib import contextmanager
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any
+from typing import Any, Iterator
+
+try:
+    from hooks.scripts.codex_turn_changes import (
+        CodexTurnChangesError,
+        collect_codex_turn_changes,
+    )
+except ModuleNotFoundError:  # Direct script execution adds this directory to sys.path.
+    from codex_turn_changes import CodexTurnChangesError, collect_codex_turn_changes
 
 
 VALID_RUNTIMES = {"antigravity", "claude", "codex", "copilot"}
@@ -32,6 +43,8 @@ AGENT_COMMIT_COMMAND_RE = re.compile(
     r"(?m)^(Command:\s+git commit -m Agent: )\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}Z$"
 )
 FEEDBACK_COOLDOWN_SEC = 20 * 60
+CODEX_REPO_LOCK_TIMEOUT_SEC = 2.0
+CODEX_CHECK_WORKERS = 4
 
 NON_ACTIONABLE_PUSH_PATTERNS = {
     "permission denied": "permission denied",
@@ -624,6 +637,535 @@ def maybe_continue(
     return continuation(reason)
 
 
+class RepoFinalization:
+    """Durable state for one repository in a Codex turn transaction."""
+
+    def __init__(
+        self,
+        *,
+        root: str,
+        paths: set[str] | None = None,
+        phase: str = "pending",
+        commit: str = "",
+    ) -> None:
+        self.root = root
+        self.paths = paths or set()
+        self.phase = phase
+        self.commit = commit
+
+
+def codex_transaction_path(thread_id: str) -> Path:
+    digest = hashlib.sha256(thread_id.encode("utf-8", errors="replace")).hexdigest()
+    return (
+        Path.home()
+        / ".local/state/agents-control-plane/codex-stop-transactions"
+        / f"{digest}.json"
+    )
+
+
+def load_codex_transaction(thread_id: str) -> dict[str, RepoFinalization]:
+    path = codex_transaction_path(thread_id)
+    try:
+        raw = json.loads(path.read_text(encoding="utf-8"))
+    except FileNotFoundError:
+        return {}
+    except Exception as exc:
+        raise RuntimeError(f"could not read pending Codex Stop transaction: {exc}") from exc
+    if not isinstance(raw, dict) or raw.get("thread_id") != thread_id:
+        raise RuntimeError("pending Codex Stop transaction has an invalid owner")
+    entries = raw.get("repositories")
+    if not isinstance(entries, list):
+        raise RuntimeError("pending Codex Stop transaction is malformed")
+    result: dict[str, RepoFinalization] = {}
+    for entry in entries:
+        if not isinstance(entry, dict):
+            raise RuntimeError("pending Codex Stop repository entry is malformed")
+        root = str(entry.get("root") or "").strip()
+        paths = entry.get("paths")
+        phase = str(entry.get("phase") or "pending")
+        if not root or not isinstance(paths, list) or phase not in {"pending", "committed"}:
+            raise RuntimeError("pending Codex Stop repository entry is invalid")
+        normalized_paths = {
+            str(value)
+            for value in paths
+            if isinstance(value, str) and value and not Path(value).is_absolute()
+        }
+        result[root] = RepoFinalization(
+            root=root,
+            paths=normalized_paths,
+            phase=phase,
+            commit=str(entry.get("commit") or ""),
+        )
+    return result
+
+
+def save_codex_transaction(
+    thread_id: str,
+    repositories: dict[str, RepoFinalization],
+) -> None:
+    path = codex_transaction_path(thread_id)
+    if not repositories:
+        try:
+            path.unlink()
+        except FileNotFoundError:
+            pass
+        return
+    path.parent.mkdir(parents=True, exist_ok=True)
+    payload = {
+        "version": 1,
+        "thread_id": thread_id,
+        "updated_at": utc_now_iso_z(),
+        "repositories": [
+            {
+                "root": item.root,
+                "paths": sorted(item.paths),
+                "phase": item.phase,
+                "commit": item.commit,
+            }
+            for item in sorted(repositories.values(), key=lambda value: value.root)
+        ],
+    }
+    handle = tempfile.NamedTemporaryFile(
+        "w",
+        encoding="utf-8",
+        prefix=f".{path.name}.",
+        suffix=".tmp",
+        dir=path.parent,
+        delete=False,
+    )
+    temp_path = Path(handle.name)
+    try:
+        with handle:
+            json.dump(payload, handle, sort_keys=True)
+            handle.write("\n")
+            handle.flush()
+            os.fsync(handle.fileno())
+        os.replace(temp_path, path)
+    finally:
+        try:
+            temp_path.unlink()
+        except FileNotFoundError:
+            pass
+
+
+def existing_ancestor(path: Path) -> Path | None:
+    candidate = path if path.is_dir() else path.parent
+    while not candidate.exists():
+        parent = candidate.parent
+        if parent == candidate:
+            return None
+        candidate = parent
+    return candidate
+
+
+def attributed_repo_path(path_text: str) -> tuple[str, str] | None:
+    path = Path(path_text).expanduser()
+    if not path.is_absolute():
+        return None
+    ancestor = existing_ancestor(path)
+    if ancestor is None:
+        return None
+    root_text = repo_root(str(ancestor))
+    if not root_text:
+        return None
+    root = Path(root_text).resolve()
+    try:
+        relative = path.resolve(strict=False).relative_to(root)
+    except ValueError:
+        return None
+    if not relative.parts or relative.parts[0] == ".git":
+        return None
+    return str(root), relative.as_posix()
+
+
+def repositories_from_paths(paths: tuple[str, ...]) -> dict[str, RepoFinalization]:
+    repositories: dict[str, RepoFinalization] = {}
+    for path in paths:
+        resolved = attributed_repo_path(path)
+        if resolved is None:
+            continue
+        root, relative = resolved
+        item = repositories.setdefault(root, RepoFinalization(root=root))
+        item.paths.add(relative)
+    return repositories
+
+
+def merge_codex_transactions(
+    pending: dict[str, RepoFinalization],
+    discovered: dict[str, RepoFinalization],
+) -> dict[str, RepoFinalization]:
+    merged = {
+        root: RepoFinalization(
+            root=item.root,
+            paths=set(item.paths),
+            phase=item.phase,
+            commit=item.commit,
+        )
+        for root, item in pending.items()
+    }
+    for root, item in discovered.items():
+        existing = merged.get(root)
+        if existing is None:
+            merged[root] = item
+            continue
+        new_paths = item.paths - existing.paths
+        existing.paths.update(item.paths)
+        if new_paths and existing.phase == "committed":
+            existing.phase = "pending"
+            existing.commit = ""
+    return merged
+
+
+def lock_path_for_repo(root: str) -> Path:
+    digest = hashlib.sha256(root.encode("utf-8", errors="replace")).hexdigest()
+    return Path.home() / ".local/state/agents-control-plane/repo-locks" / f"{digest}.lock"
+
+
+@contextmanager
+def lock_codex_repositories(roots: list[str]) -> Iterator[None]:
+    handles: list[Any] = []
+    try:
+        for root in sorted(set(roots)):
+            path = lock_path_for_repo(root)
+            path.parent.mkdir(parents=True, exist_ok=True)
+            handle = path.open("a+", encoding="utf-8")
+            deadline = time.monotonic() + CODEX_REPO_LOCK_TIMEOUT_SEC
+            while True:
+                try:
+                    fcntl.flock(handle.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+                    break
+                except BlockingIOError:
+                    if time.monotonic() >= deadline:
+                        handle.close()
+                        raise RuntimeError(
+                            f"another Codex Stop hook is finalizing repository {root}"
+                        )
+                    time.sleep(0.05)
+            handle.seek(0)
+            handle.truncate()
+            handle.write(f"pid={os.getpid()} thread-safe-lock root={root}\n")
+            handle.flush()
+            handles.append(handle)
+        yield
+    finally:
+        for handle in reversed(handles):
+            try:
+                fcntl.flock(handle.fileno(), fcntl.LOCK_UN)
+            finally:
+                handle.close()
+
+
+def null_separated_paths(result: subprocess.CompletedProcess[str]) -> set[str]:
+    if result.returncode != 0:
+        return set()
+    return {value for value in result.stdout.split("\0") if value}
+
+
+def staged_paths(root: str) -> tuple[set[str], subprocess.CompletedProcess[str]]:
+    result = run(
+        ["git", "diff", "--cached", "--name-only", "-z"],
+        root,
+        timeout=GIT_STATUS_TIMEOUT_SEC,
+    )
+    return null_separated_paths(result), result
+
+
+def unstaged_attributed_paths(root: str, paths: set[str]) -> set[str]:
+    if not paths:
+        return set()
+    diff = run(
+        ["git", "diff", "--name-only", "-z", "--", *sorted(paths)],
+        root,
+        timeout=GIT_STATUS_TIMEOUT_SEC,
+    )
+    untracked = run(
+        ["git", "ls-files", "--others", "--exclude-standard", "-z", "--", *sorted(paths)],
+        root,
+        timeout=GIT_STATUS_TIMEOUT_SEC,
+    )
+    if diff.returncode != 0 or untracked.returncode != 0:
+        return set(paths)
+    return null_separated_paths(diff) | null_separated_paths(untracked)
+
+
+def competitor_conflicts(
+    repositories: dict[str, RepoFinalization],
+    competitors: tuple[Any, ...],
+) -> list[str]:
+    conflicts: list[str] = []
+    for competitor in competitors:
+        competitor_repositories = repositories_from_paths(competitor.touched_paths)
+        exact_overlap = []
+        for root, candidate in repositories.items():
+            other = competitor_repositories.get(root)
+            if other:
+                overlap = candidate.paths & other.paths
+                exact_overlap.extend(f"{root}/{path}" for path in sorted(overlap))
+        if exact_overlap:
+            conflicts.append(
+                f"active thread {competitor.thread_id} is editing "
+                + ", ".join(exact_overlap)
+            )
+            continue
+        if competitor.touched_paths:
+            continue
+        competitor_root = repo_root(competitor.cwd) if competitor.cwd else None
+        if competitor_root and competitor_root in repositories:
+            conflicts.append(
+                f"active thread {competitor.thread_id} is working in {competitor_root} "
+                "and its exact paths were unavailable"
+            )
+    return conflicts
+
+
+def codex_failure_reason(title: str, failures: list[str]) -> str:
+    lines = [title, "", "Please fix every issue below, then finish again. The Codex Stop hook will retry all repositories."]
+    for failure in failures:
+        lines.extend(["", failure])
+    return truncate_text("\n".join(lines), MAX_REASON_CHARS)
+
+
+def preflight_repo_check(item: RepoFinalization) -> tuple[str, subprocess.CompletedProcess[str] | None]:
+    script = Path(item.root) / "scripts/check-fast.sh"
+    if not script.is_file():
+        return item.root, None
+    return item.root, run(
+        ["bash", "scripts/check-fast.sh"],
+        item.root,
+        timeout=GIT_COMMIT_TIMEOUT_SEC,
+    )
+
+
+def head_commit(root: str) -> str:
+    result = run(["git", "rev-parse", "HEAD"], root, timeout=GIT_STATUS_TIMEOUT_SEC)
+    return result.stdout.strip() if result.returncode == 0 else ""
+
+
+def push_committed_repo(
+    root: str,
+) -> tuple[subprocess.CompletedProcess[str] | None, list[str], str]:
+    remote = resolve_push_remote(root)
+    if not remote:
+        return None, [], "no push remote could be resolved"
+    tracked = has_tracking_upstream(root)
+    push_cmd = ["git", "push", remote, "HEAD"] if tracked else ["git", "push", "-u", remote, "HEAD"]
+    push = run(push_cmd, root, timeout=GIT_PUSH_TIMEOUT_SEC)
+    if push.returncode != 0 and tracked and push_needs_rebase(push):
+        pull_cmd = ["git", "pull", "--rebase"]
+        pull = run(pull_cmd, root, timeout=GIT_PULL_TIMEOUT_SEC)
+        if pull.returncode != 0:
+            return pull, pull_cmd, "git pull --rebase failed"
+        push = run(push_cmd, root, timeout=GIT_PUSH_TIMEOUT_SEC)
+    return push, push_cmd, "git push failed"
+
+
+def process_codex_repositories(
+    cwd: str,
+    payload: dict[str, Any],
+) -> dict[str, Any] | None:
+    """Finalize exactly the repositories attributed to this Codex turn tree."""
+    thread_id = str(payload.get("session_id") or "").strip()
+    if not thread_id:
+        log("codex", "fallback single-repo reason=missing-session-id")
+        return process_repo(cwd, payload, runtime="codex")
+
+    try:
+        pending = load_codex_transaction(thread_id)
+        changes = collect_codex_turn_changes(thread_id)
+    except (CodexTurnChangesError, RuntimeError) as exc:
+        log("codex", f"turn-attribution-failed thread={thread_id} error={exc}")
+        if "pending" in locals() and pending:
+            return maybe_continue(
+                payload,
+                codex_failure_reason(
+                    "I could not safely resume the pending multi-repository Codex transaction.",
+                    [str(exc)],
+                ),
+                cwd=cwd,
+            )
+        return process_repo(cwd, payload, runtime="codex")
+
+    repositories = merge_codex_transactions(
+        pending,
+        repositories_from_paths(changes.touched_paths),
+    )
+    if not repositories:
+        log("codex", f"skip no-attributed-files thread={thread_id}")
+        save_codex_transaction(thread_id, {})
+        return None
+
+    conflicts = competitor_conflicts(repositories, changes.active_competitors)
+    if conflicts:
+        save_codex_transaction(thread_id, repositories)
+        return maybe_continue(
+            payload,
+            codex_failure_reason(
+                "I paused multi-repository finalization because another active Codex task overlaps this turn.",
+                conflicts,
+            ),
+            cwd=cwd,
+        )
+
+    save_codex_transaction(thread_id, repositories)
+    with lock_codex_repositories(list(repositories)):
+        failures: list[str] = []
+        pending_items = [item for item in repositories.values() if item.phase == "pending"]
+        for item in pending_items:
+            if not is_git_repo(item.root):
+                failures.append(f"Repository {item.root}: no longer a Git worktree.")
+                continue
+            if has_in_progress_ops(item.root):
+                failures.append(f"Repository {item.root}: a merge, rebase, cherry-pick, or revert is in progress.")
+                continue
+            if not clear_stale_index_lock(item.root):
+                failures.append(f"Repository {item.root}: git index.lock appears active.")
+                continue
+            current_staged, staged_result = staged_paths(item.root)
+            if staged_result.returncode != 0:
+                failures.append(
+                    command_failure_reason(
+                        item.root,
+                        "inspect staged paths",
+                        ["git", "diff", "--cached", "--name-only", "-z"],
+                        staged_result,
+                    )
+                )
+                continue
+            unexpected_staged = current_staged - item.paths
+            if unexpected_staged:
+                failures.append(
+                    f"Repository {item.root}: refusing to include pre-staged files not attributed to this turn: "
+                    + ", ".join(sorted(unexpected_staged))
+                )
+                continue
+            add_cmd = ["git", "add", "-A", "--", *sorted(item.paths)]
+            add = run(add_cmd, item.root, timeout=GIT_ADD_TIMEOUT_SEC)
+            if add.returncode != 0:
+                failures.append(command_failure_reason(item.root, "git add attributed paths", add_cmd, add))
+
+        if failures:
+            save_codex_transaction(thread_id, repositories)
+            return maybe_continue(
+                payload,
+                codex_failure_reason("I could not stage the complete Codex turn safely.", failures),
+                cwd=cwd,
+            )
+
+        check_failures: list[str] = []
+        with concurrent.futures.ThreadPoolExecutor(
+            max_workers=max(1, min(CODEX_CHECK_WORKERS, len(pending_items) or 1))
+        ) as executor:
+            for root, result in executor.map(preflight_repo_check, pending_items):
+                if result is not None and result.returncode != 0:
+                    check_failures.append(
+                        command_failure_reason(
+                            root,
+                            "scripts/check-fast.sh preflight",
+                            ["bash", "scripts/check-fast.sh"],
+                            result,
+                        )
+                    )
+        if check_failures:
+            save_codex_transaction(thread_id, repositories)
+            return maybe_continue(
+                payload,
+                codex_failure_reason("Fast checks failed in one or more repositories.", check_failures),
+                cwd=cwd,
+            )
+
+        drift_failures: list[str] = []
+        for item in pending_items:
+            changed = unstaged_attributed_paths(item.root, item.paths)
+            staged, staged_result = staged_paths(item.root)
+            if staged_result.returncode != 0:
+                drift_failures.append(f"Repository {item.root}: could not re-read the staged paths.")
+                continue
+            unexpected_staged = staged - item.paths
+            if unexpected_staged:
+                drift_failures.append(
+                    f"Repository {item.root}: checks staged files outside this turn: "
+                    + ", ".join(sorted(unexpected_staged))
+                )
+            if changed:
+                drift_failures.append(
+                    f"Repository {item.root}: attributed files changed during checks and are not fully staged: "
+                    + ", ".join(sorted(changed))
+                )
+        if drift_failures:
+            save_codex_transaction(thread_id, repositories)
+            return maybe_continue(
+                payload,
+                codex_failure_reason("Files changed while repository checks were running.", drift_failures),
+                cwd=cwd,
+            )
+
+        message = build_commit_message(payload)
+        for item in pending_items:
+            staged, staged_result = staged_paths(item.root)
+            if staged_result.returncode != 0:
+                failures.append(f"Repository {item.root}: could not inspect the final staged paths.")
+                break
+            if not staged:
+                repositories.pop(item.root, None)
+                save_codex_transaction(thread_id, repositories)
+                continue
+            commit_cmd = ["git", "commit", "-m", message]
+            commit = run(commit_cmd, item.root, timeout=GIT_COMMIT_TIMEOUT_SEC)
+            if commit.returncode != 0:
+                failures.append(
+                    command_failure_reason(
+                        item.root,
+                        "git commit / pre-commit checks",
+                        commit_cmd,
+                        commit,
+                    )
+                )
+                break
+            item.phase = "committed"
+            item.commit = head_commit(item.root)
+            save_codex_transaction(thread_id, repositories)
+
+        if failures:
+            return maybe_continue(
+                payload,
+                codex_failure_reason("A repository commit failed during Codex finalization.", failures),
+                cwd=cwd,
+            )
+
+        for root in sorted(list(repositories)):
+            item = repositories[root]
+            if item.phase != "committed":
+                continue
+            push, command, failure_title = push_committed_repo(root)
+            if push is None:
+                failures.append(f"Repository {root}: {failure_title}.")
+                break
+            if push.returncode != 0:
+                non_actionable, label = is_non_actionable_failure(command, push)
+                reason = command_failure_reason(
+                    root,
+                    f"{failure_title} ({label})" if non_actionable else failure_title,
+                    command,
+                    push,
+                    retryable=not non_actionable,
+                )
+                failures.append(reason)
+                break
+            repositories.pop(root, None)
+            save_codex_transaction(thread_id, repositories)
+            log("codex", f"ok turn-repo-pushed thread={thread_id} repo={root} commit={item.commit}")
+
+        if failures:
+            return maybe_continue(
+                payload,
+                codex_failure_reason("A repository publish failed during Codex finalization.", failures),
+                cwd=cwd,
+            )
+
+    save_codex_transaction(thread_id, {})
+    return None
+
+
 def process_repo(cwd: str, payload: dict[str, Any], *, runtime: str) -> dict[str, Any] | None:
     total_started_at = time.monotonic()
     timings: list[tuple[str, float]] = []
@@ -803,7 +1345,10 @@ def main() -> int:
     cwd = str(payload.get("cwd") or os.getcwd())
 
     try:
-        output = process_repo(cwd, payload, runtime=args.runtime)
+        if args.runtime == "codex":
+            output = process_codex_repositories(cwd, payload)
+        else:
+            output = process_repo(cwd, payload, runtime=args.runtime)
     except subprocess.TimeoutExpired as exc:
         cmd = " ".join(exc.cmd) if isinstance(exc.cmd, (list, tuple)) else str(exc.cmd)
         timeout = exc.timeout if exc.timeout is not None else "unknown"
