@@ -1054,7 +1054,7 @@ def process_codex_repositories(
         return None
 
     attributed_path_count = sum(len(item.paths) for item in repositories.values())
-    if len(repositories) > MAX_CODEX_REPOSITORIES or attributed_path_count > MAX_CODEX_ATTRIBUTED_PATHS:
+    if len(repositories) > MAX_CODEX_REPOSITORIES:
         save_codex_transaction(thread_id, repositories)
         return maybe_continue(
             payload,
@@ -1062,7 +1062,7 @@ def process_codex_repositories(
                 "This Codex turn is too large for safe automatic multi-repository finalization.",
                 [
                     f"repositories={len(repositories)} (limit {MAX_CODEX_REPOSITORIES}), "
-                    f"paths={attributed_path_count} (limit {MAX_CODEX_ATTRIBUTED_PATHS})"
+                    f"initial paths={attributed_path_count}"
                 ],
             ),
             cwd=cwd,
@@ -1071,10 +1071,18 @@ def process_codex_repositories(
     save_codex_transaction(thread_id, repositories)
     with lock_codex_repositories(list(repositories)):
         failures: list[str] = []
-        for item in repositories.values():
-            if not is_git_repo(item.root):
-                failures.append(f"Repository {item.root}: no longer a Git worktree.")
+        for item in list(repositories.values()):
+            current_changes, status_ok = worktree_changed_paths(item.root)
+            if not status_ok:
+                failures.append(f"Repository {item.root}: could not inspect working-tree changes.")
                 continue
+            if not current_changes and not item.commit:
+                existing_unpushed = unpushed_head(item.root)
+                if not existing_unpushed:
+                    repositories.pop(item.root, None)
+                    continue
+                item.commit = existing_unpushed
+                item.phase = "committed"
             if has_in_progress_ops(item.root):
                 failures.append(
                     f"Repository {item.root}: a merge, rebase, cherry-pick, or revert is in progress."
@@ -1083,15 +1091,7 @@ def process_codex_repositories(
             if not clear_stale_index_lock(item.root):
                 failures.append(f"Repository {item.root}: git index.lock appears active.")
                 continue
-            current_changes, status_ok = worktree_changed_paths(item.root)
-            if not status_ok:
-                failures.append(f"Repository {item.root}: could not inspect working-tree changes.")
-                continue
             item.paths.update(current_changes)
-            if not current_changes and not item.commit:
-                existing_unpushed = unpushed_head(item.root)
-                if existing_unpushed:
-                    item.commit = existing_unpushed
             if item.phase == "committed" and current_changes:
                 # Preserve item.commit: it still needs to be pushed after the
                 # newly consolidated paths are checked and committed.
