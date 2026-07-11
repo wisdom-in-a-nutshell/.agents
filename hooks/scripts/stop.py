@@ -891,12 +891,31 @@ def unstaged_paths(root: str) -> tuple[set[str], list[subprocess.CompletedProces
 
 
 def worktree_changed_paths(root: str) -> tuple[set[str], bool]:
-    staged, staged_result = staged_paths(root)
-    unstaged, unstaged_results = unstaged_paths(root)
-    ok = staged_result.returncode == 0 and all(
-        result.returncode == 0 for result in unstaged_results
+    result = run(
+        ["git", "status", "--porcelain=v1", "-z", "--untracked-files=all"],
+        root,
+        timeout=GIT_STATUS_TIMEOUT_SEC,
     )
-    return staged | unstaged, ok
+    if result.returncode != 0:
+        return set(), False
+    fields = result.stdout.split("\0")
+    paths: set[str] = set()
+    index = 0
+    while index < len(fields):
+        record = fields[index]
+        index += 1
+        if not record:
+            continue
+        if len(record) < 4 or record[2] != " ":
+            return set(), False
+        status = record[:2]
+        paths.add(record[3:])
+        if "R" in status or "C" in status:
+            if index >= len(fields) or not fields[index]:
+                return set(), False
+            paths.add(fields[index])
+            index += 1
+    return paths, True
 
 
 def codex_failure_reason(title: str, failures: list[str]) -> str:
@@ -923,22 +942,19 @@ def head_commit(root: str) -> str:
 
 
 def unpushed_head(root: str) -> str:
-    head = head_commit(root)
-    if not head or not resolve_push_remote(root):
-        return ""
-    if not has_tracking_upstream(root):
-        return head
     result = run(
         ["git", "rev-list", "--count", "@{upstream}..HEAD"],
         root,
         timeout=GIT_STATUS_TIMEOUT_SEC,
     )
-    if result.returncode != 0:
+    if result.returncode == 0:
+        try:
+            return head_commit(root) if int(result.stdout.strip()) > 0 else ""
+        except ValueError:
+            return ""
+    if not resolve_push_remote(root):
         return ""
-    try:
-        return head if int(result.stdout.strip()) > 0 else ""
-    except ValueError:
-        return ""
+    return head_commit(root)
 
 
 def push_committed_repo(
