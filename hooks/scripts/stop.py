@@ -47,7 +47,7 @@ CODEX_REPO_LOCK_TIMEOUT_SEC = 2.0
 CODEX_CHECK_WORKERS = 4
 MAX_CODEX_ATTRIBUTED_PATHS = 2000
 MAX_CODEX_REPOSITORIES = 32
-MAX_CODEX_TRANSACTION_FILES = 256
+MAX_CONSOLIDATION_PASSES = 3
 
 NON_ACTIONABLE_PUSH_PATTERNS = {
     "permission denied": "permission denied",
@@ -918,92 +918,6 @@ def commit_is_ancestor_of_head(root: str, commit: str) -> bool:
         timeout=GIT_STATUS_TIMEOUT_SEC,
     )
     return result.returncode == 0
-
-
-def competitor_conflicts(
-    repositories: dict[str, RepoFinalization],
-    competitors: tuple[Any, ...],
-) -> list[str]:
-    conflicts: list[str] = []
-    for competitor in competitors:
-        competitor_repositories = repositories_from_paths(competitor.touched_paths)
-        exact_overlap = []
-        for root, candidate in repositories.items():
-            other = competitor_repositories.get(root)
-            if other:
-                overlap = candidate.paths & other.paths
-                exact_overlap.extend(f"{root}/{path}" for path in sorted(overlap))
-        if exact_overlap:
-            conflicts.append(
-                f"active thread {competitor.thread_id} is editing "
-                + ", ".join(exact_overlap)
-            )
-            continue
-        if competitor.touched_paths:
-            continue
-        competitor_root = repo_root(competitor.cwd) if competitor.cwd else None
-        if competitor_root and competitor_root in repositories:
-            conflicts.append(
-                f"active thread {competitor.thread_id} is working in {competitor_root} "
-                "and its exact paths were unavailable"
-            )
-    return conflicts
-
-
-def competitor_transaction_conflicts(
-    repositories: dict[str, RepoFinalization],
-    competitors: tuple[Any, ...],
-) -> list[str]:
-    active_owners = {
-        owner
-        for competitor in competitors
-        for owner in (
-            str(getattr(competitor, "thread_id", "") or ""),
-            str(getattr(competitor, "session_id", "") or ""),
-        )
-        if owner
-    }
-    if not active_owners:
-        return []
-    state_dir = codex_transaction_path("placeholder").parent
-    try:
-        state_files = sorted(state_dir.glob("*.json"))
-    except OSError:
-        return []
-    if len(state_files) > MAX_CODEX_TRANSACTION_FILES:
-        return [
-            "too many persisted Codex Stop transactions to verify active ownership "
-            f"safely ({len(state_files)})"
-        ]
-
-    conflicts: list[str] = []
-    for state_path in state_files:
-        try:
-            raw = json.loads(state_path.read_text(encoding="utf-8"))
-        except Exception:
-            continue
-        if not isinstance(raw, dict) or raw.get("thread_id") not in active_owners:
-            continue
-        owner = str(raw["thread_id"])
-        entries = raw.get("repositories")
-        if not isinstance(entries, list):
-            conflicts.append(f"active thread {owner} has malformed pending transaction state")
-            continue
-        for entry in entries:
-            if not isinstance(entry, dict):
-                continue
-            root = str(entry.get("root") or "")
-            candidate = repositories.get(root)
-            paths = entry.get("paths")
-            if candidate is None or not isinstance(paths, list):
-                continue
-            overlap = candidate.paths & {str(path) for path in paths if isinstance(path, str)}
-            if overlap:
-                conflicts.append(
-                    f"active thread {owner} has a pending transaction for "
-                    + ", ".join(f"{root}/{path}" for path in sorted(overlap))
-                )
-    return conflicts
 
 
 def codex_failure_reason(title: str, failures: list[str]) -> str:
