@@ -1,10 +1,8 @@
 # Managed by ~/GitHub/agents/codex/scripts/sync-repo-codex-configs.sh.
 # Edit ~/GitHub/agents/codex/config/repo-bootstrap.json and re-run the sync script.
 
-model = "gpt-5.6-sol"
 model_reasoning_effort = "high"
 plan_mode_reasoning_effort = "high"
-service_tier = "fast"
 
 [mcp_servers.openaiDeveloperDocs]
 url = "https://developers.openai.com/mcp"

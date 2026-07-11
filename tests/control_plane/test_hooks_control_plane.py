@@ -481,6 +481,8 @@ class HooksControlPlaneTests(TempDirTestCase):
         )
         write_text(
             home / ".codex/config.toml",
+            'model = "gpt-5.6-sol"\n'
+            'service_tier = "fast"\n'
             '[plugins."build-ios-apps@openai-curated"]\nenabled = true\n',
         )
 
@@ -506,10 +508,10 @@ class HooksControlPlaneTests(TempDirTestCase):
         )
 
         rendered_config = (home / ".codex/config.toml").read_text(encoding="utf-8")
-        self.assertIn('model = "gpt-5.6-sol"', rendered_config)
+        self.assertNotIn('\nmodel = ', rendered_config)
         self.assertIn('model_reasoning_effort = "high"', rendered_config)
         self.assertIn('plan_mode_reasoning_effort = "high"', rendered_config)
-        self.assertIn('service_tier = "fast"', rendered_config)
+        self.assertNotIn('\nservice_tier = ', rendered_config)
         self.assertIn("hooks = true", rendered_config)
         self.assertIn('[plugins."computer-use@openai-bundled"]', rendered_config)
         self.assertNotIn("build-ios-apps@openai-curated", rendered_config)

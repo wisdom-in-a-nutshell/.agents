@@ -541,8 +541,12 @@ render_global_config() {
   # Codex turn-end automation now lives in hooks/registry.json -> Stop.
   remove_top_level_key "$target_file" "notify"
 
-  # service_tier should follow the canonical template; if it is removed there,
-  # prune stale copies from older live configs.
+  # Thread-selection defaults should follow the canonical template; if they are
+  # removed there, prune stale copies from older live configs so client choices
+  # can win when a new thread starts.
+  if ! rg -n '^[[:space:]]*model[[:space:]]*=' "$template_file" >/dev/null 2>&1; then
+    remove_top_level_key "$target_file" "model"
+  fi
   if ! rg -n '^[[:space:]]*service_tier[[:space:]]*=' "$template_file" >/dev/null 2>&1; then
     remove_top_level_key "$target_file" "service_tier"
   fi
