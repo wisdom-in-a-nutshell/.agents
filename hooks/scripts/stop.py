@@ -45,6 +45,8 @@ AGENT_COMMIT_COMMAND_RE = re.compile(
 FEEDBACK_COOLDOWN_SEC = 20 * 60
 CODEX_REPO_LOCK_TIMEOUT_SEC = 2.0
 CODEX_CHECK_WORKERS = 4
+MAX_CODEX_ATTRIBUTED_PATHS = 2000
+MAX_CODEX_REPOSITORIES = 32
 
 NON_ACTIONABLE_PUSH_PATTERNS = {
     "permission denied": "permission denied",
@@ -688,7 +690,10 @@ def load_codex_transaction(thread_id: str) -> dict[str, RepoFinalization]:
         normalized_paths = {
             str(value)
             for value in paths
-            if isinstance(value, str) and value and not Path(value).is_absolute()
+            if isinstance(value, str)
+            and value
+            and not Path(value).is_absolute()
+            and ".." not in Path(value).parts
         }
         result[root] = RepoFinalization(
             root=root,
@@ -863,7 +868,7 @@ def null_separated_paths(result: subprocess.CompletedProcess[str]) -> set[str]:
 
 def staged_paths(root: str) -> tuple[set[str], subprocess.CompletedProcess[str]]:
     result = run(
-        ["git", "diff", "--cached", "--name-only", "-z"],
+        ["git", "--literal-pathspecs", "diff", "--cached", "--name-only", "-z"],
         root,
         timeout=GIT_STATUS_TIMEOUT_SEC,
     )
@@ -874,12 +879,21 @@ def unstaged_attributed_paths(root: str, paths: set[str]) -> set[str]:
     if not paths:
         return set()
     diff = run(
-        ["git", "diff", "--name-only", "-z", "--", *sorted(paths)],
+        ["git", "--literal-pathspecs", "diff", "--name-only", "-z", "--", *sorted(paths)],
         root,
         timeout=GIT_STATUS_TIMEOUT_SEC,
     )
     untracked = run(
-        ["git", "ls-files", "--others", "--exclude-standard", "-z", "--", *sorted(paths)],
+        [
+            "git",
+            "--literal-pathspecs",
+            "ls-files",
+            "--others",
+            "--exclude-standard",
+            "-z",
+            "--",
+            *sorted(paths),
+        ],
         root,
         timeout=GIT_STATUS_TIMEOUT_SEC,
     )
@@ -983,7 +997,23 @@ def process_codex_repositories(
                 ),
                 cwd=cwd,
             )
-        return process_repo(cwd, payload, runtime="codex")
+        if not is_git_repo(cwd) or not has_changes(repo_root(cwd) or cwd):
+            return None
+        return maybe_continue(
+            payload,
+            codex_failure_reason(
+                "I could not identify the files changed by this Codex turn, so I did not stage the repository.",
+                [str(exc)],
+            ),
+            cwd=cwd,
+        )
+
+    if changes.parent_thread_id:
+        log(
+            "codex",
+            f"skip subagent-stop thread={thread_id} parent={changes.parent_thread_id}",
+        )
+        return None
 
     repositories = merge_codex_transactions(
         pending,
@@ -993,6 +1023,21 @@ def process_codex_repositories(
         log("codex", f"skip no-attributed-files thread={thread_id}")
         save_codex_transaction(thread_id, {})
         return None
+
+    attributed_path_count = sum(len(item.paths) for item in repositories.values())
+    if len(repositories) > MAX_CODEX_REPOSITORIES or attributed_path_count > MAX_CODEX_ATTRIBUTED_PATHS:
+        save_codex_transaction(thread_id, repositories)
+        return maybe_continue(
+            payload,
+            codex_failure_reason(
+                "This Codex turn is too large for safe automatic multi-repository finalization.",
+                [
+                    f"repositories={len(repositories)} (limit {MAX_CODEX_REPOSITORIES}), "
+                    f"paths={attributed_path_count} (limit {MAX_CODEX_ATTRIBUTED_PATHS})"
+                ],
+            ),
+            cwd=cwd,
+        )
 
     conflicts = competitor_conflicts(repositories, changes.active_competitors)
     if conflicts:
@@ -1026,7 +1071,7 @@ def process_codex_repositories(
                     command_failure_reason(
                         item.root,
                         "inspect staged paths",
-                        ["git", "diff", "--cached", "--name-only", "-z"],
+                        ["git", "--literal-pathspecs", "diff", "--cached", "--name-only", "-z"],
                         staged_result,
                     )
                 )
@@ -1038,7 +1083,7 @@ def process_codex_repositories(
                     + ", ".join(sorted(unexpected_staged))
                 )
                 continue
-            add_cmd = ["git", "add", "-A", "--", *sorted(item.paths)]
+            add_cmd = ["git", "--literal-pathspecs", "add", "-A", "--", *sorted(item.paths)]
             add = run(add_cmd, item.root, timeout=GIT_ADD_TIMEOUT_SEC)
             if add.returncode != 0:
                 failures.append(command_failure_reason(item.root, "git add attributed paths", add_cmd, add))
@@ -1355,6 +1400,13 @@ def main() -> int:
         output = maybe_continue(
             payload,
             state_failure_reason(cwd, f"command timed out after {timeout}s: {cmd}"),
+            cwd=cwd,
+        )
+    except RuntimeError as exc:
+        log(args.runtime, f"runtime-error cwd={cwd} error={exc}")
+        output = maybe_continue(
+            payload,
+            state_failure_reason(cwd, str(exc)),
             cwd=cwd,
         )
     except Exception as exc:

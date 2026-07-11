@@ -92,6 +92,28 @@ class CodexTurnChangesTests(TempDirTestCase):
                     ],
                 }
             },
+            ("thread/read", "old-child"): {
+                "thread": {
+                    "id": "old-child",
+                    "turns": [
+                        {
+                            "id": "old-turn",
+                            "startedAt": 90,
+                            "items": [
+                                {
+                                    "type": "fileChange",
+                                    "changes": [
+                                        {
+                                            "path": str(self.temp_path / "old.txt"),
+                                            "kind": {"type": "update"},
+                                        }
+                                    ],
+                                }
+                            ],
+                        }
+                    ],
+                }
+            },
             ("thread/read", "competitor"): {
                 "thread": {
                     "id": "competitor",
@@ -119,6 +141,7 @@ class CodexTurnChangesTests(TempDirTestCase):
             result = codex_turn_changes.collect_codex_turn_changes("root")
 
         self.assertEqual(result.session_id, "tree")
+        self.assertEqual(result.parent_thread_id, "")
         self.assertEqual(
             set(result.touched_paths),
             {root_path, child_path, moved_path},
@@ -145,6 +168,7 @@ class CodexMultiRepoStopTests(TempDirTestCase):
         return SimpleNamespace(
             touched_paths=tuple(str(path) for path in paths),
             active_competitors=tuple(competitors),
+            parent_thread_id="",
         )
 
     def test_commits_and_pushes_two_attributed_repositories(self) -> None:
@@ -244,7 +268,7 @@ class CodexMultiRepoStopTests(TempDirTestCase):
                 run_command(["git", "-C", str(repo), "rev-parse", "HEAD"]).stdout.strip(),
                 before[str(repo)],
             )
-        self.assertEqual(set(pending), {str(first), str(second)})
+        self.assertEqual(set(pending), {str(first.resolve()), str(second.resolve())})
 
     def test_blocks_an_exact_path_overlap_with_an_active_thread(self) -> None:
         repo, _remote = self.make_published_repo("repo")
@@ -271,3 +295,65 @@ class CodexMultiRepoStopTests(TempDirTestCase):
         self.assertEqual(output["decision"], "block")
         self.assertIn("other-thread", output["reason"])
         self.assertIn("shared.txt", output["reason"])
+
+    def test_subagent_stop_defers_to_parent_turn(self) -> None:
+        repo, _remote = self.make_published_repo("repo")
+        path = repo / "child.txt"
+        path.write_text("child\n", encoding="utf-8")
+        changes = self.changes([path])
+        changes.parent_thread_id = "parent-thread"
+
+        with patch.dict(os.environ, {"HOME": str(self.temp_path / "home")}):
+            with patch.object(stop, "collect_codex_turn_changes", return_value=changes):
+                output = stop.process_codex_repositories(
+                    str(repo),
+                    {"session_id": "child-thread", "hook_event_name": "Stop"},
+                )
+
+        self.assertIsNone(output)
+        self.assertIn(
+            "child.txt",
+            run_command(["git", "-C", str(repo), "status", "--porcelain"]).stdout,
+        )
+
+    def test_retries_a_committed_repository_after_partial_push_failure(self) -> None:
+        first, _first_remote = self.make_published_repo("first")
+        second, _second_remote = self.make_published_repo("second")
+        first_file = first / "first.txt"
+        second_file = second / "second.txt"
+        first_file.write_text("first\n", encoding="utf-8")
+        second_file.write_text("second\n", encoding="utf-8")
+        success = SimpleNamespace(returncode=0, stdout="", stderr="")
+        failure = SimpleNamespace(returncode=1, stdout="", stderr="temporary failure")
+        push_results = [
+            (success, ["git", "push", "origin", "HEAD"], "git push failed"),
+            (failure, ["git", "push", "origin", "HEAD"], "git push failed"),
+            (success, ["git", "push", "origin", "HEAD"], "git push failed"),
+        ]
+        payload = {"session_id": "thread", "hook_event_name": "Stop"}
+
+        with patch.dict(os.environ, {"HOME": str(self.temp_path / "home")}):
+            with patch.object(stop, "avoid_stop_continuation", return_value=False):
+                with patch.object(
+                    stop,
+                    "collect_codex_turn_changes",
+                    return_value=self.changes([first_file, second_file]),
+                ):
+                    with patch.object(stop, "push_committed_repo", side_effect=push_results):
+                        first_output = stop.process_codex_repositories(str(first), payload)
+                        state_after_failure = stop.load_codex_transaction("thread")
+                        with patch.object(
+                            stop,
+                            "collect_codex_turn_changes",
+                            return_value=self.changes([]),
+                        ):
+                            second_output = stop.process_codex_repositories(str(first), payload)
+
+            final_state = stop.load_codex_transaction("thread")
+
+        self.assertEqual(first_output["decision"], "block")
+        self.assertEqual(len(state_after_failure), 1)
+        remaining = next(iter(state_after_failure.values()))
+        self.assertEqual(remaining.phase, "committed")
+        self.assertIsNone(second_output)
+        self.assertEqual(final_state, {})

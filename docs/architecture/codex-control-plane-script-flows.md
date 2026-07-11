@@ -117,26 +117,28 @@ flowchart TD
     A["hooks/registry.json global Stop"] --> B["~/.codex/hooks.json"]
     B --> C["Codex turn reaches Stop"]
     C --> D["hooks/scripts/stop.py"]
-    D --> E["git add -A"]
-    E --> F["git commit"]
-    F --> G["Git uses repo core.hooksPath"]
-    G --> H["hooks/git/pre-commit"]
-    H --> I{"scripts/check-fast.sh exists?"}
-    I -->|"yes"| J["run repo fast gate"]
-    I -->|"no"| K["allow commit"]
-    J --> L{"checks passed?"}
-    L -->|"no"| M["Stop returns hook block with failure details"]
-    L -->|"yes"| N["commit succeeds"]
-    K --> N
-    N --> O{"tracked branch?"}
-    O -->|"yes"| P["git push remote HEAD"]
-    P --> Q{"remote ahead?"}
-    Q -->|"yes"| R["git pull --rebase"]
-    R --> S["git push remote HEAD again"]
-    Q -->|"no"| T["done"]
-    O -->|"no upstream"| U["git push -u remote HEAD"]
+    D --> E["read parent + subagent fileChange items"]
+    E --> F["map exact paths to Git worktrees"]
+    F --> G{"active task overlaps a path?"}
+    G -->|"yes"| H["return feedback to the source task"]
+    G -->|"no"| I["lock all repositories in sorted order"]
+    I --> J["stage attributed paths only"]
+    J --> K["run every repo scripts/check-fast.sh in parallel"]
+    K --> L{"all checks passed?"}
+    L -->|"no"| H
+    L -->|"yes"| M["commit each repository"]
+    M --> N["persist committed phases"]
+    N --> O["push each repository"]
+    O --> P{"remote ahead?"}
+    P -->|"yes"| Q["git pull --rebase, then retry push"]
+    P -->|"no"| R["remove completed transaction"]
+    Q --> R
 ```
 
 `scripts/check-fast.sh` is the repo-owned fast commit gate for agent-made
 changes. Put slower repo-wide validation in `scripts/check-full.sh` or another
-explicit command.
+explicit command. Codex stores incomplete multi-repository transactions under
+`~/.local/state/agents-control-plane/codex-stop-transactions/`, so a later Stop
+can finish pushing repositories already committed before another repository
+failed. Subagent Stop events defer to their parent; the parent Stop aggregates
+the complete same-session turn tree.

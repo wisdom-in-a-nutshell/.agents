@@ -13,6 +13,7 @@ except ModuleNotFoundError:  # Direct script execution adds this directory to sy
 
 MAX_THREAD_LIST_PAGES = 5
 THREAD_LIST_PAGE_SIZE = 100
+MAX_SAME_SESSION_READS = 48
 MAX_ACTIVE_COMPETITOR_READS = 24
 
 
@@ -36,6 +37,7 @@ class CodexTurnChanges:
 
     thread_id: str
     session_id: str
+    parent_thread_id: str
     turn_id: str
     turn_started_at: int
     touched_paths: tuple[str, ...]
@@ -67,8 +69,12 @@ def collect_codex_turn_changes(
                 if _text(thread.get("id")) != normalized_thread_id
                 and (_text(thread.get("sessionId")) or _text(thread.get("id")))
                 == owner_session_id
-                and _integer(thread.get("createdAt")) >= turn_started_at
             ]
+            if len(same_session_threads) > MAX_SAME_SESSION_READS:
+                raise CodexTurnChangesError(
+                    "Too many same-session Codex threads to attribute safely "
+                    f"({len(same_session_threads)})."
+                )
             for thread in same_session_threads:
                 child_id = _text(thread.get("id"))
                 if not child_id:
@@ -120,6 +126,7 @@ def collect_codex_turn_changes(
     return CodexTurnChanges(
         thread_id=normalized_thread_id,
         session_id=owner_session_id,
+        parent_thread_id=_text(owner.get("parentThreadId")),
         turn_id=_text(owner_turn.get("id")),
         turn_started_at=turn_started_at,
         touched_paths=tuple(sorted(touched_paths)),

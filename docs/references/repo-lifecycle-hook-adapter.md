@@ -92,8 +92,15 @@ All repo lifecycle hooks are Python. Do not add shell compatibility shims.
 `Stop`
 
 - Native Codex hook event, rendered as the shared global turn-end commit gate.
-- It stages, commits, runs repo `scripts/check-fast.sh` through Git, rebases,
-  and pushes.
+- For Codex, it reads exact `fileChange` paths from the parent and same-session
+  subagent turns, finalizes every affected repository as one persisted
+  transaction, and routes aggregate failures back to the source task.
+- It stages attributed paths only, rejects unrelated staged paths, detects
+  overlap with other active Codex tasks, takes deterministic repository locks,
+  preflights all fast checks before committing, then rebases and pushes.
+- Subagent Stop events do not finalize independently; their parent Stop owns the
+  full turn tree. Copilot, Claude, and Antigravity keep the current-repository
+  adapter behavior.
 - Do not use `scripts/check-fast.sh` as a general after-turn hook.
 
 There is intentionally no managed fake/native-looking `SessionEnd` hook. Current
