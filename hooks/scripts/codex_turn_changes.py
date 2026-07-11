@@ -69,6 +69,10 @@ def collect_codex_turn_changes(
                 if _text(thread.get("id")) != normalized_thread_id
                 and (_text(thread.get("sessionId")) or _text(thread.get("id")))
                 == owner_session_id
+                and (
+                    _integer(thread.get("updatedAt")) == 0
+                    or _integer(thread.get("updatedAt")) >= turn_started_at
+                )
             ]
             if len(same_session_threads) > MAX_SAME_SESSION_READS:
                 raise CodexTurnChangesError(

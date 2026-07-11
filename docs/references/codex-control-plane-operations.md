@@ -130,7 +130,7 @@ Use [Codex Control Plane Ownership](/Users/dobby/GitHub/agents/docs/references/c
   - ignores subagent Stop events because the parent Stop owns the complete turn transaction
   - checks active Codex tasks for exact-path overlap and uses deterministic per-repository file locks to prevent competing Stop hooks
   - refuses unrelated pre-staged paths instead of accidentally including another task's work
-  - preflights every affected repo's `scripts/check-fast.sh` concurrently before creating any commit, then Git runs the same gate again at commit time
+  - preflights every affected repo's `scripts/check-fast.sh` concurrently, revalidates the exact staged paths, then commits with hook-time index mutation disabled
   - persists partial commit/push progress so a later continuation can finish all repositories without losing already-created commits
   - relies on managed repo local `core.hooksPath` pointing at `~/GitHub/agents/hooks/git`
   - returns aggregated hook feedback to the originating Codex task when any repository fails, so the same task can repair every affected repository

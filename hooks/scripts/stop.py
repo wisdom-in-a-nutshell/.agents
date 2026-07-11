@@ -47,6 +47,7 @@ CODEX_REPO_LOCK_TIMEOUT_SEC = 2.0
 CODEX_CHECK_WORKERS = 4
 MAX_CODEX_ATTRIBUTED_PATHS = 2000
 MAX_CODEX_REPOSITORIES = 32
+MAX_CODEX_TRANSACTION_FILES = 256
 
 NON_ACTIONABLE_PUSH_PATTERNS = {
     "permission denied": "permission denied",
@@ -774,8 +775,11 @@ def attributed_repo_path(path_text: str) -> tuple[str, str] | None:
     if not root_text:
         return None
     root = Path(root_text).resolve()
+    # Resolve parent aliases such as macOS /var -> /private/var without following
+    # a tracked file symlink out of the worktree.
+    normalized_path = Path(os.path.realpath(path.parent)) / path.name
     try:
-        relative = path.resolve(strict=False).relative_to(root)
+        relative = normalized_path.relative_to(root)
     except ValueError:
         return None
     if not relative.parts or relative.parts[0] == ".git":
@@ -813,11 +817,7 @@ def merge_codex_transactions(
         if existing is None:
             merged[root] = item
             continue
-        new_paths = item.paths - existing.paths
         existing.paths.update(item.paths)
-        if new_paths and existing.phase == "committed":
-            existing.phase = "pending"
-            existing.commit = ""
     return merged
 
 
@@ -902,6 +902,24 @@ def unstaged_attributed_paths(root: str, paths: set[str]) -> set[str]:
     return null_separated_paths(diff) | null_separated_paths(untracked)
 
 
+def attributed_paths_changed(root: str, paths: set[str]) -> bool:
+    staged, staged_result = staged_paths(root)
+    if staged_result.returncode != 0:
+        return True
+    return bool((staged & paths) or unstaged_attributed_paths(root, paths))
+
+
+def commit_is_ancestor_of_head(root: str, commit: str) -> bool:
+    if not commit:
+        return False
+    result = run(
+        ["git", "merge-base", "--is-ancestor", commit, "HEAD"],
+        root,
+        timeout=GIT_STATUS_TIMEOUT_SEC,
+    )
+    return result.returncode == 0
+
+
 def competitor_conflicts(
     repositories: dict[str, RepoFinalization],
     competitors: tuple[Any, ...],
@@ -929,6 +947,62 @@ def competitor_conflicts(
                 f"active thread {competitor.thread_id} is working in {competitor_root} "
                 "and its exact paths were unavailable"
             )
+    return conflicts
+
+
+def competitor_transaction_conflicts(
+    repositories: dict[str, RepoFinalization],
+    competitors: tuple[Any, ...],
+) -> list[str]:
+    active_owners = {
+        owner
+        for competitor in competitors
+        for owner in (
+            str(getattr(competitor, "thread_id", "") or ""),
+            str(getattr(competitor, "session_id", "") or ""),
+        )
+        if owner
+    }
+    if not active_owners:
+        return []
+    state_dir = codex_transaction_path("placeholder").parent
+    try:
+        state_files = sorted(state_dir.glob("*.json"))
+    except OSError:
+        return []
+    if len(state_files) > MAX_CODEX_TRANSACTION_FILES:
+        return [
+            "too many persisted Codex Stop transactions to verify active ownership "
+            f"safely ({len(state_files)})"
+        ]
+
+    conflicts: list[str] = []
+    for state_path in state_files:
+        try:
+            raw = json.loads(state_path.read_text(encoding="utf-8"))
+        except Exception:
+            continue
+        if not isinstance(raw, dict) or raw.get("thread_id") not in active_owners:
+            continue
+        owner = str(raw["thread_id"])
+        entries = raw.get("repositories")
+        if not isinstance(entries, list):
+            conflicts.append(f"active thread {owner} has malformed pending transaction state")
+            continue
+        for entry in entries:
+            if not isinstance(entry, dict):
+                continue
+            root = str(entry.get("root") or "")
+            candidate = repositories.get(root)
+            paths = entry.get("paths")
+            if candidate is None or not isinstance(paths, list):
+                continue
+            overlap = candidate.paths & {str(path) for path in paths if isinstance(path, str)}
+            if overlap:
+                conflicts.append(
+                    f"active thread {owner} has a pending transaction for "
+                    + ", ".join(f"{root}/{path}" for path in sorted(overlap))
+                )
     return conflicts
 
 
@@ -1040,6 +1114,9 @@ def process_codex_repositories(
         )
 
     conflicts = competitor_conflicts(repositories, changes.active_competitors)
+    conflicts.extend(
+        competitor_transaction_conflicts(repositories, changes.active_competitors)
+    )
     if conflicts:
         save_codex_transaction(thread_id, repositories)
         return maybe_continue(
@@ -1054,6 +1131,11 @@ def process_codex_repositories(
     save_codex_transaction(thread_id, repositories)
     with lock_codex_repositories(list(repositories)):
         failures: list[str] = []
+        for item in repositories.values():
+            if item.phase == "committed" and attributed_paths_changed(item.root, item.paths):
+                # Preserve item.commit: it still needs to be pushed after the
+                # newly changed attributed paths are checked and committed.
+                item.phase = "pending"
         pending_items = [item for item in repositories.values() if item.phase == "pending"]
         staged_pending_items: list[RepoFinalization] = []
         for item in pending_items:
@@ -1102,6 +1184,8 @@ def process_codex_repositories(
                 continue
             if final_staged:
                 staged_pending_items.append(item)
+            elif item.commit:
+                item.phase = "committed"
             else:
                 repositories.pop(item.root, None)
 
@@ -1174,7 +1258,17 @@ def process_codex_repositories(
                 repositories.pop(item.root, None)
                 save_codex_transaction(thread_id, repositories)
                 continue
-            commit_cmd = ["git", "commit", "-m", message]
+            commit_cmd = [
+                "git",
+                "--literal-pathspecs",
+                "commit",
+                "--no-verify",
+                "--only",
+                "-m",
+                message,
+                "--",
+                *sorted(item.paths),
+            ]
             commit = run(commit_cmd, item.root, timeout=GIT_COMMIT_TIMEOUT_SEC)
             if commit.returncode != 0:
                 failures.append(
@@ -1201,6 +1295,12 @@ def process_codex_repositories(
             item = repositories[root]
             if item.phase != "committed":
                 continue
+            if not commit_is_ancestor_of_head(root, item.commit):
+                failures.append(
+                    f"Repository {root}: pending commit {item.commit or '<missing>'} "
+                    "is no longer an ancestor of HEAD; refusing to push rewritten history."
+                )
+                break
             push, command, failure_title = push_committed_repo(root)
             if push is None:
                 failures.append(f"Repository {root}: {failure_title}.")

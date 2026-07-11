@@ -97,7 +97,8 @@ All repo lifecycle hooks are Python. Do not add shell compatibility shims.
   transaction, and routes aggregate failures back to the source task.
 - It stages attributed paths only, rejects unrelated staged paths, detects
   overlap with other active Codex tasks, takes deterministic repository locks,
-  preflights all fast checks before committing, then rebases and pushes.
+  preflights all fast checks, revalidates the index, commits exact paths without
+  rerunning mutable commit hooks, then rebases and pushes.
 - Subagent Stop events do not finalize independently; their parent Stop owns the
   full turn tree. Copilot, Claude, and Antigravity keep the current-repository
   adapter behavior.
