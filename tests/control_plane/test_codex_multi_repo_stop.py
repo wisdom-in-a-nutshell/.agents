@@ -316,6 +316,30 @@ class CodexMultiRepoStopTests(TempDirTestCase):
             run_command(["git", "-C", str(repo), "status", "--porcelain"]).stdout,
         )
 
+    def test_clean_attributed_repo_skips_fast_checks(self) -> None:
+        repo, _remote = self.make_published_repo("repo")
+        tracked_path = repo / "README.md"
+
+        with patch.dict(os.environ, {"HOME": str(self.temp_path / "home")}):
+            with patch.object(
+                stop,
+                "collect_codex_turn_changes",
+                return_value=self.changes([tracked_path]),
+            ):
+                with patch.object(
+                    stop,
+                    "preflight_repo_check",
+                    side_effect=AssertionError("clean repo should not run checks"),
+                ):
+                    output = stop.process_codex_repositories(
+                        str(repo),
+                        {"session_id": "thread", "hook_event_name": "Stop"},
+                    )
+            pending = stop.load_codex_transaction("thread")
+
+        self.assertIsNone(output)
+        self.assertEqual(pending, {})
+
     def test_retries_a_committed_repository_after_partial_push_failure(self) -> None:
         first, _first_remote = self.make_published_repo("first")
         second, _second_remote = self.make_published_repo("second")

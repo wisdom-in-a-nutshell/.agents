@@ -1055,6 +1055,7 @@ def process_codex_repositories(
     with lock_codex_repositories(list(repositories)):
         failures: list[str] = []
         pending_items = [item for item in repositories.values() if item.phase == "pending"]
+        staged_pending_items: list[RepoFinalization] = []
         for item in pending_items:
             if not is_git_repo(item.root):
                 failures.append(f"Repository {item.root}: no longer a Git worktree.")
@@ -1087,6 +1088,22 @@ def process_codex_repositories(
             add = run(add_cmd, item.root, timeout=GIT_ADD_TIMEOUT_SEC)
             if add.returncode != 0:
                 failures.append(command_failure_reason(item.root, "git add attributed paths", add_cmd, add))
+                continue
+            final_staged, final_staged_result = staged_paths(item.root)
+            if final_staged_result.returncode != 0:
+                failures.append(
+                    command_failure_reason(
+                        item.root,
+                        "inspect attributed staging result",
+                        ["git", "--literal-pathspecs", "diff", "--cached", "--name-only", "-z"],
+                        final_staged_result,
+                    )
+                )
+                continue
+            if final_staged:
+                staged_pending_items.append(item)
+            else:
+                repositories.pop(item.root, None)
 
         if failures:
             save_codex_transaction(thread_id, repositories)
@@ -1095,6 +1112,9 @@ def process_codex_repositories(
                 codex_failure_reason("I could not stage the complete Codex turn safely.", failures),
                 cwd=cwd,
             )
+
+        pending_items = staged_pending_items
+        save_codex_transaction(thread_id, repositories)
 
         check_failures: list[str] = []
         with concurrent.futures.ThreadPoolExecutor(
