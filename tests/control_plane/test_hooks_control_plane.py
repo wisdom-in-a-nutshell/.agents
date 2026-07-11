@@ -450,6 +450,7 @@ class HooksControlPlaneTests(TempDirTestCase):
     def test_codex_sync_config_renders_plan_mode_and_global_stop_hook(self) -> None:
         root = make_control_plane_root(self.temp_path)
         home = self.temp_path / "home"
+        bundled_marketplace = self.temp_path / "ChatGPT.app/Contents/Resources/plugins/openai-bundled"
         write_json(root / "mcp/config/presets.json", default_mcp_registry())
         write_json(
             root / "plugins/registry.json",
@@ -479,6 +480,10 @@ class HooksControlPlaneTests(TempDirTestCase):
                 "unmanaged_repo_local_plugins": [],
             },
         )
+        write_json(
+            bundled_marketplace / "plugins/computer-use/.codex-plugin/plugin.json",
+            {"name": "computer-use", "version": "1.0.0"},
+        )
         write_text(
             home / ".codex/config.toml",
             'model = "gpt-5.6-sol"\n'
@@ -504,7 +509,10 @@ class HooksControlPlaneTests(TempDirTestCase):
                 "--hooks-registry",
                 str(root / "hooks/registry.json"),
             ],
-            env={"HOME": str(home)},
+            env={
+                "HOME": str(home),
+                "CODEX_BUNDLED_MARKETPLACE": str(bundled_marketplace),
+            },
         )
 
         rendered_config = (home / ".codex/config.toml").read_text(encoding="utf-8")
