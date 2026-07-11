@@ -1,0 +1,273 @@
+from __future__ import annotations
+
+import os
+from types import SimpleNamespace
+from unittest.mock import patch
+
+from hooks.scripts import codex_turn_changes
+from hooks.scripts import stop
+from tests.control_plane.support import (
+    TempDirTestCase,
+    init_git_repo,
+    run_command,
+    write_executable,
+)
+
+
+class FakeAppServerClient:
+    def __init__(self, responses, **_kwargs):  # noqa: ANN001
+        self.responses = responses
+
+    def __enter__(self):  # noqa: ANN201
+        return self
+
+    def __exit__(self, *_args):  # noqa: ANN001, ANN201
+        return None
+
+    def request(self, method, params):  # noqa: ANN001, ANN201
+        key = (method, params.get("threadId") or params.get("cursor") or "first")
+        return self.responses[key]
+
+
+class CodexTurnChangesTests(TempDirTestCase):
+    def test_collects_parent_subagent_and_active_competitor_paths(self) -> None:
+        root_path = str(self.temp_path / "root.txt")
+        child_path = str(self.temp_path / "child.txt")
+        moved_path = str(self.temp_path / "moved.txt")
+        competitor_path = str(self.temp_path / "competitor.txt")
+        responses = {
+            ("thread/read", "root"): {
+                "thread": {
+                    "id": "root",
+                    "sessionId": "tree",
+                    "turns": [
+                        {
+                            "id": "turn-root",
+                            "startedAt": 100,
+                            "items": [
+                                {
+                                    "type": "fileChange",
+                                    "status": "completed",
+                                    "changes": [{"path": root_path, "kind": {"type": "update"}}],
+                                }
+                            ],
+                        }
+                    ],
+                }
+            },
+            ("thread/list", "first"): {
+                "data": [
+                    {"id": "root", "sessionId": "tree", "createdAt": 50, "status": {"type": "idle"}},
+                    {"id": "child", "sessionId": "tree", "createdAt": 110, "status": {"type": "idle"}},
+                    {"id": "old-child", "sessionId": "tree", "createdAt": 90, "status": {"type": "idle"}},
+                    {
+                        "id": "competitor",
+                        "sessionId": "other-tree",
+                        "createdAt": 120,
+                        "cwd": str(self.temp_path),
+                        "status": {"type": "active"},
+                    },
+                ],
+                "nextCursor": None,
+            },
+            ("thread/read", "child"): {
+                "thread": {
+                    "id": "child",
+                    "turns": [
+                        {
+                            "id": "turn-child",
+                            "startedAt": 115,
+                            "items": [
+                                {
+                                    "type": "fileChange",
+                                    "changes": [
+                                        {
+                                            "path": child_path,
+                                            "kind": {"type": "move", "move_path": moved_path},
+                                        }
+                                    ],
+                                }
+                            ],
+                        }
+                    ],
+                }
+            },
+            ("thread/read", "competitor"): {
+                "thread": {
+                    "id": "competitor",
+                    "turns": [
+                        {
+                            "id": "turn-competitor",
+                            "startedAt": 125,
+                            "items": [
+                                {
+                                    "type": "fileChange",
+                                    "changes": [{"path": competitor_path, "kind": {"type": "update"}}],
+                                }
+                            ],
+                        }
+                    ],
+                }
+            },
+        }
+
+        with patch.object(
+            codex_turn_changes,
+            "AppServerClient",
+            side_effect=lambda **kwargs: FakeAppServerClient(responses, **kwargs),
+        ):
+            result = codex_turn_changes.collect_codex_turn_changes("root")
+
+        self.assertEqual(result.session_id, "tree")
+        self.assertEqual(
+            set(result.touched_paths),
+            {root_path, child_path, moved_path},
+        )
+        self.assertEqual(len(result.active_competitors), 1)
+        self.assertEqual(
+            result.active_competitors[0].touched_paths,
+            (competitor_path,),
+        )
+
+
+class CodexMultiRepoStopTests(TempDirTestCase):
+    def make_published_repo(self, name: str):  # noqa: ANN201
+        remote = init_git_repo(self.temp_path / f"{name}-remote.git")
+        run_command(
+            ["git", "-C", str(remote), "config", "receive.denyCurrentBranch", "updateInstead"]
+        )
+        repo = init_git_repo(self.temp_path / name, with_initial_commit=True)
+        run_command(["git", "-C", str(repo), "remote", "add", "origin", str(remote)])
+        run_command(["git", "-C", str(repo), "push", "-u", "origin", "main"])
+        return repo, remote
+
+    def changes(self, paths, competitors=()):  # noqa: ANN001, ANN201
+        return SimpleNamespace(
+            touched_paths=tuple(str(path) for path in paths),
+            active_competitors=tuple(competitors),
+        )
+
+    def test_commits_and_pushes_two_attributed_repositories(self) -> None:
+        first, first_remote = self.make_published_repo("first")
+        second, second_remote = self.make_published_repo("second")
+        first_file = first / "first.txt"
+        second_file = second / "second.txt"
+        first_file.write_text("first\n", encoding="utf-8")
+        second_file.write_text("second\n", encoding="utf-8")
+
+        home = self.temp_path / "home"
+        with patch.dict(os.environ, {"HOME": str(home)}):
+            with patch.object(
+                stop,
+                "collect_codex_turn_changes",
+                return_value=self.changes([first_file, second_file]),
+            ):
+                with patch.object(stop, "avoid_stop_continuation", return_value=False):
+                    output = stop.process_codex_repositories(
+                        str(first),
+                        {"session_id": "thread", "hook_event_name": "Stop"},
+                    )
+
+        self.assertIsNone(output)
+        self.assertEqual(run_command(["git", "-C", str(first), "status", "--porcelain"]).stdout, "")
+        self.assertEqual(run_command(["git", "-C", str(second), "status", "--porcelain"]).stdout, "")
+        self.assertEqual(
+            run_command(["git", "-C", str(first_remote), "show", "HEAD:first.txt"]).stdout,
+            "first\n",
+        )
+        self.assertEqual(
+            run_command(["git", "-C", str(second_remote), "show", "HEAD:second.txt"]).stdout,
+            "second\n",
+        )
+        self.assertFalse(stop.codex_transaction_path("thread").exists())
+
+    def test_refuses_unattributed_pre_staged_file(self) -> None:
+        repo, _remote = self.make_published_repo("repo")
+        attributed = repo / "attributed.txt"
+        unrelated = repo / "unrelated.txt"
+        attributed.write_text("mine\n", encoding="utf-8")
+        unrelated.write_text("other\n", encoding="utf-8")
+        run_command(["git", "-C", str(repo), "add", "unrelated.txt"])
+
+        with patch.dict(os.environ, {"HOME": str(self.temp_path / "home")}):
+            with patch.object(
+                stop,
+                "collect_codex_turn_changes",
+                return_value=self.changes([attributed]),
+            ):
+                with patch.object(stop, "avoid_stop_continuation", return_value=False):
+                    output = stop.process_codex_repositories(
+                        str(repo),
+                        {"session_id": "thread", "hook_event_name": "Stop"},
+                    )
+
+        self.assertEqual(output["decision"], "block")
+        self.assertIn("unrelated.txt", output["reason"])
+        self.assertEqual(
+            run_command(["git", "-C", str(repo), "rev-list", "--count", "HEAD"]).stdout.strip(),
+            "1",
+        )
+
+    def test_preflights_every_repo_before_any_commit(self) -> None:
+        first, _first_remote = self.make_published_repo("first")
+        second, _second_remote = self.make_published_repo("second")
+        first_file = first / "first.txt"
+        second_file = second / "second.txt"
+        first_file.write_text("first\n", encoding="utf-8")
+        second_file.write_text("second\n", encoding="utf-8")
+        write_executable(
+            second / "scripts/check-fast.sh",
+            "#!/usr/bin/env bash\nprintf 'second repo failed\\n' >&2\nexit 1\n",
+        )
+        before = {
+            str(repo): run_command(["git", "-C", str(repo), "rev-parse", "HEAD"]).stdout.strip()
+            for repo in (first, second)
+        }
+
+        with patch.dict(os.environ, {"HOME": str(self.temp_path / "home")}):
+            with patch.object(
+                stop,
+                "collect_codex_turn_changes",
+                return_value=self.changes([first_file, second_file, second / "scripts/check-fast.sh"]),
+            ):
+                with patch.object(stop, "avoid_stop_continuation", return_value=False):
+                    output = stop.process_codex_repositories(
+                        str(first),
+                        {"session_id": "thread", "hook_event_name": "Stop"},
+                    )
+            pending = stop.load_codex_transaction("thread")
+
+        self.assertEqual(output["decision"], "block")
+        self.assertIn("second repo failed", output["reason"])
+        for repo in (first, second):
+            self.assertEqual(
+                run_command(["git", "-C", str(repo), "rev-parse", "HEAD"]).stdout.strip(),
+                before[str(repo)],
+            )
+        self.assertEqual(set(pending), {str(first), str(second)})
+
+    def test_blocks_an_exact_path_overlap_with_an_active_thread(self) -> None:
+        repo, _remote = self.make_published_repo("repo")
+        path = repo / "shared.txt"
+        path.write_text("shared\n", encoding="utf-8")
+        competitor = SimpleNamespace(
+            thread_id="other-thread",
+            cwd=str(repo),
+            touched_paths=(str(path),),
+        )
+
+        with patch.dict(os.environ, {"HOME": str(self.temp_path / "home")}):
+            with patch.object(
+                stop,
+                "collect_codex_turn_changes",
+                return_value=self.changes([path], [competitor]),
+            ):
+                with patch.object(stop, "avoid_stop_continuation", return_value=False):
+                    output = stop.process_codex_repositories(
+                        str(repo),
+                        {"session_id": "thread", "hook_event_name": "Stop"},
+                    )
+
+        self.assertEqual(output["decision"], "block")
+        self.assertIn("other-thread", output["reason"])
+        self.assertIn("shared.txt", output["reason"])
