@@ -13,7 +13,7 @@ except ModuleNotFoundError:  # Direct script execution adds this directory to sy
 
 MAX_THREAD_LIST_PAGES = 5
 THREAD_LIST_PAGE_SIZE = 100
-MAX_SAME_SESSION_READS = 48
+MAX_DESCENDANT_THREAD_READS = 48
 
 
 class CodexTurnChangesError(RuntimeError):
@@ -54,23 +54,42 @@ def collect_codex_turn_changes(
                 client,
                 min_updated_at=turn_started_at,
             )
-            same_session_threads = [
+            recent_threads = [
                 thread
                 for thread in listed_threads
                 if _text(thread.get("id")) != normalized_thread_id
-                and (_text(thread.get("sessionId")) or _text(thread.get("id")))
-                == owner_session_id
                 and (
                     _integer(thread.get("updatedAt")) == 0
                     or _integer(thread.get("updatedAt")) >= turn_started_at
                 )
             ]
-            if len(same_session_threads) > MAX_SAME_SESSION_READS:
+            descendant_threads: list[dict[str, Any]] = []
+            descendant_ids = {normalized_thread_id}
+            remaining = list(recent_threads)
+            while remaining:
+                discovered_ids = {
+                    _text(thread.get("id"))
+                    for thread in remaining
+                    if _text(thread.get("parentThreadId")) in descendant_ids
+                }
+                discovered_ids.discard("")
+                if not discovered_ids:
+                    break
+                next_remaining: list[dict[str, Any]] = []
+                for thread in remaining:
+                    if _text(thread.get("id")) in discovered_ids:
+                        descendant_threads.append(thread)
+                    else:
+                        next_remaining.append(thread)
+                descendant_ids.update(discovered_ids)
+                remaining = next_remaining
+
+            if len(descendant_threads) > MAX_DESCENDANT_THREAD_READS:
                 raise CodexTurnChangesError(
-                    "Too many same-session Codex threads to attribute safely "
-                    f"({len(same_session_threads)})."
+                    "Too many descendant Codex threads to attribute safely "
+                    f"({len(descendant_threads)})."
                 )
-            for thread in same_session_threads:
+            for thread in descendant_threads:
                 child_id = _text(thread.get("id"))
                 if not child_id:
                     continue

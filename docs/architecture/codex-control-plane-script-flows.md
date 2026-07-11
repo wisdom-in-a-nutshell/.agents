@@ -140,8 +140,9 @@ changes. Put slower repo-wide validation in `scripts/check-full.sh` or another
 explicit command. Codex stores incomplete multi-repository transactions under
 `~/.local/state/agents-control-plane/codex-stop-transactions/`, so a later Stop
 can finish pushing repositories already committed before another repository
-failed. Subagent Stop events defer to their parent; the parent Stop aggregates
-the complete same-session turn tree. Concurrent Codex tasks may edit the same
+failed. Subagent Stop events defer to their parent; the parent Stop follows
+`parentThreadId` recursively and aggregates the complete descendant turn tree.
+Concurrent Codex tasks may edit the same
 repository or file: the shared working tree is consolidated under the Git lock,
 and edits that arrive during checks are restaged and rechecked up to a bounded
 retry limit instead of being discarded.

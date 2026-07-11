@@ -37,6 +37,7 @@ class CodexTurnChangesTests(TempDirTestCase):
     def test_collects_parent_and_subagent_paths(self) -> None:
         root_path = str(self.temp_path / "root.txt")
         child_path = str(self.temp_path / "child.txt")
+        grandchild_path = str(self.temp_path / "grandchild.txt")
         moved_path = str(self.temp_path / "moved.txt")
         responses = {
             ("thread/read", "root"): {
@@ -61,8 +62,27 @@ class CodexTurnChangesTests(TempDirTestCase):
             ("thread/list", "first"): {
                 "data": [
                     {"id": "root", "sessionId": "tree", "createdAt": 50, "status": {"type": "idle"}},
-                    {"id": "child", "sessionId": "tree", "createdAt": 110, "status": {"type": "idle"}},
-                    {"id": "old-child", "sessionId": "tree", "createdAt": 90, "status": {"type": "idle"}},
+                    {
+                        "id": "child",
+                        "sessionId": "child-session",
+                        "parentThreadId": "root",
+                        "createdAt": 110,
+                        "status": {"type": "idle"},
+                    },
+                    {
+                        "id": "old-child",
+                        "sessionId": "old-child-session",
+                        "parentThreadId": "root",
+                        "createdAt": 90,
+                        "status": {"type": "idle"},
+                    },
+                    {
+                        "id": "grandchild",
+                        "sessionId": "grandchild-session",
+                        "parentThreadId": "child",
+                        "createdAt": 120,
+                        "status": {"type": "idle"},
+                    },
                     {
                         "id": "competitor",
                         "sessionId": "other-tree",
@@ -72,7 +92,8 @@ class CodexTurnChangesTests(TempDirTestCase):
                     },
                     {
                         "id": "stale-child",
-                        "sessionId": "tree",
+                        "sessionId": "stale-child-session",
+                        "parentThreadId": "root",
                         "createdAt": 10,
                         "updatedAt": 99,
                         "status": {"type": "idle"},
@@ -124,6 +145,28 @@ class CodexTurnChangesTests(TempDirTestCase):
                     ],
                 }
             },
+            ("thread/read", "grandchild"): {
+                "thread": {
+                    "id": "grandchild",
+                    "turns": [
+                        {
+                            "id": "grandchild-turn",
+                            "startedAt": 125,
+                            "items": [
+                                {
+                                    "type": "fileChange",
+                                    "changes": [
+                                        {
+                                            "path": grandchild_path,
+                                            "kind": {"type": "update"},
+                                        }
+                                    ],
+                                }
+                            ],
+                        }
+                    ],
+                }
+            },
         }
 
         with patch.object(
@@ -137,7 +180,7 @@ class CodexTurnChangesTests(TempDirTestCase):
         self.assertEqual(result.parent_thread_id, "")
         self.assertEqual(
             set(result.touched_paths),
-            {root_path, child_path, moved_path},
+            {root_path, child_path, moved_path, grandchild_path},
         )
 
 

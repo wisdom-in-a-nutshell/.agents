@@ -92,8 +92,8 @@ All repo lifecycle hooks are Python. Do not add shell compatibility shims.
 `Stop`
 
 - Native Codex hook event, rendered as the shared global turn-end commit gate.
-- For Codex, it reads exact `fileChange` paths from the parent and same-session
-  subagent turns, finalizes every affected repository as one persisted
+- For Codex, it reads exact `fileChange` paths from the parent and recursively
+  discovered descendant subagent turns, finalizes every affected repository as one persisted
   transaction, and routes aggregate failures back to the source task.
 - It uses attributed paths to identify repositories, then consolidates all
   staged and working-tree changes under deterministic repository locks.

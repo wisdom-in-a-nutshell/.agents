@@ -125,7 +125,7 @@ Use [Codex Control Plane Ownership](/Users/dobby/GitHub/agents/docs/references/c
   - `initial-command = direct:$HOME/GitHub/agents/codex/scripts/ghostty-codex-then-shell.sh`
 - `~/.codex/config.toml` does not use Codex `notify`; global hook automation is rendered into `~/.codex/hooks.json`, and repo-assigned hooks are rendered into managed repo `.codex/hooks.json` from `hooks/registry.json`.
 - The global `Stop` hook owns the managed-repo git conveyor:
-  - reads Codex App Server `fileChange` items for the parent turn and its same-session subagents
+  - reads Codex App Server `fileChange` items for the parent turn and recursively follows `parentThreadId` for descendant subagents
   - uses those exact absolute paths to identify affected Git worktrees, then consolidates all current staged and working-tree changes inside each affected repository
   - ignores subagent Stop events because the parent Stop owns the complete turn transaction
   - allows concurrent Codex tasks to edit the same repository or file and uses deterministic per-repository locks to serialize only stage/check/commit/push finalization
