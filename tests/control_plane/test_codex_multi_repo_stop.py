@@ -773,6 +773,104 @@ class CodexMultiRepoStopTests(TempDirTestCase):
             "concurrent\n",
         )
 
+    def test_reruns_fast_check_when_staged_content_changes_at_the_same_path(self) -> None:
+        repo, remote = self.make_published_repo("repo")
+        same_path = repo / "same-path.txt"
+        same_path.write_text("before validation\n", encoding="utf-8")
+        check_script = repo / "scripts/check-fast.sh"
+        write_executable(
+            check_script,
+            "\n".join(
+                [
+                    "#!/usr/bin/env bash",
+                    "set -euo pipefail",
+                    "count=0",
+                    "if [[ -f .git/check-count ]]; then count=$(<.git/check-count); fi",
+                    "count=$((count + 1))",
+                    "printf '%s\\n' \"$count\" > .git/check-count",
+                    "if [[ \"$count\" -eq 1 ]]; then",
+                    "  printf 'changed during validation\\n' > same-path.txt",
+                    "  git add same-path.txt",
+                    "fi",
+                    "",
+                ]
+            ),
+        )
+
+        with patch.dict(os.environ, {"HOME": str(self.temp_path / "home")}):
+            with patch.object(
+                stop,
+                "collect_codex_turn_changes",
+                return_value=self.changes([same_path, check_script]),
+            ):
+                output = stop.process_codex_repositories(
+                    str(repo),
+                    {"session_id": "thread", "hook_event_name": "Stop"},
+                )
+
+        self.assertIsNone(output)
+        self.assertEqual((repo / ".git/check-count").read_text(encoding="utf-8"), "2\n")
+        self.assertEqual(
+            run_command(["git", "-C", str(remote), "show", "HEAD:same-path.txt"]).stdout,
+            "changed during validation\n",
+        )
+
+    def test_revalidates_rebased_commit_before_retrying_push(self) -> None:
+        repo, remote = self.make_published_repo("repo")
+        check_script = repo / "scripts/check-fast.sh"
+        write_executable(
+            check_script,
+            "\n".join(
+                [
+                    "#!/usr/bin/env bash",
+                    "set -euo pipefail",
+                    "if [[ -f remote-break-marker.txt ]]; then",
+                    "  printf 'rebased tree failed validation\\n' >&2",
+                    "  exit 41",
+                    "fi",
+                    "",
+                ]
+            ),
+        )
+        run_command(["git", "-C", str(repo), "add", "scripts/check-fast.sh"])
+        run_command(["git", "-C", str(repo), "commit", "-m", "add fast check"])
+        run_command(["git", "-C", str(repo), "push", "origin", "HEAD"])
+
+        competitor = self.temp_path / "competitor"
+        run_command(["git", "clone", "-q", str(remote), str(competitor)])
+        run_command(["git", "-C", str(competitor), "config", "user.email", "tests@example.com"])
+        run_command(["git", "-C", str(competitor), "config", "user.name", "Control Plane Tests"])
+        (competitor / "remote-break-marker.txt").write_text("break local check\n", encoding="utf-8")
+        run_command(["git", "-C", str(competitor), "add", "remote-break-marker.txt"])
+        run_command(["git", "-C", str(competitor), "commit", "-m", "advance remote"])
+        run_command(["git", "-C", str(competitor), "push", "origin", "HEAD"])
+
+        local_change = repo / "local-change.txt"
+        local_change.write_text("local\n", encoding="utf-8")
+        with patch.dict(os.environ, {"HOME": str(self.temp_path / "home")}):
+            with patch.object(
+                stop,
+                "collect_codex_turn_changes",
+                return_value=self.changes([local_change]),
+            ):
+                with patch.object(stop, "avoid_stop_continuation", return_value=False):
+                    output = stop.process_codex_repositories(
+                        str(repo),
+                        {"session_id": "thread", "hook_event_name": "Stop"},
+                    )
+
+        self.assertIsNotNone(output)
+        assert output is not None
+        self.assertEqual(output["decision"], "block")
+        self.assertIn("rebased tree failed validation", output["reason"])
+        self.assertNotEqual(
+            run_command(
+                ["git", "-C", str(remote), "cat-file", "-e", "HEAD:local-change.txt"],
+                check=False,
+            ).returncode,
+            0,
+        )
+
     def test_consolidates_repo_changes_without_running_mutable_precommit_hook(self) -> None:
         repo, remote = self.make_published_repo("repo")
         attributed = repo / "attributed.txt"
