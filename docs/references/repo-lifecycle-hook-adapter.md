@@ -97,10 +97,12 @@ All repo lifecycle hooks are Python. Do not add shell compatibility shims.
   transaction, and routes aggregate failures back to the source task.
 - It uses attributed paths to identify repositories, then consolidates all
   staged and working-tree changes under deterministic repository locks.
-  Concurrent tasks may overlap; edits arriving during checks are restaged and
-  rechecked. Existing local commits are pushed even when no new commit is
-  needed. Explicit fast checks and index stability replace mutable commit-hook
-  execution before rebase/push.
+  Concurrent tasks may overlap; staged-tree fingerprints detect same-path as
+  well as new-path edits arriving during checks, and changed trees are restaged
+  and rechecked. Existing local commits are pushed even when no new commit is
+  needed. Explicit fast checks and staged-tree stability replace mutable
+  commit-hook execution before rebase/push. A successful pull-rebase reruns the
+  repo fast check and must leave a clean repository before the push is retried.
 - Subagent Stop events do not finalize independently; their parent Stop owns the
   full turn tree. Copilot, Claude, and Antigravity keep the current-repository
   adapter behavior.

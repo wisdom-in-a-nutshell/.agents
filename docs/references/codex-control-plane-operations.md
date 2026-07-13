@@ -130,15 +130,15 @@ Use [Codex Control Plane Ownership](/Users/dobby/GitHub/agents/docs/references/c
   - ignores subagent Stop events because the parent Stop owns the complete turn transaction
   - allows concurrent Codex tasks to edit the same repository or file and uses deterministic per-repository locks to serialize only stage/check/commit/push finalization
   - adopts pre-staged work into the consolidated commit instead of dropping or indefinitely orphaning another task's changes
-  - preflights every affected repo's `scripts/check-fast.sh` concurrently and reruns checks when edits arrive during validation
-  - commits with mutable commit hooks disabled after the explicit fast-check and index-stability gates
+  - preflights every affected repo's `scripts/check-fast.sh` concurrently and reruns checks when the staged Git tree changes during validation, including same-path content edits that do not change the path set
+  - commits with mutable commit hooks disabled after the explicit fast-check and staged-tree stability gates
   - persists partial commit/push progress so a later continuation can finish all repositories without losing already-created commits
   - detects and pushes existing local commits even when the current turn has no new file changes in its primary repository
   - relies on managed repo local `core.hooksPath` pointing at `~/GitHub/agents/hooks/git`
   - returns aggregated hook feedback to the originating Codex task when any repository fails, so the same task can repair every affected repository
   - fails closed when cross-repository attribution is unavailable, while the primary repository retains the established current-repo fallback
   - queues an App Server follow-up turn for Azure-backed Codex threads because Azure Responses currently rejects some replayed local Codex item IDs used by built-in Stop-hook continuation; remove this workaround after upstream Codex fixes `openai/codex#20783`
-  - tracked branches use an optimistic `commit -> push` path and only run `git pull --rebase` when push reports that the remote is ahead
+  - tracked branches use an optimistic `commit -> push` path and only run `git pull --rebase` when push reports that the remote is ahead; after a successful rebase, the hook reruns `scripts/check-fast.sh` and requires a clean repository before retrying the push
   - brand-new branches without upstream tracking use an initial `git push -u <remote> HEAD`, so the hook can publish the branch before future tracked-branch pulls
   - logs phase timing to `~/.local/state/agents-control-plane/log/hooks-stop.log`
   - leaves Copilot, Claude, and Antigravity on the existing current-repository finalization path; multi-repository attribution is Codex-only

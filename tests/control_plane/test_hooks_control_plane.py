@@ -703,14 +703,17 @@ class HooksControlPlaneTests(TempDirTestCase):
     def test_stop_hook_rebases_and_retries_push_when_remote_is_ahead(self) -> None:
         module = self.load_stop_module()
         repo = init_git_repo(self.temp_path / "repo", with_initial_commit=True)
+        write_executable(repo / "scripts/check-fast.sh", "#!/bin/sh\nexit 0\n")
         captured_commands: list[list[str]] = []
         push_attempts = 0
+        rebased = False
 
         def fake_run(args, cwd, *, timeout, env=None):  # noqa: ANN001, ARG001
-            nonlocal push_attempts
+            nonlocal push_attempts, rebased
             captured_commands.append(list(args))
             if args[:3] == ["git", "status", "--porcelain"]:
-                return SimpleNamespace(returncode=0, stdout=" M file.txt\n", stderr="")
+                status = "" if rebased else " M file.txt\n"
+                return SimpleNamespace(returncode=0, stdout=status, stderr="")
             if args[:4] == ["git", "symbolic-ref", "--quiet", "--short"]:
                 return SimpleNamespace(returncode=0, stdout="main\n", stderr="")
             if args[:3] == ["git", "config", "--get"]:
@@ -727,6 +730,8 @@ class HooksControlPlaneTests(TempDirTestCase):
                         "hint: Updates were rejected because the remote contains work.\n",
                     )
                 return SimpleNamespace(returncode=0, stdout="", stderr="")
+            if args == ["git", "pull", "--rebase"]:
+                rebased = True
             return SimpleNamespace(returncode=0, stdout="", stderr="")
 
         with patch.object(module, "run", side_effect=fake_run):
@@ -743,6 +748,56 @@ class HooksControlPlaneTests(TempDirTestCase):
         self.assertIsNone(output)
         self.assertEqual(push_attempts, 2)
         self.assertIn(["git", "pull", "--rebase"], captured_commands)
+        self.assertIn(["bash", "scripts/check-fast.sh"], captured_commands)
+
+    def test_stop_hook_blocks_when_post_rebase_fast_check_fails(self) -> None:
+        module = self.load_stop_module()
+        repo = init_git_repo(self.temp_path / "repo", with_initial_commit=True)
+        write_executable(repo / "scripts/check-fast.sh", "#!/bin/sh\nexit 1\n")
+        push_attempts = 0
+
+        def fake_run(args, cwd, *, timeout, env=None):  # noqa: ANN001, ARG001
+            nonlocal push_attempts
+            if args[:3] == ["git", "status", "--porcelain"]:
+                return SimpleNamespace(returncode=0, stdout=" M file.txt\n", stderr="")
+            if args[:4] == ["git", "symbolic-ref", "--quiet", "--short"]:
+                return SimpleNamespace(returncode=0, stdout="main\n", stderr="")
+            if args[:3] == ["git", "config", "--get"]:
+                return SimpleNamespace(returncode=0, stdout="origin\n", stderr="")
+            if args[:4] == ["git", "rev-parse", "--abbrev-ref", "--symbolic-full-name"]:
+                return SimpleNamespace(returncode=0, stdout="origin/main\n", stderr="")
+            if args == ["git", "push", "origin", "HEAD"]:
+                push_attempts += 1
+                return SimpleNamespace(
+                    returncode=1,
+                    stdout="",
+                    stderr="! [rejected] HEAD -> main (fetch first)\n",
+                )
+            if args == ["bash", "scripts/check-fast.sh"]:
+                return SimpleNamespace(
+                    returncode=17,
+                    stdout="",
+                    stderr="rebased tree failed validation\n",
+                )
+            return SimpleNamespace(returncode=0, stdout="", stderr="")
+
+        with patch.object(module, "run", side_effect=fake_run):
+            with patch.object(module, "is_git_repo", return_value=True):
+                with patch.object(module, "has_in_progress_ops", return_value=False):
+                    with patch.object(module, "clear_stale_index_lock", return_value=True):
+                        with patch.object(module, "log"):
+                            output = module.process_repo(
+                                str(repo),
+                                {"hook_event_name": "Stop"},
+                                runtime="claude",
+                            )
+
+        self.assertIsNotNone(output)
+        assert output is not None
+        self.assertEqual(output["decision"], "block")
+        self.assertIn("scripts/check-fast.sh after git pull --rebase", output["reason"])
+        self.assertIn("rebased tree failed validation", output["reason"])
+        self.assertEqual(push_attempts, 1)
 
     def test_stop_hook_blocks_on_pre_commit_failure(self) -> None:
         module = self.load_stop_module()
