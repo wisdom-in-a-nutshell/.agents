@@ -888,6 +888,11 @@ def staged_paths(root: str) -> tuple[set[str], subprocess.CompletedProcess[str]]
     return null_separated_paths(result), result
 
 
+def index_tree(root: str) -> tuple[str, subprocess.CompletedProcess[str]]:
+    result = run(["git", "write-tree"], root, timeout=GIT_STATUS_TIMEOUT_SEC)
+    return (result.stdout.strip() if result.returncode == 0 else ""), result
+
+
 def unstaged_paths(root: str) -> tuple[set[str], list[subprocess.CompletedProcess[str]]]:
     diff = run(
         ["git", "diff", "--no-renames", "--name-only", "-z"],
@@ -969,6 +974,34 @@ def unpushed_head(root: str) -> str:
     return head_commit(root)
 
 
+def validate_rebased_repo(
+    root: str,
+) -> tuple[subprocess.CompletedProcess[str] | None, list[str], str]:
+    script = Path(root) / "scripts/check-fast.sh"
+    if script.is_file():
+        check_cmd = ["bash", "scripts/check-fast.sh"]
+        check = run(check_cmd, root, timeout=GIT_COMMIT_TIMEOUT_SEC)
+        if check.returncode != 0:
+            return check, check_cmd, "scripts/check-fast.sh after git pull --rebase"
+
+    status_cmd = ["git", "status", "--porcelain"]
+    status = run(status_cmd, root, timeout=GIT_STATUS_TIMEOUT_SEC)
+    if status.returncode != 0:
+        return status, status_cmd, "inspect repository after post-rebase validation"
+    if status.stdout.strip():
+        changed = subprocess.CompletedProcess(
+            args=status_cmd,
+            returncode=1,
+            stdout=status.stdout,
+            stderr=(
+                "Post-rebase validation changed repository files. "
+                "The changes were left intact for the next consolidation pass."
+            ),
+        )
+        return changed, status_cmd, "post-rebase repository stability check"
+    return None, [], ""
+
+
 def push_committed_repo(
     root: str,
 ) -> tuple[subprocess.CompletedProcess[str] | None, list[str], str]:
@@ -983,6 +1016,9 @@ def push_committed_repo(
         pull = run(pull_cmd, root, timeout=GIT_PULL_TIMEOUT_SEC)
         if pull.returncode != 0:
             return pull, pull_cmd, "git pull --rebase failed"
+        validation, validation_cmd, validation_title = validate_rebased_repo(root)
+        if validation is not None:
+            return validation, validation_cmd, validation_title
         push = run(push_cmd, root, timeout=GIT_PUSH_TIMEOUT_SEC)
     return push, push_cmd, "git push failed"
 
@@ -1175,7 +1211,34 @@ def process_codex_repositories(
         save_codex_transaction(thread_id, repositories)
 
         stable = False
+        validated_trees: dict[str, str] = {}
         for pass_index in range(MAX_CONSOLIDATION_PASSES):
+            pass_trees: dict[str, str] = {}
+            tree_failures: list[str] = []
+            for item in pending_items:
+                tree, tree_result = index_tree(item.root)
+                if tree_result.returncode != 0:
+                    tree_failures.append(
+                        command_failure_reason(
+                            item.root,
+                            "snapshot staged tree before fast checks",
+                            ["git", "write-tree"],
+                            tree_result,
+                        )
+                    )
+                    continue
+                pass_trees[item.root] = tree
+            if tree_failures:
+                save_codex_transaction(thread_id, repositories)
+                return maybe_continue(
+                    payload,
+                    codex_failure_reason(
+                        "I could not snapshot every staged repository before validation.",
+                        tree_failures,
+                    ),
+                    cwd=cwd,
+                )
+
             check_failures: list[str] = []
             with concurrent.futures.ThreadPoolExecutor(
                 max_workers=max(1, min(CODEX_CHECK_WORKERS, len(pending_items) or 1))
@@ -1210,10 +1273,8 @@ def process_codex_repositories(
                         f"Repository {item.root}: could not re-read changes after checks."
                     )
                     continue
-                additions = (staged | unstaged) - item.paths
-                if additions or unstaged:
-                    item.paths.update(staged | unstaged)
-                    changed_during_checks = True
+                item.paths.update(staged | unstaged)
+                if unstaged:
                     add_cmd = ["git", "add", "-A"]
                     add = run(add_cmd, item.root, timeout=GIT_ADD_TIMEOUT_SEC)
                     if add.returncode != 0:
@@ -1225,6 +1286,20 @@ def process_codex_repositories(
                                 add,
                             )
                         )
+                        continue
+                after_tree, after_tree_result = index_tree(item.root)
+                if after_tree_result.returncode != 0:
+                    restage_failures.append(
+                        command_failure_reason(
+                            item.root,
+                            "snapshot staged tree after fast checks",
+                            ["git", "write-tree"],
+                            after_tree_result,
+                        )
+                    )
+                    continue
+                if after_tree != pass_trees[item.root]:
+                    changed_during_checks = True
             if restage_failures:
                 save_codex_transaction(thread_id, repositories)
                 return maybe_continue(
@@ -1248,6 +1323,7 @@ def process_codex_repositories(
             save_codex_transaction(thread_id, repositories)
             if not changed_during_checks:
                 stable = True
+                validated_trees = pass_trees
                 break
             log(
                 "codex",
@@ -1283,6 +1359,23 @@ def process_codex_repositories(
                     f"Repository {item.root}: new staged files arrived after the final check: "
                     + ", ".join(sorted(unexpected_staged))
                     + ". Left them intact for the next consolidation pass."
+                )
+                break
+            final_tree, final_tree_result = index_tree(item.root)
+            if final_tree_result.returncode != 0:
+                failures.append(
+                    command_failure_reason(
+                        item.root,
+                        "inspect final staged tree",
+                        ["git", "write-tree"],
+                        final_tree_result,
+                    )
+                )
+                break
+            if final_tree != validated_trees.get(item.root):
+                failures.append(
+                    f"Repository {item.root}: staged content changed after the final fast check; "
+                    "left it intact for the next consolidation pass."
                 )
                 break
             final_unstaged, final_unstaged_results = unstaged_paths(item.root)
@@ -1530,6 +1623,24 @@ def process_repo(cwd: str, payload: dict[str, Any], *, runtime: str) -> dict[str
                 maybe_continue(
                     payload,
                     command_failure_reason(root, "git pull --rebase", pull_cmd, pull),
+                    cwd=root,
+                ),
+            )
+        started_at = time.monotonic()
+        validation, validation_cmd, validation_title = validate_rebased_repo(root)
+        record_timing(timings, "post_rebase_check", started_at)
+        if validation is not None:
+            log(runtime, f"block post-rebase-validation repo={root} exit={validation.returncode}")
+            return finish(
+                "block_post_rebase_validation",
+                maybe_continue(
+                    payload,
+                    command_failure_reason(
+                        root,
+                        validation_title,
+                        validation_cmd,
+                        validation,
+                    ),
                     cwd=root,
                 ),
             )
