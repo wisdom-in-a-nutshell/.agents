@@ -15,7 +15,7 @@ The current Copilot control plane is client-first:
 - `config/copilot-settings.json`
   - scalar settings merged into `~/.copilot/settings.json`
   - trust policy rendered into `~/.copilot/config.json` `trustedFolders`
-  - user-level `~/.copilot/mcp-config.json` remains empty so repo targeting stays authoritative
+  - Copilot-only global MCP targets render into user-level `~/.copilot/mcp-config.json`
   - terminal launcher defaults rendered to `~/bin/copilot`
   - skill-noise policy for validation
 - `hooks/registry.json`
@@ -26,7 +26,7 @@ The current Copilot control plane is client-first:
   - Claude Code and Codex preview config render from the same registry through `scripts/sync-claude.sh`
 - `mcp/config/presets.json`
   - canonical MCP transport definitions and repository/client targets
-  - Copilot-only targets render into repo `.github/mcp.json`; Claude+Copilot targets use shared root `.mcp.json`
+  - exclusive Copilot `repos: "all"` targets render into the user MCP file; narrower Copilot-only targets render into repo `.github/mcp.json`; Claude+Copilot targets use shared root `.mcp.json`
 - `config/global.agents.md`
   - the same canonical machine-wide guidance rendered into `~/.claude/CLAUDE.md` and `~/.codex/AGENTS.md`
   - now also symlinked into `~/.copilot/copilot-instructions.md` by `scripts/sync-copilot.py`
@@ -50,16 +50,24 @@ The current Copilot control plane is client-first:
   - `trustedFolders` includes `~/GitHub`, direct child repos, `~/.agents`, and `~/GitHub/agents`
   - managed trust is kept out of `settings.json` so the CLI does not move it on every startup
 - `~/.copilot/mcp-config.json`
-  - fully rendered as `{"mcpServers": {}}`; an ad-hoc user-level `copilot mcp add <name> ...` is pruned on the next apply
-  - remains empty by design so MCP availability is controlled per repository
+  - fully rendered from exclusive Copilot targets that use `repos: "all"`; an ad-hoc user-level `copilot mcp add <name> ...` is pruned on the next apply
+  - currently carries Playwright globally for Copilot CLI without exposing it to Codex or Claude
 - repo `.github/mcp.json`
-  - generated only when a repo has Copilot-only MCP cells in `mcp/config/presets.json`
-  - currently carries Playwright for `agents`, `frontier-lab-intelligence`, and `stadia-macos-controller`
+  - generated only when a repo has a narrower Copilot-only MCP target and no root `.mcp.json` conflict
   - is removed when the repo no longer has Copilot-only targets
 - repo `.mcp.json`
   - generated when an MCP targets both Claude and Copilot for that repo
   - is not duplicated into `.github/mcp.json`
   - `--check` cross-validates both project surfaces against live `copilot mcp list --json` source data
+
+### Workspace-file limitation
+
+Copilot CLI 1.0.70 was tested with isolated root-only, `.github`-only, both-file,
+and combined-file fixtures. Each file loads alone, but when both exist the CLI
+loads only root `.mcp.json`; putting both definitions in one root file loads
+both. This contradicts GitHub's documented merge behavior, so the registry
+validator treats the installed runtime as authoritative and rejects any target
+matrix that would silently depend on the two workspace files being merged.
 - `~/.copilot/hooks/agents-control-plane.json`
   - uses PascalCase event names so Copilot provides VS Code-compatible snake_case payloads
   - renders `SessionStart`, `UserPromptSubmit`, and `Stop` from the shared hook registry

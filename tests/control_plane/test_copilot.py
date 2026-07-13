@@ -614,6 +614,46 @@ class CopilotSyncTests(TempDirTestCase):
             },
         )
 
+        # A Copilot-only `repos: all` target moves to the native user surface
+        # and removes the repo file, avoiding Copilot's two-workspace-file
+        # precedence behavior.
+        write_json(
+            mcp_registry,
+            {
+                "version": 2,
+                "presets": {
+                    "playwright": {
+                        "transport": "stdio",
+                        "command": "npx",
+                        "args": ["-y", "@playwright/mcp@latest"],
+                        "targets": [{"clients": ["copilot"], "repos": "all"}],
+                    }
+                },
+            },
+        )
+        run_command([*base_args, "--apply"], env={"HOME": str(home)})
+        global_mcp = json.loads(
+            "\n".join(
+                line
+                for line in mcp_config_file.read_text(encoding="utf-8").splitlines()
+                if not line.startswith("//")
+            )
+        )
+        self.assertEqual(
+            global_mcp,
+            {
+                "mcpServers": {
+                    "playwright": {
+                        "tools": ["*"],
+                        "type": "local",
+                        "command": "npx",
+                        "args": ["-y", "@playwright/mcp@latest"],
+                    }
+                }
+            },
+        )
+        self.assertFalse((agents_repo / ".github/mcp.json").exists())
+
         # Removing the target rule removes the repo-specific generated surface.
         write_json(
             mcp_registry,
@@ -631,6 +671,14 @@ class CopilotSyncTests(TempDirTestCase):
         )
         run_command([*base_args, "--apply"], env={"HOME": str(home)})
         self.assertFalse((agents_repo / ".github/mcp.json").exists())
+        empty_user_mcp = json.loads(
+            "\n".join(
+                line
+                for line in mcp_config_file.read_text(encoding="utf-8").splitlines()
+                if not line.startswith("//")
+            )
+        )
+        self.assertEqual(empty_user_mcp, {"mcpServers": {}})
 
         run_command([*base_args, "--check", "--skip-cli-probe"], env={"HOME": str(home)})
 

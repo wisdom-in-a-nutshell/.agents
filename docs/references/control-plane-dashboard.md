@@ -189,7 +189,8 @@ rows, Codex/Claude/Copilot are columns, and each active cell lists the MCPs
 delivered to that exact combination. Server filters isolate one definition and
 show its endpoint, repo coverage, client coverage, and registry source. This is
 the operator view of `mcp/config/presets.json`; assignments are not duplicated
-in the repo bootstrap registry.
+in the repo bootstrap registry. A global client target remains visible in every
+managed repo row and is labeled with the client whose user surface carries it.
 
 Repo entries come from `codex/config/repo-bootstrap.json`. If a managed repo
 path no longer exists on the current machine, the dashboard keeps the row but

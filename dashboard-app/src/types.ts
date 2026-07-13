@@ -50,6 +50,7 @@ export interface ItemDetails {
   model?: string;
   reasoning?: string;
   clients?: string[];
+  global_clients?: string[];
   repo_clients?: Record<string, string[]>;
   targets?: Array<{ clients: 'all' | string[]; repos: 'all' | string[] }>;
   features?: Record<string, unknown>;

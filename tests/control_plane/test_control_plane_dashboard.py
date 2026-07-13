@@ -222,6 +222,14 @@ class ControlPlaneDashboardDataTests(TempDirTestCase):
         self.assertEqual(data["groups"]["repos"][1]["details"]["plugin_count"], 2)
         self.assertTrue(data["groups"]["repos"][0]["details"]["exists"])
         self.assertTrue(any(item["name"] == "openaiDeveloperDocs" for item in data["groups"]["mcp"]))
+        openai_docs = [
+            item for item in data["groups"]["mcp"] if item["name"] == "openaiDeveloperDocs"
+        ][0]
+        self.assertEqual(
+            openai_docs["details"]["global_clients"],
+            ["codex", "claude", "copilot"],
+        )
+        self.assertEqual(openai_docs["scope"], "global")
         cloudflare = [item for item in data["groups"]["mcp"] if item["name"] == "cloudflare-docs"][0]
         self.assertEqual(cloudflare["details"]["repo_clients"], {"adi": ["codex"]})
         plugin_skill = [

@@ -65,6 +65,36 @@ class McpCatalog:
             if any(client in self.clients_for(preset, repo) for repo in self.repo_paths)
         ]
 
+    def global_clients_used_by(self, preset: str) -> list[str]:
+        return [
+            client
+            for client in MCP_CLIENTS
+            if any(
+                target.all_repos and client in target.clients
+                for target in self.targets.get(preset, ())
+            )
+        ]
+
+    def exclusive_global_presets_for(
+        self,
+        client: str,
+    ) -> list[tuple[str, dict[str, Any]]]:
+        """Presets globally assigned to exactly one client.
+
+        These can use a client-native user surface without widening availability
+        to another runtime. Shared multi-client targets continue to render through
+        project surfaces.
+        """
+        _require_client(client)
+        return [
+            (name, self.definitions[name])
+            for name in sorted(self.definitions)
+            if any(
+                target.all_repos and target.clients == (client,)
+                for target in self.targets.get(name, ())
+            )
+        ]
+
     def target_dicts(self, preset: str) -> list[dict[str, str | list[str]]]:
         return [target.as_dict() for target in self.targets.get(preset, ())]
 
@@ -238,6 +268,37 @@ def load_mcp_catalog_data(data: Any, repo_entries: Any) -> McpCatalog:
         }
         for repo, assignments in mutable_repo_clients.items()
     }
+
+    # Copilot CLI 1.0.70 treats .github/mcp.json as a fallback when root
+    # .mcp.json exists, despite the public documentation describing a merge.
+    # Reject a matrix that would silently drop Copilot-only repo servers. An
+    # exclusive Copilot `repos: all` target is safe because it uses the user
+    # MCP surface instead of .github/mcp.json.
+    global_copilot_names = {
+        name
+        for name, preset_targets in targets.items()
+        if any(
+            target.all_repos and target.clients == ("copilot",)
+            for target in preset_targets
+        )
+    }
+    for repo, assignments in repo_clients.items():
+        has_shared_workspace_mcp = any(
+            "claude" in clients for clients in assignments.values()
+        )
+        private_copilot_names = sorted(
+            name
+            for name, clients in assignments.items()
+            if "copilot" in clients
+            and "claude" not in clients
+            and name not in global_copilot_names
+        )
+        if has_shared_workspace_mcp and private_copilot_names:
+            raise McpRegistryError(
+                f"repo `{repo}` mixes shared .mcp.json servers with Copilot-only "
+                ".github/mcp.json servers that Copilot CLI 1.0.70 does not merge: "
+                + ", ".join(private_copilot_names)
+            )
     return McpCatalog(definitions, targets, repo_path_tuple, repo_clients)
 
 

@@ -67,7 +67,7 @@ Source of truth:
 
 MCPs are standalone endpoints and transports. Every definition owns a two-axis target matrix: repositories down one axis and clients (`codex`, `claude`, `copilot`) across the other. A selector can target explicit values or `"all"`. If a plugin contains MCP internally, that remains plugin-owned unless it is manually promoted into this registry.
 
-Codex cells render to repo `.codex/config.toml`. Claude and Copilot can share root `.mcp.json`; Copilot-only cells render to `.github/mcp.json`. Because Copilot also discovers root `.mcp.json`, the registry rejects Claude-without-Copilot targets instead of promising isolation the runtime cannot enforce.
+Codex cells render to repo `.codex/config.toml`. Claude and Copilot can share root `.mcp.json`. An exclusive Copilot target with `repos: "all"` renders once to `~/.copilot/mcp-config.json`; narrower Copilot-only targets render to `.github/mcp.json` only where no root `.mcp.json` exists. Because Copilot CLI 1.0.70 selects root `.mcp.json` instead of merging the two workspace files, the compiler rejects a repo matrix that would require both. It also rejects Claude-without-Copilot targets because Copilot discovers Claude's root project file.
 
 ## Working Rules
 

@@ -6,7 +6,7 @@ import type { ControlPlaneData, Item } from '../types';
 const CLIENT_LABELS: Record<string, { label: string; surface: string }> = {
   codex: { label: 'Codex', surface: '.codex/config.toml' },
   claude: { label: 'Claude', surface: '.mcp.json' },
-  copilot: { label: 'Copilot', surface: '.mcp.json + .github/mcp.json' },
+  copilot: { label: 'Copilot', surface: 'user + workspace MCP' },
 };
 
 function clientsForRepo(item: Item, repoName: string): string[] {
@@ -111,6 +111,9 @@ export function McpExplorer({
             </div>
             <div className="mcp-definition-meta">
               <span>{cleanArray(selected.details.clients).join(' · ') || 'unassigned'}</span>
+              {cleanArray(selected.details.global_clients).length ? (
+                <span>Global: {cleanArray(selected.details.global_clients).join(' · ')}</span>
+              ) : null}
               <span>{selected.repos.length} repos</span>
               <a href={sourceHref(selected)} target="_blank" rel="noreferrer">
                 Registry

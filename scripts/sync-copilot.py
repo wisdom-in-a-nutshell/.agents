@@ -406,9 +406,14 @@ def merge_user_config(
     return desired
 
 
-def render_user_mcp_config() -> dict[str, Any]:
-    """Keep the user MCP surface empty; all managed MCP scope lives in the catalog."""
-    return {"mcpServers": {}}
+def render_user_mcp_config(catalog: Any) -> dict[str, Any]:
+    """Render Copilot-only global targets into Copilot's native user surface."""
+    return {
+        "mcpServers": {
+            name: copilot_server_from_preset(name, preset)
+            for name, preset in catalog.exclusive_global_presets_for("copilot")
+        }
+    }
 
 
 def write_json(path: Path, data: dict[str, Any], *, apply: bool, header: str = "") -> None:
@@ -445,23 +450,26 @@ def copilot_only_servers(catalog: Any, repo_ref: str) -> dict[str, Any]:
     Servers also targeted to Claude are already present in the shared root
     .mcp.json and must not be duplicated here.
     """
+    global_names = {
+        name for name, _ in catalog.exclusive_global_presets_for("copilot")
+    }
     return {
         name: copilot_server_from_preset(name, preset)
         for name, preset in catalog.presets_for(repo_ref, "copilot")
         if "claude" not in catalog.clients_for(name, repo_ref)
+        and name not in global_names
     }
 
 
 def reconcile_repo_mcp_configs(
     repo_entries: list[dict[str, Any]],
-    mcp_registry_file: Path,
+    catalog: Any,
     github_root: Path,
     repo_filters: set[Path],
     *,
     apply: bool,
     check: bool,
 ) -> None:
-    catalog = load_mcp_catalog(mcp_registry_file, repo_entries)
     home = Path.home()
     for entry in repo_entries:
         repo_ref = str(entry["path"])
@@ -494,19 +502,30 @@ def reconcile_repo_mcp_configs(
 
 def expected_copilot_servers_for_cwd(
     repo_entries: list[dict[str, Any]],
-    mcp_registry_file: Path,
+    catalog: Any,
     github_root: Path,
-) -> set[str]:
+) -> dict[str, str]:
+    expected = {
+        name: "user"
+        for name, _ in catalog.exclusive_global_presets_for("copilot")
+    }
     current_root = repo_git_root(Path.cwd())
     if current_root is None:
-        return set()
-    catalog = load_mcp_catalog(mcp_registry_file, repo_entries)
+        return expected
     home = Path.home()
     for entry in repo_entries:
         repo_ref = str(entry["path"])
         if repo_git_root(resolve_repo_root(repo_ref, github_root, home)) == current_root:
-            return {name for name, _ in catalog.presets_for(repo_ref, "copilot")}
-    return set()
+            global_names = set(expected)
+            expected.update(
+                {
+                    name: "workspace"
+                    for name, _ in catalog.presets_for(repo_ref, "copilot")
+                    if name not in global_names
+                }
+            )
+            return expected
+    return expected
 
 
 def ensure_str(value: Any, field: str, label: str, idx: int) -> str:
@@ -921,11 +940,13 @@ def sync(
     desired_user_config = merge_user_config(user_config, settings, trusted_folders)
     write_json(user_config_file, desired_user_config, apply=apply, header=CONFIG_HEADER)
 
-    desired_mcp_config = render_user_mcp_config()
+    repo_entries = load_repo_mcp_entries(repo_registry_file)
+    catalog = load_mcp_catalog(mcp_registry_file, repo_entries)
+    desired_mcp_config = render_user_mcp_config(catalog)
     write_json(mcp_config_file, desired_mcp_config, apply=apply, header=CONFIG_HEADER)
     reconcile_repo_mcp_configs(
-        load_repo_mcp_entries(repo_registry_file),
-        mcp_registry_file,
+        repo_entries,
+        catalog,
         github_root,
         repo_filters,
         apply=apply,
@@ -1026,14 +1047,15 @@ def check(
         if actual_settings.get(key) != expected_value:
             fail(f"Copilot setting drift: {settings_file} {key}={actual_settings.get(key)!r}, expected {expected_value!r}")
 
-    expected_mcp_config = render_user_mcp_config()
+    repo_entries = load_repo_mcp_entries(repo_registry_file)
+    catalog = load_mcp_catalog(mcp_registry_file, repo_entries)
+    expected_mcp_config = render_user_mcp_config(catalog)
     actual_mcp_config = read_json_object(mcp_config_file, allow_comments=True)
     if actual_mcp_config != expected_mcp_config:
         fail(f"Copilot MCP config is out of sync: {mcp_config_file}")
-    repo_entries = load_repo_mcp_entries(repo_registry_file)
     reconcile_repo_mcp_configs(
         repo_entries,
-        mcp_registry_file,
+        catalog,
         github_root,
         repo_filters,
         apply=False,
@@ -1132,14 +1154,16 @@ def check(
         live_servers = mcp.get("mcpServers", {})
         if not isinstance(live_servers, dict):
             fail("Copilot CLI MCP list JSON mcpServers must be an object")
-        for name in expected_copilot_servers_for_cwd(
+        for name, expected_source in expected_copilot_servers_for_cwd(
             repo_entries,
-            mcp_registry_file,
+            catalog,
             github_root,
-        ):
+        ).items():
             live_entry = live_servers.get(name)
-            if not isinstance(live_entry, dict) or live_entry.get("source") != "workspace":
-                fail(f"managed Copilot MCP server not loaded from workspace config: {name}")
+            if not isinstance(live_entry, dict) or live_entry.get("source") != expected_source:
+                fail(
+                    f"managed Copilot MCP server not loaded from {expected_source} config: {name}"
+                )
 
     observed_app_skills = app_skill_names(app_support_dir)
     if overlay.get("skills", {}).get("appSkillsPolicy") == "allow-known-only":

@@ -76,7 +76,7 @@ def build_capability_board(counts: dict[str, Any]) -> list[dict[str, Any]]:
             "source": "mcp/config/presets.json", "count": counts.get("mcp"),
             "codex": {"status": "stable", "note": "rendered to config.toml"},
             "claude": {"status": "stable", "note": "rendered to .mcp.json"},
-            "copilot": {"status": "stable", "note": ".mcp.json + .github/mcp.json"},
+            "copilot": {"status": "stable", "note": "user + workspace MCP"},
         },
         {
             "key": "plugins", "name": "Plugins",
@@ -858,14 +858,12 @@ def build_control_plane_data(root: Path) -> dict[str, Any]:
         assigned_repo_refs = mcp_catalog.repos_for(str(name)) if mcp_catalog else []
         assigned_repos = sorted(repo_name(repo) for repo in assigned_repo_refs)
         clients = mcp_catalog.clients_used_by(str(name)) if mcp_catalog else []
+        global_clients = mcp_catalog.global_clients_used_by(str(name)) if mcp_catalog else []
         repo_clients = {
             repo_name(repo): list(mcp_catalog.clients_for(str(name), repo))
             for repo in assigned_repo_refs
         } if mcp_catalog else {}
-        is_global = bool(mcp_catalog) and bool(mcp_catalog.repo_paths) and all(
-            set(mcp_catalog.clients_for(str(name), repo)) == set(MCP_CLIENTS)
-            for repo in mcp_catalog.repo_paths
-        )
+        is_global = bool(global_clients)
         scope = "global" if is_global else "targeted" if assigned_repos else "unassigned"
         mcp_presets.append(
             base_item(
@@ -880,6 +878,7 @@ def build_control_plane_data(root: Path) -> dict[str, Any]:
                     "url": config.get("url"),
                     "command": config.get("command"),
                     "clients": clients,
+                    "global_clients": global_clients,
                     "repo_clients": repo_clients,
                     "targets": mcp_catalog.target_dicts(str(name)) if mcp_catalog else [],
                     "global": is_global,

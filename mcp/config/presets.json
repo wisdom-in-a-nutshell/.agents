@@ -63,11 +63,7 @@
           "clients": [
             "copilot"
           ],
-          "repos": [
-            "~/GitHub/agents",
-            "~/GitHub/frontier-lab-intelligence",
-            "~/GitHub/stadia-macos-controller"
-          ]
+          "repos": "all"
         }
       ]
     }

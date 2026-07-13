@@ -25,7 +25,9 @@ class McpControlPlaneTests(unittest.TestCase):
                     "docs": {
                         "transport": "http",
                         "url": "https://example.com/mcp",
-                        "targets": [{"clients": "all", "repos": "all"}],
+                        "targets": [
+                            {"clients": "all", "repos": ["~/GitHub/agents"]}
+                        ],
                     },
                     "playwright": {
                         "transport": "stdio",
@@ -34,7 +36,7 @@ class McpControlPlaneTests(unittest.TestCase):
                         "targets": [
                             {
                                 "clients": ["copilot"],
-                                "repos": ["~/GitHub/agents"],
+                                "repos": ["~/GitHub/frontier-lab-intelligence"],
                             },
                             {
                                 "clients": ["codex"],
@@ -52,17 +54,66 @@ class McpControlPlaneTests(unittest.TestCase):
             ("codex", "claude", "copilot"),
         )
         self.assertEqual(
-            catalog.clients_for("playwright", "~/GitHub/agents"),
-            ("copilot",),
-        )
-        self.assertEqual(
             catalog.clients_for("playwright", "~/GitHub/frontier-lab-intelligence"),
-            ("codex",),
+            ("codex", "copilot"),
         )
         self.assertEqual(
             [name for name, _ in catalog.presets_for("~/GitHub/agents", "copilot")],
-            ["docs", "playwright"],
+            ["docs"],
         )
+        self.assertEqual(catalog.exclusive_global_presets_for("copilot"), [])
+
+    def test_identifies_client_exclusive_global_target(self) -> None:
+        catalog = load_mcp_catalog_data(
+            {
+                "version": 2,
+                "presets": {
+                    "playwright": {
+                        "transport": "stdio",
+                        "command": "npx",
+                        "targets": [{"clients": ["copilot"], "repos": "all"}],
+                    }
+                },
+            },
+            REPOS,
+        )
+
+        self.assertEqual(catalog.global_clients_used_by("playwright"), ["copilot"])
+        self.assertEqual(
+            [name for name, _ in catalog.exclusive_global_presets_for("copilot")],
+            ["playwright"],
+        )
+
+    def test_rejects_workspace_files_that_current_copilot_cli_does_not_merge(self) -> None:
+        with self.assertRaisesRegex(McpRegistryError, "does not merge: playwright"):
+            load_mcp_catalog_data(
+                {
+                    "version": 2,
+                    "presets": {
+                        "docs": {
+                            "transport": "http",
+                            "url": "https://example.com/mcp",
+                            "targets": [
+                                {
+                                    "clients": ["claude", "copilot"],
+                                    "repos": ["~/GitHub/agents"],
+                                }
+                            ],
+                        },
+                        "playwright": {
+                            "transport": "stdio",
+                            "command": "npx",
+                            "targets": [
+                                {
+                                    "clients": ["copilot"],
+                                    "repos": ["~/GitHub/agents"],
+                                }
+                            ],
+                        },
+                    },
+                },
+                REPOS,
+            )
 
     def test_rejects_unknown_repo(self) -> None:
         with self.assertRaisesRegex(McpRegistryError, "missing from repo-bootstrap.json"):
