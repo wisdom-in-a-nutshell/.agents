@@ -221,8 +221,8 @@ Verification expectations:
   - writes `.codex/hooks.json` for all managed repos with only the hooks assigned to that repo
   - prunes stale managed repo-local `.codex/agents/*.toml` files left by older control-plane versions
   - skips no-op rewrites instead of dirtying the git repos unnecessarily
-  - keeps the repo list and repo-level MCP/model assignments in [`repo-bootstrap.json`](/Users/dobby/GitHub/agents/codex/config/repo-bootstrap.json)
-  - resolves MCP preset definitions through [`mcp/config/presets.json`](/Users/dobby/GitHub/agents/mcp/config/presets.json)
+  - keeps the repo list and repo-level model/default assignments in [`repo-bootstrap.json`](/Users/dobby/GitHub/agents/codex/config/repo-bootstrap.json)
+  - resolves Codex cells from the MCP target matrix in [`mcp/config/presets.json`](/Users/dobby/GitHub/agents/mcp/config/presets.json)
 - [`sync-managed-git-hooks.sh`](/Users/dobby/GitHub/agents/scripts/sync-managed-git-hooks.sh)
   - applies local-only `core.hooksPath` for every managed repo in [`repo-bootstrap.json`](/Users/dobby/GitHub/agents/codex/config/repo-bootstrap.json)
   - points Git at [`hooks/git/pre-commit`](/Users/dobby/GitHub/agents/hooks/git/pre-commit)
@@ -236,8 +236,8 @@ Verification expectations:
   - runs `sync-repo-codex-configs.sh --check`, so stale or hand-edited repo-local `.codex/config.toml`, `.codex/hooks.json`, and older managed `.codex/agents/*.toml` files fail validation
 - [`sync-repo-bootstrap-registry.sh`](/Users/dobby/GitHub/agents/codex/scripts/sync-repo-bootstrap-registry.sh)
   - validates [`repo-bootstrap.json`](/Users/dobby/GitHub/agents/codex/config/repo-bootstrap.json)
-  - pulls MCP preset definitions from [`mcp/config/presets.json`](/Users/dobby/GitHub/agents/mcp/config/presets.json)
-  - validates repo MCP assignments against canonical standalone preset groups
+  - validates MCP definitions and repository/client targets from [`mcp/config/presets.json`](/Users/dobby/GitHub/agents/mcp/config/presets.json)
+  - rejects unknown repos or clients and target combinations that cannot be isolated by the available runtime surfaces
 - [`bootstrap-machine-codex.sh`](/Users/dobby/GitHub/agents/codex/scripts/bootstrap-machine-codex.sh)
   - runs config sync
   - runs trusted-project sync
@@ -314,7 +314,6 @@ Verification expectations:
 
 - [`repo-bootstrap.json`](/Users/dobby/GitHub/agents/codex/config/repo-bootstrap.json) currently controls these per-repo fields:
   - `codex_trust`
-  - `mcp_presets`
   - `model`
   - `model_auto_compact_token_limit`
   - `model_reasoning_effort`
@@ -326,7 +325,7 @@ Verification expectations:
   - `project_root_markers`
   - `features`
   - `service_tier`
-- Shared MCP preset definitions live separately in [`mcp/config/presets.json`](/Users/dobby/GitHub/agents/mcp/config/presets.json).
+- Shared MCP definitions and all repo/client targets live separately in [`mcp/config/presets.json`](/Users/dobby/GitHub/agents/mcp/config/presets.json).
 - Shared lifecycle hook definitions live separately in [`hooks/registry.json`](/Users/dobby/GitHub/agents/hooks/registry.json).
 - Native Codex plugin scope and state lives separately in [`plugins/registry.json`](/Users/dobby/GitHub/agents/plugins/registry.json).
 - The global defaults block supplies fallback values for repos that do not override them.

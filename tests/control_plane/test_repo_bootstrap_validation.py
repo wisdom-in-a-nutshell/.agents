@@ -62,7 +62,6 @@ class RepoBootstrapRegistryValidationTests(TempDirTestCase):
                 },
                 "repos": [
                     {
-                        "mcp_presets": ["cloudflare-docs"],
                         "path": str(adi),
                     }
                 ],

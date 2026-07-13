@@ -35,6 +35,7 @@ flowchart TD
     C --> G
     C --> H
     C --> D
+    C --> J
     E --> I
     F --> J
     G --> I
@@ -61,17 +62,19 @@ Skills are standalone agent guidance. They can be global, repo-scoped, unmanaged
 
 Source of truth:
 
-- shared MCP preset definitions in `mcp/config/presets.json`
-- repo MCP assignment in `codex/config/repo-bootstrap.json`
+- MCP definitions and repository/client targets in `mcp/config/presets.json`
+- managed repo inventory in `codex/config/repo-bootstrap.json`
 
-MCPs are standalone endpoints and transports. If a plugin contains MCP internally, that remains plugin-owned unless it is manually promoted into this registry.
+MCPs are standalone endpoints and transports. Every definition owns a two-axis target matrix: repositories down one axis and clients (`codex`, `claude`, `copilot`) across the other. A selector can target explicit values or `"all"`. If a plugin contains MCP internally, that remains plugin-owned unless it is manually promoted into this registry.
+
+Codex cells render to repo `.codex/config.toml`. Claude and Copilot can share root `.mcp.json`; Copilot-only cells render to `.github/mcp.json`. Because Copilot also discovers root `.mcp.json`, the registry rejects Claude-without-Copilot targets instead of promising isolation the runtime cannot enforce.
 
 ## Working Rules
 
 - Keep Codex plugin scope and state in `plugins/registry.json`.
 - Keep skill content in `skills-source/`.
-- Keep MCP preset definitions in `mcp/config/presets.json`.
-- Keep repo inventory and repo MCP/default assignments in `codex/config/repo-bootstrap.json`.
+- Keep MCP definitions and all MCP target assignments in `mcp/config/presets.json`.
+- Keep repo inventory and repo defaults in `codex/config/repo-bootstrap.json`.
 - Do not automatically project plugin package contents into skills or MCPs.
 - When a plugin capability must be reliable in one repo without enabling the native plugin globally, explicitly link its bundled skills through `skills/registry.json` `managed_plugin_skills` and promote any needed MCP server into `mcp/config/presets.json`.
 

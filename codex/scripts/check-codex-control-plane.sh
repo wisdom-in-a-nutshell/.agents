@@ -488,6 +488,7 @@ root_dir = canonical_dir.parent.parent.resolve()
 sys.path.insert(0, str(root_dir))
 
 from hooks.control_plane import load_hooks_registry, render_codex_hooks
+from mcp.control_plane import load_mcp_catalog_data
 from plugins.derived import validate_plugin_registry
 
 global_template = canonical_dir / "global.config.toml"
@@ -667,47 +668,13 @@ try:
 except Exception as exc:
     fail(f"invalid plugin registry {plugin_registry_path}: {exc}")
 
-if not isinstance(mcp_registry, dict):
-    fail(f"MCP registry root must be an object in {mcp_registry_path}")
-mcp_presets = mcp_registry.get("presets", {})
-if not isinstance(mcp_presets, dict):
-    fail(f"presets must be an object in {mcp_registry_path}")
-plugin_mcp_presets = mcp_registry.get("plugin_presets", {})
-if not isinstance(plugin_mcp_presets, dict):
-    fail(f"plugin_presets must be an object in {mcp_registry_path}")
-global_presets = mcp_registry.get("global_presets", [])
-if not isinstance(global_presets, list):
-    fail(f"global_presets must be an array in {mcp_registry_path}")
-plugin_global_presets = mcp_registry.get("plugin_global_presets", [])
-if not isinstance(plugin_global_presets, list):
-    fail(f"plugin_global_presets must be an array in {mcp_registry_path}")
-merged_mcp_presets = dict(mcp_presets)
-for preset_name, preset in sorted(plugin_mcp_presets.items()):
-    existing = merged_mcp_presets.get(preset_name)
-    if existing is not None and existing != preset:
-        fail(f"plugin_presets conflicts with existing preset `{preset_name}` in {mcp_registry_path}")
-    merged_mcp_presets[str(preset_name)] = preset
-for preset_name, preset in sorted(merged_mcp_presets.items()):
-    if not isinstance(preset, dict):
-        fail(f"presets.{preset_name} must be an object in {mcp_registry_path}")
-    transport = preset.get("transport")
-    if transport not in {"http", "stdio"}:
-        fail(f"presets.{preset_name}.transport must be `http` or `stdio` in {mcp_registry_path}")
-    if transport == "http":
-        url = preset.get("url")
-        if not isinstance(url, str) or not url.strip():
-            fail(f"presets.{preset_name}.url must be a non-empty string in {mcp_registry_path}")
-    if transport == "stdio":
-        command = preset.get("command")
-        if not isinstance(command, str) or not command.strip():
-            fail(f"presets.{preset_name}.command must be a non-empty string in {mcp_registry_path}")
-for preset_name in [str(name) for name in global_presets] + [str(name) for name in plugin_global_presets]:
-    if preset_name not in merged_mcp_presets:
-        fail(f"global_presets references unknown MCP preset `{preset_name}` in {mcp_registry_path}")
-
 repos = registry.get("repos", [])
 if not isinstance(repos, list):
     fail(f"repos must be an array in {registry_path}")
+try:
+    mcp_catalog = load_mcp_catalog_data(mcp_registry, repos)
+except ValueError as exc:
+    fail(f"invalid MCP registry {mcp_registry_path}: {exc}")
 
 resolved_repos: list[dict[str, str]] = []
 for item in repos:

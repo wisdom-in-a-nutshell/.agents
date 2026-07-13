@@ -3,6 +3,7 @@ import { useControlPlane } from './api';
 import { BoardSection } from './components/BoardSection';
 import { CatalogExplorer } from './components/CatalogExplorer';
 import { GlobalConfigSection } from './components/GlobalConfigSection';
+import { McpExplorer } from './components/McpExplorer';
 import { OverviewSection } from './components/OverviewSection';
 import { RepoExplorer } from './components/RepoExplorer';
 import { Sidebar } from './components/Sidebar';
@@ -101,7 +102,16 @@ export function App() {
                 <RepoExplorer data={data} initialRepoKey={focusedRepoKey} />
               </NavItemProvider>
             </section>
-          ) : section === 'skills' || section === 'plugins' || section === 'mcp' || section === 'hooks' ? (
+          ) : section === 'mcp' ? (
+            <section className="content-region content-region-flush" aria-live="polite">
+              <NavProvider value={navigateToRepo}>
+                <McpExplorer
+                  data={data}
+                  focusName={focusedItem?.section === 'mcp' ? focusedItem.name : undefined}
+                />
+              </NavProvider>
+            </section>
+          ) : section === 'skills' || section === 'plugins' || section === 'hooks' ? (
             <section className="content-region content-region-flush" aria-live="polite">
               <NavProvider value={navigateToRepo}>
                 <CatalogExplorer

@@ -49,7 +49,9 @@ export interface ItemDetails {
   path?: string;
   model?: string;
   reasoning?: string;
-  mcp_presets?: string[];
+  clients?: string[];
+  repo_clients?: Record<string, string[]>;
+  targets?: Array<{ clients: 'all' | string[]; repos: 'all' | string[] }>;
   features?: Record<string, unknown>;
   event?: string;
   runtimes?: string[];

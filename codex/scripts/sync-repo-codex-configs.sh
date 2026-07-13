@@ -205,14 +205,6 @@ def normalize_path(raw: str) -> str:
     return str(Path(raw).expanduser().resolve())
 
 
-def ordered_unique(values: list[str]) -> list[str]:
-    ordered: list[str] = []
-    for value in values:
-        if value not in ordered:
-            ordered.append(value)
-    return ordered
-
-
 def toml_value(value):
     if isinstance(value, bool):
         return "true" if value else "false"
@@ -237,61 +229,6 @@ def toml_value(value):
     raise TypeError(f"Unsupported TOML value: {value!r}")
 
 
-def validate_mcp_registry(path: Path) -> tuple[dict, list[str]]:
-    data = json.loads(path.read_text(encoding="utf-8"))
-    if not isinstance(data, dict):
-        raise TypeError("MCP registry root must be an object")
-
-    presets = data.get("presets", {})
-    if not isinstance(presets, dict):
-        raise TypeError("MCP registry `presets` must be an object")
-    plugin_presets = data.get("plugin_presets", {})
-    if not isinstance(plugin_presets, dict):
-        raise TypeError("MCP registry `plugin_presets` must be an object")
-
-    global_presets = data.get("global_presets", [])
-    if not isinstance(global_presets, list):
-        raise TypeError("MCP registry `global_presets` must be an array")
-    plugin_global_presets = data.get("plugin_global_presets", [])
-    if not isinstance(plugin_global_presets, list):
-        raise TypeError("MCP registry `plugin_global_presets` must be an array")
-
-    merged_presets: dict[str, dict] = {}
-    for group_name, preset_group in (("presets", presets), ("plugin_presets", plugin_presets)):
-        for name, preset in preset_group.items():
-            if not isinstance(preset, dict):
-                raise TypeError(f"MCP preset `{name}` must be an object")
-            transport = preset.get("transport")
-            if transport not in {"http", "stdio"}:
-                raise TypeError(f"MCP preset `{name}` must define transport `http` or `stdio`")
-            if transport == "http":
-                url = preset.get("url")
-                if not isinstance(url, str) or not url.strip():
-                    raise TypeError(f"MCP preset `{name}` with transport http must define a non-empty url")
-            if transport == "stdio":
-                command = preset.get("command")
-                if not isinstance(command, str) or not command.strip():
-                    raise TypeError(f"MCP preset `{name}` with transport stdio must define a non-empty command")
-            if "args" in preset and not isinstance(preset["args"], list):
-                raise TypeError(f"MCP preset `{name}` args must be an array")
-            if "env" in preset and not isinstance(preset["env"], dict):
-                raise TypeError(f"MCP preset `{name}` env must be an object")
-            if "cwd" in preset and not isinstance(preset["cwd"], str):
-                raise TypeError(f"MCP preset `{name}` cwd must be a string")
-            if name in merged_presets and merged_presets[name] != preset:
-                raise TypeError(f"{group_name} conflicts with existing MCP preset `{name}`")
-            merged_presets[str(name)] = preset
-
-    all_global_presets = [str(name) for name in global_presets] + [
-        str(name) for name in plugin_global_presets
-    ]
-    for name in all_global_presets:
-        if name not in merged_presets:
-            raise KeyError(f"Unknown global MCP preset `{name}`")
-
-    return merged_presets, all_global_presets
-
-
 def codex_mcp_config(name: str, preset: dict) -> dict:
     transport = preset.get("transport")
     if transport == "http":
@@ -305,7 +242,7 @@ def render_repo_config(
     repo: str,
     defaults: dict,
     override: dict,
-    presets: dict,
+    mcp_assignments: list[tuple[str, dict]],
     repo_plugins: list,
 ) -> str:
     lines = [
@@ -346,21 +283,7 @@ def render_repo_config(
         lines.append(f'[plugins."{plugin.plugin_id}"]')
         lines.append(f"enabled = {toml_value(plugin.enabled)}")
 
-    preset_names = override.get("mcp_presets", [])
-    if not isinstance(preset_names, list):
-        raise TypeError(f"mcp_presets for {repo} must be an array")
-    plugin_preset_names = override.get("plugin_mcp_presets", [])
-    if not isinstance(plugin_preset_names, list):
-        raise TypeError(f"plugin_mcp_presets for {repo} must be an array")
-    effective_preset_names = ordered_unique(
-        [str(name) for name in preset_names if str(name).strip()]
-        + [str(name) for name in plugin_preset_names if str(name).strip()]
-    )
-
-    for preset_name in effective_preset_names:
-        if preset_name not in presets:
-            raise KeyError(f"Unknown MCP preset `{preset_name}` for {repo}")
-        preset = presets[preset_name]
+    for preset_name, preset in mcp_assignments:
         codex_config = codex_mcp_config(preset_name, preset)
         rendered_anything = True
         lines.append("")
@@ -384,13 +307,14 @@ root_dir = registry_path.parent.parent.parent.resolve()
 sys.path.insert(0, str(root_dir))
 
 from hooks.control_plane import load_hooks_registry, render_codex_hooks
+from mcp.control_plane import load_mcp_catalog
 from plugins.derived import resolve_repo_root, validate_plugin_registry
 
 
 data = json.loads(registry_path.read_text(encoding="utf-8"))
 defaults = data.get("defaults", {})
 repos_raw = data.get("repos", [])
-presets, _global_presets = validate_mcp_registry(mcp_registry_path)
+mcp_catalog = load_mcp_catalog(mcp_registry_path, repos_raw)
 hooks_registry = load_hooks_registry(hooks_registry_path)
 plugin_registry_data = json.loads(plugin_registry_path.read_text(encoding="utf-8"))
 plugins, _unmanaged_plugins, plugin_github_root = validate_plugin_registry(
@@ -455,7 +379,7 @@ for item in repo_items_all:
         actual_repo,
         defaults,
         item,
-        presets,
+        mcp_catalog.presets_for(item["path"], "codex"),
         repo_plugins_by_root.get(actual_repo, []),
     )
     rendered_path = tmp_dir / f"{hashlib.sha256(actual_repo.encode()).hexdigest()}.toml"

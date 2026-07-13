@@ -79,21 +79,10 @@ export function repoScopedHooksForRepo(d: ControlPlaneData, repo: Item): Item[] 
   );
 }
 
-function repoPluginNames(d: ControlPlaneData, repo: Item): Set<string> {
-  const names = new Set<string>();
-  for (const p of d.groups.plugins) {
-    if (p.status !== 'disabled' && itemAppliesToRepo(p, repo)) names.add(p.name);
-  }
-  return names;
-}
-
 export function repoDirectMcpForRepo(d: ControlPlaneData, repo: Item): Item[] {
-  const pluginNames = repoPluginNames(d, repo);
   return d.groups.mcp.filter((i) => {
     if (scopeHas(i, 'global')) return false;
-    const byRepo = cleanArray(i.repos).some((r) => sameRepo(r, repo.name));
-    const byPlugin = cleanArray(i.details.plugins).some((p) => pluginNames.has(p));
-    return byRepo || byPlugin;
+    return cleanArray(i.repos).some((r) => sameRepo(r, repo.name));
   });
 }
 
@@ -129,7 +118,7 @@ export function repoCapabilitySummary(d: ControlPlaneData, repo: Item): Capabili
     globalMcp: gMcp,
     directMcp,
     baseTotal: gSkills.length + gPlugins.length + gHooks.length + gMcp.length,
-    localTotal: repoSkills.length + repoPlugins.length + repoHooks.length,
+    localTotal: repoSkills.length + repoPlugins.length + repoHooks.length + directMcp.length,
   };
 }
 

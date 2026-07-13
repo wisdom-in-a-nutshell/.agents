@@ -107,7 +107,6 @@ function RepoDetail({ data, repo }: { data: ControlPlaneData; repo: Item }) {
   const devServers = data.groups.dev_servers.filter((s) => itemAppliesToRepo(s, repo));
   const devNames = devServers.flatMap((s) => cleanArray(s.details.servers));
   const features = Object.keys(d.features || {});
-  const mcpPresets = cleanArray(d.mcp_presets);
 
   const stats: Array<[string, number]> = [
     ['Skills', caps.globalSkills.length + caps.repoSkills.length],
@@ -141,10 +140,9 @@ function RepoDetail({ data, repo }: { data: ControlPlaneData; repo: Item }) {
         ))}
       </div>
 
-      <CapGroup title="Runtime config" runtime="Codex" count={mcpPresets.length + features.length}>
+      <CapGroup title="Runtime config" runtime="Codex" count={features.length}>
         <div className="re-config">
-          <Chips items={mcpPresets.map((p) => `mcp: ${p}`)} empty="No repo MCP presets" />
-          {features.length ? <Chips items={features} accent empty="" /> : null}
+          <Chips items={features} accent empty="No repo runtime feature overrides" />
         </div>
       </CapGroup>
 
@@ -167,10 +165,9 @@ function RepoDetail({ data, repo }: { data: ControlPlaneData; repo: Item }) {
         <ScopedChips global={caps.globalPlugins} local={[]} kind="plugins" empty="No plugins" />
       </CapGroup>
 
-      <CapGroup title="Tools · MCP" runtime="Codex" count={caps.globalMcp.length + caps.directMcp.length}>
+      <CapGroup title="Tools · MCP" runtime="Target matrix" count={caps.globalMcp.length + caps.directMcp.length}>
         <p className="re-base">
-          Base kit: <ScopeCount n={caps.globalMcp.length} scope="global" /> global presets
-          {caps.directMcp.length ? <> · <ScopeCount n={caps.directMcp.length} scope="local" /> repo</> : null}
+          Availability can differ across Codex, Claude, and Copilot. Open MCP to inspect the matrix.
         </p>
         <ScopedChips global={caps.globalMcp} local={caps.directMcp} kind="mcp" empty="No MCP presets" />
       </CapGroup>

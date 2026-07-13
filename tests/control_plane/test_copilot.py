@@ -531,18 +531,23 @@ class CopilotSyncTests(TempDirTestCase):
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("missing managed Copilot global instructions symlink", result.stderr)
 
-    def test_apply_renders_and_removes_mcp_servers_from_overlay(self) -> None:
+    def test_apply_renders_and_removes_repo_targeted_mcp_servers(self) -> None:
         home = self.temp_path / "home"
         github_root = home / "GitHub"
         app_support = home / "Library/Application Support/com.github.githubapp"
         real_cli = self.temp_path / "real-copilot"
-        (github_root / "agents").mkdir(parents=True)
+        agents_repo = init_git_repo(github_root / "agents")
         (home / ".agents").mkdir(parents=True)
         write_text(real_cli, "#!/usr/bin/env bash\nprintf 'copilot stub\\n'\n")
         real_cli.chmod(0o755)
 
         overlay_file = self.temp_path / "copilot-settings.json"
         mcp_config_file = home / ".copilot/mcp-config.json"
+        repo_registry = write_json(
+            self.temp_path / "repo-bootstrap.json",
+            {"defaults": {}, "repos": [{"path": str(agents_repo)}]},
+        )
+        mcp_registry = self.temp_path / "mcp-presets.json"
 
         base_args = [
             sys.executable,
@@ -555,6 +560,10 @@ class CopilotSyncTests(TempDirTestCase):
             str(home / ".copilot/config.json"),
             "--mcp-config-file",
             str(mcp_config_file),
+            "--repo-registry",
+            str(repo_registry),
+            "--mcp-registry",
+            str(mcp_registry),
             "--hooks-file",
             str(home / ".copilot/hooks/agents-control-plane.json"),
             "--launcher-target",
@@ -568,23 +577,29 @@ class CopilotSyncTests(TempDirTestCase):
             "--skip-global-instructions",
         ]
 
+        write_json(overlay_file, {})
         write_json(
-            overlay_file,
+            mcp_registry,
             {
-                "mcpServers": {
+                "version": 2,
+                "presets": {
                     "playwright": {
-                        "type": "local",
+                        "transport": "stdio",
                         "command": "npx",
                         "args": ["-y", "@playwright/mcp@latest"],
-                        "tools": ["*"],
+                        "targets": [
+                            {"clients": ["copilot"], "repos": [str(agents_repo)]}
+                        ],
                     }
-                }
+                },
             },
         )
         run_command([*base_args, "--apply"], env={"HOME": str(home)})
-        rendered = json.loads(
+        user_mcp = json.loads(
             "\n".join(line for line in mcp_config_file.read_text(encoding="utf-8").splitlines() if not line.startswith("//"))
         )
+        rendered = json.loads((agents_repo / ".github/mcp.json").read_text(encoding="utf-8"))
+        self.assertEqual(user_mcp, {"mcpServers": {}})
         self.assertEqual(
             rendered,
             {
@@ -599,14 +614,23 @@ class CopilotSyncTests(TempDirTestCase):
             },
         )
 
-        # Removing the server from the overlay and re-syncing should remove it
-        # from the rendered file, since this is the fully managed surface.
-        write_json(overlay_file, {"mcpServers": {}})
-        run_command([*base_args, "--apply"], env={"HOME": str(home)})
-        rendered = json.loads(
-            "\n".join(line for line in mcp_config_file.read_text(encoding="utf-8").splitlines() if not line.startswith("//"))
+        # Removing the target rule removes the repo-specific generated surface.
+        write_json(
+            mcp_registry,
+            {
+                "version": 2,
+                "presets": {
+                    "playwright": {
+                        "transport": "stdio",
+                        "command": "npx",
+                        "args": ["-y", "@playwright/mcp@latest"],
+                        "targets": [],
+                    }
+                },
+            },
         )
-        self.assertEqual(rendered, {"mcpServers": {}})
+        run_command([*base_args, "--apply"], env={"HOME": str(home)})
+        self.assertFalse((agents_repo / ".github/mcp.json").exists())
 
         run_command([*base_args, "--check", "--skip-cli-probe"], env={"HOME": str(home)})
 
@@ -619,17 +643,36 @@ class CopilotSyncTests(TempDirTestCase):
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("Copilot MCP config is out of sync", result.stderr)
 
-    def test_rejects_invalid_mcp_server_shapes(self) -> None:
+    def test_rejects_claude_only_target_that_copilot_would_inherit(self) -> None:
         home = self.temp_path / "home"
         github_root = home / "GitHub"
         app_support = home / "Library/Application Support/com.github.githubapp"
         real_cli = self.temp_path / "real-copilot"
-        (github_root / "agents").mkdir(parents=True)
+        agents_repo = init_git_repo(github_root / "agents")
         write_text(real_cli, "#!/usr/bin/env bash\nprintf 'copilot stub\\n'\n")
         real_cli.chmod(0o755)
 
         overlay_file = self.temp_path / "copilot-settings.json"
-        write_json(overlay_file, {"mcpServers": {"bad": {"type": "local"}}})
+        write_json(overlay_file, {})
+        repo_registry = write_json(
+            self.temp_path / "repo-bootstrap.json",
+            {"defaults": {}, "repos": [{"path": str(agents_repo)}]},
+        )
+        mcp_registry = write_json(
+            self.temp_path / "mcp-presets.json",
+            {
+                "version": 2,
+                "presets": {
+                    "bad": {
+                        "transport": "stdio",
+                        "command": "bad-mcp",
+                        "targets": [
+                            {"clients": ["claude"], "repos": [str(agents_repo)]}
+                        ],
+                    }
+                },
+            },
+        )
 
         result = run_command(
             [
@@ -642,6 +685,10 @@ class CopilotSyncTests(TempDirTestCase):
                 str(home / ".copilot/settings.json"),
                 "--user-config-file",
                 str(home / ".copilot/config.json"),
+                "--repo-registry",
+                str(repo_registry),
+                "--mcp-registry",
+                str(mcp_registry),
                 "--hooks-file",
                 str(home / ".copilot/hooks/agents-control-plane.json"),
                 "--launcher-target",
@@ -658,4 +705,4 @@ class CopilotSyncTests(TempDirTestCase):
             check=False,
         )
         self.assertNotEqual(result.returncode, 0)
-        self.assertIn("mcpServers.bad.command must be a non-empty string", result.stderr)
+        self.assertIn("targets Claude without Copilot", result.stderr)

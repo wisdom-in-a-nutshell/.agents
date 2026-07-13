@@ -69,7 +69,7 @@ flowchart LR
 - `origin`: `owned` or `external`.
 - `scope`: `global`, `repo`, or `dormant`.
 - `repos`: target repos for repo-scoped links.
-  - When a skill depends on a repo MCP preset, keep this list aligned with the repos that declare that preset in `codex/config/repo-bootstrap.json`.
+  - When a skill depends on a repo MCP, keep this list aligned with that MCP's repo targets in `mcp/config/presets.json`.
   - Entries can be repo names under `~/GitHub` or explicit repo roots such as `~/GitHub/agents`.
   - Sync skips missing repo checkouts silently on the current machine. Existing non-git folders still warn because they may be broken placeholders. Sync must not create placeholder folders under `~/GitHub` just because a repo is listed in the registry.
   - Dormant skills keep their source tracked but must use an empty `repos` list and are not linked into any runtime.

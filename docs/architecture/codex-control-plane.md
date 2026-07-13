@@ -28,7 +28,7 @@ flowchart TD
 - `skills/registry.json`: canonical managed skill registry.
 - `skills-source/owned/` and `skills-source/external/`: canonical managed skill content.
 - `plugins/registry.json`: native Codex plugin scope and enablement.
-- `mcp/config/presets.json`: shared MCP preset definitions.
+- `mcp/config/presets.json`: shared MCP definitions and repository/client target matrix.
 - `hooks/registry.json` and `hooks/scripts/`: shared lifecycle hook definitions and dispatchers.
 - `codex/config/repo-bootstrap.json`: managed repo inventory and repo-local Codex behavior.
 - `dev-servers/registry.json`: opt-in repo agent-preview surface for Claude Code, Codex, and the GitHub Copilot app. It is for short-lived local dev previews only; public Cloudflare/LaunchAgent service ports stay in `~/GitHub/scripts`.

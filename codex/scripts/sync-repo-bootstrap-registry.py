@@ -58,62 +58,9 @@ def _resolve_repo_root(path: Path) -> Path:
         return path.resolve()
 
 
-def validate_mcp_registry(data: dict[str, Any]) -> tuple[dict[str, Any], list[str]]:
-    presets = data.get("presets", {})
-    if not isinstance(presets, dict):
-        raise ValueError("MCP registry presets must be an object")
-    plugin_presets = data.get("plugin_presets", {})
-    if not isinstance(plugin_presets, dict):
-        raise ValueError("MCP registry plugin_presets must be an object")
-
-    global_presets = data.get("global_presets", [])
-    if not isinstance(global_presets, list):
-        raise ValueError("MCP registry global_presets must be an array")
-    plugin_global_presets = data.get("plugin_global_presets", [])
-    if not isinstance(plugin_global_presets, list):
-        raise ValueError("MCP registry plugin_global_presets must be an array")
-
-    validated_presets: dict[str, Any] = {}
-    for group_name, preset_group in (
-        ("presets", presets),
-        ("plugin_presets", plugin_presets),
-    ):
-        for name, preset in preset_group.items():
-            if not isinstance(preset, dict):
-                raise ValueError(f"MCP preset `{name}` must be an object")
-            transport = preset.get("transport")
-            if transport not in {"http", "stdio"}:
-                raise ValueError(f"MCP preset `{name}` must define transport `http` or `stdio`")
-            if transport == "http":
-                url = preset.get("url")
-                if not isinstance(url, str) or not url.strip():
-                    raise ValueError(f"MCP preset `{name}` with transport http must define a non-empty url")
-            if transport == "stdio":
-                command = preset.get("command")
-                if not isinstance(command, str) or not command.strip():
-                    raise ValueError(f"MCP preset `{name}` with transport stdio must define a non-empty command")
-            if "args" in preset and not isinstance(preset["args"], list):
-                raise ValueError(f"MCP preset `{name}` args must be an array")
-            if "env" in preset and not isinstance(preset["env"], dict):
-                raise ValueError(f"MCP preset `{name}` env must be an object")
-            if name in validated_presets and validated_presets[name] != preset:
-                raise ValueError(f"{group_name} conflicts with existing MCP preset `{name}`")
-            validated_presets[str(name)] = preset
-
-    combined_global_presets = [str(name) for name in global_presets] + [
-        str(name) for name in plugin_global_presets
-    ]
-    for name in combined_global_presets:
-        if name not in validated_presets:
-            raise ValueError(f"global_presets references unknown MCP preset `{name}`")
-
-    return validated_presets, combined_global_presets
-
-
 def validate_registry(
     data: dict[str, Any],
     home: Path,
-    mcp_presets_map: dict[str, Any],
 ) -> tuple[dict[str, Any], list[dict[str, Any]]]:
     defaults = data.get("defaults", {})
     if not isinstance(defaults, dict):
@@ -149,27 +96,8 @@ def validate_registry(
             else repo_path.resolve()
         )
 
-        repo_mcp_presets = item.get("mcp_presets", [])
-        if not isinstance(repo_mcp_presets, list):
-            raise ValueError(f"repos[{idx}].mcp_presets must be an array")
-        plugin_repo_mcp_presets = item.get("plugin_mcp_presets", [])
-        if not isinstance(plugin_repo_mcp_presets, list):
-            raise ValueError(f"repos[{idx}].plugin_mcp_presets must be an array")
-        combined_repo_mcp_presets = [
-            str(name) for name in repo_mcp_presets if str(name).strip()
-        ]
-        for name in plugin_repo_mcp_presets:
-            name_str = str(name).strip()
-            if name_str and name_str not in combined_repo_mcp_presets:
-                combined_repo_mcp_presets.append(name_str)
-        for preset_name in combined_repo_mcp_presets:
-            if preset_name not in mcp_presets_map:
-                raise ValueError(
-                    f"repos[{idx}] references unknown MCP preset: {preset_name}"
-                )
-
         for key in item:
-            if key in {"path", "mcp_presets", "plugin_mcp_presets"}:
+            if key == "path":
                 continue
             if key not in ALLOWED_SCALAR_KEYS and key not in ALLOWED_DEFAULT_TABLE_KEYS:
                 raise ValueError(f"repos[{idx}] unsupported key: {key}")
@@ -181,7 +109,6 @@ def validate_registry(
         repos.append(
             {
                 "path": str(repo_root),
-                "mcp_presets": combined_repo_mcp_presets,
             }
         )
 
@@ -246,12 +173,13 @@ def main() -> int:
 
     if str(root_dir) not in sys.path:
         sys.path.insert(0, str(root_dir))
+    from mcp.control_plane import load_mcp_catalog_data
     from plugins.derived import validate_plugin_registry
 
     home = Path.home()
     try:
-        presets, global_presets = validate_mcp_registry(mcp_data)
-        _defaults, repos = validate_registry(data, home, presets)
+        _defaults, repos = validate_registry(data, home)
+        catalog = load_mcp_catalog_data(mcp_data, data.get("repos"))
         plugin_data = json.loads(plugin_registry_file.read_text(encoding="utf-8"))
         managed_plugins, unmanaged_plugins, _github_root = validate_plugin_registry(
             plugin_data,
@@ -264,8 +192,8 @@ def main() -> int:
 
     print("Repo bootstrap registry validated.")
     print(f"Repos: {len(repos)}")
-    print(f"MCP presets: {len(presets)}")
-    print(f"Global MCP presets: {len(global_presets)}")
+    print(f"MCP presets: {len(catalog.definitions)}")
+    print(f"MCP target rules: {sum(len(targets) for targets in catalog.targets.values())}")
     print(f"Managed plugins: {len(managed_plugins)}")
     print(f"Repo-local plugins: {len(unmanaged_plugins)}")
     return 0

@@ -29,17 +29,20 @@ class CodexControlPlaneCheckTests(TempDirTestCase):
                 },
                 "repos": [
                     {
-                        "mcp_presets": ["cloudflare-docs", "fixture-stdio"],
                         "path": str(adi),
                     }
                 ],
             },
         )
         mcp_registry = default_mcp_registry()
+        mcp_registry["presets"]["cloudflare-docs"]["targets"] = [
+            {"clients": "all", "repos": [str(adi)]}
+        ]
         mcp_registry["presets"]["fixture-stdio"] = {
             "transport": "stdio",
             "command": "npx",
             "args": ["-y", "fixture-mcp@latest", "mcp"],
+            "targets": [{"clients": ["codex"], "repos": [str(adi)]}],
         }
         write_json(root / "mcp/config/presets.json", mcp_registry)
         return root, home, adi

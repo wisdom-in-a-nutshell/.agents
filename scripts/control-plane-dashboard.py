@@ -16,8 +16,13 @@ from socketserver import TCPServer, ThreadingMixIn
 from typing import Any
 from urllib.parse import unquote, urlparse
 
+_AGENTS_ROOT = Path(__file__).resolve().parent.parent
+if str(_AGENTS_ROOT) not in sys.path:
+    sys.path.insert(0, str(_AGENTS_ROOT))
 
-SCHEMA_VERSION = "1.0"
+from mcp.control_plane import MCP_CLIENTS, load_mcp_catalog_data  # noqa: E402
+
+SCHEMA_VERSION = "1.1"
 COMMAND = "control-plane-dashboard"
 
 EXIT_SUCCESS = 0
@@ -71,7 +76,7 @@ def build_capability_board(counts: dict[str, Any]) -> list[dict[str, Any]]:
             "source": "mcp/config/presets.json", "count": counts.get("mcp"),
             "codex": {"status": "stable", "note": "rendered to config.toml"},
             "claude": {"status": "stable", "note": "rendered to .mcp.json"},
-            "copilot": {"status": "stable", "note": "reads .mcp.json"},
+            "copilot": {"status": "stable", "note": ".mcp.json + .github/mcp.json"},
         },
         {
             "key": "plugins", "name": "Plugins",
@@ -508,9 +513,6 @@ def build_global_config(
         for p in plugins_registry.get("managed_plugins", [])
         if isinstance(p, dict) and p.get("scope") == "global"
     ]
-    mcp_global = clean_list(mcp_registry.get("global_presets")) + clean_list(
-        mcp_registry.get("plugin_global_presets")
-    )
     defaults = repo_bootstrap.get("defaults", {})
     defaults = defaults if isinstance(defaults, dict) else {}
 
@@ -525,10 +527,9 @@ def build_global_config(
         ),
         _config_group("Global plugins", REGISTRY_SOURCES["plugins"], codex_plugin_rows or none_row),
         _config_group(
-            "Global MCP presets",
+            "MCP delivery",
             REGISTRY_SOURCES["mcp"],
-            [{"label": m, "value": "global"} for m in mcp_global]
-            or [{"label": "None", "value": "no global MCP presets", "tone": "muted"}],
+            [{"label": "Scope", "value": "repo × client target matrix", "tone": "muted"}],
         ),
     ]
 
@@ -727,7 +728,6 @@ def build_control_plane_data(root: Path) -> dict[str, Any]:
                 "service_tier": entry.get("service_tier")
                 if "service_tier" in entry
                 else repo_bootstrap.get("defaults", {}).get("service_tier"),
-                "mcp_presets": clean_list(entry.get("mcp_presets")),
                 "features": entry.get("features") if isinstance(entry.get("features"), dict) else {},
             },
         )
@@ -839,57 +839,50 @@ def build_control_plane_data(root: Path) -> dict[str, Any]:
                 "source": REGISTRY_SOURCES["mcp"],
             }
         )
-    global_mcp = set(clean_list(mcp_registry.get("global_presets")))
-    repo_mcp: dict[str, list[str]] = {}
-    for repo in repos:
-        for preset in clean_list(repo["details"].get("mcp_presets")):
-            repo_mcp.setdefault(preset, []).append(repo["name"])
-
-    plugin_mcp: dict[str, list[str]] = {}
-    raw_plugin_presets = mcp_registry.get("plugin_presets", {})
-    if isinstance(raw_plugin_presets, dict):
-        for plugin_name, presets in raw_plugin_presets.items():
-            for preset in clean_list(presets):
-                plugin_mcp.setdefault(preset, []).append(str(plugin_name))
-
-    referenced_mcp = set(global_mcp) | set(repo_mcp) | set(plugin_mcp)
-    for preset in sorted(referenced_mcp):
-        if preset not in preset_defs:
-            warnings.append(
-                {
-                    "severity": "warning",
-                    "code": "missing_mcp_preset",
-                    "message": f"MCP preset is referenced but not defined: {preset}",
-                    "source": REGISTRY_SOURCES["mcp"],
-                }
-            )
+    try:
+        mcp_catalog = load_mcp_catalog_data(mcp_registry, repo_entries)
+    except ValueError as exc:
+        mcp_catalog = None
+        warnings.append(
+            {
+                "severity": "error",
+                "code": "invalid_mcp_targets",
+                "message": str(exc),
+                "source": REGISTRY_SOURCES["mcp"],
+            }
+        )
 
     for name, config in sorted(preset_defs.items()):
         if not isinstance(config, dict):
             config = {}
-        assigned_repos = sorted(repo_mcp.get(name, []))
-        assigned_plugins = sorted(plugin_mcp.get(name, []))
-        scopes = []
-        if name in global_mcp:
-            scopes.append("global")
-        if assigned_repos:
-            scopes.append("repo")
-        if assigned_plugins:
-            scopes.append("plugin")
-        scope = "+".join(scopes) if scopes else "unassigned"
+        assigned_repo_refs = mcp_catalog.repos_for(str(name)) if mcp_catalog else []
+        assigned_repos = sorted(repo_name(repo) for repo in assigned_repo_refs)
+        clients = mcp_catalog.clients_used_by(str(name)) if mcp_catalog else []
+        repo_clients = {
+            repo_name(repo): list(mcp_catalog.clients_for(str(name), repo))
+            for repo in assigned_repo_refs
+        } if mcp_catalog else {}
+        is_global = bool(mcp_catalog) and bool(mcp_catalog.repo_paths) and all(
+            set(mcp_catalog.clients_for(str(name), repo)) == set(MCP_CLIENTS)
+            for repo in mcp_catalog.repo_paths
+        )
+        scope = "global" if is_global else "targeted" if assigned_repos else "unassigned"
         mcp_presets.append(
             base_item(
                 kind="mcp",
                 name=str(name),
                 scope=scope,
-                status="assigned" if scopes else "unassigned",
+                status="assigned" if assigned_repos else "unassigned",
                 source=REGISTRY_SOURCES["mcp"],
                 repos=assigned_repos,
                 details={
                     "transport": config.get("transport"),
                     "url": config.get("url"),
-                    "plugins": assigned_plugins,
-                    "global": name in global_mcp,
+                    "command": config.get("command"),
+                    "clients": clients,
+                    "repo_clients": repo_clients,
+                    "targets": mcp_catalog.target_dicts(str(name)) if mcp_catalog else [],
+                    "global": is_global,
                 },
             )
         )

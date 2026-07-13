@@ -246,34 +246,18 @@ if not isinstance(data, dict):
     raise SystemExit(f"{registry_path}: MCP registry root must be an object")
 
 presets = data.get("presets", {})
-plugin_presets = data.get("plugin_presets", {})
-global_presets = data.get("global_presets", [])
-plugin_global_presets = data.get("plugin_global_presets", [])
 if not isinstance(presets, dict):
     raise SystemExit(f"{registry_path}: presets must be an object")
-if not isinstance(plugin_presets, dict):
-    raise SystemExit(f"{registry_path}: plugin_presets must be an object")
-if not isinstance(global_presets, list):
-    raise SystemExit(f"{registry_path}: global_presets must be an array")
-if not isinstance(plugin_global_presets, list):
-    raise SystemExit(f"{registry_path}: plugin_global_presets must be an array")
-
-merged_presets = dict(presets)
-for name, preset in plugin_presets.items():
-    if name in merged_presets and merged_presets[name] != preset:
-        raise SystemExit(f"{registry_path}: plugin_presets conflicts with existing preset `{name}`")
-    merged_presets[str(name)] = preset
-
-for name in [str(value) for value in global_presets] + [str(value) for value in plugin_global_presets]:
-    preset = merged_presets.get(name)
+if data.get("version") != 2:
+    raise SystemExit(f"{registry_path}: version must be 2")
+for name, preset in presets.items():
     if not isinstance(preset, dict):
-        raise SystemExit(f"{registry_path}: unknown global MCP preset `{name}`")
+        raise SystemExit(f"{registry_path}: preset `{name}` must be an object")
     transport = preset.get("transport")
     if transport not in {"http", "stdio"}:
         raise SystemExit(f"{registry_path}: preset `{name}` has invalid transport `{transport}`")
-    section = f"mcp_servers.{name}"
-    for key in sorted(k for k in preset.keys() if k != "transport"):
-        print(f"{section}\x1F{key}\x1F{toml_value(preset[key])}")
+    if not isinstance(preset.get("targets"), list):
+        raise SystemExit(f"{registry_path}: preset `{name}` targets must be an array")
 PY
 }
 
@@ -835,9 +819,7 @@ registry_data = json.loads(registry.read_text(encoding="utf-8")) if registry.exi
 
 mcp_header_re = re.compile(r'^\[mcp_servers\.([^\]]+)\]\s*$')
 
-presets = registry_data.get("presets", {}) if isinstance(registry_data, dict) else {}
-global_presets = registry_data.get("global_presets", []) if isinstance(registry_data, dict) else []
-allowed_servers = {str(name) for name in global_presets if isinstance(name, str) and name in presets}
+allowed_servers: set[str] = set()
 
 lines = target_text.splitlines(keepends=True)
 output: list[str] = []

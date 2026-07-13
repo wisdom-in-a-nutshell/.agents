@@ -105,6 +105,8 @@ def make_control_plane_root(base_dir: Path) -> Path:
         "codex/config/global.config.toml",
         "hooks/__init__.py",
         "hooks/control_plane.py",
+        "mcp/__init__.py",
+        "mcp/control_plane.py",
         "hooks/registry.json",
         "plugins/derived.py",
     ):
@@ -150,17 +152,22 @@ def make_plugin_source(path: Path, plugin_name: str) -> Path:
 
 def default_mcp_registry() -> dict[str, Any]:
     return {
-        "global_presets": ["openaiDeveloperDocs"],
-        "plugin_global_presets": [],
-        "plugin_presets": {},
+        "version": 2,
         "presets": {
             "openaiDeveloperDocs": {
                 "transport": "http",
                 "url": "https://developers.openai.com/mcp",
+                "targets": [
+                    {
+                        "clients": "all",
+                        "repos": "all",
+                    }
+                ],
             },
             "cloudflare-docs": {
                 "transport": "http",
                 "url": "https://docs.mcp.cloudflare.com/mcp",
+                "targets": [],
             },
         },
     }

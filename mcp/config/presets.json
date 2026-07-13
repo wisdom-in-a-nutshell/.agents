@@ -1,28 +1,75 @@
 {
+  "version": 2,
   "presets": {
     "openaiDeveloperDocs": {
       "transport": "http",
-      "url": "https://developers.openai.com/mcp"
+      "url": "https://developers.openai.com/mcp",
+      "targets": [
+        {
+          "clients": "all",
+          "repos": [
+            "~/GitHub/agents",
+            "~/GitHub/frontier-lab-intelligence",
+            "~/GitHub/symphony"
+          ]
+        }
+      ]
     },
     "cloudflare-api": {
       "transport": "http",
-      "url": "https://mcp.cloudflare.com/mcp"
+      "url": "https://mcp.cloudflare.com/mcp",
+      "targets": [
+        {
+          "clients": "all",
+          "repos": [
+            "~/GitHub/platform-ops"
+          ]
+        }
+      ]
     },
     "cloudflare-docs": {
       "transport": "http",
-      "url": "https://docs.mcp.cloudflare.com/mcp"
+      "url": "https://docs.mcp.cloudflare.com/mcp",
+      "targets": [
+        {
+          "clients": "all",
+          "repos": [
+            "~/GitHub/platform-ops"
+          ]
+        }
+      ]
     },
     "figma": {
       "transport": "http",
-      "url": "http://127.0.0.1:3845/mcp"
+      "url": "http://127.0.0.1:3845/mcp",
+      "targets": [
+        {
+          "clients": "all",
+          "repos": [
+            "~/GitHub/aipodcasting"
+          ]
+        }
+      ]
     },
     "playwright": {
       "transport": "stdio",
       "command": "npx",
-      "args": ["-y", "@playwright/mcp@latest"]
+      "args": [
+        "-y",
+        "@playwright/mcp@latest"
+      ],
+      "targets": [
+        {
+          "clients": [
+            "copilot"
+          ],
+          "repos": [
+            "~/GitHub/agents",
+            "~/GitHub/frontier-lab-intelligence",
+            "~/GitHub/stadia-macos-controller"
+          ]
+        }
+      ]
     }
-  },
-  "global_presets": [],
-  "plugin_presets": {},
-  "plugin_global_presets": []
+  }
 }

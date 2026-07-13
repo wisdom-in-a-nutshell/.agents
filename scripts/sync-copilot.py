@@ -15,11 +15,14 @@ AGENTS_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(AGENTS_ROOT))
 
 from hooks.control_plane import load_hooks_registry, render_copilot_hooks, render_json  # noqa: E402
+from mcp.control_plane import copilot_server_from_preset, load_mcp_catalog  # noqa: E402
 
 
 DEFAULT_SETTINGS_OVERLAY = AGENTS_ROOT / "config" / "copilot-settings.json"
 DEFAULT_HOOKS_REGISTRY = AGENTS_ROOT / "hooks/registry.json"
 DEFAULT_DEV_SERVERS_REGISTRY = AGENTS_ROOT / "dev-servers/registry.json"
+DEFAULT_MCP_REGISTRY = AGENTS_ROOT / "mcp/config/presets.json"
+DEFAULT_REPO_REGISTRY = AGENTS_ROOT / "codex/config/repo-bootstrap.json"
 DEFAULT_PREVIEW_RUNNER = AGENTS_ROOT / "scripts/run-agent-preview-server.py"
 DEFAULT_COPILOT_HOME = Path.home() / ".copilot"
 DEFAULT_SETTINGS_FILE = DEFAULT_COPILOT_HOME / "settings.json"
@@ -48,7 +51,7 @@ MANAGEMENT_COMMANDS = {
     "version",
 }
 
-TOP_LEVEL_KEYS = {"description", "hooks", "launcher", "mcpServers", "settings", "settingsPrune", "skills", "trust"}
+TOP_LEVEL_KEYS = {"description", "hooks", "launcher", "settings", "settingsPrune", "skills", "trust"}
 BOOLEAN_SETTINGS = {
     "askUser",
     "beep",
@@ -77,8 +80,6 @@ MODEL_VALUES = {"claude-sonnet-5"}
 PRUNABLE_SETTINGS = {"tabs.hide"}
 SKILL_DIRECTORY_POLICIES = {"empty"}
 APP_SKILLS_POLICIES = {"allow-known-only"}
-MCP_SERVER_TYPES = {"local", "http", "sse"}
-MCP_SERVER_KEYS = {"args", "command", "env", "headers", "timeout", "tools", "type", "url"}
 
 
 class CopilotSyncError(RuntimeError):
@@ -272,44 +273,6 @@ def validate_hooks_overlay(hooks: dict[str, Any]) -> None:
         raise CopilotSyncError("hooks.forbiddenCommandSubstrings must be an array of non-empty strings")
 
 
-def validate_mcp_servers(mcp_servers: dict[str, Any]) -> None:
-    for name, entry in mcp_servers.items():
-        if not isinstance(name, str) or not name.strip():
-            raise CopilotSyncError(f"mcpServers has invalid server name: {name!r}")
-        if not isinstance(entry, dict):
-            raise CopilotSyncError(f"mcpServers.{name} must be an object")
-        unknown = sorted(set(entry) - MCP_SERVER_KEYS)
-        if unknown:
-            raise CopilotSyncError(f"mcpServers.{name} has unknown keys: {', '.join(unknown)}")
-        server_type = entry.get("type")
-        if server_type not in MCP_SERVER_TYPES:
-            raise CopilotSyncError(f"mcpServers.{name}.type must be one of: {', '.join(sorted(MCP_SERVER_TYPES))}")
-        if server_type == "local":
-            if not isinstance(entry.get("command"), str) or not entry["command"].strip():
-                raise CopilotSyncError(f"mcpServers.{name}.command must be a non-empty string for local servers")
-            args = entry.get("args", [])
-            if not isinstance(args, list) or not all(isinstance(item, str) for item in args):
-                raise CopilotSyncError(f"mcpServers.{name}.args must be an array of strings")
-            env = entry.get("env", {})
-            if not isinstance(env, dict) or not all(isinstance(k, str) and isinstance(v, str) for k, v in env.items()):
-                raise CopilotSyncError(f"mcpServers.{name}.env must be an object of string values")
-            if "url" in entry or "headers" in entry:
-                raise CopilotSyncError(f"mcpServers.{name} must not set url/headers for a local server")
-        else:
-            if not isinstance(entry.get("url"), str) or not entry["url"].strip():
-                raise CopilotSyncError(f"mcpServers.{name}.url must be a non-empty string for {server_type} servers")
-            headers = entry.get("headers", {})
-            if not isinstance(headers, dict) or not all(isinstance(k, str) and isinstance(v, str) for k, v in headers.items()):
-                raise CopilotSyncError(f"mcpServers.{name}.headers must be an object of string values")
-            if "command" in entry or "args" in entry or "env" in entry:
-                raise CopilotSyncError(f"mcpServers.{name} must not set command/args/env for a {server_type} server")
-        tools = entry.get("tools", ["*"])
-        if not isinstance(tools, list) or not all(isinstance(item, str) for item in tools):
-            raise CopilotSyncError(f"mcpServers.{name}.tools must be an array of strings")
-        if "timeout" in entry and not isinstance(entry["timeout"], int):
-            raise CopilotSyncError(f"mcpServers.{name}.timeout must be an integer")
-
-
 def load_overlay(path: Path) -> dict[str, Any]:
     data = read_json_object(path)
     unknown_top_level = sorted(set(data) - TOP_LEVEL_KEYS)
@@ -339,10 +302,6 @@ def load_overlay(path: Path) -> dict[str, Any]:
     if not isinstance(hooks, dict):
         raise CopilotSyncError("config/copilot-settings.json hooks must be an object")
     validate_hooks_overlay(hooks)
-    mcp_servers = data.get("mcpServers", {})
-    if not isinstance(mcp_servers, dict):
-        raise CopilotSyncError("config/copilot-settings.json mcpServers must be an object")
-    validate_mcp_servers(mcp_servers)
     return data
 
 
@@ -447,25 +406,9 @@ def merge_user_config(
     return desired
 
 
-def render_mcp_config(mcp_servers: dict[str, Any]) -> dict[str, Any]:
-    rendered: dict[str, Any] = {}
-    for name in sorted(mcp_servers):
-        entry = mcp_servers[name]
-        server_type = entry["type"]
-        out: dict[str, Any] = {"tools": entry.get("tools", ["*"]), "type": server_type}
-        if server_type == "local":
-            out["command"] = entry["command"]
-            out["args"] = entry.get("args", [])
-            if entry.get("env"):
-                out["env"] = entry["env"]
-        else:
-            out["url"] = entry["url"]
-            if entry.get("headers"):
-                out["headers"] = entry["headers"]
-        if "timeout" in entry:
-            out["timeout"] = entry["timeout"]
-        rendered[name] = out
-    return {"mcpServers": rendered}
+def render_user_mcp_config() -> dict[str, Any]:
+    """Keep the user MCP surface empty; all managed MCP scope lives in the catalog."""
+    return {"mcpServers": {}}
 
 
 def write_json(path: Path, data: dict[str, Any], *, apply: bool, header: str = "") -> None:
@@ -479,6 +422,91 @@ def write_json(path: Path, data: dict[str, Any], *, apply: bool, header: str = "
         return
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(rendered, encoding="utf-8")
+
+
+def load_repo_mcp_entries(repo_registry_file: Path) -> list[dict[str, Any]]:
+    data = read_json_object(repo_registry_file)
+    repos = data.get("repos")
+    if not isinstance(repos, list):
+        raise CopilotSyncError("repo-bootstrap repos must be an array")
+    for idx, entry in enumerate(repos):
+        if not isinstance(entry, dict):
+            raise CopilotSyncError(f"repo-bootstrap repos[{idx}] must be an object")
+        if not isinstance(entry.get("path"), str) or not entry["path"].strip():
+            raise CopilotSyncError(
+                f"repo-bootstrap repos[{idx}].path must be a non-empty string"
+            )
+    return repos
+
+
+def copilot_only_servers(catalog: Any, repo_ref: str) -> dict[str, Any]:
+    """Servers requiring Copilot's private .github/mcp.json surface.
+
+    Servers also targeted to Claude are already present in the shared root
+    .mcp.json and must not be duplicated here.
+    """
+    return {
+        name: copilot_server_from_preset(name, preset)
+        for name, preset in catalog.presets_for(repo_ref, "copilot")
+        if "claude" not in catalog.clients_for(name, repo_ref)
+    }
+
+
+def reconcile_repo_mcp_configs(
+    repo_entries: list[dict[str, Any]],
+    mcp_registry_file: Path,
+    github_root: Path,
+    repo_filters: set[Path],
+    *,
+    apply: bool,
+    check: bool,
+) -> None:
+    catalog = load_mcp_catalog(mcp_registry_file, repo_entries)
+    home = Path.home()
+    for entry in repo_entries:
+        repo_ref = str(entry["path"])
+        repo_root = repo_git_root(resolve_repo_root(repo_ref, github_root, home))
+        if repo_root is None:
+            continue
+        if repo_filters and repo_root not in repo_filters:
+            continue
+        target = repo_root / ".github/mcp.json"
+        servers = copilot_only_servers(catalog, repo_ref)
+        desired = {"mcpServers": servers}
+        if servers:
+            actual = read_json_object(target)
+            if check:
+                if actual != desired:
+                    raise CopilotSyncError(
+                        f"Copilot workspace MCP config is out of sync: {target}"
+                    )
+            else:
+                write_json(target, desired, apply=apply)
+            continue
+        if not target.exists() and not target.is_symlink():
+            continue
+        if check:
+            raise CopilotSyncError(f"stale Copilot workspace MCP config: {target}")
+        print(f"REMOVE {target}")
+        if apply:
+            target.unlink()
+
+
+def expected_copilot_servers_for_cwd(
+    repo_entries: list[dict[str, Any]],
+    mcp_registry_file: Path,
+    github_root: Path,
+) -> set[str]:
+    current_root = repo_git_root(Path.cwd())
+    if current_root is None:
+        return set()
+    catalog = load_mcp_catalog(mcp_registry_file, repo_entries)
+    home = Path.home()
+    for entry in repo_entries:
+        repo_ref = str(entry["path"])
+        if repo_git_root(resolve_repo_root(repo_ref, github_root, home)) == current_root:
+            return {name for name, _ in catalog.presets_for(repo_ref, "copilot")}
+    return set()
 
 
 def ensure_str(value: Any, field: str, label: str, idx: int) -> str:
@@ -862,6 +890,8 @@ def sync(
     overlay_file: Path,
     hooks_registry_file: Path,
     dev_servers_registry: Path,
+    repo_registry_file: Path,
+    mcp_registry_file: Path,
     settings_file: Path,
     user_config_file: Path,
     mcp_config_file: Path,
@@ -891,8 +921,16 @@ def sync(
     desired_user_config = merge_user_config(user_config, settings, trusted_folders)
     write_json(user_config_file, desired_user_config, apply=apply, header=CONFIG_HEADER)
 
-    desired_mcp_config = render_mcp_config(overlay.get("mcpServers", {}))
+    desired_mcp_config = render_user_mcp_config()
     write_json(mcp_config_file, desired_mcp_config, apply=apply, header=CONFIG_HEADER)
+    reconcile_repo_mcp_configs(
+        load_repo_mcp_entries(repo_registry_file),
+        mcp_registry_file,
+        github_root,
+        repo_filters,
+        apply=apply,
+        check=False,
+    )
 
     render_hooks_file(hooks_file, hooks_registry_file, overlay, apply=apply)
     render_launcher(launcher_target, real_cli_path, overlay, apply=apply)
@@ -961,6 +999,8 @@ def check(
     overlay_file: Path,
     hooks_registry_file: Path,
     dev_servers_registry: Path,
+    repo_registry_file: Path,
+    mcp_registry_file: Path,
     settings_file: Path,
     user_config_file: Path,
     mcp_config_file: Path,
@@ -986,10 +1026,19 @@ def check(
         if actual_settings.get(key) != expected_value:
             fail(f"Copilot setting drift: {settings_file} {key}={actual_settings.get(key)!r}, expected {expected_value!r}")
 
-    expected_mcp_config = render_mcp_config(overlay.get("mcpServers", {}))
+    expected_mcp_config = render_user_mcp_config()
     actual_mcp_config = read_json_object(mcp_config_file, allow_comments=True)
     if actual_mcp_config != expected_mcp_config:
         fail(f"Copilot MCP config is out of sync: {mcp_config_file}")
+    repo_entries = load_repo_mcp_entries(repo_registry_file)
+    reconcile_repo_mcp_configs(
+        repo_entries,
+        mcp_registry_file,
+        github_root,
+        repo_filters,
+        apply=False,
+        check=True,
+    )
 
     forbidden = overlay.get("hooks", {}).get("forbiddenCommandSubstrings", [])
     if not isinstance(forbidden, list) or not all(isinstance(item, str) for item in forbidden):
@@ -1083,10 +1132,14 @@ def check(
         live_servers = mcp.get("mcpServers", {})
         if not isinstance(live_servers, dict):
             fail("Copilot CLI MCP list JSON mcpServers must be an object")
-        for name in overlay.get("mcpServers", {}):
+        for name in expected_copilot_servers_for_cwd(
+            repo_entries,
+            mcp_registry_file,
+            github_root,
+        ):
             live_entry = live_servers.get(name)
-            if not isinstance(live_entry, dict) or live_entry.get("source") != "user":
-                fail(f"managed Copilot MCP server not loaded from user config: {name}")
+            if not isinstance(live_entry, dict) or live_entry.get("source") != "workspace":
+                fail(f"managed Copilot MCP server not loaded from workspace config: {name}")
 
     observed_app_skills = app_skill_names(app_support_dir)
     if overlay.get("skills", {}).get("appSkillsPolicy") == "allow-known-only":
@@ -1113,6 +1166,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--settings-overlay", default=str(DEFAULT_SETTINGS_OVERLAY), help="Canonical Copilot settings overlay.")
     parser.add_argument("--hooks-registry", default=str(DEFAULT_HOOKS_REGISTRY), help="Canonical lifecycle hooks registry.")
     parser.add_argument("--dev-servers-registry", default=str(DEFAULT_DEV_SERVERS_REGISTRY), help="Canonical dev-server registry for GitHub Copilot app run configs.")
+    parser.add_argument("--repo-registry", default=str(DEFAULT_REPO_REGISTRY), help="Canonical managed repo inventory.")
+    parser.add_argument("--mcp-registry", default=str(DEFAULT_MCP_REGISTRY), help="Canonical MCP definition and target catalog.")
     parser.add_argument("--preview-runner", default=str(DEFAULT_PREVIEW_RUNNER), help="Shared preview runner used by generated app run configs.")
     parser.add_argument("--settings-file", default=str(DEFAULT_SETTINGS_FILE), help="Target ~/.copilot/settings.json.")
     parser.add_argument("--user-config-file", default=str(DEFAULT_USER_CONFIG_FILE), help="Target ~/.copilot/config.json.")
@@ -1136,6 +1191,8 @@ def main() -> int:
     overlay_file = output_path(Path(args.settings_overlay))
     hooks_registry_file = output_path(Path(args.hooks_registry))
     dev_servers_registry = output_path(Path(args.dev_servers_registry)).resolve()
+    repo_registry_file = output_path(Path(args.repo_registry)).resolve()
+    mcp_registry_file = output_path(Path(args.mcp_registry)).resolve()
     settings_file = output_path(Path(args.settings_file))
     user_config_file = output_path(Path(args.user_config_file))
     mcp_config_file = output_path(Path(args.mcp_config_file))
@@ -1160,6 +1217,8 @@ def main() -> int:
                 overlay_file,
                 hooks_registry_file,
                 dev_servers_registry,
+                repo_registry_file,
+                mcp_registry_file,
                 settings_file,
                 user_config_file,
                 mcp_config_file,
@@ -1181,6 +1240,8 @@ def main() -> int:
                 overlay_file,
                 hooks_registry_file,
                 dev_servers_registry,
+                repo_registry_file,
+                mcp_registry_file,
                 settings_file,
                 user_config_file,
                 mcp_config_file,
@@ -1196,7 +1257,7 @@ def main() -> int:
                 skip_github_app_configs=args.skip_github_app_configs,
                 skip_global_instructions=args.skip_global_instructions,
             )
-    except CopilotSyncError as exc:
+    except (CopilotSyncError, ValueError) as exc:
         print(f"ERROR: {exc}", file=sys.stderr)
         return 1
     return 0

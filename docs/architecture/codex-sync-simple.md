@@ -29,7 +29,7 @@ flowchart TD
 - `plugins/registry.json`: native Codex plugin scope and enablement.
 - `config/global.agents.md`: shared global guidance rendered into Codex and Claude.
 - `codex/config/`: canonical Codex machine config and repo bootstrap inputs.
-- `mcp/config/presets.json`: shared MCP preset definitions.
+- `mcp/config/presets.json`: shared MCP definitions and repository/client targets.
 - `codex/config/repo-bootstrap.json`: managed repo inventory and repo-local Codex behavior.
 - `dev-servers/registry.json`: shared Claude Code, Codex, and GitHub Copilot app agent-preview launch configs.
 - `~/GitHub/scripts/sync/git-auto-sync.sh`: launchd-driven 15-minute machine sync loop.

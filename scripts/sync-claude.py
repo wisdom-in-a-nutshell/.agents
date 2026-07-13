@@ -21,6 +21,7 @@ from hooks.control_plane import (  # noqa: E402
     load_hooks_registry,
     render_claude_hooks,
 )
+from mcp.control_plane import claude_server_from_preset, load_mcp_catalog  # noqa: E402
 
 
 # Durable Claude Code control-plane sync: renders global instructions, skills,
@@ -1407,75 +1408,17 @@ def render_codex_environment_configs(
         )
 
 
-def load_mcp_presets(registry_file: Path) -> dict[str, Any]:
-    """Load the canonical MCP catalog the same way Codex consumes it. Only the
-    standalone `presets` map is mirrored to Claude; plugin presets stay Codex-only.
-    Validation matches codex/scripts/sync-repo-bootstrap-registry.py so a preset
-    that renders for one client renders for both."""
-    data = read_json_object(registry_file)
-    presets_raw = data.get("presets", {})
-    if not isinstance(presets_raw, dict):
-        raise ValueError("mcp presets registry presets must be an object")
-    presets: dict[str, Any] = {}
-    for name, preset in presets_raw.items():
-        if not isinstance(preset, dict):
-            raise ValueError(f"mcp preset `{name}` must be an object")
-        transport = preset.get("transport")
-        if transport not in {"http", "stdio"}:
-            raise ValueError(f"mcp preset `{name}` must define transport `http` or `stdio`")
-        presets[str(name)] = preset
-    return presets
-
-
-def load_repo_mcp_assignments(repo_registry_file: Path) -> list[dict[str, Any]]:
-    """Per-repo MCP preset assignments from the shared repo-bootstrap registry.
-    This reuses the same `mcp_presets` field Codex renders, so a single registry
-    assignment feeds both clients. Repos with no assignment remove stale generated
-    project MCP config."""
+def load_repo_mcp_entries(repo_registry_file: Path) -> list[dict[str, Any]]:
+    """Load the managed repo inventory used by the canonical MCP target matrix."""
     data = read_json_object(repo_registry_file)
     repos_raw = data.get("repos", [])
     if not isinstance(repos_raw, list):
         raise ValueError("repo registry repos must be an array")
-    assignments: list[dict[str, Any]] = []
     for idx, item in enumerate(repos_raw):
         if not isinstance(item, dict):
             raise ValueError(f"repos[{idx}] must be an object")
-        presets_raw = item.get("mcp_presets", [])
-        if not isinstance(presets_raw, list):
-            raise ValueError(f"repos[{idx}].mcp_presets must be an array")
-        presets = [str(name).strip() for name in presets_raw if str(name).strip()]
-        path = ensure_str(item.get("path"), "path", "repos", idx)
-        assignments.append({"repo": path, "presets": presets})
-    return assignments
-
-
-def mcp_server_from_preset(name: str, preset: dict[str, Any]) -> dict[str, Any]:
-    """Translate a canonical MCP preset into a Claude `.mcp.json` server entry.
-    Claude carries the same fields as the Codex render but keys the transport
-    under `type`."""
-    transport = preset.get("transport")
-    if transport == "http":
-        url = preset.get("url")
-        if not isinstance(url, str) or not url.strip():
-            raise ValueError(f"mcp preset `{name}` http transport needs a non-empty url")
-        return {"type": "http", "url": url}
-    if transport == "stdio":
-        command = preset.get("command")
-        if not isinstance(command, str) or not command.strip():
-            raise ValueError(f"mcp preset `{name}` stdio transport needs a non-empty command")
-        entry: dict[str, Any] = {"type": "stdio", "command": command}
-        args = preset.get("args")
-        if args is not None:
-            if not isinstance(args, list):
-                raise ValueError(f"mcp preset `{name}` args must be an array")
-            entry["args"] = list(args)
-        env = preset.get("env")
-        if env is not None:
-            if not isinstance(env, dict):
-                raise ValueError(f"mcp preset `{name}` env must be an object")
-            entry["env"] = dict(env)
-        return entry
-    raise ValueError(f"mcp preset `{name}` has unsupported transport `{transport}`")
+        ensure_str(item.get("path"), "path", "repos", idx)
+    return repos_raw
 
 
 def render_mcp_config(target: Path, desired: dict[str, Any], apply: bool) -> None:
@@ -1499,15 +1442,17 @@ def remove_mcp_config(target: Path, apply: bool) -> None:
 
 
 def render_mcp_configs(
-    assignments: list[dict[str, Any]],
-    presets: dict[str, Any],
+    repo_entries: list[dict[str, Any]],
+    mcp_registry_file: Path,
     github_root: Path,
     repo_filters: set[Path],
     apply: bool,
 ) -> None:
+    catalog = load_mcp_catalog(mcp_registry_file, repo_entries)
     home = Path.home()
-    for assignment in assignments:
-        repo_root = resolve_repo_root(assignment["repo"], github_root, home)
+    for entry in repo_entries:
+        repo_ref = str(entry["path"])
+        repo_root = resolve_repo_root(repo_ref, github_root, home)
         if repo_filters and repo_root not in repo_filters:
             continue
         actual_repo = repo_git_root(repo_root)
@@ -1517,14 +1462,10 @@ def render_mcp_configs(
             continue
         if repo_filters and actual_repo not in repo_filters:
             continue
-        servers: dict[str, Any] = {}
-        for name in assignment["presets"]:
-            preset = presets.get(name)
-            if preset is None:
-                raise ValueError(
-                    f"repo {assignment['repo']} references unknown mcp preset `{name}`"
-                )
-            servers[name] = mcp_server_from_preset(name, preset)
+        servers = {
+            name: claude_server_from_preset(name, preset)
+            for name, preset in catalog.presets_for(repo_ref, "claude")
+        }
         target = actual_repo / ".mcp.json"
         if not servers:
             remove_mcp_config(target, apply)
@@ -1636,8 +1577,8 @@ def run_sync(args: argparse.Namespace) -> None:
         mcp_presets_registry = absolute_path(Path(args.mcp_presets_registry).expanduser()).resolve()
         repo_registry_file = absolute_path(Path(args.repo_registry).expanduser()).resolve()
         render_mcp_configs(
-            load_repo_mcp_assignments(repo_registry_file),
-            load_mcp_presets(mcp_presets_registry),
+            load_repo_mcp_entries(repo_registry_file),
+            mcp_presets_registry,
             github_root,
             repo_filters,
             args.apply,
@@ -1714,7 +1655,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--mcp-presets-registry",
         default=str(DEFAULT_MCP_PRESETS_REGISTRY),
-        help="Canonical MCP preset catalog JSON mirrored into per-repo Claude .mcp.json from repo-bootstrap mcp_presets.",
+        help="Canonical MCP target catalog rendered into per-repo Claude .mcp.json.",
     )
     parser.add_argument(
         "--skip-mcp-configs",

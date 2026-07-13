@@ -3,12 +3,11 @@ import { useNavigateRepo } from '../primitives';
 import { cleanArray, repoDisplayName, sourceHref, sourceLabel } from '../selectors';
 import type { ControlPlaneData, Item } from '../types';
 
-type CatalogKind = 'skills' | 'plugins' | 'mcp' | 'hooks';
+type CatalogKind = 'skills' | 'plugins' | 'hooks';
 
 const KIND_LABEL: Record<CatalogKind, string> = {
   skills: 'Skills',
   plugins: 'Plugins',
-  mcp: 'MCP presets',
   hooks: 'Hooks',
 };
 

@@ -93,19 +93,19 @@ class ControlPlaneDashboardDataTests(TempDirTestCase):
         write_json(
             root / "mcp/config/presets.json",
             {
+                "version": 2,
                 "presets": {
                     "openaiDeveloperDocs": {
                         "transport": "http",
                         "url": "https://developers.openai.com/mcp",
+                        "targets": [{"clients": "all", "repos": "all"}],
                     },
                     "cloudflare-docs": {
                         "transport": "http",
                         "url": "https://docs.mcp.cloudflare.com/mcp",
+                        "targets": [{"clients": ["codex"], "repos": [str(adi)]}],
                     },
                 },
-                "global_presets": ["openaiDeveloperDocs"],
-                "plugin_presets": {},
-                "plugin_global_presets": [],
             },
         )
         write_json(
@@ -137,7 +137,6 @@ class ControlPlaneDashboardDataTests(TempDirTestCase):
                 "repos": [
                     {
                         "path": str(adi),
-                        "mcp_presets": ["cloudflare-docs"],
                     },
                     {
                         "path": str(dobby_ios),
@@ -203,7 +202,7 @@ class ControlPlaneDashboardDataTests(TempDirTestCase):
 
         payload = json.loads(result.stdout)
         self.assertEqual(result.stderr, "")
-        self.assertEqual(payload["schema_version"], "1.0")
+        self.assertEqual(payload["schema_version"], "1.1")
         self.assertEqual(payload["command"], "control-plane-dashboard data")
         self.assertEqual(payload["status"], "ok")
         self.assertIsNone(payload["error"])
@@ -223,6 +222,8 @@ class ControlPlaneDashboardDataTests(TempDirTestCase):
         self.assertEqual(data["groups"]["repos"][1]["details"]["plugin_count"], 2)
         self.assertTrue(data["groups"]["repos"][0]["details"]["exists"])
         self.assertTrue(any(item["name"] == "openaiDeveloperDocs" for item in data["groups"]["mcp"]))
+        cloudflare = [item for item in data["groups"]["mcp"] if item["name"] == "cloudflare-docs"][0]
+        self.assertEqual(cloudflare["details"]["repo_clients"], {"adi": ["codex"]})
         plugin_skill = [
             item for item in data["groups"]["skills"] if item["name"] == "ios-debugger-agent"
         ][0]

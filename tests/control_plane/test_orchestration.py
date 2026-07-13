@@ -357,3 +357,67 @@ class AutoApplyRoutingTests(TempDirTestCase):
             ],
             log_path.read_text(encoding="utf-8").splitlines(),
         )
+
+    def test_mcp_target_change_runs_all_client_bootstrap(self) -> None:
+        root, log_path, stamp_file = self._make_agents_repo()
+        baseline_sha = run_command(
+            ["git", "-C", str(root), "rev-parse", "HEAD"],
+        ).stdout.strip()
+        write_text(stamp_file, baseline_sha + "\n")
+
+        write_json(
+            root / "mcp/config/presets.json",
+            {
+                "version": 2,
+                "presets": {
+                    "playwright": {
+                        "transport": "stdio",
+                        "command": "npx",
+                        "args": ["-y", "@playwright/mcp@latest"],
+                        "targets": [
+                            {
+                                "clients": ["copilot"],
+                                "repos": ["~/GitHub/agents"],
+                            }
+                        ],
+                    }
+                },
+            },
+        )
+        commit_all(root, "update MCP targets")
+
+        output = self._run_auto_apply(root, log_path, stamp_file)
+
+        self.assertIn("APPLY: detected shared agent control-plane changes", output)
+        self.assertEqual(
+            [
+                f"bootstrap-machine-agent-control-planes.sh|--apply --github-root {self.temp_path / 'GitHub'}",
+            ],
+            log_path.read_text(encoding="utf-8").splitlines(),
+        )
+
+    def test_repo_inventory_change_runs_all_client_bootstrap(self) -> None:
+        root, log_path, stamp_file = self._make_agents_repo()
+        baseline_sha = run_command(
+            ["git", "-C", str(root), "rev-parse", "HEAD"],
+        ).stdout.strip()
+        write_text(stamp_file, baseline_sha + "\n")
+
+        write_json(
+            root / "codex/config/repo-bootstrap.json",
+            {
+                "defaults": {},
+                "repos": [{"path": "~/GitHub/agents"}],
+            },
+        )
+        commit_all(root, "update repo inventory")
+
+        output = self._run_auto_apply(root, log_path, stamp_file)
+
+        self.assertIn("APPLY: detected shared agent control-plane changes", output)
+        self.assertEqual(
+            [
+                f"bootstrap-machine-agent-control-planes.sh|--apply --github-root {self.temp_path / 'GitHub'}",
+            ],
+            log_path.read_text(encoding="utf-8").splitlines(),
+        )

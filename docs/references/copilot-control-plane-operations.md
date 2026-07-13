@@ -15,7 +15,7 @@ The current Copilot control plane is client-first:
 - `config/copilot-settings.json`
   - scalar settings merged into `~/.copilot/settings.json`
   - trust policy rendered into `~/.copilot/config.json` `trustedFolders`
-  - `mcpServers` overlay rendered into the user-level `~/.copilot/mcp-config.json` (empty by default; no managed MCP servers are enabled today)
+  - user-level `~/.copilot/mcp-config.json` remains empty so repo targeting stays authoritative
   - terminal launcher defaults rendered to `~/bin/copilot`
   - skill-noise policy for validation
 - `hooks/registry.json`
@@ -24,6 +24,9 @@ The current Copilot control plane is client-first:
 - `dev-servers/registry.json`
   - GitHub Copilot app Run/browser-preview config renders into repo `.github/github-app.yml`
   - Claude Code and Codex preview config render from the same registry through `scripts/sync-claude.sh`
+- `mcp/config/presets.json`
+  - canonical MCP transport definitions and repository/client targets
+  - Copilot-only targets render into repo `.github/mcp.json`; Claude+Copilot targets use shared root `.mcp.json`
 - `config/global.agents.md`
   - the same canonical machine-wide guidance rendered into `~/.claude/CLAUDE.md` and `~/.codex/AGENTS.md`
   - now also symlinked into `~/.copilot/copilot-instructions.md` by `scripts/sync-copilot.py`
@@ -47,9 +50,16 @@ The current Copilot control plane is client-first:
   - `trustedFolders` includes `~/GitHub`, direct child repos, `~/.agents`, and `~/GitHub/agents`
   - managed trust is kept out of `settings.json` so the CLI does not move it on every startup
 - `~/.copilot/mcp-config.json`
-  - fully rendered from `config/copilot-settings.json`'s `mcpServers` overlay (a name-keyed map of `local`/`http`/`sse` server definitions); an ad-hoc `copilot mcp add <name> ...` survives only until the next `sync-copilot.py --apply`, which replaces the whole file with the overlay's desired state
-  - empty by default (`{"mcpServers": {}}`) — no user-level MCP servers are managed today. Playwright MCP (`npx @playwright/mcp@latest`) was evaluated on 2026-07-08 and rejected for now: it exposes ~25-30 browser-automation tools and costs ~4k tokens of schema overhead per session versus ~800 tokens for a small server like `openaiDeveloperDocs`. Re-add it here (with a `--tools` allowlist) rather than through ad-hoc `copilot mcp add` if it's needed again.
-  - `--check` cross-validates the rendered file against a live `copilot mcp list --json` probe: every overlay-managed server name must appear with `"source": "user"`
+  - fully rendered as `{"mcpServers": {}}`; an ad-hoc user-level `copilot mcp add <name> ...` is pruned on the next apply
+  - remains empty by design so MCP availability is controlled per repository
+- repo `.github/mcp.json`
+  - generated only when a repo has Copilot-only MCP cells in `mcp/config/presets.json`
+  - currently carries Playwright for `agents`, `frontier-lab-intelligence`, and `stadia-macos-controller`
+  - is removed when the repo no longer has Copilot-only targets
+- repo `.mcp.json`
+  - generated when an MCP targets both Claude and Copilot for that repo
+  - is not duplicated into `.github/mcp.json`
+  - `--check` cross-validates both project surfaces against live `copilot mcp list --json` source data
 - `~/.copilot/hooks/agents-control-plane.json`
   - uses PascalCase event names so Copilot provides VS Code-compatible snake_case payloads
   - renders `SessionStart`, `UserPromptSubmit`, and `Stop` from the shared hook registry
@@ -95,7 +105,7 @@ The managed check fails if direct skill copies appear under:
 
 This keeps Copilot from loading extra duplicate skill layers. The macOS app's bundled skill directory is observed and allowlisted by name; new app-bundled skills fail the check until reviewed and added to `config/copilot-settings.json` or disabled in app settings.
 
-The managed settings overlay also writes `disabledSkills` for built-in, app-adjacent, or rarely needed personal/project skills that are available but noisy for normal local terminal sessions. `copilot skill list --json` may still report disabled skills as available; the runtime proof is the session startup summary or a prompt probe. On 2026-07-03, a prompt-mode probe reported 14 loaded skills and confirmed `customize-cloud-agent` was not loaded after `disabledSkills` included it. After tightening the list, a normal wrapper session in this repo reported only the core remaining skills. The launcher disables GitHub's built-in MCP server plus the separate `ide` MCP server, but does not disable repo MCPs; if `openaiDeveloperDocs` is assigned through the repo `.mcp.json`, it remains available.
+The managed settings overlay also writes `disabledSkills` for built-in, app-adjacent, or rarely needed personal/project skills that are available but noisy for normal local terminal sessions. `copilot skill list --json` may still report disabled skills as available; the runtime proof is the session startup summary or a prompt probe. On 2026-07-03, a prompt-mode probe reported 14 loaded skills and confirmed `customize-cloud-agent` was not loaded after `disabledSkills` included it. After tightening the list, a normal wrapper session in this repo reported only the core remaining skills. The launcher disables GitHub's built-in MCP server plus the separate `ide` MCP server, but does not disable repo MCPs rendered from the target matrix.
 
 **Known blind spot (2026-07-01):** the app's own Settings → Skills → "Built-in" list does not map 1:1 to `app-skills/` on disk. `customize-cloud-agent` appears in the in-app "Built-in" list but has no folder under `app-skills/` — it is compiled into the app binary. Conversely `impeccable` exists as a loose folder under `app-skills/` (and is what this check observes) but is not shown in the app's "Built-in" tab, likely deduped against a same-named personal skill surfaced under "On this device" instead. `expectedAppBundledSkills` now includes `customize-cloud-agent` for documentation, but the check can only ever see loose `app-skills/*/SKILL.md` folders — it has no visibility into skills the app bundles internally, and cannot detect new ones added that way. Toggling a "Built-in" skill on/off in the app's Settings UI is the only control for it; no file or setting was found that persists that toggle.
 

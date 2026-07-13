@@ -262,6 +262,7 @@ class ClaudeSyncTests(TempDirTestCase):
                 str(github_root),
                 "--repo",
                 "repo-a",
+                "--skip-mcp-configs",
                 *self._isolated_targets(root),
                 str(registry),
             ]
@@ -303,6 +304,7 @@ class ClaudeSyncTests(TempDirTestCase):
                 str(repo_registry),
                 "--repo",
                 "repo-a",
+                "--skip-mcp-configs",
                 *self._isolated_targets(root),
                 str(registry),
             ]
@@ -491,25 +493,28 @@ class ClaudeSyncTests(TempDirTestCase):
         mcp_presets = write_json(
             root / "mcp/config/presets.json",
             {
+                "version": 2,
                 "presets": {
-                    "figma": {"transport": "http", "url": "http://127.0.0.1:3845/mcp"},
+                    "figma": {
+                        "transport": "http",
+                        "url": "http://127.0.0.1:3845/mcp",
+                        "targets": [{"clients": "all", "repos": ["repo-a"]}],
+                    },
                     "toolbox": {
                         "transport": "stdio",
                         "command": "npx",
                         "args": ["-y", "toolbox"],
                         "env": {"TB": "1"},
+                        "targets": [{"clients": "all", "repos": ["repo-a"]}],
                     },
                 },
-                "global_presets": [],
-                "plugin_presets": {},
-                "plugin_global_presets": [],
             },
         )
         repo_registry = write_json(
             root / "codex/config/repo-bootstrap.json",
             {
                 "defaults": {},
-                "repos": [{"path": "repo-a", "mcp_presets": ["figma", "toolbox"]}],
+                "repos": [{"path": "repo-a"}],
             },
         )
 
@@ -544,17 +549,21 @@ class ClaudeSyncTests(TempDirTestCase):
         mcp_presets = write_json(
             root / "mcp/config/presets.json",
             {
-                "presets": {"figma": {"transport": "http", "url": "http://127.0.0.1:3845/mcp"}},
-                "global_presets": [],
-                "plugin_presets": {},
-                "plugin_global_presets": [],
+                "version": 2,
+                "presets": {
+                    "figma": {
+                        "transport": "http",
+                        "url": "http://127.0.0.1:3845/mcp",
+                        "targets": [{"clients": "all", "repos": ["repo-a"]}],
+                    }
+                },
             },
         )
         repo_registry = write_json(
             root / "codex/config/repo-bootstrap.json",
             {
                 "defaults": {},
-                "repos": [{"path": "repo-a", "mcp_presets": ["figma"]}, {"path": "repo-b"}],
+                "repos": [{"path": "repo-a"}, {"path": "repo-b"}],
             },
         )
         write_json(
@@ -571,7 +580,7 @@ class ClaudeSyncTests(TempDirTestCase):
             repo_registry=repo_registry,
         )
 
-        # Assigned repo gets a .mcp.json; a managed repo with no mcp_presets drops stale output.
+        # Targeted repo gets a .mcp.json; an untargeted managed repo drops stale output.
         self.assertTrue((repo_a / ".mcp.json").is_file())
         self.assertFalse((repo_b / ".mcp.json").exists())
 

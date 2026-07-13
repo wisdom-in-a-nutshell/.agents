@@ -48,10 +48,10 @@ flowchart TD
 
 - `codex/config/global.config.toml` defines the managed baseline for terminal Codex.
 - `codex/config/bundled-skills-policy.json` classifies OpenAI-bundled runtime skills as allowed or disabled so upstream bundled skills cannot silently drift into the local control plane.
-- `mcp/config/presets.json` defines shared MCP presets and machine-wide global MCP defaults.
+- `mcp/config/presets.json` defines shared MCP transports and repository/client targets.
 - `plugins/registry.json` defines native Codex plugin scope and enable/disable state.
 - `hooks/registry.json` defines shared lifecycle hooks rendered into global and repo-local Codex hook files.
-- `codex/config/repo-bootstrap.json` defines managed repos, trust behavior, repo MCP presets, and optional per-repo model/personality/service-tier overrides.
+- `codex/config/repo-bootstrap.json` defines managed repos, trust behavior, and optional per-repo model/personality/service-tier overrides.
 
 ## Live Machine Config
 
@@ -70,16 +70,15 @@ flowchart TD
 
 ## Repo-Local Config
 
-- `codex/scripts/sync-repo-codex-configs.sh` generates repo-local `.codex/config.toml` files from `repo-bootstrap.json`, shared MCP presets, and plugin assignments.
+- `codex/scripts/sync-repo-codex-configs.sh` generates repo-local `.codex/config.toml` files from `repo-bootstrap.json`, Codex cells in the shared MCP target matrix, and plugin assignments.
 - The same script renders repo-local `.codex/hooks.json` for repo-scoped hooks.
 - Most repos can have a minimal managed file with no repo-local overrides.
-- Some repos get MCP presets, model overrides, or project-root markers.
+- Some repos get Codex-targeted MCPs, model overrides, or project-root markers.
 - `scripts/control-plane-dashboard.py` serves the same registry data through the local dashboard, including effective plugins from [`plugins/registry.json`](/Users/dobby/GitHub/agents/plugins/registry.json) and effective skills from [`skills/registry.json`](/Users/dobby/GitHub/agents/skills/registry.json).
 
 Current per-repo fields in `repo-bootstrap.json`:
 
 - `codex_trust`
-- `mcp_presets`
 - `model`
 - `model_auto_compact_token_limit`
 - `model_reasoning_effort`

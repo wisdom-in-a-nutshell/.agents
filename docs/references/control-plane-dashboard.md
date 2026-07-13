@@ -184,6 +184,13 @@ The normalized `data` object contains:
 - `items`: one flat searchable list
 - `groups`: grouped lists for skills, plugins, MCP presets, repos, and hooks
 
+The MCP section is a dedicated distribution matrix: managed repositories are
+rows, Codex/Claude/Copilot are columns, and each active cell lists the MCPs
+delivered to that exact combination. Server filters isolate one definition and
+show its endpoint, repo coverage, client coverage, and registry source. This is
+the operator view of `mcp/config/presets.json`; assignments are not duplicated
+in the repo bootstrap registry.
+
 Repo entries come from `codex/config/repo-bootstrap.json`. If a managed repo
 path no longer exists on the current machine, the dashboard keeps the row but
 adds a `managed_repo_missing` warning so the stale registry entry appears in the

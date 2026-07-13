@@ -25,16 +25,10 @@
       "path": "~/GitHub/adithyan-ai-videos"
     },
     {
-      "path": "~/GitHub/agents",
-      "mcp_presets": [
-        "openaiDeveloperDocs"
-      ]
+      "path": "~/GitHub/agents"
     },
     {
-      "path": "~/GitHub/aipodcasting",
-      "mcp_presets": [
-        "figma"
-      ]
+      "path": "~/GitHub/aipodcasting"
     },
     {
       "path": "~/GitHub/aipodcasting-website"
@@ -72,10 +66,7 @@
       "path": "~/GitHub/focus"
     },
     {
-      "path": "~/GitHub/frontier-lab-intelligence",
-      "mcp_presets": [
-        "openaiDeveloperDocs"
-      ]
+      "path": "~/GitHub/frontier-lab-intelligence"
     },
     {
       "path": "~/GitHub/futureoflife-podcast"
@@ -93,11 +84,7 @@
       "path": "~/GitHub/modal_functions"
     },
     {
-      "path": "~/GitHub/platform-ops",
-      "mcp_presets": [
-        "cloudflare-api",
-        "cloudflare-docs"
-      ]
+      "path": "~/GitHub/platform-ops"
     },
     {
       "path": "~/GitHub/scripts"
@@ -106,10 +93,7 @@
       "path": "~/GitHub/stadia-macos-controller"
     },
     {
-      "path": "~/GitHub/symphony",
-      "mcp_presets": [
-        "openaiDeveloperDocs"
-      ]
+      "path": "~/GitHub/symphony"
     },
     {
       "path": "~/GitHub/thoughtforms-life"
