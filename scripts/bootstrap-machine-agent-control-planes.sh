@@ -12,7 +12,6 @@ SYNC_PLUGINS_SCRIPT="${SCRIPT_DIR}/sync-plugins-registry.sh"
 SYNC_CODEX_PLUGIN_INSTALLS_SCRIPT="${SCRIPT_DIR}/sync-codex-plugin-installs.py"
 SYNC_CLAUDE_SCRIPT="${SCRIPT_DIR}/sync-claude.sh"
 SYNC_COPILOT_SCRIPT="${SCRIPT_DIR}/sync-copilot.sh"
-SYNC_GROK_SCRIPT="${SCRIPT_DIR}/sync-grok.sh"
 PRUNE_COPILOT_SESSIONS_LAUNCHAGENT_SCRIPT="${SCRIPT_DIR}/install-prune-stale-copilot-sessions-launchagent.sh"
 SYNC_VSCODE_AGENT_DEFAULTS_SCRIPT="${SCRIPT_DIR}/sync-vscode-agent-defaults.sh"
 SYNC_GIT_HOOKS_SCRIPT="${SCRIPT_DIR}/sync-managed-git-hooks.sh"
@@ -94,7 +93,6 @@ fi
 [[ -x "$SYNC_CODEX_PLUGIN_INSTALLS_SCRIPT" ]] || die "Missing executable: $SYNC_CODEX_PLUGIN_INSTALLS_SCRIPT"
 [[ -x "$SYNC_CLAUDE_SCRIPT" ]] || die "Missing executable: $SYNC_CLAUDE_SCRIPT"
 [[ -x "$SYNC_COPILOT_SCRIPT" ]] || die "Missing executable: $SYNC_COPILOT_SCRIPT"
-[[ -x "$SYNC_GROK_SCRIPT" ]] || die "Missing executable: $SYNC_GROK_SCRIPT"
 [[ -x "$PRUNE_COPILOT_SESSIONS_LAUNCHAGENT_SCRIPT" ]] || die "Missing executable: $PRUNE_COPILOT_SESSIONS_LAUNCHAGENT_SCRIPT"
 [[ -x "$SYNC_VSCODE_AGENT_DEFAULTS_SCRIPT" ]] || die "Missing executable: $SYNC_VSCODE_AGENT_DEFAULTS_SCRIPT"
 [[ -x "$SYNC_GIT_HOOKS_SCRIPT" ]] || die "Missing executable: $SYNC_GIT_HOOKS_SCRIPT"
@@ -151,13 +149,6 @@ sync_copilot_cmd=(
 )
 log "+ ${sync_copilot_cmd[*]}"
 "${sync_copilot_cmd[@]}"
-
-sync_grok_cmd=(
-  "$SYNC_GROK_SCRIPT"
-  "$MODE_FLAG"
-)
-log "+ ${sync_grok_cmd[*]}"
-"${sync_grok_cmd[@]}"
 
 # Copilot local session cleanup: only install where Copilot has created local
 # session state. This mirrors GitHub's local-only `/session prune` behavior.

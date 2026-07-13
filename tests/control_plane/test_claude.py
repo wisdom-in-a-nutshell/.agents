@@ -205,7 +205,12 @@ class ClaudeSyncTests(TempDirTestCase):
 
         settings = json.loads((claude_home / "settings.json").read_text(encoding="utf-8"))
         self.assertEqual(
-            [{"hooks": [{"type": "command", "command": "custom-session-start"}]}],
+            [
+                {
+                    "matcher": "*",
+                    "hooks": [{"type": "command", "command": "custom-session-start"}],
+                }
+            ],
             settings["hooks"]["SessionStart"],
         )
         self.assertEqual(
@@ -956,7 +961,7 @@ class ClaudeSyncTests(TempDirTestCase):
         self.assertEqual(False, settings_a["autoMemoryEnabled"])
         # The managed hook block and the pre-existing unmanaged key coexist.
         self.assertIn("SessionStart", settings_a["hooks"])
-        self.assertNotIn("matcher", settings_a["hooks"]["SessionStart"][0])
+        self.assertEqual("startup", settings_a["hooks"]["SessionStart"][0]["matcher"])
         self.assertEqual({"defaultMode": "acceptEdits"}, settings_a["permissions"])
         settings_b = json.loads(
             (repo_b / ".claude/settings.json").read_text(encoding="utf-8")

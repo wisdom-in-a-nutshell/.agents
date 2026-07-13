@@ -35,7 +35,6 @@ class SharedBootstrapWrapperTests(TempDirTestCase):
         write_executable(root / "scripts/sync-codex-plugin-installs.py", STUB_SCRIPT)
         write_executable(root / "scripts/sync-claude.sh", STUB_SCRIPT)
         write_executable(root / "scripts/sync-copilot.sh", STUB_SCRIPT)
-        write_executable(root / "scripts/sync-grok.sh", STUB_SCRIPT)
         write_executable(root / "scripts/install-prune-stale-copilot-sessions-launchagent.sh", STUB_SCRIPT)
         write_executable(root / "scripts/sync-vscode-agent-defaults.sh", STUB_SCRIPT)
         write_executable(root / "scripts/sync-managed-git-hooks.sh", STUB_SCRIPT)
@@ -72,7 +71,6 @@ class SharedBootstrapWrapperTests(TempDirTestCase):
                 "sync-codex-plugin-installs.py|--apply --no-input",
                 f"sync-claude.sh|--apply --github-root {github_root} --repo {repo_a} --repo {repo_b}",
                 f"sync-copilot.sh|--apply --github-root {github_root} --repo {repo_a} --repo {repo_b}",
-                "sync-grok.sh|--apply",
                 "install-prune-stale-copilot-sessions-launchagent.sh|--apply",
                 "sync-vscode-agent-defaults.sh|--apply",
                 f"sync-managed-git-hooks.sh|--apply --repo {repo_a} --repo {repo_b}",
@@ -95,7 +93,6 @@ class SharedCheckWrapperTests(TempDirTestCase):
         write_executable(root / "scripts/check-skills-registry.sh", STUB_SCRIPT)
         write_executable(root / "scripts/check-plugins-registry.sh", STUB_SCRIPT)
         write_executable(root / "scripts/sync-copilot.sh", STUB_SCRIPT)
-        write_executable(root / "scripts/sync-grok.sh", STUB_SCRIPT)
         write_executable(root / "scripts/sync-managed-git-hooks.sh", STUB_SCRIPT)
         write_executable(root / "codex/scripts/check-codex-control-plane.sh", STUB_SCRIPT)
         write_executable(root / "scripts/audit-agent-runtime-drift.py", STUB_SCRIPT)
@@ -124,7 +121,6 @@ class SharedCheckWrapperTests(TempDirTestCase):
                 "check-skills-registry.sh|",
                 "check-plugins-registry.sh|",
                 f"sync-copilot.sh|--check --repo {repo_a} --repo {repo_b}",
-                "sync-grok.sh|--check",
                 f"sync-managed-git-hooks.sh|--check --repo {repo_a} --repo {repo_b}",
                 f"check-codex-control-plane.sh|--repo {repo_a} --repo {repo_b}",
                 "audit-agent-runtime-drift.py|--plain --skip-control-plane-check --no-input",
@@ -154,7 +150,6 @@ class AutoApplyRoutingTests(TempDirTestCase):
         write_executable(root / "scripts/sync-skills-registry.sh", STUB_SCRIPT)
         write_executable(root / "scripts/sync-plugins-registry.sh", STUB_SCRIPT)
         write_executable(root / "scripts/sync-copilot.sh", STUB_SCRIPT)
-        write_executable(root / "scripts/sync-grok.sh", STUB_SCRIPT)
         write_executable(root / "scripts/sync-managed-git-hooks.sh", STUB_SCRIPT)
         write_executable(root / "codex/scripts/bootstrap-machine-codex.sh", STUB_SCRIPT)
         commit_all(root, "initial")

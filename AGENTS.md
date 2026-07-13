@@ -1,13 +1,12 @@
 # Agents Control-Plane Repo
 
-Personal agent, Codex, Claude, Copilot, Grok, and repo-local lifecycle hook control plane.
+Personal agent, Codex, Claude, Copilot, and repo-local lifecycle hook control plane.
 
 ## Purpose
 
 - Keep global skill sources and runtime links reproducible across MacBook + MacMini.
 - Keep canonical personal Codex control-plane assets reproducible across MacBook + MacMini.
 - Keep canonical personal Copilot CLI settings and launcher behavior reproducible across MacBook + MacMini.
-- Keep canonical personal Grok Build config reproducible across MacBook + MacMini.
 - Track one canonical skill registry in git.
 - Keep repo-local skills in their repos unless explicitly promoted.
 
@@ -31,7 +30,6 @@ contracts in this repo's docs.
 - `config/global.agents.md` is the canonical machine-wide guidance source for client-specific global guidance such as `~/.codex/AGENTS.md` and `~/.claude/CLAUDE.md`.
 - `config/claude-settings.json` is the canonical managed overlay of global Claude Code `settings.json` keys (`enabledPlugins` for Anthropic-bundled Claude plugins like `anthropic-skills@inline`, `skillOverrides` for bundled-skill visibility, `sshConfigs` for Claude Desktop SSH entries such as `macmini`, and `desktopPreferences` for selected Claude Desktop app preferences such as `chromeExtensionEnabled`). `scripts/sync-claude.py` merges Claude Code keys into `~/.claude/settings.json` and merges desktop preferences into `~/Library/Application Support/Claude/config.json` so this state is reproducible across machines and tracked in git. This is distinct from `plugins/registry.json` (Codex-native plugins) and `skills/registry.json` (managed standalone skills); it governs only Claude runtime surfaces those registries do not own.
 - `config/copilot-settings.json` is the canonical managed overlay for GitHub Copilot CLI settings, trusted folders, terminal launcher defaults, Copilot user-level hooks, and the Copilot skill-noise policy. `scripts/sync-copilot.py` renders `~/.copilot/settings.json`, renders trusted folders into `~/.copilot/config.json` where the installed CLI stores them, renders `~/.copilot/hooks/agents-control-plane.json`, and renders `~/bin/copilot`; it intentionally does not copy skills into `.github/skills` or `~/.copilot/skills`.
-- `config/grok-config.toml` is the canonical managed overlay merged into Grok Build's user config at `~/.grok/config.toml`. `scripts/sync-grok.py` renders it while preserving unrelated user settings. Keep it narrow: use it for Grok-native agent operating policy, not secrets or ordinary display preferences. Current policy starts Grok in always-approve mode and disables Claude hook compatibility, so Grok does not run Claude lifecycle hooks while still reusing Claude/AGENTS instructions, skills, and MCP compatibility.
 - `config/vscode-agent-defaults.json` is the canonical managed overlay for VS Code's own Chat/Agent extension defaults — a distinct surface from `config/copilot-settings.json`, which governs the standalone terminal `copilot` CLI, not VS Code's built-in Chat/Agents window. `scripts/sync-vscode-agent-defaults.py` renders managed keys into the machine-local Copilot-CLI-in-VS-Code agent-host config (`~/.vscode-server/data/User/globalStorage/agent-host-config.json`) and the real local VS Code user `settings.json` (`~/Library/Application Support/Code/User/settings.json`), both best-effort/skipped when that surface isn't present on the machine. This is what makes a brand-new VS Code chat session start on Bypass Approvals + Autopilot instead of VS Code's built-in default. The agent-host config is app-owned and can drift back to its own defaults during normal operation, so it is reconciled every 15 minutes from `~/GitHub/scripts/sync/git-auto-sync.sh` rather than check-gated in `scripts/check-agent-control-planes.sh`.
 - `codex/config/bundled-skills-policy.json` is the canonical policy for classifying OpenAI-bundled Codex skills that appear under `~/.codex/skills/.system` or `~/.codex/skills/codex-primary-runtime`.
 - `codex/config/repo-bootstrap.json` is the canonical shared repo registry for managed repo-local behavior.
@@ -106,7 +104,6 @@ Detailed operations live in:
 - Do not hand-edit generated repo-local `.claude/launch.json`, `.codex/environments/environment.toml`, or `.github/github-app.yml` files in managed repos; update `dev-servers/registry.json` and re-run `scripts/sync-claude.sh` plus `scripts/sync-copilot.sh`.
 - Do not hand-edit generated repo-local `.mcp.json` or `.github/mcp.json` files in managed repos. Update the MCP definitions and target matrix in `mcp/config/presets.json`, then re-run the shared bootstrap/check.
 - Do not copy managed skills into `.github/skills` or `~/.copilot/skills` for Copilot by default. Copilot already reads `.agents/skills`, `.claude/skills`, `~/.agents/skills`, and app-bundled skills; use `config/copilot-settings.json`, `hooks/registry.json`, and `scripts/sync-copilot.py` for Copilot CLI settings, trust, hooks, launcher state, and skill-noise checks.
-- Do not hand-edit managed keys in `~/.grok/config.toml`; update `config/grok-config.toml` and rerun `scripts/sync-grok.sh --apply` or the shared bootstrap. Do not put Grok auth tokens, API keys, or ordinary display preferences in the managed config overlay.
 - When a new OpenAI-bundled Codex skill appears locally, classify it in `codex/config/bundled-skills-policy.json` as either `allowed` or `disabled`; do not leave it as untracked local runtime drift.
 - When changing shared bootstrap inputs such as `mcp/config/presets.json` or `codex/config/repo-bootstrap.json`, prefer `./scripts/bootstrap-machine-agent-control-planes.sh --apply --repo <repo>` so every affected client surface is re-rendered together. Use component-only scripts only for intentional single-surface troubleshooting.
 - If an MCP definition or target changes, run the shared bootstrap/check in the same change and verify every selected client surface. Note: repo filters use exact paths (`--repo ~/GitHub/<repo>`), not bare repo names; inspect `.codex/config.toml`, `.mcp.json`, and `.github/mcp.json` as applicable.

@@ -2,7 +2,7 @@
 
 Use this page for the machine-facing apply and validation entrypoints that live at the root of `~/GitHub/agents`.
 
-This repo manages shared agent surfaces for Codex, Claude Code, GitHub Copilot, Grok Build, skills, plugins, MCP presets, lifecycle hooks, and the local dashboard. The temporary Antigravity spike script is tracked for manual experiments but is disabled in the shared machine bootstrap. `~/.agents` is no longer the source checkout; it is reserved for runtime surfaces such as Codex and Copilot user-scope skills at `~/.agents/skills`.
+This repo manages shared agent surfaces for Codex, Claude Code, GitHub Copilot, skills, plugins, MCP presets, lifecycle hooks, and the local dashboard. The temporary Antigravity spike script is tracked for manual experiments but is disabled in the shared machine bootstrap. `~/.agents` is no longer the source checkout; it is reserved for runtime surfaces such as Codex and Copilot user-scope skills at `~/.agents/skills`.
 
 Sparse machines are normal. A repo listed in the shared registries but not cloned on the current machine is skipped silently by sync/check commands. Existing non-git folders at managed repo paths still warn because they may be broken placeholders that should be deleted or replaced with a real checkout.
 
@@ -17,7 +17,6 @@ For repo authors adding `scripts/hooks/*.py`, start with [`repo-lifecycle-hook-a
   - skips the temporary Antigravity spike surface by default
   - applies the Claude Code control-plane surface
   - applies the GitHub Copilot CLI control-plane surface
-  - applies the Grok Build managed config surface
   - applies the VS Code Chat/Agent extension defaults surface
   - applies the Codex runtime via `codex/scripts/bootstrap-machine-codex.sh`
 - `scripts/auto-apply-agent-control-planes.sh`
@@ -61,11 +60,6 @@ For repo authors adding `scripts/hooks/*.py`, start with [`repo-lifecycle-hook-a
   - leaves `.github/skills` and `~/.copilot/skills` empty by design; Copilot reuses `.agents/skills` and `~/.agents/skills`
   - allowlists the macOS app-bundled skill names observed under `~/Library/Application Support/com.github.githubapp/app-skills`
   - tool surface scope: `--available-tools` (allowlist) / `--excluded-tools` (denylist) / `--disable-mcp-server` / `--disable-builtin-mcps` are real, tested CLI flags (not persisted `settings.json` keys or env vars) — add them to `launcher.defaultArgs` to trim the **terminal** `copilot` CLI's tool surface. They only affect processes launched through the managed `~/bin/copilot` wrapper. The **GitHub Copilot desktop app** spawns its own session process and injects an additional, larger tool set (canvas/widgets, session/project management, PR review helpers, workflows, cross-session messaging) that is not routed through `~/bin/copilot` and has no known file-based or env-var config surface today — there is currently no way to trim the desktop app's tool set from this control plane.
-- `scripts/sync-grok.sh`
-  - merges `config/grok-config.toml` into `~/.grok/config.toml` while preserving unrelated user settings such as marketplace state and display preferences
-  - skips quietly when Grok is not installed and `~/.grok` does not exist, so sparse machines do not get an unused Grok runtime home
-  - currently manages `[ui].permission_mode = "always-approve"` and `[compat.claude].hooks = false`. Claude hook compatibility is disabled because Grok reads and can run Claude hooks by default. Claude/AGENTS instruction, skill, and MCP compatibility remain enabled.
-  - does not manage `~/.grok/auth.json`, marketplace state, secrets, or ordinary display preferences
 - `scripts/sync-vscode-agent-defaults.sh`
   - a distinct surface from `sync-copilot.sh`: that script manages the standalone terminal `copilot` CLI (`~/.copilot/*`); this one manages **VS Code's own Chat/Agent extension** defaults, from `config/vscode-agent-defaults.json`
   - renders managed keys into `~/.vscode-server/data/User/globalStorage/agent-host-config.json` (the Copilot-CLI-in-VS-Code "agent host" runtime config), best-effort skipped when `~/.vscode-server` doesn't exist on the machine
@@ -180,8 +174,6 @@ cd ~/GitHub/agents
 ./scripts/sync-claude.sh --apply
 ./scripts/sync-copilot.sh --apply
 ./scripts/sync-copilot.sh --check
-./scripts/sync-grok.sh --apply
-./scripts/sync-grok.sh --check
 ./scripts/switch-claude-provider.sh status
 ./scripts/switch-claude-provider.sh subscription --apply
 ./scripts/switch-claude-provider.sh aws --apply

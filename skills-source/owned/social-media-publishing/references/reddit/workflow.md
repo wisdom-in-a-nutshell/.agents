@@ -99,7 +99,7 @@ Surface the fit risk to the user **before posting**, not after. If a sub looks t
 ### Known sub-fit notes (extend as patterns surface)
 
 - **r/StableDiffusion** — strongly biased toward open-source / local / free tooling. Posts featuring paid cloud pipelines (Kling, Runway, Sora, OpenAI image APIs, Suno, etc.) tend to get downvoted regardless of output quality, often with a comment along the lines of "this could be done with local/free tools." Skip unless the workflow is at least partly Stable-Diffusion-based or open-source.
-- **r/aivideo** — link whitelist restricted to `x.ai` only (xAI/Grok), text posts blocked. Effectively only accepts xAI-sourced video.
+- **r/aivideo** — link whitelist restricted to `x.ai` only, text posts blocked. Effectively only accepts video hosted on `x.ai`.
 - **r/Anthropic** — small audience focused on Anthropic usage and API workflows. Off-target for content where that ecosystem is peripheral (e.g. orchestrator in a multi-tool media pipeline).
 
 ### Operator account state (Adi)
