@@ -60,7 +60,7 @@ export function McpExplorer({
     <div className="mcp-view">
       <header className="mcp-head">
         <div>
-          <h2>MCP distribution</h2>
+          <h1>MCP distribution</h1>
           <p>Repository coverage runs down the page; client delivery runs across it.</p>
         </div>
         <dl className="mcp-summary" aria-label="MCP matrix summary">

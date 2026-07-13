@@ -68,7 +68,7 @@ export function Sidebar({
 
       <nav className="nav-stack" aria-label="Control-plane sections">
         {NAV_GROUPS.map((group) => (
-          <div className="nav-group" key={group.label}>
+          <div className="nav-group" key={group.label} role="group" aria-label={group.label}>
             <span className="nav-group-label" aria-hidden="true">
               {group.label}
             </span>
@@ -79,6 +79,8 @@ export function Sidebar({
                   key={item.id}
                   type="button"
                   className={`nav-button${section === item.id ? ' active' : ''}`}
+                  aria-label={item.label}
+                  aria-current={section === item.id ? 'page' : undefined}
                   title={item.label}
                   onClick={() => onSelect(item.id)}
                 >

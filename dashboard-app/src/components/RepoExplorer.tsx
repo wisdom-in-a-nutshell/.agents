@@ -82,7 +82,7 @@ function CapGroup({
   return (
     <section className="re-cap">
       <div className="re-cap-head">
-        <h4>{title}</h4>
+        <h2>{title}</h2>
         <Badge text={runtime} />
         {count != null ? <strong>{count}</strong> : null}
       </div>
@@ -119,7 +119,7 @@ function RepoDetail({ data, repo }: { data: ControlPlaneData; repo: Item }) {
   return (
     <div className="re-detail-inner">
       <header className="re-detail-head">
-        <h2>{repo.name}</h2>
+        <h1>{repo.name}</h1>
         <code className="re-path">{d.path || repo.name}</code>
         <div className="re-pills">
           <ConfigPill label="model" value={d.model} />

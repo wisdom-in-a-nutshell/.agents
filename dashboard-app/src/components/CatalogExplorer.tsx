@@ -158,7 +158,7 @@ export function CatalogExplorer({
   return (
     <div className="cat">
       <div className="cat-head">
-        <h2>{KIND_LABEL[kind]}</h2>
+        <h1>{KIND_LABEL[kind]}</h1>
         <div className="cat-filters">
           {filters.map((f) => (
             <button

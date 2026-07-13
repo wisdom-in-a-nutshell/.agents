@@ -129,7 +129,7 @@ export function App() {
             <section className="content-region content-region-flush" aria-live="polite">
               <NavProvider value={navigateToRepo}>
                 <div className="cat-head">
-                  <h2>Attention</h2>
+                  <h1>Attention</h1>
                   <span className="cat-hint">disabled, dormant, unassigned, and unscoped items</span>
                 </div>
                 <SectionView section={section} data={data} filter="all" />

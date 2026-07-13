@@ -28,7 +28,7 @@ export function GlobalConfigSection({
   return (
     <>
       <div className="cat-head">
-        <h2>{meta.title}</h2>
+        <h1>{meta.title}</h1>
         <span className="cat-hint">{meta.hint}</span>
       </div>
 
@@ -41,7 +41,7 @@ export function GlobalConfigSection({
           {groups.map((group) => (
             <section className="gc-card" key={group.title}>
               <header className="gc-card-head">
-                <h3>{group.title}</h3>
+                <h2>{group.title}</h2>
                 <a className="gc-src" href={`/source/${group.source}`} title={group.source}>
                   <code>{group.source}</code>
                 </a>
