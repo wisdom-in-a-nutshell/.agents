@@ -1095,6 +1095,9 @@ def process_codex_repositories(
             # truth for what can still be staged once the repository is locked.
             # This drops stale or ignored untracked paths from earlier turns
             # while preserving tracked deletions, renames, and unrelated edits.
+            # Stage repository-wide below instead of replaying these paths: the
+            # old side of an already-staged rename no longer exists in either
+            # the worktree or index, so a literal pathspec for it is invalid.
             item.paths = current_changes
             if item.phase == "committed" and current_changes:
                 # Preserve item.commit: it still needs to be pushed after the
@@ -1130,10 +1133,17 @@ def process_codex_repositories(
                 else:
                     repositories.pop(item.root, None)
                 continue
-            add_cmd = ["git", "--literal-pathspecs", "add", "-A", "--", *sorted(item.paths)]
+            add_cmd = ["git", "add", "-A"]
             add = run(add_cmd, item.root, timeout=GIT_ADD_TIMEOUT_SEC)
             if add.returncode != 0:
-                failures.append(command_failure_reason(item.root, "git add attributed paths", add_cmd, add))
+                failures.append(
+                    command_failure_reason(
+                        item.root,
+                        "git add consolidated repository changes",
+                        add_cmd,
+                        add,
+                    )
+                )
                 continue
             final_staged, final_staged_result = staged_paths(item.root)
             if final_staged_result.returncode != 0:
@@ -1204,14 +1214,7 @@ def process_codex_repositories(
                 if additions or unstaged:
                     item.paths.update(staged | unstaged)
                     changed_during_checks = True
-                    add_cmd = [
-                        "git",
-                        "--literal-pathspecs",
-                        "add",
-                        "-A",
-                        "--",
-                        *sorted(item.paths),
-                    ]
+                    add_cmd = ["git", "add", "-A"]
                     add = run(add_cmd, item.root, timeout=GIT_ADD_TIMEOUT_SEC)
                     if add.returncode != 0:
                         restage_failures.append(

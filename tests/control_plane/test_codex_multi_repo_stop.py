@@ -854,6 +854,53 @@ class CodexMultiRepoStopTests(TempDirTestCase):
         self.assertNotIn("rename-source.txt", tree_paths)
         self.assertNotIn("delete-me.txt", tree_paths)
 
+    def test_consolidates_already_staged_rename(self) -> None:
+        repo, remote = self.make_published_repo("repo")
+        old_bundle = repo / "bundle-old.js"
+        new_bundle = repo / "bundle-new.js"
+        stable_bundle = "export const stable = true;\n" * 20
+        old_bundle.write_text(stable_bundle + "export const version = 'old';\n", encoding="utf-8")
+        run_command(["git", "-C", str(repo), "add", old_bundle.name])
+        run_command(["git", "-C", str(repo), "commit", "-m", "seed bundle"])
+        run_command(["git", "-C", str(repo), "push", "origin", "HEAD"])
+
+        old_bundle.rename(new_bundle)
+        new_bundle.write_text(stable_bundle + "export const version = 'new';\n", encoding="utf-8")
+        run_command(
+            ["git", "-C", str(repo), "add", "-A", "--", old_bundle.name, new_bundle.name]
+        )
+        self.assertEqual(
+            run_command(["git", "-C", str(repo), "status", "--short"]).stdout,
+            "R  bundle-old.js -> bundle-new.js\n",
+        )
+
+        with patch.dict(os.environ, {"HOME": str(self.temp_path / "home")}):
+            with patch.object(
+                stop,
+                "collect_codex_turn_changes",
+                return_value=self.changes([old_bundle, new_bundle]),
+            ):
+                with patch.object(stop, "avoid_stop_continuation", return_value=False):
+                    output = stop.process_codex_repositories(
+                        str(repo),
+                        {"session_id": "thread", "hook_event_name": "Stop"},
+                    )
+
+        self.assertIsNone(output)
+        tree_paths = set(
+            run_command(
+                ["git", "-C", str(remote), "ls-tree", "--name-only", "HEAD"]
+            ).stdout.splitlines()
+        )
+        self.assertIn(new_bundle.name, tree_paths)
+        self.assertNotIn(old_bundle.name, tree_paths)
+        self.assertEqual(
+            run_command(
+                ["git", "-C", str(remote), "show", f"HEAD:{new_bundle.name}"]
+            ).stdout,
+            stable_bundle + "export const version = 'new';\n",
+        )
+
     def test_repository_lock_serializes_competing_stop_processes(self) -> None:
         repo, _remote = self.make_published_repo("repo")
         home = self.temp_path / "home"
