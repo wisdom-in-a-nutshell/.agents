@@ -150,6 +150,14 @@
       "upstream_ref": "-"
     },
     {
+      "skill": "codex-reset-credits",
+      "origin": "owned",
+      "scope": "dormant",
+      "repos": [],
+      "source_path": "skills-source/owned/codex-reset-credits",
+      "upstream_ref": "-"
+    },
+    {
       "skill": "dobby-system",
       "origin": "owned",
       "scope": "repo",
