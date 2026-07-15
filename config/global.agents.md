@@ -32,6 +32,11 @@ This file is machine-wide baseline guidance. Keep it generic and avoid portfolio
 - When choosing where docs belong inside a repo, prefer the repo's own guidance when it exists. Otherwise use `docs/architecture/` for system shape, `docs/references/` for durable facts, and project tracking docs only for active execution state. If placement is still unclear, make the best-fit update and call it out briefly.
 - When a tracker-backed project is complete, archive the tracker in the repo's archive path before final handoff, or explicitly state the blocker. Do not leave completed projects in the active tracker folder.
 
+## Browser Routing
+- For website or local web-app interaction, rendered QA, screenshots, and exploratory testing, reach first for `$agent-browser` when it is available. Do not choose a generic built-in browser surface merely because its tool is visible.
+- Use the in-app Browser only when the user explicitly asks to control the current in-app/side-by-side tab or a repo documents a concrete requirement for that exact surface. If it is unavailable, fall back to `$agent-browser` instead of treating rendered browser proof as blocked.
+- When the user names a browser skill, use that skill for the current task unless a higher-priority safety rule prevents it.
+
 ## Subagent Defaults
 - Use your best judgment on when subagents are helpful.
 - Prefer subagents when work can be split into bounded, independent tasks.
