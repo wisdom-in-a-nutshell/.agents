@@ -22,11 +22,7 @@ class CodexControlPlaneCheckTests(TempDirTestCase):
         write_json(
             root / "codex/config/repo-bootstrap.json",
             {
-                "defaults": {
-                    "model": "gpt-5.5",
-                    "model_reasoning_effort": "high",
-                    "service_tier": None,
-                },
+                "defaults": {"personality": "friendly"},
                 "repos": [
                     {
                         "path": str(adi),
@@ -98,6 +94,24 @@ class CodexControlPlaneCheckTests(TempDirTestCase):
         self.assertTrue((adi / ".codex/config.toml").is_file())
         self.assertTrue((adi / ".codex/hooks.json").is_file())
 
+    def test_check_script_rejects_client_owned_global_thread_selection(self) -> None:
+        root, home, adi = self._make_codex_repo_fixture()
+        global_template = root / "codex/config/global.config.toml"
+        global_template.write_text(
+            'model_reasoning_effort = "high"\n'
+            + global_template.read_text(encoding="utf-8"),
+            encoding="utf-8",
+        )
+
+        result = run_command(
+            self._check_command(root, home, adi),
+            env={"HOME": str(home)},
+            check=False,
+        )
+
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("client-owned thread selection", result.stderr)
+
     def test_check_script_fails_for_deprecated_codex_feature_flag(self) -> None:
         root, home, adi = self._make_codex_repo_fixture()
         global_template = root / "codex/config/global.config.toml"
@@ -164,8 +178,8 @@ class CodexControlPlaneCheckTests(TempDirTestCase):
         config_path = adi / ".codex/config.toml"
         config_path.write_text(
             config_path.read_text(encoding="utf-8").replace(
-                'model = "gpt-5.5"',
-                'model = "gpt-5.3"',
+                'personality = "friendly"',
+                'personality = "pragmatic"',
             ),
             encoding="utf-8",
         )
@@ -178,8 +192,8 @@ class CodexControlPlaneCheckTests(TempDirTestCase):
 
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("repo-local Codex files are out of sync", result.stderr)
-        self.assertIn('-model = "gpt-5.3"', result.stderr)
-        self.assertIn('+model = "gpt-5.5"', result.stderr)
+        self.assertIn('-personality = "pragmatic"', result.stderr)
+        self.assertIn('+personality = "friendly"', result.stderr)
 
     def test_check_script_fails_for_unclassified_bundled_codex_skill(self) -> None:
         root, home, adi = self._make_codex_repo_fixture()

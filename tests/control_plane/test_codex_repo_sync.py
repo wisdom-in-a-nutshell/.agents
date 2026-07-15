@@ -13,6 +13,36 @@ from tests.control_plane.support import (
 
 
 class CodexRepoSyncTests(TempDirTestCase):
+    def test_rejects_client_owned_thread_selection(self) -> None:
+        root = make_control_plane_root(self.temp_path)
+        adi = init_git_repo(self.temp_path / "adi")
+        registry = root / "codex/config/repo-bootstrap.json"
+        write_json(
+            registry,
+            {
+                "defaults": {},
+                "repos": [{"path": str(adi), "model_reasoning_effort": "high"}],
+            },
+        )
+        write_json(root / "mcp/config/presets.json", default_mcp_registry())
+
+        result = run_command(
+            [
+                str(REPO_ROOT / "codex/scripts/sync-repo-codex-configs.sh"),
+                "--apply",
+                "--registry",
+                str(registry),
+                "--mcp-registry",
+                str(root / "mcp/config/presets.json"),
+                "--plugin-registry",
+                str(root / "plugins/registry.json"),
+            ],
+            check=False,
+        )
+
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("client-owned thread selection", result.stderr)
+
     def test_renders_repo_config_and_prunes_stale_managed_role_files(self) -> None:
         root = make_control_plane_root(self.temp_path)
         adi = init_git_repo(self.temp_path / "adi")
@@ -35,12 +65,7 @@ class CodexRepoSyncTests(TempDirTestCase):
         write_json(
             repo_registry_path,
             {
-                "defaults": {
-                    "model": "gpt-5.5",
-                    "model_auto_compact_token_limit": 204000,
-                    "model_reasoning_effort": "high",
-                    "service_tier": None,
-                },
+                "defaults": {"personality": "friendly"},
                 "repos": [
                     {
                         "path": str(adi),
@@ -76,9 +101,7 @@ class CodexRepoSyncTests(TempDirTestCase):
         repo_config = (adi / ".codex/config.toml").read_text(encoding="utf-8")
         repo_hooks = (adi / ".codex/hooks.json").read_text(encoding="utf-8")
 
-        self.assertIn('model = "gpt-5.5"', repo_config)
-        self.assertIn("model_auto_compact_token_limit = 204000", repo_config)
-        self.assertIn('model_reasoning_effort = "high"', repo_config)
+        self.assertIn('personality = "friendly"', repo_config)
         self.assertIn("[mcp_servers.cloudflare-docs]", repo_config)
         self.assertIn('url = "https://docs.mcp.cloudflare.com/mcp"', repo_config)
         self.assertIn("[mcp_servers.fixture-stdio]", repo_config)

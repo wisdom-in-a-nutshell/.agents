@@ -455,6 +455,63 @@ def validate_feature_flags(config_path: Path, feature_statuses: dict[str, str]) 
             fail(f"{config_path} uses deprecated Codex feature flag `{key}`")
 
 
+CLIENT_OWNED_THREAD_SELECTION_KEYS = {
+    "model",
+    "model_auto_compact_token_limit",
+    "model_provider",
+    "model_reasoning_effort",
+    "model_reasoning_summary",
+    "model_verbosity",
+    "plan_mode_reasoning_effort",
+    "profile",
+    "service_tier",
+}
+
+
+def client_owned_selection_keys(values: dict) -> list[str]:
+    forbidden = sorted(CLIENT_OWNED_THREAD_SELECTION_KEYS.intersection(values))
+    features = values.get("features")
+    if isinstance(features, dict) and "fast_mode" in features:
+        forbidden.append("features.fast_mode")
+    desktop = values.get("desktop")
+    if isinstance(desktop, dict) and "default-service-tier" in desktop:
+        forbidden.append("desktop.default-service-tier")
+    return forbidden
+
+
+def validate_client_owned_global_selection(config_path: Path) -> None:
+    forbidden = client_owned_selection_keys(load_toml(config_path))
+    if forbidden:
+        fail(
+            f"{config_path} sets client-owned thread selection: {', '.join(forbidden)}"
+        )
+
+
+def validate_client_owned_repo_selection(registry: dict, registry_path: Path) -> None:
+    defaults = registry.get("defaults", {})
+    if not isinstance(defaults, dict):
+        fail(f"defaults must be an object in {registry_path}")
+    forbidden = client_owned_selection_keys(defaults)
+    if forbidden:
+        fail(
+            f"{registry_path} defaults set client-owned thread selection: "
+            f"{', '.join(forbidden)}"
+        )
+
+    repos = registry.get("repos", [])
+    if not isinstance(repos, list):
+        fail(f"repos must be an array in {registry_path}")
+    for index, item in enumerate(repos):
+        if not isinstance(item, dict):
+            continue
+        forbidden = client_owned_selection_keys(item)
+        if forbidden:
+            fail(
+                f"{registry_path} repos[{index}] sets client-owned thread selection: "
+                f"{', '.join(forbidden)}"
+            )
+
+
 def is_git_repo(path: Path) -> bool:
     try:
         subprocess.run(
@@ -633,6 +690,7 @@ codex_feature_statuses = load_codex_feature_statuses()
 
 validate_no_agent_declarations(global_template)
 validate_feature_flags(global_template, codex_feature_statuses)
+validate_client_owned_global_selection(global_template)
 
 if global_config.exists():
     validate_no_agent_declarations(global_config)
@@ -650,6 +708,7 @@ try:
     registry = json.loads(registry_path.read_text(encoding="utf-8"))
 except Exception as exc:
     fail(f"invalid JSON in {registry_path}: {exc}")
+validate_client_owned_repo_selection(registry, registry_path)
 try:
     mcp_registry = json.loads(mcp_registry_path.read_text(encoding="utf-8"))
 except Exception as exc:

@@ -74,7 +74,7 @@ Codex cells render to repo `.codex/config.toml`. Claude and Copilot can share ro
 - Keep Codex plugin scope and state in `plugins/registry.json`.
 - Keep skill content in `skills-source/`.
 - Keep MCP definitions and all MCP target assignments in `mcp/config/presets.json`.
-- Keep repo inventory and repo defaults in `codex/config/repo-bootstrap.json`.
+- Keep repo inventory and allowed repo behavior defaults in `codex/config/repo-bootstrap.json`; keep model, effort, profile, and service-tier selection client-owned.
 - Do not automatically project plugin package contents into skills or MCPs.
 - When a plugin capability must be reliable in one repo without enabling the native plugin globally, explicitly link its bundled skills through `skills/registry.json` `managed_plugin_skills` and promote any needed MCP server into `mcp/config/presets.json`.
 

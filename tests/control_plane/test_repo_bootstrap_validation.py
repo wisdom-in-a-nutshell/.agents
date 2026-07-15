@@ -14,21 +14,92 @@ from tests.control_plane.support import (
 
 
 class RepoBootstrapRegistryValidationTests(TempDirTestCase):
-    def test_canonical_defaults_leave_thread_selection_to_the_client(self) -> None:
+    def test_canonical_registry_leaves_thread_selection_to_the_client(self) -> None:
         registry = read_json(REPO_ROOT / "codex/config/repo-bootstrap.json")
-        defaults = registry.get("defaults", {})
         global_config = (REPO_ROOT / "codex/config/global.config.toml").read_text(
             encoding="utf-8"
         )
 
-        for key in (
+        client_owned_keys = (
             "model",
+            "model_auto_compact_token_limit",
+            "model_provider",
             "model_reasoning_effort",
+            "model_reasoning_summary",
+            "model_verbosity",
             "plan_mode_reasoning_effort",
+            "profile",
             "service_tier",
-        ):
-            self.assertNotIn(key, defaults)
-            self.assertNotRegex(global_config, rf"(?m)^\\s*{key}\\s*=")
+        )
+        scopes = [registry.get("defaults", {}), *registry.get("repos", [])]
+
+        for key in client_owned_keys:
+            self.assertNotRegex(global_config, rf"(?m)^\s*{key}\s*=")
+        self.assertNotIn("fast_mode", global_config)
+        self.assertNotIn("default-service-tier", global_config)
+        for key in client_owned_keys:
+            for scope in scopes:
+                self.assertNotIn(key, scope)
+        for scope in scopes:
+            self.assertNotIn("fast_mode", scope.get("features", {}))
+
+    def test_rejects_client_owned_thread_selection(self) -> None:
+        root = make_control_plane_root(self.temp_path)
+        home = self.temp_path / "home"
+        repo = init_git_repo(home / "GitHub/adi")
+        write_json(root / "mcp/config/presets.json", default_mcp_registry())
+
+        cases = {
+            "model": "gpt-5.6-sol",
+            "model_auto_compact_token_limit": 204000,
+            "model_provider": "openai",
+            "model_reasoning_effort": "high",
+            "model_reasoning_summary": "auto",
+            "model_verbosity": "low",
+            "plan_mode_reasoning_effort": "high",
+            "profile": "chatgpt",
+            "service_tier": "fast",
+        }
+        for key, value in cases.items():
+            with self.subTest(key=key):
+                write_json(
+                    root / "codex/config/repo-bootstrap.json",
+                    {"defaults": {}, "repos": [{"path": str(repo), key: value}]},
+                )
+                result = run_command(
+                    [
+                        "python3",
+                        str(REPO_ROOT / "codex/scripts/sync-repo-bootstrap-registry.py"),
+                        str(root / "codex/config/repo-bootstrap.json"),
+                        "--mcp-registry",
+                        str(root / "mcp/config/presets.json"),
+                    ],
+                    env={"HOME": str(home)},
+                    check=False,
+                )
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn("client-owned thread selection", result.stderr)
+
+        write_json(
+            root / "codex/config/repo-bootstrap.json",
+            {
+                "defaults": {"features": {"fast_mode": True}},
+                "repos": [{"path": str(repo)}],
+            },
+        )
+        result = run_command(
+            [
+                "python3",
+                str(REPO_ROOT / "codex/scripts/sync-repo-bootstrap-registry.py"),
+                str(root / "codex/config/repo-bootstrap.json"),
+                "--mcp-registry",
+                str(root / "mcp/config/presets.json"),
+            ],
+            env={"HOME": str(home)},
+            check=False,
+        )
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("features.fast_mode", result.stderr)
 
     def test_validates_repo_mcp_and_skill_inputs_without_legacy_outputs(self) -> None:
         root = make_control_plane_root(self.temp_path)
@@ -72,11 +143,7 @@ class RepoBootstrapRegistryValidationTests(TempDirTestCase):
         write_json(
             root / "codex/config/repo-bootstrap.json",
             {
-                "defaults": {
-                    "model": "gpt-5.5",
-                    "model_reasoning_effort": "high",
-                    "service_tier": None,
-                },
+                "defaults": {"personality": "friendly"},
                 "repos": [
                     {
                         "path": str(adi),
@@ -136,11 +203,7 @@ class RepoBootstrapRegistryValidationTests(TempDirTestCase):
         write_json(
             root / "codex/config/repo-bootstrap.json",
             {
-                "defaults": {
-                    "model": "gpt-5.5",
-                    "model_reasoning_effort": "high",
-                    "service_tier": None,
-                },
+                "defaults": {"personality": "friendly"},
                 "repos": [
                     {
                         "path": str(adi),

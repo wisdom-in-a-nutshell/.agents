@@ -20,14 +20,6 @@ except ModuleNotFoundError:  # pragma: no cover
 
 ALLOWED_SCALAR_KEYS = {
     "codex_trust",
-    "model",
-    "model_auto_compact_token_limit",
-    "model_reasoning_effort",
-    "plan_mode_reasoning_effort",
-    "service_tier",
-    "profile",
-    "model_reasoning_summary",
-    "model_verbosity",
     "model_instructions_file",
     "developer_instructions",
     "project_root_markers",
@@ -37,6 +29,28 @@ ALLOWED_SCALAR_KEYS = {
     "personality",
 }
 ALLOWED_DEFAULT_TABLE_KEYS = {"features"}
+CLIENT_OWNED_THREAD_SELECTION_KEYS = {
+    "model",
+    "model_auto_compact_token_limit",
+    "model_provider",
+    "model_reasoning_effort",
+    "model_reasoning_summary",
+    "model_verbosity",
+    "plan_mode_reasoning_effort",
+    "profile",
+    "service_tier",
+}
+
+
+def reject_client_owned_thread_selection(values: dict[str, Any], scope: str) -> None:
+    forbidden = sorted(CLIENT_OWNED_THREAD_SELECTION_KEYS.intersection(values))
+    features = values.get("features")
+    if isinstance(features, dict) and "fast_mode" in features:
+        forbidden.append("features.fast_mode")
+    if forbidden:
+        raise ValueError(
+            f"{scope} sets client-owned thread selection: {', '.join(forbidden)}"
+        )
 
 
 def expand_path(raw: str, home: Path) -> Path:
@@ -65,6 +79,7 @@ def validate_registry(
     defaults = data.get("defaults", {})
     if not isinstance(defaults, dict):
         raise ValueError("defaults must be an object")
+    reject_client_owned_thread_selection(defaults, "defaults")
 
     for key in defaults:
         if key not in ALLOWED_SCALAR_KEYS and key not in ALLOWED_DEFAULT_TABLE_KEYS:
@@ -81,6 +96,7 @@ def validate_registry(
     for idx, item in enumerate(repos_raw):
         if not isinstance(item, dict):
             raise ValueError(f"repos[{idx}] must be an object")
+        reject_client_owned_thread_selection(item, f"repos[{idx}]")
         raw_path = item.get("path")
         if not isinstance(raw_path, str) or not raw_path.strip():
             raise ValueError(f"repos[{idx}].path must be a non-empty string")

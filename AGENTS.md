@@ -34,16 +34,12 @@ contracts in this repo's docs.
 - `codex/config/bundled-skills-policy.json` is the canonical policy for classifying OpenAI-bundled Codex skills that appear under `~/.codex/skills/.system` or `~/.codex/skills/codex-primary-runtime`.
 - `codex/config/repo-bootstrap.json` is the canonical shared repo registry for managed repo-local behavior.
   - Per repo it can define:
-    - `model`
-    - `model_reasoning_effort`
-    - `plan_mode_reasoning_effort`
-    - `model_verbosity`
     - `personality`
     - `model_instructions_file`
     - `developer_instructions`
     - `project_root_markers`
     - `features`
-    - `service_tier`
+  - Model, reasoning effort, profile, and Fast/service-tier selection are client-owned and must not be set in this registry or its defaults.
 - Managed canonical skill content lives in:
   - `skills-source/external/<skill>/`
   - `skills-source/owned/<skill>/`

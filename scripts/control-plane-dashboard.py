@@ -96,7 +96,7 @@ def build_capability_board(counts: dict[str, Any]) -> list[dict[str, Any]]:
         },
         {
             "key": "runtime", "name": "Runtime config",
-            "desc": "Per-repo model, effort, exposure",
+            "desc": "Per-repo behavior and exposure",
             "source": "codex/config/repo-bootstrap.json", "count": counts.get("repos"),
             "codex": {"status": "stable", "note": ".codex/config.toml"},
             "claude": {"status": "stable", "note": "~/.claude/settings.json"},
@@ -718,16 +718,7 @@ def build_control_plane_data(root: Path) -> dict[str, Any]:
                 "path": path,
                 "absolute_path": str(expanded_path),
                 "exists": exists,
-                "model": entry.get("model") or repo_bootstrap.get("defaults", {}).get("model"),
-                "reasoning": entry.get("model_reasoning_effort")
-                or repo_bootstrap.get("defaults", {}).get("model_reasoning_effort"),
-                "plan_reasoning": entry.get("plan_mode_reasoning_effort")
-                or repo_bootstrap.get("defaults", {}).get("plan_mode_reasoning_effort"),
-                "verbosity": entry.get("model_verbosity"),
                 "personality": entry.get("personality"),
-                "service_tier": entry.get("service_tier")
-                if "service_tier" in entry
-                else repo_bootstrap.get("defaults", {}).get("service_tier"),
                 "features": entry.get("features") if isinstance(entry.get("features"), dict) else {},
             },
         )

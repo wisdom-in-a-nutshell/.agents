@@ -128,12 +128,7 @@ class ControlPlaneDashboardDataTests(TempDirTestCase):
         write_json(
             root / "codex/config/repo-bootstrap.json",
             {
-                "defaults": {
-                    "model": "gpt-5.5",
-                    "model_reasoning_effort": "high",
-                    "plan_mode_reasoning_effort": "high",
-                    "service_tier": None,
-                },
+                "defaults": {},
                 "repos": [
                     {
                         "path": str(adi),
@@ -260,12 +255,7 @@ class ControlPlaneDashboardDataTests(TempDirTestCase):
         write_json(
             self.temp_path / "codex/config/repo-bootstrap.json",
             {
-                "defaults": {
-                    "model": "gpt-5.5",
-                    "model_reasoning_effort": "high",
-                    "plan_mode_reasoning_effort": "high",
-                    "service_tier": None,
-                },
+                "defaults": {},
                 "repos": [
                     {
                         "path": str(self.temp_path / "GitHub/adi"),

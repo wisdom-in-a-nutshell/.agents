@@ -184,14 +184,19 @@ import subprocess
 import sys
 from pathlib import Path
 
-REPO_SCALAR_KEYS = [
-    "profile",
+CLIENT_OWNED_THREAD_SELECTION_KEYS = {
     "model",
     "model_auto_compact_token_limit",
+    "model_provider",
     "model_reasoning_effort",
-    "plan_mode_reasoning_effort",
     "model_reasoning_summary",
     "model_verbosity",
+    "plan_mode_reasoning_effort",
+    "profile",
+    "service_tier",
+}
+
+REPO_SCALAR_KEYS = [
     "model_instructions_file",
     "developer_instructions",
     "project_root_markers",
@@ -199,8 +204,20 @@ REPO_SCALAR_KEYS = [
     "approval_policy",
     "sandbox_mode",
     "personality",
-    "service_tier",
 ]
+
+
+def reject_client_owned_thread_selection(values: dict, scope: str) -> None:
+    forbidden = sorted(CLIENT_OWNED_THREAD_SELECTION_KEYS.intersection(values))
+    features = values.get("features")
+    if isinstance(features, dict) and "fast_mode" in features:
+        forbidden.append("features.fast_mode")
+    if forbidden:
+        raise TypeError(
+            f"{scope} sets client-owned thread selection: {', '.join(forbidden)}"
+        )
+
+
 def normalize_path(raw: str) -> str:
     return str(Path(raw).expanduser().resolve())
 
@@ -327,6 +344,10 @@ if not isinstance(defaults, dict):
     raise TypeError("defaults must be an object")
 if not isinstance(repos_raw, list):
     raise TypeError("repos must be an array")
+reject_client_owned_thread_selection(defaults, "defaults")
+for index, item in enumerate(repos_raw):
+    if isinstance(item, dict):
+        reject_client_owned_thread_selection(item, f"repos[{index}]")
 
 repo_items_all: list[dict] = []
 for item in repos_raw:

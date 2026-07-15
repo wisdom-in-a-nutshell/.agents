@@ -51,7 +51,7 @@ flowchart TD
 - `mcp/config/presets.json` defines shared MCP transports and repository/client targets.
 - `plugins/registry.json` defines native Codex plugin scope and enable/disable state.
 - `hooks/registry.json` defines shared lifecycle hooks rendered into global and repo-local Codex hook files.
-- `codex/config/repo-bootstrap.json` defines managed repos, trust behavior, and optional per-repo model/personality/service-tier overrides.
+- `codex/config/repo-bootstrap.json` defines managed repos, trust behavior, and optional per-repo behavior such as personality and instructions. Model, reasoning effort, and service tier remain client-owned thread selections.
 
 ## Live Machine Config
 
@@ -73,22 +73,17 @@ flowchart TD
 - `codex/scripts/sync-repo-codex-configs.sh` generates repo-local `.codex/config.toml` files from `repo-bootstrap.json`, Codex cells in the shared MCP target matrix, and plugin assignments.
 - The same script renders repo-local `.codex/hooks.json` for repo-scoped hooks.
 - Most repos can have a minimal managed file with no repo-local overrides.
-- Some repos get Codex-targeted MCPs, model overrides, or project-root markers.
+- Some repos get Codex-targeted MCPs, instruction/personality overrides, or project-root markers.
 - `scripts/control-plane-dashboard.py` serves the same registry data through the local dashboard, including effective plugins from [`plugins/registry.json`](/Users/dobby/GitHub/agents/plugins/registry.json) and effective skills from [`skills/registry.json`](/Users/dobby/GitHub/agents/skills/registry.json).
 
 Current per-repo fields in `repo-bootstrap.json`:
 
 - `codex_trust`
-- `model`
-- `model_auto_compact_token_limit`
-- `model_reasoning_effort`
-- `model_verbosity`
 - `personality`
 - `model_instructions_file`
 - `developer_instructions`
 - `project_root_markers`
 - `features`
-- `service_tier`
 
 ## Main Flow
 
