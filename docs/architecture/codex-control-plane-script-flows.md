@@ -15,7 +15,6 @@ flowchart TD
     A["bootstrap-machine-codex.sh"] --> B
     A --> C["sync-trusted-projects.sh"]
     A --> D["sync-repo-codex-configs.sh"]
-    A --> E["configure-ghostty-cwd.sh"]
     R["repo-bootstrap.json"] --> C
     R --> D
     M["mcp/config/presets.json"] --> B
@@ -25,7 +24,6 @@ flowchart TD
     B --> F["~/.codex/config.toml + ~/.codex/hooks.json"]
     C --> F
     D --> G["repo .codex/config.toml + .codex/hooks.json"]
-    E --> I["Ghostty config"]
 ```
 
 Main scripts:

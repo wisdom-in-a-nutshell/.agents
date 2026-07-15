@@ -46,6 +46,19 @@ class RepoHygieneTests(TempDirTestCase):
             ignored,
         )
 
+    def test_codex_bootstrap_does_not_manage_ghostty_startup(self) -> None:
+        bootstrap = (
+            REPO_ROOT / "codex/scripts/bootstrap-machine-codex.sh"
+        ).read_text(encoding="utf-8")
+
+        self.assertNotIn("ghostty", bootstrap.lower())
+        self.assertFalse(
+            (REPO_ROOT / "codex/scripts/configure-ghostty-cwd.sh").exists()
+        )
+        self.assertFalse(
+            (REPO_ROOT / "codex/scripts/ghostty-codex-then-shell.sh").exists()
+        )
+
     def test_repo_hygiene_script_rejects_backup_artifact(self) -> None:
         root = self.temp_path / "repo"
         write_text(root / "note.md", "# Note\n")

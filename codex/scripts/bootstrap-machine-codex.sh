@@ -6,7 +6,6 @@ GITHUB_ROOT="${HOME}/GitHub"
 GLOBAL_CONFIG="${HOME}/.codex/config.toml"
 GLOBAL_HOOKS="${HOME}/.codex/hooks.json"
 GLOBAL_AGENTS="${HOME}/.codex/AGENTS.md"
-GHOSTTY_CONFIG="${HOME}/Library/Application Support/com.mitchellh.ghostty/config"
 REPO_FILTERS=()
 
 usage() {
@@ -25,7 +24,6 @@ Options:
   --global-config <p>    Override ~/.codex/config.toml target
   --global-hooks <p>     Override ~/.codex/hooks.json target
   --global-agents <p>    Override ~/.codex/AGENTS.md target
-  --ghostty-config <p>   Override Ghostty config target
   --repo <path>          Limit repo-local sync/check to an exact repo path
                          (repeatable)
   -h, --help             Show this help
@@ -72,10 +70,6 @@ while [[ $# -gt 0 ]]; do
       GLOBAL_AGENTS="${2:-}"
       shift 2
       ;;
-    --ghostty-config)
-      GHOSTTY_CONFIG="${2:-}"
-      shift 2
-      ;;
     --repo)
       REPO_FILTERS+=("${2:-}")
       shift 2
@@ -107,7 +101,6 @@ SYNC_TRUSTED_SCRIPT="${SCRIPT_DIR}/sync-trusted-projects.sh"
 SYNC_REPO_CONFIGS_SCRIPT="${SCRIPT_DIR}/sync-repo-codex-configs.sh"
 SYNC_HOOK_TRUST_SCRIPT="${SCRIPT_DIR}/sync-hook-trust-state.py"
 PDF_DEPS_SCRIPT="${SCRIPT_DIR}/install-pdf-skill-deps.sh"
-GHOSTTY_SCRIPT="${SCRIPT_DIR}/configure-ghostty-cwd.sh"
 FINALIZE_STALE_THREADS_LAUNCHAGENT_SCRIPT="${SCRIPT_DIR}/install-finalize-stale-codex-threads-launchagent.sh"
 ARCHIVE_CLAUDE_SESSIONS_LAUNCHAGENT_SCRIPT="${SCRIPT_DIR}/install-archive-stale-claude-sessions-launchagent.sh"
 CHECK_CONTROL_PLANE_SCRIPT="${SCRIPT_DIR}/check-codex-control-plane.sh"
@@ -118,7 +111,6 @@ CHECK_CONTROL_PLANE_SCRIPT="${SCRIPT_DIR}/check-codex-control-plane.sh"
 [[ -x "$SYNC_REPO_CONFIGS_SCRIPT" ]] || die "Missing executable: $SYNC_REPO_CONFIGS_SCRIPT"
 [[ -x "$SYNC_HOOK_TRUST_SCRIPT" ]] || die "Missing executable: $SYNC_HOOK_TRUST_SCRIPT"
 [[ -x "$PDF_DEPS_SCRIPT" ]] || die "Missing executable: $PDF_DEPS_SCRIPT"
-[[ -x "$GHOSTTY_SCRIPT" ]] || die "Missing executable: $GHOSTTY_SCRIPT"
 [[ -x "$FINALIZE_STALE_THREADS_LAUNCHAGENT_SCRIPT" ]] || die "Missing executable: $FINALIZE_STALE_THREADS_LAUNCHAGENT_SCRIPT"
 [[ -x "$ARCHIVE_CLAUDE_SESSIONS_LAUNCHAGENT_SCRIPT" ]] || die "Missing executable: $ARCHIVE_CLAUDE_SESSIONS_LAUNCHAGENT_SCRIPT"
 [[ -x "$CHECK_CONTROL_PLANE_SCRIPT" ]] || die "Missing executable: $CHECK_CONTROL_PLANE_SCRIPT"
@@ -174,14 +166,6 @@ pdf_deps_cmd=(
 )
 log "+ ${pdf_deps_cmd[*]}"
 "${pdf_deps_cmd[@]}"
-
-ghostty_cmd=(
-  "$GHOSTTY_SCRIPT"
-  "$MODE_FLAG"
-  --config "$GHOSTTY_CONFIG"
-)
-log "+ ${ghostty_cmd[*]}"
-"${ghostty_cmd[@]}"
 
 finalize_stale_threads_launchagent_cmd=(
   "$FINALIZE_STALE_THREADS_LAUNCHAGENT_SCRIPT"
