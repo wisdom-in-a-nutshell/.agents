@@ -447,7 +447,7 @@ class HooksControlPlaneTests(TempDirTestCase):
         self.assertEqual(result.stderr, "")
         self.assertFalse(marker.exists())
 
-    def test_codex_sync_config_renders_plan_mode_and_global_stop_hook(self) -> None:
+    def test_codex_sync_config_preserves_picker_defaults_and_renders_global_stop_hook(self) -> None:
         root = make_control_plane_root(self.temp_path)
         home = self.temp_path / "home"
         bundled_marketplace = self.temp_path / "ChatGPT.app/Contents/Resources/plugins/openai-bundled"
@@ -487,6 +487,8 @@ class HooksControlPlaneTests(TempDirTestCase):
         write_text(
             home / ".codex/config.toml",
             'model = "gpt-5.6-sol"\n'
+            'model_reasoning_effort = "xhigh"\n'
+            'plan_mode_reasoning_effort = "max"\n'
             'service_tier = "fast"\n'
             '[plugins."build-ios-apps@openai-curated"]\nenabled = true\n',
         )
@@ -517,8 +519,8 @@ class HooksControlPlaneTests(TempDirTestCase):
 
         rendered_config = (home / ".codex/config.toml").read_text(encoding="utf-8")
         self.assertNotIn('\nmodel = ', rendered_config)
-        self.assertIn('model_reasoning_effort = "high"', rendered_config)
-        self.assertIn('plan_mode_reasoning_effort = "high"', rendered_config)
+        self.assertIn('model_reasoning_effort = "xhigh"', rendered_config)
+        self.assertIn('plan_mode_reasoning_effort = "max"', rendered_config)
         self.assertNotIn('\nservice_tier = ', rendered_config)
         self.assertIn("hooks = true", rendered_config)
         self.assertIn('[plugins."computer-use@openai-bundled"]', rendered_config)

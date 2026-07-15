@@ -7,12 +7,29 @@ from tests.control_plane.support import (
     init_git_repo,
     make_control_plane_root,
     make_skill_source,
+    read_json,
     run_command,
     write_json,
 )
 
 
 class RepoBootstrapRegistryValidationTests(TempDirTestCase):
+    def test_canonical_defaults_leave_thread_selection_to_the_client(self) -> None:
+        registry = read_json(REPO_ROOT / "codex/config/repo-bootstrap.json")
+        defaults = registry.get("defaults", {})
+        global_config = (REPO_ROOT / "codex/config/global.config.toml").read_text(
+            encoding="utf-8"
+        )
+
+        for key in (
+            "model",
+            "model_reasoning_effort",
+            "plan_mode_reasoning_effort",
+            "service_tier",
+        ):
+            self.assertNotIn(key, defaults)
+            self.assertNotRegex(global_config, rf"(?m)^\\s*{key}\\s*=")
+
     def test_validates_repo_mcp_and_skill_inputs_without_legacy_outputs(self) -> None:
         root = make_control_plane_root(self.temp_path)
         home = self.temp_path / "home"
