@@ -319,6 +319,16 @@
       "upstream_ref": "pbakaus/impeccable:.agents/skills/impeccable@main"
     },
     {
+      "skill": "fli-review",
+      "origin": "owned",
+      "scope": "repo",
+      "repos": [
+        "frontier-lab-intelligence"
+      ],
+      "source_path": "skills-source/owned/fli-review",
+      "upstream_ref": "-"
+    },
+    {
       "skill": "remotion",
       "origin": "external",
       "scope": "repo",
@@ -426,10 +436,6 @@
     {
       "repo": "adithyan-ai-videos",
       "skill": "creating-video"
-    },
-    {
-      "repo": "frontier-lab-intelligence",
-      "skill": "fli-review"
     },
     {
       "repo": "blog-personal",

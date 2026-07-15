@@ -1,0 +1,4 @@
+interface:
+  display_name: "FLI Review"
+  short_description: "Cold-context reviewer and critic for frontier-lab-intelligence."
+  default_prompt: "Use $fli-review to load full project context, verify claims against live data, and deliver an endpoint-anchored critique with blind spots and next moves."
