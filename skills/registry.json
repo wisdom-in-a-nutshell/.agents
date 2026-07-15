@@ -428,6 +428,10 @@
       "skill": "creating-video"
     },
     {
+      "repo": "frontier-lab-intelligence",
+      "skill": "fli-review"
+    },
+    {
       "repo": "blog-personal",
       "skill": "blog-posting"
     }
