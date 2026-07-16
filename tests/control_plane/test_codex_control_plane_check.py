@@ -112,6 +112,22 @@ class CodexControlPlaneCheckTests(TempDirTestCase):
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("client-owned thread selection", result.stderr)
 
+    def test_check_script_rejects_legacy_embedded_profiles(self) -> None:
+        root, home, adi = self._make_codex_repo_fixture()
+        write_text(
+            home / ".codex/config.toml",
+            '[profiles.autofix]\nmodel = "gpt-5.4"\n',
+        )
+
+        result = run_command(
+            self._check_command(root, home, adi),
+            env={"HOME": str(home)},
+            check=False,
+        )
+
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("legacy embedded profiles", result.stderr)
+
     def test_check_script_fails_for_deprecated_codex_feature_flag(self) -> None:
         root, home, adi = self._make_codex_repo_fixture()
         global_template = root / "codex/config/global.config.toml"

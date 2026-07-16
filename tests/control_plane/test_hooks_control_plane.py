@@ -490,6 +490,9 @@ class HooksControlPlaneTests(TempDirTestCase):
             'model_reasoning_effort = "xhigh"\n'
             'plan_mode_reasoning_effort = "max"\n'
             'service_tier = "fast"\n'
+            'profile = "autofix"\n'
+            '[profiles.autofix]\nmodel = "gpt-5.4"\n'
+            '[profiles.autofix.features]\napps = false\n'
             '[plugins."build-ios-apps@openai-curated"]\nenabled = true\n',
         )
 
@@ -530,6 +533,8 @@ class HooksControlPlaneTests(TempDirTestCase):
             rendered_config,
         )
         self.assertNotIn("notify =", rendered_config)
+        self.assertNotIn('profile = "autofix"', rendered_config)
+        self.assertNotIn("[profiles.autofix]", rendered_config)
 
         hooks = read_json(home / ".codex/hooks.json")
         self.assertEqual(

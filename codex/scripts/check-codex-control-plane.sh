@@ -748,6 +748,17 @@ for item in repos:
 
 if global_config.exists():
     global_data = load_toml(global_config)
+    if "profile" in global_data:
+        fail(
+            f"global Codex config uses legacy top-level profile selector: {global_config}. "
+            "Re-run codex/scripts/sync-config.sh --apply"
+        )
+    profiles = global_data.get("profiles")
+    if isinstance(profiles, dict):
+        fail(
+            f"global Codex config uses legacy embedded profiles: {global_config}. "
+            "Re-run codex/scripts/sync-config.sh --apply"
+        )
     validate_disabled_skill_entries(global_config, bundled_skills_policy)
     validate_global_plugin_runtime(global_config, global_data, managed_plugins)
     features = global_data.get("features", {})

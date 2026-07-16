@@ -491,6 +491,35 @@ remove_section_key() {
   mv "$tmp_file" "$file"
 }
 
+remove_legacy_embedded_profiles() {
+  local file="$1"
+
+  python3 - "$file" <<'PY'
+from __future__ import annotations
+
+import re
+import sys
+from pathlib import Path
+
+
+path = Path(sys.argv[1])
+lines = path.read_text(encoding="utf-8").splitlines(keepends=True)
+section_re = re.compile(r"^\s*\[([^]]+)]\s*(?:#.*)?$")
+in_legacy_section = False
+output: list[str] = []
+
+for line in lines:
+    match = section_re.match(line.rstrip("\n"))
+    if match:
+        section = match.group(1)
+        in_legacy_section = section == "profiles" or section.startswith("profiles.")
+    if not in_legacy_section:
+        output.append(line)
+
+path.write_text("".join(output), encoding="utf-8")
+PY
+}
+
 render_global_config() {
   local target_file="$1"
   local template_file="$2"
@@ -524,6 +553,11 @@ render_global_config() {
 
   # Codex turn-end automation now lives in hooks/registry.json -> Stop.
   remove_top_level_key "$target_file" "notify"
+
+  # Codex profiles are standalone ~/.codex/<name>.config.toml overlays. Remove
+  # the retired embedded autofix selector/table so `--profile autofix` works.
+  remove_top_level_key "$target_file" "profile"
+  remove_legacy_embedded_profiles "$target_file"
 
   # Thread-selection defaults should follow the canonical template; if they are
   # removed there, prune stale copies from older live configs so client choices
