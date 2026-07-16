@@ -336,7 +336,7 @@
         "adithyan-ai-videos"
       ],
       "source_path": "skills-source/external/remotion",
-      "upstream_ref": "remotion-dev/remotion:packages/skills/skills/remotion@main"
+      "upstream_ref": "local-import"
     },
     {
       "skill": "audit-xcode-security-settings",

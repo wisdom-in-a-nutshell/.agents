@@ -34,10 +34,16 @@ class ExternalSkill:
     upstream: UpstreamRef
 
 
-def _run(cmd: list[str], *, cwd: Path | None = None) -> subprocess.CompletedProcess[str]:
+def _run(
+    cmd: list[str],
+    *,
+    cwd: Path | None = None,
+    env: dict[str, str] | None = None,
+) -> subprocess.CompletedProcess[str]:
     return subprocess.run(
         cmd,
         cwd=str(cwd) if cwd else None,
+        env=env,
         text=True,
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
@@ -151,6 +157,10 @@ def git_path_dirty(repo_root: Path, rel_path: str) -> bool:
 def sparse_checkout_repo(checkout_root: Path, ref: UpstreamRef, paths: list[str]) -> Path:
     repo_url = f"https://github.com/{ref.repo}.git"
     checkout_dir = checkout_root / f"{_safe_slug(ref.repo)}--{_safe_slug(ref.branch)}"
+    clone_env = os.environ.copy()
+    # External skill sources are public HTTPS checkouts. Ignore a machine-wide
+    # HTTPS-to-SSH rewrite so refreshes still work on networks that block port 22.
+    clone_env["GIT_CONFIG_GLOBAL"] = os.devnull
 
     proc = _run(
         [
@@ -164,7 +174,8 @@ def sparse_checkout_repo(checkout_root: Path, ref: UpstreamRef, paths: list[str]
             ref.branch,
             repo_url,
             str(checkout_dir),
-        ]
+        ],
+        env=clone_env,
     )
     if proc.returncode != 0:
         raise RuntimeError(
