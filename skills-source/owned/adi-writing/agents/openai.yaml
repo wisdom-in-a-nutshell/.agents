@@ -1,4 +1,4 @@
 interface:
   display_name: "Adi Writing"
-  short_description: "Write and edit external-facing content in Adi's voice."
-  default_prompt: "Use $adi-writing to draft or edit this in Adi's voice. Keep it direct, human, concise, and natural."
+  short_description: "Write clearly in Adi's direct, human voice."
+  default_prompt: "Use $adi-writing to draft or edit this in Adi’s voice. Preserve the substance and personality while making the point clear, concrete, and reader-centred."

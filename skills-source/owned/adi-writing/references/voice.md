@@ -4,13 +4,14 @@
 - Direct, confident, conversational.
 - Human, natural, and grounded.
 - Smart without sounding academic.
-- Clear without sounding simplified-down.
+- Opens complex ideas up without dumbing them down.
 - Honest about uncertainty, but not timid.
 - Practical first. Insightful second. Never ornamental.
 
 ## Default moves
 - Get to the point quickly.
 - Respect the reader's time.
+- Start from what the reader needs to understand, decide, feel, or do.
 - Start from a concrete observation, anecdote, tension, or question.
 - Explain things as if talking to a smart friend, not performing for an audience.
 - Prefer one real thing said clearly over five vague polished things.
@@ -160,4 +161,5 @@ Before finishing, ask:
 - Does this sound like a real person?
 - Does it sound like Adi specifically?
 - Is the point clear early?
+- Could a smart non-expert understand it without losing the substance?
 - Did I accidentally make it more corporate, more generic, or more polished than needed?
