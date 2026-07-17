@@ -1,70 +1,39 @@
-# Adi Writing Voice
+# Adi Writing Standard
 
-This is the single writing reference for Adi. It combines his observed voice
-with a plain-English, reader-centred clarity discipline.
+## Aim
 
-## Core principle
+Open the idea up without dumbing it down. A non-expert and an expert should both
+understand it on the first read.
 
-Open ideas up. Do not dumb them down.
-
-Keep the substance, nuance, uncertainty, and personality. Remove what makes the
-idea harder to understand than it needs to be.
-
-When rules conflict, use this order:
+Use this priority order:
 
 1. factual meaning and honest uncertainty
 2. what the reader needs
-3. Adi's natural voice
-4. house-style consistency
-
-## Core voice
-
-- Direct, confident, conversational.
-- Human, natural, and grounded.
-- Smart without sounding academic.
-- Clear without sounding simplified-down.
-- Honest about uncertainty without becoming timid.
-- Practical first. Insightful second. Never ornamental.
-- A builder reasoning in public, not a thought leader delivering a manifesto.
-
-Explain things as if talking to a smart friend. Prefer one real thing said
-clearly over five vague, polished things.
+3. clarity and accessibility
+4. Adi-specific exceptions
 
 ## Start from the reader
 
-Identify what the reader needs to:
+- Write what the reader needs to understand, decide, feel, or do.
+- Put the most important point first in the piece, section, paragraph, and
+  sentence.
+- Prefer conclusion, detail, then background.
+- Give each sentence one main idea and each paragraph one topic.
+- Use names, dates, numbers, actions, and examples instead of vague abstractions.
+- Cut repetition and anything that adds no meaning.
 
-- understand
-- decide
-- feel
-- do
-
-Write toward that need rather than recording everything the author knows. A
-personal piece does not always need instructions or a takeaway. Sometimes the
-reader's need is simply to see an experience or idea clearly.
-
-## Front-load the useful part
-
-- Put the most important point early in the piece.
-- Put the main point of each section early in that section.
-- Give each paragraph one clear job.
-- Prefer conclusion, reasoning, then background when the order is flexible.
-- Delay the point only when story, suspense, or emotional pacing genuinely
-  improves the piece.
-
-Do not repeat the same conclusion at every level. Front-loading should create
-clarity, not a stack of summary sentences.
+Delay the point only when story or emotional pacing genuinely improves the
+piece.
 
 ## Use plain English
 
-- Prefer active voice. Say who did what.
-- Prefer everyday words over inflated alternatives.
-- Keep technical language when it is precise and useful to the audience. Explain
-  it rather than replacing it with a less accurate word.
-- Use contractions and casual phrasing when they sound natural.
-- Sentence fragments are fine when they improve rhythm.
-- Starting with "And" or "But" is fine.
-- Address the reader as "you" when direct address helps. Do not force it.
+- Prefer active voice. Say who does what.
+- Aim for sentences of 15 to 20 words. Rewrite most sentences over 25 words.
+- Keep paragraphs short, especially on screens.
+- Use everyday words without sacrificing technical precision.
+- Address the reader as "you" when useful. Use "we" for Adi or his organisation
+  when accurate.
+- Explain necessary jargon once. Remove unnecessary jargon.
 
 Prefer:
 
@@ -78,164 +47,57 @@ Prefer:
 - enough, not sufficient
 - solve, fix, or handle, not tackle or combat
 
-Avoid these unless they are genuinely the most accurate words:
+Avoid vague or inflated language such as "a range of", "going forward", "in
+terms of", "robust", "ecosystem", "landscape", "pivotal", "delve", and
+"streamline" unless it is genuinely precise.
 
-- delve
-- underscore
-- pivotal
-- realm
-- harness
-- illuminate
-- facilitate
-- bolster
-- streamline
-- robust
-- ecosystem
-- landscape
-- going forward
-- in terms of
-- a range of
-
-Avoid dead metaphors and corporate clichés. Keep original metaphors, analogies,
-and cultural references when they make the idea easier to hold.
-
-## Be concrete
-
-- Prefer a name, number, date, action, example, or lived detail over an
-  abstraction.
-- Use examples before generalising.
-- Replace inflated nouns with direct verbs when that makes the sentence clearer.
-- Remove qualifiers that hide the real claim.
-- Mark predictions and uncertainty honestly: "I think", "my bet", "my guess",
-  or the actual limit of the evidence.
-
-## Keep sentences easy to hold
-
-- Default to one main idea per sentence and one topic per paragraph.
-- Split a sentence when the reader must untangle several ideas at once.
-- Prefer short paragraphs, especially on screens.
-- Cut duplication, filler transitions, and throat-clearing.
-- Use the shortest version that preserves meaning, rhythm, and personality.
-
-Do not enforce a mechanical word limit. A longer sentence can stay when it
-captures Adi reasoning in real time and remains easy to follow.
+Avoid clichés and dead metaphors. Keep a metaphor or analogy only when it makes
+the idea easier to understand.
 
 ## Structure and formatting
 
-- Use sentence case for titles and headings.
-- Make headings descriptive and front-loaded. Use them only when they help the
-  reader scan.
-- Use bullets for genuinely parallel ideas and numbered lists for real
-  sequences.
-- Use descriptive link text, not "click here" or "read more".
-- Rely on words and structure for emphasis. Use bold or italics sparingly.
-- Do not force a loose personal post into headings or bullets merely because
-  structured prose is easier to template.
-- Do not default to FAQs when the content can answer the reader's need directly.
-- Avoid ALL CAPS and engagement-bait formatting.
-- Write "and" rather than "&", except in registered names or compact platform
-  conventions where the ampersand is natural.
-- Use unambiguous dates. Default to forms such as "4 June 2026" when the
-  audience does not impose another convention.
-- Use numerals when they help the reader scan. Format numbers, currencies, and
-  times for the actual audience rather than copying a fixed house convention
-  mechanically.
+- Use sentence case for titles, headings, and table headers.
+- Make headings descriptive, front-loaded, and easy to scan.
+- Use bullets for parallel ideas and numbered lists only for ordered steps.
+- Use descriptive link text, never "click here" or "read more".
+- Do not use bold or italics merely for emphasis. Let words and structure carry
+  the meaning.
+- Write "and", not "&", except in a registered name.
+- Write Latin abbreviations out: "for example", "that is", and "and so on".
+- Use unambiguous dates such as "4 June 2026".
+- Use numerals from 2 upwards and the % symbol with numerals.
+- Write ranges with "to" rather than a hyphen when ambiguity is possible.
+- Do not default to FAQs when the main content can answer the reader directly.
+- Do not use ALL CAPS, manufactured emphasis, or engagement bait.
 
-## Punctuation
+For bullets, introduce the list clearly, keep each bullet to one idea, and use
+consistent punctuation. Ordered steps should be complete sentences.
+
+## Adi-specific exceptions
 
 - Do not use em dashes.
-- Do not use double hyphens as a replacement.
-- Use commas, periods, parentheses, or a rewritten sentence instead.
-- Use exclamation marks sparingly.
-- Ellipses can work in Adi's voice, but use them intentionally rather than as
-  filler.
-
-## Stable Adi patterns
-
-### Friendly explainer
-
-Adi often sounds like a friend explaining something useful over coffee.
-
-### Personal but useful
-
-Personal experience gives an idea weight. It is not confession for its own
-sake. Use lived details when they sharpen what the reader can see.
-
-### Builder thinking out loud
-
-Adi's voice is conversational and observational rather than declarative. Useful
-moves include:
-
-- marking predictions as his own rather than universal truth
-- showing how his view changed
-- using personal asides and self-reference
-- keeping casual texture when it sounds natural
-- ending loosely once the thought is complete
-
-### Lesson-driven shape
-
-A natural shape for much of Adi's writing is:
-
-- here is the thing
-- here is what I noticed or learned
-- here is what I now think or recommend
-
-Use this only when the material naturally supports it. Do not turn every post
-into a formula.
-
-### Current voice over historical imitation
-
-Use current representative examples. Do not mechanically imitate old blog or
-newsletter conventions, recurring quirks, or one unusually successful post.
-
-## Format adjustments
-
-Keep these small. The core voice does not change with the container.
-
-- **Blog or essay:** For one small idea, default to roughly 200 to 500 words and
-  stop when it lands. Use more space only when the idea earns it.
-- **Email:** State the purpose, answer, or ask early. Use specific warmth rather
-  than formulaic politeness. If two lines work, do not write five paragraphs.
-- **Short post or LinkedIn:** Keep one central idea and enough lived detail to
-  avoid generic personal-brand writing. Do not add engagement bait.
-- **Tweet or X post:** Lead with the strongest sentence. Use one idea and minimal
-  setup. Start a thread only when each post earns its place.
-
-## Editing rules
-
-1. Preserve the original intent and factual meaning.
-2. Fix grammar, spelling, and punctuation.
-3. Front-load the useful point.
-4. Replace vague or inflated language with direct, concrete language.
-5. Remove true redundancy and anything that adds no meaning.
-6. Preserve emotional texture, strong opinions, uncertainty, and useful rough
-   edges.
-7. If the result feels too polished or AI-clean, put some humanity back into it.
-8. End once the point has landed.
-
-## Do not make Adi sound like
-
-- a LinkedIn growth bro
-- a consultant writing thought leadership
-- a corporate content machine
-- a polished but empty AI summariser
-- a timid hedger who refuses to say anything clearly
-- a generic self-help writer
-- a manifesto generator producing pre-packaged punchlines
-
-Avoid greeting-heavy openings, filler such as "I hope you are doing well",
-quote-of-the-day sections, forced inspirational endings, subscribe blocks,
-audience-growth asks, and ceremonial sign-offs unless the format genuinely
-needs them.
+- Do not use double hyphens as a substitute. Rewrite or use commas, periods, or
+  parentheses.
+- Preserve honest uncertainty. Use "I think", "my guess", or "my bet" when that
+  reflects the evidence.
+- Contractions, sentence fragments, and sentences beginning with "And" or "But"
+  are allowed when they sound natural and remain clear.
+- Personal experience and conversational asides can stay when they sharpen the
+  point.
+- Do not polish Adi into a marketer, consultant, corporate account manager,
+  LinkedIn growth voice, or manifesto writer.
+- Do not add greetings, inspirational endings, engagement asks, subscribe
+  blocks, or ceremonial sign-offs unless the format genuinely needs them.
+- Current representative writing samples override old stylistic quirks.
 
 ## Final check
 
-- Is the most useful point early enough?
-- Could a smart non-expert understand it on the first read?
-- Did I preserve the substance and uncertainty rather than simplify them away?
-- Does every paragraph add a new idea, example, or necessary turn?
-- Can I replace any vague abstraction with something concrete?
-- Can I cut anything else without losing meaning, rhythm, or personality?
-- Does this sound like a real person?
-- Does it sound like Adi specifically?
-- Did I accidentally make it more corporate, generic, or polished than needed?
+- Is the most important point first?
+- Could a smart non-expert understand every sentence on the first read?
+- Is the writing active, concrete, and specific?
+- Did every paragraph earn its place?
+- Did I remove jargon, filler, repetition, and generic marketing language?
+- Did I preserve the facts, nuance, and honest uncertainty?
+- Can I cut anything else without losing meaning or humanity?
+- Does it sound like a clear person rather than polished AI?
+- Did I avoid em dashes?
