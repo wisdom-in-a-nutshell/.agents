@@ -410,18 +410,6 @@
       "upstream_ref": "figma/mcp-server-guide:skills/figma-use@main"
     },
     {
-      "skill": "dobby-artifacts",
-      "origin": "owned",
-      "scope": "repo",
-      "repos": [
-        "adi",
-        "angie",
-        "dobby-engine"
-      ],
-      "source_path": "skills-source/owned/dobby-artifacts",
-      "upstream_ref": "-"
-    },
-    {
       "skill": "agent-browser",
       "origin": "external",
       "scope": "repo",
