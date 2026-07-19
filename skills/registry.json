@@ -414,8 +414,8 @@
       "origin": "external",
       "scope": "repo",
       "repos": [
-        "/Users/dobby/GitHub/frontier-lab-intelligence",
-        "/Users/dobby/GitHub/agents"
+        "frontier-lab-intelligence",
+        "agents"
       ],
       "source_path": "skills-source/external/agent-browser",
       "upstream_ref": "vercel-labs/agent-browser:skills/agent-browser@main"
