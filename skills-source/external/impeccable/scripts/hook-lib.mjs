@@ -13,8 +13,10 @@
  *   normalizeIgnoreValue(value)
  *   readCache(cwd) / persistCache(cwd, cache) / resolveCacheCwd(primaryFile, sessionCwd)
  *   bumpEditCount(cache, sessionId, filePath) -> number
+ *   touchFile(cache, sessionId, filePath)
  *   suppressionNotice(filePath)
  *   filterFindings(findings, content, ext, config)
+ *   IMMEDIATE_TIER_RULES / splitFindingsByTier(findings) / perEditTieringActive(config, harness)
  *   matchConfiguredExtension(filePath, extensions)
  *   dedupeAgainstCache(findings, cache, sessionId, filePath)
  *   renderTemplate(findings, filePath, config, opts)
@@ -25,6 +27,7 @@
  *   matchesAnyGlob(filePath, globs)
  *   normalizeScanTargets(primaryTargets, projectCwd)
  *   runHook(deps) -> { exitCode, stdout, audit, reason? }
+ *   runStopHook(deps) -> { exitCode, stdout, audit, emission? }
  *
  * Design notes:
  * - All errors are swallowed at the runHook seam. The detector throwing must
@@ -86,6 +89,43 @@ export const GENERATED_PATH = /(?:\.generated\.[a-z]+$|\.d\.ts$|\.min\.[a-z]+$|[
 
 export const TRUTHY = /^(1|true|yes|on)$/i;
 
+// ── Two-tier rule surfacing ──────────────────────────────────────────────
+// The per-edit PostToolUse pass surfaces only this "immediate" tier: rules
+// that are mechanical, unambiguous, and worth interrupting an edit for —
+// broken output the user would see (broken images, overflow, clipped
+// popovers, text on the viewport edge), objective contrast/legibility
+// failures, single-property slop that is trivial to fix in place (gradient
+// text, glow shadows), and design-system drift (which compounds with every
+// further edit if left uncorrected). Everything else — copy-cadence rules,
+// palette/typography taste, layout rhythm — is deferred to the Stop-event
+// deep pass (`runStopHook`), which runs the FULL rule set over every file
+// touched this session and surfaces the remainder once.
+//
+// Rationale (measured in the eval harness): the per-edit stream fires
+// overwhelmingly on copy-level rules, and that steady nag stream makes
+// models more conservative, while a single full pass at completion fixes
+// contrast/padding/glow just as reliably. Restore the old full per-edit
+// behavior with `.impeccable/config.json` → `hook: { "perEditRules": "all" }`.
+export const IMMEDIATE_TIER_RULES = new Set([
+  // Broken output.
+  'broken-image',
+  'text-overflow',
+  'clipped-overflow-container',
+  'body-text-viewport-edge',
+  // Objective contrast / legibility failures.
+  'low-contrast',
+  'gray-on-color',
+  'tiny-text',
+  // Single-property mechanical slop, trivial to fix at the edit site.
+  'gradient-text',
+  'dark-glow',
+  // Design-system drift compounds if not corrected at edit time.
+  'design-system-font',
+  'design-system-color',
+  'design-system-radius',
+  'design-system-font-size',
+]);
+
 export const DEFAULT_CONFIG = Object.freeze({
   enabled: true,
   quiet: false,
@@ -95,6 +135,7 @@ export const DEFAULT_CONFIG = Object.freeze({
   ignoreFiles: [],
   ignoreValues: [],
   extensions: [],
+  perEditRules: 'immediate',
   // maxFileBytes: not every generated artifact lives under a path we can
   // recognize. Committed browser bundles and vendored detector copies sit
   // next to source and run 200KB+, while genuinely authored stylesheets in
@@ -280,6 +321,9 @@ function applyConfigSource(config, raw) {
   }
   if (Object.prototype.hasOwnProperty.call(raw, 'quiet')) {
     config.quiet = raw.quiet === true;
+  }
+  if (raw.perEditRules === 'all' || raw.perEditRules === 'immediate') {
+    config.perEditRules = raw.perEditRules;
   }
   if (typeof raw.auditLog === 'string' && raw.auditLog.trim()) {
     config.auditLog = raw.auditLog.trim();
@@ -641,6 +685,14 @@ export function bumpEditCount(cache, sessionId, filePath) {
   return fileEntry.editCount;
 }
 
+// Record that a file was scanned this session without bumping its edit count.
+// The Stop deep pass reads the session's file list to know what to re-scan,
+// so a file whose per-edit findings were all deferred still needs an entry.
+export function touchFile(cache, sessionId, filePath) {
+  ensureFile(cache, sessionId, filePath);
+  ensureSession(cache, sessionId).updatedAt = Date.now();
+}
+
 export function suppressionNotice(filePath) {
   return `${ENVELOPE_PREFIX} Suppressing further design hints on ${filePath}. More than ${EDIT_COUNT_THRESHOLD} edits in this session reached. Run ${IMPECCABLE_COMMAND} audit to revisit.`;
 }
@@ -709,6 +761,31 @@ export function filterFindings(findings, _content, _ext, config) {
     if (isIgnoredFindingValue(f, ignoreValues)) return false;
     return true;
   });
+}
+
+// Split filtered findings into the per-edit "immediate" tier and the tier
+// deferred to the Stop deep pass. See IMMEDIATE_TIER_RULES for the tiering
+// rationale.
+export function splitFindingsByTier(findings) {
+  const immediate = [];
+  const deferred = [];
+  for (const f of Array.isArray(findings) ? findings : []) {
+    if (f && IMMEDIATE_TIER_RULES.has(normalizeIgnoreRule(f.antipattern))) {
+      immediate.push(f);
+    } else {
+      deferred.push(f);
+    }
+  }
+  return { immediate, deferred };
+}
+
+// Whether the per-edit pass for this harness should defer non-immediate
+// findings to a Stop deep pass. Only Claude Code and Codex dispatch our Stop
+// hook; Cursor and GitHub Copilot have no deep pass wired, so deferring for
+// them would silently drop the non-immediate rules entirely.
+export function perEditTieringActive(config, harness) {
+  if (harness === 'cursor' || harness === 'github') return false;
+  return (config?.perEditRules || DEFAULT_CONFIG.perEditRules) !== 'all';
 }
 
 function isIgnoredFindingValue(finding, ignoreValues) {
@@ -1536,6 +1613,7 @@ export async function runHook({ stdinJson, env = {}, cwd = process.cwd(), now = 
       return result({ skipped: 'detector-missing', durationMs: Date.now() - started });
     }
     const scanOptions = designSystemOptions(config, det, projectCwd);
+    const tiered = perEditTieringActive(config, harness);
 
     let pendingWinner = null;
     let cleanWinner = null;
@@ -1548,6 +1626,7 @@ export async function runHook({ stdinJson, env = {}, cwd = process.cwd(), now = 
     let lastSkip = 'no-scannable-file';
     let suppressedHit = false;
     let cacheDirty = false;
+    let deferredTotal = 0;
 
     for (const filePath of targetFiles) {
       audit.file = filePath;
@@ -1619,9 +1698,21 @@ export async function runHook({ stdinJson, env = {}, cwd = process.cwd(), now = 
       }
 
       const filtered = filterFindings(findings || [], content, ext, config);
-      const fresh = dedupeAgainstCache(filtered, cache, sessionId, filePath);
+      // Per-edit only surfaces the immediate tier; the rest waits for the
+      // Stop deep pass. The file is still marked touched so the deep pass
+      // knows to re-scan it.
+      const { immediate, deferred } = tiered
+        ? splitFindingsByTier(filtered)
+        : { immediate: filtered, deferred: [] };
+      if (deferred.length > 0) {
+        touchFile(cache, sessionId, filePath);
+        cacheDirty = true;
+        deferredTotal += deferred.length;
+      }
+      const fresh = dedupeAgainstCache(immediate, cache, sessionId, filePath);
       audit.findings = (findings || []).length;
       audit.freshFindings = fresh.length;
+      if (deferredTotal > 0) audit.deferred = deferredTotal;
 
       // A detector failure tells us nothing about the file, so leave whatever
       // was remembered alone rather than recording an empty scan as truth.
@@ -1632,7 +1723,9 @@ export async function runHook({ stdinJson, env = {}, cwd = process.cwd(), now = 
 
       // Sync the cache to this scan before deciding what to emit, so fixed
       // findings stop being remembered and a reintroduced one reads as fresh.
-      rememberFindings(cache, sessionId, filePath, filtered);
+      // Only the immediate tier is remembered: a deferred finding the per-edit
+      // pass never reported must still read as fresh to the Stop deep pass.
+      rememberFindings(cache, sessionId, filePath, immediate);
       cacheDirty = true;
 
       if (fresh.length > 0) {
@@ -1640,10 +1733,10 @@ export async function runHook({ stdinJson, env = {}, cwd = process.cwd(), now = 
         continue;
       }
 
-      if (filtered.length > 0 && !pendingWinner) {
+      if (immediate.length > 0 && !pendingWinner) {
         // Count the live scan, not the session's history.
-        pendingWinner = { filePath, known: filtered.map(f => findingCacheKey(f)) };
-      } else if (filtered.length === 0 && !cleanWinner) {
+        pendingWinner = { filePath, known: immediate.map(f => findingCacheKey(f)) };
+      } else if (immediate.length === 0 && !cleanWinner) {
         // The clean ack carries no finding, only the standing steer that a
         // silent hook is not a verdict on the design. Repeating it on every
         // clean edit spends context to say nothing, so it fires once per file
@@ -1668,11 +1761,12 @@ export async function runHook({ stdinJson, env = {}, cwd = process.cwd(), now = 
     }
 
     // Persist only when the write is earned: fresh findings justify creating
-    // `.impeccable/` (dedup and suppression need it), and an already-present
-    // `.impeccable/` dir marks a project that opted in. A non-UI edit, or a
-    // clean UI edit in a project with no Impeccable footprint, must be a
-    // no-op on disk (issues #344, #305).
-    if (freshGroups.length > 0
+    // `.impeccable/` (dedup and suppression need it), deferred findings do
+    // too (the Stop deep pass needs the touched-file list to surface them),
+    // and an already-present `.impeccable/` dir marks a project that opted
+    // in. A non-UI edit, or a clean UI edit in a project with no Impeccable
+    // footprint, must be a no-op on disk (issues #344, #305).
+    if (freshGroups.length > 0 || deferredTotal > 0
       || (cacheDirty && fs.existsSync(path.join(projectCwd, '.impeccable')))) {
       persistCache(projectCwd, cache);
     }
@@ -1784,6 +1878,154 @@ export async function runHook({ stdinJson, env = {}, cwd = process.cwd(), now = 
       ...(lastSkip === 'too-large' ? { bytes: skippedBytes } : {}),
       durationMs: Date.now() - started,
     });
+  } catch (err) {
+    return {
+      exitCode: 0,
+      stdout: '',
+      audit: { ...audit, error: String(err && err.message ? err.message : err) },
+    };
+  }
+}
+
+// Cap on files the Stop deep pass will scan. The touched-file list is
+// session-scoped and already capped per edit, but a very long session could
+// accumulate more than the 30s hook timeout comfortably covers.
+export const STOP_MAX_FILES = 20;
+
+/**
+ * Run the Stop-event deep pass: the FULL detector rule set over every UI
+ * file touched this session, surfaced once, deduped against everything the
+ * per-edit hook already reported. Same result contract as runHook():
+ *   { exitCode, stdout, audit, emission? }
+ *
+ * Never throws; exits silent (and fast) when the session touched no UI
+ * files. Output uses the Stop hookSpecificOutput channel: additionalContext
+ * is delivered to the model and the conversation continues so it can act.
+ */
+export async function runStopHook({ stdinJson, env = {}, cwd = process.cwd(), now = Date.now, detector } = {}) {
+  const audit = { ts: new Date(now()).toISOString(), event: 'Stop' };
+  const result = (extra) => ({ exitCode: 0, stdout: '', audit: { ...audit, ...extra } });
+
+  try {
+    // Re-entrancy guard, same as the per-edit pass.
+    if (depthIsSet(env.IMPECCABLE_HOOK_DEPTH) || depthIsSet(env.CLAUDE_HOOK_DEPTH)) {
+      return result({ reentrant: true, durationMs: 0 });
+    }
+    if (truthy(env.IMPECCABLE_HOOK_DISABLED)) {
+      return result({ skipped: 'env-disabled', durationMs: 0 });
+    }
+
+    const started = Date.now();
+
+    let event;
+    try {
+      event = typeof stdinJson === 'string' ? JSON.parse(stdinJson) : stdinJson;
+    } catch {
+      return result({ skipped: 'stdin-malformed', durationMs: Date.now() - started });
+    }
+    if (!event || typeof event !== 'object') {
+      return result({ skipped: 'stdin-empty', durationMs: Date.now() - started });
+    }
+
+    const harness = resolveHarness(env, event);
+    audit.harness = harness;
+
+    // A Stop event carries no file, so the session cwd is the project.
+    // Umbrella-dir launches keyed their per-edit cache to the edited file's
+    // project root (resolveCacheCwd); those sessions no-op here rather than
+    // guessing which child project the session was about.
+    const projectCwd = path.resolve(event.cwd || cwd);
+    audit.cwd = projectCwd;
+    const sessionId = event.session_id || 'unknown';
+    audit.session = sessionId;
+
+    const config = readConfig(projectCwd);
+    if (config.enabled === false) {
+      return result({ skipped: 'config-disabled', durationMs: Date.now() - started });
+    }
+
+    const cache = readCache(projectCwd);
+    const touched = Object.keys(cache.sessions?.[sessionId]?.files || {});
+    if (touched.length === 0) {
+      return result({ skipped: 'no-touched-files', durationMs: Date.now() - started });
+    }
+
+    const platform = resolveProjectPlatform(projectCwd);
+    if (isNativePlatform(platform)) {
+      return result({ skipped: 'native-platform', platform, durationMs: Date.now() - started });
+    }
+
+    const det = detector || await loadDetector();
+    if (!det || typeof det.detectText !== 'function') {
+      return result({ skipped: 'detector-missing', durationMs: Date.now() - started });
+    }
+    const scanOptions = designSystemOptions(config, det, projectCwd);
+
+    const freshGroups = [];
+    let scanned = 0;
+    for (const filePath of touched) {
+      if (scanned >= STOP_MAX_FILES) break;
+      if (hasPathTraversal(filePath) || SENSITIVE_PATH.test(filePath)) continue;
+      if (GENERATED_PATH.test(filePath)) continue;
+      const ext = path.extname(filePath).toLowerCase();
+      const configuredExt = matchConfiguredExtension(filePath, config.extensions);
+      if (!ALLOWED_EXTS.has(ext) && !configuredExt) continue;
+      const relForMatch = relativize(filePath, projectCwd);
+      if (matchesAnyGlob(relForMatch, config.ignoreFiles) || matchesAnyGlob(filePath, config.ignoreFiles)) continue;
+      if (!fs.existsSync(filePath)) continue;
+
+      scanned += 1;
+      let content = '';
+      try { content = fs.readFileSync(filePath, 'utf-8'); } catch { continue; }
+
+      let findings;
+      const useHtmlEngine = configuredExt
+        ? configuredExt.engine === 'html'
+        : (ext === '.html' || ext === '.htm');
+
+      if (useHtmlEngine && typeof det.detectHtml === 'function') {
+        try { findings = await det.detectHtml(filePath, scanOptions); } catch { findings = []; }
+      } else {
+        try { findings = await det.detectText(content, filePath, scanOptions); } catch { findings = []; }
+      }
+
+      // Full rule set: no tier split here. Config/inline ignores still apply,
+      // and the session dedupe drops everything the per-edit pass (or an
+      // earlier Stop pass) already surfaced.
+      const filtered = filterFindings(findings || [], content, ext, config);
+      const fresh = dedupeAgainstCache(filtered, cache, sessionId, filePath);
+      if (fresh.length > 0) {
+        rememberFindings(cache, sessionId, filePath, fresh);
+        freshGroups.push({ filePath, findings: fresh });
+      }
+    }
+    audit.scannedFiles = scanned;
+
+    if (freshGroups.length === 0) {
+      return result({ emitted: false, skipped: 'stop-clean', durationMs: Date.now() - started });
+    }
+
+    // Fresh findings earn the cache write so the next Stop fire is silent
+    // unless new issues appear.
+    persistCache(projectCwd, cache);
+
+    const text = appendDesignSystemNote(renderGroupedTemplate(freshGroups, config, { cwd: projectCwd }), scanOptions);
+    return {
+      exitCode: 0,
+      stdout: payload(text, 'Stop', harness),
+      emission: {
+        kind: 'stop-deep-pass',
+        groups: freshGroups,
+      },
+      audit: {
+        ...audit,
+        emitted: true,
+        freshFiles: freshGroups.length,
+        freshFindings: freshGroups.reduce((sum, group) => sum + group.findings.length, 0),
+        chars: text.length,
+        durationMs: Date.now() - started,
+      },
+    };
   } catch (err) {
     return {
       exitCode: 0,

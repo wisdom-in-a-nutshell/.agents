@@ -92,10 +92,10 @@ Scan files or URLs for UI anti-patterns and design quality issues.
 Options:
   --json              Output results as JSON
   --quiet             In text mode, only print the final findings count
-  --gpt               Also report GPT-specific provider tells (off by default)
-  --gemini            Also report Gemini-specific provider tells (off by default)
   --scope <name>      Only report rules in the given design domain
                       (type, layout). Comma-separated.
+  --viewport <WxH>    Browser viewport for URL scans (default 1280x800),
+                      e.g. --viewport 390x844 for a mobile-width pass
   --no-config         Do not apply project config, detector ignores, inline
                       ignore comments, or DESIGN.md
   --no-inline-ignores Do not honor in-file impeccable-disable* ignore comments
@@ -118,7 +118,8 @@ Inline ignores:
 Detection modes:
   HTML files     Static HTML/CSS analysis (default, catches linked CSS)
   Non-HTML files Regex pattern matching (CSS, JSX, TSX, etc.)
-  URLs           Puppeteer full browser rendering (auto-detected)
+  URLs           Puppeteer full browser rendering (auto-detected;
+                 http(s):// and file:// URLs)
 
 Examples:
   impeccable detect src/
@@ -147,13 +148,15 @@ async function detectCli() {
       'Note: --fast is deprecated and ignored. The full scan is fast now and runs every rule.\n',
     );
   }
+  if (args.includes('--gpt') || args.includes('--gemini')) {
+    process.stderr.write(
+      'Note: --gpt and --gemini are deprecated and ignored. Generated-UI tells now run by default.\n',
+    );
+  }
   const configEnabled = !args.includes('--no-config');
   const detectionConfig = configEnabled
     ? readDetectionConfig(process.cwd())
     : { ignoreRules: [], ignoreFiles: [], ignoreValues: [] };
-  const providers = [];
-  if (args.includes('--gpt')) providers.push('gpt');
-  if (args.includes('--gemini')) providers.push('gemini');
   const scopes = [];
   for (let i = 0; i < args.length; i++) {
     if (args[i] !== '--scope' && !args[i].startsWith('--scope=')) continue;
@@ -174,6 +177,20 @@ async function detectCli() {
     args.splice(i, inline ? 1 : 2);
     i -= 1;
   }
+  let viewport = null;
+  for (let i = 0; i < args.length; i++) {
+    if (args[i] !== '--viewport' && !args[i].startsWith('--viewport=')) continue;
+    const inline = args[i].startsWith('--viewport=');
+    const value = inline ? args[i].slice('--viewport='.length) : args[i + 1];
+    const match = /^(\d{2,5})x(\d{2,5})$/i.exec(value || '');
+    if (!match) {
+      process.stderr.write('Error: --viewport requires a WxH value, e.g. --viewport 390x844\n');
+      process.exit(1);
+    }
+    viewport = { width: Number(match[1]), height: Number(match[2]) };
+    args.splice(i, inline ? 1 : 2);
+    i -= 1;
+  }
   const unknownScopes = scopes.filter(s => !RULE_SCOPES.has(s));
   if (unknownScopes.length > 0) {
     process.stderr.write(
@@ -187,8 +204,9 @@ async function detectCli() {
   // apply by default. `--no-config` (raw scan) and the dedicated
   // `--no-inline-ignores` both turn them off.
   const inlineIgnoresEnabled = configEnabled && !args.includes('--no-inline-ignores');
-  const scanOptions = { providers, inlineIgnores: inlineIgnoresEnabled };
+  const scanOptions = { inlineIgnores: inlineIgnoresEnabled };
   if (designSystem) scanOptions.designSystem = designSystem;
+  if (viewport) scanOptions.viewport = viewport;
   const targets = args.filter(a => !a.startsWith('--'));
 
   if (helpMode) { printUsage(); process.exit(0); }
@@ -199,12 +217,17 @@ async function detectCli() {
     allFindings = await handleStdin(scanOptions);
   } else {
     const paths = targets.length > 0 ? targets : [process.cwd()];
-    const urlTargetCount = paths.filter(target => /^https?:\/\//i.test(target)).length;
+    // file:// URLs get the same Puppeteer-rendered pass as http(s) — the
+    // real cascade, real computed styles, real layout. Callers that want a
+    // browser-grade scan of a local artifact can pass file:///abs/path.html
+    // instead of the bare path (which stays on the static engine).
+    const urlRe = /^(?:https?|file):\/\//i;
+    const urlTargetCount = paths.filter(target => urlRe.test(target)).length;
     const browserDetector = urlTargetCount > 1 ? await createBrowserDetector() : null;
 
     try {
       for (const target of paths) {
-        if (/^https?:\/\//i.test(target)) {
+        if (urlRe.test(target)) {
           try {
             const scanner = browserDetector
               ? (url) => browserDetector.detectUrl(url, scanOptions)
