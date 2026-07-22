@@ -1,7 +1,9 @@
 {
   "roots": {
     ".system": {
-      "allowed": [],
+      "allowed": [
+        "review-agent"
+      ],
       "disabled": [
         "imagegen",
         "openai-docs",
