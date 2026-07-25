@@ -24,6 +24,7 @@ import {
   checkElementMotion,
   checkElementOversizedH1,
   checkElementQuality,
+  checkElementRadialSpotlight,
   checkCreamPalette,
   checkHtmlPatterns,
   checkNumberedSectionLabelsFromDoc,
@@ -105,6 +106,7 @@ const STATIC_ELEMENT_RULES = [
   { id: 'oversized-h1', selector: 'h1', run: (el, tag, style, window) => checkElementOversizedH1(el, style, tag, window) },
   { id: 'clipped-overflow-container', selector: '*', run: (el, tag, style, window) => checkElementClippedOverflow(el, style, tag, window) },
   { id: 'gpt-thin-border-wide-shadow', selector: '*', run: (el, tag, style) => checkElementGptBorderShadow(el, style) },
+  { id: 'radial-spotlight-glow', selector: '*', run: (el, tag, style, window) => checkElementRadialSpotlight(el, style, tag, window) },
 ];
 
 async function detectHtml(filePath, options = {}) {
