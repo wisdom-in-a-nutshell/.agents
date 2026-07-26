@@ -20,6 +20,8 @@ def run_command(
     check: bool = True,
 ) -> subprocess.CompletedProcess[str]:
     merged_env = os.environ.copy()
+    # Host Codex task identity must not leak into hermetic subprocess fixtures.
+    merged_env.pop("CODEX_THREAD_ID", None)
     if env:
         merged_env.update(env)
     result = subprocess.run(

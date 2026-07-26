@@ -18,7 +18,7 @@ from contextlib import contextmanager
 from datetime import datetime, timezone
 from pathlib import Path
 from types import SimpleNamespace
-from typing import Any, Iterator
+from typing import Any, Iterable, Iterator
 
 try:
     from hooks.scripts.codex_turn_changes import (
@@ -834,6 +834,66 @@ def merge_codex_transactions(
     return merged
 
 
+def register_codex_transaction_paths(
+    thread_id: str,
+    paths: Iterable[str | os.PathLike[str]],
+) -> dict[str, RepoFinalization]:
+    """Register shell-rendered paths for the existing Codex Stop transaction."""
+    normalized_thread_id = str(thread_id or "").strip()
+    if not normalized_thread_id:
+        return {}
+    normalized_paths = tuple(
+        str(Path(path).expanduser().absolute())
+        for path in paths
+    )
+    discovered = repositories_from_paths(normalized_paths)
+    if not discovered:
+        return {}
+    pending = load_codex_transaction(normalized_thread_id)
+    save_codex_transaction(
+        normalized_thread_id,
+        merge_codex_transactions(pending, discovered),
+    )
+    return discovered
+
+
+def register_current_codex_transaction_paths(
+    paths: Iterable[str | os.PathLike[str]],
+) -> dict[str, RepoFinalization]:
+    """Register paths only when running inside a Codex thread."""
+    return register_codex_transaction_paths(
+        os.environ.get("CODEX_THREAD_ID", ""),
+        paths,
+    )
+
+
+def adopt_descendant_codex_transactions(
+    thread_id: str,
+    pending: dict[str, RepoFinalization],
+    descendant_thread_ids: Iterable[str],
+) -> dict[str, RepoFinalization]:
+    """Move descendant shell registrations into the parent Stop transaction."""
+    merged = pending
+    adopted: list[str] = []
+    for descendant_thread_id in sorted(
+        {
+            str(value).strip()
+            for value in descendant_thread_ids
+            if str(value).strip() and str(value).strip() != thread_id
+        }
+    ):
+        descendant_pending = load_codex_transaction(descendant_thread_id)
+        if not descendant_pending:
+            continue
+        merged = merge_codex_transactions(merged, descendant_pending)
+        adopted.append(descendant_thread_id)
+    if adopted:
+        save_codex_transaction(thread_id, merged)
+        for descendant_thread_id in adopted:
+            save_codex_transaction(descendant_thread_id, {})
+    return merged
+
+
 def lock_path_for_repo(root: str) -> Path:
     digest = hashlib.sha256(root.encode("utf-8", errors="replace")).hexdigest()
     return Path.home() / ".local/state/agents-control-plane/repo-locks" / f"{digest}.lock"
@@ -1058,6 +1118,11 @@ def process_codex_repositories(
         )
         return None
 
+    pending = adopt_descendant_codex_transactions(
+        thread_id,
+        pending,
+        getattr(changes, "descendant_thread_ids", ()),
+    )
     repositories = merge_codex_transactions(
         pending,
         repositories_from_paths(changes.touched_paths),

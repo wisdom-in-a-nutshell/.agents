@@ -21,6 +21,7 @@ from hooks.control_plane import (  # noqa: E402
     load_hooks_registry,
     render_claude_hooks,
 )
+from hooks.scripts.stop import register_current_codex_transaction_paths  # noqa: E402
 from mcp.control_plane import claude_server_from_preset, load_mcp_catalog  # noqa: E402
 
 
@@ -242,14 +243,14 @@ def load_repo_registry(registry_file: Path) -> list[str]:
     return repos
 
 
-def sync_link(dst: Path, src: Path, apply: bool) -> None:
+def sync_link(dst: Path, src: Path, apply: bool) -> bool:
     rel = rel_link(dst, src)
     if dst.is_symlink() and resolved_target(dst) == src.resolve():
         print(f"UNCHANGED {dst}")
-        return
+        return False
     print(f"SYNC {dst} -> {rel}")
     if not apply:
-        return
+        return True
     dst.parent.mkdir(parents=True, exist_ok=True)
     if dst.is_symlink() or dst.is_file():
         dst.unlink()
@@ -258,11 +259,18 @@ def sync_link(dst: Path, src: Path, apply: bool) -> None:
     elif dst.exists():
         dst.unlink()
     dst.symlink_to(rel)
+    return True
 
 
-def prune_obsolete_links(skills_dir: Path, desired_links: dict[Path, Path], managed_source_roots: list[Path], apply: bool) -> None:
+def prune_obsolete_links(
+    skills_dir: Path,
+    desired_links: dict[Path, Path],
+    managed_source_roots: list[Path],
+    apply: bool,
+) -> set[Path]:
+    touched_links: set[Path] = set()
     if not skills_dir.exists():
-        return
+        return touched_links
     for entry in sorted(skills_dir.iterdir()):
         if not entry.is_symlink():
             continue
@@ -272,6 +280,8 @@ def prune_obsolete_links(skills_dir: Path, desired_links: dict[Path, Path], mana
         print(f"PRUNE {entry}")
         if apply:
             entry.unlink()
+        touched_links.add(entry)
+    return touched_links
 
 
 def git_root_for(path: Path) -> Path | None:
@@ -362,6 +372,7 @@ def render_skills(
     ]
     desired_global_links: dict[Path, Path] = {}
     desired_repo_links: dict[Path, Path] = {}
+    touched_links: set[Path] = set()
 
     for item in items:
         skill = item["skill"]
@@ -369,7 +380,8 @@ def render_skills(
         if item["scope"] == "global":
             dst = claude_home / "skills" / skill
             desired_global_links[dst] = src
-            sync_link(dst, src, apply)
+            if sync_link(dst, src, apply):
+                touched_links.add(dst)
             continue
 
         for repo in item["repos"]:
@@ -385,13 +397,32 @@ def render_skills(
                 continue
             dst = actual_repo / ".claude" / "skills" / skill
             desired_repo_links[dst] = src
-            sync_link(dst, src, apply)
+            if sync_link(dst, src, apply):
+                touched_links.add(dst)
 
-    prune_obsolete_links(claude_home / "skills", desired_global_links, managed_source_roots, apply)
+    touched_links.update(
+        prune_obsolete_links(
+            claude_home / "skills",
+            desired_global_links,
+            managed_source_roots,
+            apply,
+        )
+    )
     repo_skill_dirs = repo_skill_dirs_for_prune(root_dir, github_root, repo_filters)
     repo_skill_dirs.update(path.parent for path in desired_repo_links)
     for skills_dir in sorted(repo_skill_dirs):
-        prune_obsolete_links(skills_dir, desired_repo_links, managed_source_roots, apply)
+        touched_links.update(
+            prune_obsolete_links(
+                skills_dir,
+                desired_repo_links,
+                managed_source_roots,
+                apply,
+            )
+        )
+    if apply:
+        registered = register_current_codex_transaction_paths(touched_links)
+        for git_root, item in sorted(registered.items()):
+            print(f"REGISTER CODEX STOP {git_root}: {' '.join(sorted(item.paths))}")
 
 
 def trusted_workspaces(root_dir: Path, github_root: Path, extra: list[Path]) -> list[str]:

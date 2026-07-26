@@ -27,6 +27,7 @@ class CodexTurnChanges:
     thread_id: str
     session_id: str
     parent_thread_id: str
+    descendant_thread_ids: tuple[str, ...]
     turn_id: str
     turn_started_at: int
     touched_paths: tuple[str, ...]
@@ -104,6 +105,13 @@ def collect_codex_turn_changes(
         thread_id=normalized_thread_id,
         session_id=owner_session_id,
         parent_thread_id=_text(owner.get("parentThreadId")),
+        descendant_thread_ids=tuple(
+            sorted(
+                child_id
+                for child_id in (_text(thread.get("id")) for thread in descendant_threads)
+                if child_id
+            )
+        ),
         turn_id=_text(owner_turn.get("id")),
         turn_started_at=turn_started_at,
         touched_paths=tuple(sorted(touched_paths)),

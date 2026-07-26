@@ -11,6 +11,13 @@ from pathlib import Path
 from typing import Any
 
 
+_AGENTS_ROOT = Path(__file__).resolve().parent.parent
+if str(_AGENTS_ROOT) not in sys.path:
+    sys.path.insert(0, str(_AGENTS_ROOT))
+
+from hooks.scripts.stop import register_current_codex_transaction_paths  # noqa: E402
+
+
 ALLOWED_ORIGINS = {"external", "owned"}
 ALLOWED_SCOPES = {"global", "repo", "dormant"}
 DEFAULT_REGISTRY_FILE = Path(__file__).resolve().parent.parent / "skills" / "registry.json"
@@ -286,6 +293,9 @@ def run_sync(
         prune_dormant_repo_links(root_dir, github_root, dormant_skills, apply, repo_filters)
     )
     if apply:
+        registered = register_current_codex_transaction_paths(touched_links)
+        for git_root, item in sorted(registered.items()):
+            print(f"REGISTER CODEX STOP {git_root}: {' '.join(sorted(item.paths))}")
         touched_links.update(desired_links)
         stage_git_paths(touched_links)
 
