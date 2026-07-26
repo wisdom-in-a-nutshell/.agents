@@ -39,6 +39,7 @@ For repo authors adding `scripts/hooks/*.py`, start with [`repo-lifecycle-hook-a
   - renders `~/.claude/CLAUDE.md` from `config/global.agents.md`
   - renders managed global skill links under `~/.claude/skills`
   - renders managed repo-scoped skill links under each target repo's `.claude/skills`
+  - when invoked inside a Codex thread, registers changed repo-scoped skill-link paths with that thread's existing Stop transaction instead of committing or pushing from the renderer
   - renders repo `.claude/CLAUDE.md` bridge files containing `@../AGENTS.md` when the repo has `AGENTS.md`
   - renders user settings and the managed `Stop` hook under `~/.claude/settings.json`
   - renders managed Claude Desktop SSH entries from `config/claude-settings.json` into `~/.claude/settings.json` `sshConfigs`
@@ -73,6 +74,7 @@ For repo authors adding `scripts/hooks/*.py`, start with [`repo-lifecycle-hook-a
 - `scripts/sync-skills-registry.sh`
   - renders global Codex skill symlinks into `~/.agents/skills`
   - renders repo-scoped Codex skill symlinks into repo `.agents/skills`
+  - stages exact tracked repo skill-link changes and, inside a Codex thread, registers the changed paths with the existing Stop transaction for checked multi-repo finalization
 - `scripts/switch-claude-provider.sh`
   - switches the machine-local Claude Code credential profile used by the wrapper
 - `scripts/test-control-plane.sh`

@@ -124,6 +124,8 @@ Use [Codex Control Plane Ownership](/Users/dobby/GitHub/agents/docs/references/c
 - `~/.codex/config.toml` does not use Codex `notify`; global hook automation is rendered into `~/.codex/hooks.json`, and repo-assigned hooks are rendered into managed repo `.codex/hooks.json` from `hooks/registry.json`.
 - The global `Stop` hook owns the managed-repo git conveyor:
   - reads Codex App Server `fileChange` items for the parent turn and recursively follows `parentThreadId` for descendant subagents
+  - also adopts exact repo skill-link paths registered by shell-based control-plane syncs through `CODEX_THREAD_ID`, so bootstrap changes that do not surface as App Server `fileChange` items still use the same checked multi-repo finalization path
+  - merges descendant-thread registrations into the parent Stop transaction before finalization; subagent Stop events continue to defer to the parent
   - uses those exact absolute paths to identify affected Git worktrees, then consolidates all current staged and working-tree changes inside each affected repository
   - ignores subagent Stop events because the parent Stop owns the complete turn transaction
   - allows concurrent Codex tasks to edit the same repository or file and uses deterministic per-repository locks to serialize only stage/check/commit/push finalization
@@ -140,6 +142,7 @@ Use [Codex Control Plane Ownership](/Users/dobby/GitHub/agents/docs/references/c
   - brand-new branches without upstream tracking use an initial `git push -u <remote> HEAD`, so the hook can publish the branch before future tracked-branch pulls
   - logs phase timing to `~/.local/state/agents-control-plane/log/hooks-stop.log`
   - leaves Copilot, Claude, and Antigravity on the existing current-repository finalization path; multi-repository attribution is Codex-only
+- Bootstrap and sync scripts remain renderers: they do not commit or push repositories directly. When `CODEX_THREAD_ID` is absent, such as unattended machine reconciliation, they apply runtime state without creating a Codex Stop transaction.
 - `~/.codex/config.toml` contains exact trusted repo entries for local repos such as `focus`
 - `~/.codex/config.toml` enables Codex hooks through `[features].hooks = true`
 - `~/.codex/config.toml` contains `[hooks.state]` trust hashes for managed hooks rendered by this control plane, so global and repo-local lifecycle hooks do not need repeated `/hooks` review on every machine bootstrap.

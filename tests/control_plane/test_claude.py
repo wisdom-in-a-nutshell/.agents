@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import shlex
@@ -9,8 +10,10 @@ from pathlib import Path
 from tests.control_plane.support import (
     REPO_ROOT,
     TempDirTestCase,
+    commit_all,
     init_git_repo,
     make_skill_source,
+    read_json,
     run_command,
     write_json,
     write_text,
@@ -281,6 +284,77 @@ class ClaudeSyncTests(TempDirTestCase):
         )
         self.assertFalse((claude_home / "skills/repo-only").exists())
         self.assertFalse((repo_b / ".claude/skills/repo-b-only").exists())
+
+    def test_apply_registers_pruned_repo_skill_link_with_codex_stop(self) -> None:
+        root = self.temp_path / "agents"
+        registry = self._write_registry(
+            root,
+            [
+                {
+                    "skill": "global-one",
+                    "origin": "owned",
+                    "scope": "global",
+                    "repos": [],
+                    "source_path": "skills-source/owned/global-one",
+                    "upstream_ref": "-",
+                }
+            ],
+        )
+        home = self.temp_path / "home"
+        github_root = home / "GitHub"
+        repo = init_git_repo(github_root / "repo-a", with_initial_commit=True)
+        repo_link = repo / ".claude/skills/global-one"
+        repo_link.parent.mkdir(parents=True, exist_ok=True)
+        repo_link.symlink_to(root / "skills-source/owned/global-one")
+        commit_all(repo, "track generated Claude skill link")
+        claude_home = home / ".claude"
+
+        run_command(
+            [
+                str(REPO_ROOT / "scripts/sync-claude.py"),
+                "--apply",
+                "--claude-home",
+                str(claude_home),
+                "--github-root",
+                str(github_root),
+                "--repo",
+                str(repo),
+                "--skip-global-context",
+                "--skip-desktop-config",
+                "--skip-settings",
+                "--skip-repo-hooks",
+                "--skip-repo-guidance",
+                "--skip-workspace-trust",
+                "--skip-launcher",
+                "--skip-launch-configs",
+                "--skip-codex-environments",
+                "--skip-mcp-configs",
+                str(registry),
+            ],
+            env={
+                "HOME": str(home),
+                "CODEX_THREAD_ID": "test-thread",
+            },
+        )
+
+        self.assertFalse(repo_link.exists())
+        transaction_path = (
+            home
+            / ".local/state/agents-control-plane/codex-stop-transactions"
+            / f"{hashlib.sha256(b'test-thread').hexdigest()}.json"
+        )
+        transaction = read_json(transaction_path)
+        self.assertEqual(
+            [
+                {
+                    "commit": "",
+                    "paths": [".claude/skills/global-one"],
+                    "phase": "pending",
+                    "root": str(repo.resolve()),
+                }
+            ],
+            transaction["repositories"],
+        )
 
     def test_apply_renders_repo_claude_guidance_import_bridge(self) -> None:
         root = self.temp_path / "agents"

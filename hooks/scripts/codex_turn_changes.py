@@ -60,8 +60,8 @@ def collect_codex_turn_changes(
                 for thread in listed_threads
                 if _text(thread.get("id")) != normalized_thread_id
                 and (
-                    _integer(thread.get("updatedAt")) == 0
-                    or _integer(thread.get("updatedAt")) >= turn_started_at
+                    _thread_activity_at(thread) == 0
+                    or _thread_activity_at(thread) >= turn_started_at
                 )
             ]
             descendant_threads: list[dict[str, Any]] = []
@@ -233,6 +233,10 @@ def _text(value: object) -> str:
 
 def _integer(value: object) -> int:
     return value if isinstance(value, int) and not isinstance(value, bool) else 0
+
+
+def _thread_activity_at(thread: dict[str, Any]) -> int:
+    return _integer(thread.get("updatedAt")) or _integer(thread.get("createdAt"))
 
 
 __all__ = [

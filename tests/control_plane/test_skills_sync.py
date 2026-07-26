@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import hashlib
+
 from tests.control_plane.support import (
     REPO_ROOT,
     TempDirTestCase,
@@ -7,6 +9,7 @@ from tests.control_plane.support import (
     init_git_repo,
     make_control_plane_root,
     make_skill_source,
+    read_json,
     run_command,
     write_json,
 )
@@ -155,7 +158,10 @@ class ManagedSkillsRegistrySyncTests(TempDirTestCase):
                 "--apply",
                 str(registry_path),
             ],
-            env={"HOME": str(home)},
+            env={
+                "HOME": str(home),
+                "CODEX_THREAD_ID": "test-thread",
+            },
         )
 
         repo_link = adi / ".agents/skills/repo-helper"
@@ -168,6 +174,27 @@ class ManagedSkillsRegistrySyncTests(TempDirTestCase):
         ).stdout
         self.assertIn("A  .agents/skills/repo-helper", status)
         self.assertIn("D  .agents/skills/stale-helper", status)
+        transaction_path = (
+            home
+            / ".local/state/agents-control-plane/codex-stop-transactions"
+            / f"{hashlib.sha256(b'test-thread').hexdigest()}.json"
+        )
+        transaction = read_json(transaction_path)
+        self.assertEqual("test-thread", transaction["thread_id"])
+        self.assertEqual(
+            [
+                {
+                    "commit": "",
+                    "paths": [
+                        ".agents/skills/repo-helper",
+                        ".agents/skills/stale-helper",
+                    ],
+                    "phase": "pending",
+                    "root": str(adi.resolve()),
+                }
+            ],
+            transaction["repositories"],
+        )
 
     def test_rejects_missing_repo_local_skill_source_for_existing_repo(self) -> None:
         root = make_control_plane_root(self.temp_path)

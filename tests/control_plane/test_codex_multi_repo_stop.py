@@ -179,6 +179,10 @@ class CodexTurnChangesTests(TempDirTestCase):
         self.assertEqual(result.session_id, "tree")
         self.assertEqual(result.parent_thread_id, "")
         self.assertEqual(
+            set(result.descendant_thread_ids),
+            {"child", "grandchild"},
+        )
+        self.assertEqual(
             set(result.touched_paths),
             {root_path, child_path, moved_path, grandchild_path},
         )
@@ -199,6 +203,7 @@ class CodexMultiRepoStopTests(TempDirTestCase):
         return SimpleNamespace(
             touched_paths=tuple(str(path) for path in paths),
             parent_thread_id="",
+            descendant_thread_ids=(),
         )
 
     def test_commits_and_pushes_two_attributed_repositories(self) -> None:
@@ -234,6 +239,42 @@ class CodexMultiRepoStopTests(TempDirTestCase):
             "second\n",
         )
         self.assertFalse(stop.codex_transaction_path("thread").exists())
+
+    def test_parent_stop_adopts_registered_descendant_paths(self) -> None:
+        parent, parent_remote = self.make_published_repo("parent")
+        child, child_remote = self.make_published_repo("child")
+        parent_file = parent / "parent.txt"
+        child_file = child / "child.txt"
+        parent_file.write_text("parent\n", encoding="utf-8")
+        child_file.write_text("child\n", encoding="utf-8")
+        changes = self.changes([parent_file])
+        changes.descendant_thread_ids = ("child-thread",)
+
+        with patch.dict(os.environ, {"HOME": str(self.temp_path / "home")}):
+            stop.register_codex_transaction_paths("child-thread", [child_file])
+            with patch.object(
+                stop,
+                "collect_codex_turn_changes",
+                return_value=changes,
+            ):
+                with patch.object(stop, "avoid_stop_continuation", return_value=False):
+                    output = stop.process_codex_repositories(
+                        str(parent),
+                        {"session_id": "parent-thread", "hook_event_name": "Stop"},
+                    )
+
+            self.assertFalse(stop.codex_transaction_path("child-thread").exists())
+            self.assertFalse(stop.codex_transaction_path("parent-thread").exists())
+
+        self.assertIsNone(output)
+        self.assertEqual(
+            run_command(["git", "-C", str(parent_remote), "show", "HEAD:parent.txt"]).stdout,
+            "parent\n",
+        )
+        self.assertEqual(
+            run_command(["git", "-C", str(child_remote), "show", "HEAD:child.txt"]).stdout,
+            "child\n",
+        )
 
     def test_consolidates_unattributed_pre_staged_file(self) -> None:
         repo, remote = self.make_published_repo("repo")
