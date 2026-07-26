@@ -412,11 +412,8 @@
     {
       "skill": "agent-browser",
       "origin": "external",
-      "scope": "repo",
-      "repos": [
-        "frontier-lab-intelligence",
-        "agents"
-      ],
+      "scope": "global",
+      "repos": [],
       "source_path": "skills-source/external/agent-browser",
       "upstream_ref": "vercel-labs/agent-browser:skills/agent-browser@main"
     }

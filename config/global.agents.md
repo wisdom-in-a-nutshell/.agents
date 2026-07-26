@@ -33,9 +33,8 @@ This file is machine-wide baseline guidance. Keep it generic and avoid portfolio
 - When a tracker-backed project is complete, archive the tracker in the repo's archive path before final handoff, or explicitly state the blocker. Do not leave completed projects in the active tracker folder.
 
 ## Browser Routing
-- In Codex Desktop, prefer the in-app Browser for collaborative visual work when it is available, especially when the user can see or wants to share control of the current side-by-side tab.
-- Use `$agent-browser` for repeatable or automation-heavy browser work, headless/unattended runs, scraping, and fallback when the in-app Browser is unavailable. Do not treat rendered browser proof as blocked merely because one browser surface is unavailable.
-- When the user names a browser skill, use that skill for the current task unless a higher-priority safety rule prevents it.
+- Prefer the in-app Browser for collaborative visual work when the current session can control it. A client-visible tab may not be accessible from a remote execution host, so verify access before relying on it.
+- Use `$agent-browser` for repeatable or headless automation, scraping, or whenever in-app Browser control is unavailable.
 
 ## Subagent Defaults
 - Use your best judgment on when subagents are helpful.
