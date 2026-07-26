@@ -823,7 +823,13 @@ function isZeroOffset(value) {
 // never see it — pseudo-elements aren't part of the DOM the cascade walks —
 // so this scans stylesheet text directly, mirroring the border rule's
 // gates: >= 3px thick, chromatic fill, full height against a side edge.
-function scanCssTextForPseudoStripe(content) {
+function scanCssTextForPseudoStripe(rawContent) {
+  // Blank comment bodies byte-for-byte so commented-out rules are not
+  // scanned as live CSS and every rule keeps its source offset (each
+  // finding carries `index` so line-based callers can attribute it and
+  // line-scoped inline ignores can match).
+  const content = String(rawContent || '').replace(/\/\*[\s\S]*?\*\//g,
+    (block) => block.replace(/[^\n]/g, ' '));
   const customProps = collectCssCustomProps(content);
   const findings = [];
   const seen = new Set();
@@ -932,9 +938,13 @@ function scanCssTextForPseudoStripe(content) {
 
     if (seen.has(selector)) continue;
     seen.add(selector);
+    // The selector group absorbs whitespace trailing the previous rule;
+    // advance past it so `index` points at the selector itself.
+    const selectorStart = m.index + (m[1].length - m[1].trimStart().length);
     findings.push({
       id: 'side-tab',
       snippet: `${selector} — absolute ${thicknessPx}px pseudo-element stripe (${edge}: 0)`,
+      index: selectorStart,
     });
   }
   return findings;
@@ -5369,6 +5379,7 @@ function checkFirstViewportColumnOverflowDOM() {
 }
 
 export {
+  CSS_NAMED_COLORS,
   checkBorders,
   isEmojiOnlyText,
   checkColors,

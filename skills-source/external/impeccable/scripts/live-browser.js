@@ -6499,6 +6499,19 @@
           if (maybeCompleteSteer(msg)) break;
           console.error('[impeccable] Error:', msg.message);
           showToast('Error: ' + msg.message, 5000);
+          // An agent error reply is terminal for the session it names: tear
+          // it down exactly like 'discarded' (cleanup includes clearSession),
+          // or the durable localStorage checkpoint survives and every reload
+          // resurrects a GENERATING bar for a session the server no longer
+          // knows about (issue #362).
+          if (msg.id && msg.id === currentSessionId) {
+            markSessionHandled();
+            cleanup();
+            break;
+          }
+          // A stored-but-not-current checkpoint naming the errored session
+          // (the error raced a reload) must not resurrect either.
+          if (msg.id && loadSession()?.id === msg.id) clearSession();
           hideBar();
           renderEditBadge('hidden');
           setLiveState('PICKING');

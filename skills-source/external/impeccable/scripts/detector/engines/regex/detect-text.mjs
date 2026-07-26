@@ -2,7 +2,7 @@ import { GENERIC_FONTS, OVERUSED_FONTS, EM_DASH_FLOOR, EM_DASH_CHARS_PER_DASH } 
 import { isNeutralColor } from '../../shared/color.mjs';
 import { extractGoogleFontFamilies } from '../../shared/fonts.mjs';
 import { checkSourceDesignSystem } from '../../design-system.mjs';
-import { scanCssTextForGlow, scanCssTextForGridBackground, scanCssTextForMarquee, scanCssTextForRadialHalo } from '../../rules/checks.mjs';
+import { scanCssTextForGlow, scanCssTextForGridBackground, scanCssTextForMarquee, scanCssTextForPseudoStripe, scanCssTextForRadialHalo } from '../../rules/checks.mjs';
 import { isFullPage } from '../../shared/page.mjs';
 import { applyInlineIgnores } from '../../shared/inline-ignores.mjs';
 import { finding } from '../../findings.mjs';
@@ -653,7 +653,21 @@ function detectText(content, filePath, options = {}) {
     profile,
     phase: 'source',
   }));
-  if (cssLike.has(ext)) findings.push(...scanInsetStripeCss(content, filePath));
+  // Pseudo-element stripes (::before/::after absolute bars) carry the same
+  // side-tab silhouette without any border token, so the line matchers can't
+  // see them (issue #394). The shared scanner already runs on full HTML pages
+  // via checkHtmlPatterns; give standalone stylesheets, component style
+  // blocks, and CSS-in-JS templates the same coverage. Each hit carries the
+  // rule's source offset, so the finding gets a real line and line-scoped
+  // inline ignores keep working.
+  const pseudoStripeFindings = (text, lineOffset) =>
+    scanCssTextForPseudoStripe(text).map(hit =>
+      finding(hit.id, filePath, hit.snippet, lineOffset + text.slice(0, hit.index).split('\n').length));
+
+  if (cssLike.has(ext)) {
+    findings.push(...scanInsetStripeCss(content, filePath));
+    findings.push(...pseudoStripeFindings(content, 0));
+  }
 
   // Block-level CSS checks that need multiple declarations must run over the
   // complete source, not line-by-line. This covers standalone stylesheets,
@@ -690,6 +704,7 @@ function detectText(content, filePath, options = {}) {
     // reported every selector one line low. runRegexMatchers keeps startLine - 1
     // because it indexes its split lines from zero.
     findings.push(...scanInsetStripeCss(block.content, filePath, block.startLine - 2));
+    findings.push(...pseudoStripeFindings(block.content, block.startLine - 2));
   }
 
   // Extract and scan CSS-in-JS template literals
@@ -708,6 +723,7 @@ function detectText(content, filePath, options = {}) {
       phase: 'css-in-js',
     }));
     findings.push(...scanInsetStripeCss(block.content, filePath, block.startLine - 1));
+    findings.push(...pseudoStripeFindings(block.content, block.startLine - 1));
   }
 
   if (options?.designSystem) {
