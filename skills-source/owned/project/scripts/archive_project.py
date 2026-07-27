@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """Safely archive one complete project-tracker directory.
 
-The command is dry-run by default. Pass --apply to move the whole project
-directory into its sibling archive/ directory so no empty active tree remains.
+The command moves the whole project directory into its sibling archive/
+directory by default so no empty active tree remains. Pass --dry-run only to
+inspect the validated move without applying it.
 """
 
 from __future__ import annotations
@@ -186,12 +187,12 @@ def archive_project(
     source_raw: str,
     destination_raw: str,
     *,
-    apply: bool,
+    dry_run: bool,
 ) -> dict[str, Any]:
     source, destination = _resolve_and_validate(source_raw, destination_raw)
     file_count, directory_count = _tree_counts(source)
     data = {
-        "applied": apply,
+        "applied": not dry_run,
         "source": str(source),
         "destination": str(destination),
         "file_count": file_count,
@@ -199,7 +200,7 @@ def archive_project(
         "source_removed": False,
         "destination_created": False,
     }
-    if not apply:
+    if dry_run:
         return data
 
     archive_root = destination.parent
@@ -237,7 +238,7 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description=(
             "Archive one complete project tree into its tracker home's archive directory. "
-            "Dry-run by default; this local atomic move has no timeout or prompt."
+            "Archives by default; this local atomic move has no timeout or prompt."
         )
     )
     parser.add_argument("--source", required=True, help="Active project directory containing tasks.md.")
@@ -246,7 +247,11 @@ def parse_args() -> argparse.Namespace:
         required=True,
         help="Archive destination, e.g. docs/projects/archive/<project>.",
     )
-    parser.add_argument("--apply", action="store_true", help="Apply the archive move.")
+    parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Validate and report the archive move without applying it.",
+    )
     parser.add_argument(
         "--no-input",
         action="store_true",
@@ -263,7 +268,7 @@ def main() -> int:
     request_id = f"project-archive-{uuid.uuid4()}"
     started_at = time.monotonic()
     try:
-        data = archive_project(args.source, args.destination, apply=args.apply)
+        data = archive_project(args.source, args.destination, dry_run=args.dry_run)
     except ArchiveError as exc:
         return _failure(request_id, started_at, exc, plain=args.plain)
     return _success(request_id, started_at, data, plain=args.plain)

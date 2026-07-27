@@ -70,7 +70,7 @@ Keep blockers first-class:
 - Archive by default when `Done When` is satisfied, remaining milestones/tasks are complete or explicitly descoped, validation is acceptable for the scoped work, and no material blocker remains.
 - Ask before archiving only when project completion is materially uncertain or when closure depends on product judgment rather than implementation execution.
 - Unless repo guidance says otherwise, archive by moving the complete project directory from the active tracker path to the repo's archive path, e.g. `projects/<project>/` to `projects/archive/<project>/` or `docs/projects/<project>/` to `docs/projects/archive/<project>/`.
-- Use the Project skill's bundled `scripts/archive_project.py` rather than moving `tasks.md`, `learnings.md`, and `resources/` separately. The command is dry-run by default; pass the active project directory and complete archive destination with `--apply --no-input`.
+- Use the Project skill's bundled `scripts/archive_project.py` rather than moving `tasks.md`, `learnings.md`, and `resources/` separately. Pass the active project directory and complete archive destination with `--no-input`; the command archives by default. Use `--dry-run` only when an inspection pass is useful.
 - A successful closeout must report `source_removed: true`. Verify the active project path no longer exists; an empty project or `resources/` directory is still an incomplete archive even though Git cannot track it.
 - If the archive folder does not exist, create it during closeout.
 - Do not introduce a `ready-to-archive` holding state by default.

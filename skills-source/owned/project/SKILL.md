@@ -51,7 +51,7 @@ Follow repo-local guidance first.
 9. **Close out and archive**
    - Treat archive as the default final action once `Done When` is satisfied, remaining work is complete or explicitly descoped, validation is acceptable, and no material blocker remains.
    - Archive the complete project directory, including `tasks.md`, `learnings.md`, and `resources/`, rather than moving its files one by one. File-by-file moves can leave empty active directories that Git cannot report.
-   - Use the bundled `scripts/archive_project.py` resolved relative to this `SKILL.md`. It is dry-run by default; apply with `--source <active-project-dir> --destination <tracker-home>/archive/<project> --apply --no-input`.
+   - Use the bundled `scripts/archive_project.py` resolved relative to this `SKILL.md`. It archives by default with `--source <active-project-dir> --destination <tracker-home>/archive/<project> --no-input`; use `--dry-run` only when an inspection pass is useful.
    - Require the successful result to report `source_removed: true`, then verify the active project path no longer exists and run the repo's normal checks before the final response.
    - Do not leave a completed tracker active as a `ready-to-archive`, `done but still active`, or empty-directory placeholder.
    - Ask before archiving only when completion is materially uncertain or closure depends on product judgment rather than implementation execution.

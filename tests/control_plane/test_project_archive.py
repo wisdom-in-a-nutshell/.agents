@@ -31,7 +31,7 @@ class ProjectArchiveTests(unittest.TestCase):
             text=True,
         )
 
-    def test_dry_run_is_default_and_preserves_source(self) -> None:
+    def test_default_moves_complete_tree_and_removes_active_path(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             source, destination = self._project(Path(tmp))
             result = self._run(
@@ -47,13 +47,15 @@ class ProjectArchiveTests(unittest.TestCase):
             self.assertEqual(payload["schema_version"], "1.0")
             self.assertEqual(payload["command"], "project archive")
             self.assertEqual(payload["status"], "ok")
-            self.assertFalse(payload["data"]["applied"])
-            self.assertFalse(payload["data"]["source_removed"])
+            self.assertTrue(payload["data"]["applied"])
+            self.assertTrue(payload["data"]["source_removed"])
+            self.assertTrue(payload["data"]["destination_created"])
             self.assertEqual(payload["data"]["file_count"], 3)
-            self.assertTrue(source.is_dir())
-            self.assertFalse(destination.exists())
+            self.assertFalse(source.exists())
+            self.assertTrue((destination / "tasks.md").is_file())
+            self.assertTrue((destination / "resources" / "evidence.md").is_file())
 
-    def test_apply_moves_complete_tree_and_removes_active_path(self) -> None:
+    def test_dry_run_preserves_source(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             source, destination = self._project(Path(tmp))
             result = self._run(
@@ -61,18 +63,17 @@ class ProjectArchiveTests(unittest.TestCase):
                 str(source),
                 "--destination",
                 str(destination),
-                "--apply",
+                "--dry-run",
                 "--no-input",
             )
 
             self.assertEqual(result.returncode, 0, result.stderr)
             payload = json.loads(result.stdout)
-            self.assertTrue(payload["data"]["applied"])
-            self.assertTrue(payload["data"]["source_removed"])
-            self.assertTrue(payload["data"]["destination_created"])
-            self.assertFalse(source.exists())
-            self.assertTrue((destination / "tasks.md").is_file())
-            self.assertTrue((destination / "resources" / "evidence.md").is_file())
+            self.assertFalse(payload["data"]["applied"])
+            self.assertFalse(payload["data"]["source_removed"])
+            self.assertEqual(payload["data"]["file_count"], 3)
+            self.assertTrue(source.is_dir())
+            self.assertFalse(destination.exists())
 
     def test_existing_destination_fails_without_mutation(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -84,7 +85,6 @@ class ProjectArchiveTests(unittest.TestCase):
                 str(source),
                 "--destination",
                 str(destination),
-                "--apply",
                 "--no-input",
             )
 
@@ -104,7 +104,6 @@ class ProjectArchiveTests(unittest.TestCase):
                 str(source),
                 "--destination",
                 str(invalid_destination),
-                "--apply",
                 "--no-input",
             )
 
