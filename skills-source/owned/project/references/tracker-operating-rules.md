@@ -69,7 +69,9 @@ Keep blockers first-class:
 
 - Archive by default when `Done When` is satisfied, remaining milestones/tasks are complete or explicitly descoped, validation is acceptable for the scoped work, and no material blocker remains.
 - Ask before archiving only when project completion is materially uncertain or when closure depends on product judgment rather than implementation execution.
-- Unless repo guidance says otherwise, archive by moving the tracker from the active tracker path to the repo's archive path, e.g. `projects/archive/<project>/tasks.md` or `docs/projects/archive/<project>/tasks.md`.
+- Unless repo guidance says otherwise, archive by moving the complete project directory from the active tracker path to the repo's archive path, e.g. `projects/<project>/` to `projects/archive/<project>/` or `docs/projects/<project>/` to `docs/projects/archive/<project>/`.
+- Use the Project skill's bundled `scripts/archive_project.py` rather than moving `tasks.md`, `learnings.md`, and `resources/` separately. The command is dry-run by default; pass the active project directory and complete archive destination with `--apply --no-input`.
+- A successful closeout must report `source_removed: true`. Verify the active project path no longer exists; an empty project or `resources/` directory is still an incomplete archive even though Git cannot track it.
 - If the archive folder does not exist, create it during closeout.
 - Do not introduce a `ready-to-archive` holding state by default.
 - Before the final response for completed scoped work, either move the tracker to the archive path or explicitly record why archive is blocked.
@@ -81,7 +83,9 @@ Archive without asking when all of the following are true:
 - validation has passed, or any residual failure is documented as out of scope and non-blocking
 - `Open Questions / Blockers` has no unresolved item that would change the deliverable if answered differently
 
-Final response requirement: mention the archive path when archived; if not archived, name the blocker so the next agent does not silently leave stale active projects behind.
+Final response requirement: mention the archive path and confirm the active path
+was removed when archived; if not archived, name the blocker so the next agent
+does not silently leave stale active projects behind.
 
 ## `resources/` And `learnings/`
 

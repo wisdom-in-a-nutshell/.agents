@@ -50,7 +50,10 @@ Follow repo-local guidance first.
    - Continue until all scoped work is complete, a true blocker needs human input, or a repo-safety decision requires the user.
 9. **Close out and archive**
    - Treat archive as the default final action once `Done When` is satisfied, remaining work is complete or explicitly descoped, validation is acceptable, and no material blocker remains.
-   - Move the tracker to the repo's archive path before the final response; do not leave a completed tracker active as a `ready-to-archive` or `done but still active` placeholder.
+   - Archive the complete project directory, including `tasks.md`, `learnings.md`, and `resources/`, rather than moving its files one by one. File-by-file moves can leave empty active directories that Git cannot report.
+   - Use the bundled `scripts/archive_project.py` resolved relative to this `SKILL.md`. It is dry-run by default; apply with `--source <active-project-dir> --destination <tracker-home>/archive/<project> --apply --no-input`.
+   - Require the successful result to report `source_removed: true`, then verify the active project path no longer exists and run the repo's normal checks before the final response.
+   - Do not leave a completed tracker active as a `ready-to-archive`, `done but still active`, or empty-directory placeholder.
    - Ask before archiving only when completion is materially uncertain or closure depends on product judgment rather than implementation execution.
    - Summarize validation evidence, residual risks, and the archived tracker path in the final response. If you did not archive, state the concrete blocker.
    - Include a short delegation retrospective when subagents were used.
@@ -64,6 +67,7 @@ Follow repo-local guidance first.
 - Use subagents only for bounded independent work; collapse back local when integration, validation orchestration, or runtime/device smoke work becomes dominant.
 - Keep durable state in the repo, not only in chat.
 - Do not stop with a completed project still in the active tracker folder; archive it or state the blocker.
+- Treat a remaining empty active project directory as an incomplete archive, even though Git does not track it.
 
 ## Resources
 
@@ -71,3 +75,4 @@ Follow repo-local guidance first.
 - Use `references/tracker-operating-rules.md` for `Current Batch`, checkpoint, backlog, and closeout rules.
 - Use `references/subagent-conventions.md` for delegation strategy, role split, split patterns, and anti-patterns.
 - Use `references/learnings-template.md` when bootstrapping `<project-root>/<project>/learnings.md`.
+- Use `scripts/archive_project.py` for safe whole-directory project archival.

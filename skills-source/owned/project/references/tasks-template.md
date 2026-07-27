@@ -47,7 +47,7 @@ TEMPLATE GUIDANCE (for generating agent):
 - Run validation after each milestone or risky batch and fix failures before advancing.
 - Continue working until the scoped project is done or a true blocker requires human input; do not stop after one completed task if more actionable work remains.
 - When `Done When` is satisfied and validation is acceptable, archive the project directly; ask only if completion is materially uncertain.
-- Unless repo guidance says otherwise, archiving means moving the tracker to the repo's archive path, e.g. `projects/archive/<project>/tasks.md` or `docs/projects/archive/<project>/tasks.md`; create the archive folders if missing.
+- Unless repo guidance says otherwise, archive the complete project directory to the repo's archive path with the Project skill's bundled archive helper; do not move tracker files one by one. Require `source_removed: true` and verify no empty active project path remains.
 - Update this tracker whenever the plan changes materially or before ending the run.
 - If project-critical ambiguity would stall progress later, ask targeted follow-up questions now and record the answers here.
 - Use `Current Batch` as the live execution board and primary resume point.

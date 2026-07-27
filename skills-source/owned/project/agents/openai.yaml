@@ -1,4 +1,4 @@
 interface:
   display_name: "Project"
-  short_description: "Create, resume, and drive long-running project trackers."
-  default_prompt: "Use $project to create or resume the repo project tracker, refresh the current batch, execute work, validate progress, and keep tracker resources current."
+  short_description: "Create, resume, and close durable project trackers."
+  default_prompt: "Use $project to create or resume the repo project tracker, refresh the current batch, execute and validate the work, then archive the complete project tree cleanly when done."
