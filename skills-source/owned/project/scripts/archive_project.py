@@ -206,7 +206,7 @@ def archive_project(
     archive_root = destination.parent
     archive_root_created = not archive_root.exists()
     try:
-        archive_root.mkdir()
+        archive_root.mkdir(exist_ok=True)
         source.rename(destination)
     except OSError as exc:
         if archive_root_created:

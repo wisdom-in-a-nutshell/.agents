@@ -75,6 +75,28 @@ class ProjectArchiveTests(unittest.TestCase):
             self.assertTrue(source.is_dir())
             self.assertFalse(destination.exists())
 
+    def test_existing_archive_root_moves_complete_tree(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            source, destination = self._project(Path(tmp))
+            destination.parent.mkdir(parents=True)
+            (destination.parent / "older-project").mkdir()
+
+            result = self._run(
+                "--source",
+                str(source),
+                "--destination",
+                str(destination),
+                "--no-input",
+            )
+
+            self.assertEqual(result.returncode, 0, result.stderr)
+            payload = json.loads(result.stdout)
+            self.assertTrue(payload["data"]["source_removed"])
+            self.assertTrue(payload["data"]["destination_created"])
+            self.assertFalse(source.exists())
+            self.assertTrue((destination / "tasks.md").is_file())
+            self.assertTrue((destination.parent / "older-project").is_dir())
+
     def test_existing_destination_fails_without_mutation(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             source, destination = self._project(Path(tmp))
