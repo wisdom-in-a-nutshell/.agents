@@ -20,9 +20,6 @@ from pathlib import Path
 from types import SimpleNamespace
 from typing import Any, Iterable, Iterator
 
-# TEMPORARY: bypass the cached Stop hook while FLI is being repaired.
-raise SystemExit(0)
-
 try:
     from hooks.scripts.codex_turn_changes import (
         CodexTurnChangesError,

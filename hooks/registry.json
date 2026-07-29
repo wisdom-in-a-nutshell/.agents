@@ -40,7 +40,7 @@
     },
     {
       "command": "python3 \"$HOME/GitHub/agents/hooks/scripts/stop.py\" --runtime {runtime}",
-      "enabled": false,
+      "enabled": true,
       "event": "Stop",
       "id": "global-stop",
       "runtimes": [
