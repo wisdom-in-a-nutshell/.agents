@@ -220,7 +220,25 @@ async function detectHtml(filePath, options = {}) {
     for (const f of runPageCheck('skipped-heading', () => checkPageQualityFromDoc(document))) {
       findings.push(finding(f.id, filePath, f.snippet));
     }
-    for (const f of runPageCheck('html-patterns', () => checkHtmlPatterns(html).filter(item =>
+    // Scoped corpora for the pattern checks (see buildHtmlPatternCorpora in
+    // rules/checks.mjs): CSS-property regexes must not fire on prose ABOUT
+    // css — `<code>background-clip: text</code>` in a changelog is
+    // documentation, not styling. cssText already carries the <style>
+    // blocks and any linked local stylesheets; style/class attributes come
+    // from the parsed document, so escaped code samples never contribute.
+    const styleAttrParts = [];
+    const classAttrParts = [];
+    for (const el of document.querySelectorAll('*')) {
+      const styleAttr = el.getAttribute('style');
+      if (styleAttr) styleAttrParts.push(`style="${styleAttr}"`);
+      const classAttr = el.getAttribute('class');
+      if (classAttr) classAttrParts.push(classAttr);
+    }
+    const patternCorpora = {
+      styleText: [cssText, ...styleAttrParts].join('\n'),
+      classText: classAttrParts.join('\n'),
+    };
+    for (const f of runPageCheck('html-patterns', () => checkHtmlPatterns(html, patternCorpora).filter(item =>
       item.id !== 'bounce-easing' && item.id !== 'layout-transition'
     ))) {
       const item = finding(f.id, filePath, f.snippet);

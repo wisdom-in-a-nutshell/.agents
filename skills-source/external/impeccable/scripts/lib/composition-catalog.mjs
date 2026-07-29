@@ -149,6 +149,15 @@ export function validateCompositionCatalog(catalog, reviewData, { minimumTotal }
         errors.push(`composition review ${id} is stale: content changed since review`);
       }
     }
+    // Mirrors the concept catalog: an optional 1-3 grade on approved entries
+    // only, read as a calibration signal and used to weight challenger draws.
+    if (review?.rating !== undefined) {
+      if (![1, 2, 3].includes(review.rating)) {
+        errors.push(`review ${id} rating must be 1, 2, or 3`);
+      } else if (review.status !== 'approved') {
+        errors.push(`review ${id} rating only applies to approved compositions`);
+      }
+    }
     if (review?.note !== undefined && (typeof review.note !== 'string' || !review.note.trim() || review.note.length > 500)) {
       errors.push(`composition review ${id} note must be a non-empty string of 500 characters or fewer`);
     }

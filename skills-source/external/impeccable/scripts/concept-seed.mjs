@@ -219,14 +219,34 @@ export function selectApprovedStagings({ scope, key, reroll = 0, mode = null, so
     if (matching.length === 0) return [];
     approved = matching;
   }
+  // Rating weights the draw exactly as it does for world challengers: a 3-star
+  // staging earns a second ticket, a 1-star marginal keep leaves the pool. This
+  // matters more here than for worlds because the per-surface pools are small,
+  // so an unweighted shuffle repeats a weak staging far more often.
+  // Each ticket carries its index so deterministicRank sees a distinct key per
+  // ticket; ranking bare duplicates would hash identically and the pick loop's
+  // id-dedupe would silently discard the second copy, making weighting a no-op.
+  const ticketsFor = pool => pool.flatMap(composition => {
+    const rating = composition.review?.rating;
+    if (rating === 1) return [];
+    return rating === 3
+      ? [{ composition, ticket: 0 }, { composition, ticket: 1 }]
+      : [{ composition, ticket: 0 }];
+  });
+
   const prior = new Set();
   let picks = [];
   for (let round = 0; round <= reroll; round += 1) {
     const available = approved.filter(composition => !prior.has(composition.id));
+    const base = available.length >= Math.min(count, approved.length) ? available : approved;
+    let tickets = ticketsFor(base);
+    // A pool of nothing but 1-star keeps still has to yield stagings.
+    if (tickets.length === 0) tickets = base.map(composition => ({ composition, ticket: 0 }));
     const ranked = deterministicRank(
-      available.length >= Math.min(count, approved.length) ? available : approved,
-      round === 0 ? `${scope}:${key}:staging` : `${scope}:${key}:staging:reroll-${round}`
-    );
+      tickets,
+      round === 0 ? `${scope}:${key}:staging` : `${scope}:${key}:staging:reroll-${round}`,
+      entry => `${entry.composition.id}#${entry.ticket}`
+    ).map(entry => entry.composition);
     const families = new Set();
     picks = [];
     for (const composition of ranked) {

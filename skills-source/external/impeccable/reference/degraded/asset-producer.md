@@ -54,7 +54,7 @@ Ask blockers once, globally. Missing source path/crops or output directory block
 Codex: the imagegen skill's built-in `image_gen` path is the native tool here; prefer it for generation and editing.
 7. Remove baked-in UI text, navigation, buttons, body copy, and mock chrome unless the text is part of the asset.
 8. Think through the final DOM/CSS representation before generating. If CSS will own radius, clipping, shadows, borders, perspective, responsive cropping, captions, or card frames, do not bake those into the bitmap.
-9. Save outputs non-destructively in the requested project directory.
+9. Save outputs non-destructively in the requested project directory, and leave the intent with the file: after every generation, run `node .agents/skills/impeccable/scripts/embed-prompt.mjs <asset> --prompt "<the prompt used>"` so the prompt is embedded in the image itself, because the build thread composes what you made and needs to know what it is looking at, and the embedding survives copies where sidecars get lost.
 10. Compare each output against its source crop, opening every image by its workspace-relative path; sandboxed viewers reject absolute paths. If a review/QA tool is available, run it before the final manifest, then retry each major/fatal finding once before finalizing.
 
 Use `direct` only for provided source assets that can already ship after crop tightening, conversion, compression, or naming. Do not ship a small crop from the full-page mock as `direct` just because it looks close.

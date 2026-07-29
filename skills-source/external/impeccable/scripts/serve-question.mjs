@@ -161,15 +161,25 @@ if (hasFlag('wait')) {
   const pollSec = Number(arg('poll', '60'));
   const deadline = Date.now() + pollSec * 1000;
   const answered = () => fs.existsSync(answerFile(key));
+  // Liveness must survive sandboxes: a sandboxed --wait cannot signal the
+  // daemon (kill throws EPERM even for a living process), so a fresh page
+  // heartbeat in the state file is the primary proof of life, the kill probe
+  // is secondary, and EPERM specifically means "exists, but the sandbox
+  // blocks signals", never "dead". Treating EPERM as death told one session
+  // the user had walked away while they were still reading the board.
   const alive = () => {
-    try { process.kill(JSON.parse(fs.readFileSync(stateFile(key), 'utf8')).pid, 0); return true; }
-    catch { return false; }
+    try {
+      const state = JSON.parse(fs.readFileSync(stateFile(key), 'utf8'));
+      if (state.lastBeat && Date.now() - state.lastBeat < 12000) return true;
+      try { process.kill(state.pid, 0); return true; }
+      catch (err) { return err.code === 'EPERM'; }
+    } catch { return false; }
   };
   let sawClose = false;
   while (Date.now() < deadline) {
     if (answered()) break;
     if (!alive()) {
-      console.log('serve-question: the question server is gone with no answer');
+      console.log('serve-question: the question server is gone with no answer. This is a server failure, not a user decision: restart it with --start and the same payload, reopen the URL for the user, and wait again. Never proceed without their choice while their browser session is open.');
       process.exit(2);
     }
     try {
