@@ -60,9 +60,6 @@ function checkStaticPageTypography(document, window) {
   for (const font of overusedFound) {
     findings.push({ id: 'overused-font', snippet: `Primary font: ${font}` });
   }
-  if (fonts.size === 1 && document.querySelectorAll('*').length >= 20) {
-    findings.push({ id: 'single-font', snippet: `only font used is ${[...fonts][0]}` });
-  }
   const sizes = new Set();
   for (const el of document.querySelectorAll('h1, h2, h3, h4, h5, h6, p, span, a, li, td, th, label, button, div')) {
     const fontSize = parseFloat(window.getComputedStyle(el).fontSize);
