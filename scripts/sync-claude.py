@@ -1046,12 +1046,13 @@ def render_repo_hooks(
 
 
 def render_workspace_trust(claude_json_file: Path, trusted: list[str], apply: bool) -> None:
-    """Pre-accept Claude Code's per-folder "trust this workspace" dialog for every
-    managed workspace, so opening a new repo under ~/GitHub never
-    prompts. Trust lives in ~/.claude.json under projects[path].hasTrustDialogAccepted
-    (separate from settings.json permissions.additionalDirectories, which is only
-    the permission scope). Claude owns this runtime file, so we merge in place and
-    never create it from scratch."""
+    """Reconcile Claude's mutable runtime state without replacing its file.
+
+    This pre-accepts managed workspaces and disables Claude's independent
+    automatic installer so guarded package maintenance remains the only
+    unattended update lane. Claude owns ~/.claude.json, so merge in place and
+    never create it from scratch.
+    """
     if not claude_json_file.exists():
         print(f"SKIP workspace trust: {claude_json_file} missing (start Claude once first)")
         return
@@ -1071,10 +1072,17 @@ def render_workspace_trust(claude_json_file: Path, trusted: list[str], apply: bo
         projects[path] = entry
         seeded.append(path)
 
-    if not seeded:
-        print(f"UNCHANGED {claude_json_file} (workspace trust)")
+    auto_updates_changed = data.get("autoUpdates") is not False
+    if auto_updates_changed:
+        data["autoUpdates"] = False
+
+    if not seeded and not auto_updates_changed:
+        print(f"UNCHANGED {claude_json_file} (workspace trust and auto-updates)")
         return
-    print(f"SYNC {claude_json_file} (workspace trust: {len(seeded)} workspace(s))")
+    print(
+        f"SYNC {claude_json_file} "
+        f"(workspace trust: {len(seeded)} workspace(s), autoUpdates=false)"
+    )
     if not apply:
         return
     data["projects"] = projects
@@ -1088,6 +1096,7 @@ set -euo pipefail
 
 default_real_cli={real_cli}
 real_cli="${{CLAUDE_REAL_BIN:-$default_real_cli}}"
+export DISABLE_AUTOUPDATER="${{DISABLE_AUTOUPDATER:-1}}"
 secret_env="${{CLAUDE_SECRET_ENV:-$HOME/.secrets/anthropic/env}}"
 if [[ -f "$secret_env" ]]; then
   set -a

@@ -59,6 +59,7 @@ class CopilotSyncTests(TempDirTestCase):
 
         settings = json.loads((home / ".copilot/settings.json").read_text(encoding="utf-8"))
         self.assertEqual(settings["askUser"], False)
+        self.assertEqual(settings["autoUpdate"], False)
         self.assertEqual(settings["effortLevel"], "high")
         self.assertEqual(settings["banner"], "never")
         self.assertEqual(settings["ide.autoConnect"], False)

@@ -132,6 +132,7 @@ class ClaudeSyncTests(TempDirTestCase):
         self.assertTrue(os.access(launcher, os.X_OK))
         launcher_text = launcher.read_text(encoding="utf-8")
         self.assertIn("--dangerously-skip-permissions", launcher_text)
+        self.assertIn('DISABLE_AUTOUPDATER="${DISABLE_AUTOUPDATER:-1}"', launcher_text)
         self.assertIn("$HOME/.secrets/anthropic/env", launcher_text)
         self.assertIn(str(self.temp_path / "homebrew/bin/claude"), launcher_text)
 
@@ -802,6 +803,7 @@ class ClaudeSyncTests(TempDirTestCase):
         data = json.loads(claude_json.read_text(encoding="utf-8"))
         # Unrelated top-level keys and existing project data are preserved.
         self.assertEqual(7, data["numStartups"])
+        self.assertEqual(False, data["autoUpdates"])
         self.assertEqual(1.5, data["projects"]["/already/trusted"]["lastCost"])
         # Managed workspaces (control-plane repo + GitHub root + direct children
         # + discovered GitHub repos) are now trusted.

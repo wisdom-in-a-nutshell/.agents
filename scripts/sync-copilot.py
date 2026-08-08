@@ -54,6 +54,7 @@ MANAGEMENT_COMMANDS = {
 TOP_LEVEL_KEYS = {"description", "hooks", "launcher", "settings", "settingsPrune", "skills", "trust"}
 BOOLEAN_SETTINGS = {
     "askUser",
+    "autoUpdate",
     "beep",
     "ide.autoConnect",
     "ide.openDiffOnEdit",
