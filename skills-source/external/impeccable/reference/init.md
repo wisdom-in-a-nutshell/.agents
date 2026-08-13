@@ -107,9 +107,11 @@ When the platform you just recorded is `ios`, `android`, or `adaptive`, load [io
 
 Before loading new-work or resuming shape/build, verify that PRODUCT.md exists at the resolved path and contains the confirmed product record. If the file is absent, init is incomplete. Do not substitute interview notes, a planning packet, or later design prose for the file.
 
-## Step 5: Configure live mode when useful
+## Step 5: Record workflow defaults
 
-Skip native or non-runnable projects and leave existing config untouched. Otherwise follow [live.md](live.md)'s first-time setup. Any CSP source edit still requires its stated consent.
+When image generation is available (context.mjs reports it), ask once how new surfaces should be built, stated as the trade it is: **comp-first** (an image sets the bar before any code; bolder composition, slower, and the build must match the image) or **code-first** (build directly; the ambition is written into the direction contract and audited at the finish; leaner, faster). Write the answer to `.impeccable/settings.json` as `{ "buildPath": "comp" }` or `{ "buildPath": "code" }`, merging with any keys already there. This is a default, not a lock: the decision page renders a toggle whose flip binds a single session and is never written back. Without image generation there is no choice to record; code-first is the only path.
+
+Then configure live mode when useful: skip native or non-runnable projects and leave existing config untouched. Otherwise follow [live.md](live.md)'s first-time setup. Any CSP source edit still requires its stated consent.
 
 ## Step 6: Wrap up or resume
 

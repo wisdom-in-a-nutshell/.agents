@@ -1142,6 +1142,7 @@ async function cli() {
     parts.push(buildResolvedContextDirective(ctx, cliOptions, { targetExists }));
     appendDetectorFallback(parts, ctx);
     appendImageGenDirective(parts);
+    appendBuildPathDirective(parts);
     appendAutonomyCounterDirective(parts);
     appendSubagentAuthorizationDirective(parts);
     if (shouldWarnMissingTarget(ctx, targetProvided, targetExists)) {
@@ -1161,6 +1162,7 @@ async function cli() {
   parts.push(buildResolvedContextDirective(ctx, cliOptions, { targetExists }));
   appendDetectorFallback(parts, ctx);
   appendImageGenDirective(parts);
+  appendBuildPathDirective(parts);
   appendAutonomyCounterDirective(parts);
   appendSubagentAuthorizationDirective(parts);
   if (shouldWarnMissingTarget(ctx, targetProvided, targetExists)) {
@@ -1268,6 +1270,19 @@ function automaticHookMode(ctx) {
   return 'none';
 }
 
+
+// Build-path preference: a workflow setting (comp-led vs code-led), read
+// here so every session starts knowing it without a file hunt. Absence
+// stays silent; new-work's own default applies, and the decision page
+// toggle can flip the value for a single session.
+function appendBuildPathDirective(parts) {
+  try {
+    const settings = JSON.parse(fs.readFileSync(path.join(process.cwd(), '.impeccable', 'settings.json'), 'utf8'));
+    if (settings.buildPath === 'comp' || settings.buildPath === 'code') {
+      parts.push(`BUILD_PATH_DEFAULT: ${settings.buildPath} (from .impeccable/settings.json). Author direction and surface rounds with this as buildPath.value and toggle: true; a flip on the page binds that session only and is never written back to settings.`);
+    }
+  } catch { /* no settings file */ }
+}
 
 // Image generation availability: harness-native tools always win, but when the
 // environment carries an OpenAI key the API fallback works everywhere. The
