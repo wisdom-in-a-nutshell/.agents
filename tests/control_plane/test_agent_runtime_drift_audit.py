@@ -151,6 +151,26 @@ class AgentRuntimeDriftAuditTests(TempDirTestCase):
         self.assertEqual(payload["status"], "ok")
         self.assertEqual(payload["data"]["summary"]["errors"], 0)
 
+    def test_audit_allows_app_managed_openai_review_plugin(self) -> None:
+        home = self.temp_path / "home"
+        self._write_live_codex_config(home)
+        self._write_required_plugins(home)
+        self._write_plugin(home, "openai-curated-remote", "plugin-management")
+
+        result = run_command(
+            [
+                str(REPO_ROOT / "scripts/audit-agent-runtime-drift.py"),
+                "--json",
+                "--skip-control-plane-check",
+                "--home",
+                str(home),
+            ]
+        )
+
+        payload = json.loads(result.stdout)
+        self.assertEqual(payload["status"], "ok")
+        self.assertEqual(payload["data"]["summary"]["errors"], 0)
+
     def test_audit_fails_when_required_plugin_is_not_enabled_live(self) -> None:
         home = self.temp_path / "home"
         self._write_live_codex_config(home, include_computer_use=False)

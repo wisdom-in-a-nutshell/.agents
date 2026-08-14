@@ -37,6 +37,8 @@ For `openai-bundled` plugins, keep the registry name aligned with the plugin man
 
 For non-bundled plugins, `scripts/bootstrap-machine-agent-control-planes.sh --apply` runs `scripts/sync-codex-plugin-installs.py --apply` before rendering Codex config. This lets the registry remain declarative: adding an enabled global plugin entry is enough for machine bootstrap to install the package.
 
+Some OpenAI-owned runtime helper plugins are app-managed rather than user-managed. When the app seeds one of those helpers into `~/.codex/plugins/cache` without a corresponding `plugins/registry.json` entry or live config stanza, classify it in the runtime drift audit's app-managed allowlist instead of adding a fake managed registry entry just to silence health checks.
+
 Repo-specific native plugin UX is not currently a supported bootstrap target. A local spike with Codex CLI 0.139.0 showed that trusted repo `.codex/config.toml` layers load, but repo-local `[plugins."<plugin>"].enabled` does not control plugin skill injection: user-level plugin enabled state wins. If a plugin-bundled skill or MCP must be available reliably for one repo, link the skill through `managed_plugin_skills` or promote the MCP into `mcp/config/presets.json` and assign it through `codex/config/repo-bootstrap.json`.
 
 ## Normal Workflow

@@ -23,6 +23,7 @@ COMMAND = "audit-agent-runtime-drift"
 APP_MANAGED_PLUGIN_IDS = {
     "documents@openai-primary-runtime",
     "pdf@openai-primary-runtime",
+    "plugin-management@openai-curated-remote",
     "presentations@openai-primary-runtime",
     "spreadsheets@openai-primary-runtime",
     "template-creator@openai-primary-runtime",
