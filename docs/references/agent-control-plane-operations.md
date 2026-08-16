@@ -76,7 +76,8 @@ For repo authors adding `scripts/hooks/*.py`, start with [`repo-lifecycle-hook-a
   - renders repo-scoped Codex skill symlinks into repo `.agents/skills`
   - stages exact tracked repo skill-link changes and, inside a Codex thread, registers the changed paths with the existing Stop transaction for checked multi-repo finalization
 - `scripts/switch-claude-provider.sh`
-  - switches the machine-local Claude Code credential profile used by the wrapper
+  - switches the machine-local Claude Code credential profile used by the wrapper between
+    Claude subscription OAuth and Amazon Bedrock; Marketplace-backed provider modes are absent
 - `scripts/test-control-plane.sh`
   - hermetic regression test entrypoint
 
@@ -178,7 +179,7 @@ cd ~/GitHub/agents
 ./scripts/sync-copilot.sh --check
 ./scripts/switch-claude-provider.sh status
 ./scripts/switch-claude-provider.sh subscription --apply
-./scripts/switch-claude-provider.sh aws --apply
+./scripts/switch-claude-provider.sh bedrock --apply
 ```
 
 Scoped validation/bootstrap:
