@@ -21,6 +21,7 @@ if str(SCRIPT_DIR) not in sys.path:
 
 from media_toolkit_lib.errors import CliArgumentParser, CliError, ParserExit
 from media_toolkit_lib.io import (
+    DEFAULT_INPUT_UPLOAD_PREFIX,
     upload_local_file,
     write_json_file,
 )
@@ -97,7 +98,7 @@ def _build_upload_parser(subparsers: argparse._SubParsersAction[Any]) -> None:
     )
     parser.add_argument(
         "--storage-prefix",
-        default="share",
+        default=DEFAULT_INPUT_UPLOAD_PREFIX,
         help="Top-level storage prefix for the uploaded object.",
     )
     parser.add_argument(
@@ -817,7 +818,7 @@ def _build_command_payload(
 def _resolve_input_payload(
     args: argparse.Namespace,
     *,
-    storage_prefix: str = "share",
+    storage_prefix: str = DEFAULT_INPUT_UPLOAD_PREFIX,
     destination_prefix: str = "agent-media-toolkit",
 ) -> tuple[dict[str, Any], dict[str, Any]]:
     if args.url:

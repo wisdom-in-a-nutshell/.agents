@@ -10,7 +10,7 @@ from typing import Any
 
 from media_toolkit_lib.errors import CliError
 
-DEFAULT_INPUT_UPLOAD_PREFIX = "share"
+DEFAULT_INPUT_UPLOAD_PREFIX = "cache"
 DEFAULT_DESTINATION_PREFIX = "agent-media-toolkit"
 DEFAULT_UPLOAD_MEDIA_BIN = Path(
     os.path.expandvars(

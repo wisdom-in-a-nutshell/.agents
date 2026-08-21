@@ -51,6 +51,14 @@ def load_api_module() -> Any:
 
 
 class MediaToolkitTranscriptionTests(TempDirTestCase):
+    def test_upload_and_processing_inputs_default_to_cache(self) -> None:
+        module = load_client_module()
+
+        args = module.build_parser().parse_args(["upload", "--file", "/tmp/input.mp4"])
+
+        self.assertEqual(args.storage_prefix, "cache")
+        self.assertEqual(module.DEFAULT_INPUT_UPLOAD_PREFIX, "cache")
+
     def test_transcribe_local_file_uses_artifact_job_path(self) -> None:
         module = load_client_module()
         audio_file = write_text(self.temp_path / "audio.m4a", "audio")

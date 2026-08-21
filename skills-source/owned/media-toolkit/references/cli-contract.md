@@ -59,7 +59,7 @@ Use it when an agent needs one command surface for:
 - `--plain` is only for quick operator inspection.
 - Progress belongs on `stderr`, never on `stdout`.
 - Long waits can be controlled with `--progress auto|off|plain|jsonl`.
-- `upload` writes a local file through the shared local uploader and returns upload metadata including the public URL.
+- `upload` writes a local file through the shared local uploader and returns upload metadata including the public URL. It defaults to lifecycle-managed `cache/`; callers must explicitly request `share` or `permanent` when a longer-lived public object is intentional.
 - Submit commands wait for terminal state by default.
 - `--no-wait` returns the submitted `job_id` without polling.
 - `status --wait` polls until the job reaches a terminal state.
