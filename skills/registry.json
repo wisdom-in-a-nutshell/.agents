@@ -204,6 +204,22 @@
       "upstream_ref": "-"
     },
     {
+      "skill": "media-storage-lifecycle",
+      "origin": "owned",
+      "scope": "repo",
+      "repos": [
+        "adithyan-ai-videos",
+        "agents",
+        "aipodcasting",
+        "local-transcription",
+        "modal_functions",
+        "scripts",
+        "win"
+      ],
+      "source_path": "skills-source/owned/media-storage-lifecycle",
+      "upstream_ref": "-"
+    },
+    {
       "skill": "openai-docs",
       "origin": "external",
       "scope": "repo",

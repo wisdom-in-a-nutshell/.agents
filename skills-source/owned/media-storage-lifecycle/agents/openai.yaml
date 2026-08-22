@@ -1,0 +1,4 @@
+interface:
+  display_name: "Media Storage Lifecycle"
+  short_description: "Choose and enforce media storage lifecycles"
+  default_prompt: "Use $media-storage-lifecycle to choose the correct storage boundary and cleanup contract for this media workflow."
