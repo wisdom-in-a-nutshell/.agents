@@ -248,9 +248,10 @@ Verification expectations:
   - runs control-plane validation at the end and fails if the rendered state is inconsistent
 - [`finalize-stale-codex-threads.py`](/Users/dobby/GitHub/agents/codex/scripts/finalize-stale-codex-threads.py)
   - starts a short-lived Codex app-server JSONL client, uses `thread/list` for eligibility, then invokes [`finalize-codex-thread.py`](/Users/dobby/GitHub/agents/codex/scripts/finalize-codex-thread.py) for each stale thread
-  - reads managed repo paths from [`repo-bootstrap.json`](/Users/dobby/GitHub/agents/codex/config/repo-bootstrap.json) unless `--repo` filters are supplied
+  - reads managed repo paths from [`repo-bootstrap.json`](/Users/dobby/GitHub/agents/codex/config/repo-bootstrap.json) unless `--repo` filters are supplied; it lists stale active threads globally, then keeps only threads whose `cwd` is inside a managed checkout, shares that checkout's Git common directory, or has the same normalized Git origin URL, so linked and already-removed Codex worktrees are included without widening cleanup to unrelated repositories
   - finalizes only non-archived threads whose `updatedAt` is older than the configured threshold; default is 24 hours
   - does not try to detect what the Desktop app currently has loaded; the safety boundary is the last-activity cutoff
+  - isolates per-thread finalizer failures: a locked or broken thread is reported with `skipped_reason=finalizer_failed`, remaining candidates are still processed, and the command exits `4` with `error.code=PartialFinalizeFailure` so runtime health checks retain a failure signal
   - defaults to dry-run; use `--apply` for actual finalization
   - uses a machine-local lock under `~/.local/state/codex-control-plane/` so overlapping launchd runs do not race
 - [`finalize-codex-thread.py`](/Users/dobby/GitHub/agents/codex/scripts/finalize-codex-thread.py)

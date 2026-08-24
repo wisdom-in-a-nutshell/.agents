@@ -6,7 +6,13 @@ import sys
 from pathlib import Path
 from typing import Any
 
-from tests.control_plane.support import REPO_ROOT, TempDirTestCase, run_command, write_executable
+from tests.control_plane.support import (
+    REPO_ROOT,
+    TempDirTestCase,
+    init_git_repo,
+    run_command,
+    write_executable,
+)
 
 
 def load_stale_finalizer_module():  # noqa: ANN202
@@ -130,6 +136,108 @@ class FinalizeStaleCodexThreadsTests(TempDirTestCase):
         self.assertEqual(client.calls[0][0], "thread/list")
         self.assertEqual(client.calls[0][1]["sortKey"], "updated_at")
         self.assertEqual(client.calls[0][1]["sortDirection"], "asc")
+        self.assertNotIn("cwd", client.calls[0][1])
+
+    def test_candidate_selection_includes_managed_linked_worktree_only(self) -> None:
+        module = load_stale_finalizer_module()
+        repo = init_git_repo(self.temp_path / "managed", with_initial_commit=True)
+        worktree = self.temp_path / "codex-worktree"
+        run_command(
+            [
+                "git",
+                "-C",
+                str(repo),
+                "worktree",
+                "add",
+                "-q",
+                "-b",
+                "codex/test-worktree",
+                str(worktree),
+            ]
+        )
+        unmanaged = init_git_repo(self.temp_path / "unmanaged", with_initial_commit=True)
+        client = FakeAppServerClient(
+            [
+                {
+                    "data": [
+                        {
+                            "id": "managed-worktree-thread",
+                            "name": "Managed worktree",
+                            "cwd": str(worktree),
+                            "updatedAt": 100,
+                        },
+                        {
+                            "id": "unmanaged-thread",
+                            "name": "Unmanaged",
+                            "cwd": str(unmanaged),
+                            "updatedAt": 110,
+                        },
+                    ],
+                    "nextCursor": None,
+                }
+            ]
+        )
+
+        candidates = module.list_candidates(
+            client,
+            repos=[str(repo)],
+            cutoff_epoch=150,
+            page_limit=100,
+            source_kinds=None,
+            use_state_db_only=False,
+        )
+
+        self.assertEqual(
+            [candidate.thread_id for candidate in candidates],
+            ["managed-worktree-thread"],
+        )
+
+    def test_candidate_selection_matches_deleted_worktree_by_origin(self) -> None:
+        module = load_stale_finalizer_module()
+        repo = init_git_repo(self.temp_path / "managed", with_initial_commit=True)
+        run_command(
+            [
+                "git",
+                "-C",
+                str(repo),
+                "remote",
+                "add",
+                "origin",
+                "git@github.com:example/managed.git",
+            ]
+        )
+        client = FakeAppServerClient(
+            [
+                {
+                    "data": [
+                        {
+                            "id": "deleted-worktree-thread",
+                            "name": "Deleted worktree",
+                            "cwd": str(self.temp_path / "missing-worktree"),
+                            "updatedAt": 100,
+                            "gitInfo": {
+                                "originUrl": "https://github.com/example/managed.git",
+                            },
+                        }
+                    ],
+                    "nextCursor": None,
+                }
+            ]
+        )
+
+        candidates = module.list_candidates(
+            client,
+            repos=[str(repo)],
+            cutoff_epoch=150,
+            page_limit=100,
+            source_kinds=None,
+            use_state_db_only=False,
+        )
+
+        self.assertEqual(
+            [candidate.thread_id for candidate in candidates],
+            ["deleted-worktree-thread"],
+        )
 
     def test_help_does_not_claim_loaded_thread_detection(self) -> None:
         result = run_command(
@@ -141,6 +249,7 @@ class FinalizeStaleCodexThreadsTests(TempDirTestCase):
 
         self.assertNotIn("skip-loaded", result.stdout)
         self.assertNotIn("thread/loaded", result.stdout)
+        self.assertIn("--no-input", result.stdout)
 
     def test_stale_apply_calls_finalizer_command_with_thread_id_only(self) -> None:
         module = load_stale_finalizer_module()
@@ -183,6 +292,60 @@ print(json.dumps({
         self.assertEqual(argv[argv.index("--thread-id") + 1], "thread-123")
         self.assertNotIn("--cwd", argv)
         self.assertEqual(result["thread_id"], "thread-123")
+
+    def test_processing_continues_after_one_finalizer_failure(self) -> None:
+        module = load_stale_finalizer_module()
+        candidates = [
+            module.Candidate(
+                thread_id="locked-thread",
+                name="Locked",
+                cwd="/repo",
+                updated_at=100,
+                source="vscode",
+                status={"type": "notLoaded"},
+                path=None,
+            ),
+            module.Candidate(
+                thread_id="healthy-thread",
+                name="Healthy",
+                cwd="/repo",
+                updated_at=110,
+                source="vscode",
+                status={"type": "notLoaded"},
+                path=None,
+            ),
+        ]
+        calls: list[str] = []
+
+        def fake_runner(**kwargs: Any) -> dict[str, Any]:
+            thread_id = kwargs["candidate"].thread_id
+            calls.append(thread_id)
+            if thread_id == "locked-thread":
+                raise module.AppServerError("thread already has an active writer")
+            return {
+                "thread_id": thread_id,
+                "finalizer_status": "not_found",
+                "archived": True,
+                "skipped_reason": None,
+                "error": None,
+            }
+
+        result = module.process_candidates(
+            candidates=candidates,
+            apply=True,
+            max_finalize=0,
+            command=self.temp_path / "unused-finalizer",
+            timeout_seconds=1,
+            finalization_timeout_seconds=1,
+            finalizer_runner=fake_runner,
+        )
+
+        self.assertEqual(calls, ["locked-thread", "healthy-thread"])
+        self.assertEqual(result["finalized_count"], 1)
+        self.assertEqual(result["skipped_count"], 1)
+        self.assertEqual(result["failed_count"], 1)
+        self.assertEqual(result["candidates"][0]["skipped_reason"], "finalizer_failed")
+        self.assertEqual(result["candidates"][1]["finalized"], True)
 
 
 class FinalizeCodexThreadTests(TempDirTestCase):

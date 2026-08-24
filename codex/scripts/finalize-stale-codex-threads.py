@@ -10,10 +10,11 @@ import subprocess
 import sys
 import threading
 import time
+import uuid
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
 
 SCHEMA_VERSION = "1.0"
@@ -23,6 +24,7 @@ DEFAULT_TIMEOUT_SECONDS = 30.0
 DEFAULT_FINALIZATION_TIMEOUT_SECONDS = 900.0
 DEFAULT_PAGE_LIMIT = 100
 DEFAULT_MAX_REPORT = 80
+MAX_ERROR_CHARS = 12_000
 ROOT_DIR = Path(__file__).resolve().parents[2]
 DEFAULT_REGISTRY = ROOT_DIR / "codex" / "config" / "repo-bootstrap.json"
 DEFAULT_LOCK = Path.home() / ".local" / "state" / "codex-control-plane" / "finalize-stale-codex-threads.lock"
@@ -59,6 +61,13 @@ class Candidate:
     @property
     def updated_at_utc(self) -> str:
         return datetime.fromtimestamp(self.updated_at, UTC).isoformat(timespec="seconds")
+
+
+@dataclass(frozen=True)
+class ManagedRepoScope:
+    roots: tuple[Path, ...]
+    common_git_dirs: frozenset[Path]
+    origin_urls: frozenset[str]
 
 
 def utc_now() -> str:
@@ -122,15 +131,25 @@ def one_line(value: str, *, max_chars: int = 120) -> str:
     return text[: max_chars - 1] + "..."
 
 
+def truncate_text(value: str, *, max_chars: int = MAX_ERROR_CHARS) -> str:
+    text = value.strip()
+    if len(text) <= max_chars:
+        return text
+    suffix = "\n...[truncated]"
+    return text[: max(0, max_chars - len(suffix))] + suffix
+
+
 def emit_plain(payload: dict[str, Any]) -> None:
     status = payload["status"]
     data = payload.get("data", {})
-    if status == "ok":
+    if "candidate_count" in data:
         mode = "apply" if data.get("applied") else "dry-run"
+        outcome = "ok" if status == "ok" else "partial"
         print(
-            f"ok mode={mode} candidates={data.get('candidate_count', 0)} "
+            f"{outcome} mode={mode} candidates={data.get('candidate_count', 0)} "
             f"finalized={data.get('finalized_count', 0)} "
-            f"skipped={data.get('skipped_count', 0)}"
+            f"skipped={data.get('skipped_count', 0)} "
+            f"failed={data.get('failed_count', 0)}"
         )
         candidates = data.get("candidates", [])
         max_report = int(data.get("max_report", DEFAULT_MAX_REPORT))
@@ -146,7 +165,8 @@ def emit_plain(payload: dict[str, Any]) -> None:
         omitted = len(candidates) - len(report_items)
         if omitted > 0:
             print(f"... omitted {omitted} more candidate detail lines")
-        return
+        if status == "ok":
+            return
 
     error = payload["error"]
     print(f"error {error['code']}: {error['message']}", file=sys.stderr)
@@ -170,6 +190,7 @@ def finish(
         "data": data or {},
         "error": error,
         "meta": {
+            "request_id": str(uuid.uuid4()),
             "timestamp_utc": utc_now(),
             "duration_ms": int((time.time() - started_at) * 1000),
         },
@@ -300,6 +321,105 @@ def method_for_error(payload: dict[str, Any]) -> str:
     return f"request id={payload.get('id')}"
 
 
+def normalized_path(raw: str | Path) -> Path:
+    return Path(raw).expanduser().resolve(strict=False)
+
+
+def git_common_dir(cwd: Path) -> Path | None:
+    if not cwd.is_dir():
+        return None
+    try:
+        completed = subprocess.run(
+            ["git", "-C", str(cwd), "rev-parse", "--git-common-dir"],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            timeout=10,
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        return None
+    raw = completed.stdout.strip()
+    if completed.returncode != 0 or not raw:
+        return None
+    path = Path(raw).expanduser()
+    if not path.is_absolute():
+        path = cwd / path
+    return path.resolve(strict=False)
+
+
+def normalize_git_remote_url(raw: str) -> str:
+    value = raw.strip().rstrip("/")
+    if value.endswith(".git"):
+        value = value[:-4]
+    if "://" in value:
+        scheme, remainder = value.split("://", 1)
+        if scheme in {"http", "https", "ssh"}:
+            authority, separator, path = remainder.partition("/")
+            host = authority.rsplit("@", 1)[-1].lower()
+            return f"{host}/{path}" if separator else host
+    if ":" in value and "@" in value.split(":", 1)[0]:
+        authority, path = value.split(":", 1)
+        host = authority.rsplit("@", 1)[-1].lower()
+        return f"{host}/{path.lstrip('/')}"
+    return value
+
+
+def git_origin_url(cwd: Path) -> str | None:
+    if not cwd.is_dir():
+        return None
+    try:
+        completed = subprocess.run(
+            ["git", "-C", str(cwd), "remote", "get-url", "origin"],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            timeout=10,
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        return None
+    raw = completed.stdout.strip()
+    if completed.returncode != 0 or not raw:
+        return None
+    return normalize_git_remote_url(raw)
+
+
+def build_managed_repo_scope(repos: list[str]) -> ManagedRepoScope:
+    roots = tuple(dict.fromkeys(normalized_path(repo) for repo in repos))
+    common_git_dirs = frozenset(
+        common_dir
+        for root in roots
+        if (common_dir := git_common_dir(root)) is not None
+    )
+    origin_urls = frozenset(
+        origin_url
+        for root in roots
+        if (origin_url := git_origin_url(root)) is not None
+    )
+    return ManagedRepoScope(
+        roots=roots,
+        common_git_dirs=common_git_dirs,
+        origin_urls=origin_urls,
+    )
+
+
+def thread_belongs_to_managed_repo(thread: dict[str, Any], scope: ManagedRepoScope) -> bool:
+    cwd = thread.get("cwd")
+    if not isinstance(cwd, str) or not cwd.strip():
+        return False
+    path = normalized_path(cwd)
+    if any(path == root or root in path.parents for root in scope.roots):
+        return True
+    common_dir = git_common_dir(path)
+    if common_dir is not None and common_dir in scope.common_git_dirs:
+        return True
+    git_info = thread.get("gitInfo")
+    origin_url = git_info.get("originUrl") if isinstance(git_info, dict) else None
+    return (
+        isinstance(origin_url, str)
+        and normalize_git_remote_url(origin_url) in scope.origin_urls
+    )
+
+
 def list_candidates(
     client: AppServerClient,
     *,
@@ -310,6 +430,7 @@ def list_candidates(
     use_state_db_only: bool,
 ) -> list[Candidate]:
     candidates: list[Candidate] = []
+    scope = build_managed_repo_scope(repos)
     cursor: str | None = None
     while True:
         params: dict[str, Any] = {
@@ -318,7 +439,6 @@ def list_candidates(
             "sortKey": "updated_at",
             "sortDirection": "asc",
             "archived": False,
-            "cwd": repos,
             "useStateDbOnly": use_state_db_only,
         }
         if source_kinds is not None:
@@ -342,6 +462,8 @@ def list_candidates(
             thread_id = thread.get("id")
             cwd = thread.get("cwd")
             if not isinstance(thread_id, str) or not isinstance(cwd, str):
+                continue
+            if not thread_belongs_to_managed_repo(thread, scope):
                 continue
             candidates.append(
                 Candidate(
@@ -435,6 +557,75 @@ def run_thread_finalizer(
     return result
 
 
+def process_candidates(
+    *,
+    candidates: list[Candidate],
+    apply: bool,
+    max_finalize: int,
+    command: Path,
+    timeout_seconds: float,
+    finalization_timeout_seconds: float,
+    finalizer_runner: Callable[..., dict[str, Any]] = run_thread_finalizer,
+) -> dict[str, Any]:
+    finalized_count = 0
+    skipped_count = 0
+    failed_count = 0
+    output_items: list[dict[str, Any]] = []
+    for candidate in candidates:
+        skipped_reason: str | None = None
+        finalized = False
+        finalizer_status: str | None = None
+        finalizer_error: str | None = None
+        if max_finalize and finalized_count >= max_finalize:
+            skipped_reason = "max_finalize_reached"
+
+        if skipped_reason is None and apply:
+            try:
+                finalizer_result = finalizer_runner(
+                    command=command,
+                    candidate=candidate,
+                    timeout_seconds=timeout_seconds,
+                    finalization_timeout_seconds=finalization_timeout_seconds,
+                )
+                finalizer_status = str(finalizer_result.get("finalizer_status") or "")
+                finalizer_error = (
+                    truncate_text(str(finalizer_result.get("error")))
+                    if finalizer_result.get("error") is not None
+                    else None
+                )
+                if finalizer_result.get("archived") is True:
+                    finalized = True
+                    finalized_count += 1
+                else:
+                    skipped_reason = str(finalizer_result.get("skipped_reason") or "not_archived")
+                    skipped_count += 1
+            except Exception as exc:
+                finalizer_status = "failed"
+                finalizer_error = truncate_text(str(exc))
+                skipped_reason = "finalizer_failed"
+                skipped_count += 1
+                failed_count += 1
+        elif skipped_reason is not None:
+            skipped_count += 1
+
+        output_items.append(
+            candidate_to_output(
+                candidate,
+                finalized=finalized,
+                finalizer_status=finalizer_status,
+                finalizer_error=finalizer_error,
+                skipped_reason=skipped_reason,
+            )
+        )
+
+    return {
+        "finalized_count": finalized_count,
+        "skipped_count": skipped_count,
+        "failed_count": failed_count,
+        "candidates": output_items,
+    }
+
+
 def acquire_lock(lock_path: Path) -> Any:
     lock_path.parent.mkdir(parents=True, exist_ok=True)
     lock_file = lock_path.open("w", encoding="utf-8")
@@ -484,6 +675,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--now", type=parse_timestamp, help="Override current time for testing; epoch or ISO timestamp.")
     parser.add_argument("--json", action="store_true", help="Emit structured JSON.")
     parser.add_argument("--plain", action="store_true", help="Emit compact plain text (default).")
+    parser.add_argument("--no-input", action="store_true", help="Accepted for non-interactive callers; this command never prompts.")
     return parser.parse_args()
 
 
@@ -538,63 +730,53 @@ def main() -> int:
                     use_state_db_only=bool(args.state_db_only),
                 )
 
-            finalized_count = 0
-            skipped_count = 0
-            output_items: list[dict[str, Any]] = []
-            for candidate in candidates:
-                skipped_reason: str | None = None
-                finalized = False
-                finalizer_status: str | None = None
-                finalizer_error: str | None = None
-                if args.max_finalize and finalized_count >= args.max_finalize:
-                    skipped_reason = "max_finalize_reached"
-
-                if skipped_reason is None and apply:
-                    finalizer_result = run_thread_finalizer(
-                        command=args.finalizer_command.expanduser(),
-                        candidate=candidate,
-                        timeout_seconds=args.timeout_seconds,
-                        finalization_timeout_seconds=args.finalization_timeout_seconds,
-                    )
-                    finalized = True
-                    finalized_count += 1
-                    finalizer_status = str(finalizer_result.get("finalizer_status") or "")
-                    finalizer_error = (
-                        str(finalizer_result.get("error"))
-                        if finalizer_result.get("error") is not None
-                        else None
-                    )
-                elif skipped_reason is not None:
-                    skipped_count += 1
-
-                output_items.append(
-                    candidate_to_output(
-                        candidate,
-                        finalized=finalized,
-                        finalizer_status=finalizer_status,
-                        finalizer_error=finalizer_error,
-                        skipped_reason=skipped_reason,
-                    )
-                )
+            processing = process_candidates(
+                candidates=candidates,
+                apply=apply,
+                max_finalize=args.max_finalize,
+                command=args.finalizer_command.expanduser(),
+                timeout_seconds=args.timeout_seconds,
+                finalization_timeout_seconds=args.finalization_timeout_seconds,
+            )
         finally:
             lock_file.close()
+
+        data = {
+            "applied": apply,
+            "older_than_hours": older_than_hours,
+            "cutoff_epoch": int(cutoff_epoch),
+            "cutoff_utc": datetime.fromtimestamp(cutoff_epoch, UTC).isoformat(timespec="seconds"),
+            "repo_count": len(repos),
+            "candidate_count": len(candidates),
+            "finalized_count": processing["finalized_count"],
+            "skipped_count": processing["skipped_count"],
+            "failed_count": processing["failed_count"],
+            "max_report": args.max_report,
+            "candidates": processing["candidates"],
+        }
+        if processing["failed_count"]:
+            return finish(
+                status="error",
+                started_at=started_at,
+                plain=plain,
+                data=data,
+                error={
+                    "code": "PartialFinalizeFailure",
+                    "message": (
+                        f"{processing['failed_count']} thread finalization(s) failed; "
+                        f"the remaining eligible threads were still processed"
+                    ),
+                    "retryable": True,
+                    "hint": "Inspect candidates with skipped_reason=finalizer_failed and retry after the thread writer or repo finalizer is available.",
+                },
+                exit_code=4,
+            )
 
         return finish(
             status="ok",
             started_at=started_at,
             plain=plain,
-            data={
-                "applied": apply,
-                "older_than_hours": older_than_hours,
-                "cutoff_epoch": int(cutoff_epoch),
-                "cutoff_utc": datetime.fromtimestamp(cutoff_epoch, UTC).isoformat(timespec="seconds"),
-                "repo_count": len(repos),
-                "candidate_count": len(candidates),
-                "finalized_count": finalized_count,
-                "skipped_count": skipped_count,
-                "max_report": args.max_report,
-                "candidates": output_items,
-            },
+            data=data,
             exit_code=0,
         )
     except Exception as exc:
@@ -605,6 +787,7 @@ def main() -> int:
             error={
                 "code": exc.__class__.__name__,
                 "message": str(exc),
+                "retryable": not isinstance(exc, ValueError),
                 "hint": "Run with --dry-run --json for details, then check Codex app-server availability.",
             },
             exit_code=1,
