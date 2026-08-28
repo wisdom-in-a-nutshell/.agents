@@ -8,6 +8,10 @@ bash -n hooks/git/pre-commit scripts/sync-managed-git-hooks.sh scripts/check-age
 scripts/check-skills-registry.sh --staged-ok
 scripts/check-plugins-registry.sh --staged-ok
 python3 -m unittest tests.control_plane.test_project_archive
+python3 -m unittest \
+  tests.control_plane.test_hooks_control_plane.HooksControlPlaneTests.test_stop_publication_notifies_local_production_asynchronously \
+  tests.control_plane.test_hooks_control_plane.HooksControlPlaneTests.test_stop_publication_skips_non_main_branch \
+  tests.control_plane.test_hooks_control_plane.HooksControlPlaneTests.test_stop_publication_notify_failure_does_not_fail_git_finalization
 scripts/sync-managed-git-hooks.sh --check --repo "$PWD"
 codex/scripts/check-codex-control-plane.sh --repo "$PWD"
 

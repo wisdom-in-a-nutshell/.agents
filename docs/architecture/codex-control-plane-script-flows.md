@@ -129,8 +129,9 @@ flowchart TD
     N --> O["push every local commit"]
     O --> P{"remote ahead?"}
     P -->|"yes"| Q["git pull --rebase, then retry push"]
-    P -->|"no"| R["remove completed transaction"]
+    P -->|"no"| R["best-effort main revision notification"]
     Q --> R
+    R --> S["remove completed transaction"]
 ```
 
 `scripts/check-fast.sh` is the repo-owned fast commit gate for agent-made
@@ -144,3 +145,9 @@ Concurrent Codex tasks may edit the same
 repository or file: the shared working tree is consolidated under the Git lock,
 and edits that arrive during checks are restaged and rechecked up to a bounded
 retry limit instead of being discarded.
+
+The revision notification is deliberately after a successful push and contains
+only the repo root plus final commit SHA. It wakes the shared Mac Mini production
+reconciler when that repo is registered. It does not run checks or builds inside
+the Stop hook, and a notifier failure cannot reverse an already successful Git
+publication; the reconciler's periodic repair pass remains authoritative.

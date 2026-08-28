@@ -39,6 +39,61 @@ class HooksControlPlaneTests(TempDirTestCase):
         spec.loader.exec_module(module)
         return module
 
+    def test_stop_publication_notifies_local_production_asynchronously(self) -> None:
+        module = self.load_stop_module()
+        notifier = self.temp_path / "GitHub/scripts/sync/local-production-notify.sh"
+        write_executable(notifier, "#!/usr/bin/env bash\nexit 0\n")
+        result = subprocess.CompletedProcess(
+            args=[],
+            returncode=0,
+            stdout=json.dumps({"data": {"outcome": "queued"}}),
+            stderr="",
+        )
+        messages: list[str] = []
+        with (
+            patch.object(module.Path, "home", return_value=self.temp_path),
+            patch.object(module, "current_branch_name", return_value="main"),
+            patch.object(module, "run", return_value=result) as run_mock,
+            patch.object(module, "log", side_effect=lambda _runtime, message: messages.append(message)),
+        ):
+            module.notify_local_production("codex", "/tmp/example", "abc123")
+
+        command = run_mock.call_args.args[0]
+        self.assertEqual(command[0], str(notifier))
+        self.assertIn("--apply", command)
+        self.assertEqual(command[command.index("--repo") + 1], "/tmp/example")
+        self.assertEqual(command[command.index("--sha") + 1], "abc123")
+        self.assertIn("outcome=queued", messages[-1])
+
+    def test_stop_publication_skips_non_main_branch(self) -> None:
+        module = self.load_stop_module()
+        messages: list[str] = []
+        with (
+            patch.object(module, "current_branch_name", return_value="codex/example"),
+            patch.object(module, "run") as run_mock,
+            patch.object(module, "log", side_effect=lambda _runtime, message: messages.append(message)),
+        ):
+            module.notify_local_production("codex", "/tmp/example", "abc123")
+
+        run_mock.assert_not_called()
+        self.assertIn("branch=codex/example", messages[-1])
+
+    def test_stop_publication_notify_failure_does_not_fail_git_finalization(self) -> None:
+        module = self.load_stop_module()
+        notifier = self.temp_path / "GitHub/scripts/sync/local-production-notify.sh"
+        write_executable(notifier, "#!/usr/bin/env bash\nexit 4\n")
+        result = subprocess.CompletedProcess(args=[], returncode=4, stdout="", stderr="unavailable")
+        messages: list[str] = []
+        with (
+            patch.object(module.Path, "home", return_value=self.temp_path),
+            patch.object(module, "current_branch_name", return_value="main"),
+            patch.object(module, "run", return_value=result),
+            patch.object(module, "log", side_effect=lambda _runtime, message: messages.append(message)),
+        ):
+            self.assertIsNone(module.notify_local_production("codex", "/tmp/example", "abc123"))
+
+        self.assertIn("warn local-production-notify", messages[-1])
+
     def test_registry_renders_codex_hooks(self) -> None:
         registry = load_hooks_registry(REPO_ROOT / "hooks/registry.json")
 

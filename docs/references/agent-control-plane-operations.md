@@ -209,4 +209,5 @@ Scoped validation/bootstrap:
 - The shared Git hook delegates to repo-owned `scripts/check-fast.sh` when present.
 - For tracked branches, Stop optimistically pushes first and only runs `git pull --rebase` when the push shows the remote is ahead.
 - Brand-new branches without upstream tracking use `git push -u <remote> HEAD`.
+- After a successful `main` push, Stop emits a bounded best-effort revision notification to the shared Mac Mini local-production control plane. Builds remain outside the hook, non-`main` branches never notify production, and notifier failure does not invalidate the successful Git push because periodic reconciliation is the recovery path.
 - Stop hook timing is logged to `~/.local/state/agents-control-plane/log/hooks-stop.log`.

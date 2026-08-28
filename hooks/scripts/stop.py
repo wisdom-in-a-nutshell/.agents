@@ -36,6 +36,7 @@ GIT_ADD_TIMEOUT_SEC = 120
 GIT_COMMIT_TIMEOUT_SEC = 180
 GIT_PULL_TIMEOUT_SEC = 300
 GIT_PUSH_TIMEOUT_SEC = 300
+LOCAL_PRODUCTION_NOTIFY_TIMEOUT_SEC = 15
 MAX_LOG_BYTES = 5 * 1024 * 1024
 MAX_REASON_CHARS = 12000
 MAX_COMMAND_OUTPUT_CHARS = 3500
@@ -138,6 +139,57 @@ def log(runtime: str, message: str) -> None:
             handle.write(f"{utc_now_iso_z()} runtime={runtime} {message}\n")
     except Exception:
         pass
+
+
+def notify_local_production(runtime: str, root: str, commit: str | None) -> None:
+    """Best-effort publication signal; production delivery remains asynchronous and repairable."""
+    revision = str(commit or "").strip()
+    if not revision:
+        log(runtime, f"skip local-production-notify repo={root} reason=missing-revision")
+        return
+    branch = current_branch_name(root)
+    if branch != "main":
+        log(runtime, f"skip local-production-notify repo={root} branch={branch or '<unknown>'}")
+        return
+    script = Path.home() / "GitHub" / "scripts" / "sync" / "local-production-notify.sh"
+    if not script.is_file() or not os.access(script, os.X_OK):
+        log(runtime, f"skip local-production-notify repo={root} reason=not-installed")
+        return
+    command = [
+        str(script),
+        "--apply",
+        "--repo",
+        root,
+        "--sha",
+        revision,
+        "--branch",
+        branch,
+        "--source",
+        f"{runtime}-stop",
+        "--json",
+        "--no-input",
+    ]
+    try:
+        result = run(command, root, timeout=LOCAL_PRODUCTION_NOTIFY_TIMEOUT_SEC)
+    except subprocess.TimeoutExpired:
+        log(runtime, f"warn local-production-notify repo={root} revision={revision} reason=timeout")
+        return
+    if result.returncode != 0:
+        detail = truncate_text(result.stderr or result.stdout, MAX_COMMAND_OUTPUT_CHARS).replace("\n", " ")
+        log(
+            runtime,
+            f"warn local-production-notify repo={root} revision={revision} "
+            f"exit={result.returncode} detail={detail or '-'}",
+        )
+        return
+    outcome = "ok"
+    try:
+        payload = json.loads(result.stdout)
+        if isinstance(payload, dict) and isinstance(payload.get("data"), dict):
+            outcome = str(payload["data"].get("outcome") or outcome)
+    except json.JSONDecodeError:
+        outcome = "unparsed"
+    log(runtime, f"ok local-production-notify repo={root} revision={revision} outcome={outcome}")
 
 
 def truncate_text(text: str, limit: int) -> str:
@@ -1509,6 +1561,7 @@ def process_codex_repositories(
                 )
                 failures.append(reason)
                 break
+            notify_local_production("codex", root, item.commit)
             repositories.pop(root, None)
             save_codex_transaction(thread_id, repositories)
             log("codex", f"ok turn-repo-pushed thread={thread_id} repo={root} commit={item.commit}")
@@ -1594,6 +1647,7 @@ def process_repo(cwd: str, payload: dict[str, Any], *, runtime: str) -> dict[str
                             cwd=root,
                         ),
                     )
+                notify_local_production("codex", root, head_commit(root) or pending_head)
                 log("codex", f"ok pushed-existing-commits repo={root} head={pending_head}")
                 return finish("pushed_existing_commits", None)
         log(runtime, f"skip clean repo={root}")
@@ -1729,6 +1783,7 @@ def process_repo(cwd: str, payload: dict[str, Any], *, runtime: str) -> dict[str
             maybe_continue(payload, command_failure_reason(root, "git push", push_cmd, push), cwd=root),
         )
 
+    notify_local_production(runtime, root, head_commit(root))
     log(runtime, f"ok committed-and-pushed repo={root} branch={current_branch_name(root)} remote={remote}")
     return finish("committed_pushed", None)
 
