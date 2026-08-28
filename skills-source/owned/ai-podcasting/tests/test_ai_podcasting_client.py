@@ -23,6 +23,8 @@ if SPEC is None or SPEC.loader is None:
 client = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(client)
 
+import aip_local_upload_helper as upload_helper
+
 
 class BuildTextPreviewTests(unittest.TestCase):
   def test_build_text_preview_strips_html_and_truncates(self) -> None:
@@ -63,6 +65,37 @@ class AuthHeaderTests(unittest.TestCase):
           client.build_aip_auth_headers(),
           {"Authorization": "Bearer frontend-env-secret"},
         )
+
+
+class RequestHeaderTests(unittest.TestCase):
+  @staticmethod
+  def _response(body: bytes = b"{}") -> mock.MagicMock:
+    response = mock.MagicMock()
+    response.__enter__.return_value.read.return_value = body
+    return response
+
+  def test_episode_client_sends_named_user_agent(self) -> None:
+    response = self._response()
+
+    with mock.patch.object(client.urlrequest, "urlopen", return_value=response) as urlopen:
+      client.request_json("GET", "https://app.aipodcast.ing/api/episodes", 30.0)
+
+    request = urlopen.call_args.args[0]
+    self.assertEqual(request.get_header("User-agent"), client.CLIENT_USER_AGENT)
+
+  def test_upload_helper_sends_named_user_agent(self) -> None:
+    response = self._response(b'{"presignedUrl":"https://upload.example","fileUrl":"https://file.example"}')
+
+    with mock.patch.object(upload_helper.urlrequest, "urlopen", return_value=response) as urlopen:
+      upload_helper.request_json(
+        "POST",
+        "https://app.aipodcast.ing/api/core/upload/generate-presigned-url",
+        30.0,
+        {"filename": "permanent/example.png", "contentType": "image/png"},
+      )
+
+    request = urlopen.call_args.args[0]
+    self.assertEqual(request.get_header("User-agent"), upload_helper.CLIENT_USER_AGENT)
 
 
 class NormalizeEpisodeItemTests(unittest.TestCase):

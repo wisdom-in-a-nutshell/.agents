@@ -17,6 +17,7 @@ from urllib import error as urlerror
 from urllib import parse as urlparse
 from urllib import request as urlrequest
 from aip_local_upload_helper import (
+  CLIENT_USER_AGENT,
   UploadHelperError,
   build_aip_auth_headers,
   is_public_http_url,
@@ -214,7 +215,10 @@ def request_json(
   timeout_seconds: float,
   payload: dict[str, Any] | None = None,
 ) -> Any:
-  headers = {"Accept": "application/json"}
+  headers = {
+    "Accept": "application/json",
+    "User-Agent": CLIENT_USER_AGENT,
+  }
   headers.update(build_aip_auth_headers())
   body: bytes | None = None
 

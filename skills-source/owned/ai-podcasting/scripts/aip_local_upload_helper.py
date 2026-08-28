@@ -19,6 +19,7 @@ FIXED_API_BASE_URL = "https://app.aipodcast.ing"
 UPLOAD_API_PATH = "/api/core/upload/generate-presigned-url"
 DEFAULT_UPLOAD_FOLDER = "permanent"
 DEFAULT_API_KEY_FILE = Path.home() / ".secrets/aipodcasting/env"
+CLIENT_USER_AGENT = "ai-podcasting-agent/1.0"
 
 
 class UploadHelperError(Exception):
@@ -118,7 +119,10 @@ def request_json(
   timeout_seconds: float,
   payload: dict[str, Any] | None = None,
 ) -> Any:
-  headers = {"Accept": "application/json"}
+  headers = {
+    "Accept": "application/json",
+    "User-Agent": CLIENT_USER_AGENT,
+  }
   headers.update(build_aip_auth_headers())
   body: bytes | None = None
 
