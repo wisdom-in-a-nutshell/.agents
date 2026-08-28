@@ -8,4 +8,4 @@ script = ""
 [[actions]]
 name = "Control Plane Dashboard"
 icon = "run"
-command = "/bin/bash -lc 'python3 \"${HOME}/GitHub/agents/tmp/agents-production-build.04mdjW/scripts/run-agent-preview-server.py\" --host 127.0.0.1 --port 8765 -- /opt/homebrew/opt/python@3.13/libexec/bin/python3 scripts/control-plane-dashboard.py serve --root . --host 127.0.0.1 --port 8765'"
+command = "/bin/bash -lc 'python3 \"${HOME}/GitHub/agents/scripts/run-agent-preview-server.py\" --host 127.0.0.1 --port 8765 -- /opt/homebrew/opt/python@3.13/libexec/bin/python3 scripts/control-plane-dashboard.py serve --root . --host 127.0.0.1 --port 8765'"

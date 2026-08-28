@@ -152,7 +152,7 @@ class ControlPlaneDashboardDataTests(TempDirTestCase):
                 "trust": {
                     "githubRoot": True,
                     "directChildren": True,
-                    "extraFolders": ["~/.agents", "~/GitHub/agents"],
+                    "extraFolders": [str(root), str(github_root)],
                 },
                 "launcher": {
                     "enabled": True,
