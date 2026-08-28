@@ -1,116 +1,126 @@
-# Agent-Native Best Practices (Solo Dev)
+# Agent-Native Best Practices (Solo Developer)
 
-This guide is based on the OpenAI harness-engineering model and adapted for a solo developer where agents write 100% of code.
+The repository, its docs, tools, checks, and feedback loops form the harness
+around agents. Optimize that harness for solo velocity, agent reliability, fast
+recovery, and verifiable outcomes.
 
-## Base principle
-- Optimize for solo velocity with agent reliability: minimal process, strong repo legibility, and targeted mechanical guardrails.
+## 1. Keep the human-agent boundary clear
 
-## 1) Human intent, agent execution
-- Keep humans focused on goals, acceptance criteria, and prioritization.
-- Treat repeated agent failure as a system gap (missing docs, tools, guardrails), not a prompting problem.
+- Humans set goals, acceptance criteria, taste, priorities, and material risk
+  boundaries.
+- Agents handle implementation, tests, docs, validation, cleanup, and routine
+  follow-through.
+- Escalate for judgment-heavy product tradeoffs, legal or safety risk, spending,
+  secrets, and irreversible external effects—not routine implementation.
 
-## 2) AGENTS policy reference
-- Keep AGENTS policy lean in this file.
-- Use `references/agents-md-best-practices.md` as the canonical AGENTS quality gate and `Keep / Move / Delete` audit reference.
+## 2. Design for the full job
 
-## 3) Repository is the system of record
-- Put durable knowledge in versioned files inside the repo.
-- Store plans, decisions, architecture notes, and operating rules in `docs/`.
-- Do not rely on Slack/chat memory for agent-critical decisions.
+A strong execution loop covers:
 
-## 4) Plans are first-class artifacts
-- Use `docs/projects/<project>/tasks.md` for long-running work.
-- Capture decisions and progress so any agent can resume cold.
-- Once a project is done and validated, archive it promptly instead of leaving a `ready-to-archive` limbo state.
-- Ask the human only when project completion is materially uncertain or scope may have shifted.
+1. Discover the relevant sources of truth.
+2. Plan enough to control risk and preserve intent.
+3. Implement the complete change, including tests and docs.
+4. Run fast static checks and focused tests.
+5. Exercise the changed product, API, service, or workflow when relevant.
+6. Inspect the result, repair failures, and rerun proof.
+7. Clean temporary artifacts and report compact evidence.
 
-## 5) Enforce invariants mechanically
-- Encode boundaries and quality rules in CI/lints/tests.
-- Favor explicit checks over “please follow this convention” prose.
-- When a mistake repeats, add a guardrail.
+Stopping after file edits is incomplete when the behavior can be exercised.
 
-## 6) Optimize for agent legibility
-- Keep code layout predictable and discoverable.
-- Make dependencies and interfaces explicit.
-- Prefer stable, understandable tools and abstractions over opaque complexity.
+## 3. Make the repository the system of record
 
-## 7) Strengthen feedback loops
-- Ensure agents can run the app/tests and verify fixes quickly.
-- For relevant repos, expose UI state, logs, and metrics in ways agents can query.
-- Prefer short fix loops over long blocked loops.
+- Keep root guidance short and use it to route a cold agent to canonical docs,
+  commands, and constraints.
+- Put durable system shape in architecture docs and exact implementation facts
+  in reference docs.
+- Store active long-running execution state in the repo's project tracker, not
+  chat history.
+- Update docs with behavior changes and archive completed trackers promptly.
 
-## 8) Continuous cleanup beats periodic cleanup
-- Run recurring small cleanups for drift and stale docs.
-- Promote review feedback into docs or tooling so improvements compound.
+## 4. Convert repeated failure into harness improvements
 
-## 9) Keep process lightweight for solo speed
-- Skip heavyweight team rituals unless needed.
-- Standardize only what reduces repeat mistakes and handoff friction.
-- Use one reusable playbook across repos for consistency.
+- Treat repeated agent mistakes, human corrections, failed checks, broken
+  deploys, and recurring confusion as evidence of a missing affordance.
+- Fix the smallest durable layer that prevents recurrence: test, lint, type,
+  script, clearer error, CLI contract, doc, or skill.
+- Prefer one enforceable guardrail over repeating prompt text.
+- When a gap cannot be fixed immediately, record it in the repo's lightweight
+  debt or quality tracker if one exists.
 
-## 10) Practical recommendation order
-- First: clarify AGENTS/docs structure.
-- Second: add or tighten CI/lint/test guardrails.
-- Third: improve autonomous validation loops.
-- Fourth: add recurring maintenance automation.
+## 5. Optimize tools and structure for agent legibility
 
-## Docs contract reference
-- Use `references/docs-structure-and-maintenance.md` for the minimum `docs/architecture`, `docs/references`, and `docs/projects` layout and maintenance policy.
+- Keep layout predictable, dependencies explicit, boundaries discoverable, and
+  shared invariants centralized.
+- Prefer non-interactive, deterministic commands with stable exit codes and
+  structured output where automation consumes results.
+- Make failures actionable: include the command or operation, location, exit
+  code, focused output, and likely remediation.
+- Validate data shapes at boundaries instead of relying on guesses.
+- Keep logs structured and queryable when agents need them for diagnosis.
+- Prefer stable, understandable dependencies over opaque abstractions that make
+  safe changes harder.
 
-## 11) Merge philosophy (solo rapid-main)
-- Direct-to-main is the default and preferred workflow.
-- Do not introduce branch-heavy flow unless explicitly requested.
-- Keep commit-time checks and CI checks focused and fast so iteration stays high-velocity.
-- Use the agent Stop hook automation loop (auto commit, pull --rebase, push) as the standard shipping path.
-- Prefer one shared local Git hook entrypoint that delegates to repo-owned `scripts/check-fast.sh` when managing many agent-native repos on the same machine.
-- Use `scripts/check-fast.sh` for fast deterministic local guardrails, and reserve slower validation for an explicit command such as `scripts/check-full.sh`.
+## 6. Require proof proportional to the change
 
-## 12) Agent self-review loop
-- Before push: run local checks, inspect diff, address obvious issues, re-run checks.
-- For riskier changes, add an explicit second-pass agent review before final push.
+- Report the commands, tests, logs, screenshots, artifact URLs, smoke results,
+  or CI status that establish the result.
+- Product and UI changes need product-facing proof when practical; static checks
+  alone do not establish that the experience works.
+- If a relevant proof path is unavailable, state why and identify the smallest
+  harness improvement that would enable it next time.
+- For risky changes, add a focused second-pass review after the primary checks.
 
-## 13) Promote repeated failures into enforcement
-- If a mistake repeats, convert it into a mechanical check (lint/test/script/CI rule).
-- Prefer one durable guardrail over repeated reminder text.
+## 7. Keep high-permission workflows recoverable
 
-## 14) Golden principles (recommended defaults)
-- Do not rely on guessed data shapes; validate at boundaries.
-- Keep shared invariants centralized (avoid copy-pasted ad-hoc helpers).
-- Keep logs structured and actionable for agents.
+- Direct-to-main is the preferred default for trusted solo repositories unless
+  local guidance says otherwise.
+- Keep commit-time checks fast, deterministic, and actionable. Use a repo-owned
+  `scripts/check-fast.sh` entrypoint and reserve slower checks for
+  `scripts/check-full.sh` when that convention fits the repo.
+- Use documented lifecycle automation for commit, rebase, and push rather than
+  adding manual ceremony.
+- Contain temporary and generated artifacts, keep rerun or rollback paths clear,
+  and handle secrets or irreversible external effects with explicit boundaries.
+- Add approval or branch process only when it meaningfully reduces real risk or
+  improves recovery.
 
-## 15) Docs freshness loop
-- Run recurring docs cleanup to catch stale instructions and drift.
-- Update docs at the same time behavior changes; do not defer doc updates indefinitely.
+## 8. Strengthen short feedback loops
 
-## 16) Quality and debt tracking
-- Keep a lightweight quality/debt tracker for recurring weak spots.
-- Prefer continuous small refactors over periodic large cleanup bursts.
+- Make it easy for agents to run the app, focused tests, and product smoke paths.
+- Expose relevant UI state, service health, logs, and metrics through inspectable
+  tools.
+- Keep fast validation local; use CI and full checks for broader confidence.
+- Repair flaky or ambiguous checks because unreliable feedback trains agents to
+  ignore the harness.
 
-## 17) Escalation policy
-- Escalate to human for judgment-heavy decisions (product tradeoffs, legal/risk, high-cost decisions).
-- Continue autonomously for implementation and low-risk refactors.
+## 9. Keep maintenance continuous and lightweight
 
-## 18) Dependency selection rule
-- Prefer stable, legible dependencies and abstractions agents can reason about.
-- Avoid opaque frameworks when they reduce agent reliability.
+- Update docs when behavior changes instead of deferring a documentation pass.
+- Prefer recurring small cleanup of stale docs, dead paths, and drift over large
+  periodic rewrites.
+- Standardize only what reduces repeated mistakes or coordination load.
+- Use one shared playbook across repos while allowing local contracts to win.
 
-## 19) Priority tiers for this workflow
+## 10. Recommended priority order
 
-### Must-have
-- Human intent, agent execution as the default operating model.
-- `AGENTS.md` as map and `docs/` as system of record.
-- `docs/projects/<project>/tasks.md` workflow via `$project`.
-- Fast mechanical guardrails (commit-time checks, lint/test/typecheck where applicable).
-- Direct-to-main automation loop with commit/pull-rebase/push on each agent turn.
-- Docs update discipline: behavior changes and docs changes ship together.
+### Must have
 
-### Good-to-have
-- Repo checks for docs contract compliance.
-- Recurring doc-gardening and drift cleanup automation.
-- Lightweight quality/debt score tracking.
-- Explicit second-pass agent review on risky changes.
+- Clear context routing and durable repo knowledge.
+- A full autonomous execution loop from intent through proof and cleanup.
+- Fast mechanical guardrails for important invariants.
+- Recoverable high-permission delivery.
+- Evidence-backed completion reports.
 
-### Not-now by default
-- Worktree isolation.
-- Branch-heavy team process.
-- Heavy approval gates that slow solo flow.
+### Good to have
+
+- Product smoke paths agents can run directly.
+- Recurring docs and drift cleanup.
+- Lightweight debt tracking for unresolved harness gaps.
+- Focused second-pass review for risky changes.
+
+### Not by default
+
+- Mandatory pull-request or branch ceremony for solo work.
+- Heavy approval queues detached from actual risk.
+- Central policy layers that duplicate repo-owned contracts.
+- More docs, skills, or automation than agents can reliably discover and use.

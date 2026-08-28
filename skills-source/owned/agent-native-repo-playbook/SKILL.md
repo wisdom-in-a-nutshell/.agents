@@ -1,80 +1,104 @@
 ---
 name: agent-native-repo-playbook
-description: Audit and improve repositories for a solo developer, high-permission, agent-native workflow where humans set intent and improve the harness while agents write code, docs, tests, tooling, and checks. Use for repo harness audits, readiness scores, AGENTS/docs/guardrail reviews, proof-of-work expectations, YOLO/direct-to-main workflow design, reducing agent drift, improving autonomous execution loops, or aligning repos to OpenAI harness-engineering practices without adding team-heavy process.
+description: Audits and improves repositories for a solo-developer, high-permission, agent-native workflow in which humans set intent and agents complete implementation, documentation, validation, and cleanup. Use for repository harness audits, readiness scoring, AGENTS or docs reviews, autonomous execution and proof-of-work loops, direct-to-main or YOLO safety, agent legibility, mechanical guardrails, and recurring agent drift.
 ---
 
-# Agent Native Repo Playbook
+# Agent-Native Repo Playbook
 
-## Overview
-Use this playbook to recommend practical improvements for agent-first software development.
+## Outcome
+
+Make the repository a reliable harness in which a cold agent can take clear
+intent through implementation, validation, product-facing proof, cleanup, and
+reporting with minimal human coordination.
 
 Operating model:
-- Solo developer sets intent and priorities.
-- Agents always write 100% of code and maintain docs.
-- Repository structure is optimized for agent legibility and repeatability.
 
-## Modes
-- Default audit: produce recommendation-first guidance.
-- Scorecard audit: when the user asks for score, rubric, readiness, maturity, or benchmark, load `references/harness-readiness-rubric.md`.
-- AGENTS audit: when reviewing root or nested guidance, load `references/agents-md-best-practices.md`.
-- Docs audit: when reviewing docs placement or freshness, load `references/docs-structure-and-maintenance.md`.
-- Source trace: use `references/ryan-harness-principles.md`; load raw Ryan sources only when exact source lookup is requested.
+- Humans own intent, priorities, acceptance criteria, taste, and material risk.
+- Agents own code, tests, docs, tooling, validation, cleanup, and routine
+  follow-through.
+- Repeated confusion or failure is a harness gap to fix, not a prompt to repeat.
+
+Use recommendation-only mode for audit, review, score, or report requests. Edit
+the repository only when the user asks for changes or implementation.
+
+## Modes and References
+
+Always read `references/best-practices.md`, then load only the task-specific
+references:
+
+- Scorecard: for a score, benchmark, readiness, or maturity assessment, read
+  `references/harness-readiness-rubric.md`.
+- Guidance: when reviewing or changing root or nested `AGENTS.md`, `STRUCTURE.md`,
+  or equivalent guidance, read `references/agents-md-best-practices.md`.
+- Docs: when reviewing or changing docs placement, architecture docs, or docs
+  freshness rules, read `references/docs-structure-and-maintenance.md`.
 
 ## Workflow
-1. Read the repo's current guidance and structure:
-   - `AGENTS.md` files
-   - `STRUCTURE.md` or other repo-specific structure maps when present
-   - `docs/` organization
-   - `.github/workflows/`
-   - local `.agents/skills/`
-2. Compare current state against:
-   - `references/best-practices.md`
-   - `references/harness-readiness-rubric.md` when scoring or benchmarking
-   - `references/ryan-harness-principles.md` when applying OpenAI harness-engineering patterns
-   - `references/agents-md-best-practices.md`
-   - `references/docs-structure-and-maintenance.md`
-   - When recommending or writing any `AGENTS.md` content, apply `references/agents-md-best-practices.md` as the AGENTS-specific quality standard.
-3. Produce recommendations in three tiers:
-   - Immediate (high leverage, low effort)
-   - Near-term (high leverage, medium effort)
-   - Later (structural improvements)
-4. Keep output recommendation-first. Do not implement unless user asks.
 
-## Output Format
-1. `What is working`: short bullets.
-2. `Highest-leverage gaps`: short bullets.
-3. Guidance audit: `Keep / Move / Delete` decisions for major root guidance lines or sections (`AGENTS.md`, `STRUCTURE.md`, or equivalent).
-4. `Recommended next moves`:
-   - Immediate
-   - Near-term
-   - Later
-5. `Evidence`: include concrete file paths for each major gap/recommendation.
+1. Read the repo's sources of truth and execution surfaces:
+   - root and relevant nested guidance;
+   - structure maps, architecture, references, decisions, and active trackers;
+   - workflows, build/test commands, `scripts/check-fast.sh`, and full checks;
+   - relevant local skills, tools, logs, and product inspection paths.
+2. Respect local contracts. Repo guidance and established architecture override
+   this playbook's defaults.
+3. Trace the full job from discovery to change, static validation, product or
+   service proof, cleanup, reporting, and recovery. Identify where a cold agent
+   would stall, guess, or need repeated human intervention.
+4. Prioritize gaps that reduce coordination or turn repeated mistakes into
+   mechanical feedback. Prefer a small working guardrail over more policy prose.
+5. Match the requested action:
+   - For an audit, recommend without editing.
+   - For implementation, make the requested changes, update durable docs, and
+     validate in proportion to risk.
+6. Ground every major finding or completion claim in a file, command, log,
+   screenshot, artifact, smoke test, or other concrete evidence.
+
+## Output
+
+For recommendation audits, return:
+
+1. `What is working`.
+2. `Highest-leverage gaps`.
+3. `Guidance audit: Keep / Move / Delete` only when root guidance is in scope.
+4. `Recommended next moves`: Immediate, Near-term, and Later.
+5. `Evidence`: concrete file paths and relevant commands.
+
+For scorecards, add the overall score and dimension table required by
+`references/harness-readiness-rubric.md`.
+
+For implementation, lead with the result and include checks run, product or
+service proof when relevant, skipped validation with reasons, and any remaining
+harness gap that weakened proof.
 
 ## Rules
-- Prefer recommendations that reduce human coordination load.
-- Prefer mechanical guardrails over prose-only guidance.
-- Preserve the operating principle: humans set intent; agents write 100% of code.
-- Keep root guidance concise; move durable detail into the repo's chosen canonical layer.
-- For normal software repos, keep root `AGENTS.md` as a router and use nested `AGENTS.md` only where local boundary rules materially differ. If a repo intentionally rejects `AGENTS.md` and uses another passive/bootstrapped map such as `STRUCTURE.md`, honor that design.
-- When editing or proposing `AGENTS.md`, follow `references/agents-md-best-practices.md`; when the repo uses `STRUCTURE.md` or equivalent, audit that root guidance instead.
-- When defining docs contracts, prefer:
-  - `docs/architecture/` as quick human-overview and visual-first (Mermaid in Markdown + short helper text),
-  - `docs/references/` as durable implementation facts, command snippets, and operational lookup material for humans and agents.
-- Prefer plain-English wording over complex prose for architecture-facing docs so a solo human can scan and understand quickly.
-- When writing architecture docs, use the structure and Mermaid guidance in `references/docs-structure-and-maintenance.md`; keep exact contracts, schemas, env vars, and command details in `docs/references/`.
-- Keep docs policy lightweight: if a repo has local docs placement guidance, use it. Otherwise default to `docs/architecture/` for system shape and `docs/references/` for exact facts.
-- For intentional multi-repo systems that have a canonical orientation skill, use the skill for cross-repo ownership/routing/privacy/operating-model rules and the owning repo docs for implementation detail. Do not force everything into repo docs when the system's agent-native contract depends on a shared skill, but also do not turn the skill into a duplicate architecture manual.
-- Do not introduce centralized policy layers or audit scripts unless the user explicitly asks.
-- Prioritize feedback loops that agents can run autonomously.
-- Avoid heavy process designed for large teams unless explicitly requested.
-- Recommend one docs contract across repos unless the user requests exceptions.
-- Use `$project` for creating, resuming, replanning, and closing project trackers in the repo's tracker home.
-- If repo-local guidance conflicts with this playbook, prefer repo-local sources of truth (`STRUCTURE.md`, `AGENTS.md`, decision docs, and architecture docs).
+
+- Preserve the model that humans set intent and agents write and maintain the
+  implementation and repo docs.
+- Prefer autonomous feedback loops, deterministic tools, and mechanical
+  guardrails over reminders.
+- Keep root guidance concise. Use it as a router; add nested guidance only where
+  local boundary rules materially differ. Honor intentional alternatives such
+  as `STRUCTURE.md`.
+- Use the repo's docs contract. When none exists, prefer `docs/architecture/`
+  for system shape and `docs/references/` for exact implementation facts.
+- For a multi-repo system with a canonical orientation skill, keep cross-repo
+  ownership and routing there while keeping implementation detail in the owning
+  repo. Do not duplicate an architecture manual in the skill.
+- Favor direct, recoverable workflows in trusted repos. Do not add team-heavy
+  approvals, branch ceremony, or centralized policy layers without a concrete
+  need or explicit request.
+- Do not introduce centralized audit scripts unless the user explicitly asks.
+- Use `$project` for durable project trackers and close or archive completed
+  trackers according to repo guidance.
 
 ## Resources
-- `references/best-practices.md`: baseline best practices for this workflow.
-- `references/harness-readiness-rubric.md`: scorecard dimensions and output shape for agent-native readiness audits.
-- `references/ryan-harness-principles.md`: distilled Ryan Lopopolo / OpenAI harness-engineering principles adapted for this skill.
-- `references/agents-md-best-practices.md`: AGENTS quality gate, nested AGENTS decision rules, and keep/move/delete audit checklist.
-- `references/docs-structure-and-maintenance.md`: baseline docs layout and update rules.
-- `references/raw/ryan-lopopolo-openai/source-manifest.md`: Ryan Lopopolo harness-engineering source inventory and raw transcript file map; use only for source lookup or future distillation work.
+
+- `references/best-practices.md`: canonical operating principles and default
+  priorities.
+- `references/harness-readiness-rubric.md`: scorecard dimensions and output
+  contract.
+- `references/agents-md-best-practices.md`: guidance quality gate and
+  Keep / Move / Delete model.
+- `references/docs-structure-and-maintenance.md`: lightweight docs contract and
+  maintenance rules.

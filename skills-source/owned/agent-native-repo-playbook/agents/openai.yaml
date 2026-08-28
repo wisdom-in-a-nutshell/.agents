@@ -1,4 +1,4 @@
 interface:
   display_name: "Agent Native Repo Playbook"
-  short_description: "Audit agent-native repo harnesses."
-  default_prompt: "Use $agent-native-repo-playbook to run a read-only harness-readiness audit for a solo-dev agent-native repo, including scores, gaps, next moves, and file-path evidence."
+  short_description: "Audit and improve agent-native repo harnesses."
+  default_prompt: "Use $agent-native-repo-playbook to audit or improve this repository so agents can execute the full job autonomously and prove the result."
