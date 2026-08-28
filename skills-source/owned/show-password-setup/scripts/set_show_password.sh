@@ -12,7 +12,8 @@ MAPPING_FILE="${MAPPING_FILE:-${REPO_DIR}/scripts/local/secrets/keyvault_env_map
 MAPPING_TEMPLATE_FILE="${MAPPING_TEMPLATE_FILE:-${REPO_DIR}/scripts/local/secrets/keyvault_env_map.env.example}"
 BOOTSTRAP_SCRIPT="${BOOTSTRAP_SCRIPT:-${REPO_DIR}/scripts/local/secrets/bootstrap_local_env_from_keyvault.sh}"
 AZ_BIN="${AZ_BIN:-/opt/homebrew/bin/az}"
-SERVICE_LABEL="${SERVICE_LABEL:-com.${USER}.aipodcasting-app}"
+RUNTIME_USER="${USER:-$(id -un)}"
+SERVICE_LABEL="${SERVICE_LABEL:-com.${RUNTIME_USER}.aipodcasting-app}"
 HEALTH_URL="${HEALTH_URL:-http://127.0.0.1:8800/api/health}"
 RELOAD_SERVICE="${RELOAD_SERVICE:-1}"
 
@@ -21,6 +22,14 @@ if [[ ! -x "${AZ_BIN}" ]]; then
 fi
 if [[ -z "${AZ_BIN}" ]]; then
   echo "Azure CLI not found. Install az or set AZ_BIN." >&2
+  exit 2
+fi
+if [[ ! -x "${BOOTSTRAP_SCRIPT}" ]]; then
+  echo "Missing executable env bootstrap: ${BOOTSTRAP_SCRIPT}" >&2
+  exit 2
+fi
+if [[ ! -f "${MAPPING_TEMPLATE_FILE}" ]]; then
+  echo "Missing tracked env mapping contract: ${MAPPING_TEMPLATE_FILE}" >&2
   exit 2
 fi
 
@@ -112,14 +121,10 @@ echo "Writing secret ${secret_name} to Key Vault ${VAULT_NAME}..."
   --value "${password_value}" >/dev/null
 
 upsert_mapping "${MAPPING_FILE}" "${env_var}" "${secret_name}"
-if [[ -f "${MAPPING_TEMPLATE_FILE}" ]]; then
-  upsert_mapping "${MAPPING_TEMPLATE_FILE}" "${env_var}" "${secret_name}"
-fi
+upsert_mapping "${MAPPING_TEMPLATE_FILE}" "${env_var}" "${secret_name}"
 
-if [[ -x "${BOOTSTRAP_SCRIPT}" ]]; then
-  echo "Refreshing local .env from Key Vault mappings..."
-  "${BOOTSTRAP_SCRIPT}" --vault-name "${VAULT_NAME}" --allow-missing >/dev/null
-fi
+echo "Refreshing local .env from Key Vault mappings..."
+"${BOOTSTRAP_SCRIPT}" --vault-name "${VAULT_NAME}" --allow-missing >/dev/null
 
 service_status="not installed"
 service_domain="gui/$(id -u)"

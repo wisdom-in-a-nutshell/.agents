@@ -58,9 +58,8 @@ The script will:
 - Upsert repo mapping files and refresh local `.env` from Key Vault.
 - Restart and health-check the Mac production frontend when it is installed.
 
-## Resources (optional)
+## References
 
-Create only the resource directories this skill actually needs. Delete this section if no resources are required.
-
-### scripts/
-Executable code (Python/Bash/etc.) that can be run directly to perform specific operations.
+- `scripts/set_show_password.sh`: canonical provisioning and local service reload helper.
+- `/Users/dobby/GitHub/aipodcasting/docs/references/mac-mini-runtime.md`: frontend runtime,
+  environment, health, and recovery contract.
