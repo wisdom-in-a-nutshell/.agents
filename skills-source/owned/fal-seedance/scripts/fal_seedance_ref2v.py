@@ -520,7 +520,7 @@ def classify_unexpected_error(error: BaseException) -> CliError:
             "E_AUTH_PROVIDER",
             "fal rejected the configured credentials",
             exit_code=3,
-            hint="Refresh ~/.secrets/fal/env from Key Vault and verify fal--api-key is valid.",
+            hint="Refresh ~/.secrets/fal/env from the local canonical store and verify fal--api-key is valid.",
         )
     if re.search(r"network|ENOTFOUND|ECONN|ETIMEDOUT|timeout|socket|TLS|DNS", combined, re.IGNORECASE):
         return CliError(

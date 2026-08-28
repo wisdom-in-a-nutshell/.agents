@@ -12,8 +12,8 @@
 - Deploy workflow: `.github/workflows/deploy-on-main.yml`
 - Deploy entrypoint: `src/deploy.py`
 - Secret manifest: `scripts/local/secrets/modal_secrets_manifest.json`
-- Secret backfill helper: `scripts/local/secrets/backfill_modal_secret_to_keyvault.py`
-- Secret sync helper: `scripts/local/secrets/sync_keyvault_to_modal_secrets.py`
+- Canonical local secret client: `~/GitHub/scripts/bin/local-secrets`
+- Secret sync helper: `scripts/local/secrets/sync_local_to_modal_secrets.py`
 - Secret env rules: `docs/rules/environment-variables.md`
 - Secret flow doc: `docs/architecture/modal-secret-sync-flow.md`
 

@@ -82,7 +82,8 @@ Baked-in personal defaults:
 - made for kids: `false`
 - embeddable: `true`
 
-Do not store OAuth secrets here. YouTube secrets remain in Modal secret `youtube-oauth`, sourced from the existing Modal/Key Vault flow.
+Do not store OAuth secrets here. YouTube secrets remain in Modal secret `youtube-oauth`, sourced
+from the local canonical store through the managed Modal sync flow.
 
 ## Output contract
 

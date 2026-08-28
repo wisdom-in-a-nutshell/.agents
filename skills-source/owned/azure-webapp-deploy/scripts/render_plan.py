@@ -46,10 +46,6 @@ def _missing(args: argparse.Namespace) -> list[str]:
         "image_name",
     ]
     missing = [name for name in required if not getattr(args, name)]
-    if args.llm:
-        for name in ["key_vault_name", "llm_endpoint_secret", "llm_key_secret"]:
-            if not getattr(args, name):
-                missing.append(name)
     if args.domain:
         if not (args.cloudflare_zone_id or args.cloudflare_zone_name):
             missing.append("cloudflare_zone_id_or_name")
@@ -123,7 +119,10 @@ def build_plan(args: argparse.Namespace) -> dict[str, Any]:
             "Set runtime app settings",
             True,
             [],
-            ["Use Key Vault references for secret-like settings."],
+            [
+                "Materialize only required secrets from the local canonical store into an untracked 0600 env file.",
+                "Apply from the trusted Mac; do not create an Azure Key Vault dependency.",
+            ],
         ),
         _step(
             "deploy",
@@ -150,11 +149,10 @@ def build_plan(args: argparse.Namespace) -> dict[str, Any]:
     if args.llm:
         steps[4]["commands"].extend(
             [
-                "az role assignment create --assignee <principal-id> --role 'Key Vault Secrets User' --scope <key-vault-id>",
-                "az webapp config appsettings set "
-                f"-g {args.resource_group or '<resource-group>'} -n {args.app_name or '<app-name>'} --settings "
-                f"LLM_API_ENDPOINT=@Microsoft.KeyVault(SecretUri=https://{args.key_vault_name or '<vault>'}.vault.azure.net/secrets/{args.llm_endpoint_secret or '<endpoint-secret>'}/) "
-                f"LLM_API_KEY=@Microsoft.KeyVault(SecretUri=https://{args.key_vault_name or '<vault>'}.vault.azure.net/secrets/{args.llm_key_secret or '<key-secret>'}/)",
+                "python3 ~/GitHub/agents/skills-source/owned/azure-webapp-config/scripts/set_appsettings.py "
+                f"--app {args.app_name or '<app-name>'} "
+                f"--resource-group {args.resource_group or '<resource-group>'} "
+                "--env-file <generated-untracked-runtime-secrets.env> --dry-run",
             ]
         )
     if args.domain:
@@ -215,9 +213,6 @@ def main() -> int:
     parser.add_argument("--cloudflare-zone-name")
     parser.add_argument("--cloudflare-zone-id")
     parser.add_argument("--llm", action="store_true")
-    parser.add_argument("--key-vault-name")
-    parser.add_argument("--llm-endpoint-secret")
-    parser.add_argument("--llm-key-secret")
     parser.add_argument("--json", action="store_true", help="Emit JSON. This is the default.")
     parser.add_argument("--plain", action="store_true", help="Emit concise plain text.")
     parser.add_argument("--no-input", action="store_true", help="Do not prompt. This script never prompts.")

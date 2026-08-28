@@ -15,7 +15,7 @@ Use the client when an agent needs to turn storyboard images or other local refe
 
 ## Secret Lane
 
-- Canonical secret: Azure Key Vault `fal--api-key`
+- Canonical local secret: scope `kv-shared-repos`, name `fal--api-key`
 - Mapping: `/Users/dobby/GitHub/scripts/sync/machine-secrets/fal.env.map`
 - Generated local file: `~/.secrets/fal/env`
 - Local env var inside that generated file: `FAL_KEY`
@@ -26,7 +26,8 @@ Refresh local credentials:
 /Users/dobby/GitHub/scripts/sync/keyvault-sync-machine-secrets.sh --apply --integration fal
 ```
 
-The client reads the generated file directly. Do not pass fal keys through flags or repo `.env` files.
+The compatibility-named sync command reads the local canonical store. The client reads the
+generated file directly. Do not pass fal keys through flags or repo `.env` files.
 
 ## Commands
 

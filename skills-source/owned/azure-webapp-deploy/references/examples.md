@@ -31,9 +31,6 @@ python3 ~/GitHub/agents/skills-source/owned/azure-webapp-deploy/scripts/render_p
   --acr-login-server aipodcasting.azurecr.io \
   --image-name my-llm-app \
   --llm \
-  --key-vault-name kv-shared-repos \
-  --llm-endpoint-secret aipodcasting--llm-api-endpoint \
-  --llm-key-secret aipodcasting--llm-api-key \
   --status-path /api/openai/status?check=1 \
   --no-input
 ```

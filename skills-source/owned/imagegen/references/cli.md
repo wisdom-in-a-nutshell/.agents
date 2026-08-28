@@ -18,7 +18,7 @@ export IMAGE_GEN="${IMAGE_GEN:-$HOME/.agents/skills/imagegen/scripts/image_gen.p
 
 Real API calls use the shared LiteLLM proxy environment: `LLM_API_ENDPOINT` and
 `LLM_API_KEY`. On managed machines these are sourced from
-`~/.secrets/litellm/env`, which is generated from Azure Key Vault.
+`~/.secrets/litellm/env`, which is generated from the local canonical secret store.
 
 Dry-run (no API call; no network required; does not require the `openai` package):
 

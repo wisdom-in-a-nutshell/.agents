@@ -37,7 +37,7 @@ The generated config is Community Management-first. Keep app id, redirect URI, a
 
 There are two separate auth layers:
 
-1. `LINKEDIN_CLIENT_ID` / `LINKEDIN_CLIENT_SECRET` identify the LinkedIn app. These are stable app credentials and are generated from Azure Key Vault into `~/.secrets/linkedin/env`.
+1. `LINKEDIN_CLIENT_ID` / `LINKEDIN_CLIENT_SECRET` identify the LinkedIn app. These are stable app credentials and are generated from the local canonical store into `~/.secrets/linkedin/env`.
 2. `posting.tokens.json` is Adi's user OAuth authorization. This is the permission to post as Adi's LinkedIn profile.
 
 On Adi's own encrypted Macs, the current convenience setup shares the OAuth token through Syncthing:
@@ -54,7 +54,7 @@ That links:
   -> ~/Syncthing/AppConfigs/LinkedIn/posting.tokens.json
 ```
 
-This is intentionally not Key Vault-backed because it is mutable runtime session state. Do not use this shared-token setup on temporary, shared, or cloud machines.
+This is intentionally separate from the canonical static-secret store because it is mutable runtime session state. Do not use this shared-token setup on temporary, shared, or cloud machines.
 
 ## One-time LinkedIn app setup
 
@@ -64,7 +64,7 @@ This is intentionally not Key Vault-backed because it is mutable runtime session
    - This uses a high, LinkedIn-specific callback port to avoid the local dashboard/service ports tracked in `~/GitHub/agents` and `~/GitHub/scripts`, such as `8765` (agent dashboard), `8766` (Adi Dobby dashboard), and `8767` (Angie Dobby dashboard).
 3. Under Products, use the approved current app with:
    - `Community Management API`
-4. Store the app config in Key Vault under the `linkedin--...` family, then sync machine secrets:
+4. Store the app config in the local canonical store under the `linkedin--...` family, then sync machine secrets:
    - `linkedin--client-id`
    - `linkedin--client-secret`
    - `linkedin--app-id`

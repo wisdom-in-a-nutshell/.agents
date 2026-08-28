@@ -7,21 +7,18 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_DIR="${REPO_DIR:-$(cd "${SCRIPT_DIR}/../../../../" && pwd)}"
 
 VAULT_NAME="${VAULT_NAME:-kv-shared-repos}"
+LOCAL_SECRETS_BIN="${LOCAL_SECRETS_BIN:-${HOME}/GitHub/scripts/bin/local-secrets}"
 ENV_FILE="${ENV_FILE:-${REPO_DIR}/.env}"
 MAPPING_FILE="${MAPPING_FILE:-${REPO_DIR}/scripts/local/secrets/keyvault_env_map.env}"
 MAPPING_TEMPLATE_FILE="${MAPPING_TEMPLATE_FILE:-${REPO_DIR}/scripts/local/secrets/keyvault_env_map.env.example}"
 BOOTSTRAP_SCRIPT="${BOOTSTRAP_SCRIPT:-${REPO_DIR}/scripts/local/secrets/bootstrap_local_env_from_keyvault.sh}"
-AZ_BIN="${AZ_BIN:-/opt/homebrew/bin/az}"
 RUNTIME_USER="${USER:-$(id -un)}"
 SERVICE_LABEL="${SERVICE_LABEL:-com.${RUNTIME_USER}.aipodcasting-app}"
 HEALTH_URL="${HEALTH_URL:-http://127.0.0.1:8800/api/health}"
 RELOAD_SERVICE="${RELOAD_SERVICE:-1}"
 
-if [[ ! -x "${AZ_BIN}" ]]; then
-  AZ_BIN="$(command -v az || true)"
-fi
-if [[ -z "${AZ_BIN}" ]]; then
-  echo "Azure CLI not found. Install az or set AZ_BIN." >&2
+if [[ ! -x "${LOCAL_SECRETS_BIN}" ]]; then
+  echo "Missing local secret-store client: ${LOCAL_SECRETS_BIN}" >&2
   exit 2
 fi
 if [[ ! -x "${BOOTSTRAP_SCRIPT}" ]]; then
@@ -99,7 +96,7 @@ if [[ -z "$raw_show_name" ]]; then
   exit 1
 fi
 
-password_value="$(prompt_secret 'Password (stored in Key Vault)')"
+password_value="$(prompt_secret 'Password (stored in the local secret store)')"
 if [[ -z "$password_value" ]]; then
   echo "Password is required." >&2
   exit 1
@@ -114,16 +111,17 @@ show_slug="$(echo "$show_id" | tr '[:upper:]' '[:lower:]' | tr '_' '-')"
 env_var="PASSWORD_SHOW_${show_id}"
 secret_name="aipodcasting-app--password-show-${show_slug}"
 
-echo "Writing secret ${secret_name} to Key Vault ${VAULT_NAME}..."
-"${AZ_BIN}" keyvault secret set \
-  --vault-name "${VAULT_NAME}" \
+echo "Writing secret ${secret_name} to local scope ${VAULT_NAME}..."
+printf '%s' "${password_value}" | "${LOCAL_SECRETS_BIN}" --plain set \
+  --vault "${VAULT_NAME}" \
   --name "${secret_name}" \
-  --value "${password_value}" >/dev/null
+  --stdin \
+  --apply >/dev/null
 
 upsert_mapping "${MAPPING_FILE}" "${env_var}" "${secret_name}"
 upsert_mapping "${MAPPING_TEMPLATE_FILE}" "${env_var}" "${secret_name}"
 
-echo "Refreshing local .env from Key Vault mappings..."
+echo "Refreshing local .env from local secret mappings..."
 "${BOOTSTRAP_SCRIPT}" --vault-name "${VAULT_NAME}" --allow-missing >/dev/null
 
 service_status="not installed"
@@ -149,7 +147,7 @@ fi
 
 echo "Done."
 echo "Runtime env: ${env_var}"
-echo "Key Vault: ${secret_name}"
+echo "Local secret: ${VAULT_NAME}/${secret_name}"
 echo "Local mapping: ${MAPPING_FILE}"
 echo "Local env refreshed: ${ENV_FILE}"
 echo "Local service: ${service_status}"

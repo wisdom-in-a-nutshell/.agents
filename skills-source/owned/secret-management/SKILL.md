@@ -1,6 +1,6 @@
 ---
 name: secret-management
-description: "Manage secrets correctly in this environment: decide whether a value belongs in Azure Key Vault runtime config, repo-local `.env` bootstrap, machine-local `~/.secrets`, or GitHub Actions; choose naming; and update the right files, workflows, and docs when adding or moving a secret."
+description: "Manage secrets correctly in this environment: use the machine-local canonical secret store, generate repo-local `.env`, machine-local `~/.secrets`, and native credential files, handle provider runtime delivery and GitHub Actions deliberately, choose naming, and validate materialization without exposing values."
 ---
 
 # Secret Management
@@ -25,7 +25,7 @@ Read [references/decision-guide.md](references/decision-guide.md) for the concre
 
 2. Pick one primary lane.
    - Avoid giving the same secret family multiple hand-maintained homes.
-   - If the value must appear in another lane, generate it from the same Key Vault secret instead of inventing a second owner.
+   - If the value must appear in another lane, generate it from the same local canonical value instead of inventing a second owner.
 
 3. Apply the lane-specific changes.
    - Use the checklist in [references/decision-guide.md](references/decision-guide.md).
@@ -39,19 +39,20 @@ Read [references/decision-guide.md](references/decision-guide.md) for the concre
 
 Use for deployed application secrets.
 
-- Store the value in Azure Key Vault while it remains the canonical secret source.
+- Store the value in the local canonical store under
+  `~/Documents/DobbySecrets/vaults/<scope>/<secret-name>`.
 - Wire the value through the owning runtime's actual materialization contract. Current Mac Mini
   services use repo mappings plus generated `.env` files and repo-owned deploy/restart commands.
 - Use provider-native references or deploy-time sync only for a runtime that actually supports and
   consumes them; do not recreate retired Azure App Service settings.
-- If local repo development also needs the value, use the same Key Vault family in its generated
+- If local repo development also needs the value, use the same canonical secret family in its generated
   `.env` rather than creating another owner.
 
 ### Repo-Local
 
 Use for secrets needed in one repo's local development workflow.
 
-- Keep the value canonical in Key Vault.
+- Keep the value canonical in the local store.
 - Map it into the repo's local bootstrap (`keyvault_env_map.env` or equivalent).
 - Keep `.env.example` as placeholder-only documentation.
 
@@ -59,25 +60,25 @@ Use for secrets needed in one repo's local development workflow.
 
 Use for credentials shared across repos on one machine for operator tooling.
 
-- Keep the value canonical in Key Vault.
+- Keep the value canonical in the local store.
 - Sync it to `~/.secrets/<integration>/...`.
 - Source it from shell bootstrap only as a generated machine-local file.
 - Do not store secret values in `~/GitHub/agents`, `~/.agents`, or tracked shell config.
 
-### GitHub CI
+### External Runtimes And GitHub CI
 
-Use only for CI bootstrap/auth or intentionally CI-only third-party credentials.
+Use provider-owned secret storage only as a generated delivery target when code must run outside
+the Mac Mini. Keep the local store canonical.
 
-- Azure identifiers belong in GitHub `vars`, not `secrets`.
-- Prefer repo or environment `vars` for deploy workflow Azure OIDC identifiers;
-  org-level vars can exist, but runtime app configuration should not depend on
-  GitHub org secrets.
-- Prefer Azure OIDC over long-lived Azure credential blobs.
-- If CI needs a real runtime secret, fetch it after Azure login instead of making GitHub the owner.
+- Keep GitHub Actions secrets limited to intentional cloud-runner delivery or CI-only credentials.
+- Prefer local deployment automation when the workload already runs on the Mac Mini.
+- For Modal or another external runtime, sync selected values from the local store using an
+  explicit manifest and a local operator/deployment step.
+- Do not make Azure login or Key Vault access a bootstrap dependency for new workflows.
 
 ## Naming Rules
 
-- Repo-owned Key Vault families: `repo--secret-name`
+- Repo-owned secret families: `repo--secret-name`
 - Shared integration families: `integration--secret-name`
 - Machine-local integrations: match the folder name under `~/.secrets/<integration>/`
 - GitHub secret names should be explicit about purpose, not repo history
@@ -88,3 +89,8 @@ Use only for CI bootstrap/auth or intentionally CI-only third-party credentials.
 - Do not put literal secret values in `.zshrc`, tracked YAML, or committed config files.
 - Do not create a machine-local integration when repo-local bootstrap is the real fit.
 - Treat file-based credentials as a separate case; they may need materialization, not `KEY=value` sync.
+- Use `~/GitHub/scripts/bin/local-secrets` for reads/writes/import/status workflows; never print
+  secret values in logs or agent responses.
+- Treat the current plaintext local store as the intentionally simple first-stage backend. Keep its
+  files untracked with `0700` directories and `0600` files, and do not exclude
+  `~/Documents/DobbySecrets` from Backblaze.

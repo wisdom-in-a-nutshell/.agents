@@ -16,7 +16,8 @@ Use this skill to add or modify Modal functions in `modal_functions`, register t
 - CI validates and deploys Modal functions; it does not commit generated client files into `win`.
 - Generate locally to `tmp/client_generated.py` for fast validation without dirtying `win`.
 - Generate into `../win/services/modal/client_generated.py` through the local sync wrapper before testing `win` wrappers/call sites.
-- Stable Modal runtime secrets should default to the Key Vault -> manifest -> Modal sync flow, not one-off manual Modal secret updates.
+- Stable Modal runtime secrets should default to the local canonical store -> manifest -> Modal
+  sync flow, not one-off manual Modal secret updates.
 
 ## Workflow
 
@@ -38,11 +39,12 @@ Use this skill to add or modify Modal functions in `modal_functions`, register t
 ### 4) Handle secrets and config deliberately
 - Use `references/modal-secrets.md` as the checklist for secret ownership and manifest updates.
 - If the change adds or modifies `modal.Secret.from_name(...)`, decide whether the secret is:
-  - a stable runtime secret that should be managed from Azure Key Vault, or
+  - a stable runtime secret that should be managed from the local canonical store, or
   - an intentional exception owned by a separate system.
 - Default rule: if it is a stable runtime secret, add it to `scripts/local/secrets/modal_secrets_manifest.json`.
-- Ensure the backing Key Vault secret exists before relying on the manifest entry.
-- If you are adopting an older Modal-only secret into the managed flow, use `scripts/local/secrets/backfill_modal_secret_to_keyvault.py` first so Key Vault becomes the source of truth without printing secret values.
+- Ensure the backing local canonical secret exists before relying on the manifest entry.
+- If you are adopting an older Modal-only secret, write it once through
+  `~/GitHub/scripts/bin/local-secrets set`; do not print the value or add another canonical owner.
 - Update `docs/rules/environment-variables.md` when the secret shape or expected env keys change.
 - Do not leave a new code-level `modal.Secret.from_name(...)` reference unmanaged unless the exception is explicitly documented.
 
@@ -71,7 +73,7 @@ Use this skill to add or modify Modal functions in `modal_functions`, register t
 - Docs-only changes won't trigger Modal deploy (workflow ignores `docs/**` and `*.md`).
 - Missing registry entries means the client will not include the function.
 - Adding `modal.Secret.from_name(...)` in code without updating the manifest reintroduces secret drift.
-- Adding a manifest entry without a real Key Vault backing secret will make deploy-time secret sync fail.
+- Adding a manifest entry without a real local backing secret will make deploy-time secret sync fail.
 - Direct edits to generated client output will be overwritten by the local sync wrapper.
 
 ## References

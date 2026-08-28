@@ -54,18 +54,20 @@ az webapp config set -g <resource-group> -n <app-name> \
   --generic-configurations '{"acrUseManagedIdentityCreds": true}'
 ```
 
-If runtime secrets are needed, prefer Key Vault references:
+If runtime secrets are needed, generate a narrow untracked env file from the local canonical
+store and apply it from the trusted Mac. Do not pass values through shell arguments or GitHub:
 
 ```bash
-az role assignment create \
-  --assignee <principal-id> \
-  --role "Key Vault Secrets User" \
-  --scope <key-vault-id>
-
-az webapp config appsettings set -g <resource-group> -n <app-name> --settings \
-  "LLM_API_ENDPOINT=@Microsoft.KeyVault(SecretUri=https://<vault>.vault.azure.net/secrets/<endpoint-secret>/)" \
-  "LLM_API_KEY=@Microsoft.KeyVault(SecretUri=https://<vault>.vault.azure.net/secrets/<key-secret>/)"
+python3 .agents/skills/azure-webapp-config/scripts/set_appsettings.py \
+  --app <app-name> \
+  --resource-group <resource-group> \
+  --env-file /absolute/path/to/untracked-runtime-secrets.env \
+  --dry-run
 ```
+
+Review the target and rerun without `--dry-run`. Delete the disposable materialized file when the
+apply and runtime smoke are complete. This compatibility delivery stores the values in App Service
+app settings; do not introduce Azure Key Vault as an additional owner.
 
 ## 4. Federated Credential
 
