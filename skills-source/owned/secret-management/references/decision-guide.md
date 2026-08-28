@@ -9,8 +9,15 @@ Use this when adding or moving a secret in this environment.
 Use the `runtime` lane.
 
 - Store the value in Azure Key Vault.
-- Wire the app to consume it via runtime config, ideally a Key Vault reference.
+- Wire the app through its current runtime contract:
+  - Mac Mini services: repo mapping -> generated `.env` -> repo-owned deploy or restart.
+  - Modal or similar providers: provider-owned deploy-time secret sync.
+  - Azure App Service: Key Vault reference only when a live Web App actually exists.
 - If local development also needs it, map the same secret family into the repo-local `.env` bootstrap.
+
+The current AIPodcasting and WIN Web Apps are retired. Do not restore their appsettings as a
+compatibility path; their production API, worker, and frontend all consume generated local runtime
+environments on the Mac Mini.
 
 Typical examples:
 - `aipodcasting--mongodb-uri`
@@ -78,6 +85,11 @@ Typical examples:
 Canonical docs:
 - `$HOME/GitHub/scripts/docs/architecture/secret-source-of-truth-flow.md`
 - `$HOME/GitHub/scripts/docs/references/azure-key-vault-structure.md`
+
+Typical Mac Mini app files:
+- `scripts/local/secrets/keyvault_env_map.env.example`
+- `scripts/local/secrets/bootstrap_local_env_from_keyvault.sh`
+- repo-owned local production deploy/status command and runtime reference
 
 ### Repo-Local
 

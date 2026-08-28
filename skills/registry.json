@@ -110,11 +110,8 @@
     {
       "skill": "azure-webapp-config",
       "origin": "owned",
-      "scope": "repo",
-      "repos": [
-        "aipodcasting",
-        "win"
-      ],
+      "scope": "dormant",
+      "repos": [],
       "source_path": "skills-source/owned/azure-webapp-config",
       "upstream_ref": "-"
     },

@@ -18,7 +18,7 @@ Read [references/decision-guide.md](references/decision-guide.md) for the concre
 ## Workflow
 
 1. Identify the secret's primary consumer.
-   - Running app in Azure
+   - Running app on the Mac Mini or another deployed runtime
    - Local development in one repo
    - Shared operator tooling across repos on one machine
    - GitHub Actions only
@@ -39,9 +39,13 @@ Read [references/decision-guide.md](references/decision-guide.md) for the concre
 
 Use for deployed application secrets.
 
-- Store the value in Azure Key Vault.
-- Prefer App Service Key Vault references instead of literal app settings.
-- If local repo development also needs the value, map it into that repo's generated `.env` from the same Key Vault secret.
+- Store the value in Azure Key Vault while it remains the canonical secret source.
+- Wire the value through the owning runtime's actual materialization contract. Current Mac Mini
+  services use repo mappings plus generated `.env` files and repo-owned deploy/restart commands.
+- Use provider-native references or deploy-time sync only for a runtime that actually supports and
+  consumes them; do not recreate retired Azure App Service settings.
+- If local repo development also needs the value, use the same Key Vault family in its generated
+  `.env` rather than creating another owner.
 
 ### Repo-Local
 

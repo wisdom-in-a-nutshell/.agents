@@ -6,13 +6,15 @@ export PATH="/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:${PA
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_DIR="${REPO_DIR:-$(cd "${SCRIPT_DIR}/../../../../" && pwd)}"
 
-APP_NAME="${APP_NAME:-aipodcasting-app}"
 VAULT_NAME="${VAULT_NAME:-kv-shared-repos}"
 ENV_FILE="${ENV_FILE:-${REPO_DIR}/.env}"
 MAPPING_FILE="${MAPPING_FILE:-${REPO_DIR}/scripts/local/secrets/keyvault_env_map.env}"
 MAPPING_TEMPLATE_FILE="${MAPPING_TEMPLATE_FILE:-${REPO_DIR}/scripts/local/secrets/keyvault_env_map.env.example}"
 BOOTSTRAP_SCRIPT="${BOOTSTRAP_SCRIPT:-${REPO_DIR}/scripts/local/secrets/bootstrap_local_env_from_keyvault.sh}"
 AZ_BIN="${AZ_BIN:-/opt/homebrew/bin/az}"
+SERVICE_LABEL="${SERVICE_LABEL:-com.${USER}.aipodcasting-app}"
+HEALTH_URL="${HEALTH_URL:-http://127.0.0.1:8800/api/health}"
+RELOAD_SERVICE="${RELOAD_SERVICE:-1}"
 
 if [[ ! -x "${AZ_BIN}" ]]; then
   AZ_BIN="$(command -v az || true)"
@@ -102,31 +104,12 @@ show_id="$(
 show_slug="$(echo "$show_id" | tr '[:upper:]' '[:lower:]' | tr '_' '-')"
 env_var="PASSWORD_SHOW_${show_id}"
 secret_name="aipodcasting-app--password-show-${show_slug}"
-kv_ref="@Microsoft.KeyVault(SecretUri=https://${VAULT_NAME}.vault.azure.net/secrets/${secret_name}/)"
-
-resource_group="${AZURE_RESOURCE_GROUP:-${AIPODCASTING_APP_RG:-}}"
-if [[ -z "$resource_group" ]]; then
-  resource_group="$("${AZ_BIN}" webapp list --query "[?name=='${APP_NAME}'].resourceGroup | [0]" -o tsv 2>/dev/null || true)"
-fi
-if [[ -z "$resource_group" ]]; then
-  resource_group="$(prompt 'Azure resource group (for aipodcasting-app)' 'aipodcasting')"
-fi
-if [[ -z "$resource_group" ]]; then
-  echo "Resource group is required." >&2
-  exit 1
-fi
 
 echo "Writing secret ${secret_name} to Key Vault ${VAULT_NAME}..."
 "${AZ_BIN}" keyvault secret set \
   --vault-name "${VAULT_NAME}" \
   --name "${secret_name}" \
   --value "${password_value}" >/dev/null
-
-echo "Setting ${env_var} on ${APP_NAME} as Key Vault reference..."
-"${AZ_BIN}" webapp config appsettings set \
-  --name "${APP_NAME}" \
-  --resource-group "${resource_group}" \
-  --settings "${env_var}=${kv_ref}" >/dev/null
 
 upsert_mapping "${MAPPING_FILE}" "${env_var}" "${secret_name}"
 if [[ -f "${MAPPING_TEMPLATE_FILE}" ]]; then
@@ -138,8 +121,30 @@ if [[ -x "${BOOTSTRAP_SCRIPT}" ]]; then
   "${BOOTSTRAP_SCRIPT}" --vault-name "${VAULT_NAME}" --allow-missing >/dev/null
 fi
 
+service_status="not installed"
+service_domain="gui/$(id -u)"
+if [[ "${RELOAD_SERVICE}" == "1" ]] && launchctl print "${service_domain}/${SERVICE_LABEL}" >/dev/null 2>&1; then
+  echo "Restarting ${SERVICE_LABEL} to load the refreshed runtime environment..."
+  launchctl kickstart -k "${service_domain}/${SERVICE_LABEL}"
+  service_status="health timeout"
+  for _ in {1..60}; do
+    if curl -fsS --max-time 5 "${HEALTH_URL}" >/dev/null 2>&1; then
+      service_status="healthy"
+      break
+    fi
+    sleep 1
+  done
+  if [[ "${service_status}" != "healthy" ]]; then
+    echo "Local production frontend did not recover at ${HEALTH_URL}." >&2
+    exit 1
+  fi
+elif [[ "${RELOAD_SERVICE}" != "1" ]]; then
+  service_status="reload disabled"
+fi
+
 echo "Done."
-echo "Azure: ${env_var} set on ${APP_NAME} (resource group: ${resource_group}) via Key Vault reference"
+echo "Runtime env: ${env_var}"
 echo "Key Vault: ${secret_name}"
 echo "Local mapping: ${MAPPING_FILE}"
 echo "Local env refreshed: ${ENV_FILE}"
+echo "Local service: ${service_status}"
