@@ -27,7 +27,7 @@ from media_toolkit_lib.io import (
 )
 
 DEFAULT_API_BASE_URL = (
-    "https://aipodcasting-hzbxdueeg4eeatgh.eastus-01.azurewebsites.net"
+    "https://api.aipodcast.ing"
 )
 TRANSCRIPTION_PROVIDER = "local_transcription"
 TRANSCRIPTION_UPLOAD_STORAGE_PREFIX = "cache"
