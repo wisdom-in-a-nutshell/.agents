@@ -1,4 +1,0 @@
-interface:
-  display_name: "Azure Web App Deploy"
-  short_description: "Deploy web apps to Azure App Service"
-  default_prompt: "Use $azure-webapp-deploy to publish this web app to Azure App Service with GitHub Actions and optional Cloudflare DNS."

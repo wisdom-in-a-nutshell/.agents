@@ -1,4 +1,0 @@
-interface:
-  display_name: "Azure WebApp Config"
-  short_description: "Manage Azure App Service app settings safely."
-  default_prompt: "Use $azure-webapp-config to apply Azure Web App app settings with profile or app targeting, run dry-run first, then apply and confirm results."

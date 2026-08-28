@@ -108,22 +108,6 @@
       "upstream_ref": "-"
     },
     {
-      "skill": "azure-webapp-config",
-      "origin": "owned",
-      "scope": "dormant",
-      "repos": [],
-      "source_path": "skills-source/owned/azure-webapp-config",
-      "upstream_ref": "-"
-    },
-    {
-      "skill": "azure-webapp-deploy",
-      "origin": "owned",
-      "scope": "dormant",
-      "repos": [],
-      "source_path": "skills-source/owned/azure-webapp-deploy",
-      "upstream_ref": "-"
-    },
-    {
       "skill": "codex-agent-loop",
       "origin": "owned",
       "scope": "repo",
