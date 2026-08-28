@@ -47,6 +47,11 @@ class ClaudeSyncTests(TempDirTestCase):
             str(self.temp_path / "bin/claude"),
             "--real-cli-path",
             str(self.temp_path / "homebrew/bin/claude"),
+            # General renderer tests must never use the repo's default dev-server
+            # registry, because it points at real managed workspaces. Dedicated
+            # launch-config tests below provide temporary registries and targets.
+            "--skip-launch-configs",
+            "--skip-codex-environments",
         ]
 
     def test_apply_renders_global_skills_instructions_settings_stop_hook_and_yolo_launcher(self) -> None:

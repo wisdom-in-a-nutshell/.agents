@@ -114,7 +114,10 @@ atomically switches `current`/`previous`, and restores the old release if activa
 fails. Code, registry, and test validation stays inside the frozen worktree; machine-rendered
 Copilot/Codex state, Git-hook enrollment, and runtime drift are checked through the canonical
 `~/GitHub/agents` checkout because ephemeral worktree paths are neither managed repos nor valid
-runtime symlink targets. The five-minute reconcile remains missed-event and health recovery.
+runtime symlink targets. Control-plane renderer tests likewise skip default per-repo dev-server and
+Codex-environment targets unless a test supplies an isolated registry and temporary workspace; an
+exact-source full gate must never rewrite a canonical managed repo. The five-minute reconcile
+remains missed-event and health recovery.
 
 `--status` allowlists launchd lifecycle fields; it does not print the inherited environment.
 
