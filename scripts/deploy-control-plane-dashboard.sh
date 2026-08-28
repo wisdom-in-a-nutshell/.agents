@@ -152,6 +152,7 @@ mkdir -p "$TEMPORARY_RELEASE/dashboard" "$TEMPORARY_RELEASE/runtime/scripts"
 cp -R "$BUILD_WORKTREE/dashboard-app/dist/." "$TEMPORARY_RELEASE/dashboard/"
 cp "$BUILD_WORKTREE/scripts/control-plane-dashboard.py" "$TEMPORARY_RELEASE/runtime/scripts/"
 cp -R "$BUILD_WORKTREE/mcp" "$TEMPORARY_RELEASE/runtime/mcp"
+printf '%s\n' "$EXPECTED_SHA" >"$TEMPORARY_RELEASE/SOURCE_SHA"
 
 git -C "$ROOT_DIR" worktree remove --force "$BUILD_WORKTREE"
 BUILD_WORKTREE=""
@@ -174,21 +175,43 @@ fi
 replace_link "$RELEASE_DIR" "$CURRENT_LINK"
 
 activate() {
+  local release_sha="$1"
   "$ROOT_DIR/scripts/install-control-plane-dashboard-launchagent.sh" \
     --apply \
     --root "$ROOT_DIR" \
     --dashboard-root "$CURRENT_LINK/dashboard" \
-    --server-script "$CURRENT_LINK/runtime/scripts/control-plane-dashboard.py" >&2
+    --server-script "$CURRENT_LINK/runtime/scripts/control-plane-dashboard.py" \
+    --release-sha "$release_sha" >&2
+}
+
+wait_for_release_health() {
+  local expected_sha="$1" payload
+  for _ in 1 2 3 4 5 6 7 8 9 10; do
+    payload="$(curl -fsS --max-time 3 "$HEALTH_URL" 2>/dev/null || true)"
+    if python3 - "$expected_sha" "$payload" <<'PY' >/dev/null 2>&1
+import json
+import sys
+
+expected, raw = sys.argv[1:]
+payload = json.loads(raw)
+raise SystemExit(0 if payload.get("release_sha") == expected else 1)
+PY
+    then
+      return 0
+    fi
+    sleep 1
+  done
+  return 1
 }
 
 printf '[deploy-control-plane-dashboard] activating release=%s\n' "$RELEASE_DIR" >&2
-if ! activate || ! curl -fsS --max-time 5 "$HEALTH_URL" >/dev/null; then
+if ! activate "$EXPECTED_SHA" || ! wait_for_release_health "$EXPECTED_SHA"; then
   if [[ -n "$OLD_CURRENT" && -d "$OLD_CURRENT" ]]; then
     replace_link "$OLD_CURRENT" "$CURRENT_LINK"
     if [[ -n "$OLD_PREVIOUS" && -d "$OLD_PREVIOUS" ]]; then
       replace_link "$OLD_PREVIOUS" "$PREVIOUS_LINK"
     fi
-    activate || true
+    activate "$(basename "$OLD_CURRENT" | cut -d- -f1)" || true
   else
     launchctl bootout "gui/$(id -u)/com.${USER}.agents-control-plane-dashboard" >/dev/null 2>&1 || true
   fi

@@ -399,6 +399,8 @@ class ControlPlaneDashboardLaunchAgentTests(TempDirTestCase):
                 "127.0.0.1",
                 "--port",
                 "8765",
+                "--release-sha",
+                "development",
                 "--no-input",
             ],
         )

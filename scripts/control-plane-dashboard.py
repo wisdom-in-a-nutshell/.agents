@@ -1046,10 +1046,12 @@ class DashboardServer(ThreadingMixIn, TCPServer):
         handler_class: type[BaseHTTPRequestHandler],
         root: Path,
         dashboard_root: Path | None = None,
+        release_sha: str = "development",
     ):
         super().__init__(server_address, handler_class)
         self.root = root.expanduser().resolve()
         self.dashboard_root = (dashboard_root or self.root / "dashboard").expanduser().resolve()
+        self.release_sha = release_sha
         self.server_name = str(server_address[0])
         self.server_port = int(self.server_address[1])
 
@@ -1061,7 +1063,9 @@ class DashboardHandler(BaseHTTPRequestHandler):
         parsed = urlparse(self.path)
         path = unquote(parsed.path)
         if path == "/api/control-plane":
-            self.send_json(build_control_plane_data(self.server.root))
+            payload = build_control_plane_data(self.server.root)
+            payload["release_sha"] = self.server.release_sha
+            self.send_json(payload)
             return
         if path.startswith("/source/"):
             if os.environ.get("AGENTS_DASHBOARD_ENABLE_SOURCE") != "1":
@@ -1172,7 +1176,13 @@ def command_serve(args: argparse.Namespace) -> int:
         print(f"ERROR: dashboard assets not found under {dashboard_root}", file=sys.stderr)
         return EXIT_FAILURE
 
-    server = DashboardServer((args.host, args.port), DashboardHandler, root, dashboard_root)
+    server = DashboardServer(
+        (args.host, args.port),
+        DashboardHandler,
+        root,
+        dashboard_root,
+        args.release_sha,
+    )
     host, port = server.server_address
     url = f"http://{host}:{port}/dashboard/"
     print(f"Control plane dashboard: {url}", file=sys.stderr)
@@ -1237,6 +1247,11 @@ def parse_args() -> argparse.Namespace:
         type=int,
         default=int(os.environ.get("PORT", "8765")),
         help="Port to bind (default: $PORT or 8765). Use 0 to request an available port.",
+    )
+    serve_parser.add_argument(
+        "--release-sha",
+        default="development",
+        help="Exact production source revision exposed by the health payload.",
     )
     serve_parser.add_argument(
         "--open",

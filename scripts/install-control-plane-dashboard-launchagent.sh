@@ -11,6 +11,7 @@ HOST="127.0.0.1"
 PORT="8765"
 DASHBOARD_ROOT="${AGENTS_CONTROL_PLANE_DASHBOARD_ROOT:-${HOME}/.local/share/agents-control-plane-dashboard/current}"
 SERVER_SCRIPT="${AGENTS_CONTROL_PLANE_SERVER_SCRIPT:-}"
+RELEASE_SHA="${AGENTS_CONTROL_PLANE_RELEASE_SHA:-development}"
 PYTHON_BIN="${PYTHON_BIN:-}"
 PLIST_PATH="${HOME}/Library/LaunchAgents/${LABEL}.plist"
 LOG_DIR="${HOME}/.local/state/agents-control-plane/log"
@@ -38,6 +39,7 @@ Options:
                        Built dashboard release link (default: ~/.local/share/agents-control-plane-dashboard/current)
   --server-script <path>
                        Exact dashboard server script (default: <root>/scripts/control-plane-dashboard.py)
+  --release-sha <sha>  Exact source revision exposed by the production API
   --python <path>      Python executable (default: shared Homebrew Python)
   -h, --help           Show this help
 
@@ -121,6 +123,8 @@ render_plist() {
       <string>$(xml_escape "$HOST")</string>
       <string>--port</string>
       <string>$(xml_escape "$PORT")</string>
+      <string>--release-sha</string>
+      <string>$(xml_escape "$RELEASE_SHA")</string>
       <string>--no-input</string>
     </array>
 
@@ -229,6 +233,10 @@ while [[ $# -gt 0 ]]; do
       SERVER_SCRIPT="${2:-}"
       shift 2
       ;;
+    --release-sha)
+      RELEASE_SHA="${2:-}"
+      shift 2
+      ;;
     --python)
       PYTHON_BIN="${2:-}"
       shift 2
@@ -249,6 +257,7 @@ SERVER_SCRIPT="${SERVER_SCRIPT:-${ROOT_DIR}/scripts/control-plane-dashboard.py}"
 [[ -x "$SERVER_SCRIPT" ]] || die "dashboard script is not executable: $SERVER_SCRIPT"
 [[ -n "$HOST" ]] || die "missing --host"
 [[ -n "$DASHBOARD_ROOT" ]] || die "missing --dashboard-root"
+[[ -n "$RELEASE_SHA" ]] || die "missing --release-sha"
 is_int "$PORT" || die "invalid --port: $PORT"
 is_int "$LOG_LINES" || die "invalid --logs value: $LOG_LINES"
 if [[ -z "$PYTHON_BIN" ]]; then
@@ -300,7 +309,17 @@ if [[ ! -f "$PLIST_PATH" ]] || ! cmp -s "$TMP_PLIST" "$PLIST_PATH"; then
 fi
 
 launchctl bootout "$DOMAIN" "$PLIST_PATH" >/dev/null 2>&1 || true
-launchctl bootstrap "$DOMAIN" "$PLIST_PATH"
+BOOTSTRAP_OUTPUT=""
+for ATTEMPT in 1 2 3 4 5; do
+  if BOOTSTRAP_OUTPUT="$(launchctl bootstrap "$DOMAIN" "$PLIST_PATH" 2>&1)"; then
+    BOOTSTRAP_OUTPUT=""
+    break
+  fi
+  [[ "$ATTEMPT" -eq 5 ]] || sleep 0.5
+done
+if [[ -n "$BOOTSTRAP_OUTPUT" ]]; then
+  die "launchctl bootstrap failed after bounded retry: $(printf '%s' "$BOOTSTRAP_OUTPUT" | tail -n 1)"
+fi
 
 printf 'Loaded %s from %s\n' "$LABEL" "$PLIST_PATH"
 printf 'Local URL: %s\n' "$(local_url)"

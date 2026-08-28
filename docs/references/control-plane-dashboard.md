@@ -111,7 +111,9 @@ The central Mac Mini production reconciler in `~/GitHub/scripts` runs this wrapp
 successful registered `main` publication. The wrapper runs the full control-plane gate in a
 detached exact-SHA worktree, builds a versioned release, verifies that live `main` did not move,
 atomically switches `current`/`previous`, and restores the old release if activation or API health
-fails. Code, registry, and test validation stays inside the frozen worktree; machine-rendered
+fails. The production API reports the exact release SHA, and activation succeeds only after the
+restarted process reports that captured revision. Code, registry, and test validation stays inside
+the frozen worktree; machine-rendered
 Copilot/Codex state, Git-hook enrollment, and runtime drift are checked through the canonical
 `~/GitHub/agents` checkout because ephemeral worktree paths are neither managed repos nor valid
 runtime symlink targets. Control-plane tests receive a disposable `HOME` under `tmp/`, and renderer
