@@ -9,6 +9,8 @@ LABEL="com.${USER}.agents-control-plane-dashboard"
 ROOT_DIR="${AGENTS_CONTROL_PLANE_ROOT:-${HOME}/GitHub/agents}"
 HOST="127.0.0.1"
 PORT="8765"
+DASHBOARD_ROOT="${AGENTS_CONTROL_PLANE_DASHBOARD_ROOT:-${HOME}/.local/share/agents-control-plane-dashboard/current}"
+SERVER_SCRIPT="${AGENTS_CONTROL_PLANE_SERVER_SCRIPT:-}"
 PYTHON_BIN="${PYTHON_BIN:-}"
 PLIST_PATH="${HOME}/Library/LaunchAgents/${LABEL}.plist"
 LOG_DIR="${HOME}/.local/state/agents-control-plane/log"
@@ -32,6 +34,10 @@ Options:
   --root <path>        agents control-plane repo root (default: ~/GitHub/agents)
   --host <host>        Local bind host (default: 127.0.0.1)
   --port <port>        Local dashboard port (default: 8765)
+  --dashboard-root <path>
+                       Built dashboard release link (default: ~/.local/share/agents-control-plane-dashboard/current)
+  --server-script <path>
+                       Exact dashboard server script (default: <root>/scripts/control-plane-dashboard.py)
   --python <path>      Python executable (default: shared Homebrew Python)
   -h, --help           Show this help
 
@@ -99,11 +105,18 @@ render_plist() {
 
     <key>ProgramArguments</key>
     <array>
+      <string>/usr/bin/env</string>
+      <string>-i</string>
+      <string>HOME=$(xml_escape "$HOME")</string>
+      <string>PATH=/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+      <string>PYTHONUNBUFFERED=1</string>
       <string>$(xml_escape "$PYTHON_BIN")</string>
-      <string>$(xml_escape "${ROOT_DIR}/scripts/control-plane-dashboard.py")</string>
+      <string>$(xml_escape "$SERVER_SCRIPT")</string>
       <string>serve</string>
       <string>--root</string>
       <string>$(xml_escape "$ROOT_DIR")</string>
+      <string>--dashboard-root</string>
+      <string>$(xml_escape "$DASHBOARD_ROOT")</string>
       <string>--host</string>
       <string>$(xml_escape "$HOST")</string>
       <string>--port</string>
@@ -143,7 +156,16 @@ PLIST
 
 print_status() {
   local domain="gui/$(id -u)"
-  if ! launchctl print "${domain}/${LABEL}" 2>/dev/null; then
+  if launchctl print "${domain}/${LABEL}" >/dev/null 2>&1; then
+    printf 'LaunchAgent loaded: %s\n' "$LABEL"
+    launchctl print "${domain}/${LABEL}" 2>/dev/null | awk '
+      /^\t(state|runs|pid|last exit code|run interval) = / {
+        line = $0
+        sub(/^\t/, "", line)
+        print line
+      }
+    '
+  else
     printf 'LaunchAgent not loaded: %s\n' "$LABEL"
   fi
 
@@ -199,6 +221,14 @@ while [[ $# -gt 0 ]]; do
       PORT="${2:-}"
       shift 2
       ;;
+    --dashboard-root)
+      DASHBOARD_ROOT="${2:-}"
+      shift 2
+      ;;
+    --server-script)
+      SERVER_SCRIPT="${2:-}"
+      shift 2
+      ;;
     --python)
       PYTHON_BIN="${2:-}"
       shift 2
@@ -213,10 +243,12 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
+SERVER_SCRIPT="${SERVER_SCRIPT:-${ROOT_DIR}/scripts/control-plane-dashboard.py}"
 [[ -n "$LABEL" ]] || die "missing --label"
 [[ -d "$ROOT_DIR" ]] || die "missing dashboard repo root: $ROOT_DIR"
-[[ -x "${ROOT_DIR}/scripts/control-plane-dashboard.py" ]] || die "dashboard script is not executable: ${ROOT_DIR}/scripts/control-plane-dashboard.py"
+[[ -x "$SERVER_SCRIPT" ]] || die "dashboard script is not executable: $SERVER_SCRIPT"
 [[ -n "$HOST" ]] || die "missing --host"
+[[ -n "$DASHBOARD_ROOT" ]] || die "missing --dashboard-root"
 is_int "$PORT" || die "invalid --port: $PORT"
 is_int "$LOG_LINES" || die "invalid --logs value: $LOG_LINES"
 if [[ -z "$PYTHON_BIN" ]]; then
@@ -253,6 +285,8 @@ if (( APPLY == 0 )); then
   render_plist
   exit 0
 fi
+
+[[ -f "$DASHBOARD_ROOT/index.html" ]] || die "dashboard release is unavailable: $DASHBOARD_ROOT"
 
 mkdir -p "$(dirname "$PLIST_PATH")" "$LOG_DIR"
 TMP_PLIST="$(mktemp)"

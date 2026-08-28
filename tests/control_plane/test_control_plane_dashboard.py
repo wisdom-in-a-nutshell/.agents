@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import plistlib
 import sys
+from pathlib import Path
 
 from tests.control_plane.support import REPO_ROOT, TempDirTestCase, write_executable, write_json, write_text, run_command
 
@@ -349,7 +350,8 @@ class ControlPlaneDashboardLaunchAgentTests(TempDirTestCase):
         )
 
         payload = plistlib.loads(result.stdout.encode("utf-8"))
-        self.assertEqual(payload["ProgramArguments"][0], str(python_shim))
+        self.assertEqual(payload["ProgramArguments"][:2], ["/usr/bin/env", "-i"])
+        self.assertIn(str(python_shim), payload["ProgramArguments"])
 
     def test_launchagent_installer_dry_run_renders_dashboard_service_plist(self) -> None:
         result = run_command(
@@ -361,6 +363,8 @@ class ControlPlaneDashboardLaunchAgentTests(TempDirTestCase):
                 "com.test.agents-dashboard",
                 "--root",
                 str(REPO_ROOT),
+                "--dashboard-root",
+                str(Path.home() / ".local/share/agents-control-plane-dashboard/current"),
                 "--host",
                 "127.0.0.1",
                 "--port",
@@ -379,11 +383,18 @@ class ControlPlaneDashboardLaunchAgentTests(TempDirTestCase):
         self.assertEqual(
             payload["ProgramArguments"],
             [
+                "/usr/bin/env",
+                "-i",
+                f"HOME={Path.home()}",
+                "PATH=/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin",
+                "PYTHONUNBUFFERED=1",
                 sys.executable,
                 str(REPO_ROOT / "scripts/control-plane-dashboard.py"),
                 "serve",
                 "--root",
                 str(REPO_ROOT),
+                "--dashboard-root",
+                str(Path.home() / ".local/share/agents-control-plane-dashboard/current"),
                 "--host",
                 "127.0.0.1",
                 "--port",

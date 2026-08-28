@@ -11,9 +11,10 @@ shared **adi-design** token system. This is the same stack as dobby-dashboard.
   (HTTP, for this dashboard) and a `data` CLI subcommand (for other automation +
   the test suite). Do **not** re-implement that logic here.
 - **This app is the UI only.** It fetches `/api/control-plane` and renders it.
-- **Source vs served:** source lives here (`~/GitHub/agents/dashboard-app`); the build
-  output is deployed into `~/GitHub/agents/dashboard`, which the Python server serves at
-  the `/dashboard/` URL path (canonical entry is `http://127.0.0.1:8765/`).
+- **Source vs served:** source lives here (`~/GitHub/agents/dashboard-app`). Production builds an
+  exact committed revision into `~/.local/share/agents-control-plane-dashboard/releases/` and
+  serves the atomic `current/dashboard` link. Tracked `~/GitHub/agents/dashboard` is only the
+  bootstrap/manual fallback.
 
 ## Develop
 
@@ -27,11 +28,10 @@ The Python server must be running (it is, via the
 
 ## Deploy
 
-```sh
-npm run deploy   # tsc + vite build, then sync dist/ -> ../dashboard
-```
-
-No server restart needed — the Python server serves the static files live.
+Use `../scripts/deploy-control-plane-dashboard.sh --apply --plain --no-input` from clean `main` for
+production. It runs the full repo gate in an exact-SHA worktree, builds a versioned release,
+atomically activates it, reloads launchd with an isolated environment, and restores the prior
+release if health fails. `npm run deploy` only refreshes the tracked bootstrap fallback.
 Asset URLs use `base: '/dashboard/'`; deep-links use `?section=<id>`.
 
 ## Design

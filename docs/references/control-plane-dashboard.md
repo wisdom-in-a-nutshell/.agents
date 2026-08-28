@@ -81,11 +81,13 @@ LaunchAgent and keep Tailscale Serve pointed at the same port:
 ./scripts/serve-control-plane-dashboard.sh status
 ```
 
-The LaunchAgent keeps `http://127.0.0.1:8765/` running at login and
-restarts it if the process exits. The installer renders the shared Homebrew
-Python shim from `~/GitHub/scripts/setup/codex/resolve-preferred-homebrew-python.sh`
-into the plist so launchd does not resolve bare `python3` through Apple's
-`/usr/bin/python3`. Tailscale Serve owns the private tailnet URL:
+The LaunchAgent keeps `http://127.0.0.1:8765/` running at login and restarts it if the process
+exits. Production runs the exact released server code and dashboard assets through
+`~/.local/share/agents-control-plane-dashboard/current`. The installer renders the shared
+Homebrew Python shim from `~/GitHub/scripts/setup/codex/resolve-preferred-homebrew-python.sh` and
+starts it through `env -i`, so the secretless dashboard receives only its explicit HOME, PATH, and
+Python settings instead of the GUI launchd domain's unrelated inherited credentials. Tailscale
+Serve owns the private tailnet URL:
 
 ```text
 https://dobbys-mac-mini.tail7857da.ts.net:8765/
@@ -105,8 +107,13 @@ repo-owned deploy wrapper:
 ./scripts/deploy-control-plane-dashboard.sh --apply --plain --no-input
 ```
 
-The central Mac mini production reconciler in `~/GitHub/scripts` runs this
-wrapper automatically after committed dashboard/runtime changes on `main`.
+The central Mac Mini production reconciler in `~/GitHub/scripts` runs this wrapper after a
+successful registered `main` publication. The wrapper runs the full control-plane gate in a
+detached exact-SHA worktree, builds a versioned release, verifies that live `main` did not move,
+atomically switches `current`/`previous`, and restores the old release if activation or API health
+fails. The five-minute reconcile remains missed-event and health recovery.
+
+`--status` allowlists launchd lifecycle fields; it does not print the inherited environment.
 
 Remove only the persistent local server:
 

@@ -45,8 +45,9 @@ contracts in this repo's docs.
   - `skills-source/owned/<skill>/`
 - Codex-native plugin scope and enablement lives in `plugins/registry.json`.
 - Global Codex runtime skills live in `~/.agents/skills/<skill>` as symlinks rendered from `skills/registry.json`.
-- Read-only browser dashboard assets live in `dashboard/` and are served by
-  `scripts/control-plane-dashboard.py`.
+- Read-only browser dashboard source lives in `dashboard-app/`. Local production serves an exact,
+  versioned build from `~/.local/share/agents-control-plane-dashboard/current`; tracked `dashboard/`
+  is only the bootstrap/manual fallback.
 - Shared lifecycle hook scripts live in:
   - `hooks/scripts/`
 - Shared local Git hook scripts live in:

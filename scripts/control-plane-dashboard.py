@@ -1040,9 +1040,16 @@ class DashboardServer(ThreadingMixIn, TCPServer):
     allow_reuse_address = True
     daemon_threads = True
 
-    def __init__(self, server_address: tuple[str, int], handler_class: type[BaseHTTPRequestHandler], root: Path):
+    def __init__(
+        self,
+        server_address: tuple[str, int],
+        handler_class: type[BaseHTTPRequestHandler],
+        root: Path,
+        dashboard_root: Path | None = None,
+    ):
         super().__init__(server_address, handler_class)
         self.root = root.expanduser().resolve()
+        self.dashboard_root = (dashboard_root or self.root / "dashboard").expanduser().resolve()
         self.server_name = str(server_address[0])
         self.server_port = int(self.server_address[1])
 
@@ -1102,7 +1109,7 @@ class DashboardHandler(BaseHTTPRequestHandler):
         self.send_file(target, content_type)
 
     def send_static(self, relative: str) -> None:
-        target = safe_join(self.server.root / "dashboard", relative)
+        target = safe_join(self.server.dashboard_root, relative)
         if target is None or not target.is_file():
             self.send_error(HTTPStatus.NOT_FOUND, "Asset not found")
             return
@@ -1155,12 +1162,17 @@ def command_serve(args: argparse.Namespace) -> int:
     if not root.is_dir():
         print(f"ERROR: repository root does not exist: {root}", file=sys.stderr)
         return EXIT_USAGE
-    dashboard_index = root / "dashboard/index.html"
+    dashboard_root = (
+        Path(args.dashboard_root).expanduser().resolve()
+        if args.dashboard_root
+        else root / "dashboard"
+    )
+    dashboard_index = dashboard_root / "index.html"
     if not dashboard_index.is_file():
-        print(f"ERROR: dashboard assets not found under {root / 'dashboard'}", file=sys.stderr)
+        print(f"ERROR: dashboard assets not found under {dashboard_root}", file=sys.stderr)
         return EXIT_FAILURE
 
-    server = DashboardServer((args.host, args.port), DashboardHandler, root)
+    server = DashboardServer((args.host, args.port), DashboardHandler, root, dashboard_root)
     host, port = server.server_address
     url = f"http://{host}:{port}/dashboard/"
     print(f"Control plane dashboard: {url}", file=sys.stderr)
@@ -1210,6 +1222,10 @@ def parse_args() -> argparse.Namespace:
         "--root",
         default=str(Path(__file__).resolve().parents[1]),
         help="Path to the agents control-plane repository root.",
+    )
+    serve_parser.add_argument(
+        "--dashboard-root",
+        help="Built dashboard asset directory (default: <root>/dashboard).",
     )
     serve_parser.add_argument(
         "--host",
