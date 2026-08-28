@@ -43,4 +43,14 @@ if verify_local_production_source "$REPO" main "$EXPECTED_SHA"; then
   exit 1
 fi
 
+grep -q 'AGENTS_MANAGED_REPO_CHECK_ROOT' "$ROOT_DIR/scripts/check-fast.sh"
+grep -q 'AGENTS_MANAGED_REPO_CHECK_ROOT' "$ROOT_DIR/scripts/check-agent-control-planes.sh"
+# shellcheck disable=SC2016
+grep -q 'AGENTS_MANAGED_REPO_CHECK_ROOT="$ROOT_DIR"' \
+  "$ROOT_DIR/scripts/deploy-control-plane-dashboard.sh"
+# shellcheck disable=SC2016
+grep -q 'cd "$MACHINE_CONTROL_ROOT"' "$ROOT_DIR/scripts/check-agent-control-planes.sh"
+# shellcheck disable=SC2016
+grep -q 'cd "$MANAGED_REPO_CHECK_ROOT"' "$ROOT_DIR/scripts/check-fast.sh"
+
 printf '[test-local-production-source] passed\n'

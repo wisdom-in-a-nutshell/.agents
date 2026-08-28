@@ -111,7 +111,10 @@ The central Mac Mini production reconciler in `~/GitHub/scripts` runs this wrapp
 successful registered `main` publication. The wrapper runs the full control-plane gate in a
 detached exact-SHA worktree, builds a versioned release, verifies that live `main` did not move,
 atomically switches `current`/`previous`, and restores the old release if activation or API health
-fails. The five-minute reconcile remains missed-event and health recovery.
+fails. Code, registry, and test validation stays inside the frozen worktree; machine-rendered
+Copilot/Codex state, Git-hook enrollment, and runtime drift are checked through the canonical
+`~/GitHub/agents` checkout because ephemeral worktree paths are neither managed repos nor valid
+runtime symlink targets. The five-minute reconcile remains missed-event and health recovery.
 
 `--status` allowlists launchd lifecycle fields; it does not print the inherited environment.
 

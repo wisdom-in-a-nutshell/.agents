@@ -10,13 +10,14 @@ fi
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
+MACHINE_CONTROL_ROOT="${AGENTS_MANAGED_REPO_CHECK_ROOT:-${ROOT_DIR}}"
 CHECK_SKILLS_SCRIPT="${SCRIPT_DIR}/check-skills-registry.sh"
 CHECK_PLUGINS_SCRIPT="${SCRIPT_DIR}/check-plugins-registry.sh"
 CHECK_HYGIENE_SCRIPT="${SCRIPT_DIR}/check-repo-hygiene.sh"
-CHECK_COPILOT_SCRIPT="${SCRIPT_DIR}/sync-copilot.sh"
-CHECK_GIT_HOOKS_SCRIPT="${SCRIPT_DIR}/sync-managed-git-hooks.sh"
-CHECK_CODEX_SCRIPT="${ROOT_DIR}/codex/scripts/check-codex-control-plane.sh"
-AUDIT_RUNTIME_DRIFT_SCRIPT="${SCRIPT_DIR}/audit-agent-runtime-drift.py"
+CHECK_COPILOT_SCRIPT="${MACHINE_CONTROL_ROOT}/scripts/sync-copilot.sh"
+CHECK_GIT_HOOKS_SCRIPT="${MACHINE_CONTROL_ROOT}/scripts/sync-managed-git-hooks.sh"
+CHECK_CODEX_SCRIPT="${MACHINE_CONTROL_ROOT}/codex/scripts/check-codex-control-plane.sh"
+AUDIT_RUNTIME_DRIFT_SCRIPT="${MACHINE_CONTROL_ROOT}/scripts/audit-agent-runtime-drift.py"
 TEST_CONTROL_PLANE_SCRIPT="${SCRIPT_DIR}/test-control-plane.sh"
 REPO_FILTERS=()
 
@@ -61,6 +62,10 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
+if (( ${#REPO_FILTERS[@]} == 0 )) && [[ -n "${AGENTS_MANAGED_REPO_CHECK_ROOT:-}" ]]; then
+  REPO_FILTERS+=("${AGENTS_MANAGED_REPO_CHECK_ROOT}")
+fi
+
 [[ -x "$CHECK_SKILLS_SCRIPT" ]] || die "Missing executable: $CHECK_SKILLS_SCRIPT"
 [[ -x "$CHECK_PLUGINS_SCRIPT" ]] || die "Missing executable: $CHECK_PLUGINS_SCRIPT"
 [[ -x "$CHECK_HYGIENE_SCRIPT" ]] || die "Missing executable: $CHECK_HYGIENE_SCRIPT"
@@ -97,17 +102,26 @@ if (( ${#REPO_ARGS[@]} > 0 )); then
   copilot_cmd+=("${REPO_ARGS[@]}")
 fi
 log "+ ${copilot_cmd[*]}"
-"${copilot_cmd[@]}"
+(
+  cd "$MACHINE_CONTROL_ROOT"
+  "${copilot_cmd[@]}"
+)
 
 git_hooks_cmd=(
   "$CHECK_GIT_HOOKS_SCRIPT"
   --check
 )
+if [[ -n "${AGENTS_MANAGED_REPO_CHECK_ROOT:-}" ]]; then
+  git_hooks_cmd+=(--hooks-path "${AGENTS_MANAGED_REPO_CHECK_ROOT}/hooks/git")
+fi
 if (( ${#REPO_ARGS[@]} > 0 )); then
   git_hooks_cmd+=("${REPO_ARGS[@]}")
 fi
 log "+ ${git_hooks_cmd[*]}"
-"${git_hooks_cmd[@]}"
+(
+  cd "$MACHINE_CONTROL_ROOT"
+  "${git_hooks_cmd[@]}"
+)
 
 codex_cmd=(
   "$CHECK_CODEX_SCRIPT"
@@ -116,7 +130,10 @@ if (( ${#REPO_ARGS[@]} > 0 )); then
   codex_cmd+=("${REPO_ARGS[@]}")
 fi
 log "+ ${codex_cmd[*]}"
-"${codex_cmd[@]}"
+(
+  cd "$MACHINE_CONTROL_ROOT"
+  "${codex_cmd[@]}"
+)
 
 runtime_drift_cmd=(
   "$AUDIT_RUNTIME_DRIFT_SCRIPT"
@@ -125,8 +142,15 @@ runtime_drift_cmd=(
   --no-input
 )
 log "+ ${runtime_drift_cmd[*]}"
-"${runtime_drift_cmd[@]}"
+(
+  cd "$MACHINE_CONTROL_ROOT"
+  "${runtime_drift_cmd[@]}"
+)
 
-test_cmd=("$TEST_CONTROL_PLANE_SCRIPT")
+if [[ -n "${AGENTS_MANAGED_REPO_CHECK_ROOT:-}" ]]; then
+  test_cmd=(env -u AGENTS_MANAGED_REPO_CHECK_ROOT "$TEST_CONTROL_PLANE_SCRIPT")
+else
+  test_cmd=("$TEST_CONTROL_PLANE_SCRIPT")
+fi
 log "+ ${test_cmd[*]}"
 "${test_cmd[@]}"

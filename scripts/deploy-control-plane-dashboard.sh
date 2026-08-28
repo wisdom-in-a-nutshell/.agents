@@ -123,7 +123,10 @@ rmdir "$BUILD_WORKTREE"
 git -C "$ROOT_DIR" worktree add --quiet --detach "$BUILD_WORKTREE" "$EXPECTED_SHA"
 
 printf '[deploy-control-plane-dashboard] full release gate revision=%s\n' "$EXPECTED_SHA" >&2
-(cd "$BUILD_WORKTREE" && bash scripts/check-full.sh) >&2
+(
+  cd "$BUILD_WORKTREE"
+  AGENTS_MANAGED_REPO_CHECK_ROOT="$ROOT_DIR" bash scripts/check-full.sh
+) >&2
 
 printf '[deploy-control-plane-dashboard] building dashboard candidate\n' >&2
 (
