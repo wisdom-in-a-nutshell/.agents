@@ -29,9 +29,9 @@ mirrors the middleware-based password protection flow used by the studios.
    - Write the password with `~/GitHub/scripts/bin/local-secrets`; never print the value.
 
 4. **Update the runtime mapping + bootstrap `.env`**
-   - Add/replace mapping in `scripts/local/secrets/keyvault_env_map.env`.
-   - Mirror mapping in `scripts/local/secrets/keyvault_env_map.env.example` for repo contract consistency.
-   - Regenerate local `.env` via `scripts/local/secrets/bootstrap_local_env_from_keyvault.sh`.
+   - Add/replace mapping in `scripts/local/secrets/secret_env_map.env`.
+   - Mirror mapping in `scripts/local/secrets/secret_env_map.env.example` for repo contract consistency.
+   - Regenerate local `.env` via `scripts/local/secrets/bootstrap_local_env.sh`.
    - Keep secret values out of git.
 
 5. **Reload local production**

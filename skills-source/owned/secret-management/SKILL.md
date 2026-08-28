@@ -40,7 +40,7 @@ Read [references/decision-guide.md](references/decision-guide.md) for the concre
 Use for deployed application secrets.
 
 - Store the value in the local canonical store under
-  `~/Documents/DobbySecrets/vaults/<scope>/<secret-name>`.
+  `~/Documents/DobbySecrets/scopes/<scope>/<secret-name>`.
 - Wire the value through the owning runtime's actual materialization contract. Current Mac Mini
   services use repo mappings plus generated `.env` files and repo-owned deploy/restart commands.
 - Use provider-native references or deploy-time sync only for a runtime that actually supports and
@@ -53,7 +53,7 @@ Use for deployed application secrets.
 Use for secrets needed in one repo's local development workflow.
 
 - Keep the value canonical in the local store.
-- Map it into the repo's local bootstrap (`keyvault_env_map.env` or equivalent).
+- Map it into the repo's local bootstrap (`secret_env_map.env` or equivalent).
 - Keep `.env.example` as placeholder-only documentation.
 
 ### Machine-Local Shared

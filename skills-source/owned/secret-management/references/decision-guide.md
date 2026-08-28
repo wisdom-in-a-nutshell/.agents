@@ -27,8 +27,7 @@ Typical examples:
 
 Use the `repo-local` lane.
 
-- Add/update the repo's `scripts/local/secrets/keyvault_env_map.env` or equivalent. The legacy
-  filename remains a mapping contract, not an indication that Azure owns the value.
+- Add/update the repo's `scripts/local/secrets/secret_env_map.env` or equivalent.
 - Keep the real value in the local canonical store.
 - Update `.env.example` only with a placeholder if the repo documents local envs there.
 
@@ -83,25 +82,25 @@ Canonical docs:
 - `$HOME/GitHub/scripts/docs/architecture/secret-source-of-truth-flow.md`
 - `$HOME/GitHub/scripts/docs/references/local-secret-store.md`
 - `$HOME/GitHub/scripts/bin/local-secrets`
-- `$HOME/Documents/DobbySecrets/vaults/<scope>/<secret-name>` (untracked values)
+- `$HOME/Documents/DobbySecrets/scopes/<scope>/<secret-name>` (untracked values)
 
 Typical Mac Mini app files:
-- `scripts/local/secrets/keyvault_env_map.env.example`
-- `scripts/local/secrets/bootstrap_local_env_from_keyvault.sh`
+- `scripts/local/secrets/secret_env_map.env.example`
+- `scripts/local/secrets/bootstrap_local_env.sh`
 - repo-owned local production deploy/status command and runtime reference
 
 ### Repo-Local
 
 Typical files inside an app repo:
-- `scripts/local/secrets/keyvault_env_map.env`
-- `scripts/local/secrets/bootstrap_local_env_from_keyvault.sh`
+- `scripts/local/secrets/secret_env_map.env`
+- `scripts/local/secrets/bootstrap_local_env.sh`
 - `.env.example`
 
 ### Machine-Local Shared
 
 Typical files:
 - `$HOME/GitHub/scripts/sync/machine-secrets/<integration>.env.map`
-- `$HOME/GitHub/scripts/sync/keyvault-sync-machine-secrets.sh`
+- `$HOME/GitHub/scripts/sync/materialize-machine-secrets.sh`
 - `$HOME/GitHub/scripts/setup/codex/zshrc.shared`
 - `~/.secrets/<integration>/env`
 

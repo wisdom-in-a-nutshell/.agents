@@ -23,7 +23,7 @@ Use the client when an agent needs to turn storyboard images or other local refe
 Refresh local credentials:
 
 ```bash
-/Users/dobby/GitHub/scripts/sync/keyvault-sync-machine-secrets.sh --apply --integration fal
+/Users/dobby/GitHub/scripts/sync/materialize-machine-secrets.sh --apply --integration fal
 ```
 
 The compatibility-named sync command reads the local canonical store. The client reads the
