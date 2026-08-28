@@ -16,7 +16,7 @@ mirrors the middleware-based password protection flow used by the studios.
 1. **Collect inputs**
    - Show name (should match the `?show=` value used in URLs; typically the WIN `podcast_name`).
    - Password string.
-   - Local secret scope (defaults to the legacy-compatible `kv-shared-repos` scope label).
+   - Local secret scope (defaults to `shared`).
 
 2. **Normalize the show ID**
    - Uppercase.

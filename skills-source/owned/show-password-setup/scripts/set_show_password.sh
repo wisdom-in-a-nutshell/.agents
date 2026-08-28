@@ -6,7 +6,7 @@ export PATH="/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:${PA
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_DIR="${REPO_DIR:-$(cd "${SCRIPT_DIR}/../../../../" && pwd)}"
 
-VAULT_NAME="${VAULT_NAME:-kv-shared-repos}"
+SECRET_SCOPE="${SECRET_SCOPE:-shared}"
 LOCAL_SECRETS_BIN="${LOCAL_SECRETS_BIN:-${HOME}/GitHub/scripts/bin/local-secrets}"
 ENV_FILE="${ENV_FILE:-${REPO_DIR}/.env}"
 MAPPING_FILE="${MAPPING_FILE:-${REPO_DIR}/scripts/local/secrets/secret_env_map.env}"
@@ -111,9 +111,9 @@ show_slug="$(echo "$show_id" | tr '[:upper:]' '[:lower:]' | tr '_' '-')"
 env_var="PASSWORD_SHOW_${show_id}"
 secret_name="aipodcasting-app--password-show-${show_slug}"
 
-echo "Writing secret ${secret_name} to local scope ${VAULT_NAME}..."
-printf '%s' "${password_value}" | "${LOCAL_SECRETS_BIN}" --plain set \
-  --vault "${VAULT_NAME}" \
+echo "Writing secret ${secret_name} to local scope ${SECRET_SCOPE}..."
+printf '%s' "${password_value}" | "${LOCAL_SECRETS_BIN}" --plain --no-input set \
+  --scope "${SECRET_SCOPE}" \
   --name "${secret_name}" \
   --stdin \
   --apply >/dev/null
@@ -122,7 +122,7 @@ upsert_mapping "${MAPPING_FILE}" "${env_var}" "${secret_name}"
 upsert_mapping "${MAPPING_TEMPLATE_FILE}" "${env_var}" "${secret_name}"
 
 echo "Refreshing local .env from local secret mappings..."
-"${BOOTSTRAP_SCRIPT}" --vault-name "${VAULT_NAME}" --allow-missing >/dev/null
+"${BOOTSTRAP_SCRIPT}" --secret-scope "${SECRET_SCOPE}" --allow-missing >/dev/null
 
 service_status="not installed"
 service_domain="gui/$(id -u)"
@@ -147,7 +147,7 @@ fi
 
 echo "Done."
 echo "Runtime env: ${env_var}"
-echo "Local secret: ${VAULT_NAME}/${secret_name}"
+echo "Local secret: ${SECRET_SCOPE}/${secret_name}"
 echo "Local mapping: ${MAPPING_FILE}"
 echo "Local env refreshed: ${ENV_FILE}"
 echo "Local service: ${service_status}"
