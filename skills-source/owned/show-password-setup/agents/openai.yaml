@@ -1,4 +1,4 @@
 interface:
-  display_name: "Show Password Setup"
-  short_description: "Set or rotate show-specific access passwords."
-  default_prompt: "Use $show-password-setup to set up or rotate PASSWORD_SHOW_<SHOW> in the canonical local secret store and generated local production env, reload the Mac frontend, then confirm the exact variable name used."
+  display_name: "Show Password Setup (Deprecated)"
+  short_description: "Emergency rotation before Access cutover"
+  default_prompt: "Use $show-password-setup only to rotate an already configured show password while APP_ACCESS_MODE=password; refuse new show setup and route new access to the whole-app Cloudflare Access cutover."

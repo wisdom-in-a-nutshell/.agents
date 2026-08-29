@@ -1,6 +1,6 @@
 ---
 name: ai-podcasting
-description: Submit AI Podcasting episodes and update intro/title/thumbnail copy through AIP frontend API routes. Use when clients want agent-driven episode operations without using the GUI, including listing episodes with rich metadata and published-state filters, submitting a new episode, patching intro copy for an existing episode, or clarifying whether an ambiguous "submit" request means main episode submission vs intro update.
+description: Submit AI Podcasting episodes and update intro/title/thumbnail copy through the scoped WIN client API. Use when clients want agent-driven episode operations without the GUI, including checking access, listing TCR episodes with rich metadata and published-state filters, retry-safe episode submission, patching intro copy, uploading local inputs, or clarifying whether an ambiguous "submit" request means main episode submission vs intro update.
 ---
 
 # AI Podcasting
@@ -11,22 +11,23 @@ Use this skill for client-facing, agent-driven episode operations in this reposi
 
 Run the main CLI at `scripts/ai_podcasting_client.py` for episode operations:
 
-1. `list-episodes`:
+1. `doctor`:
+   Verify the credential, client identity, TCR show grant, and required operation scopes.
+2. `list-episodes`:
    List `TCR` episodes with rich per-episode summaries and filters for `published`, `unpublished`,
    or `all`.
-2. `submit-episode`:
-   Create a new episode via `/api/episodes/submit`.
-3. `update-intro-copy`:
+3. `submit-episode`:
+   Create a retry-safe new episode via `/client/v1/episodes`.
+4. `update-intro-copy`:
    Patch intro/title/thumbnail/outro assets for an existing unpublished episode via
-   `/api/episodes/{sourceId}/intro`.
+   `/client/v1/episodes/{sourceId}/intro`.
 
-This skill calls the AIP frontend API routes at `https://app.aipodcast.ing/api/...`, which proxy the
-upstream episode APIs. Do not automate the browser UI for these flows.
-The episode API now requires bearer-token auth for list, submit, and patch operations. The scripts
-read the token from `~/.secrets/aipodcasting/env` by default, or from
-`AIPODCASTING_API_KEY_FILE` when that file path is overridden. Environment fallbacks
-(`AIPODCASTING_API_KEY` or the first value in `AIPODCASTING_API_KEYS`) are supported for
-deployed/runtime contexts, but do not pass secrets on command lines.
+This skill calls the versioned WIN client API at `https://api.aipodcast.ing/client/v1/...`
+directly. Do not send agent operations through the frontend or automate the browser UI.
+WIN enforces the authenticated principal's operation scopes and allowed shows server-side.
+The scripts read the token only from `~/.secrets/aipodcasting/env` by default, or from the
+credential file path selected by `AIPODCASTING_CLIENT_API_KEY_FILE`. They do not accept secret
+flags or secret-value environment fallbacks.
 
 ## Auth Setup
 
@@ -37,23 +38,21 @@ Recommended local setup:
 
 ```bash
 mkdir -p ~/.secrets/aipodcasting
-printf 'AIPODCASTING_API_KEY=<key-from-Adi>\n' > ~/.secrets/aipodcasting/env
+printf 'AIPODCASTING_CLIENT_API_KEY=<key-from-Adi>\n' > ~/.secrets/aipodcasting/env
 chmod 600 ~/.secrets/aipodcasting/env
 ```
 
-Alternative for one shell session:
-
-```bash
-export AIPODCASTING_API_KEY=<key-from-Adi>
-```
-
-If the secret file lives somewhere else, set `AIPODCASTING_API_KEY_FILE` to that absolute path.
+If the secret file lives somewhere else, set `AIPODCASTING_CLIENT_API_KEY_FILE` to that absolute
+path. This variable selects a file; it never contains the credential itself.
 For direct raw API usage, send the same key as `Authorization: Bearer <key-from-Adi>`.
+For a customer install or upgrade, follow `references/client-setup.md` and require a successful
+`doctor` result before running mutations.
 
 Use `scripts/aip_local_upload_helper.py` only when the user gives a local file path for a file-like
 field and no source URL is available. For TCR main episode submissions, prefer a Descript web URL
 copied from Descript for the main source when one exists; do not export or upload an MP4 just to
-create a source link. The helper uploads the file and returns a public URL for the main CLI to use.
+create a source link. The helper requests a purpose-specific temporary upload intent and returns
+an R2 `cache/` URL for the main CLI to use. Callers cannot choose a raw lifecycle prefix.
 Keep this implicit in chat unless the user asks.
 
 ## Media Source Rule For TCR
@@ -98,7 +97,14 @@ directory. When in doubt, use the absolute skill path shown by the harness.
 
 ## Quick Start
 
-1. List episodes to find the target ID:
+1. Check the installed credential and grants:
+
+```bash
+python3 scripts/ai_podcasting_client.py \
+  --json doctor
+```
+
+2. List episodes to find the target ID:
 
 ```bash
 python3 scripts/ai_podcasting_client.py \
@@ -124,7 +130,7 @@ python3 scripts/ai_podcasting_client.py \
   --end-date 2026-01-31
 ```
 
-2. Submit a new episode (creates a new episode; no `source_id` input needed):
+3. Submit a new episode (creates a new episode; no `source_id` input needed):
 
 ```bash
 python3 scripts/ai_podcasting_client.py \
@@ -132,7 +138,7 @@ python3 scripts/ai_podcasting_client.py \
   --payload-file references/submit-episode.example.json
 ```
 
-3. Update intro copy for an existing episode (`source_id` required):
+4. Update intro copy for an existing episode (`source_id` required):
 
 ```bash
 python3 scripts/ai_podcasting_client.py \
@@ -141,20 +147,27 @@ python3 scripts/ai_podcasting_client.py \
   --payload-file references/update-intro-copy-tcr.example.json
 ```
 
-4. Upload a local file and get a public URL:
+5. Upload a local supporting file and get a temporary public URL:
 
 ```bash
 python3 scripts/aip_local_upload_helper.py \
-  --json /absolute/path/to/file.png
+  --json --purpose thumbnail /absolute/path/to/file.png
 ```
 
 ## Interface Notes
 
-- Fixed endpoint: `https://app.aipodcast.ing`
+- Fixed endpoint: `https://api.aipodcast.ing/client/v1`
 - Fixed show: `TCR`
-- Auth: bearer token from `~/.secrets/aipodcasting/env` or `AIPODCASTING_API_KEY_FILE`
+- Auth: bearer token from `~/.secrets/aipodcasting/env` or the file selected by
+  `AIPODCASTING_CLIENT_API_KEY_FILE`
 - The CLI does not accept base-url overrides or env-based base URL changes.
 - The CLI does not accept show selection; all submit/list operations are locked to `TCR`.
+- `submit-episode` sends `Idempotency-Key` using the command request ID. The JSON envelope returns
+  that request ID, and `data.idempotency_key` repeats it on success. Retry an uncertain submission
+  with `--request-id <same-id>`; use a new request ID only for an intentionally separate episode.
+- Local uploads are purpose-scoped `cache/` transport objects. Use `episode_main`,
+  `episode_asset`, `episode_intro`, `episode_outro`, or `thumbnail`; never treat their URLs as
+  permanent inventory.
 - JSON is the default output contract. Use `--plain` or `--human` only for operator inspection.
 - `list-episodes` returns a rich summary by default in JSON mode. Each item now includes
   fields such as `thumbnailText`, publishing metadata, preview text for long fields, normalized
@@ -176,7 +189,10 @@ python3 scripts/aip_local_upload_helper.py \
 
 ## Required Vs Optional Inputs
 
-1. `list-episodes`:
+1. `doctor`:
+   Required: a credential file containing `AIPODCASTING_CLIENT_API_KEY`.
+   Run after setup or rotation and before debugging a rejected operation.
+2. `list-episodes`:
    Required: none.
    Optional: `--publication-state`, `--start-date`, `--end-date`, `--limit`, `--include-raw`.
    `--publication-state` choices:
@@ -193,7 +209,7 @@ python3 scripts/aip_local_upload_helper.py \
    The `data` payload also echoes the applied `filters` object and `matched_count`.
    With `--include-raw`, each item also includes `raw_episode` containing the sanitized upstream
    payload.
-2. `submit-episode`:
+3. `submit-episode`:
    Required: `--payload-file` with `mainSourceUrl`.
    Show handling: always forced to `TCR` by the CLI.
    `mainSourceUrl` may be either:
@@ -213,7 +229,7 @@ python3 scripts/aip_local_upload_helper.py \
    a client-provided Ghost newsletter draft, preview, editor, or slug URL. The client preserves
    richer payloads such as `deliverables.thumbnails.options`,
    `deliverables.thumbnails.video.variants`, and `files.episode_outro`.
-3. `update-intro-copy`:
+4. `update-intro-copy`:
    Required (command): `--source-id`, `--payload-file`.
    Intended target: an existing unpublished episode.
    The client supports the current app intro payload directly.
@@ -333,7 +349,9 @@ When values are missing in chat context, follow this flow:
 ## Resources
 
 - `scripts/ai_podcasting_client.py`: Single client interface with subcommands.
-- `scripts/aip_local_upload_helper.py`: Upload helper for local file paths; returns public URLs.
+- `scripts/aip_local_upload_helper.py`: Purpose-scoped local upload helper; returns temporary
+  `cache/` URLs in the same stable JSON envelope.
 - `references/submit-episode.example.json`: Example payload for submit flow.
 - `references/update-intro-copy.example.json`: Example payload for intro/copy patch flow.
 - `references/update-intro-copy-tcr.example.json`: Example payload for TCR-style final title/thumbnail updates.
+- `references/client-setup.md`: Customer install, credential migration, doctor, and retry contract.

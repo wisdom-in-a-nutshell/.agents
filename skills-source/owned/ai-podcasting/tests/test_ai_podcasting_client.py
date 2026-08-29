@@ -42,29 +42,37 @@ class ResolveOutputModeTests(unittest.TestCase):
 
 
 class AuthHeaderTests(unittest.TestCase):
-  def test_build_aip_auth_headers_reads_secret_file(self) -> None:
+  def test_build_client_auth_headers_reads_secret_file(self) -> None:
     with tempfile.TemporaryDirectory() as tmpdir:
       secret_path = Path(tmpdir) / "api-key"
-      secret_path.write_text("frontend-secret\n", encoding="utf-8")
+      secret_path.write_text(
+        "AIPODCASTING_CLIENT_API_KEY=client-secret\n",
+        encoding="utf-8",
+      )
+      secret_path.chmod(0o600)
 
-      with mock.patch.dict(os.environ, {"AIPODCASTING_API_KEY_FILE": str(secret_path)}, clear=True):
+      with mock.patch.dict(
+        os.environ,
+        {"AIPODCASTING_CLIENT_API_KEY_FILE": str(secret_path)},
+        clear=True,
+      ):
         self.assertEqual(
-          client.build_aip_auth_headers(),
-          {"Authorization": "Bearer frontend-secret"},
+          client.build_client_auth_headers(),
+          {"Authorization": "Bearer client-secret"},
         )
 
-  def test_build_aip_auth_headers_uses_env_fallback(self) -> None:
+  def test_build_client_auth_headers_rejects_secret_env_fallback(self) -> None:
     with tempfile.TemporaryDirectory() as tmpdir:
       missing_secret_path = Path(tmpdir) / "missing-env"
       env = {
-        "AIPODCASTING_API_KEY": "frontend-env-secret",
-        "AIPODCASTING_API_KEY_FILE": str(missing_secret_path),
+        "AIPODCASTING_CLIENT_API_KEY": "leaky-env-secret",
+        "AIPODCASTING_CLIENT_API_KEY_FILE": str(missing_secret_path),
       }
       with mock.patch.dict(os.environ, env, clear=True):
-        self.assertEqual(
-          client.build_aip_auth_headers(),
-          {"Authorization": "Bearer frontend-env-secret"},
-        )
+        with self.assertRaises(upload_helper.UploadHelperError) as error_context:
+          client.build_client_auth_headers()
+
+    self.assertEqual(error_context.exception.code, "E_AUTH")
 
 
 class RequestHeaderTests(unittest.TestCase):
@@ -77,25 +85,119 @@ class RequestHeaderTests(unittest.TestCase):
   def test_episode_client_sends_named_user_agent(self) -> None:
     response = self._response()
 
-    with mock.patch.object(client.urlrequest, "urlopen", return_value=response) as urlopen:
-      client.request_json("GET", "https://app.aipodcast.ing/api/episodes", 30.0)
+    with (
+      mock.patch.object(client, "build_client_auth_headers", return_value={}),
+      mock.patch.object(client.urlrequest, "urlopen", return_value=response) as urlopen,
+    ):
+      client.request_json("GET", "https://api.aipodcast.ing/client/v1/episodes", 30.0)
 
     request = urlopen.call_args.args[0]
     self.assertEqual(request.get_header("User-agent"), client.CLIENT_USER_AGENT)
 
   def test_upload_helper_sends_named_user_agent(self) -> None:
-    response = self._response(b'{"presignedUrl":"https://upload.example","fileUrl":"https://file.example"}')
+    response = self._response(
+      b'{"upload_url":"https://upload.example","public_url":"https://file.example","object_key":"cache/client-api/tcr-agent/tcr/episode_asset/id/example.png"}'
+    )
 
-    with mock.patch.object(upload_helper.urlrequest, "urlopen", return_value=response) as urlopen:
+    with (
+      mock.patch.object(upload_helper, "build_client_auth_headers", return_value={}),
+      mock.patch.object(upload_helper.urlrequest, "urlopen", return_value=response) as urlopen,
+    ):
       upload_helper.request_json(
         "POST",
-        "https://app.aipodcast.ing/api/core/upload/generate-presigned-url",
+        "https://api.aipodcast.ing/client/v1/uploads",
         30.0,
-        {"filename": "permanent/example.png", "contentType": "image/png"},
+        {
+          "show": "TCR",
+          "purpose": "thumbnail",
+          "filename": "example.png",
+          "content_type": "image/png",
+        },
       )
 
     request = urlopen.call_args.args[0]
     self.assertEqual(request.get_header("User-agent"), upload_helper.CLIENT_USER_AGENT)
+
+
+class ClientBoundaryTests(unittest.TestCase):
+  def test_doctor_verifies_required_grants(self) -> None:
+    args = SimpleNamespace(timeout_seconds=30.0, request_id="request-1")
+    response = {
+      "api_version": "v1",
+      "client_id": "tcr-agent",
+      "allowed_shows": ["TCR"],
+      "scopes": [
+        "episodes:read",
+        "episodes:submit",
+        "episodes:intro:write",
+        "uploads:create",
+      ],
+    }
+
+    with mock.patch.object(client, "request_json", return_value=response) as request_json:
+      result = client.run_doctor(args)
+
+    self.assertTrue(result["ready"])
+    self.assertEqual(result["client_id"], "tcr-agent")
+    request_json.assert_called_once_with(
+      "GET",
+      "https://api.aipodcast.ing/client/v1/access",
+      30.0,
+      extra_headers={"X-Request-ID": "request-1"},
+    )
+
+  def test_submit_uses_request_id_as_idempotency_key(self) -> None:
+    with tempfile.TemporaryDirectory() as tmpdir:
+      payload_path = Path(tmpdir) / "submit.json"
+      payload_path.write_text(
+        json.dumps(
+          {
+            "mainSourceUrl": "https://web.descript.com/project-1",
+            "title": "Episode",
+          }
+        ),
+        encoding="utf-8",
+      )
+      args = SimpleNamespace(
+        payload_file=str(payload_path),
+        dry_run=False,
+        timeout_seconds=30.0,
+        request_id="episode-request-1",
+      )
+      response = {
+        "episode": {"source_id": "episode-1"},
+        "main_media_job_id": "job-1",
+        "replayed": False,
+      }
+
+      with mock.patch.object(client, "request_json", return_value=response) as request_json:
+        result = client.run_submit_episode(args)
+
+    self.assertEqual(result["source_id"], "episode-1")
+    self.assertEqual(result["idempotency_key"], "episode-request-1")
+    request_json.assert_called_once()
+    self.assertEqual(
+      request_json.call_args.kwargs["extra_headers"],
+      {
+        "Idempotency-Key": "episode-request-1",
+        "X-Request-ID": "episode-request-1",
+      },
+    )
+
+  def test_idempotency_in_progress_has_stable_retryable_error(self) -> None:
+    error = client.classify_http_error(
+      409,
+      {
+        "detail": {
+          "code": "idempotency_in_progress",
+          "message": "Still running.",
+        }
+      },
+    )
+
+    self.assertEqual(error.code, "E_IDEMPOTENCY_IN_PROGRESS")
+    self.assertTrue(error.retryable)
+    self.assertEqual(error.exit_code, 4)
 
 
 class NormalizeEpisodeItemTests(unittest.TestCase):
@@ -465,7 +567,7 @@ class SubmitAndIntroDryRunTests(unittest.TestCase):
 
     self.assertTrue(data["dry_run"])
     self.assertEqual(data["request"]["method"], "POST")
-    self.assertEqual(data["request"]["url"], "https://app.aipodcast.ing/api/episodes/submit")
+    self.assertEqual(data["request"]["url"], "https://api.aipodcast.ing/client/v1/episodes")
     self.assertEqual(data["request"]["payload"]["show"], "TCR")
     self.assertEqual(
       data["request"]["payload"]["files"]["main"]["raw"],
@@ -525,7 +627,7 @@ class SubmitAndIntroDryRunTests(unittest.TestCase):
     self.assertEqual(data["request"]["method"], "PATCH")
     self.assertEqual(
       data["request"]["url"],
-      "https://app.aipodcast.ing/api/episodes/ep-123/intro",
+      "https://api.aipodcast.ing/client/v1/episodes/ep-123/intro",
     )
     self.assertEqual(
       data["request"]["payload"]["title"],

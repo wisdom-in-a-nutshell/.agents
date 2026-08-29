@@ -1,4 +1,4 @@
 interface:
   display_name: "AI Podcasting"
-  short_description: "Submit episodes and update intros via API"
-  default_prompt: "Use $ai-podcasting to list episodes, submit new episodes, or patch intro/title/thumbnail copy through the AIP frontend API routes."
+  short_description: "Run scoped client podcast operations"
+  default_prompt: "Use $ai-podcasting to check access, list TCR episodes, submit an episode safely, or update intro copy through the scoped client API."

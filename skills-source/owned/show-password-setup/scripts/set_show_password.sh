@@ -11,6 +11,7 @@ LOCAL_SECRETS_BIN="${LOCAL_SECRETS_BIN:-${HOME}/GitHub/scripts/bin/local-secrets
 ENV_FILE="${ENV_FILE:-${REPO_DIR}/.env}"
 MAPPING_FILE="${MAPPING_FILE:-${REPO_DIR}/scripts/local/secrets/secret_env_map.env}"
 MAPPING_TEMPLATE_FILE="${MAPPING_TEMPLATE_FILE:-${REPO_DIR}/scripts/local/secrets/secret_env_map.env.example}"
+STATIC_DEFAULTS_FILE="${STATIC_DEFAULTS_FILE:-${REPO_DIR}/scripts/local/secrets/static_env_defaults.env}"
 BOOTSTRAP_SCRIPT="${BOOTSTRAP_SCRIPT:-${REPO_DIR}/scripts/local/secrets/bootstrap_local_env.sh}"
 RUNTIME_USER="${USER:-$(id -un)}"
 SERVICE_LABEL="${SERVICE_LABEL:-com.${RUNTIME_USER}.aipodcasting-app}"
@@ -96,12 +97,6 @@ if [[ -z "$raw_show_name" ]]; then
   exit 1
 fi
 
-password_value="$(prompt_secret 'Password (stored in the local secret store)')"
-if [[ -z "$password_value" ]]; then
-  echo "Password is required." >&2
-  exit 1
-fi
-
 show_id="$(
   echo "$raw_show_name" \
     | tr '[:lower:]' '[:upper:]' \
@@ -110,6 +105,24 @@ show_id="$(
 show_slug="$(echo "$show_id" | tr '[:upper:]' '[:lower:]' | tr '_' '-')"
 env_var="PASSWORD_SHOW_${show_id}"
 secret_name="aipodcasting-app--password-show-${show_slug}"
+
+if ! grep -Eq '^APP_ACCESS_MODE=password([[:space:]]*)$' "${STATIC_DEFAULTS_FILE}"; then
+  echo "Show-password rotation is retired because APP_ACCESS_MODE is not password." >&2
+  echo "Use the whole-app Cloudflare Access contract instead." >&2
+  exit 2
+fi
+
+if ! grep -Eq "^${env_var}=" "${MAPPING_FILE}"; then
+  echo "Refusing to add a new show password mapping for ${env_var}." >&2
+  echo "New human access is granted through the whole-app Cloudflare Access allowlist." >&2
+  exit 2
+fi
+
+password_value="$(prompt_secret 'Password (stored in the local secret store)')"
+if [[ -z "$password_value" ]]; then
+  echo "Password is required." >&2
+  exit 1
+fi
 
 echo "Writing secret ${secret_name} to local scope ${SECRET_SCOPE}..."
 printf '%s' "${password_value}" | "${LOCAL_SECRETS_BIN}" --plain --no-input set \

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Upload local files to the AIP frontend storage API and return public URLs."""
+"""Upload local files through the scoped WIN client API and return cache URLs."""
 
 from __future__ import annotations
 
@@ -9,17 +9,29 @@ import mimetypes
 import os
 import socket
 import sys
+import time
+import uuid
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 from urllib import error as urlerror
 from urllib import parse as urlparse
 from urllib import request as urlrequest
 
-FIXED_API_BASE_URL = "https://app.aipodcast.ing"
-UPLOAD_API_PATH = "/api/core/upload/generate-presigned-url"
-DEFAULT_UPLOAD_FOLDER = "permanent"
+FIXED_API_BASE_URL = "https://api.aipodcast.ing"
+UPLOAD_API_PATH = "/client/v1/uploads"
+FIXED_SHOW = "TCR"
+UPLOAD_PURPOSES = (
+  "episode_main",
+  "episode_asset",
+  "episode_intro",
+  "episode_outro",
+  "thumbnail",
+)
+DEFAULT_UPLOAD_PURPOSE = "episode_asset"
 DEFAULT_API_KEY_FILE = Path.home() / ".secrets/aipodcasting/env"
-CLIENT_USER_AGENT = "ai-podcasting-agent/1.0"
+CLIENT_USER_AGENT = "ai-podcasting-agent/2.0"
+SCHEMA_VERSION = "2.0"
 
 
 class UploadHelperError(Exception):
@@ -37,6 +49,32 @@ class UploadHelperError(Exception):
     self.retryable = retryable
     self.hint = hint
     self.exit_code = exit_code
+
+
+def now_utc_iso() -> str:
+  return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+
+
+def make_envelope(
+  *,
+  status: str,
+  data: Any,
+  error: dict[str, Any] | None,
+  request_id: str,
+  duration_ms: int,
+) -> dict[str, Any]:
+  return {
+    "schema_version": SCHEMA_VERSION,
+    "command": "upload-file",
+    "status": status,
+    "data": data,
+    "error": error,
+    "meta": {
+      "request_id": request_id,
+      "duration_ms": duration_ms,
+      "timestamp_utc": now_utc_iso(),
+    },
+  }
 
 
 def build_url(base_url: str, path: str) -> str:
@@ -71,34 +109,44 @@ def _read_secret_file(path: Path, names: tuple[str, ...]) -> str:
   return content.strip()
 
 
-def get_aip_frontend_api_key() -> str:
+def get_client_api_key() -> str:
   api_key_file = Path(
-    os.getenv("AIPODCASTING_API_KEY_FILE", str(DEFAULT_API_KEY_FILE))
+    os.getenv("AIPODCASTING_CLIENT_API_KEY_FILE", str(DEFAULT_API_KEY_FILE))
   ).expanduser()
+  try:
+    if api_key_file.stat().st_mode & 0o077:
+      raise UploadHelperError(
+        code="E_AUTH",
+        message="AI Podcasting client credential file permissions are too broad.",
+        retryable=False,
+        hint=f"Run chmod 600 {api_key_file}, then run doctor.",
+        exit_code=3,
+      )
+  except FileNotFoundError:
+    pass
+  except OSError:
+    pass
   file_key = _read_secret_file(
     api_key_file,
-    ("AIPODCASTING_API_KEY", "AIPODCASTING_API_KEYS"),
+    ("AIPODCASTING_CLIENT_API_KEY",),
   )
   if file_key:
     return file_key
 
-  env_key = os.getenv("AIPODCASTING_API_KEY", "").strip()
-  if env_key:
-    return env_key
+  raise UploadHelperError(
+    code="E_AUTH",
+    message="AI Podcasting client credential file is missing or incomplete.",
+    retryable=False,
+    hint=(
+      f"Create {api_key_file} with AIPODCASTING_CLIENT_API_KEY=<key> and mode 600, "
+      "then run doctor."
+    ),
+    exit_code=3,
+  )
 
-  env_keys = os.getenv("AIPODCASTING_API_KEYS", "")
-  for key in env_keys.split(","):
-    stripped = key.strip()
-    if stripped:
-      return stripped
 
-  return ""
-
-
-def build_aip_auth_headers() -> dict[str, str]:
-  api_key = get_aip_frontend_api_key()
-  if not api_key:
-    return {}
+def build_client_auth_headers() -> dict[str, str]:
+  api_key = get_client_api_key()
   return {"Authorization": f"Bearer {api_key}"}
 
 
@@ -123,7 +171,7 @@ def request_json(
     "Accept": "application/json",
     "User-Agent": CLIENT_USER_AGENT,
   }
-  headers.update(build_aip_auth_headers())
+  headers.update(build_client_auth_headers())
   body: bytes | None = None
 
   if payload is not None:
@@ -139,7 +187,13 @@ def request_json(
     body = parse_response_body(exc.read())
     message = ""
     if isinstance(body, dict):
-      message = str(body.get("error") or body.get("message") or "").strip()
+      detail = body.get("detail")
+      if isinstance(detail, dict):
+        message = str(detail.get("message") or "").strip()
+      elif isinstance(detail, str):
+        message = detail.strip()
+      if not message:
+        message = str(body.get("error") or body.get("message") or "").strip()
     raise UploadHelperError(
       code="E_HTTP",
       message=message or f"Request failed with HTTP {exc.code}",
@@ -228,35 +282,39 @@ def guess_content_type(local_path: Path) -> str:
 def request_upload_target(
   local_path: Path,
   timeout_seconds: float,
-  folder: str = DEFAULT_UPLOAD_FOLDER,
-) -> tuple[str, str, str]:
+  purpose: str = DEFAULT_UPLOAD_PURPOSE,
+) -> tuple[str, str, str, str]:
   content_type = guess_content_type(local_path)
   body = request_json(
     "POST",
     build_url(FIXED_API_BASE_URL, UPLOAD_API_PATH),
     timeout_seconds,
     {
-      "filename": f"{folder}/{local_path.name}",
-      "contentType": content_type,
+      "show": FIXED_SHOW,
+      "purpose": purpose,
+      "filename": local_path.name,
+      "content_type": content_type,
     },
   )
 
   presigned_url = ""
   file_url = ""
+  object_key = ""
   if isinstance(body, dict):
-    presigned_url = str(body.get("presignedUrl") or "").strip()
-    file_url = str(body.get("fileUrl") or "").strip()
+    presigned_url = str(body.get("upload_url") or "").strip()
+    file_url = str(body.get("public_url") or "").strip()
+    object_key = str(body.get("object_key") or "").strip()
 
-  if not presigned_url or not file_url:
+  if not presigned_url or not file_url or not object_key:
     raise UploadHelperError(
       code="E_BAD_RESPONSE",
       message="Upload API returned an unexpected response shape.",
       retryable=False,
-      hint="Verify /api/core/upload/generate-presigned-url is deployed and healthy.",
+      hint="Run doctor and verify /client/v1/uploads is deployed and healthy.",
       exit_code=1,
     )
 
-  return presigned_url, file_url, content_type
+  return presigned_url, file_url, content_type, object_key
 
 
 def upload_file_bytes(
@@ -318,7 +376,7 @@ def resolve_upload_source_url(
   field_name: str,
   timeout_seconds: float,
   dry_run: bool,
-  folder: str = DEFAULT_UPLOAD_FOLDER,
+  purpose: str = DEFAULT_UPLOAD_PURPOSE,
 ) -> tuple[str, dict[str, Any] | None]:
   stripped = link.strip()
   if not stripped:
@@ -346,13 +404,19 @@ def resolve_upload_source_url(
       exit_code=2,
     )
 
-  presigned_url, file_url, content_type = request_upload_target(local_path, timeout_seconds, folder)
+  presigned_url, file_url, content_type, object_key = request_upload_target(
+    local_path,
+    timeout_seconds,
+    purpose,
+  )
   upload_record = {
     "field": field_name,
     "source_path": str(local_path),
     "file_url": file_url,
     "content_type": content_type,
-    "folder": folder,
+    "purpose": purpose,
+    "lifecycle": "cache",
+    "object_key": object_key,
     "uploaded": not dry_run,
   }
 
@@ -365,14 +429,41 @@ def resolve_upload_source_url(
 def main() -> int:
   parser = argparse.ArgumentParser(
     prog="aip_local_upload_helper",
-    description="Upload a local file to the AI Podcasting storage API and print its public URL.",
+    description="Upload a local file through the scoped AI Podcasting client API.",
   )
   parser.add_argument("path", help="Local file path to upload.")
-  parser.add_argument("--folder", default=DEFAULT_UPLOAD_FOLDER, help="Upload folder prefix.")
+  parser.add_argument(
+    "--purpose",
+    choices=UPLOAD_PURPOSES,
+    default=DEFAULT_UPLOAD_PURPOSE,
+    help="Owning upload intent (default: episode_asset).",
+  )
   parser.add_argument("--timeout-seconds", type=float, default=30.0, help="HTTP timeout.")
   parser.add_argument("--dry-run", action="store_true", help="Reserve a public URL but do not upload bytes.")
-  parser.add_argument("--json", action="store_true", help="Emit JSON output.")
+  output_group = parser.add_mutually_exclusive_group()
+  output_group.add_argument(
+    "--json",
+    action="store_true",
+    help="Emit the default machine-readable JSON output.",
+  )
+  output_group.add_argument(
+    "--plain",
+    action="store_true",
+    help="Emit only the resulting public URL.",
+  )
+  parser.add_argument(
+    "--request-id",
+    default="",
+    help="Optional correlation id. Auto-generated when omitted.",
+  )
+  parser.add_argument(
+    "--no-input",
+    action="store_true",
+    help="Run non-interactively (accepted for agent compatibility).",
+  )
   args = parser.parse_args()
+  request_id = args.request_id or str(uuid.uuid4())
+  start = time.perf_counter()
 
   try:
     file_url, upload_record = resolve_upload_source_url(
@@ -380,32 +471,46 @@ def main() -> int:
       "path",
       args.timeout_seconds,
       args.dry_run,
-      folder=args.folder,
+      purpose=args.purpose,
     )
-    if args.json:
-      print(json.dumps({"status": "ok", "fileUrl": file_url, "upload": upload_record}))
-    else:
+    if args.plain:
       print(file_url)
-    return 0
-  except UploadHelperError as exc:
-    if args.json:
+    else:
       print(
         json.dumps(
-          {
-            "status": "error",
-            "error": {
-              "code": exc.code,
-              "message": exc.message,
-              "retryable": exc.retryable,
-              "hint": exc.hint,
-            },
-          }
+          make_envelope(
+            status="ok",
+            data={"file_url": file_url, "upload": upload_record},
+            error=None,
+            request_id=request_id,
+            duration_ms=int((time.perf_counter() - start) * 1000),
+          )
         )
       )
-    else:
+    return 0
+  except UploadHelperError as exc:
+    error = {
+      "code": exc.code,
+      "message": exc.message,
+      "retryable": exc.retryable,
+      "hint": exc.hint,
+    }
+    if args.plain:
       print(f"Error [{exc.code}]: {exc.message}", file=sys.stderr)
       if exc.hint:
         print(f"Hint: {exc.hint}", file=sys.stderr)
+    else:
+      print(
+        json.dumps(
+          make_envelope(
+            status="error",
+            data=None,
+            error=error,
+            request_id=request_id,
+            duration_ms=int((time.perf_counter() - start) * 1000),
+          )
+        )
+      )
     return exc.exit_code
 
 

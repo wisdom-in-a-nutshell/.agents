@@ -19,14 +19,14 @@ from urllib import request as urlrequest
 from aip_local_upload_helper import (
   CLIENT_USER_AGENT,
   UploadHelperError,
-  build_aip_auth_headers,
+  build_client_auth_headers,
   is_public_http_url,
   resolve_upload_source_url,
   validate_upload_source_list,
 )
 
-SCHEMA_VERSION = "1.0"
-FIXED_API_BASE_URL = "https://app.aipodcast.ing"
+SCHEMA_VERSION = "2.0"
+FIXED_API_BASE_URL = "https://api.aipodcast.ing"
 FIXED_SHOW = "TCR"
 TEXT_PREVIEW_LIMIT = 280
 HTML_TAG_RE = re.compile(r"<[^>]+>")
@@ -144,6 +144,13 @@ def load_json_file(path: str) -> Any:
 
 def to_error_message(body: Any, fallback: str) -> str:
   if isinstance(body, dict):
+    detail = body.get("detail")
+    if isinstance(detail, dict):
+      value = detail.get("message")
+      if isinstance(value, str) and value.strip():
+        return value.strip()
+    elif isinstance(detail, str) and detail.strip():
+      return detail.strip()
     value = body.get("error") or body.get("message") or body.get("details")
     if isinstance(value, str) and value.strip():
       return value.strip()
@@ -152,6 +159,25 @@ def to_error_message(body: Any, fallback: str) -> str:
 
 def classify_http_error(status_code: int, body: Any) -> ClientError:
   message = to_error_message(body, f"Request failed with HTTP {status_code}")
+
+  if status_code == 409:
+    detail = body.get("detail") if isinstance(body, dict) else None
+    detail_code = detail.get("code") if isinstance(detail, dict) else None
+    if detail_code == "idempotency_in_progress":
+      return ClientError(
+        code="E_IDEMPOTENCY_IN_PROGRESS",
+        message=message,
+        retryable=True,
+        hint="Retry with the same --request-id after a short delay.",
+        exit_code=4,
+      )
+    return ClientError(
+      code="E_IDEMPOTENCY_CONFLICT",
+      message=message,
+      retryable=False,
+      hint="Use the original payload or submit again with a new --request-id.",
+      exit_code=2,
+    )
 
   if status_code in (400, 404, 422):
     return ClientError(
@@ -214,12 +240,15 @@ def request_json(
   url: str,
   timeout_seconds: float,
   payload: dict[str, Any] | None = None,
+  extra_headers: dict[str, str] | None = None,
 ) -> Any:
   headers = {
     "Accept": "application/json",
     "User-Agent": CLIENT_USER_AGENT,
   }
-  headers.update(build_aip_auth_headers())
+  headers.update(build_client_auth_headers())
+  if extra_headers:
+    headers.update(extra_headers)
   body: bytes | None = None
 
   if payload is not None:
@@ -627,6 +656,7 @@ def normalize_submit_payload(
       main_file_field,
       timeout_seconds,
       dry_run,
+      purpose="episode_main",
     )
     files = normalized.setdefault("files", {})
     if isinstance(files, dict):
@@ -649,6 +679,7 @@ def normalize_submit_payload(
         f"assetUrls[{index}]",
         timeout_seconds,
         dry_run,
+        purpose="episode_asset",
       )
       resolved_asset_urls.append(resolved_url)
       if upload_record:
@@ -716,6 +747,7 @@ def normalize_intro_copy_payload(
       intro_file_source_field,
       timeout_seconds,
       dry_run,
+      purpose="episode_intro",
     )
     normalized["introFile"] = resolved_url
     if upload_record:
@@ -734,6 +766,7 @@ def normalize_intro_copy_payload(
             "deliverables.thumbnails.video.url",
             timeout_seconds,
             dry_run,
+            purpose="thumbnail",
           )
           video["url"] = resolved_url
           if upload_record:
@@ -754,6 +787,7 @@ def normalize_intro_copy_payload(
               f"deliverables.thumbnails.video.variants[{index}].url",
               timeout_seconds,
               dry_run,
+              purpose="thumbnail",
             )
             variant_copy["url"] = resolved_url
             resolved_variants.append(variant_copy)
@@ -772,6 +806,7 @@ def normalize_intro_copy_payload(
             "deliverables.thumbnails.audio.url",
             timeout_seconds,
             dry_run,
+            purpose="thumbnail",
           )
           audio["url"] = resolved_url
           if upload_record:
@@ -788,6 +823,7 @@ def normalize_intro_copy_payload(
           "files.episode_outro.edited",
           timeout_seconds,
           dry_run,
+          purpose="episode_outro",
         )
         episode_outro["edited"] = resolved_url
         if upload_record:
@@ -1389,7 +1425,7 @@ def extract_episode_items(body: Any) -> list[dict[str, Any]]:
 
   raise ClientError(
     code="E_BAD_RESPONSE",
-    message="Unexpected response shape from /api/episodes.",
+    message="Unexpected response shape from /client/v1/episodes.",
     retryable=False,
     hint="Run with --json to inspect output and align parsing rules.",
     exit_code=1,
@@ -1407,6 +1443,67 @@ def build_list_filters(args: argparse.Namespace) -> dict[str, Any]:
   }
 
 
+def args_request_id(args: argparse.Namespace) -> str:
+  value = str(getattr(args, "request_id", "") or "").strip()
+  return value or str(uuid.uuid4())
+
+
+def run_doctor(args: argparse.Namespace) -> dict[str, Any]:
+  request_id = args_request_id(args)
+  url = build_url(FIXED_API_BASE_URL, "/client/v1/access")
+  body = request_json(
+    "GET",
+    url,
+    args.timeout_seconds,
+    extra_headers={"X-Request-ID": request_id},
+  )
+  if not isinstance(body, dict):
+    raise ClientError(
+      code="E_BAD_RESPONSE",
+      message="Client access endpoint returned an unexpected response shape.",
+      retryable=False,
+      hint="Verify the deployed /client/v1 contract.",
+      exit_code=1,
+    )
+
+  client_id = str(body.get("client_id") or "").strip()
+  allowed_shows = body.get("allowed_shows")
+  scopes = body.get("scopes")
+  required_scopes = {
+    "episodes:read",
+    "episodes:submit",
+    "episodes:intro:write",
+    "uploads:create",
+  }
+  normalized_shows = {
+    str(value).strip().upper()
+    for value in allowed_shows
+    if isinstance(value, str) and value.strip()
+  } if isinstance(allowed_shows, list) else set()
+  normalized_scopes = {
+    str(value).strip()
+    for value in scopes
+    if isinstance(value, str) and value.strip()
+  } if isinstance(scopes, list) else set()
+  missing_scopes = sorted(required_scopes - normalized_scopes)
+  if not client_id or FIXED_SHOW not in normalized_shows or missing_scopes:
+    raise ClientError(
+      code="E_AUTH",
+      message="Client credential is valid but does not have the required TCR grants.",
+      retryable=False,
+      hint="Ask the service owner to grant TCR and the missing episode/upload scopes.",
+      exit_code=3,
+    )
+
+  return {
+    "ready": True,
+    "api_version": body.get("api_version"),
+    "client_id": client_id,
+    "allowed_shows": sorted(normalized_shows),
+    "scopes": sorted(normalized_scopes),
+  }
+
+
 def run_list_episodes(args: argparse.Namespace) -> dict[str, Any]:
   include_published = args.publication_state in ("all", "published")
   params = {
@@ -1415,7 +1512,7 @@ def run_list_episodes(args: argparse.Namespace) -> dict[str, Any]:
     "startDate": args.start_date or "",
     "endDate": args.end_date or "",
   }
-  url = build_url(FIXED_API_BASE_URL, "/api/episodes", params)
+  url = build_url(FIXED_API_BASE_URL, "/client/v1/episodes", params)
   filters = build_list_filters(args)
 
   if args.dry_run:
@@ -1425,7 +1522,12 @@ def run_list_episodes(args: argparse.Namespace) -> dict[str, Any]:
       "request": {"method": "GET", "url": url},
     }
 
-  body = request_json("GET", url, args.timeout_seconds)
+  body = request_json(
+    "GET",
+    url,
+    args.timeout_seconds,
+    extra_headers={"X-Request-ID": args_request_id(args)},
+  )
   matched_items = filter_episode_items(extract_episode_items(body), args.publication_state)
   matched_items = sort_episode_items(matched_items, args.publication_state)
   matched_count = len(matched_items)
@@ -1450,17 +1552,32 @@ def run_submit_episode(args: argparse.Namespace) -> dict[str, Any]:
   payload["show"] = FIXED_SHOW
   warnings = build_submit_warnings(payload)
 
-  url = build_url(FIXED_API_BASE_URL, "/api/episodes/submit")
+  url = build_url(FIXED_API_BASE_URL, "/client/v1/episodes")
+  request_id = args_request_id(args)
 
   if args.dry_run:
     return {
       "dry_run": True,
       "planned_uploads": upload_records,
       "warnings": warnings,
-      "request": {"method": "POST", "url": url, "payload": payload},
+      "request": {
+        "method": "POST",
+        "url": url,
+        "headers": {"Idempotency-Key": request_id, "X-Request-ID": request_id},
+        "payload": payload,
+      },
     }
 
-  body = request_json("POST", url, args.timeout_seconds, payload)
+  body = request_json(
+    "POST",
+    url,
+    args.timeout_seconds,
+    payload,
+    extra_headers={
+      "Idempotency-Key": request_id,
+      "X-Request-ID": request_id,
+    },
+  )
 
   source_id = ""
   if isinstance(body, dict) and isinstance(body.get("episode"), dict):
@@ -1468,6 +1585,8 @@ def run_submit_episode(args: argparse.Namespace) -> dict[str, Any]:
 
   return {
     "source_id": source_id,
+    "idempotency_key": request_id,
+    "replayed": bool(body.get("replayed")) if isinstance(body, dict) else False,
     "warnings": warnings,
     "response": body,
   }
@@ -1492,7 +1611,10 @@ def run_update_intro_copy(args: argparse.Namespace) -> dict[str, Any]:
     args.dry_run,
   )
   encoded_source_id = urlparse.quote(source_id, safe="")
-  url = build_url(FIXED_API_BASE_URL, f"/api/episodes/{encoded_source_id}/intro")
+  url = build_url(
+    FIXED_API_BASE_URL,
+    f"/client/v1/episodes/{encoded_source_id}/intro",
+  )
 
   if args.dry_run:
     return {
@@ -1501,7 +1623,13 @@ def run_update_intro_copy(args: argparse.Namespace) -> dict[str, Any]:
       "request": {"method": "PATCH", "url": url, "payload": payload},
     }
 
-  body = request_json("PATCH", url, args.timeout_seconds, payload)
+  body = request_json(
+    "PATCH",
+    url,
+    args.timeout_seconds,
+    payload,
+    extra_headers={"X-Request-ID": args_request_id(args)},
+  )
 
   response_source_id = source_id
   if isinstance(body, dict) and isinstance(body.get("episode"), dict):
@@ -1546,6 +1674,13 @@ def resolve_output_mode(args: argparse.Namespace) -> str:
 
 
 def print_human_success(command: str, data: dict[str, Any]) -> None:
+  if command == "doctor":
+    print(
+      f"Client API ready. client_id={data.get('client_id', '')} "
+      f"shows={','.join(data.get('allowed_shows', []))}"
+    )
+    return
+
   if command == "list-episodes":
     items = data.get("items", [])
     matched_count = data.get("matched_count", len(items))
@@ -1577,6 +1712,10 @@ def print_human_success(command: str, data: dict[str, Any]) -> None:
 
 
 def print_plain_success(command: str, data: dict[str, Any]) -> None:
+  if command == "doctor":
+    print("ready" if data.get("ready") else "not-ready")
+    return
+
   if command == "list-episodes":
     print("source_id\tshow\tstatus\ttitle")
     for item in data.get("items", []):
@@ -1621,6 +1760,11 @@ def build_parser() -> argparse.ArgumentParser:
   )
   subparsers = parser.add_subparsers(dest="command", required=True)
 
+  subparsers.add_parser(
+    "doctor",
+    help="Verify the credential, client identity, TCR grant, and required scopes.",
+  )
+
   list_parser = subparsers.add_parser(
     "list-episodes",
     help=f"List {FIXED_SHOW} episodes with rich summaries and publication-state filters.",
@@ -1652,7 +1796,7 @@ def build_parser() -> argparse.ArgumentParser:
 
   submit_parser = subparsers.add_parser(
     "submit-episode",
-    help="Submit a new episode payload to /api/episodes/submit.",
+    help="Submit a retry-safe new episode payload to /client/v1/episodes.",
   )
   submit_parser.add_argument(
     "--payload-file",
@@ -1703,7 +1847,10 @@ def main() -> int:
   start = time.perf_counter()
 
   try:
-    if args.command == "list-episodes":
+    args.request_id = request_id
+    if args.command == "doctor":
+      data = run_doctor(args)
+    elif args.command == "list-episodes":
       data = run_list_episodes(args)
     elif args.command == "submit-episode":
       data = run_submit_episode(args)
