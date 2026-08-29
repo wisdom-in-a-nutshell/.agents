@@ -150,4 +150,6 @@ The revision notification is deliberately after a successful push and contains
 only the repo root plus final commit SHA. It wakes the shared Mac Mini production
 reconciler when that repo is registered. It does not run checks or builds inside
 the Stop hook, and a notifier failure cannot reverse an already successful Git
-publication; the reconciler's periodic repair pass remains authoritative.
+publication. If the Mac mini later pulls that revision, Git auto-sync emits the
+same durable notification; the writer health sweep reports remaining revision
+drift without deploying it.

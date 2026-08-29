@@ -119,8 +119,9 @@ Copilot/Codex state, Git-hook enrollment, and runtime drift are checked through 
 runtime symlink targets. Control-plane tests receive a disposable `HOME` under `tmp/`, and renderer
 tests skip default per-repo dev-server and Codex-environment targets unless a test supplies an
 isolated registry and temporary workspace. Even if a future test forgets a target override, an
-exact-source full gate cannot rewrite a live managed repo. The five-minute reconcile remains
-missed-event and health recovery.
+exact-source full gate cannot rewrite a live managed repo. Delivery wakes from the durable
+publication marker or once at launchd load; the separate writer health sweep reports URL or
+revision drift without rebuilding the dashboard.
 
 `--status` allowlists launchd lifecycle fields; it does not print the inherited environment.
 
