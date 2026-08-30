@@ -221,11 +221,10 @@ class CodexMultiRepoStopTests(TempDirTestCase):
                 "collect_codex_turn_changes",
                 return_value=self.changes([first_file, second_file]),
             ):
-                with patch.object(stop, "avoid_stop_continuation", return_value=False):
-                    output = stop.process_codex_repositories(
-                        str(first),
-                        {"session_id": "thread", "hook_event_name": "Stop"},
-                    )
+                output = stop.process_codex_repositories(
+                    str(first),
+                    {"session_id": "thread", "hook_event_name": "Stop"},
+                )
 
         self.assertIsNone(output)
         self.assertEqual(run_command(["git", "-C", str(first), "status", "--porcelain"]).stdout, "")
@@ -257,11 +256,10 @@ class CodexMultiRepoStopTests(TempDirTestCase):
                 "collect_codex_turn_changes",
                 return_value=changes,
             ):
-                with patch.object(stop, "avoid_stop_continuation", return_value=False):
-                    output = stop.process_codex_repositories(
-                        str(parent),
-                        {"session_id": "parent-thread", "hook_event_name": "Stop"},
-                    )
+                output = stop.process_codex_repositories(
+                    str(parent),
+                    {"session_id": "parent-thread", "hook_event_name": "Stop"},
+                )
 
             self.assertFalse(stop.codex_transaction_path("child-thread").exists())
             self.assertFalse(stop.codex_transaction_path("parent-thread").exists())
@@ -290,11 +288,10 @@ class CodexMultiRepoStopTests(TempDirTestCase):
                 "collect_codex_turn_changes",
                 return_value=self.changes([attributed]),
             ):
-                with patch.object(stop, "avoid_stop_continuation", return_value=False):
-                    output = stop.process_codex_repositories(
-                        str(repo),
-                        {"session_id": "thread", "hook_event_name": "Stop"},
-                    )
+                output = stop.process_codex_repositories(
+                    str(repo),
+                    {"session_id": "thread", "hook_event_name": "Stop"},
+                )
 
         self.assertIsNone(output)
         self.assertEqual(
@@ -328,11 +325,10 @@ class CodexMultiRepoStopTests(TempDirTestCase):
                 "collect_codex_turn_changes",
                 return_value=self.changes([first_file, second_file, second / "scripts/check-fast.sh"]),
             ):
-                with patch.object(stop, "avoid_stop_continuation", return_value=False):
-                    output = stop.process_codex_repositories(
-                        str(first),
-                        {"session_id": "thread", "hook_event_name": "Stop"},
-                    )
+                output = stop.process_codex_repositories(
+                    str(first),
+                    {"session_id": "thread", "hook_event_name": "Stop"},
+                )
             pending = stop.load_codex_transaction("thread")
 
         self.assertEqual(output["decision"], "block")
@@ -362,11 +358,10 @@ class CodexMultiRepoStopTests(TempDirTestCase):
                 "collect_codex_turn_changes",
                 return_value=self.changes([path]),
             ):
-                with patch.object(stop, "avoid_stop_continuation", return_value=False):
-                    output = stop.process_codex_repositories(
-                        str(repo),
-                        {"session_id": "thread", "hook_event_name": "Stop"},
-                    )
+                output = stop.process_codex_repositories(
+                    str(repo),
+                    {"session_id": "thread", "hook_event_name": "Stop"},
+                )
 
         self.assertIsNone(output)
         self.assertEqual(
@@ -526,21 +521,20 @@ class CodexMultiRepoStopTests(TempDirTestCase):
         payload = {"session_id": "thread", "hook_event_name": "Stop"}
 
         with patch.dict(os.environ, {"HOME": str(self.temp_path / "home")}):
-            with patch.object(stop, "avoid_stop_continuation", return_value=False):
-                with patch.object(
-                    stop,
-                    "collect_codex_turn_changes",
-                    return_value=self.changes([first_file, second_file]),
-                ):
-                    with patch.object(stop, "push_committed_repo", side_effect=push_results):
-                        first_output = stop.process_codex_repositories(str(first), payload)
-                        state_after_failure = stop.load_codex_transaction("thread")
-                        with patch.object(
-                            stop,
-                            "collect_codex_turn_changes",
-                            return_value=self.changes([]),
-                        ):
-                            second_output = stop.process_codex_repositories(str(first), payload)
+            with patch.object(
+                stop,
+                "collect_codex_turn_changes",
+                return_value=self.changes([first_file, second_file]),
+            ):
+                with patch.object(stop, "push_committed_repo", side_effect=push_results):
+                    first_output = stop.process_codex_repositories(str(first), payload)
+                    state_after_failure = stop.load_codex_transaction("thread")
+                    with patch.object(
+                        stop,
+                        "collect_codex_turn_changes",
+                        return_value=self.changes([]),
+                    ):
+                        second_output = stop.process_codex_repositories(str(first), payload)
 
             final_state = stop.load_codex_transaction("thread")
 
@@ -563,21 +557,20 @@ class CodexMultiRepoStopTests(TempDirTestCase):
         payload = {"session_id": "thread", "hook_event_name": "Stop"}
 
         with patch.dict(os.environ, {"HOME": str(self.temp_path / "home")}):
-            with patch.object(stop, "avoid_stop_continuation", return_value=False):
+            with patch.object(
+                stop,
+                "collect_codex_turn_changes",
+                return_value=self.changes([first_file, second_file]),
+            ):
                 with patch.object(
                     stop,
-                    "collect_codex_turn_changes",
-                    return_value=self.changes([first_file, second_file]),
+                    "push_committed_repo",
+                    side_effect=[
+                        (success, ["git", "push", "origin", "HEAD"], "git push failed"),
+                        (failure, ["git", "push", "origin", "HEAD"], "git push failed"),
+                    ],
                 ):
-                    with patch.object(
-                        stop,
-                        "push_committed_repo",
-                        side_effect=[
-                            (success, ["git", "push", "origin", "HEAD"], "git push failed"),
-                            (failure, ["git", "push", "origin", "HEAD"], "git push failed"),
-                        ],
-                    ):
-                        first_output = stop.process_codex_repositories(str(first), payload)
+                    first_output = stop.process_codex_repositories(str(first), payload)
 
                 previous_head = run_command(
                     ["git", "-C", str(second), "rev-parse", "HEAD"]
@@ -894,11 +887,10 @@ class CodexMultiRepoStopTests(TempDirTestCase):
                 "collect_codex_turn_changes",
                 return_value=self.changes([local_change]),
             ):
-                with patch.object(stop, "avoid_stop_continuation", return_value=False):
-                    output = stop.process_codex_repositories(
-                        str(repo),
-                        {"session_id": "thread", "hook_event_name": "Stop"},
-                    )
+                output = stop.process_codex_repositories(
+                    str(repo),
+                    {"session_id": "thread", "hook_event_name": "Stop"},
+                )
 
         self.assertIsNotNone(output)
         assert output is not None
@@ -1019,11 +1011,10 @@ class CodexMultiRepoStopTests(TempDirTestCase):
                 "collect_codex_turn_changes",
                 return_value=self.changes([old_bundle, new_bundle]),
             ):
-                with patch.object(stop, "avoid_stop_continuation", return_value=False):
-                    output = stop.process_codex_repositories(
-                        str(repo),
-                        {"session_id": "thread", "hook_event_name": "Stop"},
-                    )
+                output = stop.process_codex_repositories(
+                    str(repo),
+                    {"session_id": "thread", "hook_event_name": "Stop"},
+                )
 
         self.assertIsNone(output)
         tree_paths = set(
