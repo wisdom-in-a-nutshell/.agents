@@ -25,10 +25,10 @@ ALLOWED_MODELS = {
     # gpt-image-1.5 is available via the litellm proxy. Lighter/older variant;
     # useful as a fallback when gpt-image-2 hits proxy timeouts on heavy edits.
     "gpt-image-1.5",
-    # gemini-3-pro-image-preview routes to Gemini (Nano Banana Pro) via the
+    # gemini-3-pro-image routes to Gemini (Nano Banana Pro) via the
     # litellm proxy. Use this when the default image route's moderation filter blocks
     # an edit (e.g. real-people compositing, faces of minors).
-    "gemini-3-pro-image-preview",
+    "gemini-3-pro-image",
 }
 DEFAULT_SIZE = "1536x864"
 DEFAULT_ASPECT_RATIO = "none"
@@ -952,7 +952,7 @@ def _add_shared_args(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--negative")
 
     # Model selection. Defaults to gpt-image-2 through the shared proxy; pass
-    # --model gemini-3-pro-image-preview to select the Gemini image route.
+    # --model gemini-3-pro-image to select the Gemini image route.
     parser.add_argument("--model", default=DEFAULT_MODEL, choices=sorted(ALLOWED_MODELS))
 
     # Post-processing (optional): generate an additional downscaled copy for fast web loading.
