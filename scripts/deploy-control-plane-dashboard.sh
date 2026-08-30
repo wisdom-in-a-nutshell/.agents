@@ -4,6 +4,7 @@ set -euo pipefail
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 SOURCE_HELPER="$ROOT_DIR/scripts/local-production-source.sh"
 ACTION="dry-run"
+ACTION_SET=0
 OUTPUT="json"
 RELEASE_ROOT="${AGENTS_CONTROL_PLANE_RELEASE_ROOT:-${HOME}/.local/share/agents-control-plane-dashboard}"
 RELEASES_DIR="$RELEASE_ROOT/releases"
@@ -17,6 +18,12 @@ ERR_LOG="${LOG_DIR}/control-plane-dashboard.err.log"
 LOG_LINES=80
 BUILD_WORKTREE=""
 TEMPORARY_RELEASE=""
+REQUEST_ID="agents-dashboard-$(/usr/bin/uuidgen | /usr/bin/tr '[:upper:]' '[:lower:]')"
+STARTED_SECONDS=${SECONDS}
+
+duration_ms() {
+  printf '%s\n' "$(((SECONDS - STARTED_SECONDS) * 1000))"
+}
 
 usage() {
   cat <<USAGE
@@ -39,14 +46,11 @@ USAGE
 
 set_action() {
   local next="$1"
-  if [[ "$ACTION" != "dry-run" && "$ACTION" != "$next" ]]; then
+  if (( ACTION_SET == 1 )) && [[ "$ACTION" != "$next" ]]; then
     emit_error "E_INVALID_USAGE" "choose exactly one action" "Run with --help." 2 false
   fi
   ACTION="$next"
-}
-
-json_escape() {
-  python3 -c 'import json,sys; print(json.dumps(sys.stdin.read()))'
+  ACTION_SET=1
 }
 
 emit_ok() {
@@ -55,9 +59,11 @@ emit_ok() {
   if [[ "$OUTPUT" == "plain" ]]; then
     printf 'ok revision=%s message=%s\n' "${revision:-none}" "$message"
   else
-    printf '{"schema_version":"1.0","command":"deploy-control-plane-dashboard","status":"ok","data":{"message":%s,"revision":%s},"error":null,"meta":{}}\n' \
-      "$(printf '%s' "$message" | json_escape)" \
-      "$(printf '%s' "$revision" | json_escape)"
+    python3 - "$message" "$revision" "$REQUEST_ID" "$(duration_ms)" <<'PY'
+import json, sys
+message,revision,request_id,duration_ms=sys.argv[1:]
+print(json.dumps({"schema_version":"1.0","command":"deploy-control-plane-dashboard","status":"ok","data":{"message":message,"revision":revision},"error":None,"meta":{"request_id":request_id,"duration_ms":int(duration_ms)}},sort_keys=True))
+PY
   fi
   exit 0
 }
@@ -92,21 +98,22 @@ emit_status() {
     printf 'service=agents-control-plane-dashboard current=%s previous=%s release_sha=%s launchd=%s state=%s pid=%s last_exit=%s health=%s\n' \
       "$current" "$previous" "${release_sha:-none}" "$launchd" "${state:-unknown}" "${pid:-none}" "${last_exit:-none}" "$health"
   else
-    python3 - "$ACTION" "$current" "$previous" "$release_sha" "$launchd" "$state" "$pid" "$last_exit" "$health" "$HEALTH_URL" <<'PY'
+    python3 - "$ACTION" "$current" "$previous" "$release_sha" "$launchd" "$state" "$pid" "$last_exit" "$health" "$HEALTH_URL" "$REQUEST_ID" "$(duration_ms)" <<'PY'
 import datetime, json, sys
-action,current,previous,sha,launchd,state,pid,last_exit,health,url=sys.argv[1:]
+action,current,previous,sha,launchd,state,pid,last_exit,health,url,request_id,duration_ms=sys.argv[1:]
 def optional(value): return None if value in {"", "none"} else value
-print(json.dumps({"schema_version":"1.0","command":"deploy-control-plane-dashboard","status":"ok","data":{"action":action,"service":"agents-control-plane-dashboard","current_release":optional(current),"previous_release":optional(previous),"release_sha":optional(sha),"launchd":{"status":launchd,"state":state or "unknown","pid":optional(pid),"last_exit_code":optional(last_exit)},"health":{"status":health,"url":url}},"error":None,"meta":{"timestamp_utc":datetime.datetime.now(datetime.timezone.utc).isoformat()}},sort_keys=True))
+print(json.dumps({"schema_version":"1.0","command":"deploy-control-plane-dashboard","status":"ok","data":{"action":action,"service":"agents-control-plane-dashboard","current_release":optional(current),"previous_release":optional(previous),"release_sha":optional(sha),"launchd":{"status":launchd,"state":state or "unknown","pid":optional(pid),"last_exit_code":optional(last_exit)},"health":{"status":health,"url":url}},"error":None,"meta":{"request_id":request_id,"duration_ms":int(duration_ms),"timestamp_utc":datetime.datetime.now(datetime.timezone.utc).isoformat()}},sort_keys=True))
 PY
   fi
   exit 0
 }
 
 emit_logs() {
-  python3 - "$OUTPUT" "$LOG_LINES" "$OUT_LOG" "$ERR_LOG" <<'PY'
+  python3 - "$OUTPUT" "$LOG_LINES" "$OUT_LOG" "$ERR_LOG" "$REQUEST_ID" "$(duration_ms)" <<'PY'
 import datetime, json, re, sys
 from pathlib import Path
-output,count_raw,*raw_paths=sys.argv[1:]
+output,count_raw,out_raw,err_raw,request_id,duration_ms=sys.argv[1:]
+raw_paths=[out_raw,err_raw]
 count=int(count_raw)
 def redact(line):
     line=re.sub(r"(?i)(authorization:\s*bearer\s+)[^\s]+",r"\1<redacted>",line)
@@ -119,7 +126,7 @@ for raw in raw_paths:
     lines=[redact(line) for line in lines]
     streams.append({"path":str(path),"lines":lines}); plain.extend([f"[{path}]",*lines])
 if output=="plain": print("\n".join(plain))
-else: print(json.dumps({"schema_version":"1.0","command":"deploy-control-plane-dashboard","status":"ok","data":{"action":"logs","line_count":count,"streams":streams},"error":None,"meta":{"timestamp_utc":datetime.datetime.now(datetime.timezone.utc).isoformat()}},sort_keys=True))
+else: print(json.dumps({"schema_version":"1.0","command":"deploy-control-plane-dashboard","status":"ok","data":{"action":"logs","line_count":count,"streams":streams},"error":None,"meta":{"request_id":request_id,"duration_ms":int(duration_ms),"timestamp_utc":datetime.datetime.now(datetime.timezone.utc).isoformat()}},sort_keys=True))
 PY
   exit 0
 }
@@ -133,11 +140,11 @@ emit_error() {
   if [[ "$OUTPUT" == "plain" ]]; then
     printf 'error code=%s retryable=%s message=%s hint=%s\n' "$code" "$retryable" "$message" "$hint"
   else
-    printf '{"schema_version":"1.0","command":"deploy-control-plane-dashboard","status":"error","data":{},"error":{"code":%s,"message":%s,"retryable":%s,"hint":%s},"meta":{}}\n' \
-      "$(printf '%s' "$code" | json_escape)" \
-      "$(printf '%s' "$message" | json_escape)" \
-      "$retryable" \
-      "$(printf '%s' "$hint" | json_escape)"
+    python3 - "$code" "$message" "$retryable" "$hint" "$REQUEST_ID" "$(duration_ms)" <<'PY'
+import json, sys
+code,message,retryable,hint,request_id,duration_ms=sys.argv[1:]
+print(json.dumps({"schema_version":"1.0","command":"deploy-control-plane-dashboard","status":"error","data":{},"error":{"code":code,"message":message,"retryable":retryable=="true","hint":hint},"meta":{"request_id":request_id,"duration_ms":int(duration_ms)}},sort_keys=True))
+PY
   fi
   exit "$exit_code"
 }
@@ -183,7 +190,7 @@ trap cleanup EXIT
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --apply) set_action apply; shift ;;
-    --dry-run) ACTION="dry-run"; shift ;;
+    --dry-run) set_action dry-run; shift ;;
     --status) set_action status; shift ;;
     --health) set_action health; shift ;;
     --logs)
