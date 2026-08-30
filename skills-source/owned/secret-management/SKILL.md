@@ -44,7 +44,7 @@ Use for deployed application secrets.
 - Wire the value through the owning runtime's actual materialization contract. Current Mac Mini
   services use repo mappings plus generated `.env` files and repo-owned deploy/restart commands.
 - Use provider-native references or deploy-time sync only for a runtime that actually supports and
-  consumes them; do not recreate retired Azure App Service settings.
+  consumes them; do not recreate retired cloud-host settings.
 - If local repo development also needs the value, use the same canonical secret family in its generated
   `.env` rather than creating another owner.
 
@@ -74,7 +74,7 @@ the Mac Mini. Keep the local store canonical.
 - Prefer local deployment automation when the workload already runs on the Mac Mini.
 - For Modal or another external runtime, sync selected values from the local store using an
   explicit manifest and a local operator/deployment step.
-- Do not make Azure login or Key Vault access a bootstrap dependency for new workflows.
+- Do not make a cloud-vault login a bootstrap dependency for new local workflows.
 
 ## Naming Rules
 

@@ -19,7 +19,7 @@ owning repository's docs.
 2. Name the next consumer before choosing storage:
    - same process/container;
    - another Modal container;
-   - WIN/Azure/background job;
+   - WIN or another background job;
    - browser or HTTP-only provider;
    - user-facing deliverable;
    - durable product inventory; or
@@ -38,7 +38,7 @@ owning repository's docs.
 | --- | --- | --- |
 | Container-local file | Producer and consumer run in the same container invocation | Delete in `finally`; never serialize or return the path remotely |
 | Modal internal artifact | Another Modal container or bounded retry needs the bytes | Use typed `MediaArtifactRef`; validate capability/manifest; let the 72-hour artifact lifecycle or exact run cleanup remove it |
-| R2 `cache/` | A browser, Azure job, independent caller, or HTTP-only consumer needs a URL | Treat as temporary transport; persist provenance; validate before reuse and reacquire or regenerate when missing |
+| R2 `cache/` | A browser, independent caller, background job, or HTTP-only consumer needs a URL | Treat as temporary transport; persist provenance; validate before reuse and reacquire or regenerate when missing |
 | R2 `share/` | A deliberately time-bounded, user-facing or cross-machine deliverable must outlive ordinary cache | Require a named product owner and documented expiry; never use as an unowned processing default |
 | R2 `permanent/` | The object is canonical durable inventory or a retained product asset | Use an owner-stable key, authoritative reference, replacement cleanup, and owner-deletion cleanup |
 | Provider-owned storage | Ghost, YouTube, Transistor, Frame.io, or another destination accepts and owns the final bytes | Upload directly where possible; persist the provider identity needed by the product; do not retain a duplicate R2 final without a separate consumer |

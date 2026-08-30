@@ -1210,7 +1210,6 @@ sync_profile_configs() {
   local profile_template
   local target_file
   local profile_name
-  local stale_profile
 
   target_dir="$(dirname "$GLOBAL_CONFIG")"
   ensure_parent_dir "${target_dir}/config.toml"
@@ -1233,14 +1232,13 @@ sync_profile_configs() {
   done
   shopt -u nullglob
 
-  for stale_profile in azure.config.toml azure-key.config.toml; do
-    target_file="${target_dir}/${stale_profile}"
-    if [[ ! -e "$target_file" && ! -L "$target_file" ]]; then
-      continue
-    fi
+  shopt -s nullglob
+  for target_file in "$target_dir"/*.config.toml; do
+    profile_name="$(basename "$target_file")"
+    [[ -e "${CANONICAL_DIR}/${profile_name}" ]] && continue
 
     log ""
-    log "=== Stale Codex Profile (${target_file}) ==="
+    log "=== Orphaned Codex Profile (${target_file}) ==="
     show_diff "$target_file" /dev/null
 
     if (( APPLY == 1 )); then
@@ -1248,6 +1246,7 @@ sync_profile_configs() {
       log "Removed: $target_file"
     fi
   done
+  shopt -u nullglob
 }
 
 ensure_enabled_openai_bundled_plugins() {

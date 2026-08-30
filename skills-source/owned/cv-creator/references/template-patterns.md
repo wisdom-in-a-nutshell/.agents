@@ -275,7 +275,7 @@ already collects it.
   with 5-6 tools reads as confident.
 - Capitalize the first word of each comma-separated item (Title Case on first
   word). This makes every item read as a labeled tag, not running prose.
-- Proper nouns (Python, Azure, MCP) keep their natural capitalization.
+- Proper nouns (Python, Kubernetes, MCP) keep their natural capitalization.
 
 ### Details
 

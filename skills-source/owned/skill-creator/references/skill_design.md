@@ -75,7 +75,7 @@ cloud-deploy/
 ├── SKILL.md
 └── references/
     ├── aws.md
-    ├── azure.md
+    ├── provider-b.md
     └── gcp.md
 ```
 

@@ -3,7 +3,6 @@ from __future__ import annotations
 import json
 import importlib.util
 import os
-import sqlite3
 import subprocess
 import sys
 from types import SimpleNamespace
@@ -711,7 +710,7 @@ class HooksControlPlaneTests(TempDirTestCase):
         run_command(["git", "-C", str(repo), "checkout", "-b", "feature/test"])
         (repo / "note.txt").write_text("hello\n", encoding="utf-8")
 
-        with patch.dict(os.environ, {"HOME": str(self.temp_path / "non-azure-home")}):
+        with patch.dict(os.environ, {"HOME": str(self.temp_path / "test-home")}):
             with patch.object(module, "log"):
                 output = module.process_repo(str(repo), {"hook_event_name": "Stop"}, runtime="codex")
 
@@ -870,7 +869,7 @@ class HooksControlPlaneTests(TempDirTestCase):
         )
         (repo / "note.txt").write_text("hello\n", encoding="utf-8")
 
-        with patch.dict(os.environ, {"HOME": str(self.temp_path / "non-azure-home")}):
+        with patch.dict(os.environ, {"HOME": str(self.temp_path / "test-home")}):
             with patch.object(module, "log"):
                 output = module.process_repo(str(repo), {"hook_event_name": "Stop"}, runtime="codex")
 
@@ -880,125 +879,6 @@ class HooksControlPlaneTests(TempDirTestCase):
         self.assertIn("git commit / pre-commit checks", output["reason"])
         self.assertIn("repo check failed", output["reason"])
         self.assertIn("Please fix the issue", output["reason"])
-
-    def test_stop_hook_queues_follow_up_turn_for_azure_thread(self) -> None:
-        module = self.load_stop_module()
-        home = self.temp_path / "home"
-        codex_home = home / ".codex"
-        codex_home.mkdir(parents=True)
-        conn = sqlite3.connect(codex_home / "state_5.sqlite")
-        try:
-            conn.execute("CREATE TABLE threads (id TEXT PRIMARY KEY, model_provider TEXT)")
-            conn.execute(
-                "INSERT INTO threads (id, model_provider) VALUES (?, ?)",
-                ("thread-1", "azure-key"),
-            )
-            conn.commit()
-        finally:
-            conn.close()
-
-        captured_command: list[str] = []
-
-        def fake_popen(cmd, **_kwargs):  # noqa: ANN001
-            captured_command.extend(str(part) for part in cmd)
-            return SimpleNamespace(pid=12345)
-
-        with patch.dict(os.environ, {"HOME": str(home)}):
-            with patch.object(module.subprocess, "Popen", side_effect=fake_popen):
-                output = module.maybe_continue(
-                    {"session_id": "thread-1"},
-                    "repo check failed",
-                    cwd=str(self.temp_path / "repo"),
-                )
-
-        self.assertNotIn("decision", output)
-        self.assertIn("systemMessage", output)
-        self.assertIn("finalization failed", output["systemMessage"])
-        self.assertIn("queued a follow-up turn", output["systemMessage"])
-        self.assertIn("stop_feedback_turn.py", [os.path.basename(part) for part in captured_command])
-        self.assertIn("--thread-id", captured_command)
-        self.assertIn("thread-1", captured_command)
-
-    def test_stop_hook_warns_when_azure_follow_up_turn_cannot_be_queued(self) -> None:
-        module = self.load_stop_module()
-        home = self.temp_path / "home"
-        codex_home = home / ".codex"
-        codex_home.mkdir(parents=True)
-        conn = sqlite3.connect(codex_home / "state_5.sqlite")
-        try:
-            conn.execute("CREATE TABLE threads (id TEXT PRIMARY KEY, model_provider TEXT)")
-            conn.execute(
-                "INSERT INTO threads (id, model_provider) VALUES (?, ?)",
-                ("thread-1", "azure-key"),
-            )
-            conn.commit()
-        finally:
-            conn.close()
-
-        with patch.dict(os.environ, {"HOME": str(home)}):
-            output = module.maybe_continue(
-                {"session_id": "thread-1"},
-                "repo check failed",
-            )
-
-        self.assertNotIn("decision", output)
-        self.assertIn("systemMessage", output)
-        self.assertIn("could not queue", output["systemMessage"])
-        self.assertIn("repo check failed", output["systemMessage"])
-
-    def test_stop_hook_deduplicates_azure_feedback_when_commit_timestamp_changes(self) -> None:
-        module = self.load_stop_module()
-        home = self.temp_path / "home"
-        codex_home = home / ".codex"
-        codex_home.mkdir(parents=True)
-        conn = sqlite3.connect(codex_home / "state_5.sqlite")
-        try:
-            conn.execute("CREATE TABLE threads (id TEXT PRIMARY KEY, model_provider TEXT)")
-            conn.execute(
-                "INSERT INTO threads (id, model_provider) VALUES (?, ?)",
-                ("thread-1", "azure-key"),
-            )
-            conn.commit()
-        finally:
-            conn.close()
-
-        popen_calls: list[list[str]] = []
-
-        def fake_popen(cmd, **_kwargs):  # noqa: ANN001
-            popen_calls.append([str(part) for part in cmd])
-            return SimpleNamespace(pid=12345)
-
-        first_reason = "\n".join(
-            [
-                "I tried to commit and publish the changes from this turn, but `git commit / pre-commit checks` failed.",
-                "",
-                "Repository: /repo",
-                "Branch: main",
-                "Command: git commit -m Agent: 2026-05-29 12:41:59Z",
-                "Exit code: 1",
-                "",
-                "stderr:",
-                "repo check failed",
-            ]
-        )
-        second_reason = first_reason.replace("12:41:59Z", "12:42:12Z")
-
-        with patch.dict(os.environ, {"HOME": str(home)}):
-            with patch.object(module.subprocess, "Popen", side_effect=fake_popen):
-                first_output = module.maybe_continue(
-                    {"session_id": "thread-1"},
-                    first_reason,
-                    cwd=str(self.temp_path / "repo"),
-                )
-                second_output = module.maybe_continue(
-                    {"session_id": "thread-1"},
-                    second_reason,
-                    cwd=str(self.temp_path / "repo"),
-                )
-
-        self.assertIn("queued a follow-up turn", first_output["systemMessage"])
-        self.assertIn("already queued recently", second_output["systemMessage"])
-        self.assertEqual(len(popen_calls), 1)
 
     def test_stop_feedback_turn_starts_app_server_turn(self) -> None:
         fake_bin = self.temp_path / "bin"

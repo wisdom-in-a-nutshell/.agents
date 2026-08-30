@@ -796,11 +796,15 @@ for profile_template in sorted(canonical_dir.glob("*.config.toml")):
     except Exception as exc:
         fail(f"failed reading Codex profile {profile_runtime}: {exc}")
 
-for stale_profile_name in ("azure.config.toml", "azure-key.config.toml"):
-    stale_profile = global_config_dir / stale_profile_name
-    if stale_profile.exists() or stale_profile.is_symlink():
+canonical_profile_names = {
+    profile_template.name
+    for profile_template in canonical_dir.glob("*.config.toml")
+    if profile_template.name != "global.config.toml"
+}
+for profile_runtime in sorted(global_config_dir.glob("*.config.toml")):
+    if profile_runtime.name not in canonical_profile_names:
         fail(
-            f"stale Codex profile still exists: {stale_profile}. "
+            f"orphaned Codex profile still exists: {profile_runtime}. "
             "Re-run codex/scripts/sync-config.sh --apply."
         )
 

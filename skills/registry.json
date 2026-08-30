@@ -422,10 +422,6 @@
       "skill": "blog-posting"
     },
     {
-      "repo": "litellm",
-      "skill": "azure-model-rollout"
-    },
-    {
       "repo": "win",
       "skill": "add-env-var"
     },

@@ -81,18 +81,7 @@ Use [Codex Control Plane Ownership](/Users/dobby/GitHub/agents/docs/references/c
 - Apply only the managed Codex config:
   - [`sync-config.sh`](/Users/dobby/GitHub/agents/codex/scripts/sync-config.sh)
   - `~/GitHub/agents/codex/scripts/sync-config.sh --apply`
-  - this syncs the managed global config, global `hooks.json`, removes stale managed Azure profile files, and removes stale managed agent-role files from older control-plane versions
-- Switch the managed global Codex subscription/provider default:
-  - [`switch-codex-subscription.sh`](/Users/dobby/GitHub/agents/codex/scripts/switch-codex-subscription.sh)
-  - `~/GitHub/agents/codex/scripts/switch-codex-subscription.sh status`
-  - `~/GitHub/agents/codex/scripts/switch-codex-subscription.sh chatgpt --apply`
-  - `~/GitHub/agents/codex/scripts/switch-codex-subscription.sh azure --apply`
-  - this rewrites [`global.config.toml`](/Users/dobby/GitHub/agents/codex/config/global.config.toml), syncs `~/.codex/config.toml`, and validates the rendered control plane
-  - for a one-off run without changing the global default, use `codex --profile chatgpt` or `codex --profile azure-openai`
-- Check local Azure OpenAI auth readiness only when intentionally testing an Azure-backed Codex profile:
-  - [`check-codex-azure-auth.sh`](/Users/dobby/GitHub/agents/codex/scripts/check-codex-azure-auth.sh)
-  - `~/GitHub/agents/codex/scripts/check-codex-azure-auth.sh`
-  - this legacy helper verifies `~/.codex/config.toml` uses the `azure-key` provider and that `AZURE_OPENAI_API_KEY` is available from the generated machine-local secret file
+  - this syncs the managed global config, global `hooks.json`, removes orphaned managed profile files, and removes stale managed agent-role files from older control-plane versions
 - Validate canonical and rendered Codex control-plane state:
   - [`check-codex-control-plane.sh`](/Users/dobby/GitHub/agents/codex/scripts/check-codex-control-plane.sh)
   - `~/GitHub/agents/codex/scripts/check-codex-control-plane.sh`
@@ -137,7 +126,6 @@ Use [Codex Control Plane Ownership](/Users/dobby/GitHub/agents/docs/references/c
   - relies on managed repo local `core.hooksPath` pointing at `~/GitHub/agents/hooks/git`
   - returns aggregated hook feedback to the originating Codex task when any repository fails, so the same task can repair every affected repository
   - fails closed when cross-repository attribution is unavailable, while the primary repository retains the established current-repo fallback
-  - queues an App Server follow-up turn for Azure-backed Codex threads because Azure Responses currently rejects some replayed local Codex item IDs used by built-in Stop-hook continuation; remove this workaround after upstream Codex fixes `openai/codex#20783`
   - tracked branches use an optimistic `commit -> push` path and only run `git pull --rebase` when push reports that the remote is ahead; after a successful rebase, the hook reruns `scripts/check-fast.sh` and requires a clean repository before retrying the push
   - brand-new branches without upstream tracking use an initial `git push -u <remote> HEAD`, so the hook can publish the branch before future tracked-branch pulls
   - after each successful `main` push, best-effort notifies `~/GitHub/scripts/sync/local-production-notify.sh` with the repo root and final commit SHA; the hook never builds an app, skips non-`main` branches and unregistered repos, and does not turn a successful Git publication into a failure when the local notifier is unavailable; Mac mini Git auto-sync emits the same event for a changed `main` revision it pulls, while the separate writer health sweep reports remaining revision drift without deploying it
@@ -150,8 +138,7 @@ Use [Codex Control Plane Ownership](/Users/dobby/GitHub/agents/docs/references/c
 - `~/.codex/config.toml` explicitly preserves enabled native Codex plugins such as `computer-use@openai-bundled`, points `openai-bundled` at the marketplace inside `ChatGPT.app`, and disables bundled Codex skills classified as `disabled` in [`bundled-skills-policy.json`](/Users/dobby/GitHub/agents/codex/config/bundled-skills-policy.json)
 - `scripts/audit-agent-runtime-drift.py --repair-managed-plugin-drift` repairs missing managed native Codex plugin config/cache state by running [`sync-config.sh`](/Users/dobby/GitHub/agents/codex/scripts/sync-config.sh) once and then re-auditing. The scripts repo health check uses this path so app/runtime cache churn does not require a manual `computer-use` repair.
 - `~/.codex/auth.json` uses `auth_mode = "chatgpt"`. In the normal global default, `~/.codex/config.toml` leaves `model_provider` unset, so Codex uses the default OpenAI ChatGPT account provider. [`global.config.toml`](/Users/dobby/GitHub/agents/codex/config/global.config.toml) also leaves `model`, reasoning effort, and `service_tier` unset so a client's new-thread selection wins and Codex starts on its normal Standard tier.
-- `~/.codex/chatgpt.config.toml`, `~/.codex/azure-openai.config.toml`, and `~/.codex/autofix.config.toml` are managed profile overlays copied from [`codex/config/`](/Users/dobby/GitHub/agents/codex/config). Use the provider profiles for one-off selection with `codex --profile chatgpt` or `codex --profile azure-openai`; the health incident responder uses `codex --profile autofix`. Embedded `[profiles.<name>]` tables are legacy and are not used.
-- Do not keep stale Azure OpenAI profile files or providers from older control-plane versions. In particular, `~/.codex/azure.config.toml`, `~/.codex/azure-key.config.toml`, `[model_providers.azure]`, and `az account get-access-token` auth-command wiring should be removed by `sync-config.sh --apply`.
+- `~/.codex/chatgpt.config.toml` and `~/.codex/autofix.config.toml` are managed profile overlays copied from [`codex/config/`](/Users/dobby/GitHub/agents/codex/config). Use `codex --profile chatgpt` for an explicit account-provider run; the health incident responder uses `codex --profile autofix`. Embedded `[profiles.<name>]` tables are legacy and are not used.
 - Keep Fast controls available, but do not set a top-level `service_tier`; Fast is an explicit client/thread choice rather than a managed default. Do not add separate desktop-only service-tier keys unless Codex has a verified compact-safe desktop service-tier path.
 - `~/.codex/hooks.json` is rendered from `hooks/registry.json` for global Codex hooks. The managed `Stop` hook renders there; repo-specific lifecycle hooks such as `SessionStart` and `UserPromptSubmit` render into repo `.codex/hooks.json`.
 - `com.<user>.codex-thread-finalizer` is loaded as a LaunchAgent and runs [`finalize-stale-codex-threads.py`](/Users/dobby/GitHub/agents/codex/scripts/finalize-stale-codex-threads.py) every hour against managed repo paths from [`repo-bootstrap.json`](/Users/dobby/GitHub/agents/codex/config/repo-bootstrap.json).
@@ -159,36 +146,12 @@ Use [Codex Control Plane Ownership](/Users/dobby/GitHub/agents/docs/references/c
 - `~/.codex/vendor_imports/skills` is a valid Git checkout:
   - `git -C ~/.codex/vendor_imports/skills rev-parse --show-toplevel`
 
-## Stop Hook Azure Feedback Workaround
-
-The managed `Stop` hook normally uses Codex's built-in blocking continuation path: when commit, check, rebase, or push finalization fails, the hook returns `{"decision":"block","reason":"..."}` so Codex injects the failure into the current thread and asks the agent to fix it.
-
-Azure-backed Codex threads use a temporary App Server follow-up turn instead. This is legacy support for explicit Azure-backed runs; the global default is the OpenAI ChatGPT account provider. Built-in Stop-hook continuation could fail before the agent saw the hook feedback because Azure Responses rejected replayed local Codex item IDs with `Invalid 'input[N].id' ... Expected an ID that begins with 'msg'`. The local workaround is tracked against [openai/codex#20783](https://github.com/openai/codex/issues/20783) and should be removed once upstream Codex can safely replay Stop-hook continuation context for local UUID message IDs.
-
-Current behavior:
-
-- Non-Azure threads keep using built-in Stop-hook continuation.
-- Azure-backed threads are detected from the hook payload `model_provider` / `modelProvider`, then from `~/.codex/state_5.sqlite` by `session_id`, then from the top-level `model_provider` in `~/.codex/config.toml` if one is explicitly configured.
-- Clean repos, non-Git directories, and successful commit/push finalization return no hook output and do not start any feedback turn.
-- Retryable finalization failures call [`stop_feedback_turn.py`](/Users/dobby/GitHub/agents/hooks/scripts/stop_feedback_turn.py) in a detached process instead of returning `decision: "block"`.
-- The hook payload `session_id` is passed directly as the App Server `threadId`; the helper does not infer the current thread from logs, window state, or the repo path.
-- The helper resumes the thread, starts a new turn, and injects the original failure details. The failure details already include the actionable instruction, repo, branch, command, exit code, stderr/stdout, and `git status --porcelain`.
-- Duplicate protection records a normalized hash of `(thread_id, failure_reason)` for 20 minutes under `~/.local/state/agents-control-plane/stop-feedback-turns.json`; generated `Agent: <timestamp>` commit messages are normalized so the same failure does not create repeated follow-up turns just because the timestamp changed.
-- Helper execution logs to `~/.local/state/agents-control-plane/log/hooks-stop-feedback-turn.log`.
-
-Verification expectations:
-
-- A clean mocked Azure repo should produce no stdout and no App Server calls.
-- A mocked Azure repo with a failing commit/check should return a `systemMessage` saying a follow-up turn was queued.
-- The fake App Server should observe `initialize`, `thread/resume`, and `turn/start`.
-- The `turn/start` payload should use the original hook `session_id` as `threadId`, the failing repo as `cwd`, and a prompt containing the original failure details.
-
 ## Main Scripts And Jobs
 
 - [`sync-config.sh`](/Users/dobby/GitHub/agents/codex/scripts/sync-config.sh)
   - applies the canonical Codex config template into the live global config
   - copies canonical Codex profile files from `codex/config/*.config.toml` into `~/.codex/*.config.toml`, excluding `global.config.toml`
-  - keeps `chatgpt.config.toml` and `azure-openai.config.toml` available as explicit one-off profiles
+  - keeps `chatgpt.config.toml` available as the explicit account-provider profile
   - keeps Apps/connectors globally disabled through the managed `features.apps = false` baseline
   - renders global-scope native Codex plugin enable/disable state from [`plugins/registry.json`](/Users/dobby/GitHub/agents/plugins/registry.json)
   - points the `openai-bundled` marketplace at `ChatGPT.app` directly and seeds `~/.codex/plugins/cache` only for bundled plugins enabled by the registry
@@ -201,11 +164,6 @@ Verification expectations:
   - prunes stale managed agent declarations and runtime role files left by older control-plane versions
   - fails fast if the target config contains unresolved Git conflict markers
   - skips no-op rewrites
-- [`switch-codex-subscription.sh`](/Users/dobby/GitHub/agents/codex/scripts/switch-codex-subscription.sh)
-  - switches the persistent global default between `chatgpt` and `azure`
-  - removes or adds the top-level `model_provider = "azure-key"` and the `[model_providers.azure-key]` block in [`global.config.toml`](/Users/dobby/GitHub/agents/codex/config/global.config.toml)
-  - runs [`sync-config.sh`](/Users/dobby/GitHub/agents/codex/scripts/sync-config.sh) and [`check-codex-control-plane.sh`](/Users/dobby/GitHub/agents/codex/scripts/check-codex-control-plane.sh) by default when `--apply` is used
-  - supports `status` to compare the canonical and rendered runtime provider mode
 - [`sync-hook-trust-state.py`](/Users/dobby/GitHub/agents/codex/scripts/sync-hook-trust-state.py)
   - computes Codex's normalized hook trust hash for managed global and repo-local hooks
   - writes those hashes under `[hooks.state]` in `~/.codex/config.toml`

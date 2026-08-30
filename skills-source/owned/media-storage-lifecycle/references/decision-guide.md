@@ -10,7 +10,7 @@ the invariant; verify time-sensitive retention settings in the owning system.
 | --- | --- | --- |
 | Same-function FFmpeg segments and transforms | Container-local | No serialized consumer exists |
 | Cross-container Modal processing and bounded retry | Modal internal artifact | Typed, validated handoff without a public R2 intermediate |
-| YouTube, Riverside, Descript, URL, or local-file ingestion | R2 `cache/` plus original provenance | WIN/Azure needs an HTTP URL, but the source can be reacquired |
+| YouTube, Riverside, Descript, URL, or local-file ingestion | R2 `cache/` plus original provenance | A downstream HTTP consumer needs a URL, but the source can be reacquired |
 | Independent media jobs returning browser-readable output | R2 `cache/` | Public transport is required; the result is reproducible |
 | Ghost feature images | Ghost media library | Ghost is the durable publisher; R2 is only temporary input when needed |
 | YouTube video/thumbnail publication | Direct YouTube upload | YouTube owns the published bytes |

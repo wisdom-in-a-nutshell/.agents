@@ -9,7 +9,7 @@ cd "$(dirname "$0")/.."
 MANAGED_REPO_CHECK_ROOT="${AGENTS_MANAGED_REPO_CHECK_ROOT:-$PWD}"
 
 scripts/check-repo-hygiene.sh
-bash -n hooks/git/pre-commit scripts/sync-managed-git-hooks.sh scripts/check-agent-control-planes.sh scripts/auto-apply-agent-control-planes.sh scripts/enroll-managed-repos.sh scripts/serve-control-plane-dashboard.sh scripts/install-control-plane-dashboard-launchagent.sh scripts/install-prune-stale-copilot-sessions-launchagent.sh scripts/deploy-control-plane-dashboard.sh scripts/local-production-source.sh scripts/switch-claude-provider.sh codex/scripts/switch-codex-subscription.sh
+bash -n hooks/git/pre-commit scripts/sync-managed-git-hooks.sh scripts/check-agent-control-planes.sh scripts/auto-apply-agent-control-planes.sh scripts/enroll-managed-repos.sh scripts/serve-control-plane-dashboard.sh scripts/install-control-plane-dashboard-launchagent.sh scripts/install-prune-stale-copilot-sessions-launchagent.sh scripts/deploy-control-plane-dashboard.sh scripts/local-production-source.sh scripts/switch-claude-provider.sh
 scripts/check-skills-registry.sh --staged-ok
 scripts/check-plugins-registry.sh --staged-ok
 python3 -m unittest tests.control_plane.test_project_archive
