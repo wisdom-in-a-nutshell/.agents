@@ -32,7 +32,8 @@ flowchart TD
 - `hooks/registry.json` and `hooks/scripts/`: shared lifecycle hook definitions and dispatchers.
 - `codex/config/repo-bootstrap.json`: managed repo inventory and repo-local Codex behavior.
 - `dev-servers/registry.json`: opt-in repo agent-preview surface for Claude Code, Codex, and the GitHub Copilot app. It is for short-lived local dev previews only; public Cloudflare/LaunchAgent service ports stay in `~/GitHub/scripts`.
-- `dashboard/` and `dashboard-app/`: local read-only control-plane dashboard assets.
+- `dashboard-app/`: source for the local read-only control-plane dashboard; production serves a
+  versioned external release, not tracked build output.
 
 ## Generated Runtime Surfaces
 

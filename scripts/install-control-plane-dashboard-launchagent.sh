@@ -3,8 +3,6 @@ set -euo pipefail
 
 APPLY=0
 UNINSTALL=0
-STATUS_ONLY=0
-LOG_LINES=0
 LABEL="com.${USER}.agents-control-plane-dashboard"
 ROOT_DIR="${AGENTS_CONTROL_PLANE_ROOT:-${HOME}/GitHub/agents}"
 HOST="127.0.0.1"
@@ -29,8 +27,6 @@ Options:
   --apply              Write and load the LaunchAgent
   --dry-run            Print the plist only (default)
   --uninstall          Unload and remove the LaunchAgent plist
-  --status             Print launchctl status and local readiness
-  --logs [n]           Tail launchd logs (default lines: 80)
   --label <label>      LaunchAgent label
   --root <path>        agents control-plane repo root (default: ~/GitHub/agents)
   --host <host>        Local bind host (default: 127.0.0.1)
@@ -46,7 +42,6 @@ Options:
 Examples:
   ~/GitHub/agents/scripts/install-control-plane-dashboard-launchagent.sh
   ~/GitHub/agents/scripts/install-control-plane-dashboard-launchagent.sh --apply
-  ~/GitHub/agents/scripts/install-control-plane-dashboard-launchagent.sh --status
 USAGE
 }
 
@@ -158,29 +153,6 @@ render_plist() {
 PLIST
 }
 
-print_status() {
-  local domain="gui/$(id -u)"
-  if launchctl print "${domain}/${LABEL}" >/dev/null 2>&1; then
-    printf 'LaunchAgent loaded: %s\n' "$LABEL"
-    launchctl print "${domain}/${LABEL}" 2>/dev/null | awk '
-      /^\t(state|runs|pid|last exit code|run interval) = / {
-        line = $0
-        sub(/^\t/, "", line)
-        print line
-      }
-    '
-  else
-    printf 'LaunchAgent not loaded: %s\n' "$LABEL"
-  fi
-
-  if curl -fsS "$(local_api_url)" >/dev/null 2>&1; then
-    printf 'Local dashboard: available\n'
-  else
-    printf 'Local dashboard: unavailable\n'
-  fi
-  printf 'Local URL: %s\n' "$(local_url)"
-}
-
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --apply)
@@ -194,19 +166,6 @@ while [[ $# -gt 0 ]]; do
     --uninstall)
       UNINSTALL=1
       shift
-      ;;
-    --status)
-      STATUS_ONLY=1
-      shift
-      ;;
-    --logs)
-      if [[ -n "${2:-}" && "${2:-}" != --* ]]; then
-        LOG_LINES="$2"
-        shift 2
-      else
-        LOG_LINES=80
-        shift
-      fi
       ;;
     --label)
       LABEL="${2:-}"
@@ -259,7 +218,6 @@ SERVER_SCRIPT="${SERVER_SCRIPT:-${ROOT_DIR}/scripts/control-plane-dashboard.py}"
 [[ -n "$DASHBOARD_ROOT" ]] || die "missing --dashboard-root"
 [[ -n "$RELEASE_SHA" ]] || die "missing --release-sha"
 is_int "$PORT" || die "invalid --port: $PORT"
-is_int "$LOG_LINES" || die "invalid --logs value: $LOG_LINES"
 if [[ -z "$PYTHON_BIN" ]]; then
   PYTHON_BIN="$(resolve_default_python_bin)" || die "missing python executable: python3"
 elif [[ "$PYTHON_BIN" != /* ]]; then
@@ -268,19 +226,6 @@ fi
 [[ -x "$PYTHON_BIN" ]] || die "missing python executable: $PYTHON_BIN"
 
 DOMAIN="gui/$(id -u)"
-
-if (( STATUS_ONLY == 1 )); then
-  print_status
-  exit 0
-fi
-
-if (( LOG_LINES > 0 )); then
-  printf '[logs] stdout: %s\n' "$OUT_LOG"
-  tail -n "$LOG_LINES" "$OUT_LOG" 2>/dev/null || true
-  printf '[logs] stderr: %s\n' "$ERR_LOG"
-  tail -n "$LOG_LINES" "$ERR_LOG" 2>/dev/null || true
-  exit 0
-fi
 
 if (( UNINSTALL == 1 )); then
   launchctl bootout "$DOMAIN" "$PLIST_PATH" >/dev/null 2>&1 || true

@@ -3,13 +3,18 @@ set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 SOURCE_HELPER="$ROOT_DIR/scripts/local-production-source.sh"
-APPLY=0
+ACTION="dry-run"
 OUTPUT="json"
 RELEASE_ROOT="${AGENTS_CONTROL_PLANE_RELEASE_ROOT:-${HOME}/.local/share/agents-control-plane-dashboard}"
 RELEASES_DIR="$RELEASE_ROOT/releases"
 CURRENT_LINK="$RELEASE_ROOT/current"
 PREVIOUS_LINK="$RELEASE_ROOT/previous"
 HEALTH_URL="http://127.0.0.1:8765/api/control-plane"
+LABEL="com.${USER}.agents-control-plane-dashboard"
+LOG_DIR="${HOME}/.local/state/agents-control-plane/log"
+OUT_LOG="${LOG_DIR}/control-plane-dashboard.out.log"
+ERR_LOG="${LOG_DIR}/control-plane-dashboard.err.log"
+LOG_LINES=80
 BUILD_WORKTREE=""
 TEMPORARY_RELEASE=""
 
@@ -22,11 +27,22 @@ Build and activate the local agents control-plane dashboard from exact clean mai
 Options:
   --apply              Run the full gate, build a release, activate, and smoke
   --dry-run            Validate the command surface without changing state (default)
+  --status             Report the active release, launchd state, and health
+  --health             Require local health and the active release revision
+  --logs [n]           Return bounded, redacted service logs (default: 80 lines)
   --json               Emit one JSON object (default)
   --plain              Emit compact plain text
   --no-input           Assert non-interactive operation; prompts are never used
   -h, --help           Show help
 USAGE
+}
+
+set_action() {
+  local next="$1"
+  if [[ "$ACTION" != "dry-run" && "$ACTION" != "$next" ]]; then
+    emit_error "E_INVALID_USAGE" "choose exactly one action" "Run with --help." 2 false
+  fi
+  ACTION="$next"
 }
 
 json_escape() {
@@ -43,6 +59,68 @@ emit_ok() {
       "$(printf '%s' "$message" | json_escape)" \
       "$(printf '%s' "$revision" | json_escape)"
   fi
+  exit 0
+}
+
+release_name() {
+  local link="$1" target
+  target="$(readlink "$link" 2>/dev/null || true)"
+  [[ -n "$target" ]] && basename "$target" || printf 'none\n'
+}
+
+emit_status() {
+  local require_health="${1:-0}" launchd="unavailable" health="unavailable"
+  local current previous release_sha state="unknown" pid="" last_exit=""
+  current="$(release_name "$CURRENT_LINK")"
+  previous="$(release_name "$PREVIOUS_LINK")"
+  release_sha=""
+  if [[ -f "$CURRENT_LINK/SOURCE_SHA" ]]; then
+    release_sha="$(tr -d '\r\n' <"$CURRENT_LINK/SOURCE_SHA")"
+  fi
+  local launch_payload=""
+  if launch_payload="$(launchctl print "gui/$(id -u)/${LABEL}" 2>/dev/null)"; then
+    launchd="loaded"
+    state="$(printf '%s\n' "$launch_payload" | awk -F' = ' '/^\tstate = / {print $2; exit}')"
+    pid="$(printf '%s\n' "$launch_payload" | awk -F' = ' '/^\tpid = / {print $2; exit}')"
+    last_exit="$(printf '%s\n' "$launch_payload" | awk -F' = ' '/^\tlast exit code = / {print $2; exit}')"
+  fi
+  if curl -fsS --max-time 5 "$HEALTH_URL" >/dev/null 2>&1; then health="ok"; fi
+  if (( require_health == 1 )) && { [[ "$health" != "ok" ]] || [[ -z "$release_sha" ]]; }; then
+    emit_error "E_HEALTH_UNAVAILABLE" "dashboard health or active revision is unavailable" "Inspect --logs and retry after repair." 4 true
+  fi
+  if [[ "$OUTPUT" == "plain" ]]; then
+    printf 'service=agents-control-plane-dashboard current=%s previous=%s release_sha=%s launchd=%s state=%s pid=%s last_exit=%s health=%s\n' \
+      "$current" "$previous" "${release_sha:-none}" "$launchd" "${state:-unknown}" "${pid:-none}" "${last_exit:-none}" "$health"
+  else
+    python3 - "$ACTION" "$current" "$previous" "$release_sha" "$launchd" "$state" "$pid" "$last_exit" "$health" "$HEALTH_URL" <<'PY'
+import datetime, json, sys
+action,current,previous,sha,launchd,state,pid,last_exit,health,url=sys.argv[1:]
+def optional(value): return None if value in {"", "none"} else value
+print(json.dumps({"schema_version":"1.0","command":"deploy-control-plane-dashboard","status":"ok","data":{"action":action,"service":"agents-control-plane-dashboard","current_release":optional(current),"previous_release":optional(previous),"release_sha":optional(sha),"launchd":{"status":launchd,"state":state or "unknown","pid":optional(pid),"last_exit_code":optional(last_exit)},"health":{"status":health,"url":url}},"error":None,"meta":{"timestamp_utc":datetime.datetime.now(datetime.timezone.utc).isoformat()}},sort_keys=True))
+PY
+  fi
+  exit 0
+}
+
+emit_logs() {
+  python3 - "$OUTPUT" "$LOG_LINES" "$OUT_LOG" "$ERR_LOG" <<'PY'
+import datetime, json, re, sys
+from pathlib import Path
+output,count_raw,*raw_paths=sys.argv[1:]
+count=int(count_raw)
+def redact(line):
+    line=re.sub(r"(?i)(authorization:\s*bearer\s+)[^\s]+",r"\1<redacted>",line)
+    line=re.sub(r"(?i)([?&](?:token|key|secret|signature|sig)=[^&\s]+)","<redacted-query>",line)
+    return re.sub(r"(?i)\b([A-Z0-9_]*(?:TOKEN|SECRET|KEY|PASSWORD)[A-Z0-9_]*)=\S+",r"\1=<redacted>",line)
+streams=[]; plain=[]
+for raw in raw_paths:
+    path=Path(raw)
+    lines=path.read_text(encoding="utf-8",errors="replace").splitlines()[-count:] if path.is_file() else ["<missing>"]
+    lines=[redact(line) for line in lines]
+    streams.append({"path":str(path),"lines":lines}); plain.extend([f"[{path}]",*lines])
+if output=="plain": print("\n".join(plain))
+else: print(json.dumps({"schema_version":"1.0","command":"deploy-control-plane-dashboard","status":"ok","data":{"action":"logs","line_count":count,"streams":streams},"error":None,"meta":{"timestamp_utc":datetime.datetime.now(datetime.timezone.utc).isoformat()}},sort_keys=True))
+PY
   exit 0
 }
 
@@ -73,6 +151,25 @@ replace_link() {
   mv -h -f "$temporary" "$link"
 }
 
+prune_releases() {
+  local current previous release canonical removed=0 failures=0
+  current="$(readlink "$CURRENT_LINK" 2>/dev/null || true)"
+  previous="$(readlink "$PREVIOUS_LINK" 2>/dev/null || true)"
+  [[ -n "$current" && -d "$current" ]] || emit_error \
+    "E_RELEASE_STATE" "current release is unavailable; pruning refused" \
+    "Repair current before the next deployment." 4 false
+  current="$(cd "$current" && pwd -P)"
+  if [[ -n "$previous" && -d "$previous" ]]; then previous="$(cd "$previous" && pwd -P)"; fi
+  for release in "$RELEASES_DIR"/*; do
+    [[ -d "$release" && ! -L "$release" ]] || continue
+    canonical="$(cd "$release" && pwd -P)"
+    [[ "$canonical" == "$current" || "$canonical" == "$previous" ]] && continue
+    if rm -rf -- "$release"; then removed=$((removed + 1)); else failures=$((failures + 1)); fi
+  done
+  printf '[deploy-control-plane-dashboard] release retention removed=%s failures=%s\n' "$removed" "$failures" >&2
+  (( failures == 0 ))
+}
+
 cleanup() {
   if [[ -n "${BUILD_WORKTREE:-}" && -d "$BUILD_WORKTREE" ]]; then
     git -C "$ROOT_DIR" worktree remove --force "$BUILD_WORKTREE" >/dev/null 2>&1 || true
@@ -85,8 +182,14 @@ trap cleanup EXIT
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
-    --apply) APPLY=1; shift ;;
-    --dry-run) APPLY=0; shift ;;
+    --apply) set_action apply; shift ;;
+    --dry-run) ACTION="dry-run"; shift ;;
+    --status) set_action status; shift ;;
+    --health) set_action health; shift ;;
+    --logs)
+      set_action logs
+      if [[ -n "${2:-}" && "${2:-}" != --* ]]; then LOG_LINES="$2"; shift 2; else shift; fi
+      ;;
     --json) OUTPUT="json"; shift ;;
     --plain) OUTPUT="plain"; shift ;;
     --no-input) shift ;;
@@ -95,12 +198,17 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
+[[ "$LOG_LINES" =~ ^[0-9]+$ ]] || emit_error "E_INVALID_USAGE" "invalid log line count: $LOG_LINES" "Use a non-negative integer." 2 false
+if [[ "$ACTION" == "status" ]]; then emit_status 0; fi
+if [[ "$ACTION" == "health" ]]; then emit_status 1; fi
+if [[ "$ACTION" == "logs" ]]; then emit_logs; fi
+
 [[ -f "$SOURCE_HELPER" ]] || emit_error \
   "E_DEPENDENCY_MISSING" "source guard is unavailable" "Restore scripts/local-production-source.sh." 4 false
 # shellcheck disable=SC1090
 . "$SOURCE_HELPER"
 
-if (( APPLY == 0 )); then
+if [[ "$ACTION" == "dry-run" ]]; then
   emit_ok "dry run; would gate exact clean main, build a versioned release, activate, and smoke"
 fi
 
@@ -222,5 +330,7 @@ if ! activate "$EXPECTED_SHA" || ! wait_for_release_health "$EXPECTED_SHA"; then
     5 \
     true
 fi
+
+prune_releases || printf '[deploy-control-plane-dashboard] warning: release retention incomplete\n' >&2
 
 emit_ok "deployed and smoked agents control-plane dashboard" "$EXPECTED_SHA"

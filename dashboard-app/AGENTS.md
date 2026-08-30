@@ -13,8 +13,7 @@ shared **adi-design** token system. This is the same stack as dobby-dashboard.
 - **This app is the UI only.** It fetches `/api/control-plane` and renders it.
 - **Source vs served:** source lives here (`~/GitHub/agents/dashboard-app`). Production builds an
   exact committed revision into `~/.local/share/agents-control-plane-dashboard/releases/` and
-  serves the atomic `current/dashboard` link. Tracked `~/GitHub/agents/dashboard` is only the
-  bootstrap/manual fallback.
+  serves the atomic `current/dashboard` link.
 
 ## Develop
 
@@ -31,7 +30,7 @@ The Python server must be running (it is, via the
 Use `../scripts/deploy-control-plane-dashboard.sh --apply --plain --no-input` from clean `main` for
 production. It runs the full repo gate in an exact-SHA worktree, builds a versioned release,
 atomically activates it, reloads launchd with an isolated environment, and restores the prior
-release if health fails. `npm run deploy` only refreshes the tracked bootstrap fallback.
+release if health fails.
 Asset URLs use `base: '/dashboard/'`; deep-links use `?section=<id>`.
 
 ## Design

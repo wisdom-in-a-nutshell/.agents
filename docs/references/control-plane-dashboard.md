@@ -93,11 +93,12 @@ Serve owns the private tailnet URL:
 https://dobbys-mac-mini.tail7857da.ts.net:8765/
 ```
 
-Inspect the service:
+Inspect the service through the production client:
 
 ```bash
-./scripts/install-control-plane-dashboard-launchagent.sh --status
-./scripts/install-control-plane-dashboard-launchagent.sh --logs
+./scripts/deploy-control-plane-dashboard.sh --status --no-input
+./scripts/deploy-control-plane-dashboard.sh --health --no-input
+./scripts/deploy-control-plane-dashboard.sh --logs 80 --no-input
 ```
 
 Deploy the built dashboard assets and refresh the LaunchAgent through the
@@ -123,7 +124,9 @@ exact-source full gate cannot rewrite a live managed repo. Delivery wakes from t
 publication marker or once at launchd load; the separate writer health sweep reports URL or
 revision drift without rebuilding the dashboard.
 
-`--status` allowlists launchd lifecycle fields; it does not print the inherited environment.
+`--status` allowlists launchd lifecycle fields; `--logs` is bounded and redacted. Neither command
+prints the inherited environment. The LaunchAgent installer owns installation only; the production
+client is the single inspection and delivery surface.
 
 Remove only the persistent local server:
 

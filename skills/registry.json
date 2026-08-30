@@ -420,6 +420,50 @@
     {
       "repo": "blog-personal",
       "skill": "blog-posting"
+    },
+    {
+      "repo": "litellm",
+      "skill": "azure-model-rollout"
+    },
+    {
+      "repo": "win",
+      "skill": "add-env-var"
+    },
+    {
+      "repo": "win",
+      "skill": "channel-create"
+    },
+    {
+      "repo": "win",
+      "skill": "contact-form-automation"
+    },
+    {
+      "repo": "win",
+      "skill": "descript-api-docs-sync"
+    },
+    {
+      "repo": "win",
+      "skill": "finance-client-invoicing"
+    },
+    {
+      "repo": "win",
+      "skill": "finance-invoice-autopilot"
+    },
+    {
+      "repo": "win",
+      "skill": "finance-month-end-close"
+    },
+    {
+      "repo": "win",
+      "skill": "log-investigation"
+    },
+    {
+      "repo": "win",
+      "skill": "network-school-references-file"
+    },
+    {
+      "repo": "win",
+      "skill": "riverside-export"
     }
   ],
   "managed_plugin_skills": [
