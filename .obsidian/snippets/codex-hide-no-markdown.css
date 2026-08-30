@@ -380,16 +380,6 @@
   display: none !important;
 }
 
-.nav-files-container .tree-item-self[data-path="skills-source/owned/azure-webapp-config/agents"],
-.nav-files-container .tree-item-self[data-path^="skills-source/owned/azure-webapp-config/agents/"] {
-  display: none !important;
-}
-
-.nav-files-container .tree-item-self[data-path="skills-source/owned/azure-webapp-deploy/agents"],
-.nav-files-container .tree-item-self[data-path^="skills-source/owned/azure-webapp-deploy/agents/"] {
-  display: none !important;
-}
-
 .nav-files-container .tree-item-self[data-path="skills-source/owned/modal-function-sync/agents"],
 .nav-files-container .tree-item-self[data-path^="skills-source/owned/modal-function-sync/agents/"] {
   display: none !important;
@@ -397,16 +387,6 @@
 
 .nav-files-container .tree-item-self[data-path="skills-source/owned/show-password-setup/agents"],
 .nav-files-container .tree-item-self[data-path^="skills-source/owned/show-password-setup/agents/"] {
-  display: none !important;
-}
-
-.nav-files-container .tree-item-self[data-path="skills-source/owned/azure-webapp-config/scripts"],
-.nav-files-container .tree-item-self[data-path^="skills-source/owned/azure-webapp-config/scripts/"] {
-  display: none !important;
-}
-
-.nav-files-container .tree-item-self[data-path="skills-source/owned/azure-webapp-deploy/scripts"],
-.nav-files-container .tree-item-self[data-path^="skills-source/owned/azure-webapp-deploy/scripts/"] {
   display: none !important;
 }
 
@@ -422,11 +402,6 @@
 
 .nav-files-container .tree-item-self[data-path="skills-source/owned/win-aip-contract-sync/agents"],
 .nav-files-container .tree-item-self[data-path^="skills-source/owned/win-aip-contract-sync/agents/"] {
-  display: none !important;
-}
-
-.nav-files-container .tree-item-self[data-path="skills-source/owned/azure-webapp-config/references"],
-.nav-files-container .tree-item-self[data-path^="skills-source/owned/azure-webapp-config/references/"] {
   display: none !important;
 }
 
