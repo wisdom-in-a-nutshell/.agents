@@ -406,7 +406,7 @@
     {
       "skill": "agent-browser",
       "origin": "external",
-      "scope": "global",
+      "scope": "dormant",
       "repos": [],
       "source_path": "skills-source/external/agent-browser",
       "upstream_ref": "vercel-labs/agent-browser:skills/agent-browser@main"
