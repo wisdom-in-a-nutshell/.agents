@@ -130,6 +130,7 @@ class ClientBoundaryTests(unittest.TestCase):
         "episodes:read",
         "episodes:submit",
         "episodes:intro:write",
+        "episodes:copy:write",
         "uploads:create",
       ],
     }
@@ -530,6 +531,18 @@ class SubmitAndIntroDryRunTests(unittest.TestCase):
         self.assertEqual(error_context.exception.code, "E_VALIDATION")
         self.assertIn("mainSourceUrl", error_context.exception.message)
 
+  def test_validate_submit_payload_rejects_unknown_fields(self) -> None:
+    with self.assertRaises(client.ClientError) as error_context:
+      client.validate_submit_payload(
+        {
+          "mainSourceUrl": "https://web.descript.com/project-1",
+          "unsupportedField": "must fail",
+        }
+      )
+
+    self.assertEqual(error_context.exception.code, "E_VALIDATION")
+    self.assertIn("unsupportedField", error_context.exception.message)
+
   def test_validate_intro_copy_payload_rejects_legacy_source_fields(self) -> None:
     for legacy_payload in (
       {"recordingLink": "https://web.descript.com/01234567-89ab-4cde-8f01-23456789abcd"},
@@ -542,6 +555,23 @@ class SubmitAndIntroDryRunTests(unittest.TestCase):
 
         self.assertEqual(error_context.exception.code, "E_VALIDATION")
         self.assertIn("introSourceUrl", error_context.exception.message)
+
+  def test_validate_intro_copy_payload_routes_show_notes_to_copy_command(self) -> None:
+    with self.assertRaises(client.ClientError) as error_context:
+      client.validate_intro_copy_payload({"showNotes": "Updated notes"})
+
+    self.assertEqual(error_context.exception.code, "E_VALIDATION")
+    self.assertIn("showNotes", error_context.exception.message)
+    self.assertIn("update-episode-copy", error_context.exception.hint)
+
+  def test_validate_episode_copy_payload_rejects_unknown_fields(self) -> None:
+    with self.assertRaises(client.ClientError) as error_context:
+      client.validate_episode_copy_payload(
+        {"showNotes": "Updated notes", "status": "Published"}
+      )
+
+    self.assertEqual(error_context.exception.code, "E_VALIDATION")
+    self.assertIn("status", error_context.exception.message)
 
   def test_normalize_intro_copy_payload_maps_newsletter_draft_alias(self) -> None:
     payload, upload_records = client.normalize_intro_copy_payload(
@@ -649,6 +679,64 @@ class SubmitAndIntroDryRunTests(unittest.TestCase):
     self.assertEqual(
       data["request"]["payload"]["customNewsletterDraftUrl"],
       "https://ghost.example.com/ghost/#/editor/post/intro123",
+    )
+
+  def test_run_update_episode_copy_dry_run_uses_expected_request_shape(self) -> None:
+    args = SimpleNamespace(
+      source_id="ep-123",
+      payload_file=str(ROOT / "references" / "update-episode-copy.example.json"),
+      dry_run=True,
+      timeout_seconds=30.0,
+    )
+
+    data = client.run_update_episode_copy(args)
+
+    self.assertTrue(data["dry_run"])
+    self.assertEqual(data["request"]["method"], "PATCH")
+    self.assertEqual(
+      data["request"]["url"],
+      "https://api.aipodcast.ing/client/v1/episodes/ep-123/copy",
+    )
+    self.assertEqual(
+      data["request"]["payload"]["showNotes"],
+      "Updated episode outline, links, and production notes.",
+    )
+    self.assertEqual(
+      data["updated_fields"],
+      ["assetUrls", "guests", "showNotes"],
+    )
+
+  def test_run_update_episode_copy_calls_scoped_route_and_returns_response(self) -> None:
+    with tempfile.TemporaryDirectory() as tmpdir:
+      payload_path = Path(tmpdir) / "copy.json"
+      payload_path.write_text(
+        json.dumps({"showNotes": "Updated notes"}),
+        encoding="utf-8",
+      )
+      args = SimpleNamespace(
+        source_id="ep-123",
+        payload_file=str(payload_path),
+        dry_run=False,
+        timeout_seconds=30.0,
+        request_id="copy-request-1",
+      )
+      response = {
+        "source_id": "ep-123",
+        "submission": {"showNotes": "Updated notes"},
+      }
+
+      with mock.patch.object(client, "request_json", return_value=response) as request_json:
+        data = client.run_update_episode_copy(args)
+
+    self.assertEqual(data["source_id"], "ep-123")
+    self.assertEqual(data["updated_fields"], ["showNotes"])
+    self.assertEqual(data["response"]["submission"]["showNotes"], "Updated notes")
+    request_json.assert_called_once_with(
+      "PATCH",
+      "https://api.aipodcast.ing/client/v1/episodes/ep-123/copy",
+      30.0,
+      {"showNotes": "Updated notes"},
+      extra_headers={"X-Request-ID": "copy-request-1"},
     )
 
 

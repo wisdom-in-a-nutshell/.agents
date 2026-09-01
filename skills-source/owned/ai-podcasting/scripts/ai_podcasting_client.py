@@ -32,10 +32,38 @@ TEXT_PREVIEW_LIMIT = 280
 HTML_TAG_RE = re.compile(r"<[^>]+>")
 WHITESPACE_RE = re.compile(r"\s+")
 PUBLICATION_STATE_VALUES = ("all", "published", "unpublished")
+SUBMIT_FIELDS = {
+  "show",
+  "mainSourceUrl",
+  "needsGuestReview",
+  "files",
+  "title",
+  "showNotes",
+  "assetUrls",
+  "introTranscript",
+  "titleInspiration",
+  "editorInstructions",
+  "customNewsletterDraftUrl",
+  "newsletterDraftUrl",
+  "ghostNewsletterDraftUrl",
+  "guests",
+  "editorNotes",
+  "thumbnailText",
+  "priority",
+  "scheduledDate",
+  "submissionTime",
+  "videoThumbnailUrl",
+  "audioThumbnailUrl",
+  "midRollTimes",
+  "deliverables",
+}
 INTRO_COPY_FIELDS = {
   "introSourceUrl",
   "transcript",
+  "introTranscript",
+  "titleInspiration",
   "instructionsToEditor",
+  "editorInstructions",
   "title",
   "thumbnailText",
   "videoThumbnails",
@@ -46,6 +74,14 @@ INTRO_COPY_FIELDS = {
   "customNewsletterDraftUrl",
   "newsletterDraftUrl",
   "ghostNewsletterDraftUrl",
+  "files",
+  "deliverables",
+}
+
+EPISODE_COPY_FIELDS = {
+  "showNotes",
+  "assetUrls",
+  "guests",
 }
 
 INTRO_COPY_FIELD_MAP = {
@@ -302,6 +338,26 @@ def ensure_mapping(payload: Any, context: str) -> dict[str, Any]:
   )
 
 
+def validate_known_fields(
+  payload: dict[str, Any],
+  allowed_fields: set[str],
+  *,
+  command: str,
+  hint: str,
+) -> None:
+  """Reject fields the selected command cannot persist."""
+  unknown_fields = sorted(set(payload) - allowed_fields)
+  if not unknown_fields:
+    return
+  raise ClientError(
+    code="E_VALIDATION",
+    message=f"{command} does not support fields: {', '.join(unknown_fields)}.",
+    retryable=False,
+    hint=hint,
+    exit_code=2,
+  )
+
+
 def normalize_public_url_list(value: Any) -> list[str]:
   if isinstance(value, str):
     candidate = value.strip()
@@ -407,6 +463,13 @@ def validate_submit_payload(payload: dict[str, Any]) -> None:
       hint="Set mainSourceUrl to the Descript web URL or fallback source URL.",
       exit_code=2,
     )
+
+  validate_known_fields(
+    payload,
+    SUBMIT_FIELDS,
+    command="submit-episode",
+    hint="Use only fields documented under submit-episode in SKILL.md.",
+  )
 
   if not isinstance(main_source_url, str) or not main_source_url.strip():
     raise ClientError(
@@ -570,6 +633,16 @@ def validate_intro_copy_payload(payload: dict[str, Any]) -> None:
       exit_code=2,
     )
 
+  validate_known_fields(
+    payload,
+    INTRO_COPY_FIELDS,
+    command="update-intro-copy",
+    hint=(
+      "Use update-episode-copy for showNotes, assetUrls, or guests; otherwise use an "
+      "intro field documented in SKILL.md."
+    ),
+  )
+
   intro_source_url = payload.get("introSourceUrl")
   if isinstance(intro_source_url, str) and intro_source_url.strip():
     validate_upload_source_list("introSourceUrl", [intro_source_url.strip()])
@@ -635,6 +708,62 @@ def validate_intro_copy_payload(payload: dict[str, Any]) -> None:
   validate_custom_newsletter_draft_url(payload)
 
 
+def validate_episode_copy_payload(payload: dict[str, Any]) -> None:
+  """Validate customer-owned episode copy updates."""
+  if not payload:
+    raise ClientError(
+      code="E_VALIDATION",
+      message="update-episode-copy payload must not be empty.",
+      retryable=False,
+      hint="Provide showNotes, assetUrls, or guests.",
+      exit_code=2,
+    )
+  validate_known_fields(
+    payload,
+    EPISODE_COPY_FIELDS,
+    command="update-episode-copy",
+    hint="Use only showNotes, assetUrls, or guests.",
+  )
+
+  show_notes = payload.get("showNotes")
+  if "showNotes" in payload and show_notes is not None and not isinstance(show_notes, str):
+    raise ClientError(
+      code="E_VALIDATION",
+      message="showNotes must be a string or null when provided.",
+      retryable=False,
+      hint="Use an HTML/plain-text string, an empty string to clear, or null.",
+      exit_code=2,
+    )
+
+  asset_urls = payload.get("assetUrls")
+  if "assetUrls" in payload:
+    if asset_urls is not None and (
+      not isinstance(asset_urls, list)
+      or any(not isinstance(value, str) or not value.strip() for value in asset_urls)
+    ):
+      raise ClientError(
+        code="E_VALIDATION",
+        message="assetUrls must be a list of non-empty URL or local-path strings, or null.",
+        retryable=False,
+        hint="Use [] to clear assets, or provide one string per asset.",
+        exit_code=2,
+      )
+    if isinstance(asset_urls, list):
+      validate_upload_source_list("assetUrls", asset_urls)
+
+  guests = payload.get("guests")
+  if "guests" in payload and guests is not None and (
+    not isinstance(guests, list) or any(not isinstance(guest, dict) for guest in guests)
+  ):
+    raise ClientError(
+      code="E_VALIDATION",
+      message="guests must be a list of guest objects or null.",
+      retryable=False,
+      hint="Use [] to clear guests, or provide objects such as {\"name\": \"Guest\"}.",
+      exit_code=2,
+    )
+
+
 def normalize_submit_payload(
   payload: dict[str, Any],
   timeout_seconds: float,
@@ -686,6 +815,32 @@ def normalize_submit_payload(
         upload_records.append(upload_record)
     normalized["assetUrls"] = resolved_asset_urls
 
+  return normalized, upload_records
+
+
+def normalize_episode_copy_payload(
+  payload: dict[str, Any],
+  timeout_seconds: float,
+  dry_run: bool,
+) -> tuple[dict[str, Any], list[dict[str, Any]]]:
+  """Resolve local supporting assets in an episode-copy patch."""
+  normalized = json.loads(json.dumps(payload))
+  upload_records: list[dict[str, Any]] = []
+  asset_urls = normalized.get("assetUrls")
+  if isinstance(asset_urls, list):
+    resolved_asset_urls: list[str] = []
+    for index, asset_url in enumerate(asset_urls):
+      resolved_url, upload_record = resolve_upload_source_url(
+        asset_url,
+        f"assetUrls[{index}]",
+        timeout_seconds,
+        dry_run,
+        purpose="episode_asset",
+      )
+      resolved_asset_urls.append(resolved_url)
+      if upload_record:
+        upload_records.append(upload_record)
+    normalized["assetUrls"] = resolved_asset_urls
   return normalized, upload_records
 
 
@@ -1473,6 +1628,7 @@ def run_doctor(args: argparse.Namespace) -> dict[str, Any]:
     "episodes:read",
     "episodes:submit",
     "episodes:intro:write",
+    "episodes:copy:write",
     "uploads:create",
   }
   normalized_shows = {
@@ -1641,6 +1797,56 @@ def run_update_intro_copy(args: argparse.Namespace) -> dict[str, Any]:
   }
 
 
+def run_update_episode_copy(args: argparse.Namespace) -> dict[str, Any]:
+  """Update show notes, supporting assets, or guests after episode creation."""
+  source_id = args.source_id.strip()
+  if not source_id:
+    raise ClientError(
+      code="E_VALIDATION",
+      message="--source-id is required.",
+      retryable=False,
+      hint="Use list-episodes first, then pass its source_id.",
+      exit_code=2,
+    )
+
+  payload = ensure_mapping(load_json_file(args.payload_file), "update-episode-copy")
+  validate_episode_copy_payload(payload)
+  payload, upload_records = normalize_episode_copy_payload(
+    payload,
+    args.timeout_seconds,
+    args.dry_run,
+  )
+  encoded_source_id = urlparse.quote(source_id, safe="")
+  url = build_url(
+    FIXED_API_BASE_URL,
+    f"/client/v1/episodes/{encoded_source_id}/copy",
+  )
+
+  if args.dry_run:
+    return {
+      "dry_run": True,
+      "planned_uploads": upload_records,
+      "updated_fields": sorted(payload),
+      "request": {"method": "PATCH", "url": url, "payload": payload},
+    }
+
+  body = request_json(
+    "PATCH",
+    url,
+    args.timeout_seconds,
+    payload,
+    extra_headers={"X-Request-ID": args_request_id(args)},
+  )
+  response_source_id = source_id
+  if isinstance(body, dict):
+    response_source_id = str(body.get("source_id") or source_id)
+  return {
+    "source_id": response_source_id,
+    "updated_fields": sorted(payload),
+    "response": body,
+  }
+
+
 def make_envelope(
   command: str,
   status: str,
@@ -1696,7 +1902,7 @@ def print_human_success(command: str, data: dict[str, Any]) -> None:
         print(f"  thumbnailText: {thumbnail_text}")
     return
 
-  if command in ("submit-episode", "update-intro-copy"):
+  if command in ("submit-episode", "update-intro-copy", "update-episode-copy"):
     source_id = data.get("source_id")
     if source_id:
       print(f"Completed {command}. source_id={source_id}")
@@ -1724,7 +1930,7 @@ def print_plain_success(command: str, data: dict[str, Any]) -> None:
       )
     return
 
-  if command in ("submit-episode", "update-intro-copy"):
+  if command in ("submit-episode", "update-intro-copy", "update-episode-copy"):
     print(str(data.get("source_id") or ""))
     return
 
@@ -1835,6 +2041,22 @@ def build_parser() -> argparse.ArgumentParser:
     help="Show outbound request shape without calling the API.",
   )
 
+  copy_parser = subparsers.add_parser(
+    "update-episode-copy",
+    help="Patch show notes, supporting asset URLs, or guests for an episode.",
+  )
+  copy_parser.add_argument("--source-id", required=True, help="Episode source_id.")
+  copy_parser.add_argument(
+    "--payload-file",
+    required=True,
+    help="Path to JSON containing showNotes, assetUrls, or guests.",
+  )
+  copy_parser.add_argument(
+    "--dry-run",
+    action="store_true",
+    help="Show outbound request shape without calling the API.",
+  )
+
   return parser
 
 
@@ -1856,6 +2078,8 @@ def main() -> int:
       data = run_submit_episode(args)
     elif args.command == "update-intro-copy":
       data = run_update_intro_copy(args)
+    elif args.command == "update-episode-copy":
+      data = run_update_episode_copy(args)
     else:
       raise ClientError(
         code="E_VALIDATION",

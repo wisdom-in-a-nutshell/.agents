@@ -1,0 +1,12 @@
+{
+  "showNotes": "Updated episode outline, links, and production notes.",
+  "assetUrls": [
+    "https://example.com/path/to/supporting-brief"
+  ],
+  "guests": [
+    {
+      "name": "Guest Name",
+      "email": "guest@example.com"
+    }
+  ]
+}

@@ -1,6 +1,6 @@
 ---
 name: ai-podcasting
-description: Submit AI Podcasting episodes and update intro/title/thumbnail copy through the scoped WIN client API. Use when clients want agent-driven episode operations without the GUI, including checking access, listing TCR episodes with rich metadata and published-state filters, retry-safe episode submission, patching intro copy, uploading local inputs, or clarifying whether an ambiguous "submit" request means main episode submission vs intro update.
+description: Submit AI Podcasting episodes and update show notes, supporting episode copy, intro, title, and thumbnails through the scoped WIN client API. Use when clients want agent-driven episode operations without the GUI, including checking access, listing TCR episodes with rich metadata and published-state filters, retry-safe episode submission, patching post-creation show notes or intro copy, uploading local inputs, or disambiguating an episode operation.
 ---
 
 # AI Podcasting
@@ -21,6 +21,9 @@ Run the main CLI at `scripts/ai_podcasting_client.py` for episode operations:
 4. `update-intro-copy`:
    Patch intro/title/thumbnail/outro assets for an existing unpublished episode via
    `/client/v1/episodes/{sourceId}/intro`.
+5. `update-episode-copy`:
+   Patch `showNotes`, supporting `assetUrls`, or `guests` after an episode already exists via
+   `/client/v1/episodes/{sourceId}/copy`.
 
 This skill calls the versioned WIN client API at `https://api.aipodcast.ing/client/v1/...`
 directly. Do not send agent operations through the frontend or automate the browser UI.
@@ -147,7 +150,16 @@ python3 scripts/ai_podcasting_client.py \
   --payload-file references/update-intro-copy-tcr.example.json
 ```
 
-5. Upload a local supporting file and get a temporary public URL:
+5. Update show notes or other customer-owned episode copy after creation:
+
+```bash
+python3 scripts/ai_podcasting_client.py \
+  --json update-episode-copy \
+  --source-id <EPISODE_SOURCE_ID> \
+  --payload-file references/update-episode-copy.example.json
+```
+
+6. Upload a local supporting file and get a temporary public URL:
 
 ```bash
 python3 scripts/aip_local_upload_helper.py \
@@ -168,6 +180,8 @@ python3 scripts/aip_local_upload_helper.py \
 - Local uploads are purpose-scoped `cache/` transport objects. Use `episode_main`,
   `episode_asset`, `episode_intro`, `episode_outro`, or `thumbnail`; never treat their URLs as
   permanent inventory.
+- Submit, intro, and episode-copy commands reject unknown fields before making a request. Never
+  treat a successful response as evidence that an undocumented field was accepted.
 - JSON is the default output contract. Use `--plain` or `--human` only for operator inspection.
 - `list-episodes` returns a rich summary by default in JSON mode. Each item now includes
   fields such as `thumbnailText`, publishing metadata, preview text for long fields, normalized
@@ -252,6 +266,14 @@ python3 scripts/aip_local_upload_helper.py \
    has it, but source updates must still use `introSourceUrl`.
    Local paths are allowed for file-like fields. The helper uploads them and the client uses the
    returned public URLs.
+5. `update-episode-copy`:
+   Required (command): `--source-id`, `--payload-file`.
+   Provide at least one of:
+   - `showNotes`: HTML/plain text; use an empty string or `null` to clear it
+   - `assetUrls`: public URLs or local paths; use `[]` or `null` to clear them
+   - `guests`: guest objects; use `[]` or `null` to clear them
+   This is the supported post-creation path for show notes. Do not send `showNotes` through
+   `update-intro-copy`; that command rejects it instead of silently dropping it.
 
 ## Conversation Policy
 
@@ -259,15 +281,16 @@ When values are missing in chat context, follow this flow:
 
 1. Before asking follow-up questions, scan the current chat thread and reuse any values the user already provided.
    Do not ask again for values that are already clear in context.
-2. First disambiguate the operation when the user's wording does not make it clear whether they mean a new main episode submission or an intro update for an existing episode.
-   Do not assume that "submit", "this episode", or similar phrasing means `submit-episode`.
+2. First disambiguate the operation when the user's wording does not make it clear whether they mean a new main episode submission, a post-creation show-notes/copy update, or an intro update.
+   Do not assume that "submit", "update this episode", or similar phrasing selects one command.
    If the intent is ambiguous, ask exactly:
    "Do you want to:
    1. submit a new main episode source
-   2. update intro/title/thumbnail assets for an existing episode
+   2. update show notes/supporting episode copy for an existing episode
+   3. update intro/title/thumbnail assets for an existing episode
 
-   Reply with 1 or 2."
-   Only continue into submit or intro-specific prompts after the user picks one.
+   Reply with 1, 2, or 3."
+   Only continue into command-specific prompts after the user picks one.
 3. For submit flow, ask for the missing required submit value, but in that same first reply also
    surface the common optional fields the user may want to set up front.
    Required submit value:
@@ -303,23 +326,26 @@ When values are missing in chat context, follow this flow:
    10. customNewsletterDraftUrl
 
    If you send them together, I can submit the episode in one pass."
-5. Intro updates are only for unpublished episodes.
-6. For intro updates without `source_id`, immediately run `list-episodes` with
+5. For copy updates, use `update-episode-copy`. If `source_id` is missing, list episodes using the
+   publication/date context already supplied, then ask the user to select one. Ask only for
+   `showNotes`, `assetUrls`, or `guests`; never route these fields through the intro command.
+6. Intro updates are only for unpublished episodes.
+7. For intro updates without `source_id`, immediately run `list-episodes` with
    `--publication-state unpublished`.
    If the user already provided `startDate` and `endDate`, include them.
    Do not ask the user for publication scope first.
-7. Ask the user which episode to target using an enumerated list, not raw ids only.
+8. Ask the user which episode to target using an enumerated list, not raw ids only.
    Render exactly:
    `1. <short title> — <source_id>`
    `2. <short title> — <source_id>`
    `...`
    Then ask: `Reply with the episode number or source_id.`
    If the user replies with a number (for example `4`), map that number to the corresponding `source_id` and continue without asking them to repeat the full id.
-8. Ask only for the fields the user wants to change.
-9. Enforce a strict two-step prompt sequence for intro updates when `source_id` is missing:
+9. Ask only for the fields the user wants to change.
+10. Enforce a strict two-step prompt sequence for intro updates when `source_id` is missing:
    - Step 1 message: episode list + `Reply with the episode number or source_id.`
    - Step 2 message (only after episode is selected): required/optional field collection.
-10. For intro updates, use one prompt shape by default:
+11. For intro updates, use one prompt shape by default:
    "Episode selected: <source_id>.
    Provide any fields you want to update.
 
@@ -336,12 +362,12 @@ When values are missing in chat context, follow this flow:
 
    You only need to send the fields you want to change, and I will patch just those."
    Never ask the user to pick an episode id again after step 1 is completed.
-11. If optional values are unclear, omit them instead of guessing.
-12. Use `--dry-run` only if the user explicitly wants a preview before the write call.
+12. If optional values are unclear, omit them instead of guessing.
+13. Use `--dry-run` only if the user explicitly wants a preview before the write call.
     It is an internal preview/debug tool, not a normal client-facing step.
-13. For `customNewsletterDraftUrl`, provide a public HTTP/HTTPS Ghost draft, preview, editor, or
+14. For `customNewsletterDraftUrl`, provide a public HTTP/HTTPS Ghost draft, preview, editor, or
    slug URL. It is not a local file upload field.
-14. For file-type fields (`mainSourceUrl`, `introSourceUrl`, `videoThumbnails`, `audioThumbnailLink`, `outroMusicLink`, and submit `assetUrls` entries):
+15. For file-type fields (`mainSourceUrl`, `introSourceUrl`, `videoThumbnails`, `audioThumbnailLink`, `outroMusicLink`, and submit/copy `assetUrls` entries):
    - The client accepts either public HTTP/HTTPS URLs or local file paths.
    - If the user provides a local file path, run `scripts/aip_local_upload_helper.py` first and use its returned public URL.
    - Do not pass unresolved local filesystem paths to the episode API payload.
@@ -352,6 +378,7 @@ When values are missing in chat context, follow this flow:
 - `scripts/aip_local_upload_helper.py`: Purpose-scoped local upload helper; returns temporary
   `cache/` URLs in the same stable JSON envelope.
 - `references/submit-episode.example.json`: Example payload for submit flow.
+- `references/update-episode-copy.example.json`: Example post-creation show-notes/copy payload.
 - `references/update-intro-copy.example.json`: Example payload for intro/copy patch flow.
 - `references/update-intro-copy-tcr.example.json`: Example payload for TCR-style final title/thumbnail updates.
 - `references/client-setup.md`: Customer install, credential migration, doctor, and retry contract.

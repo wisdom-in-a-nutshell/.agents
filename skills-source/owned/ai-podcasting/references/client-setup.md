@@ -4,6 +4,9 @@ Use this when installing or replacing the AI Podcasting skill on a customer's ag
 
 ## Upgrade Contract
 
+Customers already using `AIPODCASTING_CLIENT_API_KEY` keep the same credential. This parity
+upgrade changes the installed skill and the server-side grant; it does not require a new key.
+
 1. Replace the complete `ai-podcasting` skill directory as one unit. Do not copy only
    `SKILL.md`; the scripts, examples, tests, and metadata are one versioned bundle.
 2. Remove any old `AIPODCASTING_API_KEY` or `AIPODCASTING_API_KEYS` entry from the customer's
@@ -23,7 +26,8 @@ Use this when installing or replacing the AI Podcasting skill on a customer's ag
    ```
 
 6. Accept the upgrade only when `status` is `ok`, `data.ready` is `true`, `TCR` is in
-   `data.allowed_shows`, and the four episode/upload scopes are present.
+   `data.allowed_shows`, and the five episode/upload scopes are present, including
+   `episodes:copy:write`.
 
 ## What Changed
 

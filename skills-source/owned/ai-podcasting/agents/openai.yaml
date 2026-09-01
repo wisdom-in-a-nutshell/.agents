@@ -1,4 +1,4 @@
 interface:
   display_name: "AI Podcasting"
-  short_description: "Run scoped client podcast operations"
-  default_prompt: "Use $ai-podcasting to check access, list TCR episodes, submit an episode safely, or update intro copy through the scoped client API."
+  short_description: "Run scoped podcast submission and copy updates"
+  default_prompt: "Use $ai-podcasting to check access, list TCR episodes, submit an episode safely, or update show notes and intro copy through the scoped client API."
