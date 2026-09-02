@@ -21,7 +21,6 @@ import zlib from 'node:zlib';
 const KEYWORD = 'impeccable:prompt';
 const args = process.argv.slice(2);
 const file = args.find(a => !a.startsWith('--'));
-<<<<<<< HEAD
 const argOf = (name) => { const i = args.indexOf(name); return i !== -1 ? args[i + 1] : null; };
 
 function imageType(buffer) {
@@ -33,28 +32,13 @@ function imageType(buffer) {
 function readPrompt(imagePath, buffer = fs.readFileSync(imagePath)) {
   const type = imageType(buffer);
   let prompt = type === 'png' ? parsePng(buffer).prompt : type === 'jpeg' ? readJpegCom(buffer) : null;
-=======
-const readMode = args.includes('--read');
-const scanMode = args.includes('--scan');
-const argOf = (name) => { const i = args.indexOf(name); return i !== -1 ? args[i + 1] : null; };
-
-function promptOf(imagePath) {
-  const b = fs.readFileSync(imagePath);
-  let prompt = null;
-  if (b.length > 8 && b.readUInt32BE(0) === 0x89504e47) prompt = readPngText(b);
-  else if (b.length > 3 && b[0] === 0xff && b[1] === 0xd8) prompt = readJpegCom(b);
->>>>>>> 0c97f428 (Repo cache cleanup: 2026-08-22T22:38:55Z)
   if (prompt == null && fs.existsSync(`${imagePath}.json`)) {
     try { prompt = JSON.parse(fs.readFileSync(`${imagePath}.json`, 'utf8')).prompt ?? null; } catch { /* stays null */ }
   }
   return prompt;
 }
 
-<<<<<<< HEAD
 if (args.includes('--scan')) {
-=======
-if (scanMode) {
->>>>>>> 0c97f428 (Repo cache cleanup: 2026-08-22T22:38:55Z)
   const targets = args.filter(a => !a.startsWith('--'));
   if (targets.length === 0) { console.error('embed-prompt: --scan needs at least one directory'); process.exit(1); }
   const RASTER = /\.(png|jpe?g|webp)$/i;
@@ -77,11 +61,7 @@ if (scanMode) {
   }
   let missing = 0;
   for (const raster of rasters) {
-<<<<<<< HEAD
     if (readPrompt(raster) == null) { console.log(`MISSING: ${raster}`); missing++; }
-=======
-    if (promptOf(raster) == null) { console.log(`MISSING: ${raster}`); missing++; }
->>>>>>> 0c97f428 (Repo cache cleanup: 2026-08-22T22:38:55Z)
   }
   console.log(`SCAN: ${rasters.length} raster${rasters.length === 1 ? '' : 's'}, ${missing} missing`);
   process.exit(missing > 0 ? 3 : 0);
