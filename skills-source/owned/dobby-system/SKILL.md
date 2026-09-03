@@ -81,6 +81,9 @@ Inside a person workspace:
   available for workspaces that enable them. Adi is intentionally Codex-only,
   while Angie retains the default cross-client propagation. The session-start
   hook does not emit the constitution.
+- Codex `SessionStart` is bounded and source-aware: startup/clear receive the
+  wake card, compact receives a smaller reorientation card, and resume emits
+  nothing. Exact contents and budgets belong in the engine lifecycle docs.
 - `memory/profile.md` is durable person context; `memory/now.md` is current
   orientation.
 - `memory/areas/<area>/canon.md` is the one durable area layer.

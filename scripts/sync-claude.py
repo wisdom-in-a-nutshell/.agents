@@ -271,7 +271,7 @@ def load_repo_registry_entries(registry_file: Path) -> list[dict[str, Any]]:
     return entries
 
 
-def enabled_repo_roots(
+def disabled_repo_roots(
     repos: list[dict[str, Any]],
     client: str,
     github_root: Path,
@@ -279,7 +279,7 @@ def enabled_repo_roots(
     home = Path.home()
     roots: set[Path] = set()
     for entry in repos:
-        if client not in entry.get("enabled_clients", []):
+        if client in entry.get("enabled_clients", []):
             continue
         repo_root = repo_git_root(resolve_repo_root(entry["path"], github_root, home))
         if repo_root is not None:
@@ -407,7 +407,7 @@ def render_skills(
     claude_home: Path,
     github_root: Path,
     repo_filters: set[Path],
-    enabled_repo_roots: set[Path],
+    disabled_repo_roots: set[Path],
     apply: bool,
 ) -> None:
     home = Path.home()
@@ -440,7 +440,7 @@ def render_skills(
                 continue
             if repo_filters and actual_repo not in repo_filters:
                 continue
-            if actual_repo not in enabled_repo_roots:
+            if actual_repo in disabled_repo_roots:
                 continue
             dst = actual_repo / ".claude" / "skills" / skill
             desired_repo_links[dst] = src
@@ -1175,13 +1175,13 @@ def render_repo_hooks(
     # key still renders for a repo that has no managed hooks.
     repos = list(claude_hook_repos(hooks_registry))
     repos.extend(name for name in sorted(repo_settings or {}) if name not in repos)
-    enabled_names: set[str] = set()
+    disabled_names: set[str] = set()
     for entry in repo_registry_entries or []:
         name = Path(str(entry["path"])).expanduser().name
-        if name not in repos:
-            repos.append(name)
-        if "claude" in entry.get("enabled_clients", []):
-            enabled_names.add(name)
+        if "claude" not in entry.get("enabled_clients", []):
+            disabled_names.add(name)
+            if name not in repos:
+                repos.append(name)
     for repo in repos:
         repo_root = resolve_repo_root(repo, github_root, home)
         actual_repo = repo_git_root(repo_root)
@@ -1199,7 +1199,7 @@ def render_repo_hooks(
             hooks_registry,
             apply,
             repo_settings,
-            enabled=not repo_registry_entries or actual_repo.name in enabled_names,
+            enabled=actual_repo.name not in disabled_names,
         )
 
 
@@ -1472,7 +1472,7 @@ def render_launch_configs(
     entries: list[dict[str, Any]],
     github_root: Path,
     repo_filters: set[Path],
-    enabled_repo_roots: set[Path],
+    disabled_repo_roots: set[Path],
     preview_runner: Path,
     apply: bool,
 ) -> None:
@@ -1496,7 +1496,7 @@ def render_launch_configs(
             ],
         }
         target = actual_repo / ".claude" / "launch.json"
-        if actual_repo not in enabled_repo_roots:
+        if actual_repo in disabled_repo_roots:
             existing = read_json_object(target)
             if existing == desired:
                 print(f"REMOVE {target} (Claude disabled for repo)")
@@ -1669,7 +1669,7 @@ def run_sync(args: argparse.Namespace) -> None:
     preview_runner = absolute_path(Path(args.preview_runner).expanduser()).resolve()
     repo_registry_file = absolute_path(Path(args.repo_registry).expanduser()).resolve()
     repo_registry_entries = load_repo_registry_entries(repo_registry_file)
-    claude_enabled_repo_roots = enabled_repo_roots(
+    claude_disabled_repo_roots = disabled_repo_roots(
         repo_registry_entries,
         "claude",
         github_root,
@@ -1689,7 +1689,7 @@ def run_sync(args: argparse.Namespace) -> None:
             claude_home,
             github_root,
             repo_filters,
-            claude_enabled_repo_roots,
+            claude_disabled_repo_roots,
             args.apply,
         )
 
@@ -1744,7 +1744,7 @@ def run_sync(args: argparse.Namespace) -> None:
             dev_server_entries,
             github_root,
             repo_filters,
-            claude_enabled_repo_roots,
+            claude_disabled_repo_roots,
             preview_runner,
             args.apply,
         )

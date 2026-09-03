@@ -38,9 +38,9 @@ For repo authors adding `scripts/hooks/*.py`, start with [`repo-lifecycle-hook-a
 - `scripts/sync-claude.sh`
   - renders `~/.claude/CLAUDE.md` from `config/global.agents.md`
   - renders managed global skill links under `~/.claude/skills`
-  - renders managed repo-scoped skill links under each target repo's `.claude/skills`
+  - renders managed repo-scoped skill links under each target repo's `.claude/skills` only when that repo enables Claude through `enabled_clients`
   - when invoked inside a Codex thread, registers changed repo-scoped skill-link paths with that thread's existing Stop transaction instead of committing or pushing from the renderer
-  - renders repo `.claude/CLAUDE.md` bridge files containing `@../AGENTS.md` when the repo has `AGENTS.md`; when the repo declares `model_instructions_file` and includes `claude` in `model_instructions_clients` (the default when the selector is omitted), the bridge imports that identity prompt first. Managed import files are upgraded in place, including removal of the identity import when a repo becomes Codex-only; hand-written files are left alone with a warning
+  - renders repo `.claude/CLAUDE.md`, settings, MCP, hooks, skills, and preview config only when that repo enables Claude through `enabled_clients`; disabling Claude prunes only recognized managed surfaces and leaves hand-written files alone with a warning. Enabled bridge files contain `@../AGENTS.md`, plus the identity import when `model_instructions_clients` includes Claude
   - renders user settings and the managed `Stop` hook under `~/.claude/settings.json`
   - renders managed Claude Desktop SSH entries from `config/claude-settings.json` into `~/.claude/settings.json` `sshConfigs`
   - renders selected Claude Desktop app preferences from `config/claude-settings.json` into `~/Library/Application Support/Claude/config.json`
@@ -57,7 +57,7 @@ For repo authors adding `scripts/hooks/*.py`, start with [`repo-lifecycle-hook-a
   - renders managed trusted folders into `~/.copilot/config.json`, where Copilot CLI 1.0.67 stores `trustedFolders`, while preserving Copilot-managed login/session keys
   - renders `~/.copilot/hooks/agents-control-plane.json` from `hooks/registry.json`
   - renders `~/bin/copilot`, a terminal wrapper that defaults sessions to `--yolo --no-ask-user --model claude-sonnet-5 --effort high --mode autopilot --max-autopilot-continues 100 --disable-builtin-mcps --disable-mcp-server ide`
-  - renders `.github/github-app.yml` for repos listed in `dev-servers/registry.json`, giving the GitHub Copilot app the same Run/browser-ready preview surface without adding app-specific instructions or skills
+  - renders `.github/github-app.yml` for repos listed in `dev-servers/registry.json` only when that repo enables Copilot through `enabled_clients`, giving the GitHub Copilot app the same Run/browser-ready preview surface without adding app-specific instructions or skills
   - leaves `.github/skills` and `~/.copilot/skills` empty by design; Copilot reuses `.agents/skills` and `~/.agents/skills`
   - allowlists the macOS app-bundled skill names observed under `~/Library/Application Support/com.github.githubapp/app-skills`
   - tool surface scope: `--available-tools` (allowlist) / `--excluded-tools` (denylist) / `--disable-mcp-server` / `--disable-builtin-mcps` are real, tested CLI flags (not persisted `settings.json` keys or env vars) — add them to `launcher.defaultArgs` to trim the **terminal** `copilot` CLI's tool surface. They only affect processes launched through the managed `~/bin/copilot` wrapper. The **GitHub Copilot desktop app** spawns its own session process and injects an additional, larger tool set (canvas/widgets, session/project management, PR review helpers, workflows, cross-session messaging) that is not routed through `~/bin/copilot` and has no known file-based or env-var config surface today — there is currently no way to trim the desktop app's tool set from this control plane.
@@ -196,7 +196,7 @@ Scoped validation/bootstrap:
 - Codex repo-local hooks render into managed repo `.codex/hooks.json`.
 - Claude Code global hooks render into `~/.claude/settings.json`.
 - `Stop` is global so the git conveyor does not depend on repo-local hook loading.
-- `SessionStart` and `UserPromptSubmit` are repo-scoped to selected repos in `hooks/registry.json`.
+- `SessionStart` and `UserPromptSubmit` are repo-scoped to selected repos in `hooks/registry.json`; per-repo `enabled_clients` filters their rendered client targets.
 - Explicit Codex thread finalization is not a native hook. The global `codex/scripts/finalize-codex-thread.py` command derives repo policy from `thread/read` and runs optional repo-local `scripts/hooks/finalize_codex_thread.py` before archive.
 - Event entrypoints live in [`hooks/scripts/`](/Users/dobby/GitHub/agents/hooks/scripts).
 - Repo-specific lifecycle behavior belongs in optional Python scripts under `scripts/hooks/`.

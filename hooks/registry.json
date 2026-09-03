@@ -6,7 +6,7 @@
       "event": "SessionStart",
       "id": "repo-session-start",
       "matchers": {
-        "codex": "startup|resume|clear",
+        "codex": "startup|clear|compact",
         "claude": "startup|resume|clear|compact"
       },
       "repos": [
@@ -31,7 +31,6 @@
         "angie"
       ],
       "runtimes": [
-        "codex",
         "claude",
         "copilot"
       ],

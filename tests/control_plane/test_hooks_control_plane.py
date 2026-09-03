@@ -110,15 +110,11 @@ class HooksControlPlaneTests(TempDirTestCase):
         codex_hooks = render_codex_hooks(registry, repo_name="adi")
         self.assertEqual(
             set(codex_hooks["hooks"].keys()),
-            {"SessionStart", "UserPromptSubmit"},
+            {"SessionStart"},
         )
         self.assertEqual(
             codex_hooks["hooks"]["SessionStart"][0]["matcher"],
-            "startup|resume|clear",
-        )
-        self.assertEqual(
-            codex_hooks["hooks"]["UserPromptSubmit"][0]["hooks"][0]["command"],
-            'python3 "$HOME/GitHub/agents/hooks/scripts/user_prompt_submit.py" --runtime codex',
+            "startup|clear|compact",
         )
         self.assertEqual(
             set(render_codex_hooks(registry, repo_name="win")["hooks"].keys()),
@@ -144,6 +140,14 @@ class HooksControlPlaneTests(TempDirTestCase):
         stop_command = copilot_hooks["hooks"]["Stop"][0]["bash"]
         self.assertIn("--runtime copilot", stop_command)
         self.assertNotIn("--repos", stop_command)
+
+        filtered = render_copilot_hooks(
+            registry,
+            disabled_repo_names={"adi"},
+        )
+        filtered_session = filtered["hooks"]["SessionStart"][0]["bash"]
+        self.assertIn("--repos angie", filtered_session)
+        self.assertNotIn("--repos adi,angie", filtered_session)
 
     def test_registry_rejects_unsupported_runtime(self) -> None:
         registry_path = self.temp_path / "hooks/registry.json"

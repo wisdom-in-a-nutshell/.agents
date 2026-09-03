@@ -28,6 +28,7 @@ The current Copilot control plane is client-first:
   - canonical MCP transport definitions and repository/client targets
   - exclusive Copilot `repos: "all"` targets render into the user MCP file; narrower Copilot-only targets render into repo `.github/mcp.json`; Claude+Copilot targets use shared root `.mcp.json`
 - `codex/config/repo-bootstrap.json`
+  - `enabled_clients` gates the entire repo-specific Copilot surface (hooks, MCP, identity link, and app preview config); omitted means all supported clients
   - repos that declare `model_instructions_file` get a repo-level `.github/copilot-instructions.md` symlink when `model_instructions_clients` includes `copilot` (the default when the selector is omitted); the selector can keep an identity prompt Codex-only without removing the general bridge
 - `config/global.agents.md`
   - the same canonical machine-wide guidance rendered into `~/.claude/CLAUDE.md` and `~/.codex/AGENTS.md`
@@ -82,7 +83,7 @@ matrix that would silently depend on the two workspace files being merged.
   - does not inject defaults for management commands such as `copilot skill list`, `copilot mcp list`, `copilot login`, or `copilot version`
   - can be bypassed with `COPILOT_DISABLE_MANAGED_DEFAULTS=1`
 - repo `.github/github-app.yml`
-  - generated only for repos listed in `dev-servers/registry.json`
+  - generated only for repos listed in `dev-servers/registry.json` whose repo-bootstrap entry enables Copilot
   - contains only `scripts.run`, `server_ready_pattern`, and `auto_open_in_browser`
   - intentionally does not contain `instructions`, `.github/skills`, app hooks, or `auto_approve`; current app evidence shows `auto_approve` is app/session state, not a repo-config key
   - uses the shared `scripts/run-agent-preview-server.py` wrapper so a busy fixed port is reused or rejected consistently

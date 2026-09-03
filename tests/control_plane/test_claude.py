@@ -470,6 +470,86 @@ class ClaudeSyncTests(TempDirTestCase):
         result = run_command(args)
         self.assertIn(f"UNCHANGED {guidance.resolve()}", result.stdout)
 
+    def test_apply_prunes_managed_claude_surfaces_for_disabled_repo(self) -> None:
+        root = self.temp_path / "agents"
+        registry = self._write_registry(root, [])
+        github_root = self.temp_path / "GitHub"
+        repo = init_git_repo(github_root / "codex-only")
+        write_text(repo / "AGENTS.md", "# Repo Guidance\n")
+        write_text(repo / ".claude/CLAUDE.md", "@../AGENTS.md\n")
+        write_json(
+            repo / ".claude/settings.json",
+            {
+                "$schema": "https://json.schemastore.org/claude-code-settings.json",
+                "autoMemoryEnabled": False,
+                "hooks": {
+                    "SessionStart": [
+                        {
+                            "matcher": "startup",
+                            "hooks": [
+                                {
+                                    "type": "command",
+                                    "command": 'python3 "$HOME/GitHub/agents/hooks/scripts/session_start.py" --runtime claude',
+                                    "timeout": 5,
+                                }
+                            ],
+                        }
+                    ]
+                },
+            },
+        )
+        repo_registry = write_json(
+            root / "codex/config/repo-bootstrap.json",
+            {
+                "defaults": {},
+                "repos": [
+                    {"path": str(repo), "enabled_clients": ["codex"]}
+                ],
+            },
+        )
+        hooks_registry = write_json(
+            root / "hooks/registry.json",
+            {
+                "version": 1,
+                "managed_hooks": [
+                    {
+                        "id": "repo-session-start",
+                        "event": "SessionStart",
+                        "command": 'python3 "$HOME/GitHub/agents/hooks/scripts/session_start.py" --runtime {runtime}',
+                        "enabled": True,
+                        "scope": "repo",
+                        "repos": ["codex-only"],
+                        "runtimes": ["claude"],
+                        "matchers": {"claude": "startup"},
+                        "timeout": 5,
+                    }
+                ],
+            },
+        )
+
+        run_command(
+            [
+                str(REPO_ROOT / "scripts/sync-claude.py"),
+                "--apply",
+                "--claude-home",
+                str(self.temp_path / "claude"),
+                "--github-root",
+                str(github_root),
+                "--repo-registry",
+                str(repo_registry),
+                "--hooks-registry",
+                str(hooks_registry),
+                "--repo",
+                "codex-only",
+                "--skip-mcp-configs",
+                *self._isolated_targets(root),
+                str(registry),
+            ]
+        )
+
+        self.assertFalse((repo / ".claude/CLAUDE.md").exists())
+        self.assertFalse((repo / ".claude/settings.json").exists())
+
     def test_apply_renders_repo_dev_server_launch_config(self) -> None:
         root = self.temp_path / "agents"
         registry = self._write_registry(root, [])

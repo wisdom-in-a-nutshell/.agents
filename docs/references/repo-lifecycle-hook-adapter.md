@@ -108,9 +108,10 @@ All repo lifecycle hooks are Python. Do not add shell compatibility shims.
   adapter behavior.
 - Do not use `scripts/check-fast.sh` as a general after-turn hook.
 
-There is intentionally no managed fake/native-looking `SessionEnd` hook. Current
-Codex hook docs do not expose `SessionEnd`; end-of-thread memory work should use
-explicit `FinalizeCodexThread` instead.
+Codex now exposes a native `SessionEnd` event, but it is synchronous and has a
+short execution window. Dobby therefore continues using explicit
+`FinalizeCodexThread` for memory work; a future native hook should be piloted
+only as a tiny signal/queue trigger, never as the finalization implementation.
 
 ## Runtime Payload Contract
 

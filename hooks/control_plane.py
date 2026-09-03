@@ -266,23 +266,44 @@ def _managed_copilot_user_hooks(registry: dict[str, Any]) -> list[dict[str, Any]
     return selected
 
 
-def _render_copilot_command(hook: dict[str, Any], *, runtime: str, event: str) -> str:
+def _render_copilot_command(
+    hook: dict[str, Any],
+    *,
+    runtime: str,
+    event: str,
+    disabled_repo_names: set[str] | None = None,
+) -> str:
     command = _render_command(str(hook["command"]), runtime=runtime, event=event)
     command = f"{command} --no-input"
     if hook.get("scope") == "repo":
         repos = hook.get("repos", [])
         if isinstance(repos, list):
+            if disabled_repo_names is not None:
+                repos = [repo for repo in repos if str(repo) not in disabled_repo_names]
             repo_arg = ",".join(str(repo) for repo in repos)
             command = f"{command} --repos {shlex.quote(repo_arg)}"
     return command
 
 
-def render_copilot_hooks(registry: dict[str, Any]) -> dict[str, Any]:
+def render_copilot_hooks(
+    registry: dict[str, Any],
+    *,
+    disabled_repo_names: set[str] | None = None,
+) -> dict[str, Any]:
     events: dict[str, list[dict[str, Any]]] = {}
     for hook in _managed_copilot_user_hooks(registry):
         event = str(hook["event"])
+        if hook.get("scope") == "repo" and disabled_repo_names is not None:
+            repos = hook.get("repos", [])
+            if not any(str(repo) not in disabled_repo_names for repo in repos):
+                continue
         handler: dict[str, Any] = {
-            "bash": _render_copilot_command(hook, runtime="copilot", event=event),
+            "bash": _render_copilot_command(
+                hook,
+                runtime="copilot",
+                event=event,
+                disabled_repo_names=disabled_repo_names,
+            ),
             "timeoutSec": hook["timeout"],
             "type": "command",
         }
