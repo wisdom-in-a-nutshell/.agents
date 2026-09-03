@@ -6,6 +6,9 @@
     },
     {
       "path": "~/GitHub/adi",
+      "enabled_clients": [
+        "codex"
+      ],
       "personality": "pragmatic",
       "model_instructions_file": "../dobby/constitution.md",
       "model_instructions_clients": [

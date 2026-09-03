@@ -48,6 +48,7 @@ LEGACY_CLAUDE_STOP_COMMANDS = (
     "python3 $HOME/.agents/hooks/scripts/claude_stop.py",
 )
 REPO_CLAUDE_IMPORT = "@../AGENTS.md"
+SUPPORTED_REPO_CLIENTS = {"codex", "claude", "copilot"}
 ALLOWED_SCOPES = {"global", "repo", "dormant"}
 PRUNED_REPO_DIR_NAMES = {
     ".cache",
@@ -250,14 +251,40 @@ def load_repo_registry_entries(registry_file: Path) -> list[dict[str, Any]]:
             or not all(isinstance(client, str) for client in identity_clients)
         ):
             raise ValueError(f"repos[{idx}].model_instructions_clients must be an array of strings")
+        enabled_clients = item.get("enabled_clients")
+        if enabled_clients is None:
+            enabled_clients = sorted(SUPPORTED_REPO_CLIENTS)
+        if (
+            not isinstance(enabled_clients, list)
+            or not enabled_clients
+            or not all(isinstance(client, str) for client in enabled_clients)
+        ):
+            raise ValueError(f"repos[{idx}].enabled_clients must be a non-empty array of strings")
         entries.append(
             {
                 "path": raw_path,
+                "enabled_clients": enabled_clients,
                 "model_instructions_file": instructions,
                 "model_instructions_clients": identity_clients,
             }
         )
     return entries
+
+
+def enabled_repo_roots(
+    repos: list[dict[str, Any]],
+    client: str,
+    github_root: Path,
+) -> set[Path]:
+    home = Path.home()
+    roots: set[Path] = set()
+    for entry in repos:
+        if client not in entry.get("enabled_clients", []):
+            continue
+        repo_root = repo_git_root(resolve_repo_root(entry["path"], github_root, home))
+        if repo_root is not None:
+            roots.add(repo_root)
+    return roots
 
 
 def sync_link(dst: Path, src: Path, apply: bool) -> bool:
@@ -380,6 +407,7 @@ def render_skills(
     claude_home: Path,
     github_root: Path,
     repo_filters: set[Path],
+    enabled_repo_roots: set[Path],
     apply: bool,
 ) -> None:
     home = Path.home()
@@ -411,6 +439,8 @@ def render_skills(
                     print(f"WARNING: skipping existing non-git path: {repo_root}", file=sys.stderr)
                 continue
             if repo_filters and actual_repo not in repo_filters:
+                continue
+            if actual_repo not in enabled_repo_roots:
                 continue
             dst = actual_repo / ".claude" / "skills" / skill
             desired_repo_links[dst] = src
@@ -604,6 +634,8 @@ def render_repo_claude_guidance(
     repo_root: Path,
     apply: bool,
     model_instructions_file: str | None = None,
+    *,
+    enabled: bool = True,
 ) -> None:
     agents_file = repo_root / "AGENTS.md"
     if not agents_file.is_file():
@@ -611,6 +643,25 @@ def render_repo_claude_guidance(
         return
 
     target = repo_root / ".claude" / "CLAUDE.md"
+    if not enabled:
+        managed = False
+        if target.is_symlink() and resolved_target(target) == agents_file.resolve():
+            managed = True
+        elif target.is_file():
+            managed = is_managed_claude_guidance(
+                target.read_text(encoding="utf-8")
+            )
+        if managed:
+            print(f"REMOVE {target} (Claude disabled for repo)")
+            if apply:
+                target.unlink()
+        elif target.exists() or target.is_symlink():
+            print(
+                f"WARNING: leaving non-managed Claude guidance in disabled repo: {target}",
+                file=sys.stderr,
+            )
+        return
+
     desired = repo_claude_guidance_content(repo_root, model_instructions_file)
     label = "imports ../AGENTS.md" + (" + identity prompt" if model_instructions_file else "")
     if target.is_symlink() and resolved_target(target) == agents_file.resolve():
@@ -668,7 +719,12 @@ def render_repo_claude_guidance_files(
             if "claude" in entry.get("model_instructions_clients", [])
             else None
         )
-        render_repo_claude_guidance(actual_repo, apply, instructions)
+        render_repo_claude_guidance(
+            actual_repo,
+            apply,
+            instructions,
+            enabled="claude" in entry.get("enabled_clients", []),
+        )
 
 
 def load_claude_settings_overlay(overlay_file: Path) -> dict[str, Any]:
@@ -999,6 +1055,8 @@ def render_repo_hook_settings(
     hooks_registry: dict[str, Any],
     apply: bool,
     repo_settings: dict[str, Any] | None = None,
+    *,
+    enabled: bool = True,
 ) -> None:
     """Merge rendered Claude hooks into ``<repo>/.claude/settings.json``.
 
@@ -1011,11 +1069,17 @@ def render_repo_hook_settings(
     this repo's name (validated managed keys only) is written alongside the
     hooks so per-repo Claude behavior stays reproducible from the control plane.
     """
-    rendered = render_claude_hooks(hooks_registry, repo_name=repo_root.name).get(
-        "hooks", {}
+    rendered = (
+        render_claude_hooks(hooks_registry, repo_name=repo_root.name).get(
+            "hooks", {}
+        )
+        if enabled
+        else {}
     )
     settings_file = repo_root / ".claude" / "settings.json"
     data = read_json_object(settings_file)
+    if not data and not enabled:
+        return
     desired = dict(data)
     desired.setdefault(
         "$schema", "https://json.schemastore.org/claude-code-settings.json"
@@ -1053,8 +1117,31 @@ def render_repo_hook_settings(
     else:
         desired.pop("hooks", None)
 
-    for key, value in ((repo_settings or {}).get(repo_root.name) or {}).items():
+    managed_settings_present = any(key in data for key in CLAUDE_REPO_SETTINGS_KEYS)
+    for key in CLAUDE_REPO_SETTINGS_KEYS:
+        desired.pop(key, None)
+    selected_repo_settings = (
+        ((repo_settings or {}).get(repo_root.name) or {}) if enabled else {}
+    )
+    for key, value in selected_repo_settings.items():
         desired[key] = value
+
+    managed_hooks_present = any(
+        _is_managed_claude_hook(handler)
+        for event in CLAUDE_REPO_HOOK_EVENTS
+        for group in (data.get("hooks", {}).get(event, []) if isinstance(data.get("hooks"), dict) else [])
+        if isinstance(group, dict)
+        for handler in (group.get("hooks", []) if isinstance(group.get("hooks"), list) else [])
+    )
+    if (
+        not enabled
+        and (managed_settings_present or managed_hooks_present)
+        and set(desired) <= {"$schema"}
+    ):
+        print(f"REMOVE {settings_file} (Claude disabled for repo)")
+        if apply:
+            settings_file.unlink(missing_ok=True)
+        return
 
     if desired == data:
         print(f"UNCHANGED {settings_file}")
@@ -1074,6 +1161,7 @@ def render_repo_hooks(
     repo_filters: set[Path],
     apply: bool,
     repo_settings: dict[str, Any] | None = None,
+    repo_registry_entries: list[dict[str, Any]] | None = None,
 ) -> None:
     if not hooks_registry_file.is_file():
         print(
@@ -1087,6 +1175,13 @@ def render_repo_hooks(
     # key still renders for a repo that has no managed hooks.
     repos = list(claude_hook_repos(hooks_registry))
     repos.extend(name for name in sorted(repo_settings or {}) if name not in repos)
+    enabled_names: set[str] = set()
+    for entry in repo_registry_entries or []:
+        name = Path(str(entry["path"])).expanduser().name
+        if name not in repos:
+            repos.append(name)
+        if "claude" in entry.get("enabled_clients", []):
+            enabled_names.add(name)
     for repo in repos:
         repo_root = resolve_repo_root(repo, github_root, home)
         actual_repo = repo_git_root(repo_root)
@@ -1099,7 +1194,13 @@ def render_repo_hooks(
             continue
         if repo_filters and actual_repo not in repo_filters:
             continue
-        render_repo_hook_settings(actual_repo, hooks_registry, apply, repo_settings)
+        render_repo_hook_settings(
+            actual_repo,
+            hooks_registry,
+            apply,
+            repo_settings,
+            enabled=not repo_registry_entries or actual_repo.name in enabled_names,
+        )
 
 
 def render_workspace_trust(claude_json_file: Path, trusted: list[str], apply: bool) -> None:
@@ -1371,6 +1472,7 @@ def render_launch_configs(
     entries: list[dict[str, Any]],
     github_root: Path,
     repo_filters: set[Path],
+    enabled_repo_roots: set[Path],
     preview_runner: Path,
     apply: bool,
 ) -> None:
@@ -1394,6 +1496,18 @@ def render_launch_configs(
             ],
         }
         target = actual_repo / ".claude" / "launch.json"
+        if actual_repo not in enabled_repo_roots:
+            existing = read_json_object(target)
+            if existing == desired:
+                print(f"REMOVE {target} (Claude disabled for repo)")
+                if apply:
+                    target.unlink()
+            elif target.exists() or target.is_symlink():
+                print(
+                    f"WARNING: leaving non-managed Claude launch config in disabled repo: {target}",
+                    file=sys.stderr,
+                )
+            continue
         render_launch_config(target, desired, apply)
 
 
@@ -1527,10 +1641,14 @@ def render_mcp_configs(
             continue
         if repo_filters and actual_repo not in repo_filters:
             continue
-        servers = {
-            name: claude_server_from_preset(name, preset)
-            for name, preset in catalog.presets_for(repo_ref, "claude")
-        }
+        servers = (
+            {
+                name: claude_server_from_preset(name, preset)
+                for name, preset in catalog.presets_for(repo_ref, "claude")
+            }
+            if "claude" in entry.get("enabled_clients", sorted(SUPPORTED_REPO_CLIENTS))
+            else {}
+        )
         target = actual_repo / ".mcp.json"
         if not servers:
             remove_mcp_config(target, apply)
@@ -1549,6 +1667,13 @@ def run_sync(args: argparse.Namespace) -> None:
     launcher_target = output_path(Path(args.launcher_target).expanduser())
     real_cli_path = absolute_path(Path(args.real_cli_path).expanduser())
     preview_runner = absolute_path(Path(args.preview_runner).expanduser()).resolve()
+    repo_registry_file = absolute_path(Path(args.repo_registry).expanduser()).resolve()
+    repo_registry_entries = load_repo_registry_entries(repo_registry_file)
+    claude_enabled_repo_roots = enabled_repo_roots(
+        repo_registry_entries,
+        "claude",
+        github_root,
+    )
     extra_trusted_workspaces = [Path(raw).expanduser().resolve() for raw in args.trusted_workspace if raw.strip()]
 
     items, root_dir = load_registry(registry_file)
@@ -1564,6 +1689,7 @@ def run_sync(args: argparse.Namespace) -> None:
             claude_home,
             github_root,
             repo_filters,
+            claude_enabled_repo_roots,
             args.apply,
         )
 
@@ -1592,11 +1718,11 @@ def run_sync(args: argparse.Namespace) -> None:
             repo_filters,
             args.apply,
             overlay.get("repoSettings", {}),
+            repo_registry_entries,
         )
     if not args.skip_repo_guidance:
-        repo_registry_file = absolute_path(Path(args.repo_registry).expanduser()).resolve()
         render_repo_claude_guidance_files(
-            load_repo_registry_entries(repo_registry_file),
+            repo_registry_entries,
             github_root,
             repo_filters,
             args.apply,
@@ -1618,6 +1744,7 @@ def run_sync(args: argparse.Namespace) -> None:
             dev_server_entries,
             github_root,
             repo_filters,
+            claude_enabled_repo_roots,
             preview_runner,
             args.apply,
         )

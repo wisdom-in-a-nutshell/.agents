@@ -172,6 +172,58 @@ class RepoBootstrapRegistryValidationTests(TempDirTestCase):
                 self.assertNotEqual(result.returncode, 0)
                 self.assertIn(message, result.stderr)
 
+    def test_validates_enabled_clients_and_identity_subset(self) -> None:
+        root = make_control_plane_root(self.temp_path)
+        home = self.temp_path / "home"
+        repo = init_git_repo(home / "GitHub/adi")
+        write_json(root / "mcp/config/presets.json", default_mcp_registry())
+
+        def validate(repo_entry: dict[str, object]):
+            write_json(
+                root / "codex/config/repo-bootstrap.json",
+                {"defaults": {}, "repos": [{"path": str(repo), **repo_entry}]},
+            )
+            return run_command(
+                [
+                    "python3",
+                    str(REPO_ROOT / "codex/scripts/sync-repo-bootstrap-registry.py"),
+                    str(root / "codex/config/repo-bootstrap.json"),
+                    "--mcp-registry",
+                    str(root / "mcp/config/presets.json"),
+                ],
+                env={"HOME": str(home)},
+                check=False,
+            )
+
+        valid = validate(
+            {
+                "enabled_clients": ["codex"],
+                "model_instructions_file": "../dobby/constitution.md",
+                "model_instructions_clients": ["codex"],
+            }
+        )
+        self.assertEqual(valid.returncode, 0, valid.stderr)
+
+        cases = [
+            ({"enabled_clients": []}, "must be a non-empty array"),
+            ({"enabled_clients": ["codex", "unknown"]}, "unsupported clients"),
+            ({"enabled_clients": ["codex", "codex"]}, "must not contain duplicates"),
+            ({"enabled_clients": ["claude"]}, "must include codex"),
+            (
+                {
+                    "enabled_clients": ["codex"],
+                    "model_instructions_file": "../dobby/constitution.md",
+                    "model_instructions_clients": ["codex", "claude"],
+                },
+                "must be a subset of enabled_clients",
+            ),
+        ]
+        for entry, message in cases:
+            with self.subTest(message=message):
+                result = validate(entry)
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn(message, result.stderr)
+
     def test_validates_repo_mcp_and_skill_inputs_without_legacy_outputs(self) -> None:
         root = make_control_plane_root(self.temp_path)
         home = self.temp_path / "home"

@@ -34,6 +34,7 @@ contracts in this repo's docs.
 - `codex/config/bundled-skills-policy.json` is the canonical policy for classifying OpenAI-bundled Codex skills that appear under `~/.codex/skills/.system` or `~/.codex/skills/codex-primary-runtime`.
 - `codex/config/repo-bootstrap.json` is the canonical shared repo registry for managed repo-local behavior.
   - Per repo it can define:
+    - `enabled_clients` (`codex` is mandatory; omit for all clients)
     - `personality`
     - `model_instructions_file`
     - `developer_instructions`
@@ -99,6 +100,7 @@ Detailed operations live in:
 - Do not hand-edit generated repo-local `.codex/hooks.json` files in managed repos; update `hooks/registry.json` and re-run the sync scripts.
 - Do not hand-edit generated repo-local `.claude/launch.json`, `.codex/environments/environment.toml`, or `.github/github-app.yml` files in managed repos; update `dev-servers/registry.json` and re-run `scripts/sync-claude.sh` plus `scripts/sync-copilot.sh`.
 - A repo's identity prompt is declared once as `model_instructions_file` in `codex/config/repo-bootstrap.json`. It reaches Codex through `.codex/config.toml` and, by default, also reaches Copilot through `.github/copilot-instructions.md` and Claude Code through `.claude/CLAUDE.md`. Use `model_instructions_clients` to narrow that propagation for a repo; it must include `codex` (`adi` is intentionally Codex-only). Do not hand-edit generated surfaces; change the registry entry and re-run the sync scripts.
+- `enabled_clients` is the repo-wide runtime filter. Codex remains mandatory for repos in this registry; disabled optional clients must not receive repo guidance, hooks, skill links, MCP files, or preview files, and sync removes only stale surfaces it can identify as control-plane-managed. `model_instructions_clients` is a subset that controls identity-prompt propagation.
 - Do not hand-edit generated repo-local `.mcp.json` or `.github/mcp.json` files in managed repos. Update the MCP definitions and target matrix in `mcp/config/presets.json`, then re-run the shared bootstrap/check.
 - Do not copy managed skills into `.github/skills` or `~/.copilot/skills` for Copilot by default. Copilot already reads `.agents/skills`, `.claude/skills`, `~/.agents/skills`, and app-bundled skills; use `config/copilot-settings.json`, `hooks/registry.json`, and `scripts/sync-copilot.py` for Copilot CLI settings, trust, hooks, launcher state, and skill-noise checks.
 - When a new OpenAI-bundled Codex skill appears locally, classify it in `codex/config/bundled-skills-policy.json` as either `allowed` or `disabled`; do not leave it as untracked local runtime drift.

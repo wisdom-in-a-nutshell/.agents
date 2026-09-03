@@ -30,9 +30,6 @@
     "update-config": "off"
   },
   "repoSettings": {
-    "adi": {
-      "autoMemoryEnabled": false
-    },
     "angie": {
       "autoMemoryEnabled": false
     }
