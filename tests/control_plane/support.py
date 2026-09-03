@@ -213,7 +213,16 @@ class TempDirTestCase(unittest.TestCase):
         super().setUp()
         self._temp_dir = tempfile.TemporaryDirectory()
         self.temp_path = Path(self._temp_dir.name)
+        # Registry entries use ~/GitHub/<repo>; a real HOME would let fixtures render into
+        # the machine's actual managed repos instead of staying inside the temp dir.
+        self._original_home = os.environ.get("HOME")
+        os.environ["HOME"] = str(self.temp_path / "home")
+        (self.temp_path / "home").mkdir()
 
     def tearDown(self) -> None:
+        if self._original_home is None:
+            os.environ.pop("HOME", None)
+        else:
+            os.environ["HOME"] = self._original_home
         self._temp_dir.cleanup()
         super().tearDown()

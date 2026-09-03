@@ -398,6 +398,61 @@ class ClaudeSyncTests(TempDirTestCase):
         guidance = repo_a / ".claude/CLAUDE.md"
         self.assertEqual("@../AGENTS.md\n", guidance.read_text(encoding="utf-8"))
 
+    def test_apply_renders_repo_claude_guidance_identity_import(self) -> None:
+        root = self.temp_path / "agents"
+        registry = self._write_registry(root, [])
+        github_root = self.temp_path / "GitHub"
+        workspace = init_git_repo(github_root / "workspace")
+        write_text(workspace / "AGENTS.md", "# Repo Guidance\n")
+        write_text(workspace / "dobby/constitution.md", "# Constitution\n")
+        write_text(workspace / ".claude/CLAUDE.md", "@../AGENTS.md\n")
+        hand_written = init_git_repo(github_root / "hand-written")
+        write_text(hand_written / "AGENTS.md", "# Repo Guidance\n")
+        write_text(hand_written / "dobby/constitution.md", "# Constitution\n")
+        write_text(hand_written / ".claude/CLAUDE.md", "# Custom Claude notes\n")
+        repo_registry = write_json(
+            root / "codex/config/repo-bootstrap.json",
+            {
+                "defaults": {},
+                "repos": [
+                    {"path": str(workspace), "model_instructions_file": "../dobby/constitution.md"},
+                    {"path": str(hand_written), "model_instructions_file": "../dobby/constitution.md"},
+                ],
+            },
+        )
+        claude_home = self.temp_path / "claude"
+        args = [
+            str(REPO_ROOT / "scripts/sync-claude.py"),
+            "--apply",
+            "--claude-home",
+            str(claude_home),
+            "--github-root",
+            str(github_root),
+            "--repo-registry",
+            str(repo_registry),
+            "--skip-mcp-configs",
+            *self._isolated_targets(root),
+            str(registry),
+        ]
+
+        result = run_command(args)
+
+        guidance = workspace / ".claude/CLAUDE.md"
+        self.assertEqual(
+            "@../dobby/constitution.md\n@../AGENTS.md\n",
+            guidance.read_text(encoding="utf-8"),
+            "an existing managed import file is upgraded in place",
+        )
+        self.assertEqual(
+            "# Custom Claude notes\n",
+            (hand_written / ".claude/CLAUDE.md").read_text(encoding="utf-8"),
+            "hand-written guidance is never overwritten",
+        )
+        self.assertIn("skipping existing Claude guidance without @../AGENTS.md", result.stderr)
+
+        result = run_command(args)
+        self.assertIn(f"UNCHANGED {guidance.resolve()}", result.stdout)
+
     def test_apply_renders_repo_dev_server_launch_config(self) -> None:
         root = self.temp_path / "agents"
         registry = self._write_registry(root, [])

@@ -225,12 +225,12 @@ def load_registry(registry_file: Path) -> tuple[list[dict[str, Any]], Path]:
     return items, root_dir
 
 
-def load_repo_registry(registry_file: Path) -> list[str]:
+def load_repo_registry_entries(registry_file: Path) -> list[dict[str, Any]]:
     data = read_json_object(registry_file)
     raw_items = data.get("repos", [])
     if not isinstance(raw_items, list):
         raise ValueError("repo registry repos must be an array")
-    repos: list[str] = []
+    entries: list[dict[str, Any]] = []
     seen: set[str] = set()
     for idx, item in enumerate(raw_items):
         if not isinstance(item, dict):
@@ -239,8 +239,11 @@ def load_repo_registry(registry_file: Path) -> list[str]:
         if raw_path in seen:
             raise ValueError(f"duplicate repo path: {raw_path}")
         seen.add(raw_path)
-        repos.append(raw_path)
-    return repos
+        instructions = item.get("model_instructions_file")
+        if instructions is not None and (not isinstance(instructions, str) or not instructions.strip()):
+            raise ValueError(f"repos[{idx}].model_instructions_file must be a non-empty string")
+        entries.append({"path": raw_path, "model_instructions_file": instructions})
+    return entries
 
 
 def sync_link(dst: Path, src: Path, apply: bool) -> bool:
@@ -560,33 +563,68 @@ def render_global_context(source: Path, target: Path, apply: bool) -> None:
     target.symlink_to(rel_link(target, source))
 
 
-def render_repo_claude_guidance(repo_root: Path, apply: bool) -> None:
+def repo_claude_guidance_content(repo_root: Path, model_instructions_file: str | None) -> str:
+    """Build the managed .claude/CLAUDE.md body.
+
+    The identity prompt (Codex `model_instructions_file`, relative to `.codex/`) is imported
+    first so Claude sees it before the operational router, mirroring Codex's system-prompt
+    then AGENTS.md order. The import path is relative to `.claude/CLAUDE.md`.
+    """
+    lines: list[str] = []
+    if model_instructions_file:
+        source = (repo_root / ".codex" / model_instructions_file).resolve()
+        if not source.is_file():
+            raise ValueError(f"model_instructions_file for {repo_root} does not exist: {source}")
+        rel = os.path.relpath(str(source), str(repo_root / ".claude"))
+        lines.append(f"@{rel}")
+    lines.append(REPO_CLAUDE_IMPORT)
+    return "\n".join(lines) + "\n"
+
+
+def is_managed_claude_guidance(content: str) -> bool:
+    stripped = [line.strip() for line in content.splitlines() if line.strip()]
+    return bool(stripped) and all(line.startswith("@../") for line in stripped)
+
+
+def render_repo_claude_guidance(
+    repo_root: Path,
+    apply: bool,
+    model_instructions_file: str | None = None,
+) -> None:
     agents_file = repo_root / "AGENTS.md"
     if not agents_file.is_file():
         print(f"SKIP {repo_root} (.claude/CLAUDE.md: no AGENTS.md)")
         return
 
     target = repo_root / ".claude" / "CLAUDE.md"
-    desired = f"{REPO_CLAUDE_IMPORT}\n"
+    desired = repo_claude_guidance_content(repo_root, model_instructions_file)
+    label = "imports ../AGENTS.md" + (" + identity prompt" if model_instructions_file else "")
     if target.is_symlink() and resolved_target(target) == agents_file.resolve():
+        if model_instructions_file:
+            print(
+                f"WARNING: {target} is a symlink to AGENTS.md and cannot carry the identity import; "
+                "replace it with a managed import file",
+                file=sys.stderr,
+            )
+            return
         print(f"UNCHANGED {target} (symlink to AGENTS.md)")
         return
     if target.is_file():
         current = target.read_text(encoding="utf-8")
-        first_line = current.splitlines()[0].strip() if current.splitlines() else ""
-        if first_line == REPO_CLAUDE_IMPORT:
-            print(f"UNCHANGED {target} (imports AGENTS.md)")
+        if current == desired:
+            print(f"UNCHANGED {target} ({label})")
             return
-        print(
-            f"WARNING: skipping existing Claude guidance without {REPO_CLAUDE_IMPORT}: {target}",
-            file=sys.stderr,
-        )
-        return
-    if target.exists() or target.is_symlink():
+        if not is_managed_claude_guidance(current):
+            print(
+                f"WARNING: skipping existing Claude guidance without {REPO_CLAUDE_IMPORT}: {target}",
+                file=sys.stderr,
+            )
+            return
+    elif target.exists() or target.is_symlink():
         print(f"WARNING: skipping unsupported Claude guidance path: {target}", file=sys.stderr)
         return
 
-    print(f"SYNC {target} (imports ../AGENTS.md)")
+    print(f"SYNC {target} ({label})")
     if not apply:
         return
     target.parent.mkdir(parents=True, exist_ok=True)
@@ -594,14 +632,14 @@ def render_repo_claude_guidance(repo_root: Path, apply: bool) -> None:
 
 
 def render_repo_claude_guidance_files(
-    repos: list[str],
+    repos: list[dict[str, Any]],
     github_root: Path,
     repo_filters: set[Path],
     apply: bool,
 ) -> None:
     home = Path.home()
-    for repo in repos:
-        repo_root = resolve_repo_root(repo, github_root, home)
+    for entry in repos:
+        repo_root = resolve_repo_root(entry["path"], github_root, home)
         if repo_filters and repo_root not in repo_filters:
             continue
         actual_repo = repo_git_root(repo_root)
@@ -611,7 +649,7 @@ def render_repo_claude_guidance_files(
             continue
         if repo_filters and actual_repo not in repo_filters:
             continue
-        render_repo_claude_guidance(actual_repo, apply)
+        render_repo_claude_guidance(actual_repo, apply, entry.get("model_instructions_file"))
 
 
 def load_claude_settings_overlay(overlay_file: Path) -> dict[str, Any]:
@@ -1539,7 +1577,7 @@ def run_sync(args: argparse.Namespace) -> None:
     if not args.skip_repo_guidance:
         repo_registry_file = absolute_path(Path(args.repo_registry).expanduser()).resolve()
         render_repo_claude_guidance_files(
-            load_repo_registry(repo_registry_file),
+            load_repo_registry_entries(repo_registry_file),
             github_root,
             repo_filters,
             args.apply,
@@ -1628,7 +1666,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--skip-repo-guidance",
         action="store_true",
-        help="Do not render per-repo .claude/CLAUDE.md files that import AGENTS.md.",
+        help="Do not render per-repo .claude/CLAUDE.md files that import AGENTS.md and, when the repo declares model_instructions_file, the identity prompt.",
     )
     parser.add_argument(
         "--hooks-registry",

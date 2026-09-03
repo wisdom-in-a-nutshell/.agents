@@ -532,6 +532,96 @@ class CopilotSyncTests(TempDirTestCase):
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("missing managed Copilot global instructions symlink", result.stderr)
 
+    def test_apply_renders_repo_instructions_symlink_from_model_instructions_file(self) -> None:
+        home = self.temp_path / "home"
+        github_root = home / "GitHub"
+        app_support = home / "Library/Application Support/com.github.githubapp"
+        real_cli = self.temp_path / "real-copilot"
+        write_text(real_cli, "#!/usr/bin/env bash\nprintf '{}\\n'\n")
+        real_cli.chmod(0o755)
+
+        workspace = init_git_repo(github_root / "workspace")
+        constitution = write_text(workspace / "dobby/constitution.md", "# Constitution\n\nBe Dobby.\n")
+        plain_repo = init_git_repo(github_root / "plain")
+        repo_registry = write_json(
+            home / "GitHub/agents/codex/config/repo-bootstrap.json",
+            {
+                "defaults": {},
+                "repos": [
+                    {"path": "~/GitHub/workspace", "model_instructions_file": "../dobby/constitution.md"},
+                    {"path": "~/GitHub/plain"},
+                    {"path": "~/GitHub/missing", "model_instructions_file": "../dobby/constitution.md"},
+                ],
+            },
+        )
+        target = workspace / ".github/copilot-instructions.md"
+        mcp_registry = write_json(self.temp_path / "mcp-presets.json", {"version": 2, "presets": {}})
+
+        base_args = [
+            sys.executable,
+            str(REPO_ROOT / "scripts/sync-copilot.py"),
+            "--settings-file",
+            str(home / ".copilot/settings.json"),
+            "--user-config-file",
+            str(home / ".copilot/config.json"),
+            "--mcp-config-file",
+            str(home / ".copilot/mcp-config.json"),
+            "--hooks-file",
+            str(home / ".copilot/hooks/agents-control-plane.json"),
+            "--launcher-target",
+            str(home / "bin/copilot"),
+            "--real-cli-path",
+            str(real_cli),
+            "--github-root",
+            str(github_root),
+            "--app-support-dir",
+            str(app_support),
+            "--repo-registry",
+            str(repo_registry),
+            "--mcp-registry",
+            str(mcp_registry),
+            "--skip-global-instructions",
+        ]
+
+        run_command([*base_args, "--apply"], env={"HOME": str(home)})
+
+        self.assertTrue(target.is_symlink())
+        self.assertEqual(target.resolve(), constitution.resolve())
+        self.assertFalse(
+            target.readlink().is_absolute(),
+            "symlink must be relative so it survives checkout on another machine",
+        )
+        self.assertFalse((plain_repo / ".github/copilot-instructions.md").exists())
+
+        run_command([*base_args, "--check", "--skip-cli-probe"], env={"HOME": str(home)})
+
+        target.unlink()
+        write_text(target, "hand-written\n")
+        result = run_command(
+            [*base_args, "--check", "--skip-cli-probe"],
+            env={"HOME": str(home)},
+            check=False,
+        )
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("missing managed Copilot repo instructions symlink", result.stderr)
+
+        result = run_command([*base_args, "--apply"], env={"HOME": str(home)}, check=False)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("refusing to replace hand-written repo instructions file", result.stderr)
+
+        target.unlink()
+        target.symlink_to("../AGENTS.md")
+        result = run_command(
+            [*base_args, "--check", "--skip-cli-probe"],
+            env={"HOME": str(home)},
+            check=False,
+        )
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("Copilot repo instructions symlink is out of sync", result.stderr)
+
+        run_command([*base_args, "--apply", "--skip-repo-instructions"], env={"HOME": str(home)})
+        self.assertEqual(str(target.readlink()), "../AGENTS.md")
+
     def test_apply_renders_and_removes_repo_targeted_mcp_servers(self) -> None:
         home = self.temp_path / "home"
         github_root = home / "GitHub"
