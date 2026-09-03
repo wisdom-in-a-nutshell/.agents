@@ -40,7 +40,7 @@ For repo authors adding `scripts/hooks/*.py`, start with [`repo-lifecycle-hook-a
   - renders managed global skill links under `~/.claude/skills`
   - renders managed repo-scoped skill links under each target repo's `.claude/skills`
   - when invoked inside a Codex thread, registers changed repo-scoped skill-link paths with that thread's existing Stop transaction instead of committing or pushing from the renderer
-  - renders repo `.claude/CLAUDE.md` bridge files containing `@../AGENTS.md` when the repo has `AGENTS.md`
+  - renders repo `.claude/CLAUDE.md` bridge files containing `@../AGENTS.md` when the repo has `AGENTS.md`; when the repo's `codex/config/repo-bootstrap.json` entry declares `model_instructions_file`, the bridge imports that identity prompt first (for example `@../dobby/constitution.md`), so Claude Code loads the same identity file Codex gets through `model_instructions_file`. Files that already start with managed `@../` imports are upgraded in place; hand-written `.claude/CLAUDE.md` files are left alone with a warning
   - renders user settings and the managed `Stop` hook under `~/.claude/settings.json`
   - renders managed Claude Desktop SSH entries from `config/claude-settings.json` into `~/.claude/settings.json` `sshConfigs`
   - renders selected Claude Desktop app preferences from `config/claude-settings.json` into `~/Library/Application Support/Claude/config.json`
