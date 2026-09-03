@@ -50,8 +50,10 @@ This skill is the canonical cross-repo orientation layer for Dobby. Future agent
   schema, migrations, query/projection, and mutation logic. `person_id` separates
   Adi and Angie rows. Products and dashboards must consume Shelf through
   workspace-bound `dobby shelf` commands or gateway responses, never by reading
-  workspace JSON or SQLite directly. Workspace `state/shelf.json` is legacy
-  import, audit, or backup material only.
+  workspace JSON or SQLite directly. This database is per-machine and is not
+  replicated by Git sync: a hosted dashboard reads its serving host's Shelf, so
+  dashboard-visible writes must target that host or an explicit remote-authoritative
+  API. Workspace `state/shelf.json` is legacy import, audit, or backup material only.
 - `agents` distributes capabilities and lifecycle hooks. Put shared Dobby orientation here as this skill; do not turn `agents` into the Dobby architecture doc home.
 - `scripts` may schedule Dobby work on a specific machine, but only as a thin machine wrapper around the owning repo entrypoint. Live launchd plists under `~/Library/LaunchAgents/` are machine-local runtime state; tracked installers/runners live in `scripts`.
 
