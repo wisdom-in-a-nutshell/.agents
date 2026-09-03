@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 import sys
 
 from tests.control_plane.support import (
@@ -542,6 +543,15 @@ class CopilotSyncTests(TempDirTestCase):
 
         workspace = init_git_repo(github_root / "workspace")
         constitution = write_text(workspace / "dobby/constitution.md", "# Constitution\n\nBe Dobby.\n")
+        codex_only = init_git_repo(github_root / "codex-only")
+        codex_only_constitution = write_text(
+            codex_only / "dobby/constitution.md", "# Constitution\n\nCodex only.\n"
+        )
+        codex_only_target = codex_only / ".github/copilot-instructions.md"
+        codex_only_target.parent.mkdir(parents=True, exist_ok=True)
+        codex_only_target.symlink_to(
+            os.path.relpath(codex_only_constitution, codex_only_target.parent)
+        )
         plain_repo = init_git_repo(github_root / "plain")
         repo_registry = write_json(
             home / "GitHub/agents/codex/config/repo-bootstrap.json",
@@ -549,6 +559,11 @@ class CopilotSyncTests(TempDirTestCase):
                 "defaults": {},
                 "repos": [
                     {"path": "~/GitHub/workspace", "model_instructions_file": "../dobby/constitution.md"},
+                    {
+                        "path": "~/GitHub/codex-only",
+                        "model_instructions_file": "../dobby/constitution.md",
+                        "model_instructions_clients": ["codex"],
+                    },
                     {"path": "~/GitHub/plain"},
                     {"path": "~/GitHub/missing", "model_instructions_file": "../dobby/constitution.md"},
                 ],
@@ -592,6 +607,10 @@ class CopilotSyncTests(TempDirTestCase):
             "symlink must be relative so it survives checkout on another machine",
         )
         self.assertFalse((plain_repo / ".github/copilot-instructions.md").exists())
+        self.assertFalse(
+            codex_only_target.exists() or codex_only_target.is_symlink(),
+            "a Codex-only repo removes the previously managed Copilot identity link",
+        )
 
         run_command([*base_args, "--check", "--skip-cli-probe"], env={"HOME": str(home)})
 

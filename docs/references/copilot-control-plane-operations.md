@@ -28,7 +28,7 @@ The current Copilot control plane is client-first:
   - canonical MCP transport definitions and repository/client targets
   - exclusive Copilot `repos: "all"` targets render into the user MCP file; narrower Copilot-only targets render into repo `.github/mcp.json`; Claude+Copilot targets use shared root `.mcp.json`
 - `codex/config/repo-bootstrap.json`
-  - repos that declare `model_instructions_file` get a repo-level `.github/copilot-instructions.md` symlink to that file, so Copilot loads the same identity prompt Codex gets through `model_instructions_file`
+  - repos that declare `model_instructions_file` get a repo-level `.github/copilot-instructions.md` symlink when `model_instructions_clients` includes `copilot` (the default when the selector is omitted); the selector can keep an identity prompt Codex-only without removing the general bridge
 - `config/global.agents.md`
   - the same canonical machine-wide guidance rendered into `~/.claude/CLAUDE.md` and `~/.codex/AGENTS.md`
   - now also symlinked into `~/.copilot/copilot-instructions.md` by `scripts/sync-copilot.py`
@@ -91,10 +91,10 @@ matrix that would silently depend on the two workspace files being merged.
   - relative symlink to `config/global.agents.md`, the same canonical file rendered into `~/.claude/CLAUDE.md` and `~/.codex/AGENTS.md`
   - gives Copilot CLI and the Copilot app the same machine-wide baseline guidance the other two clients already had; previously this path was empty and Copilot got none of it
 - repo `.github/copilot-instructions.md`
-  - rendered only for repos whose `codex/config/repo-bootstrap.json` entry declares `model_instructions_file` (currently `adi` and `angie`)
+  - rendered only for repos whose registry entry declares `model_instructions_file` and enables `copilot` through `model_instructions_clients` (currently `angie`; an omitted selector enables all supported clients)
   - relative symlink to that file resolved from the repo's `.codex/` directory, exactly as Codex resolves it (`../dobby/constitution.md` → `.github/copilot-instructions.md -> ../dobby/constitution.md`); committed to the repo so a fresh checkout carries it
   - Copilot CLI 1.0.82 was verified to follow the symlink and load the target as repo instructions alongside `AGENTS.md`
-  - `--check` fails if the link is missing, not a symlink, or points elsewhere; `--apply` refuses to replace a hand-written regular file at that path
+  - `--check` fails if an enabled link is missing, not a symlink, or points elsewhere, and also rejects a lingering managed link after Copilot is disabled; `--apply` removes that old managed link but refuses to replace or delete a hand-written file
   - `--skip-repo-instructions` bypasses this surface for isolated troubleshooting
 - `~/Library/LaunchAgents/com.<user>.copilot-session-pruner.plist`
   - installed when `~/.copilot/session-state` or `~/.copilot/session-store.db` exists

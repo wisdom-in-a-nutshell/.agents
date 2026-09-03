@@ -73,12 +73,14 @@ Inside a person workspace:
 
 - `bin/dobby` is the only Dobby CLI entry point; it pins the workspace and calls
   the shared engine.
-- `dobby/constitution.md` is Dobby behavior and boundaries. It is the repo's
-  identity prompt for every client, declared once as `model_instructions_file`
-  in `~/GitHub/agents/codex/config/repo-bootstrap.json` and rendered from there
-  into `.codex/config.toml` (Codex), `.github/copilot-instructions.md` symlink
-  (Copilot), and an `@` import in `.claude/CLAUDE.md` (Claude Code). The
-  session-start hook does not emit it.
+- `dobby/constitution.md` is Dobby behavior and boundaries. It is declared once
+  as `model_instructions_file` in
+  `~/GitHub/agents/codex/config/repo-bootstrap.json`; the optional
+  `model_instructions_clients` selector controls which clients receive it.
+  Codex loads it through `.codex/config.toml`; Claude and Copilot bridges remain
+  available for workspaces that enable them. Adi is intentionally Codex-only,
+  while Angie retains the default cross-client propagation. The session-start
+  hook does not emit the constitution.
 - `memory/profile.md` is durable person context; `memory/now.md` is current
   orientation.
 - `memory/areas/<area>/canon.md` is the one durable area layer.

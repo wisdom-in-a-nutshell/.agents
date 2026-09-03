@@ -406,6 +406,13 @@ class ClaudeSyncTests(TempDirTestCase):
         write_text(workspace / "AGENTS.md", "# Repo Guidance\n")
         write_text(workspace / "dobby/constitution.md", "# Constitution\n")
         write_text(workspace / ".claude/CLAUDE.md", "@../AGENTS.md\n")
+        codex_only = init_git_repo(github_root / "codex-only")
+        write_text(codex_only / "AGENTS.md", "# Repo Guidance\n")
+        write_text(codex_only / "dobby/constitution.md", "# Constitution\n")
+        write_text(
+            codex_only / ".claude/CLAUDE.md",
+            "@../dobby/constitution.md\n@../AGENTS.md\n",
+        )
         hand_written = init_git_repo(github_root / "hand-written")
         write_text(hand_written / "AGENTS.md", "# Repo Guidance\n")
         write_text(hand_written / "dobby/constitution.md", "# Constitution\n")
@@ -416,6 +423,11 @@ class ClaudeSyncTests(TempDirTestCase):
                 "defaults": {},
                 "repos": [
                     {"path": str(workspace), "model_instructions_file": "../dobby/constitution.md"},
+                    {
+                        "path": str(codex_only),
+                        "model_instructions_file": "../dobby/constitution.md",
+                        "model_instructions_clients": ["codex"],
+                    },
                     {"path": str(hand_written), "model_instructions_file": "../dobby/constitution.md"},
                 ],
             },
@@ -442,6 +454,11 @@ class ClaudeSyncTests(TempDirTestCase):
             "@../dobby/constitution.md\n@../AGENTS.md\n",
             guidance.read_text(encoding="utf-8"),
             "an existing managed import file is upgraded in place",
+        )
+        self.assertEqual(
+            "@../AGENTS.md\n",
+            (codex_only / ".claude/CLAUDE.md").read_text(encoding="utf-8"),
+            "a Codex-only repo drops the previously managed Claude identity import",
         )
         self.assertEqual(
             "# Custom Claude notes\n",
