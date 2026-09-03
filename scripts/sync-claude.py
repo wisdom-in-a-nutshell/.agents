@@ -242,7 +242,21 @@ def load_repo_registry_entries(registry_file: Path) -> list[dict[str, Any]]:
         instructions = item.get("model_instructions_file")
         if instructions is not None and (not isinstance(instructions, str) or not instructions.strip()):
             raise ValueError(f"repos[{idx}].model_instructions_file must be a non-empty string")
-        entries.append({"path": raw_path, "model_instructions_file": instructions})
+        identity_clients = item.get("model_instructions_clients")
+        if identity_clients is None:
+            identity_clients = ["codex", "claude", "copilot"] if instructions else []
+        if (
+            not isinstance(identity_clients, list)
+            or not all(isinstance(client, str) for client in identity_clients)
+        ):
+            raise ValueError(f"repos[{idx}].model_instructions_clients must be an array of strings")
+        entries.append(
+            {
+                "path": raw_path,
+                "model_instructions_file": instructions,
+                "model_instructions_clients": identity_clients,
+            }
+        )
     return entries
 
 
@@ -649,7 +663,12 @@ def render_repo_claude_guidance_files(
             continue
         if repo_filters and actual_repo not in repo_filters:
             continue
-        render_repo_claude_guidance(actual_repo, apply, entry.get("model_instructions_file"))
+        instructions = (
+            entry.get("model_instructions_file")
+            if "claude" in entry.get("model_instructions_clients", [])
+            else None
+        )
+        render_repo_claude_guidance(actual_repo, apply, instructions)
 
 
 def load_claude_settings_overlay(overlay_file: Path) -> dict[str, Any]:

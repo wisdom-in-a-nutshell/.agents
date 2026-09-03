@@ -915,18 +915,19 @@ def render_global_instructions(target: Path, source: Path, *, apply: bool) -> No
     render_instructions_symlink(target, source, apply=apply, label="global instructions")
 
 
-def iter_repo_instruction_targets(
+def iter_repo_instruction_specs(
     repo_entries: list[dict[str, Any]],
     github_root: Path,
     repo_filters: set[Path],
-) -> list[tuple[Path, Path]]:
-    """Return (symlink target, source file) pairs for repos declaring model_instructions_file.
+) -> list[tuple[Path, Path, bool]]:
+    """Return target, source, and Copilot-enabled state for repo identity prompts.
 
     The registry value is relative to the repo's `.codex/` directory, exactly as Codex
-    resolves it from `.codex/config.toml`, so Codex and Copilot share one identity prompt.
+    resolves it from `.codex/config.toml`. `model_instructions_clients` can narrow
+    propagation while retaining the general cross-client harness.
     """
     home = Path.home()
-    targets: list[tuple[Path, Path]] = []
+    targets: list[tuple[Path, Path, bool]] = []
     for idx, entry in enumerate(repo_entries):
         raw = entry.get("model_instructions_file")
         if raw is None:
@@ -950,19 +951,43 @@ def iter_repo_instruction_targets(
             raise CopilotSyncError(
                 f"repo-bootstrap model_instructions_file for {actual_repo} does not exist: {source}"
             )
-        targets.append((actual_repo / REPO_INSTRUCTIONS_RELATIVE_PATH, source))
+        identity_clients = entry.get("model_instructions_clients")
+        if identity_clients is None:
+            identity_clients = ["codex", "claude", "copilot"]
+        if (
+            not isinstance(identity_clients, list)
+            or not all(isinstance(client, str) for client in identity_clients)
+        ):
+            raise CopilotSyncError(
+                f"repo-bootstrap repos[{idx}].model_instructions_clients must be an array of strings"
+            )
+        targets.append(
+            (
+                actual_repo / REPO_INSTRUCTIONS_RELATIVE_PATH,
+                source,
+                "copilot" in identity_clients,
+            )
+        )
     return targets
 
 
-def render_repo_instructions(
+def reconcile_repo_instructions(
     repo_entries: list[dict[str, Any]],
     github_root: Path,
     repo_filters: set[Path],
     *,
     apply: bool,
 ) -> None:
-    for target, source in iter_repo_instruction_targets(repo_entries, github_root, repo_filters):
-        render_instructions_symlink(target, source, apply=apply, label="repo instructions")
+    for target, source, enabled in iter_repo_instruction_specs(
+        repo_entries, github_root, repo_filters
+    ):
+        if enabled:
+            render_instructions_symlink(target, source, apply=apply, label="repo instructions")
+            continue
+        if target.is_symlink() and resolved_symlink_target(target) == source.resolve():
+            print(f"REMOVE {target} (Copilot identity disabled for repo)")
+            if apply:
+                target.unlink()
 
 
 def sync(
@@ -1019,7 +1044,7 @@ def sync(
     if not skip_global_instructions:
         render_global_instructions(global_instructions_target, global_instructions_source, apply=apply)
     if not skip_repo_instructions:
-        render_repo_instructions(repo_entries, github_root, repo_filters, apply=apply)
+        reconcile_repo_instructions(repo_entries, github_root, repo_filters, apply=apply)
     if not skip_github_app_configs:
         render_github_app_configs(
             load_dev_servers(dev_servers_registry),
@@ -1180,11 +1205,16 @@ def check(
             fail(f"Copilot global instructions symlink is out of sync: {global_instructions_target}")
 
     if not skip_repo_instructions:
-        for target, source in iter_repo_instruction_targets(repo_entries, github_root, repo_filters):
-            if not target.is_symlink():
-                fail(f"missing managed Copilot repo instructions symlink: {target}")
-            if resolved_symlink_target(target) != source:
-                fail(f"Copilot repo instructions symlink is out of sync: {target}")
+        for target, source, enabled in iter_repo_instruction_specs(
+            repo_entries, github_root, repo_filters
+        ):
+            if enabled:
+                if not target.is_symlink():
+                    fail(f"missing managed Copilot repo instructions symlink: {target}")
+                if resolved_symlink_target(target) != source:
+                    fail(f"Copilot repo instructions symlink is out of sync: {target}")
+            elif target.is_symlink() and resolved_symlink_target(target) == source:
+                fail(f"unexpected managed Copilot repo instructions symlink: {target}")
 
     if not skip_github_app_configs:
         for entry, repo_root in iter_dev_server_repo_targets(

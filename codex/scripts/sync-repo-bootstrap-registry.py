@@ -28,6 +28,8 @@ ALLOWED_SCALAR_KEYS = {
     "sandbox_mode",
     "personality",
 }
+ALLOWED_REPO_METADATA_KEYS = {"model_instructions_clients"}
+MODEL_INSTRUCTIONS_CLIENTS = {"codex", "claude", "copilot"}
 ALLOWED_DEFAULT_TABLE_KEYS = {"features"}
 CLIENT_OWNED_THREAD_SELECTION_KEYS = {
     "model",
@@ -115,12 +117,44 @@ def validate_registry(
         for key in item:
             if key == "path":
                 continue
-            if key not in ALLOWED_SCALAR_KEYS and key not in ALLOWED_DEFAULT_TABLE_KEYS:
+            if (
+                key not in ALLOWED_SCALAR_KEYS
+                and key not in ALLOWED_DEFAULT_TABLE_KEYS
+                and key not in ALLOWED_REPO_METADATA_KEYS
+            ):
                 raise ValueError(f"repos[{idx}] unsupported key: {key}")
         if "codex_trust" in item and not isinstance(item["codex_trust"], bool):
             raise ValueError(f"repos[{idx}].codex_trust must be a boolean")
         if "features" in item and not isinstance(item["features"], dict):
             raise ValueError(f"repos[{idx}].features must be an object")
+        identity_clients = item.get("model_instructions_clients")
+        if identity_clients is not None:
+            if not isinstance(identity_clients, list) or not identity_clients:
+                raise ValueError(
+                    f"repos[{idx}].model_instructions_clients must be a non-empty array"
+                )
+            if not all(isinstance(client, str) for client in identity_clients):
+                raise ValueError(
+                    f"repos[{idx}].model_instructions_clients must contain only strings"
+                )
+            unknown_clients = sorted(set(identity_clients) - MODEL_INSTRUCTIONS_CLIENTS)
+            if unknown_clients:
+                raise ValueError(
+                    f"repos[{idx}].model_instructions_clients has unsupported clients: "
+                    + ", ".join(unknown_clients)
+                )
+            if len(identity_clients) != len(set(identity_clients)):
+                raise ValueError(
+                    f"repos[{idx}].model_instructions_clients must not contain duplicates"
+                )
+            if "codex" not in identity_clients:
+                raise ValueError(
+                    f"repos[{idx}].model_instructions_clients must include codex"
+                )
+            if not item.get("model_instructions_file"):
+                raise ValueError(
+                    f"repos[{idx}].model_instructions_clients requires model_instructions_file"
+                )
 
         repos.append(
             {
