@@ -91,6 +91,14 @@
       "scope": "dormant",
       "repos": [],
       "category": "Developer Tools"
+    },
+    {
+      "plugin": "deep-research-work",
+      "marketplace": "openai-curated-remote",
+      "enabled": false,
+      "scope": "dormant",
+      "repos": [],
+      "category": "Productivity"
     }
   ],
   "unmanaged_repo_local_plugins": []
