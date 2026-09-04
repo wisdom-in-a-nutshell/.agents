@@ -79,7 +79,8 @@
       "create-canvas",
       "customize-cloud-agent",
       "impeccable",
-      "orchestrate"
+      "orchestrate",
+      "pr-stack"
     ]
   },
   "hooks": {

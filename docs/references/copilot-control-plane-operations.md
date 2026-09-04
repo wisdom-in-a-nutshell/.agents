@@ -120,7 +120,7 @@ The managed check fails if direct skill copies appear under:
 - `~/.copilot/skills/*/SKILL.md`
 - any managed workspace repo `.github/skills/*/SKILL.md`
 
-This keeps Copilot from loading extra duplicate skill layers. The macOS app's bundled skill directory is observed and allowlisted by name; new app-bundled skills fail the check until reviewed and added to `config/copilot-settings.json` or disabled in app settings.
+This keeps Copilot from loading extra duplicate skill layers. The macOS app's bundled skill directory is observed and allowlisted by name; new app-bundled skills fail the check until reviewed and added to `config/copilot-settings.json` or disabled in app settings. As of 2026-09-04, the reviewed loose app-skill set includes `pr-stack`.
 
 The managed settings overlay also writes `disabledSkills` for built-in, app-adjacent, or rarely needed personal/project skills that are available but noisy for normal local terminal sessions. `copilot skill list --json` may still report disabled skills as available; the runtime proof is the session startup summary or a prompt probe. On 2026-07-03, a prompt-mode probe reported 14 loaded skills and confirmed `customize-cloud-agent` was not loaded after `disabledSkills` included it. After tightening the list, a normal wrapper session in this repo reported only the core remaining skills. The launcher disables GitHub's built-in MCP server plus the separate `ide` MCP server, but does not disable repo MCPs rendered from the target matrix.
 
