@@ -4,7 +4,7 @@ set -euo pipefail
 ACTIVE_ENV="${CLAUDE_SECRET_ENV:-$HOME/.secrets/anthropic/env}"
 SUBSCRIPTION_ENV="${CLAUDE_SUBSCRIPTION_SECRET_ENV:-$HOME/.secrets/anthropic/env.subscription}"
 BEDROCK_ENV="${CLAUDE_BEDROCK_SECRET_ENV:-$HOME/.secrets/anthropic/env.bedrock}"
-REAL_CLI="${CLAUDE_REAL_BIN:-/opt/homebrew/bin/claude}"
+REAL_CLI="${CLAUDE_REAL_BIN:-$HOME/.local/bin/claude}"
 
 APPLY=0
 RUN_AUTH_STATUS=1
