@@ -48,6 +48,8 @@ For repo authors adding `scripts/hooks/*.py`, start with [`repo-lifecycle-hook-a
   - enables YOLO through Claude Code's native bypass mode
   - prunes retired Herdr lifecycle hook commands from `~/.claude/settings.json` while preserving ordinary custom hooks
   - renders a `~/bin/claude` wrapper that starts sessions with `--dangerously-skip-permissions`
+  - the wrapper's real CLI defaults to `~/.local/bin/claude`, installed by Anthropic's official installer (`curl -fsSL https://claude.ai/install.sh | bash`), overridable per invocation with `CLAUDE_REAL_BIN`. Do not install the real CLI from the `claude-code` Homebrew cask: it lags the published version by enough to break newest-model access, and its `claude update` hangs indefinitely under a non-interactive shell. To upgrade, rerun the official installer.
+  - VS Code Remote SSH sessions do **not** use this wrapper. The VS Code agent host downloads its own Claude CLI into `~/.vscode-server/data/agent-host/sdk-cache/claude/<version>/`, pinned by the *client* VS Code version, so a stale client on the connecting Mac produces `Claude Code <version> does not support this model` on the remote host no matter what `~/.local/bin/claude` reports. Fix by updating VS Code on the connecting machine and reconnecting.
   - renders per-repo agent preview configs from `dev-servers/registry.json`, opt-in per repo:
     - Claude Code: `.claude/launch.json`
     - Codex: `.codex/environments/environment.toml`
