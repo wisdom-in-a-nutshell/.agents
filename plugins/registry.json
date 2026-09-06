@@ -37,6 +37,14 @@
       "category": "Productivity"
     },
     {
+      "plugin": "presentations",
+      "marketplace": "openai-primary-runtime",
+      "enabled": true,
+      "scope": "global",
+      "repos": [],
+      "category": "Productivity"
+    },
+    {
       "plugin": "openai-templates",
       "marketplace": "openai-curated-remote",
       "enabled": false,
