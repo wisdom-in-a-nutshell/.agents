@@ -152,7 +152,7 @@ Use [Codex Control Plane Ownership](/Users/dobby/GitHub/agents/docs/references/c
   - applies the canonical Codex config template into the live global config
   - copies canonical Codex profile files from `codex/config/*.config.toml` into `~/.codex/*.config.toml`, excluding `global.config.toml`
   - keeps `chatgpt.config.toml` available as the explicit account-provider profile
-  - keeps Apps/connectors globally disabled through the managed `features.apps = false` baseline
+  - keeps Apps/connectors enabled through the managed `features.apps = true` baseline; app-backed plugins such as Google Drive require this layer in addition to plugin enablement. With Apps disabled, plugin skills can load while connector actions remain absent. Verify live tool exposure after runtime reload; config readback alone does not prove connector access.
   - renders global-scope native Codex plugin enable/disable state from [`plugins/registry.json`](/Users/dobby/GitHub/agents/plugins/registry.json)
   - points the `openai-bundled` marketplace at `ChatGPT.app` directly and seeds `~/.codex/plugins/cache` only for bundled plugins enabled by the registry
   - disables selected bundled Codex skills in `~/.codex/config.toml` from [`bundled-skills-policy.json`](/Users/dobby/GitHub/agents/codex/config/bundled-skills-policy.json) when the control plane should prefer managed skill copies or avoid duplicate runtime surfaces

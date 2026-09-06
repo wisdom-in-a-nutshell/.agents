@@ -15,7 +15,7 @@ js_repl = true
 remote_connections = true
 goals = true
 memories = false
-apps = false
+apps = true
 external_migration = false
 
 [notice.external_config_migration_prompts]
