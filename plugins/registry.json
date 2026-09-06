@@ -79,7 +79,7 @@
     {
       "plugin": "google-drive",
       "marketplace": "openai-curated-remote",
-      "enabled": false,
+      "enabled": true,
       "scope": "global",
       "repos": [],
       "category": "Productivity"
